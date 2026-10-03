@@ -530,3 +530,46 @@ agent do khong con chay. Khong sua noi dung, chi doi **1 o status** sang `releas
 
 Khong tao migration, khong dung BE that, khong `npm install`/`pip install`.
 Khong sua file deny list §2. Khong commit file shared.
+
+### 2026-10-03 - Vá TEMPLATE.md: R14 + R15 + R16 (phát hiện khi thử trên vnsaas + vninvestcharts-widget) - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| arch-template2 | feat/arch-template-r14-r16 | Vá 3 quy tắc mới phát hiện khi áp dụng mẫu lên repo khác | `docs/architecture/TEMPLATE.md`, `docs/architecture/verify-sad-audit.md`, `docs/CLAIMS.md` | done | **KET QUA:** R14/R15/R16 vao TEMPLATE.md; verify_arch_citations.py nay nhan FOREIGN-REF. Negative test 4/4 dung ky vong - ca (3) bat bug logic nhin XUONG nen citation chet pass tinh co. Gate chay tay exit 0: verify_arch_citations 264/264 + 1 FOREIGN · measure_repo 8/8 · gen_data_doc 107/0 orphan · ruff pass · check-multi-agent PASS 75 claim. CHUA CHAY: BE test, FE lint/tsc/vitest.
+
+**Vì sao vá.** Mẫu viết xong rồi mới thử trên repo thứ 2. Cả 2 lần đều lộ
+lo hổng mà lượt viết đầu không thấy. Không sửa code runtime, không migration.
+
+**R14 - phai kiem tra repo da co script chua.** tren `vnsaas` da co san
+`scripts/verify-design-pack.mjs` 5 lop (L2 kiem `file[:line]`, L3 ground
+truth khop code) + 40 khoi `FOREIGN-REF`. Gate chay that: **PASS**, 99
+trich dan hop le. Neu lam dung mau o khong kiem, se viet them script trung lap.
+
+**R15 - nhanh "repo dang o giai doan scaffold".** `vnsaas` co **12 model
+thiet ke day** nhung API **2 endpoint**: `commercial`/`ops_audit`/
+`tenant_lifecycle` deu `urlpatterns = []`, `views.py` + `serializers.py`
+moi file 1 dong. DRF + drf_spectacular + django_filters da cai het nhung chua
+dung. Neu van viet du 7 muc, tai lieu AS-IS thanh **van ban thu hai dang bia**
+canh bo TO-BE.
+
+**R16 - citation xuyen repo phai co nhan rieng.** Do doc bo SAD cua agent khac
+o `vninvestcharts-widget` (`87987d1`, 3.323 dong): **913 citation, 180
+(19%) khong xac minh duoc**. Trong do **90 `DEAD_PATH` la citation XUYEN
+REPO** (`core/src/types.ts:318-323`, `vn-kline-engine-drawing/src/
+DrawingStorage.ts:5-90`) - duong dan o repo khac, khong phai loi. Khong co
+nhan rieng thi moi gate deu bao dong gia. `vnsaas` giai dung bang 40 khoi
+`FOREIGN-REF`.
+
+**Ba diem do cua 3 lan chay (khong phai mau suy dien):**
+
+| | tai lieu | citation | khong xac minh duoc | gate |
+|---|---|---|---|---|
+| `vninvest` | `D01-D03` 4.247 dong | 261 | **117 (45%)** truoc khi sua | khong co |
+| `vnsaas` | `saas_design_pack` 13 file | 99 | 0 (da sua 33) | 5 lop + FOREIGN-REF |
+| `vninvestcharts-widget` | `sad-2026-10-03` 3.323 dong | 913 | **180 (19%)** | khong co |
+
+**R13 khong kiem chung duoc o ca 2 repo.** `vnsaas` cung kieu truc Django
+nhu `vninvest` **va** tang API rong; `vninvestcharts-widget` la thu vien
+TS khong co he thong nghiep vu. Muon kiem R13 that can repo co tang phan tang
+that **va** khac han Django - ung vien `vninvest-sdk` (355 file .py).
+
+**Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file deny list.**

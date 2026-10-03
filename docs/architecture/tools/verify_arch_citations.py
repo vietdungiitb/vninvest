@@ -26,6 +26,15 @@ Phân loại kết quả
 | `DEAD_NAME` | không dấu `/`, không file nào tên đó | **có** |
 | `AMBIGUOUS` | không dấu `/`, khớp ≥2 file ⇒ không biết nói ai | **có** |
 | `OUT_OF_RANGE` | dòng vượt quá số dòng thật của file | **có** |
+| `FOREIGN` | citation **xuyên repo** (nằm trong khối đánh dấu `FOREIGN-REF`) | không |
+
+Về `FOREIGN` — nguyên tắc R16. Trong hệ sinh thái nhiều repo, rất nhiều
+`path:line` trỏ tới **repo khác** (`core/src/types.ts`, `engine/src/…`). Không có
+nhãn thì mọi citation đó bị báo động giả và đội sẽ **tắt gate**. Quy ước: dòng
+chứa citation, **hoặc dòng ngay trên nó**, phải có `FOREIGN-REF`. Ví dụ:
+
+    <!-- FOREIGN-REF: vn-kline-engine-core@8a1f2c3 -->
+    · `core/src/types.ts:318-323` — `WidgetSpec` trong repo engine
 
 Cách dùng
 ---------
@@ -97,6 +106,7 @@ def main() -> int:
 
     findings: list[tuple[str, str, str, str]] = []   # nhãn, doc, citation, ghi chú
     ok_count = 0
+    foreign = 0
 
     docs = sorted(DOCS.glob("*.md"))
     if not docs:
@@ -105,12 +115,25 @@ def main() -> int:
 
     for doc in docs:
         text = doc.read_text(encoding="utf-8", errors="replace")
+        doc_lines = text.splitlines()
         for m in CIT.finditer(text):
             raw, a, b = m.group(1), int(m.group(2)), m.group(3)
             hi = int(b) if b else a
             citation = f"{raw}:{a}" + (f"-{b}" if b else "")
             line_no = text[: m.start()].count("\n") + 1
             where = f"{doc.name}:{line_no}"
+
+            # R16: citation xuyen repo duoc danh dau `FOREIGN-REF` o chinh dong
+            # hoac dong NGAY TREN do => khong chan, nhung van dem vao bao cao.
+            # Phai la `line_no - 1` (dong ben tren), KHONG phai `line_no` — neu
+            # nhin xuong thi bat ky dong nao sau cung duoc coi la danh dau, va
+            # citation chet se pass tinh co. Test bat duoc chuyen nay.
+            window = doc_lines[max(0, line_no - 2): line_no]
+            if any("FOREIGN-REF" in w for w in window):
+                foreign += 1
+                if verbose:
+                    print(f"  FOREIGN {citation}")
+                continue
 
             norm = raw.replace("\\", "/").lstrip("./")
             if "/" in norm:
@@ -163,10 +186,14 @@ def main() -> int:
     print("KIEM CHUNG CITATION  docs/architecture/*.md")
     print("=" * 78)
     print(f"  citation khop      : {ok_count}")
+    if foreign:
+        print(f"  FOREIGN-REF        : {foreign}   (xuyen repo, da danh dau - khong chan)")
     print(f"  citation hong     : {len(findings)}")
     print()
     if not findings:
         print("Khop: moi file:line trong tai lieu deu tro toi file that, dung dong.")
+        if foreign:
+            print(f"Luu y: {foreign} citation xuyen repo da duoc danh dau FOREIGN-REF.")
         print("Chay lai sau moi lan sua code - tai lieu khong tu lam chinh no.")
         return 0
 

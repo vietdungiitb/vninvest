@@ -105,6 +105,23 @@ lý thuyết.** Không được copy một checklist generic kiểu
 trúc Java/Spring, áp vào repo khác là sai. Phải truy ngược **3 cặp
 `path:line` thật** trong repo rồi viết SOP theo đúng thứ đang có.
 
+**R14. Trước khi viết BẤT KỲ script nào, kiểm tra repo đã có chưa.** Đọc thư mục
+`scripts/`, `tools/`, và các gate trong CI. Nếu đã có gate làm đúng việc đó thì
+**mở rộng nó**, đừng viết song song — hai gate cùng kiểm một thứ thì một sẽ chết
+và người đọc không biết dùng cái nào.
+
+**R15. Kiểm tra repo đang ở giai đoạn nào TRƯỚC khi chia 3 lượt.** Đếm endpoint
+thật, số model, số dòng. Nếu tầng API/routing **rỗng hoặc gần rỗng** ⇒ repo đang
+ở giai đoạn scaffold: viết đủ khung nhưng **mọi mục phải gõ rõ "đây là kế hoạch,
+chưa phải hiện thực"**. Viết đủ 7 mục cho một scaffold sẽ tạo ra **văn bản thứ hai
+đang bịa** cạnh bộ tài liệu TO-BE.
+
+**R16. Citation xuyên repo phải có nhãn riêng.** Trong hệ sinh thái nhiều repo, rất
+nhiều `path:line` trỏ tới **repo khác** (`core/src/types.ts`, `engine/src/…`).
+Nếu không đánh dấu, mọi gate sẽ báo động giả và đội sẽ tắt gate. Gắn nhãn kiểu
+`<!-- FOREIGN-REF: <repo>@<commit> -->` quanh citation đó để gate bỏ qua có
+chủ đích, **không** bỏ qua toàn bộ tài liệu.
+
 # QUY TRÌNH (3 lượt, có duyệt giữa mỗi lượt)
 
 **Lượt 1 — Audit & khung.** Bước 0 (R1) → Bước 1 audit codebase → §1, §2, §6.
@@ -166,6 +183,39 @@ Không mục nào ở §2 là để trông đầy đủ. Mỗi mục trả lời
 | R11 | ID + owner + trạng thái | `OPEN_QUESTIONS.md` phải tự viết *"danh sách phải thu, không được phình"* — dấu hiệu không có cơ chế nào ép thu |
 | R12 | `owner` + `review-by` | Bộ docs chỉ ghi commit đo, không gì khác ⇒ không ai rà soát sau 3 tháng |
 | R13 | SOP là output | Checklist generic trong mẫu là lớp **Java/Spring**. Chạy thật bị **thay toàn bộ** bằng SOP Django/DRF thật |
+| **R14** | Đọc `scripts/` + gate CI trước khi viết script | `vnsaas` đã có `verify-design-pack.mjs` **5 lớp** (L2 kiểm `file[:line]`, L3 ground truth khớp code) + **40 khối `FOREIGN-REF`**. Chạy thật: **PASS**, 99 citation hợp lệ. Làm đúng mẫu mà không kiểm ⇒ viết script trùng lặp |
+| **R15** | Đếm endpoint/model/LOC trước khi chia lượt | `vnsaas`: **12 model** thiết kế kỹ nhưng **2 endpoint**; `commercial`/`ops_audit`/`tenant_lifecycle` đều `urlpatterns = []`, `views.py`+`serializers.py` mỗi file **1 dòng**. DRF + `drf_spectacular` + `django_filters` cài đủ nhưng chưa dùng |
+| **R16** | Nhãn `FOREIGN-REF` cho citation xuyên repo, **và gate phải hiểu nhãn đó** | Bộ SAD của agent khác ở `vninvestcharts-widget`: **913 citation, 180 (19%) không xác minh được**, trong đó **90 là citation XUYÊN REPO** — không phải lỗi, nhưng không có nhãn thì gate báo động giả. R16 chỉ có giá trị khi **tool cũng được sửa**; thêm quy tắc mà không sửa gate thì tự tạo ra nợ mới |
+
+Ví dụ citation xuyên repo được gate chấp nhận — nhờ nhãn ngay bên trên, không nhờ "nó nằm ở tài liệu khác":
+
+<!-- FOREIGN-REF: vn-kline-engine-core@8a1f2c3 -->
+· `core/src/types.ts:318-323` — trích từ repo engine, **không** phải repo này.
+
+Bỏ nhãn đi thì gate phải **FAIL**. Đó là điều làm nhãn có giá trị: nó biến việc
+bỏ qua thành **quyết định có chủ đích, có dấu vết**, thay vì im lặng.
+
+### 3.1 Ba lần chạy, đo được — bằng chứng cho các quy tắc trên
+
+Không suy diễn từ lý thuyết. Ba repo, ba kết quả đo:
+
+| Repo | Tài liệu | Citation | Không xác minh được | Gate sẵn có |
+|---|---|---|---|---|
+| `vninvest` | `D01–D03` 4.247 dòng | 261 | **117 (45%)** → đã sửa còn **0** | **không có** (tự viết) |
+| `vnsaas` | `saas_design_pack` 13 file | 99 | **0** (đã sửa 33 lần trước) | 5 lớp + `FOREIGN-REF` |
+| `vninvestcharts-widget` | `sad-2026-10-03` 3.323 dòng | 913 | **180 (19%)** | **không có** |
+
+**Đọc ra:** R10 là quy tắc **giá trị nhất** và cũng dễ bị bỏ nhất. `vninvest` bị
+45%, `vninvestcharts-widget` bị 19%, và chỉ `vnsaas` — repo duy nhất có gate —
+là sạch. Không có ngoại lệ nào trong 3 lần này.
+
+### 3.2 Điều chưa kiểm chứng được
+
+**R13 chưa được kiểm chứng trên bất kỳ repo nào.** Cả `vnsaas` lẫn `vninvest`
+đều là Django/DRF với `models.py`/`serializers.py`/`views.py`/`urls.py` — cùng lớp
+kiến trúc nên SOP sinh ra gần như trùng nhau; `vnsaas` còn có tầng API rỗng nên
+§7.2 không có gì để truy ngược. Cần một repo có tầng phân tần thật **và** khác
+hẳn Django (ứng viên: `vninvest-sdk`, 355 file `.py`).
 
 ---
 
