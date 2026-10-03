@@ -15,19 +15,15 @@ from rest_framework.views import APIView
 from vninvest_core.api_envelope import envelope_response
 
 from identity_access.envelope import adopt_envelope, envelope, paginated_envelope
-from identity_access.models import CoreTenant
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.schema import PaginatedResultsSerializer
 from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
+from identity_access.utils.resolve_tenant import resolve_tenant
 
 logger = logging.getLogger(__name__)
 
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
-
-
-def _get_tenant(user):
-    return CoreTenant.objects.get(owner_user=user)
 
 
 class PartnerCostTrendView(APIView):
@@ -76,7 +72,7 @@ class PartnerUsageMetersView(generics.GenericAPIView):
             from commercial.models import QuotaHistory
             from commercial.serializers import PartnerUsageMeterSerializer
 
-            tenant = _get_tenant(request.user)
+            tenant = resolve_tenant(request)
             latest_ids = QuotaHistory.objects.filter(
                 tenant=tenant, meter_code=OuterRef('meter_code')
             ).order_by('-date').values('id')[:1]
@@ -105,7 +101,7 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
             from commercial.models import QuotaHistory
             from commercial.serializers import PartnerUsageMeterSerializer
 
-            tenant = _get_tenant(request.user)
+            tenant = resolve_tenant(request)
             latest_ids = QuotaHistory.objects.filter(
                 tenant=tenant, meter_code=OuterRef('meter_code')
             ).order_by('-date').values('id')[:1]
@@ -133,10 +129,14 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
+        # Fail-closed: tra tenant ra TRUOC try/except. `resolve_tenant` nem
+        # PermissionDenied khi user khong co quan he voi tenant; neu nam trong
+        # try, `except Exception` se nuot no thanh 200 + payload rong (fake
+        # success) — chinh la fail-open OW-02.
+        tenant = resolve_tenant(request)
         try:
             from commercial.models import Subscription
             from commercial.serializers import SubscriptionSerializer
-            tenant = _get_tenant(request.user)
             sub = Subscription.objects.filter(tenant=tenant).first()
             if sub is None:
                 # Return graceful empty state instead of 404
@@ -180,10 +180,13 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
+        # Fail-closed: tra tenant ra TRUOC try/except (xem ghi chu o
+        # PartnerBillingSubscriptionView). Nuot PermissionDenied o day se tra
+        # 200 + danh sach rong — caller khong co tin hieu nao biet sai.
+        tenant = resolve_tenant(request)
         try:
             from commercial.models import Invoice
             from commercial.serializers import InvoiceSerializer
-            tenant = _get_tenant(request.user)
             qs = Invoice.objects.filter(tenant=tenant).order_by('-created_at')
             return envelope(InvoiceSerializer(qs, many=True).data)
         except ImportError:
@@ -273,13 +276,16 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
+        # Fail-closed: tra tenant ra TRUOC try/except (xem ghi chu o
+        # PartnerBillingSubscriptionView). O day `except Exception` tra 500
+        # chu khong phai 200, nhung PermissionDenied la loi quyen — phai la 403
+        # de client phan biet "khong duoc xem" voi "may loi".
+        tenant = resolve_tenant(request)
         try:
             from commercial.models import QuotaHistory
             from commercial.serializers import QuotaHistorySerializer
             from django.utils import timezone
             from datetime import timedelta
-            
-            tenant = _get_tenant(request.user)
             
             # Parse query params
             meter_code = request.query_params.get('meter_code')

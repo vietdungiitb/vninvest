@@ -52,7 +52,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_register_returns_201_created(self):
         """Register endpoint should return 201 CREATED."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'newuser',
                 'email': 'newuser@example.com',
@@ -69,7 +69,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_invalid_register_returns_400_bad_request(self):
         """Register with missing required fields should return 400 BAD REQUEST."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'newuser',
                 'email': 'newuser@example.com',
@@ -83,7 +83,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_duplicate_username_returns_409_conflict(self):
         """Register with duplicate username should return 409 CONFLICT."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'testuser',  # Already exists
                 'email': 'another@example.com',
@@ -98,7 +98,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_duplicate_email_returns_409_conflict(self):
         """Register with duplicate email should return 409 CONFLICT."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'anotheruser',
                 'email': 'test@example.com',  # Already exists
@@ -113,7 +113,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_password_reset_request_returns_200_ok(self):
         """Password reset request should return 200 OK (no user enumeration)."""
         response = self.client.post(
-            '/core/v1/password-reset/',
+            '/core/v1/auth/password-reset/',
             {'email': 'test@example.com'},
             format='json'
         )
@@ -122,7 +122,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_password_reset_nonexistent_email_returns_200_ok(self):
         """Password reset with nonexistent email should return 200 OK."""
         response = self.client.post(
-            '/core/v1/password-reset/',
+            '/core/v1/auth/password-reset/',
             {'email': 'nonexistent@example.com'},
             format='json'
         )
@@ -137,7 +137,7 @@ class StatusCodeSemanticsTests(APITestCase):
         )
         
         response = self.client.post(
-            '/core/v1/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'NewPass123!'  # View expects 'password', not 'new_password'
@@ -149,7 +149,7 @@ class StatusCodeSemanticsTests(APITestCase):
     def test_password_reset_confirm_invalid_token_returns_400_bad_request(self):
         """Password reset confirm with invalid token should return 400."""
         response = self.client.post(
-            '/core/v1/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': 'invalid-token',
                 'new_password': 'NewPass123!'
@@ -171,7 +171,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
     def test_validation_error_has_standard_envelope(self):
         """Validation error should have standard envelope structure."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'test',
                 # Missing email
@@ -197,7 +197,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
     def test_error_envelope_has_iso8601_timestamp(self):
         """Error envelope timestamp should be ISO8601 format."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'test',
                 'email': 'invalid',
@@ -219,7 +219,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
     def test_error_envelope_has_request_id(self):
         """Error envelope should have request_id for tracing."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'test',
                 'email': 'invalid',
@@ -239,7 +239,7 @@ class ErrorEnvelopeConsistencyTests(APITestCase):
     def test_success_response_preserves_envelope_compatibility(self):
         """Success responses should be envelope-compatible."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'newuser',
                 'email': 'newuser@example.com',

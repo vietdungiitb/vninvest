@@ -27,11 +27,12 @@ về tên route.
 ⇒ viewer/editor **đã** bị 403 ở đây từ trước PR này. Gate mới **không** làm thay
 đổi trạng thái quyền của 5 endpoint đó; nó chỉ **làm rõ** điều đã đúng.
 
-**Cái còn hở (test này không che):** cả 5 bọc trong `except Exception`
-(`:160 :192` …) nuốt lỗi thành `200 + rỗng`. `billing:read` nằm **ngoài** `try`
-nên fail-closed đúng; nhưng `CoreTenant.DoesNotExist` **nằm trong** `try` — user
-đúng quyền mà không sở hữu tenant vẫn nhận `200 + rỗng` thay vì 403. Đó là OW-02
-phần 1 ở partner namespace, **cần claim riêng** (đã ghi trong OPEN_WORK).
+**Cái đã sửa:** 5 view bọc trong `except Exception` nuốt lỗi thành `200 + rỗng`.
+`billing:read` nằm **ngoài** `try` nên quyền fail-closed đúng; nhưng trước đây
+`CoreTenant.objects.get(owner_user=...)` **nằm trong** `try` nên user đúng quyền
+mà không sở hữu tenant nhận `200 + rỗng` thay vì 403 (OW-02 phần 1). Nay cả 5
+dùng `resolve_tenant(request)` tra **trước** try/except, nên `PermissionDenied`
+lan ra thành 403. Hai test cuối khoá lại đúng hành vi đó.
 """
 
 from datetime import date
@@ -131,13 +132,15 @@ class PartnerBillingReadRoleGateTests(TestCase):
                 self.assertNotIn('7300000', body)
 
 
-class PartnerNonOwnerAdminFailOpenTests(TestCase):
-    """Khoá lại cái lỗ hổng còn mở: admin đúng quyền vẫn nhận 200-rỗng.
+class PartnerNonOwnerAdminTenantResolutionTests(TestCase):
+    """Admin đúng quyền PHẢI resolve được tenant (không phải 200-rỗng).
 
-    Đây **không phải** test hồi quy của gate mới — nó là **bằng chứng** rằng
-    OW-02 phần 1 vẫn chưa xong ở partner namespace. `billing:read` nằm ngoài
-    `try` nên quyền fail-closed, nhưng `CoreTenant.objects.get(owner_user=...)`
-    nằm **trong** `try` và `DoesNotExist` bị nuốt thành `200 + rỗng`.
+    Trước khi sửa, `_get_tenant(request.user)` lookup theo `owner_user` nên admin
+    (không phải owner) nhận `CoreTenant.DoesNotExist`, bị `except Exception`
+    nuốt thành `200 + status:none`. Đây là fail-open OW-02 phần 1.
+
+    Sau khi sửa, cả 5 endpoint dùng `resolve_tenant(request)` tra **trước**
+    try/except nên `PermissionDenied` lan ra ⇒ 403 thay vì fake-success.
     """
 
     @classmethod
@@ -149,15 +152,28 @@ class PartnerNonOwnerAdminFailOpenTests(TestCase):
         TenantMember.objects.create(
             user=cls.admin, tenant=cls.tenant, role=TenantMember.RoleChoices.ADMIN)
 
-    def test_admin_with_header_gets_data_not_empty_envelope(self):
-        """Admin có `billing:read` + header tenant ⇒ phải thấy dữ liệu thật.
+    def test_admin_with_header_resolves_tenant_not_fake_empty(self):
+        """Admin + header tenant ⇒ body phải mang `plan` thật của tenant.
 
-        Nếu test này đang đỏ với body rỗng ⇒ `_get_tenant(user)` đang ném
-        `DoesNotExist` và bị `except Exception` nuốt. Đó chính là OW-02 phần 1.
+        Không có Subscription row thì `status: none` là **hợp lệ** (nhánh
+        sub-is-None), nên khẳng định bằng `plan: enterprise` — dấu hiệu duy
+        nhất cho thấy đã tra đúng tenant thay vì nhánh lỗi.
         """
         client = client_for(self.admin, self.tenant)
         resp = client.get(SUBSCRIPTION_URL)
         self.assertEqual(resp.status_code, 200, resp.content)
         body = resp.content.decode('utf-8')
-        self.assertNotIn("'status': 'none'", body)
-        self.assertNotIn('"status":"none"', body.replace(' ', ''))
+        self.assertIn('enterprise', body,
+                      f'tenant resolve that (plan=enterprise) — body={body}')
+
+    def test_stranger_admin_without_tenant_relationship_gets_403_not_200(self):
+        """Admin của tenant KHÁC gọi header của tenant này ⇒ 403, không 200."""
+        stranger = User.objects.create_user(username='partner_fo_stranger', password='x')
+        other_tenant = CoreTenant.objects.create(
+            owner_user=User.objects.create_user(username='partner_fo_other_owner', password='x'),
+            tenant_code='partner-fo-other', display_name='Other', plan='pro')
+        TenantMember.objects.create(
+            user=stranger, tenant=other_tenant, role=TenantMember.RoleChoices.ADMIN)
+        client = client_for(stranger, other_tenant)
+        resp = client.get(SUBSCRIPTION_URL, HTTP_X_TENANT_ID=self.tenant.public_id)
+        self.assertEqual(resp.status_code, 403, resp.content)
