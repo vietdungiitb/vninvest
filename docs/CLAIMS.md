@@ -420,3 +420,83 @@ nao. PR #69 merged `0ee1b8b4b`.
   sua `docs/CLAIMS.md` "cho toi khi merge xong", nhung `AGENTS.md` §2 yeu cau
   khai claim **truoc** khi sua dong dau tien. Session nay theo §6 (de merge
   xong roi moi chot claim dong nay).
+
+### 2026-10-03 - Bộ tài liệu kiến trúc AS-IS (agent `arch-as-is`, Lượt 1) - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| `arch-as-is` | `feat/arch-as-is-doc` | Deep audit codebase `vninvest` + xuất SAD/SDS AS-IS làm SSOT (Lượt 1: Bước 1 + mục 1, 2, 6) | `docs/architecture/**` + `docs/CLAIMS.md` | in-progress |
+
+**Doc-only.** Khong sua code production, khong tao migration, khong commit vao `dev`.
+Tach file: `docs/architecture/` (khong trung ten `docs/saas_design_pack/`).
+
+**QUAN TRONG - xung dot kien truc doc da phat hien ngay tu dau:**
+`docs/saas_design_pack/D01-D12` mo ta **TO-BE** (thiet ke moi de port), con bo
+tai lieu nay viet **AS-IS** (hien trang co that). Hai ben trai **nguoc huong** va
+khong ghi ro trong ten file. Neu khong phan tach, dev se trich nham bo sai →
+chinh ly do coordinator dua ra. De xu: `architecture/` (AS-IS) vs
+`saas_design_pack/` (TO-BE), va moi `D0x` se co tien to `AS-` hoac `TOBE-`.
+
+**Khung tai lieu lam mau**: `docs/saas_design_pack/` (13 file, ~6850 dong, D01-D12 +
+OPEN_QUESTIONS) - chuan hoa: `D0x`, PHAN A/B, `ADR-00N`, C4 muc C1-C3, ID quyet
+dinh `D-xx`/`NQ-xx`/`OW-xx`. **Thieu README/index** - bo nay co, de kho doc.
+
+**Quy tac repo bat buoc (AGENTS.md)**: moi khang dinh phai co `file:line`; quet
+TOAN repo ke ca `.css`/`.module.css`/`soc.module.css`/`vite.config.ts`/`i18n`;
+tieng Viet co dau; bao cao theo §4 A-G; **cap nhat `docs/CODE_CHANGE_AUDIT_LEDGER.md`**
+- nhung file nay nam danh sach CAM COMMIT (§2) ⇒ **XUNG DOT QUY TRINH, can coordinator
+phan xu** (ghi ro o muc 6 cua tai lieu, khong giu im).
+
+**Tai lieu nay CHUA chay gi (chi doc + phep tinh)**:
+- BE test: **CHUA CHAY** cho dot nay (khong sua code nen khong can, nguoi doc
+  tu chay lai bang `python run_tests.py`).
+- FE test/lint/tsc: **CHUA CHAY**.
+- Khong co thay doi code nen khong co regression nao de so sanh.
+
+**Pham vi phan 3 session** (theo huong dan van hanh cua coordinator):
+- **Lượt 1 (nay)**: Buoc 1 audit + muc 1, 2, 6.
+- Lượt 2: muc 3, 4 (ERD + sequence diagram) - can 107 model nen tach.
+- Lượt 3: muc 5, 7 (API/UI + SOP coder).
+### 2026-10-03 - Bộ tài liệu AS-IS Lượt 2 + 3 - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| rch-as-is | eat/arch-as-is-doc | Lượt 2 (§3 §4) + Lượt 3 (§5 §7) | docs/architecture/** + docs/CLAIMS.md | in-progress |
+
+**Lượt 2 — §3 §4.** ERD + data dictionary **sinh tự động** tu django.apps.get_models()
+bang docs/architecture/tools/gen_data_doc.py — 107 model / 12 cum / 0 orphan / exit 0.
+Viet tay 107 model la chac chan sai va khong kiem chung duoc; script chay lai duoc.
+
+**Lượt 3 — §5 §7.** Quy uoc API, RFC 9457, navigation/state/design token, check-list
+7 buoc, DoD 12 muc, 4 bay da mac that.
+
+**3 phat hien lon, tu kiem chung (khong tin sub-agent):**
+- **D-2 (CRITICAL) — AGENTS.md chi sai khong thi hanh duoc.** AGENTS.md yeu cau
+  *"SOC glassmorphism patterns, soc.module.css tokens"* nhung
+  src/components/soc/soc.module.css la **barrel 3 dong / 139 byte**, 0 token 0 class
+  (@import x2). Token that: soc.tokens.css:5-130 (69 token). Class that:
+  soc.components.css (3.916 dong, 522 selector). **Sua AGENTS.md hoac sua file
+  rong — deu la viec cua coordinator, khong tu quyet.**
+- **S-2 (HIGH) — 2/3 HTTP client khong gan token.** Chi dapters/core/transport.js:386-410
+  gan Authorization + X-Tenant-ID. dapters/core/coreAdapter.js **khong co** cai
+  Authorization lanh X-Tenant-ID (da grep xac nhan). pages/admin/socCsv.ts:16 tu
+  chep lai header. Refresh truoc han / retry 401 chi co o client #1.
+- **D-1 (HIGH) — 21 token trung ten, 13 khac gia tri.** 	heme/tokens.css vs
+  soc.tokens.css, ca hai viet vao :root. Thu tu nap quyet dinh thang: index.css
+  nap truoc, soc.tokens.css nap sau ⇒ **SOC thang**, gia tri trong 	heme/tokens.css
+  (ke ca font Inter) **chet luc runtime**.
+
+**Dinh chinh 1 claim cua sub-agent:** no bao "21 token trung ten **va khac gia tri**".
+Do lai: 21 trung **ten**, **chi 13** khac gia tri. Tai lieu ghi dung con so 13.
+
+**Kiem chung toan bo:**
+- measure_repo.py chay lai: **8/8 khop, exit 0**.
+- gen_data_doc.py: **107/107 model, 0 orphan, 0 unresolvable, exit 0**.
+- 26 khoi Mermaid/code can bang · 225 trich dan ile:line · ruff 2 file script sach.
+- **KHONG CHAY** (doc-only): BE test suite · FE lint/tsc/vitest.
+- **CHUA XAC MINH**: ShellEmptyState nao thang runtime · layout.nav.* co trong i18n
+  khong · so request /core/v1 hardcode trong **production** (88 dong tinh ca test+comment,
+  chua tach rieng) · thuat toan ky webhook + retry.
+
+**Con no trong D03 §7.5 chua tach khoi pham vi nay** (de lai ticket rieng):
+7 component Shell* che tu trong main.tsx:24-30 (~4.500 dong) · 2 bang route
+dong bo tay · 9 xports trong package.json tro toi file .ts khong ton tai ·
+18 dependency khong import · 14 file > 800 dong.
