@@ -332,6 +332,26 @@ if (existsSync(envChecker)) {
   }
 } else skip("envelope-contract", "khong co check-envelope-contract.py");
 
+// ------------------------------------------- OpenAPI schema budget (anti-regression)
+// `manage.py spectacular` **exit 0** dù bao hàng nghìn loi, nen khong cong nao
+// bat duoc con so 190 operation chua co schema. Cong nay CHAN THOAI LUI bang
+// baseline da commit, khong chan no san — noi `--fail-on-warn` truc tiep se chan
+// moi push cho den khi sua het mot cong viec nhieu phien.
+const openapiBudget = join(
+  REPO,
+  "packages/core/backend/scripts/check-openapi-schema-budget.py",
+);
+if (existsSync(openapiBudget)) {
+  const r = run(PY, [openapiBudget], join(REPO, "packages/core/backend"));
+  if (r.code !== 0) {
+    bad("openapi-budget", r.out.split("\n").slice(0, 8).join("\n"));
+  } else {
+    // So no con lai, doc tu output that chu khong phai mo ta tinh.
+    const left = (r.out.match(/NO CON: Errors=(\d+), Warnings=(\d+)/) || [])[0];
+    ok("openapi-budget", left ? `${left} (no san, da baseline)` : "OK");
+  }
+} else skip("openapi-budget", "khong co check-openapi-schema-budget.py");
+
 // ------------------------------------------------------------------ tong ket
 console.log("");
 if (failed > 0) {
