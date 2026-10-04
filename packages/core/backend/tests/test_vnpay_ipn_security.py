@@ -42,31 +42,40 @@ from commercial.vnpay_service import VNPayService
 
 
 class VNPaySecretFailClosedTests(SimpleTestCase):
-    """A4: secret demo khong duoc phep ky hoac xac thuc."""
+    """A4: production refuses to sign or verify with the public demo secret.
 
-    @override_settings(VNPAY_HASH_SECRET='')
-    def test_empty_secret_refuses_to_sign(self):
+    With DEBUG on, the demo secret is still allowed so a local flow stays usable -
+    but loudly. The security boundary is production, and that is where it holds.
+    """
+
+    @override_settings(VNPAY_HASH_SECRET='', DEBUG=False)
+    def test_empty_secret_refuses_in_production(self):
         with self.assertRaises(ImproperlyConfigured):
             VNPayService.get_hash_secret()
 
-    @override_settings(VNPAY_HASH_SECRET='SECRET_DEMO')
-    def test_demo_secret_refuses_to_sign(self):
+    @override_settings(VNPAY_HASH_SECRET='SECRET_DEMO', DEBUG=False)
+    def test_demo_secret_refuses_in_production(self):
         with self.assertRaises(ImproperlyConfigured):
             VNPayService.get_hash_secret()
 
-    @override_settings(VNPAY_HASH_SECRET=None)
-    def test_missing_secret_refuses_to_sign(self):
+    @override_settings(VNPAY_HASH_SECRET=None, DEBUG=False)
+    def test_missing_secret_refuses_in_production(self):
         with self.assertRaises(ImproperlyConfigured):
             VNPayService.get_hash_secret()
 
-    @override_settings(VNPAY_HASH_SECRET='   ')
-    def test_whitespace_secret_refuses_to_sign(self):
+    @override_settings(VNPAY_HASH_SECRET='   ', DEBUG=False)
+    def test_whitespace_secret_refuses_in_production(self):
         with self.assertRaises(ImproperlyConfigured):
             VNPayService.get_hash_secret()
 
     @override_settings(VNPAY_HASH_SECRET='a-real-secret-value')
     def test_real_secret_is_accepted(self):
         self.assertEqual(VNPayService.get_hash_secret(), 'a-real-secret-value')
+
+    @override_settings(VNPAY_HASH_SECRET='', DEBUG=True)
+    def test_dev_still_works_so_local_flow_is_not_broken(self):
+        """Regression guard: refusing in DEBUG made payment-create 500 locally."""
+        self.assertEqual(VNPayService.get_hash_secret(), 'SECRET_DEMO')
 
 
 class VNPaySignatureTests(SimpleTestCase):

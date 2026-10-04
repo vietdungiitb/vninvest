@@ -92,6 +92,22 @@ class TicketListCreateView(APIView):
 
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
+        # A tenant is mandatory here, exactly as the create branch already
+        # requires (`if not tenant: return 400`). Without this guard a superuser
+        # whose tenant resolution no-ops (`middleware.py:_resolve_superuser_tenant`
+        # falls through when the operator owns and belongs to no tenant, and the
+        # middleware then returns without a 403) reached
+        # `_ticket_query_for_user(user, None)`, which drops BOTH the tenant filter
+        # and - because `is_staff` is true - the `requester=user` filter. That
+        # degraded to an unbounded `SupportTicket` scan across every tenant.
+        #
+        # Refusing forfeits an operator convenience; proceeding leaks other
+        # tenants' ticket subjects and requester usernames.
+        if not tenant:
+            return Response(
+                {'error': 'Tenant context is required to list tickets.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         queryset = _ticket_query_for_user(request.user, tenant)
         status_filter = request.query_params.get('status')
         category_filter = request.query_params.get('category')

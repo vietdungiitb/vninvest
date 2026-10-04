@@ -55,25 +55,35 @@ def _refund_advisory_quota(record) -> bool:
     # Owner first: `CoreTenant.owner_user` is a OneToOneField and an owner is an
     # implicit member (`TenantMember` docstring: "not required to have a
     # TenantMember row").
-    #
-    # Then fall back to an explicit membership row. Without this fallback the old
-    # code `filter(owner_user=user).first()` returned None for any member, so a
-    # member who consumed quota was NEVER refunded - silently, because the caller
-    # swallows every exception.
     _tenant = CoreTenant.objects.filter(owner_user=record.user).first()
     if _tenant is None:
-        membership = (
+        memberships = list(
             TenantMember.objects.filter(user=record.user)
             .select_related('tenant')
-            .first()
+            .values_list('tenant_id', flat=True)
         )
-        _tenant = membership.tenant if membership else None
+        # Ambiguous membership: crediting an arbitrary tenant is exactly the class
+        # of bug this function exists to remove, so refuse instead of guessing.
+        # Refusing only forfeits a refund; guessing corrupts another tenant's
+        # balance.
+        if len(memberships) != 1:
+            logger.error(
+                'Advisory quota refund skipped: user %s belongs to %d tenants '
+                '(tenant_ids=%s). AdvisoryRecord has no tenant FK, so the charging '
+                'tenant cannot be recovered. Refusing to guess.',
+                record.user_id, len(memberships), memberships,
+            )
+            return False
+        _tenant = CoreTenant.objects.filter(pk=memberships[0]).first()
     if _tenant is None:
         return False
 
-    _today = _tz.localdate()
-    _qs = _today.replace(day=1)
-    _qe = _today.replace(day=_mr(_today.year, _today.month)[1])
+    # The charging path derives its period from the advisory's `session_date`
+    # (`advisory/views.py:_manual_trigger_period`), not from "today". Using the
+    # current month credited the wrong period for a back-dated advisory.
+    session_date = record.session_date or _tz.localdate()
+    _qs = session_date.replace(day=1)
+    _qe = session_date.replace(day=_mr(session_date.year, session_date.month)[1])
     _qrec, _ = QuotaRecord.objects.get_or_create(
         tenant=_tenant,
         period_start=_qs,

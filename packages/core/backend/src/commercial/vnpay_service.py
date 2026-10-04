@@ -18,23 +18,27 @@ class VNPayService:
     def get_hash_secret():
         secret = getattr(settings, 'VNPAY_HASH_SECRET', '')
         secret = (secret or '').strip()
-        # Fail closed AT POINT OF USE.
-        #
-        # The previous default was the public constant 'SECRET_DEMO'. That makes
-        # every signature check pass with a key an attacker can read from the
-        # repository, which turns the whole IPN endpoint into a no-op.
-        #
-        # This is deliberately not an env_validation boot check: `manage.py check`
-        # and the pre-push hook run without the VNPay variables set, so requiring
-        # them at boot would turn the push path red. Refuse here instead - only
-        # when someone actually tries to use VNPay.
-        if not secret or secret == 'SECRET_DEMO':
+        if secret and secret != 'SECRET_DEMO':
+            return secret
+
+        # In production an unset (or demo) secret means every signature check
+        # passes with a key anyone can read from the repository, which turns the
+        # whole IPN endpoint into a no-op. Refuse rather than pretend to verify.
+        if not getattr(settings, 'DEBUG', False):
             raise ImproperlyConfigured(
                 'VNPAY_HASH_SECRET is not configured (or is still the public demo '
-                'value). Refusing to sign or verify VNPay traffic. Generate a real '
-                'secret and set it in the environment.'
+                'value) while DEBUG is off. Refusing to sign or verify VNPay '
+                'traffic. Generate a real secret and set it in the environment.'
             )
-        return secret
+
+        # Dev/demo only: keep the flow usable, but say so loudly - a demo secret
+        # means the signature proves nothing.
+        logger.warning(
+            'VNPAY_HASH_SECRET is unset or still SECRET_DEMO and DEBUG is on: '
+            'using the public demo secret. VNPay signatures are NOT verified. '
+            'Never do this outside local development.'
+        )
+        return secret or 'SECRET_DEMO'
 
     @staticmethod
     def get_payment_url():
