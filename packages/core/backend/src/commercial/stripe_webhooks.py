@@ -20,6 +20,22 @@ logger = logging.getLogger(__name__)
 _stripe = None
 
 
+class StripeUnknownPlan(Exception):
+    """Stripe sent a price id that is not configured.
+
+    Granting a plan from an unrecognised price would let any new (or mis-typed)
+    price silently hand out entitlements.
+    """
+
+
+class StripeUnknownStatus(Exception):
+    """Stripe sent a subscription status we have not classified.
+
+    Defaulting these to ACTIVE keeps a subscription fully entitled for a state
+    nobody decided on.
+    """
+
+
 def _get_stripe():
     global _stripe
     if _stripe is None:
@@ -105,12 +121,24 @@ class StripeWebhookView(APIView):
             raise
 
     def _plan_from_price_id(self, price_id: str) -> str:
-        """Map Stripe Price ID to internal plan code."""
+        """Map Stripe Price ID to internal plan code.
+
+        Raises on an unrecognised price instead of falling back to a plan.
+
+        The previous `return 'pro'` meant a price Stripe added - or a price we
+        never configured - silently granted the `pro` plan. Entitlement granted by
+        a value we do not recognise is not a decision, it is an accident. The
+        caller (`post`) catches this and returns 200 with the error, so Stripe does
+        not retry, and nothing is written.
+        """
         price_ids = getattr(stripe_service, 'price_ids', {})
         for plan, pid in price_ids.items():
             if pid == price_id:
                 return plan
-        return 'pro'  # fallback
+        raise StripeUnknownPlan(
+            f'Unknown Stripe price_id {price_id!r}: refusing to grant a plan. '
+            f'Configured price ids: {sorted(p for p in price_ids.values() if p)}'
+        )
 
     def _handle_subscription_created(self, subscription):
         """Handle subscription created event."""
@@ -289,4 +317,12 @@ class StripeWebhookView(APIView):
             'incomplete_expired': Subscription.StatusChoices.CANCELLED,
             'unpaid': Subscription.StatusChoices.PAST_DUE,
         }
-        return mapping.get(stripe_status, Subscription.StatusChoices.ACTIVE)
+        if stripe_status in mapping:
+            return mapping[stripe_status]
+        # Defaulting to ACTIVE meant any status Stripe introduced - or one we have
+        # not classified - kept the subscription fully entitled. Unknown means
+        # unknown: refuse rather than assume paid-and-active.
+        raise StripeUnknownStatus(
+            f'Unclassified Stripe subscription status {stripe_status!r}: '
+            f'refusing to assume ACTIVE. Known: {sorted(mapping)}'
+        )
