@@ -70,6 +70,11 @@ urlpatterns = [
     # Legacy compat: portfolio ai-advisory routes (proxy for legacy frontend client.js calls)
     path('portfolio/ai-advisory/', PortfolioAIAdvisoryListView.as_view(), name='portfolio-ai-advisory-list'),
     path('portfolio/ai-advisory-symbol-stats/', PortfolioAIAdvisorySymbolStatsView.as_view(), name='portfolio-ai-advisory-symbol-stats'),
+    path('portfolio/ai-advisory/<str:symbol>/canonical/', PortfolioAIAdvisoryCanonicalView.as_view(), name='portfolio-ai-advisory-canonical'),
+    # View da ton tai (PortfolioMarketDiscoveryHubView) nhung CHUA duoc route, nen
+    # `getMarketDiscoveryHub` cua frontend luon 404 o discovery mode. Route stub
+    # tra payload co khuon de FE fail-soft thay vi nem loi.
+    path('portfolio/market-discovery-hub/', PortfolioMarketDiscoveryHubView.as_view(), name='portfolio-market-discovery-hub'),
 
     # Sub-accounts native routes (migrated to native workspace core/v1/)
     path('portfolio/subaccounts/', views.SubAccountListCreateAPIView.as_view(), name='subaccount-list-create'),

@@ -21,7 +21,6 @@ import { createMarketClient } from "./core/market.js";
 import { createWorkspaceClient } from "./core/workspace.js";
 import { createCommercialClient } from "./core/commercial.js";
 import { createAdvisoryClient } from "./core/advisory.js";
-import { createCrawlClient } from "./core/crawl.js";
 import { createDnseClient } from "./core/dnse.js";
 import { createBrokerClient } from "./core/broker.js";
 import { createOperatorClient } from "./core/operator.js";
@@ -85,11 +84,6 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     coreDelete: transport.coreDelete,
   });
 
-  const crawlClient = createCrawlClient({
-    coreGet: transport.coreGet,
-    corePost: transport.corePost,
-  });
-
   const dnseClient = createDnseClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
@@ -142,7 +136,6 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...workspaceClient,
     ...commercialClient,
     ...advisoryClient,
-    ...crawlClient,
     ...dnseClient,
     ...brokerClient,
     ...operatorClient,

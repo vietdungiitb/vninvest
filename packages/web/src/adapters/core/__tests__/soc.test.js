@@ -30,11 +30,6 @@ describe("SOC adapter", () => {
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/services/?page=2");
     });
 
-    it("getSocHealthStatus calls coreGet", async () => {
-      await soc.getSocHealthStatus();
-      expect(coreGet).toHaveBeenCalledWith("/operator/soc/health-status/");
-    });
-
     it("getSocSloOverview calls coreGet", async () => {
       await soc.getSocSloOverview();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/slo-overview/");
@@ -340,13 +335,11 @@ describe("SOC adapter", () => {
       expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/warm-now/?mode=sync", { universe_group_ids: ["vn100"] });
     });
 
-    it("getSocPrefetchUniverseGroups / Schedule / Metrics call coreGet", async () => {
+    it("getSocPrefetchUniverseGroups / Schedule call coreGet", async () => {
       await soc.getSocPrefetchUniverseGroups();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/universe-groups/");
       await soc.getSocPrefetchSchedule();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/task-schedule/");
-      await soc.getSocPrefetchMetrics();
-      expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/metrics/");
     });
   });
 

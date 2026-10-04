@@ -1,15 +1,17 @@
 export function createDnseClient({ coreGet, corePost, coreDelete }) {
   return {
     getDNSEDataCredential() {
-      return coreGet("/api/core/v1/dnse-credential/");
+      // `coreGet` already prefixes `/core/v1` (transport.js:66), so the old
+      // `/api/core/v1/...` produced `/core/v1/api/core/v1/dnse-credential/`.
+      return coreGet("/dnse-credential/");
     },
 
     saveDNSEDataCredential(data) {
-      return corePost("/api/core/v1/dnse-credential/", data);
+      return corePost("/dnse-credential/", data);
     },
 
     deleteDNSEDataCredential() {
-      return coreDelete("/api/core/v1/dnse-credential/");
+      return coreDelete("/dnse-credential/");
     },
 
     triggerSystemBackfill(data) {

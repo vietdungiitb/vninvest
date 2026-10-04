@@ -53,10 +53,6 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet(`/operator/soc/services/?page=${page}`);
     },
 
-    getSocHealthStatus() {
-      return coreGet("/operator/soc/health-status/");
-    },
-
     getSocSloOverview() {
       return coreGet("/operator/soc/overview/slo-overview/");
     },
@@ -443,9 +439,7 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/prefetch/task-schedule/");
     },
 
-    getSocPrefetchMetrics() {
-      return coreGet("/operator/soc/prefetch/metrics/");
-    },
+    
 
     // ─── Signals (Read-Only) ───────────────────────────────────────────────
     getSocSignalConfig() {
@@ -738,3 +732,9 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
   };
 }
+
+// Removed: no matching backend route and no call site, so each could only 404.
+//   getSocHealthStatus()    -> /core/v1/operator/soc/health-status/  (the real
+//     route is `/api/soc/overview/health-status/`, unreachable from a helper that
+//     prefixes `/core/v1`)
+//   getSocPrefetchMetrics() -> /core/v1/operator/soc/prefetch/metrics/
