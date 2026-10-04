@@ -874,3 +874,38 @@ co `<Signature>`). Bo heuristic se lam do 6 test do - phai sua kem, khong bo roi
 **Khong nam trong claim nay (de coordinator/owner xu ly):**
 `compose*.yml` · `.env*` · `pyproject.toml` · `requirements.txt` · `docker-compose*.yml` ·
 `docs/CODE_CHANGE_AUDIT_LEDGER.md` chi append 1 hunk (append-only).
+
+### 2026-10-04 - Dong claim owner-audit-fix (3 slice) - done (1 muc CHUA lam)
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice B quota | advisory/tasks.py, advisory/views.py, identity_access/utils/resolve_tenant.py, identity_access/views_security.py, backend/tests/test_advisory_quota_security.py | done |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice A fail-closed | identity_access/saml_service.py, identity_access/tests/test_saml_signature_mode.py, commercial/vnpay_service.py, commercial/views.py, support/views.py, backend/tests/test_vnpay_ipn_security.py, backend/tests/test_support_ticket_tenant_guard.py | done |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice C duong push | .githooks/pre-push, scripts/pre-push-gate.mjs | done |
+
+**Commit:** `d93247189` (audit+plan+claim) · `c9c1b5502` (Slice B) · `f5f01e20b` (Slice A)
+· `55f30e53e` (Slice C) · `e0db89703` (3 blocker sau audit doc lap REJECT)
+
+**Kiem chung:** 110/110 test PASS tren 10 module lien quan. `pre-push-gate.mjs`
+15 PASS / 0 SKIP / 0 FAIL. Audit doc lap Stage 5: **REJECT** truoc, da sua 3
+blocker roi.
+
+**MUC DA CLAIM NHUNG CHUA LAM - ghi ro thay vi de claim no:**
+
+1. **`packages/core/backend/tests/test_stripe_fail_closed.py` (new) - CHUA TAO.**
+   Stripe fail-open (`commercial/stripe_webhooks.py:113` tra plan `pro` khi price
+   ID la; `:292` mac dinh subscription status la thanh `ACTIVE`) **chua duoc sua**.
+   Con nguyen: can bo test truoc, va chua kiem chung duoc path `src/*/tests/`.
+2. **`identity_access/views/sso.py:254-267` - giu nguyen.** Fallback resolve
+   tenant tu assertion CHUA verify. Ly do giu: sau khi them issuer check, parse
+   that o `:278` moi enforce; fallback chi chon config de validate, khong cap
+   token. Rủi ro con la: input chua tin cung cap chon tenant nao de validate.
+   Can kiem chung luong khong co `tenant_code` truoc khi xoa.
+3. **`identity_access/permissions.py` `IsTenantActive` - KHONG sua.** Da kiem
+   chung day du: comment dung, ca 2 backstop ton tai. Sua se pha moi endpoint
+   khong gan tenant.
+
+**Ke lai cho Owner (khong lam duoc trong repo):** OW-01 rotate secret that ·
+OW-05 quyet dinh nghiep vu · CI billing · BL-01b chu ky SAML that (thieu code,
+khong thieu thu vien) · 9 mismatch FE<>BE · `REDIS_URL` mac dinh sai port (6379
+vs 6380) · `agent-sync.ps1:159` thieu `--noinput`.
