@@ -298,6 +298,40 @@ if (existsSync(maGate)) {
   else ok("check-multi-agent", (r.out.match(/PASS.*/) || ["PASS"])[0]);
 } else skip("check-multi-agent", "khong co packages/web/scripts/check-multi-agent.mjs");
 
+// ------------------------------------------------- envelope contract gate
+// Resolve a Python. The checker is a .py script, so unlike every other gate in
+// this file it is not node.
+const venvPy = join(REPO, ".venv", "Scripts", "python.exe");
+const venvPyPosix = join(REPO, ".venv", "bin", "python");
+const PY = existsSync(venvPy) ? venvPy : existsSync(venvPyPosix) ? venvPyPosix : "python";
+
+// `{data, meta}` migration. The checker classifies every 2xx return as
+// WRAPPED / UNWRAPPED / UNVERIFIED and applies the exemptions written down in
+// `vninvest_core/api_envelope.py` (>=400 RFC 9457, 204/205/304, F4, F5, and
+// market_serving contract 2.0). It was never wired into any gate, so the one
+// app that is still flat could not block anything.
+const envChecker = join(REPO, "packages/core/backend/scripts/check-envelope-contract.py");
+const envApps = [
+  "identity_access", "service_ops", "user_workspace", "advisory",
+  "market_data", "ops_audit", "signal_intelligence", "tenant_lifecycle",
+  "commercial",
+];
+if (existsSync(envChecker)) {
+  const r = run(PY, [envChecker, ...envApps]);
+  const offending = r.out
+    .split("\n")
+    .filter((l) => /UNWRAPPED:\s*[1-9]/.test(l) || /\.py:\d+/.test(l))
+    .slice(0, 10)
+    .join("\n");
+  if (r.code !== 0) {
+    bad("envelope-contract", offending || r.out.slice(0, 800));
+  } else {
+    // Report the real numbers, not a static description.
+    const apps = (r.out.match(/UNWRAPPED:\s*0/g) || []).length;
+    ok("envelope-contract", `${apps}/${envApps.length} app 0 UNWRAPPED`);
+  }
+} else skip("envelope-contract", "khong co check-envelope-contract.py");
+
 // ------------------------------------------------------------------ tong ket
 console.log("");
 if (failed > 0) {
