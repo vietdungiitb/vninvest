@@ -14,6 +14,8 @@ from rest_framework.response import Response
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import resolve_tenant
 
+from .envelope import envelope
+
 from .permissions import RequiresTenantPermission
 
 logger = logging.getLogger(__name__)
@@ -48,7 +50,7 @@ class PartnerCostTrendView(generics.GenericAPIView):
         try:
             from commercial.models import Invoice
         except ImportError:
-            return Response({'monthly': [], 'note': 'commercial app not available'})
+            return envelope({'monthly': [], 'note': 'commercial app not available'})
 
         tenant = _get_tenant(request)
         months = int(request.query_params.get('months', 6))
@@ -90,7 +92,7 @@ class PartnerCostTrendView(generics.GenericAPIView):
             if monthly_avg > 0:
                 projected_change_pct = round((projected - monthly_avg) / monthly_avg * 100, 1)
 
-        return Response({
+        return envelope({
             'monthly': monthly,
             'total_6m': total_6m,
             'monthly_avg': round(monthly_avg, 2),
