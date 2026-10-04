@@ -156,6 +156,18 @@ def _returns_envelope(node: ast.expr) -> str:
                 # response phẳng thật.
                 if _is_dict_with(first, 'RspCode'):
                     return 'SKIP_GATEWAY_PROTOCOL'
+                # Route **public, không xác thực** (bootstrap).
+                #
+                # Nằm ngoài bề mặt API có xác thực mà `{data, meta}` áp dụng.
+                # `tests/test_identity_access_permissions.py:173` tên là
+                # `test_public_legal_pages_route_unchanged` và chốt
+                # `{'results': []}` — đó là chốt hình dạng CÓ CHỦ ĐÍCH, không
+                # phải assertion cũ sót lại. Lần migrate trước đã bọc endpoint
+                # này và làm hỏng 2 test đó.
+                #
+                # Nhận diện hẹp: dict chỉ có `results` rỗng — đúng stub bootstrap.
+                if _is_dict_with(first, 'results') and len(first.keys) == 1:
+                    return 'SKIP_PUBLIC_BOOTSTRAP'
                 # ACK tới webhook của bên thứ ba: `{'received': True}`.
                 # Chỉ áp dụng khi `received` là key **duy nhất** — nếu có thêm
                 # field khái báo dữ liệu thì đó là response thật và phải bọc.
@@ -261,7 +273,8 @@ def scan(app: str):
     rows = {'WRAPPED': [], 'UNWRAPPED': [], 'UNVERIFIED': []}
     unverified_detail = []
     skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': [],
-               'SKIP_GATEWAY_PROTOCOL': [], 'SKIP_WEBHOOK_ACK': []}
+               'SKIP_GATEWAY_PROTOCOL': [], 'SKIP_WEBHOOK_ACK': [],
+               'SKIP_PUBLIC_BOOTSTRAP': []}
     for path in sorted(app_dir.rglob('*.py')):
         rel = path.relative_to(SRC)
         if 'migrations' in rel.parts or 'tests' in rel.parts:

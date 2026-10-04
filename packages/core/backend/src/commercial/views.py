@@ -97,7 +97,18 @@ class PublicLegalPagesView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        return envelope({'results': []})
+        # CỐ TÌNH KHÔNG bọc envelope.
+        #
+        # Đây là route **public, không xác thực** (`AllowAny`), nằm ngoài bề mặt
+        # API có xác thực mà `{data, meta}` áp dụng. `tests/
+        # test_identity_access_permissions.py:173` tên là
+        # `test_public_legal_pages_route_unchanged` và chốt đúng
+        # `{'results': []}` — đó là **chốt hình dạng có chủ đích**, không phải
+        # assertion cũ sót lại.
+        #
+        # Lần migrate truoc da boc endpoint nay va lam 2 test do hong; revert la
+        # dung. Xem `check-envelope-contract.py` (`SKIP_PUBLIC_BOOTSTRAP`).
+        return Response({'results': []})
 
 
 # ─── GIAI ĐOẠN 2: VNPAY PAYMENT GATEWAY INTEGRATION ────────────────────────

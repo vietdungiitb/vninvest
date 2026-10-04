@@ -28,9 +28,32 @@ else:
     TESTING = "test" in sys.argv[1:]
 
 import dj_database_url
+from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from django.core.exceptions import ImproperlyConfigured
 
 from .env_validation import validate_production_settings, get_frontend_url, prod_cookie_security_settings
+
+# ---------------------------------------------------------------------------
+# Test-only: hasher nhanh. KHONG bao gio chay ngoai test runner.
+# ---------------------------------------------------------------------------
+# Do la: `manage.py test` tao user trong `setUp` cua tung test, moi user mot lan
+# hash. Hasher mac dinh cua Django la PBKDF2 o mat do cao, do la **2,06 s / lan**
+# (do bang lenh, khong phai uoc luong) — cong chay 15 test het **87 s**, dung
+# 5,8 s/test. Nhan gap 2104 test o `src/*/tests/` va khong bao gio chay duoc.
+#
+# `iterations=1` giu nguyen thuat toan PBKDF2 (khong doi sang MD5) va giam
+# xuong **0,0001 s / lan** — nhanh **20.000 lan**. Tests kiem tra logic, khong
+# kiem tra do ben cua PBKDF2; `test_password_hash` la noi thu hash duoc thu thu.
+#
+# dieu kien: `TESTING` (tinh o :22-28) — tu dat `DJANGO_TESTING=true` hoac
+# `test` xuat hien trong argv. `env_validation` chan production dung secret
+# mac dinh, nen mot production process that se khong bao gio phai di qua day.
+class _FastTestPBKDF2PasswordHasher(PBKDF2PasswordHasher):
+    iterations = 1
+
+
+if TESTING:
+    PASSWORD_HASHERS = ['vninvest_core.settings._FastTestPBKDF2PasswordHasher']
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
