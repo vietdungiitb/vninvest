@@ -34,7 +34,7 @@ class A61_StandardErrorEnvelopeFormatTests(APITestCase):
     def test_validation_error_has_proper_envelope(self):
         """Verify 400 validation error returns proper envelope."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'invalid'},
             format='json'
         )
@@ -49,14 +49,14 @@ class A61_StandardErrorEnvelopeFormatTests(APITestCase):
         # Timestamp ISO8601 format
         self.assertRegex(data['timestamp'], r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
         # request_id must start with req_
-        self.assertTrue(data['request_id'].startswith('req_'))
+        self.assertTrue(str(data['request_id']).strip() != '')
 
     def test_rate_limit_error_has_proper_envelope(self):
         """Verify 429 rate limit error returns proper envelope."""
         # Hit rate limit (5 per minute on login)
         for i in range(6):
             response = self.client.post(
-                '/core/v1/login/',
+                '/core/v1/auth/login/',
                 {'username': 'test', 'password': 'test'},
                 format='json'
             )
@@ -71,7 +71,7 @@ class A61_StandardErrorEnvelopeFormatTests(APITestCase):
         self.assertEqual(data['code'], 'login_rate_limit_exceeded')
         self.assertIn('timestamp', data)
         self.assertIn('request_id', data)
-        self.assertTrue(data['request_id'].startswith('req_'))
+        self.assertTrue(str(data['request_id']).strip() != '')
 
 
 class A62_ProperHttpSemanticsTests(APITestCase):
@@ -87,7 +87,7 @@ class A62_ProperHttpSemanticsTests(APITestCase):
     def test_validation_error_returns_400_not_500(self):
         """Verify validation errors return 400, not 500."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad-email'},
             format='json'
         )
@@ -97,7 +97,7 @@ class A62_ProperHttpSemanticsTests(APITestCase):
     def test_missing_required_fields_returns_400_not_500(self):
         """Verify missing fields return 400, not 500."""
         response = self.client.post(
-            '/core/v1/login/',
+            '/core/v1/auth/login/',
             {},
             format='json'
         )
@@ -106,7 +106,7 @@ class A62_ProperHttpSemanticsTests(APITestCase):
     def test_password_reset_returns_proper_response(self):
         """Verify password reset handles invalid email (per OWASP A01)."""
         response = self.client.post(
-            '/core/v1/password-reset/',
+            '/core/v1/auth/password-reset/',
             {'email': 'not-an-email'},
             format='json'
         )
@@ -128,7 +128,7 @@ class A63_RequestIdCaptureTests(APITestCase):
     def test_request_id_present_on_error_responses(self):
         """Verify request_id when present indicates error handling."""
         endpoints = [
-            ('/core/v1/register/', {'username': '', 'email': 'bad'}),
+            ('/core/v1/auth/register/', {'username': '', 'email': 'bad'}),
         ]
         
         for url, data in endpoints:
@@ -136,22 +136,23 @@ class A63_RequestIdCaptureTests(APITestCase):
             response = self.client.post(url, data, format='json')
             data_resp = response.json()
             
-            # If response has request_id, it must start with req_
+            # Error response chuyen sang problem+json: `request_id` la UUID
+            # thuan, khong con prefix `req_` cua StandardErrorEnvelope.
             if 'request_id' in data_resp:
                 self.assertTrue(
-                    data_resp['request_id'].startswith('req_'),
-                    f'{url} request_id must start with req_'
+                    str(data_resp['request_id']).strip() != '',
+                    f'{url} request_id phai co va khong rong'
                 )
 
     def test_request_ids_are_unique(self):
         """Verify each request gets a unique request_id."""
         response1 = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad'},
             format='json'
         )
         response2 = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad'},
             format='json'
         )
@@ -176,10 +177,10 @@ class A64_NoSilentFailuresTests(APITestCase):
     def test_all_invalid_auth_requests_return_4xx_not_500(self):
         """Verify all invalid auth requests return 4xx, not 500 (silent failure)."""
         invalid_requests = [
-            ('/core/v1/register/', {}),
-            ('/core/v1/register/', {'username': 'test'}),
-            ('/core/v1/login/', {}),
-            ('/core/v1/login/', {'username': 'test'}),
+            ('/core/v1/auth/register/', {}),
+            ('/core/v1/auth/register/', {'username': 'test'}),
+            ('/core/v1/auth/login/', {}),
+            ('/core/v1/auth/login/', {'username': 'test'}),
         ]
         
         for url, data in invalid_requests:
@@ -196,7 +197,7 @@ class A64_NoSilentFailuresTests(APITestCase):
     def test_none_values_dont_cause_500(self):
         """Verify None values handled (not 500)."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': None, 'email': None, 'password': None},
             format='json'
         )
@@ -205,7 +206,7 @@ class A64_NoSilentFailuresTests(APITestCase):
     def test_special_characters_handled(self):
         """Verify special characters in input handled properly."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': '!@#$%',
                 'email': 'test@test.com',
@@ -231,7 +232,7 @@ class A65_RateLimitErrorEnvelopeTests(APITestCase):
         """Verify login rate limit returns 429 (not 403) with envelope."""
         for i in range(6):
             response = self.client.post(
-                '/core/v1/login/',
+                '/core/v1/auth/login/',
                 {'username': 'test', 'password': 'test'},
                 format='json'
             )
@@ -246,10 +247,17 @@ class A65_RateLimitErrorEnvelopeTests(APITestCase):
 
     def test_register_rate_limit_429_with_envelope(self):
         """Verify register rate limit returns 429 with envelope."""
+        # `SaaSRegisterSerializer` (serializers.py:392) bat buoc `password_confirm`;
+        # payload thieu no bi 400 truoc khi vao so dem rate limit.
         for i in range(4):
             response = self.client.post(
-                '/core/v1/register/',
-                {'username': f'user{i}', 'email': f'u{i}@test.com', 'password': 'test'},
+                '/core/v1/auth/register/',
+                {
+                    'username': f'user{i}',
+                    'email': f'u{i}@test.com',
+                    'password': 'TestPass123!',
+                    'password_confirm': 'TestPass123!',
+                },
                 format='json'
             )
         

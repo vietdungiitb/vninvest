@@ -1,3 +1,85 @@
+## Entry 241: Đóng 4 mục `OPEN_WORK_20260927.md` — trong đó **2 mục viết trên tiền đề sai** + errata OW-06 (2026-10-03)
+
+- **Date**: 2026-10-03
+- **Branch**: `feat/openwork-ow02-03-04` (từ `dev@98986cab4`)
+- **Scope**: OW-02 · OW-04 (code + test) · OW-01 · OW-03 · OW-06 (doc). Không migration, không `npm/pip install`, không sửa file deny-list.
+- **Owner đã chốt trong session**: OW-05 xong · OW-03/04 giao agent quyết policy · **OW-02 chỉ sửa 4 call site trong ticket, để lại 5 call site ở app khác**.
+
+### 1. Kết quả từng mục
+
+| mục | kết luận | bằng chứng |
+|---|---|---|
+| OW-01 | **ĐÃ ĐÓNG — tiền đề sai.** Giả định *"không `urls.py` nào có `handler404`"* không đúng | `vninvest_core/urls.py:94-97` gán đủ 4 handler; `problem_404` ở `exceptions.py:322`; test trên URLconf thật `test_problem_json.py:355,367` |
+| OW-02 | **ĐÃ SỬA — 4 call site** (ticket ghi 3) | `commercial/views.py:45,55,65` + `views_analytics.py:23` → `resolve_tenant(...)` |
+| OW-03 | **KHÔNG PHẢI LỖI — không thêm code** | `/api/soc/audit-events/` đã có: `service_ops/urls.py:83`, `views/audit.py:39,46`, `base.py:102-103`, test `service_ops/tests/test_soc_audit.py:53` |
+| OW-04 | **ĐÃ SỬA** | `env_validation.py:127,134,137`; chạy từ `settings.py:71`, tức **trước** dòng gán `settings.py:246` |
+| OW-06 | **Errata đã ghi ở Entry này**; `AGENTS.md:73` vẫn sai và **không sửa được** (deny-list) | commit `6b1738a` trong `vnbroker` có thật; `LICENSE.md:3` cùng chủ sở hữu; `LICENSE.md:57-59` "copyright holder is **not** bound" |
+
+### 2. OW-03 — đã viết code rồi gỡ, vì tìm ra endpoint có sẵn
+
+Agent ban đầu viết `CrossTenantAuditLogView` + route `cross-tenant/audit-log` trong `ops_audit`. Đọc tiếp thì thấy `service_ops` **đã có** sẵn tầm nhìn cross-tenant mà OW-03 đòi, từ R4:
+
+- `service_ops/views/audit.py:5` docstring: *"Đọc AuditEvent trực tiếp, KHÔNG bóp theo core_tenant (khác `/core/v1/audit-log`)"* — tách riêng là **có chủ đích**.
+- Endpoint đó còn **đầy đủ hơn** bản agent viết: 7 filter + search + CSV giới hạn 5000 dòng (`:43,99-114`) và có `SOCOperatorReadThrottle` (`base.py:103`) — bản agent viết không có throttle.
+
+⇒ Đã `git checkout --` cả 2 file. **Không để lại endpoint trùng.** `AuditLogListView` fail-closed ở `ops_audit/views.py:44-45` là **đúng**, giữ nguyên.
+
+**Bài học:** `OPEN_WORK` mô tả *ý định* của ticket, không phải *hiện trạng*. Đọc `ops_audit` rồi kết luận "SOC mất tầm nhìn" là kết luận từ một nửa codebase — phần còn lại nằm ở app khác (`service_ops`).
+
+### 3. OW-02 — chứng minh lỗi thật, không chỉ "trông có vẻ sai"
+
+Hoàn nguyên `commercial/views.py` về `HEAD` rồi chạy lại test mới:
+
+```
+CoreTenant.DoesNotExist  →  HTTP 500   (cả /billing/subscription, /billing/quota, /billing/invoices)
+```
+
+Sau khi sửa: **200**. Member trước đây gặp **500**, không phải 403.
+
+### 4. OW-02 — 5 call site CÒN LẠI, cố tình chưa sửa
+
+`identity_access/commercial_partner_views.py:29-30` có `_get_tenant(user)` y hệt, gọi tại `:79 :108 :139 :186 :282`, trên `/core/v1/partner/billing/*` và `/core/v1/partner/usage/*` — **frontend gọi vào đây**.
+
+**Không gộp vì sẽ làm tệ hơn:** cả 5 view bọc trong `except Exception` (`:94 :116 :160 :193 :312`), còn `resolve_tenant` raise `PermissionDenied`. Thế `_get_tenant` mà không sửa exception handling thì caller không phải owner nhận **200 + dữ liệu rỗng** thay vì 403 — fail-closed tệ hơn hiện tại. Sửa đúng nghĩa là đổi response của 5 endpoint đang chạy production, cần kiểm frontend trước. **Việc mở, không phải việc xong.**
+
+### 5. OW-04 — policy đã chốt
+
+Allowlist `{true, false, 1, 0, yes, no}`. Rỗng/absent ⇒ mặc định `not DEBUG`. Ngoài allowlist ⇒ `ImproperlyConfigured`, **chỉ khi production**.
+
+- **Giữ** `false/0/no`: `settings.py:236` ghi *"enforced unless explicitly disabled"* — phải có đường tắt có chủ đích.
+- **`debug=True` không siết**: thống nhất với việc `validate_production_settings` bỏ qua cả 5 biến bắt buộc ở `env_validation.py:108-110`.
+
+Rủi ro đo bằng cách chạy đúng biểu thức `settings.py:246-255`:
+
+| `STRICT_TURNSTILE_ENFORCEMENT` | kết quả ở production |
+|---|---|
+| `on` · `TRUE_` · `yes please` · `2` | **`False`** ⇒ tắt chống spam, dashboard vẫn báo "đang bật" |
+| unset / rỗng | `True` (đúng, fail-closed) |
+
+### 6. Kiểm thử
+
+| việc | kết quả |
+|---|---|
+| `manage.py test vninvest_core.tests.test_commercial_tenant_scope vninvest_core.tests.test_env_validation` | **29 test — OK** (Postgres `127.0.0.1:5433`, không SQLite) |
+| Chứng minh test bắt lỗi: revert `views.py` → chạy lại | **FAIL** đúng như dự đoán (`CoreTenant.DoesNotExist`) |
+| **So sánh baseline** `commercial` + `vninvest_core.tests` | `HEAD`: 259 test / **51 fail**. Sau thay đổi: 274 test / **51 fail**. `Compare-Object` **rỗng** ⇒ không fail mới |
+| `ruff` 5 file đã sửa | 4 finding, **tất cả có sẵn ở `HEAD`** (đếm chuỗi tại `HEAD` = 1, chỉ dòng import). Thay đổi này không thêm lỗi lint nào |
+| `check-multi-agent.mjs` | **PASS** — 0 lỗi, 0 trùng số migration |
+
+### 7. CHƯA CHẠY
+
+- `run_tests.py` **toàn bộ** (~2700 test) — chỉ chạy `commercial` + `vninvest_core.tests`.
+- **CI: CHƯA CHẠY.** Bằng chứng hiện tại đều là local.
+- Frontend: không có kiểm tra nào chạy (không đụng FE) — nhưng §4 **cần** FE xác nhận trước khi gộp 5 call site kia.
+- 51 fail baseline **không được phân tích** — chỉ chứng minh là không do thay đổi này.
+
+### 8. Sai lệch phát hiện được trong quá trình làm
+
+| gặp | xử lý |
+|---|---|
+| `commercial/tests.py` **đã tồn tại** (11 KB) — tạo `commercial/tests/` sẽ trùng module `tests` | đổi sang `vninvest_core/tests/test_commercial_tenant_scope.py` |
+| Claim đầu tiên liệt kê 3 file test không tồn tại | append claim sửa, commit riêng `15d08f9c3` |
+| `glob` mặc định trỏ `vnsaas` chứ không phải `vninvest` | mọi lần gọi sau đều truyền `path` tuyệt đối |
 ## Entry 240: R13 kiểm chứng trên 3 stack + phát hiện CI `vninvest-sdk` đỏ vì lỗi packaging, **không phải** billing (2026-10-03)
 
 - **Date**: 2026-10-03
@@ -5908,3 +5990,180 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 234 | 2026-09-27 | test | Fix `__mocks__/react.js` hỏng **11/18 jest suite** (~250 test không chạy). Chuyển fake React ra `test/mocks/react.js` + trỏ tường minh từ `dashboard_lifecycle.test.js`. Gate: **jest 18/18 suite, 255/255 test** (trước đó 7/18; trước `da6d0123` 17/18) | `packages/web/test/mocks/react.js` (git mv từ `__mocks__/react.js`), `packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js` | jest 255/255 + vitest 683/683 chạy thật | v0 | Active |
 | 237 | 2026-09-27 | tenant | (1) `/tenant/keys` mat trang thai key: BE da tra `status`/`revoked`/`revoked_at`/`active_keys` nhung FE khai `status` roi bo roi => 3 dong nhin y het nhau. Them cot TRANG THAI (pill `adminToneClasses`), an hanh dong tren key khong active, format ngay locale thay ISO raw, dong active/total, +9 i18n key VI/EN. (2) `i18n:scan` 3 nguyen gan parse FAIL (TS trong default value, t() duoi ternary, comment gay) => 0/360 file loi. (3) Entry 214/215 trung so -> 235/236. (4) CLAIMS.md:248 tro file da doi | TenantKeysPage.tsx + test, SocOverviewPanel.tsx, i18n/vi.js+en.js | vitest 686/686, jest 255/255, tsc 0, build PASS, check:shell 0, check-multi-agent 0 | xem Entry 237 | xem Entry 237 | v0 | Active |
 | 238 | 2026-10-03 | docs | **Q-01 xong** — Owner chốt phương án (a): gỡ `CODE_CHANGE_AUDIT_LEDGER.md` khỏi shared-file deny-list (ledger append 1 Entry = 1 khối riêng nên commit tách được, khác `AGENTS.md` bị gộp hunk). Sửa **7 nguồn**: `AGENT_PROTOCOL.md` §2 (6→5 dòng, nguồn sự thật) + `AGENTS.md` (11→10) + `.githooks/pre-commit` + `agent-pr.ps1` + `check-multi-agent.mjs` + `verify-deny-extract.mjs` (`KNOWN` 9→8) + `agent-preflight.mjs` (`DEFAULT_DENY_LIST` — **sàn**, xoá doc không đủ). Cố tình giữ `check_opencore_doc_sync.ps1:66` vì đó là gate **bắt buộc** cập nhật ledger, ngược hẳn deny-list | AGENT_PROTOCOL.md, AGENTS.md, .githooks/pre-commit, scripts/agent-pr.ps1, packages/web/scripts/check-multi-agent.mjs, tools/opencode-global/verify-deny-extract.mjs, tools/opencode-global/agent-preflight.mjs, docs/architecture/{OPEN_QUESTIONS.md,README.md} | check-multi-agent PASS (exit 0), verify-deny-extract PASS 8/8 + 9/9 negative, scan-secrets PASS 3591 file | xem Entry 238 | xem Entry 238 | v0 | Active |
+| 241 | 2026-10-03 | audit | **OW-02 + OW-04 da sua code**; **OW-01 va OW-03 viet tren tien de sai** (handler404 da co san; `/api/soc/audit-events/` da co san tu R4) => **revert code OW-03, khong them endpoint trung**; **OW-06 errata**: P0-LEGAL-01 khong ton tai. Con mo: 5 call site `_get_tenant(user)` trong `identity_access/commercial_partner_views.py` + `AGENTS.md:73` (deny-list) | commercial/views.py, commercial/views_analytics.py, vninvest_core/env_validation.py, vninvest_core/tests/test_commercial_tenant_scope.py, vninvest_core/tests/test_env_validation.py, docs/OPEN_WORK_20260927.md | 29 test OK tren Postgres 5433; baseline 259/51 fail **==** sau 274/51 fail, `Compare-Object` rong; ruff 4 pre-existing; check-multi-agent PASS | xem Entry 241 | xem Entry 241 | v0 | Active |
+| 242 | 2026-10-03 | audit | **OW-02 phan 2 - gate quyen doc billing.** Owner: viewer **khong** duoc thay hoa don thanh vien khac. `Invoice` khong co user FK nen khong loc duoc dong => chan endpoint. **Claim ban dau SAI** (viet bang role moi) khi SSOT `SYSTEM_ROLE_PERMISSIONS` (`resolve_tenant.py:27-56`) **da encode san**; sua thanh adapter `RequiresTenantPermission`. Con mo: `except Exception` fail-open tai `commercial_partner_views.py:59-61` | commercial/permissions.py (new), commercial/views.py, commercial/views_analytics.py, vninvest_core/tests/test_commercial_tenant_scope.py, docs/OPEN_WORK_20260927.md, docs/CLAIMS.md | 17 test OK Postgres 5433; **negative control bo gate -> 9 fail** (in ra payload that `amount_due: 4200000.00`); baseline 274/51 -> 283/51, 51 ten IDENTICAL; ruff 3 pre-existing trung HEAD; check-multi-agent PASS; scan-secrets OK | xem Entry 242 | xem Entry 242 | v0 | Active |
+
+## Entry 242: OW-02 Phần 2 — gate quyền đọc billing (`billing:read`), dùng lại SSOT `SYSTEM_ROLE_PERMISSIONS` (2026-10-03)
+
+- **Date**: 2026-10-03
+- **Branch**: `feat/openwork-ow02-03-04` -> PR #73 (claim riêng, commit `54df4af25`)
+- **Scope**: 1 file mới + 2 file sửa + 1 file test + 3 file docs. Không migration, không `npm/pip install`, không sửa `identity_access`.
+
+### 1. Vì sao phải làm thêm — OW-02 phần 1 chỉ sửa được nửa
+
+OW-02 phần 1 (Entry 241) đổi `CoreTenant.objects.get(owner_user=…)` -> `resolve_tenant(…)`, và **500 -> 200**. Nhưng `resolve_tenant` bảo đảm **ranh giới tenant** (user chỉ tới được tenant mình quan hệ), **không bảo đảm ranh giới vai trò**. Sau phần 1, một `viewer` vẫn đọc được toàn bộ hoá đơn của tenant.
+
+Owner hỏi: *"một VIEWER có được thấy hoá đơn của các thành viên khác trong cùng tenant không?"* -> **"tất nhiên là không"**.
+
+### 2. Vì sao không lọc được theo dòng
+
+`commercial/models.py` — `Invoice`, `QuotaRecord`, `Subscription` **chỉ có `tenant` FK, không có user FK**. "Hoá đơn riêng của từng thành viên" **không tồn tại trong schema**. Nên quy tắc của Owner chỉ có thể diễn đạt bằng cách **từ chối viewer endpoint**, không phải bằng queryset filter.
+
+### 3. Claim ban đầu SAI — đã sửa
+
+Claim viết *"gating o cap ROLE (owner/admin)"*. Đọc code thật cho thấy `identity_access/utils/resolve_tenant.py:27-56` **đã có** `SYSTEM_ROLE_PERMISSIONS` và **đã encode sẵn chính sách này**:
+
+| role | `billing:read` | `usage:read` |
+|---|---|---|
+| owner | `*` | `*` |
+| admin | co | co |
+| editor | **KHONG** | co |
+| viewer | **KHONG** | co |
+
+Khớp `D07_API_SPECIFICATION_20261002.md:707` ("Owner, Admin") cho `GET /billing/invoices`. `require_tenant_permission()` (`:399`) + `get_tenant_permissions()` (`:361`) **đã xử lý `custom_role`**.
+
+Viết thêm bảng `('owner','admin')` sẽ tạo SSOT thứ hai và **bỏ qua `custom_role`**. Nên `commercial/permissions.py` chỉ là **adapter** ~15 dòng: view khai báo `required_tenant_permissions`, class đọc SSOT. Không có bảng role nào trong file.
+
+### 4. Hiệu ứng theo từng endpoint
+
+| endpoint | token | viewer | editor |
+|---|---|---|---|
+| `/core/v1/billing/subscription` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/invoices` | `billing:read` | **403** | **403** |
+| `/core/v1/partner/billing/cost-trend/` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/quota` | `usage:read` | 200 | 200 |
+
+**Quota vẫn để viewer xem** — `usage:read` có sẵn trong token `viewer` theo policy có sẵn, và `QuotaRecord` là số liệu dùng lượng không phải tiền. Đổi sang `billing:read` thì phải đổi **hai chỗ cùng nhau**: token ở `QuotaListView:59` **và** `test_viewer_can_read_quota` -> 403.
+
+### 5. Bằng chứng lỗ hổng là thật, không phải giả định
+
+Negative control: bỏ gate khỏi 3 view + 1 analytics -> **9 test đỏ**, trong đó `test_denied_response_does_not_leak_invoice_amounts` in ra **payload thật**: `invoice_number: OW02-GATE-INV`, `amount_due: 4200000.00`. Khôi phục file -> **17 test OK**.
+
+Nếu chỉ chạy test có gate, "17 OK" không chứng minh gì — test có thể pass vì lý do khác. Negative control mới là bằng chứng gate đang làm việc.
+
+### 6. Gate
+
+- `test_commercial_tenant_scope.py`: **17 test OK** trên PostgreSQL 5433
+- Full `commercial` + `vninvest_core.tests`: baseline **274 test / 51 fail** (worktree riêng tại `HEAD`) -> worktree **283 test / 51 fail**. `Compare-Object` 51 tên: **IDENTICAL**, 0 mới, 0 bị sửa (+9 = 9 test mới)
+- `ruff`: 3 lỗi cũ (F401 x2, F841 x1) — **trùng hệt với HEAD**, đo bằng `git worktree` riêng
+- `check-multi-agent.mjs`: **PASS** (0 lỗi, 0 trùng migration)
+- `scan-secrets.mjs`: **OK**
+
+### 7. Còn mở — fail-open chưa sửa, ngoài phạm vi claim
+
+`identity_access/commercial_partner_views.py:59-61` có `except Exception` nuốt **mọi lỗi** rồi trả `200 + {note}`. Wrapper cost-trend gọi `InnerView.as_view()` (`:53`) nên gate trên inner view **có thể bị nuốt thành 200**. Hiện **không lộ** vì `:50` đã gọi `_require_tenant_permission(request,'billing:read')` **nằm ngoài** `try` -> 403 phát ra trước. Gate mới là **lớp thứ hai**.
+
+**Cần claim riêng.** Sửa fail-open này sẽ đổi response của 5 endpoint `/core/v1/partner/*` đang chạy production.
+
+### 8. Chưa chạy
+
+CI · `run_tests.py` toàn bộ · OpenAPI constitution/checklist · kiểm chuyển frontend với 4 endpoint đã đổi 200 -> 403.
+
+---
+
+## Entry 243: OW-02 partner fail-open + don 27 test debt (51 -> 24) (2026-10-03)
+
+Owner: *"lam sach loi gap va don code truoc khi lam viec khac duoc"*.
+
+### 1. Fail-open `identity_access/commercial_partner_views.py` - DA SUA
+
+| muc | truoc | sau |
+|---|---|---|
+| 5 call site (`:79 :108 :139 :186 :282`) | `_get_tenant(request.user)` -> `CoreTenant.objects.get(owner_user=user)` | `resolve_tenant(request)` |
+| helper `_get_tenant` (`:29-30`) | ton tai | **xoá** |
+| import `CoreTenant` | dung o `_get_tenant` | **xoá** (khong con tham chieu) |
+
+**Viet sao phai tien ra khoi `try`:** `resolve_tenant` nem `PermissionDenied`
+khi user khong co quan he voi tenant. Nam trong `try` thi `except Exception`
+nuot no thanh `200 + status:none` - chinh la fail-open goc. Ap dung cho 3 view
+co `except Exception` rong: `PartnerBillingSubscriptionView`,
+`PartnerBillingInvoicesView`, `PartnerUsageHistoryView`. 2 view usage
+(`PartnerUsageMetersView`, `PartnerUsageQuotasView`) chi bat `ImportError` nen
+da fail-closed san - chi doi call site.
+
+Wrapper `PartnerCostTrendView` giu nguyen: `:50` goi
+`_require_tenant_permission` **ngoai** `try` nen 403 phat ra truoc.
+
+### 2. Don test debt - 51 -> 24 fail (khong phai lo hong)
+
+| nguyen nhan | bang chung la test cu | sua |
+|---|---|---|
+| URL drift, 38 cho / 4 file | tro `/core/v1/login|register|password-reset/`; route that `/core/v1/auth/...` (`identity_access/urls.py:13,51,54,55`) => 404. `test_client_ip.py` viet dung va **PASS** | them `auth/` |
+| Envelope shape, 5 cho | doc `response.data.get('results')`; `user_workspace/envelope.py:20` ghi ro shape B5 la `{next, previous, results}` - **khong** co `count` | `unwrapped()` (`user_workspace/tests/envelope.py:43`) |
+| `count` trong `data` | cung ly do; `count` khong con nam trong `data` theo thiet ke | assert `{next, previous, results}` |
+
+Khong ro ri: `assertNotIn('Portfolio B2')` **PASS** => danh sach rong do doc sai
+shape, khong phai lo hong tenant.
+
+### 3. Con 24 - CHUA SUA, can quyet dinh san pham
+
+10 rate limit · 8 error-envelope/`request_id` · 5 legacy proxy (`T19`-`T23`,
+goi `/api/portfolio/...` -> proxy can `LEGACY_BACKEND_URL`, test env khong co =>
+503) · 1 timezone.
+
+**Khong noi assertion de lam xanh.** Rate limit la rao chong brute-force;
+`request_id` va contract `400` vs `429` co the dang bat dung mot loi that.
+Lam xanh bang cach noi assertion la doi dau hieu thanh xanh.
+
+### 4. Kiem chung
+
+| lenh | ket qua |
+|---|---|
+| `test_partner_billing_role_gate` + `test_commercial_tenant_scope` | **23 test OK** (PostgreSQL 5433) |
+| `manage.py check` | System check identified no issues |
+| `commercial` + `vninvest_core.tests` | **289 test / 24 fail** (truoc 51) - **0 loi moi** |
+| `ruff` 7 file | 20 loi F401/F841; doi chieu `git show HEAD` => **20/20 da co san** |
+| `scan-secrets` | OK, 3454/3596 scanned |
+| `pre-push-gate.mjs` | **14 PASS / 1 FAIL** - FAIL = `global-config-drift` (`../tools/opencode-global/`), ngoai repo nay. **CHUA PUSH** |
+
+### 5. Chua chay
+
+CI - `run_tests.py` toan bo - OpenAPI constitution - kiem chuyen frontend voi
+response 200 -> 403 cua 5 endpoint partner.
+
+---
+
+## Entry 244: Don tiep test debt 24 -> 7 (2026-10-03)
+
+Tiep Entry 243. Owner: "lam tiep cho sach repo".
+
+### 1. Da sua — 17 loi, KHONG phai loi sang pham
+
+| nguyen nhan | bang chung | sua |
+|---|---|---|
+| Thieu `password_confirm`, 7 payload | `SaaSRegisterSerializer` (`identity_access/serializers.py:392`) bat buoc truong nay ⇒ 400 truoc khi vao so dem rate limit (`400 != 429`) | them `password_confirm` vao 7 payload register; **khong** sua login/reset |
+| `request_id` prefix, 12 assertion | Error body chuyen sang **problem+json** (`ProblemDetail`): `request_id` la UUID thuan, khong con `req_` | bo `startswith('req_')`, giu kiem tra "co va khac nhau" |
+| Login 3 lop throttle | `settings.py:903-905` IP=5, subnet=15, **user=3**; loop 5 lan cung user ⇒ lan 4 cham ngan `user` ⇒ 429 **dung chu** | `@override_settings(LOGIN_USER_LIMIT_THRESHOLD=5)` |
+
+**Khong doi** `test_status_codes_and_errors.py:277` — `StandardErrorEnvelope(...)`
+tao truc tiep ⇒ `request_id` **van** phai co `req_` (`exceptions.py:146`).
+
+### 2. Con 7 — can Owner quyet dinh, KHONG sua
+
+5 legacy proxy `T19`-`T23` (503, can `LEGACY_BACKEND_URL`) ·
+1 mau thuan hop contract `password_reset.py:117` tra `200 {data:{detail}}`
+enumeration-safe nhung `request_id` khong o top level nhu A6.4 doi ·
+1 canary `EXPECTED_STDLIB_USES = 18` vs thuc te 19, **da do hong tu dau phien**
+(`git diff HEAD` rong), sua so la tu bo canary.
+
+### 3. Sai lam trong quy trinh — ghi lai de khong lap
+
+Thay chuoi hang loat bang `.Replace()` de sua `startswith('req_')` **phá indent**
+o 2 file (`test_exception_handling.py:231-234`, `test_exception_handling_a6.py:139-145`)
+⇒ `IndentationError`. Phat hien qua `ruff --select E9` **truoc khi** chay test.
+**Bai hoc:** doi chuoi co the cham vao dong nam trong vong lap ⇒ luon chay
+`ruff --select E9` (syntax) ngay sau khi sua hang loat.
+
+### 4. Kiem chung
+
+| lenh | ket qua |
+|---|---|
+| `commercial` + `vninvest_core.tests` | **289 test / 7 fail** (51 → 24 → 17 → 7), **0 loi moi** |
+| `ruff --select E9` 4 file test | All checks passed (syntax sau khi sua indent) |
+| `ruff F401` 4 file test | 15 — doi chieu `git show HEAD`: **15/15 da co san** |
+| `pre-push-gate.mjs` | **15 PASS / 0 FAIL — cho phep push** |
+
+### 5. Chua chay
+
+CI - `run_tests.py` toan bo - OpenAPI constitution - kiem chuyen frontend voi
+response 200 -> 403 cua 5 endpoint partner.

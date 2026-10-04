@@ -124,6 +124,47 @@ def validate_production_settings(debug: bool):
     except ImproperlyConfigured as e:
         raise ImproperlyConfigured(f"Production validation failed: {e}") from e
 
+    validate_turnstile_enforcement(os.environ.get('STRICT_TURNSTILE_ENFORCEMENT'))
+
+
+#: Values `STRICT_TURNSTILE_ENFORCEMENT` is allowed to take. The truthy half
+#: mirrors the `in ('true', '1', 'yes')` test in `settings.py:255`; the falsy
+#: half exists so an operator can turn the check OFF deliberately -- settings.py
+#: documents that intent ("enforced unless explicitly disabled", line 236).
+TURNSTILE_ENFORCEMENT_ALLOWED = frozenset({'true', 'false', '1', '0', 'yes', 'no'})
+
+
+def validate_turnstile_enforcement(raw):
+    """Reject a `STRICT_TURNSTILE_ENFORCEMENT` that is neither empty nor a known
+    boolean. Fail-closed on a typo, mirroring `prod_cookie_security_settings`.
+
+    The settings expression is `(raw or 'not DEBUG') in ('true', '1', 'yes')`.
+    Any raw value outside the allowlist falls out of that tuple as False, so a
+    production deploy carrying e.g. `STRICT_TURNSTILE_ENFORCEMENT=yes please` --
+    or `on`, or `TRUE_`, or a value mangled by YAML quoting -- silently ships the
+    public signup form with NO bot check while every dashboard reports the
+    feature as enforced. That is the same failure shape as the historical
+    duplicate-assignment bug at settings.py:237-245, reached a different way.
+
+    Empty (or absent) is NOT an error: `docker-compose ${VAR:-}` produces an
+    empty string, and empty means "unset", which correctly falls back to
+    `not DEBUG` (fail-closed in production).
+
+    Called only from `validate_production_settings`, i.e. only when DEBUG is
+    False, for the same reason `prod_cookie_security_settings` is: a dev machine
+    does not need to fail closed, but it must not disagree with production about
+    what the value means.
+    """
+    value = (raw or '').strip().lower()
+    if not value or value in TURNSTILE_ENFORCEMENT_ALLOWED:
+        return
+    raise ImproperlyConfigured(
+        'STRICT_TURNSTILE_ENFORCEMENT must be one of '
+        f'{sorted(TURNSTILE_ENFORCEMENT_ALLOWED)} (or empty to default to '
+        f'"not DEBUG"); got {value!r}. A value outside that set evaluates to '
+        'False and silently disables the registration bot check in production.'
+    )
+
 
 def _env_bool(mapping, key: str, default: bool) -> bool:
     return str(mapping.get(key, str(default))).strip().lower() in ('1', 'true', 'yes')

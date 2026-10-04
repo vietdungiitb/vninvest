@@ -17,12 +17,23 @@ esac
 echo "check:multi-agent"
 node packages/web/scripts/check-multi-agent.mjs
 
+# Full gate aggregator. Previously nothing on the push path invoked this file,
+# so the push ran 2 checks while the repo documents a 15-gate suite
+# (docs/MANDATORY_WORKFLOW_GUIDE_20260928.md). It now reports SKIP loudly instead
+# of letting a missing gate read as green.
+echo "pre-push-gate"
+if [ -f scripts/pre-push-gate.mjs ]; then
+  node scripts/pre-push-gate.mjs
+else
+  echo "WARNING: scripts/pre-push-gate.mjs khong ton tai - gate khong chay." >&2
+fi
+
 # Backend: only if this branch actually touches the backend, and only if a
 # Postgres URL is exported. Skipped loudly rather than silently.
 if git diff --name-only origin/dev...HEAD 2>/dev/null | grep -q '^packages/core/backend/'; then
   if [ -z "$CORE_DATABASE_URL" ]; then
     echo "WARNING: branch sua backend nhung CORE_DATABASE_URL chua set." >&2
-    echo "         Test BE se fail. Xem docs/AGENT_PROTOCOL.md §4." >&2
+    echo "         Test BE se fail. Xen docs/AGENT_PROTOCOL.md 4." >&2
   else
     echo "backend: manage.py check"
     (cd packages/core/backend && python manage.py check)

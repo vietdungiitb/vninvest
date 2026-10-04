@@ -34,6 +34,69 @@ REQUIRED_STRUCTURED_KEYS = (
 )
 
 
+def _refund_advisory_quota(record) -> bool:
+    """Hoan 1 lan goi quota cho tenant da tieu.
+
+    Tach rieng khoi `generate_advisory_task` de test duoc truc tiep - truoc do
+    nam trong `except`, khong goi duoc tu test nao.
+
+    Tra True neu co ghi nho giam.
+    """
+    if record.user_id is None:
+        return False
+
+    from commercial.models import QuotaRecord
+    from identity_access.models import CoreTenant, TenantMember
+    from django.utils import timezone as _tz
+    from calendar import monthrange as _mr
+
+    # Resolve the tenant that ACTUALLY consumed the quota.
+    #
+    # Owner first: `CoreTenant.owner_user` is a OneToOneField and an owner is an
+    # implicit member (`TenantMember` docstring: "not required to have a
+    # TenantMember row").
+    _tenant = CoreTenant.objects.filter(owner_user=record.user).first()
+    if _tenant is None:
+        memberships = list(
+            TenantMember.objects.filter(user=record.user)
+            .select_related('tenant')
+            .values_list('tenant_id', flat=True)
+        )
+        # Ambiguous membership: crediting an arbitrary tenant is exactly the class
+        # of bug this function exists to remove, so refuse instead of guessing.
+        # Refusing only forfeits a refund; guessing corrupts another tenant's
+        # balance.
+        if len(memberships) != 1:
+            logger.error(
+                'Advisory quota refund skipped: user %s belongs to %d tenants '
+                '(tenant_ids=%s). AdvisoryRecord has no tenant FK, so the charging '
+                'tenant cannot be recovered. Refusing to guess.',
+                record.user_id, len(memberships), memberships,
+            )
+            return False
+        _tenant = CoreTenant.objects.filter(pk=memberships[0]).first()
+    if _tenant is None:
+        return False
+
+    # The charging path derives its period from the advisory's `session_date`
+    # (`advisory/views.py:_manual_trigger_period`), not from "today". Using the
+    # current month credited the wrong period for a back-dated advisory.
+    session_date = record.session_date or _tz.localdate()
+    _qs = session_date.replace(day=1)
+    _qe = session_date.replace(day=_mr(session_date.year, session_date.month)[1])
+    _qrec, _ = QuotaRecord.objects.get_or_create(
+        tenant=_tenant,
+        period_start=_qs,
+        period_end=_qe,
+        defaults={'api_calls_used': 0, 'api_calls_limit': -1},
+    )
+    if _qrec.api_calls_used > 0:
+        _qrec.api_calls_used -= 1
+        _qrec.save(update_fields=['api_calls_used', 'updated_at'])
+        return True
+    return False
+
+
 def _build_structured_output(orch_res: dict, advisory_text: str = '') -> dict:
     """Dựng `structured_output` từ kết quả orchestrator + fallback JSON parse.
 
@@ -230,23 +293,7 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
         try:
             failed_record = AdvisoryRecord.objects.get(advisory_id=record_id)
-            if failed_record.user_id is not None:
-                from commercial.models import QuotaRecord
-                from identity_access.models import CoreTenant
-                from django.utils import timezone as _tz
-                from calendar import monthrange as _mr
-                _tenant = CoreTenant.objects.filter(owner_user=failed_record.user).first()
-                if _tenant:
-                    _today = _tz.localdate()
-                    _qs = _today.replace(day=1)
-                    _qe = _today.replace(day=_mr(_today.year, _today.month)[1])
-                    _qrec, _ = QuotaRecord.objects.get_or_create(
-                        tenant=_tenant, period_start=_qs, period_end=_qe,
-                        defaults={'api_calls_used': 0, 'api_calls_limit': -1},
-                    )
-                    if _qrec.api_calls_used > 0:
-                        _qrec.api_calls_used -= 1
-                        _qrec.save(update_fields=['api_calls_used', 'updated_at'])
+            _refund_advisory_quota(failed_record)
         except Exception:
             logger.exception('Advisory quota refund failed (non-blocking)')
         try:

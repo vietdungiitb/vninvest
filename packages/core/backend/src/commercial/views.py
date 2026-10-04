@@ -11,6 +11,7 @@ import logging
 import stripe
 
 from identity_access.models import CoreTenant
+from identity_access.utils.resolve_tenant import resolve_tenant
 from vninvest_core.pagination import CoreCursorPagination
 from vninvest_core.exceptions import (
     ValidationErrorException,
@@ -18,6 +19,7 @@ from vninvest_core.exceptions import (
     PermissionErrorException,
 )
 
+from .permissions import RequiresTenantPermission
 from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPayIPNLog
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
@@ -38,30 +40,42 @@ class QuotaCursorPagination(CoreCursorPagination):
 
 class SubscriptionDetailView(generics.RetrieveAPIView):
     serializer_class = SubscriptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Plan + price + renewal dates are commitments, not usage metrics, so this
+    # rides the billing token rather than the usage token.
+    required_tenant_permissions = ('billing:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
 
     def get_object(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return generics.get_object_or_404(Subscription, tenant=tenant)
 
 
 class QuotaListView(generics.ListAPIView):
     serializer_class = QuotaRecordSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Usage metrics, not money. `viewer` already holds `usage:read` in
+    # SYSTEM_ROLE_PERMISSIONS, so quota stays viewer-readable by existing
+    # policy. Change the token to 'billing:read' if quota must become
+    # owner/admin-only as well.
+    required_tenant_permissions = ('usage:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
     pagination_class = QuotaCursorPagination
 
     def get_queryset(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start')
 
 
 class InvoiceListView(generics.ListAPIView):
     serializer_class = InvoiceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # `Invoice` has no user FK, so this endpoint is the only place the rule
+    # "a viewer must not see other members' invoices" can live. Token matches
+    # D07_API_SPECIFICATION_20261002.md:707 ("Owner, Admin").
+    required_tenant_permissions = ('billing:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
     pagination_class = CoreCursorPagination
 
     def get_queryset(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return Invoice.objects.filter(tenant=tenant).order_by('-created_at')
 
 
@@ -231,12 +245,24 @@ class VNPayIPNWebhookView(APIView):
                     return Response({"RspCode": "02", "Message": "Order already confirmed"}, status=status.HTTP_200_OK)
 
                 # Validate amount (defense-in-depth): VNPay gửi vnp_Amount = amount*100
-                raw_amount = query_params.get('vnp_Amount', '0')
+                #
+                # An unparsable amount must REJECT, not skip the check. The previous
+                # code did `ipn_amount = -1` on failure and then guarded with
+                # `if ipn_amount >= 0 and ...`, so `vnp_Amount=notanumber` disabled
+                # amount verification entirely for that callback.
+                raw_amount = query_params.get('vnp_Amount')
                 try:
                     ipn_amount = int(raw_amount) // 100
                 except (ValueError, TypeError):
-                    ipn_amount = -1
-                if ipn_amount >= 0 and ipn_amount != txn.amount:
+                    ipn_log.error_message = (
+                        f"Unparsable vnp_Amount: {raw_amount!r}"
+                    )
+                    ipn_log.save(update_fields=['error_message'])
+                    return Response(
+                        {"RspCode": "99", "Message": "Amount invalid"},
+                        status=status.HTTP_200_OK,
+                    )
+                if ipn_amount < 0 or ipn_amount != txn.amount:
                     ipn_log.error_message = f"Amount mismatch: IPN={ipn_amount}, txn={txn.amount} (raw={raw_amount})"
                     ipn_log.save(update_fields=['error_message'])
                     return Response({"RspCode": "99", "Message": "Amount mismatch"}, status=status.HTTP_200_OK)

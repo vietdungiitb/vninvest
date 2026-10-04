@@ -178,6 +178,84 @@
 | Proxy catch-all preserved | ✅ Verified | `/api/nonexistent-route` → 502 `LEGACY_BACKEND_DOWN` |
 | Audit ledger | ✅ Done | Entries 14-18 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
 
+## Multi-tenant Hardening: OW-01/02/03/04/06 (2026-10-03)
+
+Audit entry: **Entry 241** — `docs/CODE_CHANGE_AUDIT_LEDGER.md`
+
+| Muc | Trang thai | Files |
+|------|-----------|-------|
+| OW-02 `commercial/views.py` 500 cho member | **Đã sửa — 4 call site** | `packages/core/backend/src/commercial/views.py`, `commercial/views_analytics.py`, `vninvest_core/tests/test_commercial_tenant_scope.py` |
+| OW-04 `STRICT_TURNSTILE_ENFORCEMENT` sai giá trị vẫn tắt check | **Đã sửa — allowlist + fail-closed production** | `packages/core/backend/src/vninvest_core/env_validation.py`, `vninvest_core/tests/test_env_validation.py` |
+| OW-01 giả định thiếu JSON 404 handler | **Đã đóng — tiền đề sai** | `docs/OPEN_WORK_20260927.md` |
+| OW-03 SOC mất tầm nhìn cross-tenant | **Không phải lỗi — endpoint đã có sẵn từ R4** | `docs/OPEN_WORK_20260927.md` |
+| OW-06 errata `P0-LEGAL-01` | **Errata đã ghi** | `docs/OPEN_WORK_20260927.md`, Entry 241 |
+
+Kiem chung: 29 test OK tren PostgreSQL 5433 (khong SQLite) - baseline
+`commercial` + `vninvest_core.tests` **51 fail truoc == 51 fail sau**, khong fail moi.
+`check-multi-agent` PASS, `scan-secrets` OK. **CI CHUA CHAY.**
+
+**Con mo:** 5 call site `_get_tenant(user)` trong
+`identity_access/commercial_partner_views.py` (can kiem frontend truoc) va
+`AGENTS.md:73` van ghi sai P0-LEGAL-01 (`AGENTS.md` thuoc deny-list).
+
+## Billing Read Gate: viewer/editor khong doc hoa don (2026-10-03)
+
+Audit entry: **Entry 242** — `docs/CODE_CHANGE_AUDIT_LEDGER.md` · PR #73
+
+Owner chot: **VIEWER khong duoc thay hoa don cua thanh vien khac trong cung
+tenant.** OW-02 phan 1 chi sua 500 -> 200; `resolve_tenant` bao dam ranh gioi
+**tenant**, khong bao dam ranh gioi **vai tro**.
+
+`Invoice` chi co `tenant` FK, **khong co user FK** → "hoa don rieng cua tung
+thanh vien" khong ton tai trong schema → chi co the **tu choi viewer endpoint**,
+khong loc duoc theo dong.
+
+Dung lai SSOT `SYSTEM_ROLE_PERMISSIONS` (`resolve_tenant.py:27-56`) — bang nay
+**da encode san** `billing:read` cho owner/admin, khong cho editor/viewer, va
+`custom_role` da duoc ton trong. Khong viet bang role moi.
+
+| Endpoint | Token | viewer | editor |
+|---|---|---|---|
+| `/core/v1/billing/subscription` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/invoices` | `billing:read` | **403** | **403** |
+| `/core/v1/partner/billing/cost-trend/` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/quota` | `usage:read` | 200 | 200 |
+
+Quota van de viewer xem duoc (`usage:read` co san trong token viewer; quota la
+so lieu dung luong khong phai tien). Doi sang billing = doi **hai cho cung
+nhau**: `QuotaListView:59` **va** `test_viewer_can_read_quota`.
+
+Kiem chung: 17 test OK tren PostgreSQL 5433. **Negative control bo gate -> 9
+fail**, trong do test rò rỉ in ra payload that (`amount_due: 4200000.00`) →
+bang chung lo hong la that. Regression baseline 274/51 -> 283/51 fail, 51 ten
+IDENTICAL. ruff 3 loi cu trung het HEAD. `check-multi-agent` PASS,
+`scan-secrets` OK. **CI CHUA CHAY.**
+
+**Con mo (can claim rieng):** `commercial_partner_views.py:59-61` co
+`except Exception` nuot moi loi roi tra `200 + {note}` — fail-open. Hien khong lo
+vi `:50` chan truoc, gate moi la lop thu hai. Sua fail-open nay se doi response
+5 endpoint `/core/v1/partner/*` dang chay production.
+
+**DA CHOT (Owner, 2026-10-03):**
+
+1. **`editor` van bi khoa billing — giu nguyen.** SSOT cho `editor` co
+   `sa:write`/`pat:write`/`forecast:write` nhung co y **khong** co
+   `billing:read`; `D07:707` cung ghi "Owner, Admin". Hai nguon doc lap cung
+   ket luan. Nhu cau van hanh ("biet plan/han mung con bao nhieu") da duoc
+   `usage:read` cho editor. **Neu sau nay can editor xem hoa don: cap
+   `custom_role` co `billing:read`** — adapter `RequiresTenantPermission` da ton
+   trong `custom_role` san, **khong sua code**.
+2. **Staff doc billing qua SOC console, KHONG qua `X-Staff-Switch`.** Da co
+   san duong dan rieng: `/api/soc/billing/invoices/`
+   (`service_ops/urls.py:76`), guard `[IsAuthenticated, IsAdminUser]`
+   (`service_ops/views/base.py:102`) + throttle `SOCOperatorReadThrottle`,
+   cross-tenant co chu y. Test `test_non_staff_forbidden` (403) +
+   `test_invoices_list_filter_paginate` + `test_invoices_csv_export` — **PASS**.
+   **Khong mo staff-switch** vi `middleware.py:174-180` co y ep `viewer` + strip
+   `is_staff` (thiet ke H0.1); cap `billing:read` cho staff-switch se cho moi
+   staff co token chuyen ho doc tien cua moi tenant, **khong throttle, khong
+   audit theo luot doc**.
+
 ## Open Risks
 
 | Risk | Impact | Mitigation |
