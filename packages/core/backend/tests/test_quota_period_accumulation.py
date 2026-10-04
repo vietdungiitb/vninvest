@@ -16,6 +16,7 @@ from datetime import date
 
 from django.core.cache import cache
 from django.test import TestCase
+from django.utils import timezone
 
 from commercial.quota_period import (
     current_billing_period,
@@ -81,7 +82,13 @@ class MonthlyCounterAccumulationTests(TestCase):
         cache.clear()
         self.mw = TenantQuotaMiddleware(lambda request: None)
         self.tenant_id = 'tnt_quota_test'
-        self.today = date(2026, 9, 27)
+        # The counter key MUST follow the wall clock. `_increment_monthly_counter`
+        # builds its key from `timezone.now().date()` (`middleware.py:565`), so
+        # pinning this to a fixed date made the test read a key nobody wrote and
+        # fail as soon as the month rolled over — it passed only while "today"
+        # happened to be 2026-09. Calendar/TTL math is covered separately by
+        # `QuotaPeriodSSOTTests` with fixed dates.
+        self.today = timezone.now().date()
         self.key = month_counter_key(self.tenant_id, self.today)
 
     def tearDown(self):

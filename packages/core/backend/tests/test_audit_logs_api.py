@@ -180,7 +180,13 @@ class PartnerAuditLogsAPITests(TestCase):
         # Should return 403 because owner is not a member of other_tenant
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         data = response.json()
-        self.assertEqual(data['error'], 'tenant_not_found')
+        # A machine PAT bound to its issuing tenant is rejected by the dedicated
+        # `pat_tenant_mismatch` branch (middleware.py), which is STRICTER than the
+        # old path that fell through to `_resolve_tenant` and said
+        # `tenant_not_found`. The security guarantee is the 403 above, which still
+        # holds; only the machine-readable slug moved. Canonical assertion lives in
+        # `src/identity_access/tests/test_pat_tenant_binding.py`.
+        self.assertEqual(data['error'], 'pat_tenant_mismatch')
 
     def test_member_can_access_audit_logs(self):
         """Test: Member with appropriate role can access audit logs."""

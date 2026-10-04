@@ -292,8 +292,14 @@ class SessionFactsThrottleTests(TestCase):
     def test_list_view_has_market_data_throttle(self):
         self.assertIn(MarketDataThrottle, SessionFactsListView.throttle_classes)
 
-    def test_throttle_rate_is_60_per_min(self):
-        self.assertEqual(MarketDataThrottle.rate, '60/min')
+    def test_throttle_rate_is_bounded(self):
+        # `MarketDataThrottle.rate` is environment-dependent by design
+        # (`market_serving/views.py:163-168`): `999999/day` when DJANGO_DEBUG is on
+        # so reloads don't 429, `120/min` in production. The literal `60/min` this
+        # used to assert was removed in commit 4219f2ca7 and could not pass under
+        # ANY environment. Pinning one value here would re-couple the test to the
+        # environment; assert the invariant that actually matters instead.
+        self.assertIn(MarketDataThrottle.rate, {'999999/day', '120/min'})
 
     def test_cvd_view_has_market_data_throttle(self):
         self.assertIn(MarketDataThrottle, SessionFactsCvdView.throttle_classes)
@@ -338,21 +344,30 @@ class SessionFactsCvdApiTests(TestCase):
         self.assertEqual(resp.data['cvd_series'][0]['institutional_strength'], 79.4)
         self.assertEqual(resp.data['_source'], 'db-read')
 
-    def test_cvd_404_when_requested_window_is_not_materialized(self):
+    def test_cvd_200_empty_when_requested_window_is_not_materialized(self):
+        # 404 -> 200 with an empty payload: commit 1199ec91b ("CVD 200 empty").
+        # The discriminator is also renamed `code` -> `data_status`
+        # (`_build_empty_cvd_payload`, views.py:105). `code` is still correct on
+        # the 400 path, which is why `test_cvd_400_...` still asserts it.
         resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=30m')
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(resp.data['code'], 'not_found')
-        self.assertIn('timestamp', resp.data)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['data_status'], 'missing_cvd_buckets')
+        self.assertEqual(resp.data['_source'], 'no-data')
+        self.assertEqual(resp.data['cvd_series'], [])
+        # The old 404 payload carried `timestamp`; the empty 200 payload carries a
+        # human-readable `detail` instead.
+        self.assertIn('detail', resp.data)
 
-    def test_cvd_404_when_no_materialized_data_exists(self):
+    def test_cvd_200_empty_when_no_materialized_data_exists(self):
         SessionFacts.objects.all().delete()
         with patch(
             'market_serving.session_facts_engine.compute_session_facts',
             side_effect=AssertionError('cvd view must not compute on read path'),
         ):
             resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m')
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(resp.data['code'], 'not_found')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['data_status'], 'missing_session_facts')
+        self.assertEqual(resp.data['_source'], 'no-data')
 
     def test_cvd_returns_exact_requested_trade_date(self):
         resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-13')
@@ -363,11 +378,12 @@ class SessionFactsCvdApiTests(TestCase):
         self.assertEqual(resp.data['cvd_series'][0]['buy_strength'], 67.8)
         self.assertEqual(resp.data['cvd_series'][0]['institutional_strength'], 44.3)
 
-    def test_cvd_404_when_requested_trade_date_is_missing(self):
+    def test_cvd_200_empty_when_requested_trade_date_is_missing(self):
         resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-12')
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(resp.data['code'], 'not_found')
-        self.assertIn('timestamp', resp.data)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['data_status'], 'missing_session_facts')
+        self.assertEqual(resp.data['_source'], 'no-data')
+        self.assertIn('detail', resp.data)
 
     def test_cvd_400_when_trade_date_is_invalid(self):
         resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=bad-date')

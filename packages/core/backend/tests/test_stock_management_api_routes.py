@@ -23,6 +23,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant
+from user_workspace.models import TrackedSymbol
 from market_data.tests.envelope import unwrapped
 from market_data.models import StockProfile
 from market_data.stock_mgmt_native_views import (
@@ -35,6 +36,67 @@ from market_data.stock_mgmt_native_views import (
     StockManagementTrackedSymbolDetailView,
     StockManagementTrackedSymbolsView,
 )
+
+
+# Offline replacement for `fetch_listing_symbols`. The industry strings are the
+# classifier keywords used by `seed_default_watchlist_groups`
+# (`stock_mgmt_native_views.py:3478-3497`), and every one of the six sector
+# groups must be covered: groups sort by `display_order` 1..6
+# (`_GROUP_METADATA`), so a sector with no StockProfile lands first and makes
+# `first_group['items']` empty. Exchanges cover HOSE/HNX/UPCOM so the EXCHANGE
+# groups are populated too.
+_OFFLINE_LISTING_ROWS = [
+    {'symbol': 'VCB', 'exchange': 'HOSE', 'company_name': 'Vietcombank', 'industry': 'Ngân hàng'},
+    {'symbol': 'VHM', 'exchange': 'HOSE', 'company_name': 'VinHomes', 'industry': 'Bất động sản'},
+    {'symbol': 'HPG', 'exchange': 'HOSE', 'company_name': 'Hoa Phat', 'industry': 'Thép & Vật liệu'},
+    {'symbol': 'PVD', 'exchange': 'HOSE', 'company_name': 'PV Drilling', 'industry': 'Dầu khí'},
+    {'symbol': 'FPT', 'exchange': 'HOSE', 'company_name': 'FPT Corporation', 'industry': 'Công nghệ'},
+    {'symbol': 'SAB', 'exchange': 'HOSE', 'company_name': 'Sabeco', 'industry': 'Bán lẻ'},
+    {'symbol': 'SHB', 'exchange': 'HNX', 'company_name': 'Saigon Hanoi', 'industry': 'Ngân hàng'},
+    {'symbol': 'HAP', 'exchange': 'UPCOM', 'company_name': 'Hapaco', 'industry': 'Bán lẻ'},
+]
+
+
+class _OfflineVnbrokerListing:
+    """Stand-in for `vnbroker.api.listing.Listing` (`vnbroker_adapter.py:358-361`).
+
+    `fetch_symbol_group_members` builds one client PER candidate group and calls
+    `symbols_by_group` on it, so any test reaching that path opened a real VCI
+    socket per candidate: this file measured 161s, then 475s across runs, and the
+    result depended on uplink availability. Returning empty for every call makes
+    the adapter fall through to the patched `fetch_listing_symbols` instead, so
+    the test becomes hermetic and deterministic.
+    """
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def symbols_by_exchange(self, *args, **kwargs):
+        return []
+
+    def all_symbols(self, *args, **kwargs):
+        return []
+
+    def symbols_by_industries(self, *args, **kwargs):
+        return {}
+
+    def symbols_by_group(self, *args, **kwargs):
+        return ['FPT']
+
+    def get_supported_groups(self, *args, **kwargs):
+        """One deterministic group, shaped like the provider's DataFrame.
+
+        `sync_cached_symbol_groups` (adapter:1402-1454) only keeps provider groups
+        when `get_supported_groups()` returns rows; an AttributeError there sends
+        every provider group into the `continue` branch and the seed then emits
+        zero groups. `VN30` is chosen because it is a real `_GROUP_METADATA` key,
+        so `group_type`/`color`/`display_order` get populated.
+        """
+        import pandas as pd
+
+        return pd.DataFrame(
+            [{'group_name': 'VN30', 'group_code': 'VN30', 'category': 'INDEX', 'description': 'VN30'}]
+        )
 
 
 class StockManagementCompatApiRouteTests(TestCase):
@@ -56,9 +118,34 @@ class StockManagementCompatApiRouteTests(TestCase):
             industry='Technology',
             status=StockProfile.StatusChoices.ACTIVE,
         )
+        # `StockManagementTrackedSymbolsView` scopes to
+        # `TrackedSymbol.objects.filter(user=...).filter(tenant=...)`
+        # (`stock_mgmt_native_views.py:409-415`), so without a row for THIS tenant
+        # the list endpoint returned an empty payload. Add the fixture here so the
+        # tenant-scoping guard is actually exercised.
+        TrackedSymbol.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            symbol='FPT',
+        )
 
     @override_settings(LEGACY_BACKEND_URL='')
-    def test_seed_populates_groups_and_groups_view_returns_renderable_shape(self):
+    @patch(
+        'market_data.vnbroker_adapter.fetch_listing_symbols',
+        return_value=_OFFLINE_LISTING_ROWS,
+    )
+    @patch(
+        'market_data.vnbroker_adapter._load_listing_adapter_class',
+        return_value=_OfflineVnbrokerListing,
+    )
+    @patch('market_data.vnbroker_adapter.fetch_realtime_price', return_value=None)
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshots_batch', return_value={})
+    @patch('market_data.vnbroker_adapter.fetch_daily_history', return_value=[])
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', return_value=[{'symbol': 'FPT', 'source': 'native'}])
+    def test_seed_populates_groups_and_groups_view_returns_renderable_shape(self, fetch_price_board_snapshot_mock, fetch_daily_history_mock, fetch_price_board_snapshots_batch_mock, fetch_realtime_price_mock, offline_listing_class_mock, fetch_listing_symbols_mock):
+        # This test previously had NO network stub and took 210s, opening live
+        # VCI sockets for both the seed and the groups call. Same hermetic set as
+        # `test_groups_seed_sync_...` above.
         resolver_groups = resolve('/core/v1/stock-management/groups/')
         self.assertIs(resolver_groups.func.view_class, StockManagementGroupsView)
 
@@ -87,8 +174,28 @@ class StockManagementCompatApiRouteTests(TestCase):
 
     @override_settings(LEGACY_BACKEND_URL='http://legacy.internal', CELERY_TASK_ALWAYS_EAGER=True)
     @patch('market_data.vnbroker_adapter.fetch_price_board_snapshot', return_value=[{'symbol': 'FPT', 'source': 'native'}])
+    # `fetch_listing_symbols` opened a real VCI connection via
+    # `listing_client.symbols_by_exchange('HOSE')` (vnbroker_adapter.py:713),
+    # so this test took 161-324s and failed whenever the uplink was unavailable.
+    # Views import it lazily inside the function, so patching the module
+    # attribute is sufficient.
+    @patch(
+        'market_data.vnbroker_adapter.fetch_listing_symbols',
+        return_value=_OFFLINE_LISTING_ROWS,
+    )
+    @patch(
+        'market_data.vnbroker_adapter._load_listing_adapter_class',
+        return_value=_OfflineVnbrokerListing,
+    )
+    # Quote entry points left in place after the listing stubs: each one opens a
+    # real quote socket via `_load_quote_class` (adapter:491/524/651). Empty
+    # returns are the same shape the adapter already produces on failure, so this
+    # tests "no upstream data" deterministically instead of the live market.
+    @patch('market_data.vnbroker_adapter.fetch_realtime_price', return_value=None)
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshots_batch', return_value={})
+    @patch('market_data.vnbroker_adapter.fetch_daily_history', return_value=[])
     @patch('data_ingest.tasks.run_global_market_data_planner.apply_async')
-    def test_groups_seed_sync_and_remaining_stock_routes_are_native(self, mock_apply_async, fetch_price_board_snapshot_mock):
+    def test_groups_seed_sync_and_remaining_stock_routes_are_native(self, mock_apply_async, fetch_daily_history_mock, fetch_price_board_snapshots_batch_mock, fetch_realtime_price_mock, offline_listing_class_mock, fetch_listing_symbols_mock, fetch_price_board_snapshot_mock):
         mock_apply_async.return_value.id = 'planner-task-1'
         auth_header = 'Bearer vni_pat_bridge_test'
 
