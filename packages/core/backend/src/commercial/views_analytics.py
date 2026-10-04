@@ -11,16 +11,22 @@ from django.utils import timezone
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 
-from identity_access.models import CoreTenant, CoreServiceAccount
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.utils.resolve_tenant import resolve_tenant
+
+from .permissions import RequiresTenantPermission
 
 logger = logging.getLogger(__name__)
 
-TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+TENANT_PERMISSION_CLASSES = [
+    permissions.IsAuthenticated,
+    IsTenantActive,
+    RequiresTenantPermission,
+]
 
 
-def _get_tenant(user):
-    return CoreTenant.objects.get(owner_user=user)
+def _get_tenant(request):
+    return resolve_tenant(request)
 
 
 class PartnerCostTrendView(generics.GenericAPIView):
@@ -32,6 +38,9 @@ class PartnerCostTrendView(generics.GenericAPIView):
     Falls back gracefully if insufficient data.
     """
     permission_classes = TENANT_PERMISSION_CLASSES
+    # Cost in VND per month. Money, so the billing token -- `viewer` and
+    # `editor` do not hold it (SYSTEM_ROLE_PERMISSIONS, resolve_tenant.py:27).
+    required_tenant_permissions = ('billing:read',)
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -41,7 +50,7 @@ class PartnerCostTrendView(generics.GenericAPIView):
         except ImportError:
             return Response({'monthly': [], 'note': 'commercial app not available'})
 
-        tenant = _get_tenant(request.user)
+        tenant = _get_tenant(request)
         months = int(request.query_params.get('months', 6))
         cutoff = timezone.now().date() - timedelta(days=months * 30)
 

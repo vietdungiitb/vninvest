@@ -4,6 +4,7 @@ import urllib.parse
 from datetime import datetime
 import logging
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,29 @@ class VNPayService:
 
     @staticmethod
     def get_hash_secret():
-        return getattr(settings, 'VNPAY_HASH_SECRET', 'SECRET_DEMO')
+        secret = getattr(settings, 'VNPAY_HASH_SECRET', '')
+        secret = (secret or '').strip()
+        if secret and secret != 'SECRET_DEMO':
+            return secret
+
+        # In production an unset (or demo) secret means every signature check
+        # passes with a key anyone can read from the repository, which turns the
+        # whole IPN endpoint into a no-op. Refuse rather than pretend to verify.
+        if not getattr(settings, 'DEBUG', False):
+            raise ImproperlyConfigured(
+                'VNPAY_HASH_SECRET is not configured (or is still the public demo '
+                'value) while DEBUG is off. Refusing to sign or verify VNPay '
+                'traffic. Generate a real secret and set it in the environment.'
+            )
+
+        # Dev/demo only: keep the flow usable, but say so loudly - a demo secret
+        # means the signature proves nothing.
+        logger.warning(
+            'VNPAY_HASH_SECRET is unset or still SECRET_DEMO and DEBUG is on: '
+            'using the public demo secret. VNPay signatures are NOT verified. '
+            'Never do this outside local development.'
+        )
+        return secret or 'SECRET_DEMO'
 
     @staticmethod
     def get_payment_url():
@@ -61,7 +84,12 @@ class VNPayService:
         secure_hash = hmac.new(secret_bytes, message_bytes, hashlib.sha512).hexdigest()
 
         payment_url = f"{cls.get_payment_url()}?{query_string}&vnp_SecureHash={secure_hash}"
-        logger.info(f"Generated VNPay URL for txn_ref={txn_ref}: {payment_url}")
+        # Never log the URL at INFO: it carries `vnp_SecureHash`, the HMAC of the
+        # order. Log enough to correlate, not enough to forge.
+        logger.info(
+            'Generated VNPay URL for txn_ref=%s (hash redacted, %d chars)',
+            txn_ref, len(secure_hash),
+        )
         return payment_url
 
     @classmethod
@@ -70,6 +98,11 @@ class VNPayService:
         Validates VNPay secure hash signature from query parameters dictionary.
         """
         secure_hash = query_params.get('vnp_SecureHash')
+        # DRF `request.query_params.get()` returns a str, but a plain dict built
+        # from `parse_qs`/`.getlist()` yields a list. Normalise both, otherwise the
+        # comparison below silently compares the repr of a list.
+        if isinstance(secure_hash, (list, tuple)):
+            secure_hash = secure_hash[0] if secure_hash else ''
         if not secure_hash:
             logger.warning("No vnp_SecureHash found in VNPay query parameters.")
             return False
@@ -91,7 +124,11 @@ class VNPayService:
         message_bytes = query_string.encode('utf-8')
         calculated_hash = hmac.new(secret_bytes, message_bytes, hashlib.sha512).hexdigest()
 
-        is_valid = calculated_hash.lower() == secure_hash.lower()
+        is_valid = hmac.compare_digest(
+            calculated_hash.lower(), str(secure_hash).lower()
+        )
         if not is_valid:
-            logger.warning(f"Signature mismatch. Expected {calculated_hash}, got {secure_hash}")
+            # Do not print either hash: on a mismatch an operator reading the log
+            # learns nothing useful, but a log shipper now holds a valid HMAC.
+            logger.warning("VNPay signature mismatch for the supplied parameters.")
         return is_valid

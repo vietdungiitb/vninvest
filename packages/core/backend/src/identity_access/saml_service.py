@@ -46,10 +46,41 @@ SIGNATURE_MODES = ('noop', 'strict')
 
 
 def _is_debug_or_test() -> bool:
-    """True in local dev (DJANGO_DEBUG) or under a test runner (BL-01)."""
+    """True in local dev (DJANGO_DEBUG) or under a test runner (BL-01).
+
+    Reuses the project's own audited ``TESTING`` flag (``vninvest_core/settings.py``
+    computes it) instead of re-deriving it from ``sys.argv``.
+
+    The previous implementation was ``'test' in sys.argv or any('test' in arg for
+    arg in sys.argv)``. That is a **substring** test over every argument,
+    including ``argv[0]``, so any launch path containing the letters "test"
+    silently downgraded a signature check to "accept anything": ``/srv/latest/``,
+    ``contest``, ``protest``, ``pytest``. This line regressed from the exact-token
+    convention ``settings.py`` documents for its own ``TESTING`` flag.
+
+    pytest is handled separately because it does not put the token "test" in
+    ``argv``; it exports ``PYTEST_CURRENT_TEST`` while a test is executing.
+    Detecting the runner is reliable and cannot fire in production.
+    """
     if os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes'):
         return True
-    return 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+
+    # Explicit override, same precedence as `settings.TESTING` (settings.py:22-24).
+    # Honoured here so a test can simulate a production environment without having
+    # to defeat the runner probe below.
+    _testing_env = os.environ.get('DJANGO_TESTING', '').strip().lower()
+    if _testing_env:
+        return _testing_env in ('1', 'true', 'yes')
+
+    try:
+        from django.conf import settings as _dj_settings
+        if getattr(_dj_settings, 'TESTING', False):
+            return True
+    except Exception:
+        # settings not configured yet - fall through to the runner probe.
+        pass
+
+    return 'PYTEST_CURRENT_TEST' in os.environ
 
 
 def _default_signature_mode() -> str:
@@ -228,7 +259,15 @@ class SAMLService:
         issuer_text = issuer_el.text.strip() if issuer_el is not None and issuer_el.text else ''
 
         if issuer_text and self.idp_entity_id and issuer_text != self.idp_entity_id:
-            logger.warning('SAML Response issuer mismatch: got %s, expected %s', issuer_text, self.idp_entity_id)
+            # Reject, don't warn. A response minted by tenant A's IdP must not be
+            # honoured for tenant B; the issuer is the only thing that binds the
+            # assertion to the tenant it was issued for. This check is independent
+            # of signature verification, so it still protects when verification is
+            # not yet wired (BL-01b).
+            raise SAMLParseError(
+                f'SAML Response issuer mismatch: got {issuer_text!r}, '
+                f'expected {self.idp_entity_id!r}'
+            )
 
         # ── InResponseTo ──
         in_response_to = response_el.get('InResponseTo', '')

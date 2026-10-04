@@ -623,3 +623,289 @@ root => **fail 100% moi workflow, moi lan chay**, khong phai het han billing.
 chi bao cao de Owner quyet dinh.
 
 Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file deny list.
+
+---
+
+## 2026-10-03 - Dong 4 muc OPEN_WORK tu quyet duoc: OW-02 / OW-03 / OW-04 / OW-06 - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | eat/openwork-ow02-03-04 | OW-02 500 cho member o commercial (4 call site) · OW-03 tra tam nhin cross-tenant cho SOC · OW-04 reject gia tri Turnstile ngoai allowlist · OW-06 errata P0-LEGAL-01 | packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/ops_audit/views.py, packages/core/backend/src/ops_audit/urls.py, packages/core/backend/src/vninvest_core/env_validation.py, packages/core/backend/src/commercial/tests/__init__.py (new), packages/core/backend/src/commercial/tests/test_billing_tenant_scope.py (new), packages/core/backend/src/ops_audit/tests/test_cross_tenant_audit_scope.py (new), docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Owner da chot trong session nay:** OW-05 (P0-SEC-01) xong. OW-03 + OW-04 giao cho
+agent quyet policy. Khong sua AGENTS.md (deny list). Khong tao migration, khong
+pip/npm install, khong dung BE that.
+---
+
+## 2026-10-03 -Sua claim cu (OW-02/03/04): file test that + OW-03 chuyen thanh errata - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Bo sung file test cho OW-02 trong `vninvest_core/tests` (khong tao package `commercial/tests/`) · sua `test_env_validation.py` cho OW-04 · OW-03 KHONG sua code | packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py (new), packages/core/backend/src/vninvest_core/tests/test_env_validation.py | in-progress |
+
+**Ly do sua claim (verify that, khong phai doan):**
+
+1. `packages/core/backend/src/commercial/tests.py` **da ton tai** (11171 byte, test
+   Stripe). Tao them thu muc `commercial/tests/` se trung ten module `tests` voi
+   file hien co => Django nem `Conflicting 'tests' modules`. Nen test OW-02 dat
+   vao `vninvest_core/tests/test_commercial_tenant_scope.py`, dung thu muc test
+   trung tam da co san.
+
+2. **OW-03 da co san, ticket sai.** `docs/OPEN_WORK_20260927.md` OW-03 noi SOC
+   khong con nhin thay event cross-tenant. That la sai:
+   - `service_ops/urls.py:83` → `path('audit-events/', audit.AuditEventsView...)`
+   - mount tai `vninvest_core/urls.py:66` → `/api/soc/audit-events/`
+   - `service_ops/views/audit.py:39` `AuditEventsView(SOCBaseView)`,
+     `:46` `AuditEvent.objects.all()` — doc cross-tenant that
+   - `service_ops/views/base.py:102` `permission_classes = [IsAuthenticated, IsAdminUser]`
+   - `service_ops/views/base.py:103` `throttle_classes = [SOCOperatorReadThrottle]`
+   - `service_ops/views/audit.py:5` docstring: *"KHONG bop theo core_tenant (khac /core/v1/audit-log)"*
+   - da co test: `service_ops/tests/test_soc_audit.py:53` `test_staff_sees_multi_tenant`
+
+   Endpoint SOC **da co sẵn va tot hon** ban dinh viet: co 7 filter + search +
+   CSV export gioi han 5000 dong (`audit.py:43,99-114`) va co throttle, nhung
+   `CrossTenantAuditLogView` agent viet thi khong. Da revert code OW-03
+   (`ops_audit/views.py`, `ops_audit/urls.py`) bang `git checkout --`.
+   **OW-03 → errata tai OPEN_WORK, khong them code.**
+
+3. **OW-02 con 5 call site chua xu ly, Owner da quyet dinh de lai.**
+   `identity_access/commercial_partner_views.py:29-30` `_get_tenant(user)` →
+   `CoreTenant.objects.get(owner_user=user)`, goi tai `:79 :108 :139 :186 :282`
+   — cung anti-pattern, tren namespace `/core/v1/partner/billing/*` va
+   `/core/v1/partner/usage/*` (frontend goi vao day).
+
+   Owner chon: **chi sua 4 call site trong ticket `commercial/`, ghi nhan phan
+   con lai.** Ly do khong sua 5 cho nay: ca 5 view deu boc trong
+   `except Exception` (`:94 :116 :160 :193 :312`). `resolve_tenant` raise
+   `PermissionDenied`; neu chi theo `_get_tenant` ma khong sua exception
+   handling, caller khong phai owner se nhan **200 + du lieu rong** thay vi 403 —
+   fail-closed te hon hien tai. Sua dung nghia la doi response cua 5 endpoint
+   dang chay production (200-rong → 403), can kiem tra frontend truoc.
+
+No sua `identity_access/commercial_partner_views.py` trong dot nay. Khong tao
+migration, khong pip/npm install, khong sua file deny list.
+
+## 2026-10-03 - Tra claim: dong OW-01/02/03/04/06 xong - done
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Tra claim sau khi commit + push. Ket qua: OW-02 4 call site da sua, OW-04 allowlist da sua, OW-01 dong (handler404 co san), OW-03 thanh errata (endpoint co san), OW-06 errata | packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/env_validation.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py, packages/core/backend/src/vninvest_core/tests/test_env_validation.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | done |
+
+**Files trong claim cu KHONG con bi sua** (da revert dung, khong commit):
+`ops_audit/views.py`, `ops_audit/urls.py`, `commercial/tests/__init__.py`,
+`commercial/tests/test_billing_tenant_scope.py`, `ops_audit/tests/test_cross_tenant_audit_scope.py`.
+
+**Kiem chung:** 29 test OK tren Postgres 5433 (khong SQLite) - baseline
+`commercial` + `vninvest_core.tests` **51 fail truoc == 51 fail sau**, `Compare-Object`
+rong, khong fail moi. ruff 4 finding deu co san o HEAD. `check-multi-agent.mjs` PASS.
+
+**CHUA CHAY:** `run_tests.py` toan bo, CI, bat ky kiem tra frontend nao.
+
+**Con mo (khong phai trong claim nay):**
+1. 5 call site `_get_tenant(user)` trong `identity_access/commercial_partner_views.py`
+   - can kiem frontend truoc khi doi response 200-rong sang 403.
+2. `AGENTS.md:73` van ghi sai P0-LEGAL-01 - `AGENTS.md` thuoc deny-list, **can owner
+   tu sua** hoac mo claim rieng cho no.
+
+**Loi cua chinh agent, ghi lai de khong lap:** block claim dau tien viet bang
+PowerShell here-string `@"..."@` — backtick la **ky tu escape** trong chuoi nhay
+doi, nen `` `vninvest `` bi an thanh vertical tab (`v` -> char 0x0B) va
+`` `run_tests.py `` -> `un_tests.py`. Phai viet file bang editor/tool roi append
+bang .NET, khong truyen markdown qua shell.
+
+## 2026-10-03 - Mo claim moi: gate ROLE cho 4 endpoint billing (Owner chi "tinh nhiem vu" VIEWER thay doi) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner chot: VIEWER **khong duoc** xem hoa don cua thanh vien khac trong cung tenant. Gating o cap ROLE (owner/admin) vi `Invoice` khong co FK user (`commercial/models.py` — chi co `tenant`), nen khong the loc theo dong | packages/core/backend/src/commercial/permissions.py (new), packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Ly do mo claim moi (quyet dinh doi, khong phai sua nho):** claim truoc da
+`done` va ghi "de nguyen hanh vi `resolve_tenant`". Owner tra loi cau hoi
+"VIEWER co thay hoa don cua thanh vien khac khong?" — **"tanh nhiem vu la khong"**.
+⇒ Quyet dinh role gate, dung nguoc phia duyet cua `D07_API_SPECIFICATION:707`
+("Owner, Admin"). PR #73 phai sua truoc khi merge.
+
+**Viet tai day truoc khi sua dong code dau tien**, theo AGENTS.md §6.2.
+
+**Da kiem chung truoc khi viet (khong doan):**
+- `resolve_tenant_for_user` (`resolve_tenant.py:157-166`): owner hoac co row
+  `TenantMember`; khong quan he -> `None` -> caller tu choi.
+- `TenantResolutionMiddleware._resolve_tenant` (`middleware.py:249-273`): header
+  -> cung ham tren; fallback owner / first eligible member. Tenant None -> 403
+  (`:109-116`); SUSPENDED/DEPROVISIONED -> 403 (`:118-125`).
+- `get_tenant_role` (`resolve_tenant.py:306-345`): doc `request.tenant_role` do
+  middleware gan, nen **`has_permission` phai lay role da gan, KHONG tu chay
+  `is_staff`/staff-switch lai** — xem "Hanh vi can thay doi" ben duoi.
+- **Machine PAT khong vo:** `middleware.py:217` gan `user = tenant.owner_user`
+  khi PAT khong phat cho member -> role `owner` -> qua gate.
+- **Human PAT cua viewer bi chan** (`:215` gan `member.role`) — dung y owner.
+
+**DA CHOT (Owner, 2026-10-03):**
+1. `viewer` **va** `editor` deu bi 403 tren 4 endpoint — **giu nguyen**. SSOT
+   cho `editor` co y khong co `billing:read`; `D07:707` cung ghi "Owner, Admin".
+   Cach sua neu can editor xem hoa don: cap `custom_role` co `billing:read`,
+   **khong sua code** (adapter da ton trong `custom_role` san).
+2. **Staff doc billing qua SOC console** `/api/soc/billing/invoices/`
+   (`service_ops/urls.py:76`, guard `IsAdminUser` tai `views/base.py:102`).
+   **Khong mo `X-Staff-Switch`** — `middleware.py:174-180` ep `viewer` + strip
+   `is_staff` la thiet ke H0.1 co y; mo rong se khong throttle/khong audit.
+3. Khong sua 5 endpoint `/core/v1/partner/*` — `identity_access`, khong nam trong
+   claim nay. Hieu ung: 4 endpoint nay fail-closed 403 cho viewer, 5 endpoint do
+   tra **200 + rong**. Hai quy tac khac nhau, **da ghi trong OPEN_WORK**.
+
+**Ke hoach kiem chung:** 8 test hien co trong `test_commercial_tenant_scope.py`
+co 1 test dung role `VIEWER` va **se phai doi** — chay lai de thay dung phien ban
+moi thay vi giu ban cu.
+
+---
+
+## 2026-10-03 - claim(role-gate) ket thuc: dung SSOT permission token, khong viet bang role moi - done
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Hoan tat gate quyen doc billing. **Yeu cau cua claim da doi** sau khi doc code that | packages/core/backend/src/commercial/permissions.py (new), packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py | done |
+
+**Claim tren noi "gating o cap ROLE (owner/admin)". Do la sai cach lam.**
+
+Da doc identity_access/utils/resolve_tenant.py:27-56 - bang
+`SYSTEM_ROLE_PERMISSIONS` **da co san** va **da encode san policy cua Owner**:
+
+| role | `billing:read` | `usage:read` |
+|---|---|---|
+| owner | `*` | `*` |
+| admin | co | co |
+| editor | **KHONG** | co |
+| viewer | **KHONG** | co |
+
+Va equire_tenant_permission() (:399) + get_tenant_permissions() (:361)
+da xu ly het custom_role. Vay viet them bang role `('owner','admin')` se:
+
+1. **Tao SSOT thu hai.** Bang role moi se tro custom_role khi custom role
+   cap illing:read cho mot iewer - hai bang bat dat khong.
+2. **Ton 30 dong** de viet lai thu tu phan quyen da ton tai.
+
+⇒ commercial/permissions.py bay gio chi la **adapter**: view khai bao
+`required_tenant_permissions = ('billing:read',)`, class doc SSOT vao. Khong
+co bang role nao trong file nay.
+
+**Phan biet token theo tung endpoint** (quyet dinh, can Owner xac nhan):
+
+| endpoint | token | viewer | editor |
+|---|---|---|---|
+| `/core/v1/billing/subscription` | `billing:read` | 403 | 403 |
+| `/core/v1/billing/invoices` | `billing:read` | 403 | 403 |
+| `/core/v1/partner/billing/cost-trend/` | `billing:read` | 403 | 403 |
+| `/core/v1/billing/quota` | `usage:read` | **200** | 200 |
+
+**Quota van de viewer xem duoc** - `usage:read` co san trong token cua viewer
+theo policy co san, va `QuotaRecord` la **so lieu dung luu luong, khong phai
+tien**. Neu Owner muon quota cung khoa theo billing: doi token o
+`QuotaListView:59` **va** doi `test_viewer_can_read_quota` thanh 403. Hai
+cho phai doi cung nhau - doi mot cho se tao trung thuc khong nhat quan.
+
+**Ket qua kiem chung (PostgreSQL, `DJANGO_DEBUG=1`):**
+
+- `test_commercial_tenant_scope.py`: **17 test OK**
+- Full `commercial` + `vninvest_core.tests`: baseline **274/51 fail** ->
+  worktree **283/51 fail**. `Compare-Object` 51 ten: **IDENTICAL**, 0 moi,
+  0 bi sua. (+9 test la test moi.)
+- **Negative control:** bo gate khoi 3 view + 1 analytics -> **9 fail**,
+  gom `test_denied_response_does_not_leak_invoice_amounts` in ra payload that
+  (`amount_due: 4200000.00`, `invoice_number: OW02-GATE-INV`). Bang chung
+  lo hong la that, khong phai gia dinh. Da khoi phuc file.
+- `ruff`: 3 loi cu (F401 x2, F841 x1) **trung het voi HEAD**, khong them loi
+  moi.
+- `check-multi-agent.mjs`: PASS. `scan-secrets.mjs`: OK.
+
+**Van de phat hien khi doc code, chua sua (ngoai pham vi claim):**
+
+identity_access/commercial_partner_views.py:59-61 co `except Exception`
+nuot moi loi va tra `200 + {note}`. Wrapper cost-trend goi
+`InnerView.as_view()` (:53) nen gate tren inner view co the bi nuot thanh
+200. Hien khong lo duoc vi `:50` da goi
+`_require_tenant_permission(request, 'billing:read')` **nam ngoai** `try`
+nen 403 phat ra truoc. Gate cua ta la **lop thu hai** - giu duoc minh khi
+wrapper doi. **Can claim rieng** de sua fail-open nay.
+
+**Chua chay:** CI, `run_tests.py` toan bo, OpenAPI constitution/checklist.
+## 2026-10-03 - Sua fail-open OW-02 con sot trong partner namespace - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner chi "lam sach loi gap va don code truoc khi lam viec khac". Gap lon nhat con sot: 5 endpoint `/core/v1/partner/*` tra **200 + rong** cho admin/co `billing:read` vi `_get_tenant(user)` lookup theo `owner_user` nen non-owner nhan `CoreTenant.DoesNotExist`, bi `except Exception` nuot thanh fake-success. Sua bang `resolve_tenant(request)` — cung ham da dung o `commercial`, doc `request.tenant` tu middleware + fail-closed bang `PermissionDenied` | packages/core/backend/src/identity_access/commercial_partner_views.py, packages/core/backend/src/vninvest_core/tests/test_partner_billing_role_gate.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Khong sua:** 2 endpoint Stripe (`PartnerStripeCheckoutSessionView`,
+`PartnerStripePortalSessionView`) va `PartnerCostTrendView` — xem ledger.
+
+**Khong dung `git stash -u`** trong repo nay (fail `Permission denied`, de lai
+repo nua vua). Do baseline bang `git worktree` rieng.
+
+## 2026-10-03 - Don 51 test hong (URL drift + envelope shape) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner: "lam sach loi gap va don code truoc khi lam viec khac". 51 test hong che mat loi moi that. **Khong phai lo hong** — 2 nguyen nhan deu la test debt: (1) URL drift — test tro `/core/v1/login/`, `/core/v1/register/`, `/core/v1/password-reset/` nhung route that la `/core/v1/auth/...` (`identity_access/urls.py:13,51,54,55`) ⇒ 404; (2) envelope shape — doc `response.data.get('results')` trong khi view tra `{data:{results:[...]}}` | packages/core/backend/src/vninvest_core/tests/test_rate_limiting.py, packages/core/backend/src/vninvest_core/tests/test_exception_handling.py, packages/core/backend/src/vninvest_core/tests/test_exception_handling_a6.py, packages/core/backend/src/vninvest_core/tests/test_status_codes_and_errors.py, packages/core/backend/src/vninvest_core/tests/test_user_workspace_tenant_isolation.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Bang chung khong phai lo hong:** `test_client_ip.py` viet dung
+`/core/v1/auth/login/` + `/core/v1/auth/register/` va **PASS** ⇒ route that
+con san. `test_user_workspace_tenant_isolation` co `assertNotIn('Portfolio B2')`
+**PASS** ⇒ khong ro ri du lieu, chi danh sach rong do doc sai envelope shape.
+
+## 2026-10-04 - Audit + dong BLOCKER/HIGH (B1 SAML, B2 VNPay, H1-H4 quota/push) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice B (quota) truoc: `advisory/tasks.py:238` hoan tien sai tenant (filter `owner_user` thay vi tenant da tieu) · `advisory/views.py:490-501` race quota thieu `select_for_update` (dem 0 lan trong app) · them `security:write` cho `revoke_all_sessions_except` · `permissions.py:144-158` `IsTenantActive` tra True khi chua resolve tenant · `support/views.py` fail-closed · `settings.py:188` SQLite default | packages/core/backend/src/advisory/tasks.py, packages/core/backend/src/advisory/views.py, packages/core/backend/src/identity_access/views_security.py, packages/core/backend/src/identity_access/utils/resolve_tenant.py, packages/core/backend/src/identity_access/permissions.py, packages/core/backend/src/support/views.py, packages/core/backend/src/vninvest_core/settings.py, packages/core/backend/tests/test_advisory_quota_security.py (new), docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice A (fail-closed): `saml_service.py:52` heuristic substring tren `sys.argv` + `:363-367` strict raise vo dieu kien => SSO khong co xac thuc crypto · `views/sso.py:254-267` fallback resolve tenant tu assertion chua verify · `vnpay_service.py:18` secret fallback `SECRET_DEMO` + `:64` log `vnp_SecureHash` o INFO + `:94` so hash khong constant-time · `commercial/views.py:252` `ipn_amount=-1` bo qua check tien · `stripe_webhooks.py:113,292` fail-open | packages/core/backend/src/identity_access/saml_service.py, packages/core/backend/src/identity_access/views/sso.py, packages/core/backend/src/identity_access/tests/test_saml_sso.py, packages/core/backend/src/identity_access/tests/test_saml_signature_mode.py, packages/core/backend/src/commercial/vnpay_service.py, packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/stripe_webhooks.py, packages/core/backend/tests/test_vnpay_ipn_security.py (new), packages/core/backend/tests/test_stripe_fail_closed.py (new), docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice C (duong push): `.githooks/pre-push:18,28,32` chi chay `check-multi-agent` + `manage.py check` roi `exit 0`, khong goi `pre-push-gate.mjs` · `pre-push-gate.mjs:30-32` bypass bang env `SKIP_PRE_PUSH_GATE=1` · `:298` tinh SKIP la cho phep push · `agent-sync.ps1:159` chay `manage.py test tests` chi doc `backend/tests/` bo qua `src/*/tests/` (2104 test) | .githooks/pre-push, scripts/pre-push-gate.mjs, scripts/agent-sync.ps1, docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+
+**Tai lieu:** `docs/AUDIT_20261004.md` (audit) · `docs/PLAN_V2_VNINVEST_HARDENING_20261004.md` (ke hoach v2)
+**Plan v1 bi Stage 2 tra REJECT** - 5/10 tieu chi khong the pass; xem `docs/PLAN_AUDIT_V2_20261004.md`.
+
+**Thu tu B -> A -> C.** Slice C sua bo chan cua chinh agent nen lam sau.
+
+**Van de ky thuat doc bi ghi nham:** `docs/PLAN_AUDIT_V2_20261004.md` chua ton tai;
+audit plan duoc tra truc tiep trong chat, tom tat o `docs/AUDIT_20261004.md` muc8.
+
+**Ghi chu (quan trong):** 6 test trong `identity_access/tests/test_saml_sso.py` hien
+XANH chi vi heuristic `sys.argv` chon `noop` (cert gia `idp_x509_cert='MIIC...'`, khong
+co `<Signature>`). Bo heuristic se lam do 6 test do - phai sua kem, khong bo roi.
+
+**Khong nam trong claim nay (de coordinator/owner xu ly):**
+`compose*.yml` · `.env*` · `pyproject.toml` · `requirements.txt` · `docker-compose*.yml` ·
+`docs/CODE_CHANGE_AUDIT_LEDGER.md` chi append 1 hunk (append-only).
+
+### 2026-10-04 - Dong claim owner-audit-fix (3 slice) - done (1 muc CHUA lam)
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice B quota | advisory/tasks.py, advisory/views.py, identity_access/utils/resolve_tenant.py, identity_access/views_security.py, backend/tests/test_advisory_quota_security.py | done |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice A fail-closed | identity_access/saml_service.py, identity_access/tests/test_saml_signature_mode.py, commercial/vnpay_service.py, commercial/views.py, support/views.py, backend/tests/test_vnpay_ipn_security.py, backend/tests/test_support_ticket_tenant_guard.py | done |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice C duong push | .githooks/pre-push, scripts/pre-push-gate.mjs | done |
+
+**Commit:** `d93247189` (audit+plan+claim) · `c9c1b5502` (Slice B) · `f5f01e20b` (Slice A)
+· `55f30e53e` (Slice C) · `e0db89703` (3 blocker sau audit doc lap REJECT)
+
+**Kiem chung:** 110/110 test PASS tren 10 module lien quan. `pre-push-gate.mjs`
+15 PASS / 0 SKIP / 0 FAIL. Audit doc lap Stage 5: **REJECT** truoc, da sua 3
+blocker roi.
+
+**MUC DA CLAIM NHUNG CHUA LAM - ghi ro thay vi de claim no:**
+
+1. **`packages/core/backend/tests/test_stripe_fail_closed.py` (new) - CHUA TAO.**
+   Stripe fail-open (`commercial/stripe_webhooks.py:113` tra plan `pro` khi price
+   ID la; `:292` mac dinh subscription status la thanh `ACTIVE`) **chua duoc sua**.
+   Con nguyen: can bo test truoc, va chua kiem chung duoc path `src/*/tests/`.
+2. **`identity_access/views/sso.py:254-267` - giu nguyen.** Fallback resolve
+   tenant tu assertion CHUA verify. Ly do giu: sau khi them issuer check, parse
+   that o `:278` moi enforce; fallback chi chon config de validate, khong cap
+   token. Rủi ro con la: input chua tin cung cap chon tenant nao de validate.
+   Can kiem chung luong khong co `tenant_code` truoc khi xoa.
+3. **`identity_access/permissions.py` `IsTenantActive` - KHONG sua.** Da kiem
+   chung day du: comment dung, ca 2 backstop ton tai. Sua se pha moi endpoint
+   khong gan tenant.
+
+**Ke lai cho Owner (khong lam duoc trong repo):** OW-01 rotate secret that ·
+OW-05 quyet dinh nghiep vu · CI billing · BL-01b chu ky SAML that (thieu code,
+khong thieu thu vien) · 9 mismatch FE<>BE · `REDIS_URL` mac dinh sai port (6379
+vs 6380) · `agent-sync.ps1:159` thieu `--noinput`.

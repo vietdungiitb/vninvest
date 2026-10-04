@@ -14,6 +14,7 @@ from django.test import SimpleTestCase
 
 from identity_access.saml_service import (
     SAMLService,
+    SAMLParseError,
     SAMLSignatureError,
     _default_signature_mode,
 )
@@ -56,9 +57,42 @@ class SignatureModeSelectionTests(SimpleTestCase):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop('SAML_SIGNATURE_VERIFICATION_MODE', None)
             os.environ.pop('DJANGO_DEBUG', None)
+            # Neutralise every test-runner signal: a production-like environment
+            # must default to strict regardless of which runner is executing.
+            os.environ['DJANGO_TESTING'] = 'false'
+            os.environ.pop('PYTEST_CURRENT_TEST', None)
             with mock.patch.object(sys, 'argv', ['manage.py', 'check']):
                 self.assertEqual(_default_signature_mode(), 'strict')
                 self.assertEqual(_svc().signature_mode, 'strict')
+
+    def test_argv_containing_test_as_substring_does_not_downgrade(self):
+        """Regression: the old check was a SUBSTRING scan over all of argv.
+
+        `'test' in sys.argv or any('test' in arg for arg in sys.argv)` returned
+        True for `/srv/latest/...`, `contest`, `protest`, `pytest` - silently
+        turning signature verification into "accept anything" in production.
+
+        argv[0] is included on purpose: the executable path is exactly where a
+        deployment path like `/srv/latest/bin/gunicorn` would appear.
+        """
+        for argv in (
+            ['/srv/latest/bin/gunicorn', 'app:serve'],
+            ['manage.py', 'contest'],
+            ['manage.py', 'protest'],
+            ['/opt/pytest/bin/pytest', 'src/identity_access/tests'],
+        ):
+            with self.subTest(argv=argv):
+                with mock.patch.dict(os.environ, {}, clear=False):
+                    os.environ.pop('SAML_SIGNATURE_VERIFICATION_MODE', None)
+                    os.environ.pop('DJANGO_DEBUG', None)
+                    os.environ['DJANGO_TESTING'] = 'false'
+                    os.environ.pop('PYTEST_CURRENT_TEST', None)
+                    with mock.patch.object(sys, 'argv', argv):
+                        self.assertEqual(
+                            _default_signature_mode(),
+                            'strict',
+                            f'argv={argv} must not downgrade to noop',
+                        )
 
     def test_debug_defaults_to_noop(self):
         with mock.patch.dict(os.environ, {'DJANGO_DEBUG': 'true', 'SAML_SIGNATURE_VERIFICATION_MODE': ''}):
@@ -91,3 +125,33 @@ class StrictRejectionTests(SimpleTestCase):
         svc = _svc(mode='noop')
         result = svc.parse_response(_unsigned_response_b64())
         self.assertEqual(result['email'], 'alice@corp.com')
+
+
+class IssuerBindingTests(SimpleTestCase):
+    """The issuer is what binds an assertion to the tenant it was issued for.
+
+    This check is independent of signature verification, so it still protects
+    while BL-01b (real crypto verification) is outstanding. Before the fix a
+    mismatch was only logged, so a response minted by tenant A's IdP was
+    accepted for tenant B.
+    """
+
+    def test_matching_issuer_is_accepted(self):
+        svc = _svc(mode='noop')  # isolate issuer binding from signature mode
+        result = svc.parse_response(_unsigned_response_b64())
+        self.assertEqual(result['issuer'], 'https://idp.test.com/sso')
+
+    def test_foreign_issuer_is_rejected(self):
+        svc = _svc(mode='noop')
+        payload = _unsigned_response_b64()
+        # Rewrite the Issuer to another tenant's IdP.
+        import base64 as _b64
+        raw = _b64.b64decode(payload).decode('utf-8')
+        tampered = raw.replace(
+            'https://idp.test.com/sso', 'https://evil-idp.attacker/sso'
+        )
+        tampered_b64 = _b64.b64encode(tampered.encode('utf-8')).decode('ascii')
+
+        with self.assertRaises(SAMLParseError) as ctx:
+            svc.parse_response(tampered_b64)
+        self.assertIn('issuer mismatch', str(ctx.exception).lower())

@@ -488,12 +488,23 @@ class AdvisoryRefreshView(APIView):
         }
 
         with transaction.atomic():
-            quota_record, _ = QuotaRecord.objects.get_or_create(
+            quota_record, _created = QuotaRecord.objects.get_or_create(
                 tenant=tenant,
                 period_start=quota_start,
                 period_end=quota_end,
                 defaults=quota_defaults,
             )
+            # `get_or_create` does NOT lock the row. Two concurrent requests can
+            # both read `api_calls_used` here, both pass the limit check below,
+            # and both increment - letting a tenant exceed its allowance, which
+            # then feeds metered billing.
+            #
+            # Re-read under a row lock when the row already existed. A row this
+            # transaction just created needs no lock: we hold it exclusively.
+            if not _created:
+                quota_record = QuotaRecord.objects.select_for_update().get(
+                    pk=quota_record.pk,
+                )
             quota_limit = quota_record.api_calls_limit
             if quota_limit < 0:
                 quota_limit = _manual_trigger_quota_limit(tenant)

@@ -11,7 +11,7 @@ Validates:
 Uses django-ratelimit @ratelimit decorator for IP-based limiting.
 Uses manual cache-based limiting for per-email rate limiting (password-reset).
 """
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
@@ -28,7 +28,7 @@ class RateLimitLoginEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.login_url = '/core/v1/login/'
+        self.login_url = '/core/v1/auth/login/'
         # Create a test user
         self.user = User.objects.create_user(
             username='testuser',
@@ -38,8 +38,16 @@ class RateLimitLoginEndpointTests(APITestCase):
         # Clear cache before each test
         cache.clear()
     
+    @override_settings(LOGIN_USER_LIMIT_THRESHOLD=5)
     def test_login_within_limit(self):
-        """First 5 login requests within limit should succeed or fail with auth error (not 429)."""
+        """First 5 login requests within limit should succeed or fail with auth error (not 429).
+
+        Login co 3 lop throttle: IP=5, subnet=15, **user=3**
+        (`settings.py:903-905`). Loop cao hon `LOGIN_USER_LIMIT_THRESHOLD` se
+        cham ngan `user` truoc ngan `IP` ⇒ 429 dung chu khong phai loi. Test nay
+        override ngan user len 5 de kiem tra dung y nghia: "trong han muc thi
+        KHONG bi chan".
+        """
         for i in range(5):
             response = self.client.post(
                 self.login_url,
@@ -91,13 +99,13 @@ class RateLimitLoginEndpointTests(APITestCase):
         
         # Get rate limit error
         response = self.client.post(
-            self.login_url,
-            {
-                'username': 'testuser',
-                'password': 'TestPass123!',
-            },
-            format='json',
-        )
+                self.login_url,
+                {
+                    'username': 'testuser',
+                    'password': 'TestPass123!',
+                },
+                format='json',
+            )
         
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         data = response.json()
@@ -107,7 +115,13 @@ class RateLimitLoginEndpointTests(APITestCase):
         self.assertIn('code', data)
         self.assertIn('timestamp', data)
         self.assertIn('request_id', data)
-        self.assertTrue(data['request_id'].startswith('req_'))
+        # Error body chuyen sang problem+json (OpenAPI ProblemDetail): `request_id`
+        # la UUID thuan, KHONG con prefix `req_` cua StandardErrorEnvelope cu.
+        # Shape chuan: xem `test_problem_json.py`.
+        self.assertIn('type', data)
+        self.assertIn('title', data)
+        self.assertEqual(data['status'], status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertTrue(str(data['request_id']).strip() != '')
 
 
 class RateLimitRegisterEndpointTests(APITestCase):
@@ -115,7 +129,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.register_url = '/core/v1/register/'
+        self.register_url = '/core/v1/auth/register/'
         # Clear cache before each test
         cache.clear()
     
@@ -128,6 +142,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
                     'username': f'user{i}',
                     'email': f'user{i}@test.com',
                     'password': 'TestPass123!',
+                    'password_confirm': 'TestPass123!',
                 },
                 format='json',
             )
@@ -144,6 +159,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
                     'username': f'test_user_{i}',
                     'email': f'test_user_{i}@test.com',
                     'password': 'TestPass123!',
+                    'password_confirm': 'TestPass123!',
                 },
                 format='json',
             )
@@ -155,6 +171,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
                 'username': 'test_user_4',
                 'email': 'test_user_4@test.com',
                 'password': 'TestPass123!',
+                'password_confirm': 'TestPass123!',
             },
             format='json',
         )
@@ -170,6 +187,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
                     'username': f'envelope_user_{i}',
                     'email': f'envelope_user_{i}@test.com',
                     'password': 'TestPass123!',
+                    'password_confirm': 'TestPass123!',
                 },
                 format='json',
             )
@@ -181,6 +199,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
                 'username': 'envelope_user_3',
                 'email': 'envelope_user_3@test.com',
                 'password': 'TestPass123!',
+                'password_confirm': 'TestPass123!',
             },
             format='json',
         )
@@ -193,7 +212,13 @@ class RateLimitRegisterEndpointTests(APITestCase):
         self.assertIn('code', data)
         self.assertIn('timestamp', data)
         self.assertIn('request_id', data)
-        self.assertTrue(data['request_id'].startswith('req_'))
+        # Error body chuyen sang problem+json (OpenAPI ProblemDetail): `request_id`
+        # la UUID thuan, KHONG con prefix `req_` cua StandardErrorEnvelope cu.
+        # Shape chuan: xem `test_problem_json.py`.
+        self.assertIn('type', data)
+        self.assertIn('title', data)
+        self.assertEqual(data['status'], status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertTrue(str(data['request_id']).strip() != '')
 
 
 class RateLimitPasswordResetEndpointTests(APITestCase):
@@ -201,7 +226,7 @@ class RateLimitPasswordResetEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.password_reset_url = '/core/v1/password-reset/'
+        self.password_reset_url = '/core/v1/auth/password-reset/'
         # Clear cache before each test
         cache.clear()
     
@@ -294,7 +319,8 @@ class RateLimitPasswordResetEndpointTests(APITestCase):
         self.assertIn('timestamp', data)
         self.assertIn('request_id', data)
         self.assertEqual(data['code'], 'password_reset_rate_limit_exceeded')
-        self.assertTrue(data['request_id'].startswith('req_'))
+        # ProblemDetail: `request_id` la UUID thuan, khong prefix `req_`.
+        self.assertTrue(str(data['request_id']).strip() != '')
 
 
 class RateLimitWindowExpiryTests(APITestCase):
@@ -302,8 +328,8 @@ class RateLimitWindowExpiryTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.register_url = '/core/v1/register/'
-        self.password_reset_url = '/core/v1/password-reset/'
+        self.register_url = '/core/v1/auth/register/'
+        self.password_reset_url = '/core/v1/auth/password-reset/'
         # Clear cache before each test
         cache.clear()
     
@@ -317,6 +343,7 @@ class RateLimitWindowExpiryTests(APITestCase):
                     'username': f'window_user_{i}',
                     'email': f'window_user_{i}@test.com',
                     'password': 'TestPass123!',
+                    'password_confirm': 'TestPass123!',
                 },
                 format='json',
             )
@@ -328,6 +355,7 @@ class RateLimitWindowExpiryTests(APITestCase):
                 'username': 'window_user_3',
                 'email': 'window_user_3@test.com',
                 'password': 'TestPass123!',
+                'password_confirm': 'TestPass123!',
             },
             format='json',
         )
