@@ -202,8 +202,12 @@ class StripeBillingViewsTestCase(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['session_id'], 'cs_test123')
-        self.assertEqual(response.data['url'], 'https://checkout.stripe.com/cs_test123')
+        # Contract is `{data, meta}` since the envelope migration. These two
+        # assertions failed with `KeyError: 'session_id'` right after it, which
+        # is how the gap was found — the tests were asserting the pre-migration
+        # flat shape while the endpoint returned enveloped data.
+        self.assertEqual(response.data['data']['session_id'], 'cs_test123')
+        self.assertEqual(response.data['data']['url'], 'https://checkout.stripe.com/cs_test123')
 
     def test_create_checkout_session_missing_plan(self):
         """Test checkout session fails without plan."""
@@ -241,7 +245,7 @@ class StripeBillingViewsTestCase(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['url'], 'https://billing.stripe.com/session_test123')
+        self.assertEqual(response.data['data']['url'], 'https://billing.stripe.com/session_test123')
 
     def test_create_portal_session_no_customer(self):
         """Test portal session fails when tenant has no Stripe customer."""

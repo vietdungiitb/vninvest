@@ -24,12 +24,23 @@ class CheckSchedulerQueueDriftTestCase(TestCase):
 
     def test_no_drift_detected(self):
         """Test when no drift is detected."""
-        # Create periodic tasks with correct queues
-        PeriodicTask.objects.create(
-            name='materialize-symbol-snapshot-60s',
-            task='test.task',
-            queue='realtime_prefetch',
-            interval=self.interval,
+        # Queue comes from the SSOT, not a hardcoded literal. The task moved to
+        # `enrichment_eod` (commit 1e6ebf26a, "batch slow-lane to enrichment_eod")
+        # and this test file was never updated, so the literal went stale.
+        task_name = 'materialize-symbol-snapshot-60s'
+        # Populate PeriodicTask first: `check_scheduler_queue_drift` gained a
+        # MISSING_ROW check (commit 9b2b6d2b0), so a sparse table is no longer
+        # "healthy". Canonical pattern: `service_ops/tests/test_drift_enabled_missing.py`.
+        call_command('repair_beat_schedule', stdout=StringIO())
+        # `update_or_create`, not `create`: repair_beat_schedule just inserted this
+        # task, so a plain create() is a unique-name violation.
+        PeriodicTask.objects.update_or_create(
+            name=task_name,
+            defaults={
+                'task': 'test.task',
+                'queue': SCHEDULER_QUEUE_MAP[task_name],
+                'interval': self.interval,
+            },
         )
 
         call_command(
@@ -105,10 +116,17 @@ class CheckSchedulerQueueDriftTestCase(TestCase):
         )
 
         output = self.out.getvalue()
-        self.assertIn('DRIFT DETECTED: 2 tasks', output)
+        # Count the QUEUE_DRIFT lines, not the global total: the command also
+        # reports MISSING_ROW / ENABLED_DRIFT, so the total is no longer "2".
+        queue_drifts = [ln for ln in output.splitlines() if 'QUEUE_DRIFT' in ln]
+        self.assertEqual(len(queue_drifts), 2, output)
 
     def test_ignores_unknown_tasks(self):
         """Test that unknown tasks are ignored."""
+        # Populate PeriodicTask first — the MISSING_ROW check (commit 9b2b6d2b0)
+        # reports every beat job absent from the table as drift, so without this
+        # the command exits non-zero for reasons unrelated to the unknown task.
+        call_command('repair_beat_schedule', stdout=StringIO())
         # Create a task not in EXPECTED_QUEUES
         PeriodicTask.objects.create(
             name='unknown-task',
@@ -153,7 +171,7 @@ class SyncSchedulerQueuesTestCase(TestCase):
         )
 
         task.refresh_from_db()
-        self.assertEqual(task.queue, 'realtime_prefetch')
+        self.assertEqual(task.queue, SCHEDULER_QUEUE_MAP['materialize-symbol-snapshot-60s'])
 
         output = self.out.getvalue()
         self.assertIn('Updated materialize-symbol-snapshot-60s', output)
@@ -186,8 +204,8 @@ class SyncSchedulerQueuesTestCase(TestCase):
             name='detect_and_store_global_whale_alerts'
         )
 
-        self.assertEqual(task1.queue, 'realtime_prefetch')
-        self.assertEqual(task2.queue, 'analytics_heavy')
+        self.assertEqual(task1.queue, SCHEDULER_QUEUE_MAP['materialize-symbol-snapshot-60s'])
+        self.assertEqual(task2.queue, SCHEDULER_QUEUE_MAP['detect_and_store_global_whale_alerts'])
 
         output = self.out.getvalue()
         self.assertIn('Updated 2 tasks', output)
@@ -197,7 +215,8 @@ class SyncSchedulerQueuesTestCase(TestCase):
         PeriodicTask.objects.create(
             name='materialize-symbol-snapshot-60s',
             task='test.task',
-            queue='realtime_prefetch',
+            # Already correct per the SSOT, so the command must report no change.
+            queue=SCHEDULER_QUEUE_MAP['materialize-symbol-snapshot-60s'],
             interval=self.interval,
         )
 
