@@ -1353,12 +1353,59 @@ class PortfolioUserConfigLegacyView(APIView):
         })
 
 
+@extend_schema(
+    summary='Lấy market discovery hub',
+    description=(
+        'Endpoint native `/core/v1/portfolio/market-discovery-hub/`. '
+        'Frontend `getMarketDiscoveryHub()` goi route nay o discovery mode; '
+        'trả `hub` rỗng cho tới khi co native co discovery pipeline.'
+    ),
+    responses={
+        200: envelope_response(),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioMarketDiscoveryHubView(APIView):
     """GET /api/portfolio/market-discovery-hub/"""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return envelope({'hub': [], 'note': 'market_discovery_not_available_in_native'})
+
+
+@extend_schema(
+    summary='Lấy canonical AI advisory cho một mã',
+    description=(
+        'Endpoint native `/core/v1/portfolio/ai-advisory/{symbol}/canonical/`. '
+        'Delegate sang `AdvisoryLatestView` nên payload giống hệt '
+        '`/core/v1/advisory/latest/{symbol}/`.'
+    ),
+    parameters=[
+        OpenApiParameter(
+            name='symbol',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.PATH,
+            required=True,
+            description='Mã chứng khoán, ví dụ `TPB` hoặc `VCB`.',
+        ),
+    ],
+    responses={
+        200: envelope_response(),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAIAdvisoryCanonicalView(APIView):
+    """GET /api/portfolio/ai-advisory/<symbol>/canonical/"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        from advisory.views import AdvisoryLatestView
+        return adopt_envelope(
+            AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        )
 
 
 class PortfolioWhaleAnalyticsView(APIView):

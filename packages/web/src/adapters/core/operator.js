@@ -11,7 +11,9 @@ export function createOperatorClient({ coreGet, corePost, corePut, corePatch, co
       const query = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
       ).toString();
-      return coreGet(`/ai-command-center/audit-logs/${query ? `?${query}` : ""}`);
+      // Route lives under `workspace/`, not directly under `/core/v1/`
+      // (`user_workspace/urls.py:67`).
+      return coreGet(`/workspace/ai-command-center/audit-logs/${query ? `?${query}` : ""}`);
     },
 
     getCoreOperatorOverview() {
@@ -52,25 +54,6 @@ export function createOperatorClient({ coreGet, corePost, corePut, corePatch, co
       return coreGet(
         `/operator/tenants/${encodeURIComponent(tenantId)}/pats/${query ? `?${query}` : ""}`
       );
-    },
-
-    getCoreOperatorJobs(params = {}) {
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
-      ).toString();
-      return coreGet(`/operator/jobs/${query ? `?${query}` : ""}`);
-    },
-
-    getCoreOperatorAuditRequests(params = {}) {
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
-      ).toString();
-      return coreGet(`/operator/audit/requests/${query ? `?${query}` : ""}`);
-    },
-
-    getCoreOperatorAuditRequestDetail(requestId) {
-      if (!requestId) throw new Error("requestId is required for getCoreOperatorAuditRequestDetail");
-      return coreGet(`/operator/audit/requests/${encodeURIComponent(requestId)}/`);
     },
 
     getDashboardSummary() {
@@ -180,9 +163,6 @@ export function createOperatorClient({ coreGet, corePost, corePut, corePatch, co
     getBillingStatus() {
       return coreGet("/partner/billing/status/");
     },
-    previewPlanChange(planCode) {
-      return corePost("/partner/billing/preview-plan-change/", { target_plan: planCode });
-    },
     createStripeCheckoutSession(planCode, successUrl, cancelUrl) {
       return corePost("/partner/billing/stripe/session/", { plan: planCode, success_url: successUrl, cancel_url: cancelUrl });
     },
@@ -191,3 +171,9 @@ export function createOperatorClient({ coreGet, corePost, corePut, corePatch, co
     },
   };
 }
+
+// Removed: no matching backend route and no call site, so each could only 404.
+//   getCoreOperatorJobs()             -> /core/v1/operator/jobs/
+//   getCoreOperatorAuditRequests()    -> /core/v1/operator/audit/requests/
+//   getCoreOperatorAuditRequestDetail()-> /core/v1/operator/audit/requests/{id}/
+//   previewPlanChange()               -> /core/v1/partner/billing/preview-plan-change/

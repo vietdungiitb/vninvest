@@ -1,9 +1,9 @@
 export function createMiscClient({ coreGet, corePost }) {
   return {
-    getRealtimeHealth() {
-      return coreGet("/health/realtime/");
-    },
-
+    // Called from useWhaleAdvisoryData.js:267 in discovery mode. The
+    // `portfolio/market-discovery-hub/` route was missing on the backend, so this
+    // call always 404ed. The route now resolves to a stub view that returns an
+    // empty hub, so discovery mode degrades instead of throwing.
     getMarketDiscoveryHub() {
       return coreGet("/portfolio/market-discovery-hub/");
     },
@@ -21,10 +21,6 @@ export function createMiscClient({ coreGet, corePost }) {
     getRVOL(symbol) {
       if (!symbol) throw new Error("symbol is required for getRVOL");
       return coreGet(`/realtime/rvol/${encodeURIComponent(symbol.toUpperCase())}/`);
-    },
-
-    getAIOptions() {
-      return coreGet("/ai-options/");
     },
 
     getSymbolInvestigation(symbol, { window: w = "5d", sort = "created_at", includeCampaigns = true, includeSignals = true } = {}) {
@@ -50,16 +46,17 @@ export function createMiscClient({ coreGet, corePost }) {
       return corePost("/stock-management/sync/", { days });
     },
 
-    syncStockProfile() {
-      return corePost("/admin-sync/stockprofile/");
-    },
-
-    getLegalPages() {
-      return coreGet("/legal/");
-    },
-
     getHealthChecks() {
       return coreGet("/health/");
     },
   };
 }
+
+// Removed: every method below pointed at a route that does not exist in the
+// backend and had no call site, so each one could only ever 404.
+//   getRealtimeHealth()   -> /core/v1/health/realtime/          (no route)
+//   getAIOptions()        -> /core/v1/ai-options/               (no route)
+//   syncStockProfile()    -> /core/v1/admin-sync/stockprofile/  (no route)
+//   getLegalPages()       -> /core/v1/legal/                    (no route; the real
+//     endpoint is the PUBLIC `/api/public/legal-pages/`, which no transport helper
+//     reaches because every helper prefixes `/core/v1`).

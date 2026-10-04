@@ -462,76 +462,6 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return corePost("/operator/mail-configs/test/", data);
     },
 
-    // ─── Support Tickets API ─────────────────────────────────────────────────
-
-    listSupportTickets() {
-      return coreGet("/support/tickets/");
-    },
-
-    getSupportTicketDetail(ticketId) {
-      if (!ticketId) throw new Error("ticketId is required for getSupportTicketDetail");
-      return coreGet(`/support/tickets/${encodeURIComponent(ticketId)}/`);
-    },
-
-    createSupportTicket(data) {
-      return corePost("/support/tickets/", data);
-    },
-
-    replySupportTicket(ticketId, data) {
-      if (!ticketId) throw new Error("ticketId is required for replySupportTicket");
-      return corePost(`/support/tickets/${encodeURIComponent(ticketId)}/reply/`, data);
-    },
-
-    reopenSupportTicket(ticketId) {
-      if (!ticketId) throw new Error("ticketId is required for reopenSupportTicket");
-      return corePost(`/support/tickets/${encodeURIComponent(ticketId)}/reopen/`, {});
-    },
-
-    listStaffSupportTickets() {
-      return coreGet("/support/staff/tickets/");
-    },
-
-    getStaffSupportDashboard() {
-      return coreGet("/support/staff/dashboard/");
-    },
-
-    patchStaffSupportTicket(ticketId, data) {
-      if (!ticketId) throw new Error("ticketId is required for patchStaffSupportTicket");
-      return corePatch(`/support/staff/tickets/${encodeURIComponent(ticketId)}/`, data);
-    },
-
-    replyStaffSupportTicket(ticketId, data) {
-      if (!ticketId) throw new Error("ticketId is required for replyStaffSupportTicket");
-      return corePost(`/support/staff/tickets/${encodeURIComponent(ticketId)}/reply/`, data);
-    },
-
-    // ─── Portfolio Chart / Analytics ─────────────────────────────────────────
-
-    getPortfolioChart(portfolioId, days = 90) {
-      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioChart");
-      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/chart/?days=${days}`);
-    },
-
-    getPortfolioEquityCurve(portfolioId, days = 180) {
-      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioEquityCurve");
-      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/equity-curve/?days=${days}`);
-    },
-
-    getPortfolioAllocation(portfolioId) {
-      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocation");
-      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/`);
-    },
-
-    getPortfolioAllocationBySector(portfolioId) {
-      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocationBySector");
-      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/sector/`);
-    },
-
-    syncPortfolioPrices(portfolioId, days = 30) {
-      if (!portfolioId) throw new Error("portfolioId is required for syncPortfolioPrices");
-      return corePost(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/sync-prices/`, { days });
-    },
-
     // ─── Tracked Symbol Bulk Operations ─────────────────────────────────────
 
     bulkUpdateTrackedSymbolThreshold(trackedSymbolIds, whaleAlertThresholdMillion) {
@@ -552,14 +482,6 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     markPriceAlertTriggered(id) {
       if (!id) throw new Error("id is required for markPriceAlertTriggered");
       return corePost(`/stock-management/price-alerts/${encodeURIComponent(id)}/mark-triggered/`);
-    },
-
-    seedWatchlist() {
-      return corePost("/stock-management/watchlist/seed/");
-    },
-
-    syncWatchlistPrices(days = 5) {
-      return corePost("/stock-management/watchlist/sync-prices/", { days });
     },
 
     // ─── SubAccounts API ─────────────────────────────────────────────────────
