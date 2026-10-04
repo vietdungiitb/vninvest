@@ -148,3 +148,66 @@ class AdvisoryQuotaRefundTenantScopeTests(TestCase):
 
         quota.refresh_from_db()
         self.assertEqual(quota.api_calls_used, 1)
+
+    def test_refund_uses_session_date_period_not_today(self):
+        """Charging path derives the period from `session_date`.
+
+        `_manual_trigger_period` (advisory/views.py) uses the advisory's session
+        date. Refunding against the current month credited the wrong period for a
+        back-dated advisory.
+        """
+        from datetime import date
+
+        back_dated = date(2026, 7, 15)
+        july = QuotaRecord.objects.create(
+            tenant=self.tenant,
+            period_start=date(2026, 7, 1),
+            period_end=date(2026, 7, 31),
+            api_calls_used=1,
+            api_calls_limit=10,
+        )
+        record = self._record_for(self.owner)
+        record.session_date = back_dated
+        record.save(update_fields=['session_date'])
+
+        _refund_advisory_quota(record)
+
+        july.refresh_from_db()
+        self.assertEqual(
+            july.api_calls_used, 0,
+            'Refund must credit the July period the charge was recorded in',
+        )
+
+    def test_refund_refuses_when_membership_is_ambiguous(self):
+        """A member of two tenants has no recoverable charging tenant.
+
+        `AdvisoryRecord` has no tenant FK, so crediting an arbitrary tenant would
+        corrupt another tenant's balance. The function must refuse and forfeit the
+        refund rather than guess.
+        """
+        from identity_access.models import CoreTenant as CT
+
+        other_owner = User.objects.create_user(
+            username='refund-owner-2', password='testpass123',
+        )
+        other_tenant = CT.objects.create(
+            tenant_code='refund-tenant-2', owner_user=other_owner,
+        )
+        TenantMember.objects.create(
+            tenant=self.tenant, user=self.member,
+            role=TenantMember.RoleChoices.VIEWER,
+        )
+        TenantMember.objects.create(
+            tenant=other_tenant, user=self.member,
+            role=TenantMember.RoleChoices.VIEWER,
+        )
+        quota = self._quota_with_used(1)
+        record = self._record_for(self.member)
+
+        _refund_advisory_quota(record)
+
+        quota.refresh_from_db()
+        self.assertEqual(
+            quota.api_calls_used, 1,
+            'Ambiguous membership must forfeit the refund, not credit a guess',
+        )
