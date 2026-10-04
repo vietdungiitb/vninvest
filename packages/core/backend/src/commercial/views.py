@@ -1,8 +1,10 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import OpenApiTypes, extend_schema
 from django.db import transaction
 from vninvest_core.client_ip import get_client_ip
+from vninvest_core.api_envelope import envelope_response
 
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -21,6 +23,13 @@ from vninvest_core.exceptions import (
 
 from .permissions import RequiresTenantPermission
 from .envelope import envelope
+from .schema import (
+    LegalPagesDataSerializer,
+    PaymentStatusDataSerializer,
+    StripePortalDataSerializer,
+    StripeSessionDataSerializer,
+    VNPayCreateDataSerializer,
+)
 from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPayIPNLog
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
@@ -80,6 +89,9 @@ class InvoiceListView(generics.ListAPIView):
         return Invoice.objects.filter(tenant=tenant).order_by('-created_at')
 
 
+@extend_schema(
+    responses={200: envelope_response(LegalPagesDataSerializer)},
+)
 class PublicLegalPagesView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -90,6 +102,11 @@ class PublicLegalPagesView(APIView):
 
 # ─── GIAI ĐOẠN 2: VNPAY PAYMENT GATEWAY INTEGRATION ────────────────────────
 
+@extend_schema(
+    # 400/401/403 để nguyên: lỗi đi qua RFC 9457 problem+json, KHÔNG phải
+    # `{data, meta}`. Xem `commercial/envelope.py`.
+    responses={200: envelope_response(VNPayCreateDataSerializer)},
+)
 class CreateVNPayPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -346,6 +363,9 @@ class VNPayIPNWebhookView(APIView):
         return Response({"RspCode": "00", "Message": "Confirm success"}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    responses={200: envelope_response(PaymentStatusDataSerializer)},
+)
 class PaymentStatusCheckView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -374,6 +394,9 @@ class PaymentStatusCheckView(APIView):
 
 # ─── GIAI ĐOẠN 2: STRIPE BILLING PORTAL INTEGRATION ────────────────────────
 
+@extend_schema(
+    responses={201: envelope_response(StripeSessionDataSerializer)},
+)
 class StripeCheckoutSessionView(APIView):
     """
     POST /api/core/v1/partner/billing/stripe/session/
@@ -447,6 +470,9 @@ class StripeCheckoutSessionView(APIView):
             )
 
 
+@extend_schema(
+    responses={201: envelope_response(StripePortalDataSerializer)},
+)
 class StripePortalSessionView(APIView):
     """
     POST /api/core/v1/partner/billing/stripe/portal/

@@ -10,11 +10,18 @@ from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
+
+from vninvest_core.api_envelope import envelope_response
 
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import resolve_tenant
 
 from .envelope import envelope
+from .schema import (
+    PartnerCostTrendDataSerializer,
+    PartnerCostTrendEmptyDataSerializer,
+)
 
 from .permissions import RequiresTenantPermission
 
@@ -31,6 +38,9 @@ def _get_tenant(request):
     return resolve_tenant(request)
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerCostTrendDataSerializer)},
+)
 class PartnerCostTrendView(generics.GenericAPIView):
     """
     GET /api/core/v1/partner/billing/cost-trend/?months=6
