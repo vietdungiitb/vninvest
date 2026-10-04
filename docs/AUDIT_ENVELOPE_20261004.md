@@ -146,10 +146,102 @@ là biến việc đang dở thành việc **bị chặn**, thay vì việc bị
 
 | Mục | Lý do |
 |---|---|
-| `manage.py spectacular` (sinh schema thật) | cần `DJANGO_ALLOWED_HOSTS`/`CORE_PAT_PEPPER`; **CHƯA CHẠY** |
-| Runtime shape của từng endpoint `commercial` | đọc 3/17; 14 chỗ còn lại **CHƯA XÁC MINH** xem có thuộc ngoại lệ không |
+| ~~`manage.py spectacular`~~ | **ĐÃ CHẠY** — xem §5b |
+| 82 `UNVERIFIED` của `commercial` | **ĐÃ XỬ LÝ** — xem §5c |
 | Cặp frontend↔backend cụ thể | agent phụ **xác minh đủ 0/15** cặp (thiếu dòng backend) — nên **không** kết luận có mismatch |
-| Test mặt trước cho `{data, meta}` | không tìm thấy test nào assert ngữ nghĩa unwrap |
+| 14/17 call site `commercial` chưa đọc tay lúc đầu | đã phân loại hết ở §2.1 |
+
+## 5b. `spectacular` — schema **KHÔNG** khớp runtime, và đã sửa
+
+Lệnh (cần env tạm):
+```
+DJANGO_DEBUG=true DJANGO_SECRET_KEY=<gia tam> CORE_PAT_PEPPER=<gia tam> \
+  python manage.py spectacular --file schema.yaml
+```
+
+### Kết quả đo được
+
+| | Trước | Sau |
+|---|---:|---:|
+| `Errors` | **1090** (202 unique) | 1088 (200 unique) |
+| `Warnings` | 184 (182 unique) | không đổi |
+| Operation bị bỏ qua (`unable to guess serializer`) | **192** | **190** |
+| `"No response body"` trong schema | **261** | **256** |
+| Component envelope | 583 | 593 |
+
+### Điều quan trọng nhất: schema **khẳng định sai**
+
+Cả 7 endpoint `commercial` vừa migrate đều là `APIView` thuần ⇒ spectacular
+**bỏ qua** và ghi vào schema:
+
+```yaml
+responses:
+  '200':
+    description: No response body
+```
+
+Đó là **một tuyên bố sai** — endpoint có body. Sai theo hướng nguy hiểm hơn là
+thiếu, vì người đọc tin là không có gì để kiểm tra. Đúng cảnh báo ở
+`api_envelope.py:25-27`.
+
+⇒ **Không thể dùng schema để xác nhận migration trước khi sửa.** Đã sửa bằng
+`@extend_schema(responses=envelope_response(<Serializer thật>))` cho 7 view +
+`commercial/schema.py`.
+
+Sau sửa, `payments/status/{txn_ref}/` trả:
+```yaml
+'200':
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PaymentStatusDataEnvelope'
+```
+
+**Phân bố 190 operation còn lại:** user_workspace 50 · identity_access 36 ·
+market_data 28 · service_ops 26 · market_serving 10 · support 8 · vninvest_core 7 ·
+advisory 6 · advertising 5 · ai_analytics 3 · data_ingest 3 · ai_agents 2 ·
+signal_intelligence 1.
+
+⚠️ `spectacular` **exit 0** dù có 1090 lỗi ⇒ **không cổng nào bắt được**. Cần
+thêm `--fail-on-warn` vào một cổng, nếu không con số này sẽ tiếp tục tăng mà
+không ai biết.
+
+## 5c. 83 `UNVERIFIED` → **6**: phần lớn không phải response API
+
+Checker bản đầu đếm **mọi** `return` trong app. Ở `commercial`, 83 "UNVERIFIED"
+hoá ra phần lớn **không liên quan HTTP**:
+
+| Nhóm | Số | Thực chất |
+|---|---:|---|
+| `Node JoinedStr` | 10 | `__str__` trả f-string (`models.py`) |
+| `Node Constant` | 9 | `return False` (`permissions.py`) |
+| `get()/int()/getattr()` | 13 | hàm tiện ích (`plan_catalog.py`) |
+
+Đã thêm bộ lọc ngữ cảnh HTTP (class kế thừa `APIView`/`ViewSet`/… hoặc hàm bọc
+`@api_view`). Đây là **lọc chính xác**, không phải lọc cho đẹp: `__str__` trả
+f-string không thể là response HTTP. Và 10 lỗi `UNWRAPPED` đã bắt được trước đó
+vẫn bắt được nguyên vẹn.
+
+Thêm cờ `--list` in chi tiết kèm lý do — không có nó thì "83" chỉ là con số trừu
+tượng, không ai làm được gì.
+
+**Trạng thái cuối (9 app, tất cả `exit=0`, `UNWRAPPED: 0`):**
+
+| app | WRAPPED | UNWRAPPED | UNVERIFIED |
+|---|---:|---:|---:|
+| identity_access | 90 | 0 | 34 |
+| service_ops | 22 | 0 | 12 |
+| user_workspace | 101 | 0 | 17 |
+| advisory | 7 | 0 | 4 |
+| market_data | 61 | 0 | 17 |
+| ops_audit | 4 | 0 | 7 |
+| signal_intelligence | 7 | 0 | 8 |
+| tenant_lifecycle | 0 | 0 | 0 |
+| **commercial** | **7** | **0** | **6** |
+
+6 mục còn lại của `commercial` đều là return giá trị là **biến/biểu thức**
+(`get_object_or_404`, `order_by`, `plan`) trong class HTTP — không phải response
+nên để lại, đã có `--list` để tra.
 
 Điểm đáng lưu ý: agent kiểm tra mặt trước trả lời trung thực **0/15 cặp được xác
 minh** thay vì bịa ra mismatch. Đó là hành vi đúng — và là lý do tôi không ghi

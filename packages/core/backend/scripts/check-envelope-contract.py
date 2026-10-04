@@ -175,6 +175,83 @@ def _returns_envelope(node: ast.expr) -> str:
     return 'UNVERIFIED'
 
 
+_HTTP_BASES = {
+    'APIView', 'ViewSet', 'View', 'GenericAPIView', 'GenericViewSet',
+    'ReadOnlyModelViewSet', 'ModelViewSet', 'ListAPIView', 'ListCreateAPIView',
+    'RetrieveAPIView', 'RetrieveUpdateAPIView', 'RetrieveUpdateDestroyAPIView',
+    'UpdateAPIView', 'DestroyAPIView', 'CreateAPIView',
+}
+
+
+def _inside_http_scope(tree):
+    """Cặp (node, in_http_scope) cho mọi `Return` trong module.
+
+    ## Vì sao cần bộ lọc này
+
+    Bản đầu tiên đếm **mọi** `return` trong app, nên `__str__` trả f-string và
+    `return False` trong permission class cũng vào bảng `UNVERIFIED`. Ở
+    `commercial`, 83 "UNVERIFIED" hoá ra phần lớn **không phải response API**:
+
+    | Nhóm | Số | Thực chất |
+    |---|---:|---|
+    | `JoinedStr` | 10 | `__str__` trong `models.py` |
+    | `Constant` | 9 | `return False` trong `permissions.py` |
+    | `get()/int()/getattr()` | 13 | hàm tiện ích `plan_catalog.py` |
+
+    Con số bị phình to và không dẫn tới quyết định nào. Lọc theo ngữ cảnh HTTP là
+    điều kiện **cần** để con số này trở thành việc làm được.
+
+    ## Vì sao gọi đây là lọc CHÍNH XÁC chứ không phải lọc để cho đẹp
+
+    `__str__` trả f-string **không thể** là response HTTP: không có
+    request/status/serializer. `return False` trong permission class cũng vậy.
+    Loại chúng không làm mất khả năng phát hiện vi phạm thật — 10 lỗi
+    `UNWRAPPED` đã bắt được trước đó vẫn bắt được nguyên vẹn.
+    """
+    scope = {}
+    for node in ast.walk(tree):
+        mark = False
+        if isinstance(node, ast.ClassDef):
+            mark = any(
+                (getattr(b, 'id', None) or getattr(b, 'attr', None)) in _HTTP_BASES
+                for b in node.bases
+            )
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            deco_names = set()
+            for d in node.decorator_list:
+                target = d.func if isinstance(d, ast.Call) else d
+                deco_names.add(getattr(target, 'id', None) or getattr(target, 'attr', None))
+            mark = 'api_view' in deco_names or 'extend_schema' in deco_names
+        if not mark:
+            continue
+        # CHỈ đánh dấu True, không bao giờ ghi False. Nếu ghi đè xuống False thì
+        # một method (FunctionDef không decorate) nằm trong class HTTP sẽ xoá mất
+        # cờ của class cha — và mọi return trong class đó biến mất khỏi báo cáo.
+        for child in ast.walk(node):
+            scope[id(child)] = True
+    return scope
+
+
+def _why_unverified(node) -> str:
+    """Lý do cụ thể khiến checker không chứng minh được.
+
+    Không có lý do thì "83 UNVERIFIED" chỉ là một con số; có lý do thì mỗi dòng
+    là một quyết định: đọc tay, hay thêm pattern an toàn, hay bỏ.
+    """
+    if isinstance(node, ast.Name):
+        return f' Bien `{node.id}` - doc gia tri tai noi gan nhat'
+    if isinstance(node, ast.Attribute):
+        return f' Bien `{node.attr}` - doc gia tri tai noi gan nhat'
+    if isinstance(node, ast.Call):
+        name = getattr(node.func, 'id', None) or getattr(node.func, 'attr', None) or '?'
+        return f' Goi `{name}(...)` - return truc tiep tu ham khac'
+    if isinstance(node, ast.Subscript):
+        return ' Bien la subscript - doc gia tri tai noi gan nhat'
+    if isinstance(node, ast.Dict):
+        return ' Dict literal khong khop mau nao da biet'
+    return f' Node {type(node).__name__}'
+
+
 def scan(app: str):
     app_dir = SRC / app
     if not app_dir.is_dir():
@@ -182,6 +259,7 @@ def scan(app: str):
         return 1
 
     rows = {'WRAPPED': [], 'UNWRAPPED': [], 'UNVERIFIED': []}
+    unverified_detail = []
     skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': [],
                'SKIP_GATEWAY_PROTOCOL': [], 'SKIP_WEBHOOK_ACK': []}
     for path in sorted(app_dir.rglob('*.py')):
@@ -196,8 +274,14 @@ def scan(app: str):
             print(f'LỖI CÚ PHÁP {rel}:{exc.lineno}: {exc.msg}', file=sys.stderr)
             return 1
 
+        http_scope = _inside_http_scope(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Return) or node.value is None:
+                continue
+            # CHỈ xét return trong ngữ cảnh HTTP: class kế thừa APIView/ViewSet,
+            # hoặc hàm bọc `@api_view`. `__str__` / permission / helper không phải
+            # response nên không được đưa vào bảng — xem `_inside_http_scope`.
+            if not http_scope.get(id(node), False):
                 continue
             verdict = _returns_envelope(node.value)
             if verdict == 'UNVERIFIED':
@@ -207,6 +291,8 @@ def scan(app: str):
                 # Đó là lỗ hổng khiến lần bọc trước bỏ sót 3 file mà không
                 # ai thấy.
                 rows['UNVERIFIED'].append(f'{rel.as_posix()}:{node.lineno}')
+                unverified_detail.append(
+                    (f'{rel.as_posix()}:{node.lineno}', _why_unverified(node.value)))
                 continue
             if verdict.startswith('SKIP_'):
                 skipped.setdefault(verdict, []).append(
@@ -219,6 +305,20 @@ def scan(app: str):
     print(f'UNVERIFIED (may, can doc tay): {len(rows["UNVERIFIED"])}')
     for key in sorted(skipped):
         print(f'{key} (co y dinh KHONG boc): {len(skipped[key])}')
+
+    # `--list` in **chi tiết** UNVERIFIED kèm lý do. Không có nó thì con số 83
+    # chỉ là một con số trừu tượng, không ai làm được gì với nó.
+    if '--list' in sys.argv[1:]:
+        print('\n--- UNVERIFIED chi tiet ---')
+        for item, why in unverified_detail:
+            print(f'  {item}  [{why}]')
+        skipped_detail = {}
+        for key, items in skipped.items():
+            for it in items:
+                skipped_detail[it] = key
+        print('\n--- SKIP chi tiet ---')
+        for item, why in sorted(skipped_detail.items()):
+            print(f'  {item}  [{why}]')
 
     if rows['UNWRAPPED']:
         print('\nCHUA BOC — app nay co hai shape khac nhau cung luc:')
