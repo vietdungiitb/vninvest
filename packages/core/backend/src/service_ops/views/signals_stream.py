@@ -19,7 +19,7 @@ client reconnect không mất sự kiện.
 import json
 import time
 
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.db.models import Max
 from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema
@@ -194,7 +194,17 @@ class SignalsStreamView(SOCBaseView):
                     break
 
                 try:
-                    close_old_connections()
+                    # `close_old_connections()` is destructive inside a
+                    # transaction: Django's `close_if_unusable_or_obsolete()`
+                    # closes the connection whenever
+                    # `get_autocommit() != settings_dict['AUTOCOMMIT']`, which
+                    # holds for EVERY atomic block. Measured here — the next query
+                    # then raises `OperationalError: the connection is closed` and
+                    # the loop degrades to heartbeats only. Outside atomic blocks
+                    # the ORM already reopens transparently, so recycling there buys
+                    # nothing. Guard it.
+                    if not connection.in_atomic_block:
+                        close_old_connections()
                     qs = UnifiedAlert.objects.all()
                     # Chỉ stream session mới nhất để tránh flood lịch sử
                     session_date = _latest_signal_session_date()

@@ -225,14 +225,24 @@ class PartnerAuditLogsAPITests(TestCase):
         self.assertEqual(len(data['results']), 1)
         self.assertEqual(data['results'][0]['event_type'], 'member_invited')
 
+    def _local_today(self):
+        """Today in the server's CURRENT timezone.
+
+        The view filters on `created_at__date`, which Django evaluates in
+        TIME_ZONE (Asia/Ho_Chi_Minh). Calling `.date()` on the UTC-aware
+        `timezone.now()` instead is off by one day during 17:00-24:00 UTC, which
+        made these three tests pass or fail depending on when the suite ran.
+        """
+        return timezone.localtime(timezone.now()).date()
+
     def test_filter_by_start_date(self):
         """Test: Filter audit logs by start_date."""
         self._authenticate_with_pat()
-        
+
         # Use tomorrow's date to filter out existing events
-        tomorrow = (timezone.now() + timedelta(days=1)).date().isoformat()
+        tomorrow = (self._local_today() + timedelta(days=1)).isoformat()
         response = self.client.get(f'/core/v1/partner/audit-logs/?start_date={tomorrow}')
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(len(data['results']), 0)
@@ -240,11 +250,11 @@ class PartnerAuditLogsAPITests(TestCase):
     def test_filter_by_end_date(self):
         """Test: Filter audit logs by end_date."""
         self._authenticate_with_pat()
-        
+
         # Use yesterday's date to filter out existing events
-        yesterday = (timezone.now() - timedelta(days=1)).date().isoformat()
+        yesterday = (self._local_today() - timedelta(days=1)).isoformat()
         response = self.client.get(f'/core/v1/partner/audit-logs/?end_date={yesterday}')
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(len(data['results']), 0)
@@ -252,10 +262,10 @@ class PartnerAuditLogsAPITests(TestCase):
     def test_filter_by_date_range(self):
         """Test: Filter audit logs by date range."""
         self._authenticate_with_pat()
-        
-        today = timezone.now().date().isoformat()
+
+        today = self._local_today().isoformat()
         response = self.client.get(f'/core/v1/partner/audit-logs/?start_date={today}&end_date={today}')
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         # All 3 events should be from today

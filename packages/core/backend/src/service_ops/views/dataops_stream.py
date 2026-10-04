@@ -20,7 +20,7 @@ Chỉ emit khi signature đổi (backlog/fail_rates/parity/coverage hash).
 import json
 import time
 
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -111,7 +111,13 @@ class DataOpsStreamView(SOCBaseView):
                 if not testing and time.time() - start > 3600:
                     break
                 try:
-                    close_old_connections()
+                    # Guarded: `close_old_connections()` inside an atomic block
+                    # closes the live connection (Django compares
+                    # `get_autocommit()` to `settings_dict['AUTOCOMMIT']`), so the
+                    # next query dies with `OperationalError: the connection is
+                    # closed`. Outside atomic blocks the ORM reopens by itself.
+                    if not connection.in_atomic_block:
+                        close_old_connections()
                     snap = _build_dataops_snapshot()
                     sig = _dataops_signature(snap)
                     if sig != last_sig:

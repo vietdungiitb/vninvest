@@ -20,7 +20,7 @@ không cần merge. Poll DB 3s, chỉ emit khi signature đổi.
 """
 import time
 
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 
@@ -154,7 +154,13 @@ class OverviewStreamView(SOCBaseView):
                     break
 
                 try:
-                    close_old_connections()
+                    # Guarded: `close_old_connections()` inside an atomic block
+                    # closes the live connection (Django compares
+                    # `get_autocommit()` to `settings_dict['AUTOCOMMIT']`), so the
+                    # next query dies with `OperationalError: the connection is
+                    # closed`. Outside atomic blocks the ORM reopens by itself.
+                    if not connection.in_atomic_block:
+                        close_old_connections()
                     snapshot = _build_overview_snapshot()
                     signature = _snapshot_signature(snapshot)
                     if signature != last_signature:

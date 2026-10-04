@@ -33,11 +33,13 @@ class SocAnalyticsGrowthTests(TestCase):
         owner = User.objects.create_user(username='an_owner', password='x')
         owner.date_joined = now - timedelta(days=2)
         owner.save(update_fields=['date_joined'])
+        self.owner_date_joined = owner.date_joined
         tenant = CoreTenant.objects.create(
             tenant_code='an_t', display_name='An T', owner_user=owner,
             status=CoreTenant.StatusChoices.TRIAL)
         tenant.created_at = now - timedelta(days=2)
         tenant.save(update_fields=['created_at'])
+        self.tenant_created_at = tenant.created_at
         Subscription.objects.create(
             tenant=tenant, plan='pro', status=Subscription.StatusChoices.ACTIVE,
             current_period_start=now.date() - timedelta(days=1),
@@ -52,10 +54,16 @@ class SocAnalyticsGrowthTests(TestCase):
         for key in ('signups', 'trials', 'paid_new', 'churned'):
             self.assertEqual(len(body[key]), 7)
         by_date = {r['date']: r['count'] for r in body['signups']}
-        target = (timezone.now() - timedelta(days=2)).date().isoformat()
+        # Derive the expected day from the stored instant rendered in the CURRENT
+        # timezone, because that is what `date_joined__date` does server-side
+        # (`analytics.py:34-38`, TIME_ZONE=Asia/Ho_Chi_Minh). Calling `.date()` on
+        # the UTC-aware `timezone.now()` instead is off by one day during
+        # 17:00-24:00 UTC, which made this test time-of-day flaky.
+        target = timezone.localtime(self.owner_date_joined).date().isoformat()
         self.assertGreaterEqual(by_date.get(target, 0), 1)
         trials = {r['date']: r['count'] for r in body['trials']}
-        self.assertGreaterEqual(trials.get(target, 0), 1)
+        target_trial = timezone.localtime(self.tenant_created_at).date().isoformat()
+        self.assertGreaterEqual(trials.get(target_trial, 0), 1)
 
     def test_days_clamped(self):
         body = unwrapped_json(self.staff_client.get(f'{BASE}?days=500'))

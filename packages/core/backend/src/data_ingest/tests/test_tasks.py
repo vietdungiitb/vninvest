@@ -693,7 +693,11 @@ class DataIngestBackfillTaskTests(TestCase):
                 registry=registry_acb,
                 dataset=GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
             ).freshness_state,
-            GlobalSymbolCoverage.FreshnessChoices.FRESH,
+            # WARM, not FRESH: intraday only counts as FRESH inside
+            # `_INTRADAY_FRESH_WINDOW` of `as_of`, otherwise it degrades to WARM
+            # (`market_data/global_symbol_coverage.py:161-165`). Warming a symbol
+            # does not make its ticks "fresh".
+            GlobalSymbolCoverage.FreshnessChoices.WARM,
         )
         self.assertEqual(
             GlobalSymbolCoverage.objects.get(

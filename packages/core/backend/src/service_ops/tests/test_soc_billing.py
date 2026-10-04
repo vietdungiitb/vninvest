@@ -68,7 +68,11 @@ class SocBillingFleetTests(TestCase):
         cur_month = date.today().strftime('%Y-%m')
         months = {r['month']: r for r in body['revenue_6m']}
         self.assertEqual(len(body['revenue_6m']), 6)
-        self.assertEqual(months[cur_month]['total'], '200001')
+        # `Invoice.amount_due` is `DecimalField(decimal_places=2)`
+        # (commercial/models.py:73), so `Sum(...)` yields Decimal('200001.00') and
+        # `str(total)` (billing.py:73) renders two decimals. The old '200001'
+        # expectation could only hold while the aggregate fell back to int 0.
+        self.assertEqual(months[cur_month]['total'], '200001.00')
 
     def test_invoices_list_filter_paginate(self):
         body = unwrapped_json(self.staff_client.get(INVOICES))
