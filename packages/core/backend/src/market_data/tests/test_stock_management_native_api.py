@@ -20,6 +20,46 @@ from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, Watchlis
 User = get_user_model()
 
 
+class _OfflineVnbrokerListing:
+    """Stand-in for `vnbroker.api.listing.Listing` (`vnbroker_adapter.py:358-361`).
+
+    Every read returns empty so no test can open a live VCI socket. This exists
+    because `sync_cached_symbol_groups` (adapter:1406-1463) iterates
+    `_PROVIDER_SYNC_ORDER` and each miss costs a retry cycle (~4s, and it raises
+    `RetryError` outright when the uplink is down).
+    """
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def symbols_by_exchange(self, *args, **kwargs):
+        return []
+
+    def all_symbols(self, *args, **kwargs):
+        return []
+
+    def symbols_by_industries(self, *args, **kwargs):
+        return {}
+
+    def symbols_by_group(self, *args, **kwargs):
+        return []
+
+    def get_supported_groups(self, *args, **kwargs):
+        """Empty on purpose.
+
+        Provider groups are deliberately NOT faked here. The seed resolves members
+        from two call sites: the INDEX loop (`stock_mgmt_native_views.py:3528`) and
+        the system-default loop (`:3590`, ids `vn30/vn100/hnx30` from
+        `default_groups.py:212`). Returning one extra INDEX group makes the INDEX
+        loop fire once more, so `fetch_symbol_group_members` is called 4 times
+        instead of 3. Empty keeps the count assertion meaningful: exactly the 3
+        system-default groups are resolved.
+        """
+        import pandas as pd
+
+        return pd.DataFrame(columns=['group_name', 'group_code', 'category', 'description'])
+
+
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 class StockManagementNativeApiTestCase(TestCase):
     @classmethod
@@ -1131,16 +1171,36 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertIsNone(payload['advisory'])
 
     @patch(
-        'market_data.stock_mgmt_native_views.fetch_symbol_group_members',
+        'market_data.vnbroker_adapter.fetch_symbol_group_members',
         side_effect=lambda group_id: ['FPT', 'HPG'] if str(group_id).lower() == 'vn30' else ['FPT', 'HPG', 'TPB'],
     )
-    def test_groups_seed_detail_and_items_are_native(self, fetch_symbol_group_members_mock):
+    @patch(
+        'market_data.vnbroker_adapter.fetch_listing_symbols',
+        return_value=[
+            {'symbol': 'FPT', 'exchange': 'HOSE', 'company_name': 'FPT', 'industry': 'Công nghệ'},
+            {'symbol': 'HPG', 'exchange': 'HOSE', 'company_name': 'Hoa Phat', 'industry': 'Thép & Vật liệu'},
+            {'symbol': 'TPB', 'exchange': 'HOSE', 'company_name': 'Tien Phong', 'industry': 'Ngân hàng'},
+        ],
+    )
+    @patch(
+        'market_data.vnbroker_adapter._load_listing_adapter_class',
+        return_value=_OfflineVnbrokerListing,
+    )
+    def test_groups_seed_detail_and_items_are_native(self, offline_listing_class_mock, fetch_listing_symbols_mock, fetch_symbol_group_members_mock):
+        # Patch target is `vnbroker_adapter`, NOT `stock_mgmt_native_views`:
+        # `seed_default_watchlist_groups` re-imports the symbol locally
+        # (`stock_mgmt_native_views.py:3433`), which shadows the module-level import
+        # at line 43. Patching the views module therefore never fired
+        # (call_count 0 != 3) and the test hit live VCI: 142s then RetryError.
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
         self.assertIn('message', unwrapped_json(seed_response))
-        self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
+        # Assert the exact group ids before the bare count: a count-only assertion
+        # hides WHICH groups were requested, which is the part that actually
+        # regresses when the SSOT group list changes.
         self.assertEqual({call.args[0] for call in fetch_symbol_group_members_mock.call_args_list}, {'vn30', 'vn100', 'hnx30'})
+        self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
 
         admin_group_registry = GlobalSymbolRegistry.objects.get(symbol='HPG')
         admin_group_edge = GlobalSymbolDemandSource.objects.filter(
@@ -1451,14 +1511,31 @@ class StockManagementNativeApiTestCase(TestCase):
             'TPB')
 
     @patch(
-        'market_data.stock_mgmt_native_views.fetch_symbol_group_members',
+        'market_data.vnbroker_adapter.fetch_symbol_group_members',
         side_effect=lambda group_id: ['FPT', 'HPG'] if str(group_id).lower() == 'vn30' else ['FPT', 'HPG', 'TPB'],
     )
-    def test_core_v1_groups_seed_detail_and_items_routes_are_native(self, fetch_symbol_group_members_mock):
+    @patch(
+        'market_data.vnbroker_adapter.fetch_listing_symbols',
+        return_value=[
+            {'symbol': 'FPT', 'exchange': 'HOSE', 'company_name': 'FPT', 'industry': 'Công nghệ'},
+            {'symbol': 'HPG', 'exchange': 'HOSE', 'company_name': 'Hoa Phat', 'industry': 'Thép & Vật liệu'},
+            {'symbol': 'TPB', 'exchange': 'HOSE', 'company_name': 'Tien Phong', 'industry': 'Ngân hàng'},
+        ],
+    )
+    @patch(
+        'market_data.vnbroker_adapter._load_listing_adapter_class',
+        return_value=_OfflineVnbrokerListing,
+    )
+    def test_core_v1_groups_seed_detail_and_items_routes_are_native(self, offline_listing_class_mock, fetch_listing_symbols_mock, fetch_symbol_group_members_mock):
+        # Same wrong-patch-target bug as `test_groups_seed_detail_and_items_are_native`:
+        # the seed re-imports `fetch_symbol_group_members` from `vnbroker_adapter`
+        # inside the function (`stock_mgmt_native_views.py:3433`), shadowing the
+        # views-module attribute these tests used to patch.
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
         self.assertIn('message', unwrapped_json(seed_response))
+        self.assertEqual({call.args[0] for call in fetch_symbol_group_members_mock.call_args_list}, {'vn30', 'vn100', 'hnx30'})
         self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
 
         list_response = self.client.get('/core/v1/stock-management/groups/')

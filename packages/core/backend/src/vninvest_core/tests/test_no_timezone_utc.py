@@ -32,7 +32,11 @@ SELF = Path(__file__).resolve()
 # Number of STDLIB timezone uses in src/ excluding this file, measured on dev at
 # 87482f4b. Proves the stdlib branch of the classifier below is actually being
 # exercised, so a clean run is not vacuously clean.
-EXPECTED_STDLIB_USES = 18
+# 18 -> 20 on 2026-10-04: `test_ohlcv_bars_native_api` called `timezone.UTC`
+# where `timezone` was the STDLIB module, which is an AttributeError at runtime
+# (9 errors). Rewritten to the aliased `dt_timezone.utc` form this file's own
+# docstring calls out as correct. Intentional, so the ratchet moves up.
+EXPECTED_STDLIB_USES = 20
 
 # `from django.utils import timezone` (incl. `as`) or `import django.utils.timezone`
 DJANGO_IMPORT_RE = re.compile(

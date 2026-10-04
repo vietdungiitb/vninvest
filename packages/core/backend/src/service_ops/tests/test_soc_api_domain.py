@@ -750,7 +750,16 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
 
 
 class MatrixDomainApiTestCase(SOCAdminApiTestCase):
-    def test_start_monitor_and_abort_matrix_cycle(self):
+    @patch('service_ops.views.matrix.run_scrape_cycle.delay')
+    def test_start_monitor_and_abort_matrix_cycle(self, dispatch_mock):
+        # `CELERY_TASK_ALWAYS_EAGER = True` under TESTING (settings.py:486), so
+        # `run_scrape_cycle.delay` runs inline and every cell finishes during the
+        # POST. `mark_cell_done` then flips the cycle to `completed`
+        # (matrix_coordinator.py:150-151), `get_latest_monitor_cycle()` only looks
+        # at active/completing, and `/monitor/` answers `cycle_id: None`. These
+        # tests are about monitor/abort semantics on a LIVE cycle, so the
+        # dispatch is stubbed and the cycle stays active.
+        dispatch_mock.return_value = type('R', (), {'id': 'task-1'})()
         start_response = self.client.post(
             '/api/soc/matrix/cycles/start/',
             {
@@ -777,7 +786,14 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(unwrapped_json(cells_response)['count'], 4)
         self.assertEqual(unwrapped_json(abort_response)['status'], 'aborted')
 
-    def test_matrix_providers_reflect_active_cycle(self):
+    @patch('service_ops.views.matrix.run_scrape_cycle.delay')
+    def test_matrix_providers_reflect_active_cycle(self, dispatch_mock):
+        # Same eager-dispatch problem as `test_start_monitor_and_abort_matrix_cycle`:
+        # without the stub the cycle completes during the POST, `MatrixProvidersView`
+        # sees `current_cycle=None`, and `normalize_provider_ids([])` falls back to
+        # DEFAULT providers (provider_catalog.py:87) — making BOTH vci and kbs
+        # report `in_active_cycle: True`.
+        dispatch_mock.return_value = type('R', (), {'id': 'task-1'})()
         self.client.post(
             '/api/soc/matrix/cycles/start/',
             {

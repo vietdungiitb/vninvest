@@ -826,9 +826,15 @@ class AlertCenterStreamView(APIView):
                 if not testing and time.time() - stream_start > 3600:
                     break
                 try:
-                    from django.db import close_old_connections
+                    from django.db import close_old_connections, connection
 
-                    close_old_connections()
+                    # Guarded: `close_old_connections()` inside an atomic block
+                    # closes the live connection (Django compares
+                    # `get_autocommit()` to `settings_dict['AUTOCOMMIT']`), so the
+                    # next query dies with `OperationalError: the connection is
+                    # closed`. Outside atomic blocks the ORM reopens by itself.
+                    if not connection.in_atomic_block:
+                        close_old_connections()
                     qs = UnifiedAlert.objects.all().select_related('whale_detail')
                     qs = _apply_common_alert_filters(qs, filter_params, lane=lane)
                     qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)

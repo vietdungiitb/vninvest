@@ -333,11 +333,40 @@ class LedgerCacheAndProvenanceTest(TestCase):
             msg='sửa giao dịch cũ (không đổi as_of) vẫn phải invalidate cache',
         )
 
-    def test_invalidate_ledger_cache_forces_recompute(self):
+    def test_invalidate_ledger_cache_is_only_a_bump_counter(self):
+        """`invalidate_ledger_cache` KHÔNG phải cơ chế vô hiệu hoá cache.
+
+        Docstring tại `user_workspace/ledger/services.py:76-87` ghi rõ: bộ đếm
+        bump không nằm trong `_cache_key`; cache tự đúng nhờ fingerprint
+        `(count, max updated_at, max pk)`. Test cũ assert ngược lại
+        (`from_cache` phải False sau invalidate) nên chỉ pass được khi key cache
+        tình cờ khác — nó đòi một bảo đảm mà code không hứa.
+
+        Cơ chế thật đã được test kế bên (`sửa giao dịch cũ vẫn invalidate`).
+        Ở đây chỉ khoá lại hành vi đã tài liệu hoá: bump là no-op với cache.
+        """
         get_cached_ledger(self.portfolio.id, self.tenant)
         self.assertTrue(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
+
         invalidate_ledger_cache(self.portfolio.id)
-        self.assertFalse(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
+
+        # Gọi lại vẫn trúng cache — đúng như docstring, vì bump không nằm trong key.
+        self.assertTrue(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
+
+    def test_fingerprint_key_changes_when_history_changes(self):
+        """Cơ chế vô hiệu hoá thật: đổi lịch sử => fingerprint đổi => key khác."""
+        first = get_cached_ledger(self.portfolio.id, self.tenant)
+        self.assertTrue(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
+
+        Transaction.objects.filter(
+            portfolio=self.portfolio, transaction_type=BUY,
+        ).first().delete()
+
+        after = get_cached_ledger(self.portfolio.id, self.tenant)
+        self.assertFalse(
+            after['meta']['from_cache'],
+            msg='xóa giao dịch phải làm đổi fingerprint nên phải tính lại',
+        )
 
     def test_cache_ttl_is_bounded(self):
         self.assertGreater(LEDGER_CACHE_TTL_SECONDS, 0)

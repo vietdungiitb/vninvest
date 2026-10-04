@@ -354,12 +354,24 @@ class NoSilentFailureTests(APITestCase):
                 500,
                 f'{url} returned {response.status_code} (server error, silent failure)'
             )
-            # Must be valid JSON with error code
+            # Must be valid JSON. The API envelope wraps every body under `data`,
+            # so the payload lives one level down; asserting `code` at the top
+            # level only passed before the envelope migration.
             try:
                 json_data = response.json()
-                self.assertIn('code', json_data, f'{url} missing error code')
             except Exception as e:
                 self.fail(f'{url} returned invalid JSON: {e}')
+                return
+
+            payload = json_data.get('data', json_data) if isinstance(json_data, dict) else json_data
+            if response.status_code >= 400:
+                self.assertIn('code', payload, f'{url} missing error code')
+            else:
+                # `password-reset` answers 200 even for an unknown address on
+                # purpose — OWASP A01 anti-enumeration
+                # (`identity_access/views/password_reset.py:87-90`). A 2xx body
+                # legitimately carries no error `code`.
+                self.assertIsInstance(payload, dict, f'{url} 2xx body must be an object')
 
     def test_invalid_requests_dont_return_500(self):
         """Verify invalid requests return 4xx, not 500."""
