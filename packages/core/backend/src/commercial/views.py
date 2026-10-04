@@ -20,6 +20,7 @@ from vninvest_core.exceptions import (
 )
 
 from .permissions import RequiresTenantPermission
+from .envelope import envelope
 from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPayIPNLog
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
@@ -84,7 +85,7 @@ class PublicLegalPagesView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        return Response({'results': []})
+        return envelope({'results': []})
 
 
 # ─── GIAI ĐOẠN 2: VNPAY PAYMENT GATEWAY INTEGRATION ────────────────────────
@@ -188,7 +189,7 @@ class CreateVNPayPaymentView(APIView):
                 pay_url=pay_url
             )
 
-        return Response({
+        return envelope({
             'status': 'success',
             'txn_ref': txn_ref,
             'pay_url': pay_url,
@@ -362,13 +363,13 @@ class PaymentStatusCheckView(APIView):
             )
 
         txn = get_object_or_404(PaymentTransaction, txn_ref=txn_ref, tenant=tenant)
-        return Response({
+        return envelope({
             'txn_ref': txn.txn_ref,
             'amount': txn.amount,
             'status': txn.status,
             'vnp_transaction_no': txn.vnp_transaction_no,
             'updated_at': txn.updated_at.isoformat()
-        }, status=status.HTTP_200_OK)
+        })
 
 
 # ─── GIAI ĐOẠN 2: STRIPE BILLING PORTAL INTEGRATION ────────────────────────
@@ -428,7 +429,7 @@ class StripeCheckoutSessionView(APIView):
                 success_url=success_url,
                 cancel_url=cancel_url,
             )
-            return Response({
+            return envelope({
                 'session_id': session.id,
                 'url': session.url,
             }, status=status.HTTP_201_CREATED)
@@ -489,7 +490,7 @@ class StripePortalSessionView(APIView):
                 tenant=tenant,
                 return_url=return_url,
             )
-            return Response({
+            return envelope({
                 'url': session.url,
             }, status=status.HTTP_201_CREATED)
         except stripe.error.StripeError as e:

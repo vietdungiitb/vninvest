@@ -140,6 +140,27 @@ def _returns_envelope(node: ast.expr) -> str:
                     return 'SKIP_ERROR'
                 if _is_dict_with(first, 'message') and len(first.keys) == 1:
                     return 'SKIP_ACK_MESSAGE'
+                # Giao thức callback của cổng thanh toán bên thứ ba.
+                #
+                # `RspCode` là trường BẮT BUỘC của VNPay IPN/return API: bọc nó
+                # vào `{data, meta}` sẽ làm VNPay không đọc được phản hồi, tức
+                # là **hỏng tích hợp thanh toán**.
+                #
+                # Bằng chứng nội tại rằng đây là giao thức máy chứ không phải REST
+                # dành cho frontend: `commercial/views.py:343` trả
+                # `{'RspCode': '99', 'Message': 'Internal Error: ...'}` với
+                # **HTTP 200** — không REST API nào trả 200 cho lỗi nội bộ.
+                #
+                # Nhận diện CHÍNH bằng tên trường `RspCode` (chữ ký đặc thù), KHÔNG
+                # dùng "có key `Message`" — key đó quá rộng và sẽ âm thầm bỏ sót
+                # response phẳng thật.
+                if _is_dict_with(first, 'RspCode'):
+                    return 'SKIP_GATEWAY_PROTOCOL'
+                # ACK tới webhook của bên thứ ba: `{'received': True}`.
+                # Chỉ áp dụng khi `received` là key **duy nhất** — nếu có thêm
+                # field khái báo dữ liệu thì đó là response thật và phải bọc.
+                if _is_dict_with(first, 'received') and len(first.keys) == 1:
+                    return 'SKIP_WEBHOOK_ACK'
                 return 'UNWRAPPED'
             return 'UNVERIFIED'
 
@@ -161,7 +182,8 @@ def scan(app: str):
         return 1
 
     rows = {'WRAPPED': [], 'UNWRAPPED': [], 'UNVERIFIED': []}
-    skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': []}
+    skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': [],
+               'SKIP_GATEWAY_PROTOCOL': [], 'SKIP_WEBHOOK_ACK': []}
     for path in sorted(app_dir.rglob('*.py')):
         rel = path.relative_to(SRC)
         if 'migrations' in rel.parts or 'tests' in rel.parts:
