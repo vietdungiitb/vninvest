@@ -235,8 +235,12 @@ class AdvisoryLatestView(APIView):
 
 @extend_schema(
     summary='Trang thai advisory theo id',
+    # FLAT payload: this view returns bare `Response({...})`, so documenting it
+    # with `envelope_response()` would claim a `{data, meta}` shape it never
+    # sends. See `test_flat_views_are_not_documented_as_envelope`
+    # (vninvest_core/tests/test_api_envelope_schema.py:528).
     responses={
-        200: envelope_response(),
+        200: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
     },
 )

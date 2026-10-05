@@ -15,7 +15,7 @@ import hashlib
 import json
 from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
-from django.test import TransactionTestCase, override_settings
+from django.test import TestCase, override_settings
 from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -37,7 +37,12 @@ TEST_FERNET_KEY = Fernet.generate_key().decode()
     DEFAULT_FROM_EMAIL='fallback@vninvest.vn'
 )
 @patch.dict(os.environ, {'MAIL_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
-class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
+# `TestCase`, not `TransactionTestCase`. `TransactionTestCase` flushes all 123
+# tables after every test (measured 12.9-14.6s per TRUNCATE on this Postgres),
+# which is why this module cost 223s for 10 tests. Nothing here needs a committed
+# write: the DB-level constraint test is wrapped in `transaction.atomic()` so the
+# expected IntegrityError does not poison the test transaction.
+class SaaSUserRegistrationSpamProtectionTests(TestCase):
     def setUp(self):
         # Clear cache to reset manual rate limits before each test run
         cache.clear()
@@ -114,14 +119,22 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
         mock_response.json.return_value = {'success': True}
         mock_post.return_value = mock_response
 
-        response = self.client.post('/core/v1/auth/register/', {
-            'username': 'vietdung',
-            'email': 'vietdung@vninvest.vn',
-            'password': 'Password123!',
-            'password_confirm': 'Password123!',
-            'website': '',
-            'turnstile_token': 'valid-token'
-        }, format='json')
+        # `captureOnCommitCallbacks(execute=True)` is REQUIRED under `TestCase`:
+        # registration dispatches the verification task from
+        # `transaction.on_commit(...)` (`identity_access/views/register.py:287`),
+        # and `TestCase` discards on_commit callbacks when it rolls back — so
+        # without this the mock is never called and the assertion below would be
+        # vacuous. This keeps the fast base class without losing the coverage that
+        # the original `TransactionTestCase` gave.
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post('/core/v1/auth/register/', {
+                'username': 'vietdung',
+                'email': 'vietdung@vninvest.vn',
+                'password': 'Password123!',
+                'password_confirm': 'Password123!',
+                'website': '',
+                'turnstile_token': 'valid-token'
+            }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         data = response.json()['data']
@@ -172,7 +185,11 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
         self.assertTrue(config1.is_active)
 
         # Try to create active config 2 - should throw IntegrityError
-        with self.assertRaises(IntegrityError):
+        # `transaction.atomic()` is required here, not cosmetic: `TestCase` runs
+        # the whole test inside one transaction, so an expected IntegrityError
+        # would poison it and every later query in the same test would fail.
+        # The savepoint is what lets us assert the constraint and carry on.
+        with self.assertRaises(IntegrityError), transaction.atomic():
             SystemMailConfig.objects.create(
                 provider=SystemMailConfig.PROVIDER_SMTP,
                 from_email='smtp2@vninvest.vn',

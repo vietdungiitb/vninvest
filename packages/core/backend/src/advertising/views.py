@@ -37,7 +37,13 @@ class AdvertisingUserRateThrottle(UserRateThrottle):
 @extend_schema(
     summary='Noi dung widget (campaign dang chay)',
     description='Payload la config hien tai + danh sach campaign ma widget duoc phep render.',
-    responses={200: envelope_response()},
+    # FLAT payload: this view returns bare `Response({...})`, not an envelope.
+    # Documenting it with `envelope_response()` would claim a `{data, meta}` shape
+    # the API does not send, and `test_flat_views_are_not_documented_as_envelope`
+    # (vninvest_core/tests/test_api_envelope_schema.py:528) exists to catch exactly
+    # that. `OpenApiTypes.OBJECT` still records a response schema, so the operation
+    # stops counting as undocumented.
+    responses={200: OpenApiTypes.OBJECT},
 )
 class ContentDisplayView(APIView):
     """
@@ -214,8 +220,10 @@ def _sign_ad_tracking_urls(request, campaign_id_str, tenant_id_str, symbol):
     # PATCH carries a body, so the request side must be typed too; response-only
     # is not enough and spectacular still reports "unable to guess serializer".
     request=OpenApiTypes.OBJECT,
+    # FLAT payload — see the note on `ContentDisplayView`. `envelope_response()`
+    # here would document a `{data, meta}` shape this view never sends.
     responses={
-        200: envelope_response(),
+        200: OpenApiTypes.OBJECT,
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
     },
@@ -280,7 +288,7 @@ class WidgetConfigView(APIView):
 
 @extend_schema(
     summary='Lay quang cao cho widget',
-    responses={200: envelope_response()},
+    responses={200: OpenApiTypes.OBJECT},  # FLAT payload, not an envelope
 )
 class WidgetAdView(APIView):
     """
@@ -409,7 +417,7 @@ class BaseMetricsLogView(APIView):
 @extend_schema(
     summary='Ghi log hien thi quang cao',
     request=OpenApiTypes.OBJECT,
-    responses={202: envelope_response()},
+    responses={202: OpenApiTypes.OBJECT},  # FLAT payload, not an envelope
 )
 class MetricsLogViewView(BaseMetricsLogView):
     """
@@ -429,7 +437,7 @@ class MetricsLogViewView(BaseMetricsLogView):
 @extend_schema(
     summary='Ghi log click quang cao',
     request=OpenApiTypes.OBJECT,
-    responses={202: envelope_response()},
+    responses={202: OpenApiTypes.OBJECT},  # FLAT payload, not an envelope
 )
 class MetricsLogClickView(BaseMetricsLogView):
     """
