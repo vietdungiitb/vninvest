@@ -6634,3 +6634,40 @@ nhay cam nen khong lam tu dong. `StripeWebhookView` nam trong vung Stripe
 - pre-push-gate.mjs: **17 PASS / 0 SKIP / 0 FAIL**
 
 CHUA CHAY: playwright visual, vitest component, dashboard_lifecycle (ESM mock)
+---
+
+## Entry 251 - HoI suite test chet cuoi cung: dashboard_lifecycle (moi)
+
+### 1. Nguyên nhân that
+
+`packages/web` la `"type": "module"`, nen `require` khong ton tai trong test
+ESM. Suite chet bang `ReferenceError: require is not defined` tai dong
+`jest.mock("react", () => require(...))` — **0 test chay**, khong phai 5 test
+fail.
+
+| | Truoc | Sau |
+|---|---|---|
+| Test Suites | 19/20 | **20/20** |
+| Tests | 266 | **271** |
+
+### 2. Sua hai file
+
+**`test/mocks/react.js`**: `module.exports = {...}` -> `export const ...`.
+File nay chay duoi ESM nen CJS export la syntax sai ngay tu dau.
+
+**`dashboard_lifecycle.test.js`**:
+- `jest.mock(...)` -> `jest.unstable_mockModule("react", () => import(...))`.
+- `const m = require("react")` -> bien `mockReact` lay tu `await import("react")`
+  trong `beforeAll`.
+
+### 3. Thu tu import — phai giu
+
+`mockReact = await import("react")` phai chay **TRUOC** khi import
+`useCoreDashboardData`. neu hoan doi, hook giu lai React that va state cua no
+khong xuat hien trong harness, test fail ma khong bao gi sai logic.
+
+### 4. Xac minh
+
+- jest dashboard_lifecycle: **PASS 5/5**
+- jest toan bo web: **PASS 271/271, 20/20 suites**
+- CHUA CHAY: playwright visual, vitest component
