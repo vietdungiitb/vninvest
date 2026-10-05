@@ -43,6 +43,8 @@ from .views_tenant import (
     _validate_requested_pat_scopes,
     _parse_days_param,
 )
+from drf_spectacular.openapi import OpenApiTypes
+
 
 PERSONAL_LABEL_PREFIX = 'personal:'
 
@@ -113,6 +115,7 @@ def _reject_personal_prefix(*, label: str, audit_reason: str) -> None:
     responses={200: envelope_response(PaginatedResultsSerializer)},
 )
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     methods=['POST'],
     responses={201: envelope_response(IssuedCorePATSerializer)},
 )
@@ -188,6 +191,7 @@ def _do_issue(request):
 #: với `partner_rotate_pat` (`views_tenant.py:386`) — bọc vào `{data, meta}` sẽ
 #: phá hợp đồng, xem `api_envelope.py` §"Vì sao KHÔNG ép mọi 2xx vào envelope".
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: PersonalPATRotationSerializer},
 )
 @api_view(['POST'])
@@ -241,6 +245,7 @@ def personal_keys_rotate(request, key_id):
 #: **Phẳng** (F4): `{object: 'personal_pat_revocation', ...}` — cùng lý do
 #: `personal_keys_rotate` ở trên.
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: PersonalPATRevocationSerializer},
 )
 @api_view(['POST'])

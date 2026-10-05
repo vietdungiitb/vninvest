@@ -1,13 +1,13 @@
 {
   "_comment": "Baseline do bang lenh: python scripts/check-openapi-schema-budget.py (tu packages/core/backend). Cong nay CHAN THOAI LUI, khong chan no san. Ha baseline xuong khi ban sua so loi.",
   "_measured_at": "2026-10-05",
-  "_measured_by": "manage.py spectacular, sau khi them @extend_schema cho 32 file view (batch1/2/3) + 5 file o commit truoc",
+  "_measured_by": "manage.py spectacular, sau khi khai bao @extend_schema cho 34 function-based view (identity_access auth, user_workspace dnse/broker/retail, data_ingest, vninvest_core/urls)",
   "_counting_rule": "Gate so sanh TONG (errors) va UNIQUE (errors_unique) rieng biet. 'errors' la so dong loi spectacular phat ra (mot operation co the nhieu dong); 'errors_unique' la so ten loi khac nhau. Do bang lenh nay nen cam hai con so phai cung he so sanh.",
-  "_why_not_zero": "35 unique operation con bi spectacular bo qua ('unable to guess serializer'). KHONG con view GenericAPIView trong danh sach nay: 34/35 la FUNCTION-BASED view (login_view, logout_view, register_view, register_tenant_view, verify_email_view, refresh_token_view, password_reset_request_view, password_reset_confirm_view, password_change_view, resend_email_verification_view, partner_issue_pat, partner_rotate_pat, partner_revoke_pat, partner_revoke_session, personal_keys_*, dnse_* api, broker_* api, retail_* api, StripeWebhookView, admin_ops_gone) — can khai bao bang @extend_schema tren FUNCTION chu khong phai tren method, va nam trong vung auth/nghiem vuc nhay cam; 1 con la DataIngestAdminViewSet (ViewSet). StripeWebhookView nam trong vung Stripe dang DONG BANG nen khong sua.",
-  "_delta_this_commit": "Gate do bang chinh lenh: errors 752 -> 154 (-598), errors_unique 139 -> 35. Xoa het loi cua 32 file view trong 3 batch. Con 35 unique thi da het view GenericAPIView co the sua tu dong; phan con lai can khai bao function-view va vung Stripe/VNPay dang DONG BANG.",
-  "_kept_warnings_note": "Warnings khong doi so voi truoc khi them decorator: 4x UnifiedAlertSerializer, 2x TenantLifecycleEventSerializer, 1x IngestJobSerializer, 1x SessionFactsSerializer, 3x StockManagementTrackedSymbol*.",
-  "errors": 154,
-  "errors_unique": 35,
+  "_why_not_zero": "Con DUNG 8 unique loi, tat ca deu co ly do bi CHAN - khong phai con sot vi hieu: (1) StripeWebhookView (commercial/stripe_webhooks.py:47) trong vung Stripe dang DONG BANG; (2-8) 7 dnse_*_api trong src/user_workspace/views_dnse.py, file dang bi agent KHAC giu `in-progress` tai docs/CLAIMS.md:277 (portfolio-w3-api / feat/portfolio-w3-api) - theo AGENTS.md 6.1 thi khong duoc sua, da revert. Het function view o 13 file khac.",
+  "_delta_this_commit": "Gate do bang chinh lenh: errors 154 -> 32, errors_unique 35 -> 8. Fix gom 2 dang khac nhau: (a) function DA co @extend_schema responses= nhung thieu request= -> them request= vao decorator cu, them decorator moi khong giai quyet; (b) function chua co decorator -> them moi, doc shape tu return that.",
+  "_kept_warnings_note": "Warnings khong doi suot tu Entry 250: 4x UnifiedAlertSerializer, 2x TenantLifecycleEventSerializer, 1x IngestJobSerializer, 1x SessionFactsSerializer, 3x StockManagementTrackedSymbol*.",
+  "errors": 32,
+  "errors_unique": 8,
   "warnings": 184,
   "warnings_unique": 182
 }

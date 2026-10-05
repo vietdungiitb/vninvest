@@ -367,6 +367,7 @@ class UserProfileView(APIView):
 # ---------------------------------------------------------------------------
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={201: envelope_response(IssuedCorePATSerializer)},
 )
 @api_view(['POST'])
@@ -403,6 +404,7 @@ def partner_issue_pat(request):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: PATRotationResponseSerializer},
 )
 @api_view(['POST'])
@@ -458,6 +460,7 @@ def partner_rotate_pat(request, pat_id):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: PATRevocationResponseSerializer},
 )
 @api_view(['POST'])

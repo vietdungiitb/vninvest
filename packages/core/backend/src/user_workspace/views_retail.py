@@ -12,6 +12,10 @@ from rest_framework.permissions import IsAuthenticated
 from vninvest_core.exceptions import ValidationErrorException
 
 from .envelope import envelope
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 GOLD_SOURCES = ('sjc', 'btmc')
 CACHE_TTL_SECONDS = 3600
@@ -40,6 +44,14 @@ def _frame_to_records(frame) -> list:
         return []
 
 
+@extend_schema(
+    summary='retail_gold_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def retail_gold_api(request):
@@ -69,6 +81,14 @@ def retail_gold_api(request):
                      'cached': False})
 
 
+@extend_schema(
+    summary='retail_exchange_rate_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def retail_exchange_rate_api(request):

@@ -72,6 +72,7 @@ class IngestRunViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     summary='DataIngestAdminViewSet',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
     responses={

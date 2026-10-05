@@ -26,6 +26,8 @@ from vninvest_core.exceptions import (
     RateLimitErrorException,
 )
 from data_ingest.tasks import send_password_reset_email
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -47,6 +49,7 @@ PASSWORD_RESET_REQUEST_LIMIT = 3
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(DetailPayloadSerializer)},
 )
 @api_view(['POST'])
@@ -155,6 +158,7 @@ def _validate_new_password(password: str, user) -> None:
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(DetailPayloadSerializer)},
 )
 @api_view(['POST'])
