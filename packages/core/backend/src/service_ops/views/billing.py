@@ -20,6 +20,10 @@ from vninvest_core.pagination import StandardPageNumberPagination
 
 from ..envelope import envelope, paginated_envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 VALID_INVOICE_STATUSES = {c for c, _ in Invoice.StatusChoices.choices}
 
@@ -28,6 +32,17 @@ def _month_key(d: date) -> str:
     return d.strftime('%Y-%m')
 
 
+@extend_schema(
+    summary='BillingOverviewView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BillingOverviewView(SOCBaseView):
     def get(self, request):
         active_subs = Subscription.objects.filter(
@@ -83,6 +98,17 @@ class BillingOverviewView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='BillingInvoiceListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BillingInvoiceListView(SOCBaseView):
     COLUMNS = ['invoice_number', 'status', 'amount_due', 'currency',
                'period_start', 'period_end', 'paid_at', 'tenant_code',

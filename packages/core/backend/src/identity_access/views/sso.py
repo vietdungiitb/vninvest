@@ -74,6 +74,20 @@ def _find_sso_config(domain: str = '', email: str = '') -> 'TenantSSOConfig | No
 # ─── Partner SSO Config (CRUD) ────────────────────────────────────────
 
 
+@extend_schema(
+    summary='PartnerSSOConfigView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerSSOConfigView(APIView):
     """
     GET  /core/v1/partner/sso/  — Read SSO configuration
@@ -187,6 +201,20 @@ class SSOLoginInitiateView(APIView):
 # ─── SAML Callback ────────────────────────────────────────────────────
 
 
+@extend_schema(
+    summary='SSOCallbackView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SSOCallbackView(APIView):
     """
     POST /core/v1/auth/sso/callback/
@@ -409,6 +437,20 @@ class SSOMetadataView(APIView):
 # ─── Partner: test SSO connection ──────────────────────────────────────
 
 
+@extend_schema(
+    summary='PartnerSSOTestConnectionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerSSOTestConnectionView(APIView):
     """
     POST /core/v1/partner/sso/test/
@@ -447,6 +489,20 @@ class PartnerSSOTestConnectionView(APIView):
 # ─── Partner: test SSO login initiation (JSON only) ────────────────────
 
 
+@extend_schema(
+    summary='PartnerSSOTestLoginView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerSSOTestLoginView(APIView):
     """
     POST /core/v1/partner/sso/test-login/

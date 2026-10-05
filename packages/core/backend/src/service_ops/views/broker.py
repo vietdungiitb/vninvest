@@ -34,6 +34,10 @@ from ..models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 from ..envelope import envelope
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +113,20 @@ def _masked_system_credentials() -> list[dict]:
     return rows
 
 
+@extend_schema(
+    summary='BrokerConfigView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerConfigView(SOCBaseView, ConfigApplyMixin):
     """GET current / POST apply registry config."""
 
@@ -147,6 +165,20 @@ class BrokerConfigView(SOCBaseView, ConfigApplyMixin):
                          'change_summary': summary_lines})
 
 
+@extend_schema(
+    summary='BrokerConfigPreviewView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerConfigPreviewView(SOCBaseView):
     """POST preview: diff + validation, không lưu."""
 
@@ -165,6 +197,17 @@ class BrokerConfigPreviewView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='BrokerAuditView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerAuditView(SOCBaseView):
     """GET audit trail (limit ≤ 200)."""
 
@@ -183,6 +226,17 @@ class BrokerAuditView(SOCBaseView):
         ]})
 
 
+@extend_schema(
+    summary='BrokerHealthView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerHealthView(SOCBaseView):
     """GET registry state + credential status (không secret)."""
 
@@ -210,6 +264,20 @@ class BrokerHealthView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='BrokerCredentialsView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerCredentialsView(SOCBaseView):
     """GET list / POST upsert system credential (staff-only, có audit, không trả secret)."""
 
@@ -253,6 +321,17 @@ class BrokerCredentialsView(SOCBaseView):
             'is_verified': False, 'preview': cred.masked_preview()}})
 
 
+@extend_schema(
+    summary='BrokerCredentialDeleteView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerCredentialDeleteView(SOCBaseView):
     """DELETE system credential (có audit)."""
 
@@ -271,6 +350,20 @@ class BrokerCredentialDeleteView(SOCBaseView):
         return envelope({'ok': True})
 
 
+@extend_schema(
+    summary='BrokerTestConnectionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BrokerTestConnectionView(SOCBaseView):
     """POST enqueue system test-connection job (async, poll qua broker/jobs)."""
 

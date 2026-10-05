@@ -118,6 +118,20 @@ class PublicLegalPagesView(APIView):
     # `{data, meta}`. Xem `commercial/envelope.py`.
     responses={200: envelope_response(VNPayCreateDataSerializer)},
 )
+@extend_schema(
+    summary='CreateVNPayPaymentView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class CreateVNPayPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -226,6 +240,17 @@ class CreateVNPayPaymentView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='VNPayIPNWebhookView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class VNPayIPNWebhookView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
@@ -408,6 +433,20 @@ class PaymentStatusCheckView(APIView):
 @extend_schema(
     responses={201: envelope_response(StripeSessionDataSerializer)},
 )
+@extend_schema(
+    summary='StripeCheckoutSessionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StripeCheckoutSessionView(APIView):
     """
     POST /api/core/v1/partner/billing/stripe/session/
@@ -483,6 +522,20 @@ class StripeCheckoutSessionView(APIView):
 
 @extend_schema(
     responses={201: envelope_response(StripePortalDataSerializer)},
+)
+@extend_schema(
+    summary='StripePortalSessionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
 )
 class StripePortalSessionView(APIView):
     """

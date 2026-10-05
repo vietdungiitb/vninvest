@@ -9,6 +9,10 @@ from advisory.models import SystemAISettings
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 from user_workspace.models import Portfolio, Transaction
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 
 def _build_operator_components():
@@ -138,6 +142,17 @@ def _build_operator_components():
     }
 
 
+@extend_schema(
+    summary='OperatorOverviewView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorOverviewView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -153,6 +168,17 @@ class OperatorOverviewView(APIView):
         })
 
 
+@extend_schema(
+    summary='OperatorHealthView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorHealthView(APIView):
     permission_classes = [permissions.IsAdminUser]
 

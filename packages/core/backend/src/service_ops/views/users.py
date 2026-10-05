@@ -18,6 +18,10 @@ from vninvest_core.pagination import StandardPageNumberPagination
 
 from ..envelope import envelope, paginated_envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 VALID_PLANS = {c for c, _ in CoreTenant.PlanChoices.choices}
 VALID_STATUSES = {'active', 'suspended', 'deprovisioned'}
@@ -72,6 +76,17 @@ class SocUsersPagination(StandardPageNumberPagination):
     pass
 
 
+@extend_schema(
+    summary='SocUsersView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SocUsersView(SOCBaseView):
     """GET danh sách users toàn hệ thống (staff-only)."""
 
@@ -125,6 +140,20 @@ class SocUsersView(SOCBaseView):
         return paginated_envelope(dict(paged.data))
 
 
+@extend_schema(
+    summary='SocUserSetActiveView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SocUserSetActiveView(SOCBaseView):
     """POST khóa/mở tài khoản (staff-only, có audit, chặn tự khóa/khóa superuser)."""
 
@@ -159,6 +188,20 @@ class SocUserSetActiveView(SOCBaseView):
         return envelope({'id': target.id, 'is_active': target.is_active})
 
 
+@extend_schema(
+    summary='SocUserSetPlanView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SocUserSetPlanView(SOCBaseView):
     """POST đổi plan tenant sở hữu (staff-only, có audit)."""
 

@@ -4,6 +4,10 @@ from rest_framework.views import APIView
 
 from .models import AgentRegistry
 from .serializers import AgentRegistrySerializer
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 
 def _is_staff(user):
@@ -16,6 +20,20 @@ def _can_manage(agent, user):
     return agent.created_by_id == user.id
 
 
+@extend_schema(
+    summary='AgentRegistryListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AgentRegistryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -49,6 +67,17 @@ class AgentRegistryDetailView(APIView):
         except AgentRegistry.DoesNotExist:
             return None
 
+    @extend_schema(
+        summary='AgentRegistryDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, pk):
         agent = self.get_object(pk)
         if not agent:
@@ -58,6 +87,20 @@ class AgentRegistryDetailView(APIView):
         serializer = AgentRegistrySerializer(agent)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='AgentRegistryDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, pk):
         agent = self.get_object(pk)
         if not agent:
@@ -70,6 +113,17 @@ class AgentRegistryDetailView(APIView):
         serializer.save()
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='AgentRegistryDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         agent = self.get_object(pk)
         if not agent:

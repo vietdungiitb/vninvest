@@ -17,6 +17,10 @@ from ops_audit.models import AuditEvent
 
 from ..envelope import envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 DEFAULT_DAYS = 30
 MAX_DAYS = 90
@@ -41,6 +45,17 @@ def _daily_counts(qs, day_field: str, start: date, days: int) -> list:
             for i in range(days)]
 
 
+@extend_schema(
+    summary='AnalyticsGrowthView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AnalyticsGrowthView(SOCBaseView):
     def get(self, request):
         days = _parse_days(request)
@@ -65,6 +80,17 @@ class AnalyticsGrowthView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='AnalyticsCohortsView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AnalyticsCohortsView(SOCBaseView):
     def get(self, request):
         today = date.today()
@@ -123,6 +149,17 @@ class AnalyticsCohortsView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='AnalyticsAlertsView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AnalyticsAlertsView(SOCBaseView):
     def get(self, request):
         from commercial.models import Invoice

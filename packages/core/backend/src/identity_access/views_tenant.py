@@ -43,6 +43,8 @@ from .serializers import (
     TenantSettingsSerializer,
     TenantCustomRoleSerializer,
 )
+from drf_spectacular.openapi import OpenApiTypes
+
 
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
@@ -273,6 +275,20 @@ def issue_pat(request, service_account_id):
     return envelope(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='UserProfileView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class UserProfileView(APIView):
     """
     GET  /core/v1/identity/profile/  — return authenticated user's UserProfile
@@ -657,6 +673,20 @@ def partner_service_account_usage(request, sa_id):
     })
 
 
+@extend_schema(
+    summary='PartnerTenantSettingsView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerTenantSettingsView(APIView):
     """GET/PUT tenant settings (owner/admin only)."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
@@ -688,6 +718,20 @@ class PartnerTenantSettingsView(APIView):
         return envelope(serializer.data)
 
 
+@extend_schema(
+    summary='PartnerRoleListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerRoleListCreateView(APIView):
     """List and create custom roles for the tenant (owner/admin only)."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
@@ -733,6 +777,17 @@ class PartnerRoleDetailView(APIView):
     @extend_schema(
         responses={200: envelope_response(TenantCustomRoleWithCountSerializer)},
     )
+    @extend_schema(
+        summary='PartnerRoleDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -741,6 +796,20 @@ class PartnerRoleDetailView(APIView):
 
     @extend_schema(
         responses={200: envelope_response(TenantCustomRoleWithCountSerializer)},
+    )
+    @extend_schema(
+        summary='PartnerRoleDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def patch(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -756,6 +825,17 @@ class PartnerRoleDetailView(APIView):
 
     @extend_schema(
         responses={204: None},
+    )
+    @extend_schema(
+        summary='PartnerRoleDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def delete(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')

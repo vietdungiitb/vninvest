@@ -6585,3 +6585,52 @@ Con lai: `user_workspace/views.py` (14), `market_serving/native_views.py` (10),
 `service_ops/views/broker.py` (7), `views_dnse.py` (7), `views_webhooks.py` (7),
 `views_tenant.py` (7).
 CHUA CHAY: playwright visual, vitest component suite
+
+---
+
+## Entry 250 - Openapi: 32 file view, het 104 loi unique (moi)
+
+### 1. Viec lam
+
+Batch 1/2/3, dung mot script AST sinh `@extend_schema` cho **32 file** (143
+decorator). Khong sua logic runtime, khong doi route, khong doi payload.
+
+### 2. Ba loi cua script da ton tai va cach sua
+
+**(a) Import khong duoc ghi.** `ensure_imports()` tinh `needed` roi tra ve text,
+nhung `process()` lai ghi bien `updated` (chi co decorator). Import bi tinh xong
+roi bo. Sai hon: lan sau check bang **ten** co trong text - `OpenApiTypes` co
+san trong comment/decorator cu nen khong them import, moi view lai `NameError`.
+Sua: check theo **cau lenh import that** (`^from \S+ import .*\bTen\b`), va ghi
+`needed` vao `lines` chu khong tra ve text rieng.
+
+**(b) Import chen giua khoi import nhieu dong.** `last line starting with import`
+dat giua khoi `from x import (\n A,\n B,\n)` -> `SyntaxError`. File
+`views_tenant.py` hong ngay. Sua: `last_import_end()` dem **do sau ngoac**,
+chen sau dong dong `)` cuoi cung.
+
+**(c) MOC SO SANH SAI.** So 752 o baseline truoc do do bang **khac** (khong phai
+dem dong stderr cua spectacular). So do cung phep do la **139** -> 35 unique.
+`check-openapi-schema-budget.py` so sanh **TONG** (`errors`) va **UNIQUE**
+(`errors_unique`) rieng biet; ghi 35 vao `errors` lam gate FAIL gia
+(`do: Errors=154`). Sua baseline theo chinh so gate do.
+
+### 3. Phan con lai: 35 unique KHONG phai GenericAPIView
+
+34/35 la **function-based view** (`login_view`, `register_view`, `dnse_*_api`,
+`broker_*_api`, `personal_keys_*`, `retail_*`) - khai bao bang `@extend_schema`
+** tren function**, khac co che class-method; va nam trong vung auth/nghiem vuc
+nhay cam nen khong lam tu dong. `StripeWebhookView` nam trong vung Stripe
+**DONG BANG** -> khong sua. Con lai 1 `DataIngestAdminViewSet`.
+
+### 4. Xac minh
+
+- run_tests.py: **PASS 2870/2870** (794.154 s, skipped=6)
+- manage.py check: PASS (0 issues)
+- test_api_envelope_schema: 21/21 OK
+- spectacular: Errors 154 (35 unique) / Warnings 184 (182 unique)
+- check-openapi-schema-budget.py: **OK bang baseline**
+- agent-preflight --staged: OK (31 file)
+- pre-push-gate.mjs: **17 PASS / 0 SKIP / 0 FAIL**
+
+CHUA CHAY: playwright visual, vitest component, dashboard_lifecycle (ESM mock)

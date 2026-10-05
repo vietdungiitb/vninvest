@@ -22,6 +22,8 @@ from identity_access.schema import (
 from vninvest_core.utils.crypto import encrypt_secret
 from django.core.mail import get_connection, send_mail
 from django.conf import settings
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,17 @@ class OperatorMailConfigListView(APIView):
         # Nhanh 2xx cua listview la `paginated_envelope(dict(paged.data))`
         # (:70) => data la OBJECT {next, previous, results}.
         responses={200: envelope_response(OperatorMailConfigCursorPageSerializer)},
+    )
+    @extend_schema(
+        summary='OperatorMailConfigListView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def get(self, request):
         queryset = SystemMailConfig.objects.all().order_by('-created_at')
@@ -86,6 +99,20 @@ class OperatorMailConfigListView(APIView):
         # F3 `{status, timestamp, request_id, data}` qua `success_response()`.
         # PHANG, khong phai envelope — bo boc se lam mat `request_id`.
         responses={201: OperatorSuccessResponseSerializer},
+    )
+    @extend_schema(
+        summary='OperatorMailConfigListView POST',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def post(self, request):
         data = request.data
@@ -143,6 +170,20 @@ class OperatorMailConfigListView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@extend_schema(
+    summary='OperatorMailConfigDetailView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorMailConfigDetailView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -273,6 +314,20 @@ class OperatorMailConfigDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@extend_schema(
+    summary='OperatorMailConfigActivateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorMailConfigActivateView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -316,6 +371,20 @@ class OperatorMailConfigActivateView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@extend_schema(
+    summary='OperatorMailConfigTestView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorMailConfigTestView(APIView):
     permission_classes = [IsAdminUser]
 

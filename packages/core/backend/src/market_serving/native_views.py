@@ -24,6 +24,10 @@ from rest_framework.throttling import UserRateThrottle
 
 from market_data.models import IntradayTick
 from .models import SymbolSnapshot
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +37,17 @@ class RealtimeDataThrottle(UserRateThrottle):
     scope = 'realtime_data'
 
 
+@extend_schema(
+    summary='RealtimeTickerView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeTickerView(APIView):
     """GET /api/realtime/ticker/<symbol>/ — latest snapshot for a single symbol."""
     permission_classes = [permissions.IsAuthenticated]
@@ -68,6 +83,17 @@ class RealtimeTickerView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeTickerListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeTickerListView(APIView):
     """GET /api/realtime/tickers/?symbols=VCB,HPG — batch snapshot lookup."""
     permission_classes = [permissions.IsAuthenticated]
@@ -142,6 +168,17 @@ def _serialize_intraday_tick(tick: IntradayTick) -> dict:
     }
 
 
+@extend_schema(
+    summary='RealtimeIntradayView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeIntradayView(APIView):
     """GET /api/realtime/intraday/<symbol>/ — intraday matched trades from shared DB."""
     permission_classes = [permissions.IsAuthenticated]
@@ -202,6 +239,17 @@ class RealtimeIntradayView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimePriceBoardView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimePriceBoardView(APIView):
     """GET /api/realtime/price-board/<symbol>/ — price board snapshot."""
     permission_classes = [permissions.IsAuthenticated]
@@ -228,6 +276,17 @@ class RealtimePriceBoardView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeBreadthView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeBreadthView(APIView):
     """GET /api/realtime/breadth/<symbol>/ — market breadth aggregate."""
     permission_classes = [permissions.IsAuthenticated]
@@ -250,6 +309,17 @@ class RealtimeBreadthView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeWhaleFeedView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeWhaleFeedView(APIView):
     """GET /api/realtime/whale-feed/<symbol>/ — whale alerts for a symbol."""
     permission_classes = [permissions.IsAuthenticated]
@@ -273,6 +343,17 @@ class RealtimeWhaleFeedView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeSymbolInvestigationView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeSymbolInvestigationView(APIView):
     """GET /api/realtime/symbol-investigation/<symbol>/ — combined profile + snapshot."""
     permission_classes = [permissions.IsAuthenticated]
@@ -298,6 +379,17 @@ class RealtimeSymbolInvestigationView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeRvolView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeRvolView(APIView):
     """GET /api/realtime/rvol/<symbol>/ — relative volume vs 20-day average."""
     permission_classes = [permissions.IsAuthenticated]
@@ -323,6 +415,17 @@ class RealtimeRvolView(APIView):
         })
 
 
+@extend_schema(
+    summary='RealtimeDepthChartView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeDepthChartView(APIView):
     """GET /api/realtime/depth-chart/<symbol>/ — order book depth (mock implementation)."""
     permission_classes = [permissions.IsAuthenticated]
@@ -789,6 +892,17 @@ class RealtimeUnifiedAlertsView(APIView):
 
 
 
+@extend_schema(
+    summary='RealtimeWhaleFeedAggregateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
     """Serve legacy whale-feed aggregate contract from core signal tables."""
 

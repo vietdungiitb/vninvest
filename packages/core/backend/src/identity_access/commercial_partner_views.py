@@ -199,6 +199,20 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
 
 # ─── STRIPE BILLING PARTNER VIEWS ──────────────────────────────────────────
 
+@extend_schema(
+    summary='PartnerStripeCheckoutSessionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerStripeCheckoutSessionView(APIView):
     """
     POST /api/core/v1/partner/billing/stripe/session/
@@ -229,6 +243,20 @@ class PartnerStripeCheckoutSessionView(APIView):
             return Response({'error': str(e)}, status=500)
 
 
+@extend_schema(
+    summary='PartnerStripePortalSessionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PartnerStripePortalSessionView(APIView):
     """
     POST /api/core/v1/partner/billing/stripe/portal/

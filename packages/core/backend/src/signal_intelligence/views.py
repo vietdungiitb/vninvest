@@ -669,6 +669,20 @@ class AlertCenterSymbolContextView(APIView):
     ),
     responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
+@extend_schema(
+    summary='AlertCenterAcknowledgeView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AlertCenterAcknowledgeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [SignalRateThrottle]

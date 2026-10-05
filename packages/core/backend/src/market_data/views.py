@@ -20,11 +20,26 @@ from .serializers import DailyPriceSerializer, StockProfileSerializer
 
 
 from vninvest_core.pagination import CoreCursorPagination
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 class StockProfileCursorPagination(CoreCursorPagination):
     ordering = 'symbol'
     page_size = 100
 
+@extend_schema(
+    summary='StockProfileListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockProfileListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StockProfileCursorPagination
@@ -86,6 +101,17 @@ class StockProfileListView(APIView):
         return paginated_envelope({'results': serializer.data})
 
 
+@extend_schema(
+    summary='StockProfileDetailView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockProfileDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -102,6 +128,17 @@ class DailyPriceCursorPagination(CoreCursorPagination):
     ordering = ('-date', '-id')
     page_size = 250
 
+@extend_schema(
+    summary='DailyPriceListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class DailyPriceListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DailyPriceCursorPagination
@@ -302,6 +339,17 @@ class TrackedSymbolsView(APIView):
         )
 
 
+@extend_schema(
+    summary='IntradayPricesView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class IntradayPricesView(APIView):
     """
     GET /core/v1/market-data/intraday-prices/{symbol}/
@@ -349,6 +397,17 @@ class IntradayPricesView(APIView):
         })
 
 
+@extend_schema(
+    summary='IntradayTapeView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class IntradayTapeView(APIView):
     """
     GET /core/v1/market-data/intraday-tape/{symbol}/

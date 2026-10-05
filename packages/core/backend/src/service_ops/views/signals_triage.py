@@ -124,6 +124,20 @@ def _get_operator_delivery(request, delivery_id):
     description='FE gọi khi operator expand row. Tái dùng transition guard (new→seen).',
     responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
 )
+@extend_schema(
+    summary='SignalsDeliverySeenView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SignalsDeliverySeenView(SOCBaseView):
     """POST /api/soc/signals/deliveries/<uuid:delivery_id>/seen/"""
 
@@ -145,6 +159,20 @@ class SignalsDeliverySeenView(SOCBaseView):
     summary='Acknowledge delivery',
     description='Tái dùng delivery_service.acknowledge_delivery — guard new→ack, seen→ack; ack/muted/suppressed giữ nguyên.',
     responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+)
+@extend_schema(
+    summary='SignalsDeliveryAckView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
 )
 class SignalsDeliveryAckView(SOCBaseView):
     """POST /api/soc/signals/deliveries/<uuid:delivery_id>/ack/"""

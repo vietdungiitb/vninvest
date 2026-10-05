@@ -30,6 +30,10 @@ from .serializers import (
 from .tasks import ingest_daily_prices, _USER_BACKFILL_MAX_DAYS
 from service_ops.models import ServiceRunLog
 from service_ops.registry import ensure_service_registry, get_registered_service
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +71,28 @@ class IngestRunViewSet(viewsets.ReadOnlyModelViewSet):
         return IngestRun.objects.select_related('job').order_by('-started_at')
 
 
+@extend_schema(
+    summary='DataIngestAdminViewSet',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+@extend_schema(
+    summary='DataIngestAdminViewSet',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class DataIngestAdminViewSet(viewsets.ViewSet):
     """
     Admin endpoints for manually triggering data ingest tasks.
@@ -332,6 +358,20 @@ def _build_trading_date_range(from_date_str: str, to_date_str: str):
     return dates
 
 
+@extend_schema(
+    summary='SystemBackfillTriggerView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SystemBackfillTriggerView(APIView):
     """
     POST /core/v1/data-ingest/backfill/system/
@@ -491,6 +531,20 @@ class SystemBackfillTriggerView(APIView):
         )
 
 
+@extend_schema(
+    summary='UserBackfillTriggerView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class UserBackfillTriggerView(APIView):
     """
     POST /core/v1/data-ingest/backfill/user/

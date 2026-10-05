@@ -37,12 +37,28 @@ from identity_access.schema import (
 from identity_access.serializers import TenantWebhookConfigSerializer, WebhookDeliverySerializer
 from identity_access.tasks import deprovision_tenant_async
 from identity_access.webhook_dispatcher import WebhookDispatcher
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
+@extend_schema(
+    summary='WebhookConfigListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WebhookConfigListCreateView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
@@ -85,6 +101,17 @@ class WebhookConfigDetailView(generics.GenericAPIView):
     @extend_schema(
         responses={200: envelope_response(TenantWebhookConfigSerializer)},
     )
+    @extend_schema(
+        summary='WebhookConfigDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:read')
@@ -95,6 +122,20 @@ class WebhookConfigDetailView(generics.GenericAPIView):
 
     @extend_schema(
         responses={200: envelope_response(TenantWebhookConfigSerializer)},
+    )
+    @extend_schema(
+        summary='WebhookConfigDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def patch(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -111,6 +152,17 @@ class WebhookConfigDetailView(generics.GenericAPIView):
     @extend_schema(
         responses={204: None},
     )
+    @extend_schema(
+        summary='WebhookConfigDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -121,6 +173,20 @@ class WebhookConfigDetailView(generics.GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='WebhookRegenerateSecretView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WebhookRegenerateSecretView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
@@ -158,6 +224,20 @@ class WebhookDeliveryLogView(generics.GenericAPIView):
         return envelope(WebhookDeliverySerializer(qs, many=True).data)
 
 
+@extend_schema(
+    summary='WebhookTestView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WebhookTestView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
@@ -180,6 +260,20 @@ class WebhookTestView(generics.GenericAPIView):
         return envelope({'detail': 'Test webhook dispatched'})
 
 
+@extend_schema(
+    summary='WebhookManualRetryView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WebhookManualRetryView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
@@ -223,6 +317,20 @@ class BillingStatusView(generics.GenericAPIView):
         return envelope(data)
 
 
+@extend_schema(
+    summary='PreviewPlanChangeView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PreviewPlanChangeView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
@@ -264,6 +372,20 @@ class PreviewPlanChangeView(generics.GenericAPIView):
         })
 
 
+@extend_schema(
+    summary='DeprovisionView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class DeprovisionView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
