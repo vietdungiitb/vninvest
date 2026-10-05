@@ -3,13 +3,17 @@
 
 ## Vay sao khong dung `--fail-on-warn` the nao
 
-`manage.py spectacular` hien bao **1090 loi (202 unique)** va **184 canh bao**, va
+`manage.py spectacular` hien bao **987 loi (182 unique)** va **184 canh bao**, va
 **exit 0**. Nghia la khong cong nao bat duoc con so nay, va no se tang vo han.
 
 Neu noi `--fail-on-warn` vao gate ngay, gate se **do ngay** va chan moi push cho
-den khi sua het **190 operation** chua co schema — cong do la cong viec nhieu
+den khi sua het **231 operation** chua co schema — cong do la cong viec nhieu
 phien, khong lam duoc trong mot dot. Mot cong do chan moi thay doi la cong khong
 duoc dung.
+
+> So 231 lay bang lenh doc schema that (931 operation roi dem operation khong co
+> response schema nao), khong phai uoc luong. Con so **190** ton tai o cac tai
+> lieu cu la **cu** — da do lai va thay bang so do.
 
 ## Vay sao lai dung ngan sach
 

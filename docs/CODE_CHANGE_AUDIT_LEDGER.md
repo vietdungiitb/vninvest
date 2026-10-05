@@ -6247,3 +6247,102 @@ De xuat them vao `AGENTS.md` (noi quy tac, chua tu sua):
 
 **Ky thuat:** git restore dung bang `git checkout HEAD -- <file>` (hoac
 `git stash push -- <file>`), **khong** duong qua `Set-Content -NoNewline`.
+
+## Entry 246: Gate hop dong FE-BE + giam 86 loi schema OpenAPI + do lai con so 190 (2026-10-05)
+
+- **Date**: 2026-10-05
+- **Branch**: `dev` (tu `e50b66e27`)
+- **Scope**: (a) 32 method adapter + 2 route backend · (b) `@extend_schema` cho support/advertising/advisory + ha baseline schema. Khong migration, khong `npm/pip install`.
+
+### 1. 32 method adapter tro route khong ton tai — va 2 view backend CHUA route
+
+Khong method nao co call site, nen tat ca chi co the tra 404. Hai nguyen nhan
+rieng bi gop chung mot danh sach:
+
+| Nhom | So | Vi du |
+|---|---|---|
+| Adapter tro route khong phuc vu | 30 | `crawl.js` goi `/core/v1/v1/admin/crawl/*` — prefix `/v1` lap tren base `/core/v1` |
+| **View backend da viet, CHUA route** | 2 | `PortfolioMarketDiscoveryHubView`, `PortfolioAIAdvisoryCanonicalView` — import trong `user_workspace/urls.py` nhong khong co `path()` nao |
+| Sai path **co** route that | 3 | `dnse.js` goi `/api/core/v1/dnse-credential/` → `/core/v1/api/core/v1/...` |
+
+`getMarketDiscoveryHub()` **dang duoc goi** (`useWhaleAdvisoryData.js:267`) nen
+khong phai xoa ma phai route. Ca 2 view da route va them `@extend_schema` ngay
+de khong tang loi OpenAPI.
+
+### 2. Gate chong tai phat
+
+Khong co gi chan 32 method nay: moi method deu khong co call site, va khong test
+nao so sanh path adapter voi URLconf.
+
+- `packages/core/backend/scripts/dump-core-route-manifest.py` — dump URLconf
+  that tu Django resolver (608 route `/core/v1/*`).
+- `packages/web/src/adapters/core/__tests__/route-contract.test.js` — quet moi
+  `coreGet|corePost|...` va assert path resolve duoc. Co guard anti-vacuous.
+
+**Kiem chung gate that bat loi**: them lai `/api/core/v1/dnse-credential/` vao
+`dnse.js` → test do, chi ra dung 3 cho do.
+
+Diem phai khai bao: `${query}`/`${qs}`/`${suffix}`/`${buildSignalsRecentQuery()}`
+la query string chu khong phai path segment. Doan sai thi cheo route sai.
+
+### 3. Giam 86 loi schema
+
+Errors **1073 → 987**, unique **200 → 182**. Xoa het loi cua 3 file:
+
+| File | Loi truoc | Ghi chu |
+|---|---|---|
+| `support/views.py` | 8 | 9 view, them `request=` cho 5 view co body |
+| `advertising/views.py` | 5 | 5 view |
+| `advisory/views.py` | 6 | 6 view |
+
+Hai bai hoc trong lo:
+
+- Chi `responses=` **chua du**. View co method mang body (POST/PATCH) van bao
+  `unable to guess serializer` — phai them `request=`.
+- Mo ta `TicketDetailView` lam operation **moi** o `/tickets/{ticket_id}/`, no
+  `operationId` `core_v1_tickets_retrieve` trung voi `/tickets/` → +1 warning.
+  Chua bang `operation_id` o **cấp class** thi no ap cho ca GET va POST roi
+  tu trung. Phai gan o view chi can pin.
+
+### 4. So "190 operation" trong tai lieu la CU
+
+`scripts/check-openapi-schema-budget.py` va baseline ghi "190 operation chua co
+schema". Do lai bang lenh doc schema that: **931 operation**, trong do **231**
+khong co response schema nao (truoc khi sua: 253). Da ghi lai ca hai noi.
+
+Con so **190** khong phai uoc luong ma do sai — va no da duoc dua vao quyet
+dinh "chua the lam gate do". Bai hoc chung voi `plan_catalog.py:52` trong repo
+`vninvest`: comment va con so trong tai lieu deu co the cu.
+
+### 5. Do chi phi thoi gian cua suite (khong sua o commit nay)
+
+Suite chay 13 phut o mot lan, 29–50 phut o lan khac. Do tung label:
+
+| Nhom | Thoi gian |
+|---|---|
+| **identity_access** | **1116 s** / 427 test |
+| user_workspace | 475 s / 622 test |
+| service_ops | 204 s / 484 test |
+
+4 module `TransactionTestCase` chiem **781 s**. Do truc tiep tren DB test:
+`TRUNCATE` 123 bang mat **12.9–14.6 s / lan**, va `TransactionTestCase` flush
+toan bo DB **sau moi test**. 12 test x 14 s ≈ 170 s — khop thoi gian module.
+
+De do lai: bo bang lenh doc schema that (khong uoc luong), do tung label voi
+`--keepdb`, va do `TRUNCATE` truc tiep tren `test_vninvest_core`. Custom test
+runner de do tung test **khong dung** — wrapper lam 387 loi nen bo.
+
+### 6. Xac minh
+
+- `manage.py spectacular`: Errors=987 (182 unique), Warnings=184 (182 unique)
+- `check-openapi-schema-budget.py`: OK, bang baseline moi
+- `manage.py check`: 0 issue
+- jest `route-contract.test.js`: PASS 3/3
+- jest toan bo web: PASS 247/247 test
+- 4 suite web khong chay duoc (`require is not defined`, loi ESM co san) — xac
+  nhung giong het tren cay sach bang `git stash`; **khong** phai do thay doi nay
+- `run_tests.py` (backend): **CHUA CHAY** cho 3 file schema o commit nay.
+  Ly do: `support`, `advertising`, `advisory` **khong co test file nao**, nen
+  khong co test nao bat duoc regression o 3 app do. Pham vi kiem chuc co that la
+  `manage.py spectacular` (no import toan bo view) + `manage.py check`.
+  Full suite se chay lai sau khi toi uu `TransactionTestCase` o commit sau.

@@ -8,6 +8,9 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from vninvest_core.client_ip import get_client_ip
+from vninvest_core.api_envelope import envelope_response
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 
 from rest_framework.response import Response
 from rest_framework import status, permissions, viewsets
@@ -31,6 +34,11 @@ class AdvertisingUserRateThrottle(UserRateThrottle):
     rate = '120/minute'
 
 
+@extend_schema(
+    summary='Noi dung widget (campaign dang chay)',
+    description='Payload la config hien tai + danh sach campaign ma widget duoc phep render.',
+    responses={200: envelope_response()},
+)
 class ContentDisplayView(APIView):
     """
     GET /api/v1/content/display/
@@ -201,6 +209,17 @@ def _sign_ad_tracking_urls(request, campaign_id_str, tenant_id_str, symbol):
     return click_tracking_url, impression_tracking_url
 
 
+@extend_schema(
+    summary='Doc/ghi config widget',
+    # PATCH carries a body, so the request side must be typed too; response-only
+    # is not enough and spectacular still reports "unable to guess serializer".
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+)
 class WidgetConfigView(APIView):
     """
     GET /core/v1/widget/config[/]
@@ -259,6 +278,10 @@ class WidgetConfigView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='Lay quang cao cho widget',
+    responses={200: envelope_response()},
+)
 class WidgetAdView(APIView):
     """
     GET /core/v1/widget/ad[/]
@@ -383,6 +406,11 @@ class BaseMetricsLogView(APIView):
             return False
 
 
+@extend_schema(
+    summary='Ghi log hien thi quang cao',
+    request=OpenApiTypes.OBJECT,
+    responses={202: envelope_response()},
+)
 class MetricsLogViewView(BaseMetricsLogView):
     """
     POST /api/v1/metrics/log/view/
@@ -398,6 +426,11 @@ class MetricsLogViewView(BaseMetricsLogView):
         return Response({"status": "ok", "tracked": True}, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(
+    summary='Ghi log click quang cao',
+    request=OpenApiTypes.OBJECT,
+    responses={202: envelope_response()},
+)
 class MetricsLogClickView(BaseMetricsLogView):
     """
     POST /api/v1/metrics/log/click/<uuid:campaign_id>/
