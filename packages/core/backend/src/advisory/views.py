@@ -18,6 +18,9 @@ from django.utils import timezone
 from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
 
 # Đặt TRƯỚC `logger = ...` để không cộng thêm một E402: các import còn lại dưới
 # đây (commercial / identity_access / ops_audit / .models) đã nằm sau `logger` từ
@@ -187,6 +190,13 @@ def _advisory_budget_state(user, session_date: _date) -> dict:
     }
 
 
+@extend_schema(
+    summary='Advisory moi nhat cho mot ma',
+    responses={
+        200: envelope_response(),
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryLatestView(APIView):
     """Return the latest generated advisory for a symbol on a session date."""
     permission_classes = [permissions.IsAuthenticated]
@@ -223,6 +233,13 @@ class AdvisoryLatestView(APIView):
         return envelope({'symbol': symbol, 'session_date': session_date, 'deleted': True}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='Trang thai advisory theo id',
+    responses={
+        200: envelope_response(),
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -239,6 +256,16 @@ class AdvisoryStatusView(APIView):
         })
 
 
+@extend_schema(
+    summary='Yeu cau refresh advisory cho mot ma',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        202: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryRefreshView(APIView):
     """
     Create a pending AdvisoryRecord to trigger async generation.
@@ -661,6 +688,13 @@ class AdvisoryRecordCursorPagination(CoreCursorPagination):
     page_size = 20
 
 
+@extend_schema(
+    summary='Lich su advisory cua mot ma',
+    responses={
+        200: envelope_response(),
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryHistoryView(APIView):
     """Paginated list of advisory records for a symbol (newest first)."""
     permission_classes = [permissions.IsAuthenticated]
@@ -695,6 +729,13 @@ class AdvisoryHistoryView(APIView):
         return paginated_envelope({'results': serializer.data})
 
 
+@extend_schema(
+    summary='Thong tin tu dong refresh advisory',
+    responses={
+        200: envelope_response(),
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryRefreshInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -768,6 +809,14 @@ def _extract_backtest_side(record: AdvisoryRecord):
 
 
 
+@extend_schema(
+    summary='Backtest advisory theo cua so',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdvisoryBacktestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

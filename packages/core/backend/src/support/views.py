@@ -2,12 +2,15 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.pagination import CoreCursorPagination
 
 from .models import SenderRole, SupportTicket, TicketAttachment, TicketAuditLog, TicketMessage, TicketStatus
@@ -86,6 +89,23 @@ def _write_audit(ticket, actor, action, old_value=None, new_value=None):
     )
 
 
+# `TicketListCreateView` has no `serializer_class`, so without `@extend_schema`
+# drf-spectacular emitted "unable to guess serializer" and the operation shipped
+# with no response schema. `ticket_id` is documented on the detail/reply/reopen
+# views, which take it as a path parameter.
+@extend_schema(
+    summary='Danh sach ticket cua nguoi dung hien tai',
+    # No `operation_id` here: a class-level one would be applied to POST as well and
+    # collide with itself. `/tickets/` vs `/tickets/{ticket_id}/` is resolved by
+    # pinning the id on `TicketDetailView` instead.
+    # POST shares this class, and a body-carrying method still reports "unable to
+    # guess serializer" unless the request side is typed as well.
+    request=CreateTicketSerializer,
+    responses={
+        200: envelope_response(SupportTicketListSerializer, many=True),
+        401: OpenApiTypes.OBJECT,
+    },
+)
 class TicketListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -175,6 +195,16 @@ class TicketListCreateView(APIView):
         return Response(SupportTicketListSerializer(ticket).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='Chi tiet 1 ticket',
+    operation_id='support_ticket_detail',
+    responses={
+        200: envelope_response(SupportTicketListSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TicketDetailView(APIView):
     permission_classes = [IsAuthenticated, IsTicketOwnerOrStaff]
 
@@ -198,6 +228,17 @@ class TicketDetailView(APIView):
         return Response(payload)
 
 
+@extend_schema(
+    summary='Tra loi 1 ticket',
+    request=TicketReplySerializer,
+    responses={
+        201: envelope_response(TicketMessageSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
+    },
+)
 class TicketReplyView(APIView):
     permission_classes = [IsAuthenticated, IsTicketOwnerOrStaff]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -254,6 +295,16 @@ class TicketReplyView(APIView):
         return Response(TicketMessageSerializer(message).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='Mo lai ticket da dong',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(SupportTicketListSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TicketReopenView(APIView):
     permission_classes = [IsAuthenticated, IsTicketOwnerOrStaff]
 
@@ -281,6 +332,14 @@ class TicketReopenView(APIView):
         return Response(SupportTicketListSerializer(ticket).data)
 
 
+@extend_schema(
+    summary='Danh sach ticket cho staff',
+    responses={
+        200: envelope_response(SupportTicketListSerializer, many=True),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class StaffTicketListView(APIView):
     permission_classes = [IsAuthenticated, IsStaffUser]
 
@@ -315,6 +374,16 @@ class StaffTicketListView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
+@extend_schema(
+    summary='Cap nhat ticket boi staff',
+    request=StaffTicketUpdateSerializer,
+    responses={
+        200: envelope_response(SupportTicketListSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StaffTicketPatchView(APIView):
     permission_classes = [IsAuthenticated, IsStaffUser]
 
@@ -377,6 +446,17 @@ class StaffTicketPatchView(APIView):
         return Response(SupportTicketListSerializer(ticket).data)
 
 
+@extend_schema(
+    summary='Staff tra loi ticket',
+    request=TicketReplySerializer,
+    responses={
+        201: envelope_response(TicketMessageSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
+    },
+)
 class StaffTicketReplyView(APIView):
     permission_classes = [IsAuthenticated, IsStaffUser]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -417,6 +497,18 @@ class StaffTicketReplyView(APIView):
         return Response(TicketMessageSerializer(message).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='Dashboard ho so dong cho staff',
+    description=(
+        'Payload la bang tong hop (so ticket theo trang thai, SLA), nen khai '
+        'bao `object` thong tin thay vi serializer co dinh.'
+    ),
+    responses={
+        200: envelope_response(),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
 class StaffSupportDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsStaffUser]
 

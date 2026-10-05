@@ -1,10 +1,11 @@
 {
   "_comment": "Baseline do bang lenh: python scripts/check-openapi-schema-budget.py (tu packages/core/backend). Cong nay CHAN THOAI LUI, khong chan no san. Ha baseline xuong khi ban sua so loi.",
-  "_measured_at": "2026-10-04",
-  "_measured_by": "manage.py spectacular, commit 90b237913 + cam bien envelope",
-  "_why_not_zero": "190 operation van bi spectacular bo qua ('unable to guess serializer') => ghi 'No response body' vao schema, trong khi endpoint co body. Phan lon do la view dung APIView thay vi GenericAPIView. Xem docs/AUDIT_ENVELOPE_20261004.md 5b.",
-  "errors": 1073,
-  "errors_unique": 200,
+  "_measured_at": "2026-10-05",
+  "_measured_by": "manage.py spectacular, sau khi them @extend_schema cho support + advertising + advisory",
+  "_why_not_zero": "231 operation van bi spectacular bo qua ('unable to guess serializer') => ghi 'No response body' vao schema, trong khi endpoint co body. Do bang lenh doc schema that (931 operation) va dem operation khong co response schema nao. Phan lon do la view dung APIView thay vi GenericAPIView, hoac function view khong serializer_class. Con so 190 o cac tai lieu cu da CU — do lai bang lenh chu thay doi.",
+  "_delta_this_commit": "errors 1073 -> 987 (-86), errors_unique 200 -> 182. Da xoa het loi cua support/views.py, advertising/views.py, advisory/views.py.",
+  "errors": 987,
+  "errors_unique": 182,
   "warnings": 184,
   "warnings_unique": 182
 }
