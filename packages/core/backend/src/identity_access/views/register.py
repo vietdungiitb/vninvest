@@ -32,6 +32,9 @@ from vninvest_core.exceptions import (
     InternalErrorException,
 )
 from .helpers import success_response
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -118,6 +121,7 @@ def _dispatch_verification_email(user_id: int, event_id, email: str, raw_token: 
 #:
 #: `register_view` trả **201** (`status.HTTP_201_CREATED`), không phải 200.
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={201: F3SuccessResponseSerializer},
 )
 @api_view(['POST'])
@@ -321,6 +325,7 @@ def register_view(request):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: F3SuccessResponseSerializer},
 )
 @api_view(['POST'])
@@ -499,6 +504,7 @@ def _bump_verify_lockout(lockout_key: str, max_attempts: int) -> bool:
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: F3SuccessResponseSerializer},
 )
 @api_view(['POST'])

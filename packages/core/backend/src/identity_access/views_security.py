@@ -24,6 +24,8 @@ from .schema import (
 )
 from .security_utils import LoginRecorder
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from drf_spectacular.openapi import OpenApiTypes
+
 
 
 def _query_daily_login_activity(tenant_id: int, since):
@@ -144,6 +146,7 @@ def partner_active_sessions(request):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(DetailPayloadSerializer)},
 )
 @api_view(['POST'])

@@ -29,6 +29,10 @@ from .models import (
     set_user_broker_secrets,
 )
 from .tasks import test_broker_connection_task
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 SUPPORTED_PROVIDERS = ('dnse', 'ssi', 'tcbs')
 FULLY_SUPPORTED = frozenset({'dnse', 'ssi', 'tcbs'})
@@ -83,6 +87,14 @@ def _mirror_to_legacy_dnse(user, secrets: dict, is_active: bool) -> None:
     credential.save()
 
 
+@extend_schema(
+    summary='broker_providers_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def broker_providers_api(request):
@@ -105,6 +117,14 @@ def broker_providers_api(request):
     return envelope({'providers': items})
 
 
+@extend_schema(
+    summary='broker_config_schema_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def broker_config_schema_api(request, provider):
@@ -113,6 +133,14 @@ def broker_config_schema_api(request, provider):
     return envelope(SCHEMAS[normalized].get_schema())
 
 
+@extend_schema(
+    summary='broker_config_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @required_workspace_permission('broker_manage')
 @api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
@@ -156,6 +184,14 @@ def broker_config_api(request, provider):
     return envelope({'ok': True, **_serialize_config(config)}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='broker_test_connection_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @required_workspace_permission('broker_manage')
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
@@ -187,6 +223,14 @@ def broker_test_connection_api(request, provider):
         {'job_id': job.id, 'state': 'pending'}, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(
+    summary='broker_job_status_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def broker_job_status_api(request, job_id):

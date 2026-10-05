@@ -16,6 +16,8 @@ from .models import CoreTenant, UsageAlertConfig
 from .permissions import IsTenantActive, require_human_session
 from .schema import PartnerAlertConfigListSerializer, PartnerAlertConfigSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from drf_spectacular.openapi import OpenApiTypes
+
 
 
 def _get_default_configs(tenant):
@@ -74,6 +76,7 @@ def partner_usage_alert_config_list(request):
 
 #: GET và PATCH trả **cùng shape** ⇒ dùng chung một serializer, không tách.
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(PartnerAlertConfigSerializer)},
 )
 @api_view(['GET', 'PATCH'])

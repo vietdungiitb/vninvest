@@ -47,6 +47,8 @@ from .envelope import envelope
 from .models import CoreTenant, UserProfile
 from .permissions import IsTenantActive
 from .serializers import CoreTenantSerializer
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,7 @@ def _enqueue_welcome_email(user, tenant):
 #: Trả **201** (`status.HTTP_201_CREATED`), không phải 200 — `extend_schema`
 #: phải khai đúng mã lệnh, nếu không docs ghi 200 cho một endpoint chỉ trả 201.
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={201: envelope_response(CoreTenantSerializer)},
 )
 @api_view(['POST'])

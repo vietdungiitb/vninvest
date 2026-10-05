@@ -30,6 +30,8 @@ from .helpers import (
     success_response,
     TENANT_PERMISSION_CLASSES,
 )
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -41,6 +43,7 @@ User = get_user_model()
 #: tra log. Bộ phân loại của `scripts/check-envelope-contract.py` xếp shape
 #: này là `SKIP_F3`.
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: F3SuccessResponseSerializer},
 )
 @api_view(['POST'])
@@ -218,6 +221,7 @@ def login_view(request):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: F3SuccessResponseSerializer},
 )
 @api_view(['POST'])
@@ -273,6 +277,7 @@ def refresh_token_view(request):
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(DetailPayloadSerializer)},
 )
 @api_view(['POST'])

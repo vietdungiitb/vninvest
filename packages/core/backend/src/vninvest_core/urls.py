@@ -19,8 +19,20 @@ from .exceptions import (
     problem_404 as _problem_404,
     problem_500 as _problem_500,
 )
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
 
 
+
+@extend_schema(
+    summary='admin_ops_gone',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+    },
+)
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 def admin_ops_gone(request, *args, **kwargs):
     """D2: admin-ops endpoints decommissioned — all routes return 410 GONE."""

@@ -16,6 +16,8 @@ from ..security_utils import (
 )
 from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import ValidationErrorException
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ PASSWORD_CHANGE_ATTEMPT_LIMIT = 5
 
 
 @extend_schema(
+    request=OpenApiTypes.OBJECT,
     responses={200: envelope_response(DetailPayloadSerializer)},
 )
 @api_view(['POST'])

@@ -6708,3 +6708,70 @@ gi de hien thi.
 - vitest toan bo: **105/105 file, 699/699 test PASS** (truoc 104/105, 698/699)
 
 CHUA CHAY: `npm run test:visual` (playwright) — xem Entry 253
+---
+
+## Entry 253 - Het function-view OpenAPI + phat hien 2 nguy nhan gia (moi)
+
+### 1. Ket qua OpenAPI: 35 -> 8 unique (con 7 bi claim chan)
+
+Gate do bang chinh lenh: **Errors 154 -> 11, errors_unique 35 -> 8** (xem muc 3c).
+
+**KHONG con Stripe hay gi.** 7 unique con lai la 7 dnse_*_api — bi
+CHAN BOI CLAIM khac, xem muc 3c.
+
+### 2. Function view khac class view o cho nao (ky thuat quan trong)
+
+Nhieu function **da co** `@extend_schema(responses=...)` nhung spectacular van
+bao "unable to guess serializer". Ly do: spectacular do chinh **REQUEST BODY**
+chua khai bao. `responses` mot khong du — them decorator thu hai cung khong
+giup; phai them `request=` vao decorator cu.
+
+| Dang | Cach sua |
+|---|---|
+| Da co `@extend_schema`, thieu `request=` | chen `request=OpenApiTypes.OBJECT` vao decorator cu |
+| Chua co decorator | them moi, doc shape tu `return` that |
+
+`personal_keys_list_create` la truong hop dac biet: **hai** `@extend_schema`
+chong nhau (tach GET/POST theo y chinh file, comment L108-112). Script chi vao
+decorator dau tien. Phai sua tay: bo `request=` o GET (GET khong co body) va
+them vao POST.
+
+### 3. Ba nguy nhan GIA can ghi de lan sau khong chase nham
+
+**(a) `--keepdb` sau mot lan chay bi ngat -> FAIL GIA.** Chay 5 app bang
+`--keepdb` ra 8 fail (`test_worker_tenant`, `test_seed_verification`,
+`test_tasks`, `test_queue_recovery_slice_c`). Chay lai 4 module do **khong**
+`--keepdb`: **62/62 OK**. DB test con doi do run truoc bi cat. Bai test co
+`assert cleanup` -> thay DB bang data cu -> fail dung mot cach gia.
+
+**(b) `run_tests.py` TREO, va day la loi co san KHONG phai hoi quy.** Hai lan
+treo > 45 va > 60 phut, 0 FAIL/ERROR, dung o `service_ops` ngay truoc
+`test_try_claim_cell_allows_only_one_concurrent_winner`. Chung minh: **stash
+het thay doi cua commit nay, chay lai tren `HEAD` sach — van treo dung test do**
+(518 s). Module `service_ops.tests.test_soc_matrix` chay rieng **11/11 OK**,
+nen day khong phai loi cua module ma la tuong tac thu tu test khi chay ca app.
+Test la multi-thread (`only one concurrent winner`).
+
+**Hanh dong dung:** khong giu decorator de lam cho full suite xanh. Den han,
+ghi day la blocker co san, khong phai do commit nay.
+
+**(c) iews_dnse.py bi agent khac giu in-progress — da hoan nguyen.**
+`docs/CLAIMS.md:277`, agent `portfolio-w3-api` / branch `feat/portfolio-w3-api`,
+status `in-progress`, khai bao giu file nay. Theo AGENTS.md §6.1, `in-progress` = **KHONG
+duoc sua**. Da `git checkout HEAD -- views_dnse.py` va loai 7 decorator dnse khoi
+commit nay. Preflight CHINH la gate bat dung truoc khi ghi file.
+
+Luu y: dong claim L90 (`pf1-ordersafety`) va L102 (`pf4-modelsworker`) cung
+list file nay nhung status = `released` — chi L277 moi chan. Phai doc
+**tung dong** va **cot status**, khong kết luận tu ten file.
+
+### 4. Xac minh
+
+- manage.py check: PASS (0 issues)
+- test_api_envelope_schema: 21/21 OK
+- spectacular + budget gate: OK bang baseline (Errors=4, 1 unique)
+- **5 app da sua, DB sach: 1390/1390 OK** (870.068 s, skipped=6)
+  (`identity_access`, `user_workspace`, `data_ingest`, `vninvest_core`,
+  `commercial`)
+- **CHUA CHAY: `run_tests.py` toan bo** — treo co san, xem muc 3b
+- pre-push-gate.mjs: chua chay cho commit nay
