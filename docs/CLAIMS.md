@@ -945,3 +945,5 @@ choi cap plan, status la tu choi giu ACTIVE, 8 test trong
 | opencode-dashboard-lifecycle | dev | web-dashboard-esm | packages/web/test/mocks/react.js, packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js, docs/CODE_CHANGE_AUDIT_LEDGER.md | done |
 
 | opencode-funcview | dev | openapi-function-view (views_dnse.py BI LOAI: claim L277 in-progress) | packages/core/backend/src/identity_access/{views/login.py,views/register.py,views/password_reset.py,views/password_change.py,views_personal.py,views_tenant.py,views_security.py,views_alert_config.py,onboarding_views.py}, packages/core/backend/src/user_workspace/{views_broker.py,views_retail.py}, packages/core/backend/src/data_ingest/views.py, packages/core/backend/src/vninvest_core/urls.py, packages/core/backend/scripts/openapi-schema-baseline.json, docs/CODE_CHANGE_AUDIT_LEDGER.md | done |
+
+| opencode-close-session | dev | handoff + chot trang thai | docs/HANDOFF_20261005.md (new) | done |
