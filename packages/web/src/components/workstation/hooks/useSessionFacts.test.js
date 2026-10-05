@@ -13,7 +13,10 @@ const mockAdapter = {
 // Mock the coreApiAdapter module
 // `jest.mock` chứ KHÔNG `jest.unstable_mockModule`: babel ép hook về CommonJS,
 // còn `unstable_mockModule` chỉ chặn ESM `import()` ⇒ mock im lặng không ăn.
-jest.mock('../../../adapters/coreApiAdapter.js', () => ({
+// `unstable_mockModule`, not `jest.mock`: package.json has `"type": "module"`,
+// so `.js` is native ESM and `jest.mock` becomes a `require` call that throws
+// `ReferenceError: require is not defined`. See useOrderBook.test.js.
+jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 

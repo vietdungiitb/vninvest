@@ -6452,3 +6452,72 @@ Day la lan thu hai trong session nay toi sua test theo mot lan quan sat le
 CHUA CHAY: playwright visual, vitest component suite. Con ~6 phut de toi uu —
 `test_tenantreg_c5` (156 s, co ly do ky thiet) va cac module con lai cua
 `user_workspace` (475 s) / `service_ops` (204 s).
+
+## Entry 248: Hoi 3/4 suite web chet vi `require is not defined` (2026-10-05)
+
+- **Date**: 2026-10-05
+- **Branch**: `dev` (tu `eec46d641`)
+- **Scope**: 3 file test `.js` cua web. Khong doi code san pham.
+
+### 1. Nguyen nhan goc: config ESM mau thuan
+
+| Tang | Su that |
+|---|---|
+| `package.json` | `"type": "module"` ⇒ **moi** file `.js` la native ESM |
+| `jest.config.js:21` | `extensionsToTreatAsEsm: ['.jsx', '.ts', '.tsx']` — khong co `.js` |
+
+Hai dong nay `chong` nhau. `.js` van la ESM (do `"type": "module"`), nhung
+config hieu nhu no la CJS. Trong native ESM, `jest.mock` duoc bien dich thanh
+goi `require` ⇒ `ReferenceError: require is not defined` ⇒ **ca suite chet
+truoc khi chay test dau tien**.
+
+Dung cap ESM cho `.js` la `jest.unstable_mockModule` + dynamic `import()`.
+
+### 2. Comment trong file da chi NGUOC nguon that
+
+`AuthPages.test.js` va `useOrderBook.test.js` deu co comment giong het:
+
+> "`jest.mock` chứ KHÔNG `jest.unstable_mockModule`: babel ép về CommonJS,
+> `unstable_mockModule` chỉ chặn ESM `import()` ⇒ mock im lặng không có tác dụng"
+
+Ly do do **sai**:
+1. `.tsx` **co** trong `extensionsToTreatAsEsm` ⇒ cac page la ESM, khong phai CJS.
+2. Hai file do **da** import page bang dynamic `import()` trong `beforeAll` —
+   tuc chung ho da dung nua ESM, chi `jest.mock` la thoi la.
+
+Comment sai da duoc giu lai nhieu vong nen suite chet ma khong ai sua. Day la
+dung dang `plan_catalog.py:52` cua repo `vninvest`: comment co the cu.
+
+### 3. Ket qua: 247 -> 266 test
+
+| Suite | Truoc | Sau |
+|---|---|---|
+| `useOrderBook.test.js` | chet | **6 PASS** |
+| `useSessionFacts.test.js` | chet | **6 PASS** |
+| `AuthPages.test.js` | chet | **7 PASS** |
+| `dashboard_lifecycle.test.js` | chet | chet — **da hoan nguyen** |
+
+`19/20 suite PASS`, 266 test. Gate 17/17.
+
+### 4. Mot suite da hoan nguyen vi sua khong ra chuyện
+
+`dashboard_lifecycle.test.js` chuyen sang ESM xong suite **chay duoc** nhung
+5 test **fail** o `m._resetMockState()`. Ly do: `test/mocks/react.js` la
+CommonJS (`module.exports = {...}`) va mock duoc gan theo specifier `"react"`,
+nen `await import("react")` khong phai instance ma `useCoreDashboardData.js` sees.
+
+Sua that can dung la chuyen `test/mocks/react.js` sang ESM — thay doi **lon hon**
+pham vi commit nay va co the lam dung cac suite dang xanh. Da `git checkout HEAD`
+ve trang thai goc va ghi lai day thay vi giu mot sua nua chua.
+
+### 5. Bai hoc
+
+Ba suite chet deu co comment giai thich **vi sao** chung khong chay — va ca
+ba comment deu sai. Khi suite chet, phai do config va runtime, khong tin comment.
+
+Xac minh:
+- jest toan bo web: 266 PASS / 19 suite PASS / 1 suite chet (de nguyen)
+- pre-push-gate.mjs: 17 PASS / 0 SKIP / 0 FAIL
+
+CHUA CHAY: `dashboard_lifecycle.test.js` (can chuyen `test/mocks/react.js` sang ESM)
+CHUA CHAY: playwright visual, vitest component suite

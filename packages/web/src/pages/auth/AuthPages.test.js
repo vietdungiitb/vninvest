@@ -23,9 +23,17 @@ jest.unstable_mockModule("@marsidev/react-turnstile", () => ({
  * cần nó. Widget thật có test riêng — `components/auth/tenantreg-turnstile-sitekey.component.test.tsx`.
  * `require("react")` bên trong factory vì factory bị hoist lên trên mọi import.
  */
-jest.mock("../../components/auth/TurnstileWidget.js", () => {
-  const ReactMod = require("react");
-  return {
+// `unstable_mockModule` resolves its specifier against the setup file
+// (`test/setupTests.js`), not against this test, so a relative path fails with
+// "Cannot find module". Resolve it from this file instead. `fileURLToPath` is
+// required rather than `new URL(...).pathname`, which leaves the spaces in
+// "Mujoco Projects" percent-encoded.
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const resolveFromHere = (rel) => path.join(HERE, rel);
+jest.unstable_mockModule(resolveFromHere("../../components/auth/TurnstileWidget.js"), () => {
+ return {
     TURNSTILE_TEST_SITE_KEY: "1x00000000000000000000AA",
     readTurnstileEnv: () => ({ siteKey: "", rawEnvPresent: false }),
     resolveTurnstileSiteKey: () => ({
@@ -35,7 +43,7 @@ jest.mock("../../components/auth/TurnstileWidget.js", () => {
       isMissing: false,
     }),
     TurnstileWidget: ({ onVerify, onError }) =>
-      ReactMod.createElement(
+      React.createElement(
         "button",
         {
           type: "button",
@@ -73,8 +81,8 @@ jest.mock("../../components/auth/TurnstileWidget.js", () => {
  * dụng, `useI18n()` trả locale thật và assertion tìm chuỗi VI không thấy.
  * Factory của `jest.mock` không được async nên `require` đồng bộ thay cho `await`.
  */
-jest.mock("../../context/LangContext.js", () => {
-  const { createTranslator, DEFAULT_LOCALE } = require("../../i18n/index.js");
+jest.unstable_mockModule(resolveFromHere("../../context/LangContext.js"), async () => {
+  const { createTranslator, DEFAULT_LOCALE } = await import("../../i18n/index.js");
   return {
     useI18n: () => ({
       locale: DEFAULT_LOCALE,
