@@ -125,6 +125,17 @@ def _compute_holdings(portfolio_id, tenant=None):
     return holdings_from_ledger(get_cached_ledger(portfolio_id, tenant))
 
 
+@extend_schema(
+    summary='PortfolioHoldingsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioHoldingsView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/holdings/"""
     permission_classes = [permissions.IsAuthenticated]
@@ -175,6 +186,17 @@ class PortfolioHoldingsView(APIView):
         return envelope(sorted(results, key=lambda x: x['symbol']))
 
 
+@extend_schema(
+    summary='PortfolioSummaryView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioSummaryView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/summary/"""
     permission_classes = [permissions.IsAuthenticated]
@@ -414,6 +436,17 @@ class PortfolioAllocationView(APIView):
         })
 
 
+@extend_schema(
+    summary='PortfolioAnalyticsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAnalyticsView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/analytics/ — combined analytics overview."""
     permission_classes = [permissions.IsAuthenticated]
@@ -444,6 +477,17 @@ class PortfolioSyncView(APIView):
         return envelope({'portfolio_id': portfolio_id, 'status': 'sync_queued'})
 
 
+@extend_schema(
+    summary='PortfolioTechnicalsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioTechnicalsView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/technicals/"""
     permission_classes = [permissions.IsAuthenticated]
@@ -607,6 +651,20 @@ class PortfolioAIAdvisoryRefreshView(APIView):
         )
 
 
+@extend_schema(
+    summary='PortfolioAICommandCenterView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a PUT alongside the GET, so the REQUEST side must be typed
+    # too; responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAICommandCenterView(APIView):
     """GET/PUT /api/portfolio/ai-command-center/"""
     permission_classes = [permissions.IsAuthenticated]
@@ -1005,6 +1063,20 @@ class PortfolioAICommandCenterView(APIView):
         return envelope(response_data)
 
 
+@extend_schema(
+    summary='PortfolioAICommandCenterPromptConfigRollbackView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
     """POST /workspace/ai-command-center/prompt-config/rollback/ — F7 F-AC7.
 
@@ -1060,6 +1132,20 @@ class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
         })
 
 
+@extend_schema(
+    summary='PortfolioAICommandCenterTestView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAICommandCenterTestView(APIView):
     """POST /api/portfolio/ai-command-center/test-connection/
     
@@ -1246,6 +1332,17 @@ class PortfolioAICommandCenterTestView(APIView):
             )
 
 
+@extend_schema(
+    summary='PortfolioAICommandCenterAuditLogView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAICommandCenterAuditLogView(APIView):
     """GET /workspace/ai-command-center/audit-logs/
 
@@ -1316,6 +1413,20 @@ class PortfolioAICommandCenterAuditLogView(APIView):
         })
 
 
+@extend_schema(
+    summary='PortfolioUserConfigLegacyView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioUserConfigLegacyView(APIView):
     """GET /workspace/userconfig/ — proxy đến identity_access.UserProfile
 
@@ -1806,6 +1917,20 @@ class PortfolioWhaleBacktestStatsView(APIView):
         return envelope({'stats': [], 'note': 'backtest_stats_not_available_in_native'})
 
 
+@extend_schema(
+    summary='PortfolioScreenerRuleDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioScreenerRuleDetailView(APIView):
     """GET/PUT/DELETE /api/portfolio/screener/rules/<pk>/"""
     permission_classes = [permissions.IsAuthenticated]
@@ -1853,6 +1978,17 @@ class PortfolioScreenerRuleDetailView(APIView):
         return Response(status=http_status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='PortfolioAIAdvisoryListView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAIAdvisoryListView(APIView):
     """GET /portfolio/ai-advisory/ — batch advisory listing hôm nay của user.
 
@@ -1892,6 +2028,17 @@ class PortfolioAIAdvisoryListView(APIView):
         })
 
 
+@extend_schema(
+    summary='PortfolioAIAdvisorySymbolStatsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAIAdvisorySymbolStatsView(APIView):
     """GET /portfolio/ai-advisory-symbol-stats/ — stats theo mã cho sidebar.
 
@@ -2324,6 +2471,20 @@ def _compute_scan(conditions, session_date, include_ai):
     return matched, len(symbols), dict(missing_counts), window_days
 
 
+@extend_schema(
+    summary='PortfolioScreenerRuleRunView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
     # P0.6 deviation (see IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md §1.3):
@@ -2604,6 +2765,17 @@ class PortfolioScreenerRuleRunView(APIView):
 
 
 
+@extend_schema(
+    summary='PortfolioScreenerRuleRunStatusView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioScreenerRuleRunStatusView(APIView):
     """GET /screener/rules/<pk>/run/status/?job_id=... — P1.4 job polling."""
 
@@ -2693,6 +2865,20 @@ def _schedule_to_dict(s):
     }
 
 
+@extend_schema(
+    summary='ScreenerScheduleListCreateView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerScheduleListCreateView(APIView):
     """P2.4: GET/POST /screener/schedules/"""
 
@@ -2744,6 +2930,20 @@ class ScreenerScheduleListCreateView(APIView):
         return envelope(_schedule_to_dict(s), status=201)
 
 
+@extend_schema(
+    summary='ScreenerScheduleDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerScheduleDetailView(APIView):
     """P2.4: GET/PUT/DELETE /screener/schedules/<id>/"""
 
@@ -2806,6 +3006,20 @@ class ScreenerScheduleDetailView(APIView):
         return Response(status=204)
 
 
+@extend_schema(
+    summary='ScreenerScheduleRunNowView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerScheduleRunNowView(APIView):
     """P2.4: POST /screener/schedules/<id>/run-now/ — enqueue task per rule."""
 
@@ -2873,6 +3087,17 @@ class ScreenerScheduleRunNowView(APIView):
         return envelope({'scheduled': sched.id, 'jobs': job_ids})
 
 
+@extend_schema(
+    summary='ScreenerScheduleAlertsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerScheduleAlertsView(APIView):
     """P2.4: GET /screener/schedules/alerts/ — in_app new_symbols alerts (cache 7d)."""
 
@@ -2890,6 +3115,17 @@ class ScreenerScheduleAlertsView(APIView):
         return paginated_envelope({'count': len(alerts), 'results': alerts[:50]})
 
 
+@extend_schema(
+    summary='ScreenerTemplatesView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerTemplatesView(APIView):
     """GET /screener/templates/ — pre-built screener template catalog (S2.5)."""
 
@@ -2899,6 +3135,20 @@ class ScreenerTemplatesView(APIView):
         return envelope({'templates': SCREENER_TEMPLATES})
 
 
+@extend_schema(
+    summary='ScreenerHistoryListView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerHistoryListView(APIView):
     """P2.3: GET /screener/history/?rule_id=&page=&limit= — list + DELETE clear all."""
 
@@ -2957,6 +3207,20 @@ class ScreenerHistoryListView(APIView):
         return envelope({'deleted': deleted})
 
 
+@extend_schema(
+    summary='ScreenerHistoryDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerHistoryDetailView(APIView):
     """P2.3: GET/DELETE /screener/history/<id>/"""
 
@@ -3003,6 +3267,17 @@ class ScreenerHistoryDetailView(APIView):
         return Response(status=204)
 
 
+@extend_schema(
+    summary='ScreenerHistoryBacktestView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerHistoryBacktestView(APIView):
     """P2.3: GET /screener/history/<id>/backtest/?horizon=5 — server backtest v2."""
 

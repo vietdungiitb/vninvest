@@ -6521,3 +6521,67 @@ Xac minh:
 
 CHUA CHAY: `dashboard_lifecycle.test.js` (can chuyen `test/mocks/react.js` sang ESM)
 CHUA CHAY: playwright visual, vitest component suite
+
+## Entry 249: Giam 321 loi schema — 5 file view, Errors 1073 -> 752 (2026-10-05)
+
+- **Date**: 2026-10-05
+- **Branch**: `dev` (tu `d7e1feb9f`)
+- **Scope**: `portfolio_analytics_views.py` (22 loi), `stock_mgmt_native_views.py` (20 loi), baseline. Khong doi logic.
+
+### Ket qua
+
+| Muc | Truoc | Sau |
+|---|---|---|
+| `errors` | 1073 | **752** (−321) |
+| `errors_unique` | 200 | **139** |
+| `warnings` | 184 | 184 |
+
+`portfolio_analytics_views.py` va `stock_mgmt_native_views.py`: **22 -> 0** va **20 -> 0**.
+
+### 1. Shape phai do, khong duoc doan
+
+42 decorator chen hang loat. Shape `envelope` vs `phang` laytu `return`
+that cua tung view — **va** chay
+`test_flat_views_are_not_documented_as_envelope` +
+`test_enveloped_views_are_not_documented_flat` de kiem lai.
+
+Ca hai test deu **bat duoc loi cua toi**:
+1. 7 view `advertising`/`advisory` tra `Response({...})` phang nhung toi khai
+   `envelope_response()` (Entry 247).
+2. `StockManagementPriceAlertDetailView`: `PATCH` tra **envelope**, `DELETE` tra
+   **204 khong co body**. Mot decorator cap class khong bieu dien duoc ca hai;
+   ban class-level tinh la flat ⇒ test `..._not_documented_flat` do loi. Da tach
+   sang **method-level**.
+
+Bai hoc dung mot lan: decorator cap class chi dung khi **moi** method cung shape.
+
+### 2. Mot view phai method-level vi co `put` o xa `get`
+
+`PortfolioAICommandCenterView`: docstring ghi `GET/PUT`, nhung `put` nam cach
+`get` **149 dong**. Script duyet bang regex trong cua so **co dinh** nen bo sot
+⇒ decorator co san ma view van "unable to guess serializer".
+
+Da viet lai bang **AST** de lay method, va lenh nay dung cho cac file sau.
+
+### 3. Mot so 204 dung khong co body
+
+`StockManagementAIAdvisorySummaryDetailView` va `DELETE` cua
+`PriceAlertDetailView` chi tra 204. Khai `200: OpenApiTypes.OBJECT` se **bia
+ra mot response khong ton tai** ⇒ khai `204: None`.
+
+### 4. Encoding khi ghi file
+
+Lan dau ghi bang `—` (em dash) trong `summary` lam file **ho** UTF-8 →
+`SyntaxError`. Script viet nho phai ASCII thuan. Cac comment giai thich
+tieng Viet trong code van giu nguyen — chi phan **sinh ra** la ASCII.
+
+Xac minh:
+- run_tests.py: PASS 2870/2870 (1328 s)
+- manage.py spectacular: Errors=752 (139 unique) Warnings=184 (182 unique)
+- test_api_envelope_schema: 21/21 OK
+- pre-push-gate.mjs: 17 PASS / 0 SKIP / 0 FAIL
+
+Con lai: `user_workspace/views.py` (14), `market_serving/native_views.py` (10),
+`service_ops/views/broker.py` (7), `views_dnse.py` (7), `views_webhooks.py` (7),
+`views_tenant.py` (7).
+CHUA CHAY: playwright visual, vitest component suite

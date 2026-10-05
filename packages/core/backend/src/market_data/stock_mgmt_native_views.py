@@ -1278,6 +1278,17 @@ class StockManagementStockListCursorPagination(CoreCursorPagination):
     ordering = 'symbol'
     page_size = 100
 
+@extend_schema(
+    summary='StockManagementStockListView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementStockListView(APIView):
     """GET /api/stock-management/stocks/ — native stock catalog search."""
 
@@ -1368,6 +1379,20 @@ class StockManagementStockListView(APIView):
         return paginated_envelope({'results': results})
 
 
+@extend_schema(
+    summary='StockManagementTechnicalsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementTechnicalsView(APIView):
     """GET /api/stock-management/technicals/bulk/?symbols=VCB,HPG"""
     permission_classes = [permissions.IsAuthenticated]
@@ -2722,6 +2747,20 @@ def _build_native_observability_payload(record, limit=20, window_hours=24, retry
     observability['ok'] = True
     return observability
 
+@extend_schema(
+    summary='StockManagementAIAdvisorySessionView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisorySessionView(APIView):
     """GET /api/stock-management/stocks/<symbol>/ai-advisory-session/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -2831,6 +2870,20 @@ class StockManagementAIAdvisorySessionView(APIView):
         return envelope(payload, status=refresh_response.status_code)
 
 
+@extend_schema(
+    summary='StockManagementAIAdvisoryObservabilityView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisoryObservabilityView(APIView):
     """GET/POST /api/stock-management/stocks/<symbol>/ai-advisory-observability/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -2942,6 +2995,20 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
         return envelope({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='StockManagementAIAdvisoryComponentsGenerateView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisoryComponentsGenerateView(APIView):
     """POST /api/stock-management/stocks/<symbol>/ai-advisory-components/generate/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3020,6 +3087,20 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
         )
 
 
+@extend_schema(
+    summary='StockManagementAIAdvisoryComponentsDeletedView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisoryComponentsDeletedView(APIView):
     """DELETE /api/stock-management/stocks/<symbol>/ai-advisory-components/deleted/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3060,6 +3141,20 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
         return envelope({'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='StockManagementAIAdvisorySummaryRegenerateView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisorySummaryRegenerateView(APIView):
     """POST /api/stock-management/stocks/<symbol>/ai-advisory-summary/regenerate/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3146,6 +3241,17 @@ class StockManagementAIAdvisorySummaryRegenerateView(APIView):
         )
 
 
+@extend_schema(
+    summary='Xoa 1 advisory summary',
+    # DELETE only, and it answers 204 with NO body — there is no 200 to document.
+    # Declaring `200: OpenApiTypes.OBJECT` would invent a response that does not
+    # exist.
+    responses={
+        204: None,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAIAdvisorySummaryDetailView(APIView):
     """DELETE /api/stock-management/stocks/<symbol>/ai-advisory-summary/<summary_id>/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3211,6 +3317,20 @@ class StockManagementFinancialsView(APIView):
 # Advisory component compat views
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    summary='StockManagementAdvisoryCompToggleView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAdvisoryCompToggleView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/toggle-include/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3234,6 +3354,20 @@ class StockManagementAdvisoryCompToggleView(APIView):
         return envelope({'component': updated_component}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='StockManagementAdvisoryCompRefreshView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAdvisoryCompRefreshView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/refresh/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3259,6 +3393,20 @@ class StockManagementAdvisoryCompRefreshView(APIView):
         return envelope({'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='StockManagementAdvisoryCompRestoreView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAdvisoryCompRestoreView(APIView):
     """POST /api/stock-management/ai-advisory-components/<pk>/restore/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3285,6 +3433,20 @@ class StockManagementAdvisoryCompRestoreView(APIView):
         return envelope({'component': restored_component}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='StockManagementAdvisoryCompDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementAdvisoryCompDetailView(APIView):
     """DELETE /api/stock-management/ai-advisory-components/<pk>/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3604,6 +3766,20 @@ def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
     }
 
 
+@extend_schema(
+    summary='StockManagementSeedView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementSeedView(APIView):
     """POST /api/stock-management/seed/ — create/update default market groups."""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -3629,6 +3805,20 @@ class StockManagementSeedView(APIView):
         })
 
 
+@extend_schema(
+    summary='StockManagementSyncView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementSyncView(APIView):
     """POST /api/stock-management/sync/ — native quote refresh for user scope."""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -4371,6 +4561,20 @@ class StockManagementTrackedSymbolBulkThresholdView(APIView):
         })
 
 
+@extend_schema(
+    summary='StockManagementPriceAlertsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementPriceAlertsView(APIView):
     """GET/POST /api/stock-management/price-alerts/ — native price alert contract."""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -4413,6 +4617,20 @@ class StockManagementPriceAlertDetailView(APIView):
     """PATCH/DELETE /api/stock-management/price-alerts/<pk>/"""
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    # Declared per METHOD, not on the class: PATCH answers 200 with an ENVELOPE
+    # while DELETE answers 204 with NO body. One class-level decorator cannot
+    # express both, and `test_enveloped_views_are_not_documented_flat` caught the
+    # class-level version claiming the PATCH response was flat.
+    @extend_schema(
+        summary='Cap nhat 1 canh bao gia',
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, pk):
         alert = _get_price_alert_or_404_for_user(request.user, pk)
         update_fields = []
@@ -4462,12 +4680,34 @@ class StockManagementPriceAlertDetailView(APIView):
         price_map = _build_price_change_map([alert.symbol])
         return envelope(_serialize_price_alert_row(alert, price_map))
 
+    @extend_schema(
+        summary='Xoa 1 canh bao gia',
+        responses={
+            204: None,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         alert = _get_price_alert_or_404_for_user(request.user, pk)
         alert.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='StockManagementPriceAlertTriggerView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementPriceAlertTriggerView(APIView):
     """POST /api/stock-management/price-alerts/<pk>/mark-triggered/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -4480,6 +4720,20 @@ class StockManagementPriceAlertTriggerView(APIView):
         return envelope(_serialize_price_alert_row(alert, price_map))
 
 
+@extend_schema(
+    summary='StockManagementGroupDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementGroupDetailView(APIView):
     """GET/PUT/DELETE /api/stock-management/groups/<group_id>/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -4506,6 +4760,17 @@ class StockManagementGroupDetailView(APIView):
         )
 
 
+@extend_schema(
+    summary='StockManagementGroupItemsView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementGroupItemsView(APIView):
     """GET /api/stock-management/groups/<group_id>/items/"""
     permission_classes = TENANT_PERMISSION_CLASSES
@@ -4517,6 +4782,20 @@ class StockManagementGroupItemsView(APIView):
         return envelope([_serialize_stock_management_item(m, price_map) for m in group.members.all()])
 
 
+@extend_schema(
+    summary='StockManagementItemDetailView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a body-carrying method, so the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StockManagementItemDetailView(APIView):
     """GET/PUT/DELETE /api/stock-management/items/<item_id>/"""
     permission_classes = [permissions.IsAuthenticated]
