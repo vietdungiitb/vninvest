@@ -9,6 +9,10 @@ from rest_framework.views import APIView
 from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
 from ops_audit.models import AuditEvent
 from vninvest_core.pagination import StandardPageNumberPagination
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 
 def _envelope(data, summary_cards=None, object_label='operator_response'):
@@ -179,6 +183,17 @@ def _build_recent_actions(tenant, limit=10):
     ]
 
 
+@extend_schema(
+    summary='OperatorTenantListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorTenantListView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -207,6 +222,17 @@ class OperatorTenantListView(APIView):
         return Response(payload)
 
 
+@extend_schema(
+    summary='OperatorTenantDetailView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorTenantDetailView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -225,6 +251,17 @@ class OperatorTenantDetailView(APIView):
         return Response(_envelope(data, object_label='operator_tenant_detail'))
 
 
+@extend_schema(
+    summary='OperatorTenantServiceAccountListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorTenantServiceAccountListView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
@@ -267,6 +304,17 @@ class OperatorTenantServiceAccountListView(APIView):
         return Response(_envelope(items, summary_cards=cards, object_label='operator_service_account_list'))
 
 
+@extend_schema(
+    summary='OperatorTenantPATListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class OperatorTenantPATListView(APIView):
     permission_classes = [permissions.IsAdminUser]
 

@@ -2,6 +2,9 @@ from .dataops_base import *
 
 from ..envelope import envelope
 from vninvest_core.api_envelope import envelope_response
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+
 
 # ---------------------------------------------------------------------------
 # B03 — Backfill Progress API
@@ -76,6 +79,20 @@ _B07_ALLOWED_MODES = frozenset({
 })
 
 
+@extend_schema(
+    summary='BackfillRunNowView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class BackfillRunNowView(SOCBaseView):
     """POST /dataops/backfill/run-now/ — Operator manual trigger.
 

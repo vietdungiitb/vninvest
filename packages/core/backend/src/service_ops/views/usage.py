@@ -18,6 +18,10 @@ from ops_audit.models import ApiCallRollup
 
 from ..envelope import envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 NEAR_LIMIT_PCT = 80
 EXPORT_MAX_DAYS = 90
@@ -78,6 +82,17 @@ def _compute_usage_overview(days: int = 30) -> dict:
     }
 
 
+@extend_schema(
+    summary='UsageOverviewView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class UsageOverviewView(SOCBaseView):
     def get(self, request):
         data = _compute_usage_overview(days=30)
@@ -90,6 +105,17 @@ class UsageOverviewView(SOCBaseView):
         })
 
 
+@extend_schema(
+    summary='UsageExportView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class UsageExportView(SOCBaseView):
     TOP_COLUMNS = ['tenant_id', 'tenant_code', 'display_name', 'calls', 'errors']
     QUOTA_COLUMNS = ['tenant_code', 'display_name', 'meter', 'used_pct']

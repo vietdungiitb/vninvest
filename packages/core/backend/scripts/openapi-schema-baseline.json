@@ -1,11 +1,13 @@
 {
   "_comment": "Baseline do bang lenh: python scripts/check-openapi-schema-budget.py (tu packages/core/backend). Cong nay CHAN THOAI LUI, khong chan no san. Ha baseline xuong khi ban sua so loi.",
   "_measured_at": "2026-10-05",
-"_measured_by": "manage.py spectacular, sau khi them @extend_schema cho support + advertising + advisory + portfolio_analytics_views + stock_mgmt_native_views",
-  "_why_not_zero": "231 operation van bi spectacular bo qua ('unable to guess serializer') => ghi 'No response body' vao schema, trong khi endpoint co body. Do bang lenh doc schema that (931 operation) va dem operation khong co response schema nao. Phan lon do la view dung APIView thay vi GenericAPIView, hoac function view khong serializer_class. Con so 190 o cac tai lieu cu da CU — do lai bang lenh chay thay doi.",
-  "_delta_this_commit": "errors 1073 -> 752 (-321), errors_unique 200 -> 139. Da xoa het loi cua 5 file view: support, advertising, advisory, portfolio_analytics_views (22 loi), stock_mgmt_native_views (20 loi).",
-  "errors": 752,
-  "errors_unique": 139,
+  "_measured_by": "manage.py spectacular, sau khi them @extend_schema cho 32 file view (batch1/2/3) + 5 file o commit truoc",
+  "_counting_rule": "Gate so sanh TONG (errors) va UNIQUE (errors_unique) rieng biet. 'errors' la so dong loi spectacular phat ra (mot operation co the nhieu dong); 'errors_unique' la so ten loi khac nhau. Do bang lenh nay nen cam hai con so phai cung he so sanh.",
+  "_why_not_zero": "35 unique operation con bi spectacular bo qua ('unable to guess serializer'). KHONG con view GenericAPIView trong danh sach nay: 34/35 la FUNCTION-BASED view (login_view, logout_view, register_view, register_tenant_view, verify_email_view, refresh_token_view, password_reset_request_view, password_reset_confirm_view, password_change_view, resend_email_verification_view, partner_issue_pat, partner_rotate_pat, partner_revoke_pat, partner_revoke_session, personal_keys_*, dnse_* api, broker_* api, retail_* api, StripeWebhookView, admin_ops_gone) — can khai bao bang @extend_schema tren FUNCTION chu khong phai tren method, va nam trong vung auth/nghiem vuc nhay cam; 1 con la DataIngestAdminViewSet (ViewSet). StripeWebhookView nam trong vung Stripe dang DONG BANG nen khong sua.",
+  "_delta_this_commit": "Gate do bang chinh lenh: errors 752 -> 154 (-598), errors_unique 139 -> 35. Xoa het loi cua 32 file view trong 3 batch. Con 35 unique thi da het view GenericAPIView co the sua tu dong; phan con lai can khai bao function-view va vung Stripe/VNPay dang DONG BANG.",
+  "_kept_warnings_note": "Warnings khong doi so voi truoc khi them decorator: 4x UnifiedAlertSerializer, 2x TenantLifecycleEventSerializer, 1x IngestJobSerializer, 1x SessionFactsSerializer, 3x StockManagementTrackedSymbol*.",
+  "errors": 154,
+  "errors_unique": 35,
   "warnings": 184,
   "warnings_unique": 182
 }

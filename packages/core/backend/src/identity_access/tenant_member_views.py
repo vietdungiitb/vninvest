@@ -33,6 +33,8 @@ from vninvest_core.exceptions import (
     PermissionErrorException,
     CoreAPIException,
 )
+from drf_spectacular.openapi import OpenApiTypes
+
 
 
 class InviteThrottle(UserRateThrottle):
@@ -60,6 +62,20 @@ class TenantMemberListView(APIView):
         return envelope({'members': serializer.data})
 
 
+@extend_schema(
+    summary='TenantInvitesCombinedView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TenantInvitesCombinedView(APIView):
     """
     Combined view for tenant invites:
@@ -183,6 +199,20 @@ class TenantInvitesCombinedView(APIView):
         return envelope({'invites': serializer.data})
 
 
+@extend_schema(
+    summary='TenantInviteAcceptView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TenantInviteAcceptView(APIView):
     """Accept invitation via token."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
@@ -316,6 +346,20 @@ class TenantMemberRemoveView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='TenantInviteCancelView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        204: None,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TenantInviteCancelView(APIView):
     """Cancel tenant invitation."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]

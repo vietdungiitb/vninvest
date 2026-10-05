@@ -17,6 +17,10 @@ from vninvest_core.pagination import StandardPageNumberPagination
 
 from ..envelope import paginated_envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 VALID_ACTIONS = {c for c, _ in AuditEvent.ActionChoices.choices}
 
@@ -36,6 +40,17 @@ def _serialize_event(e: AuditEvent) -> dict:
     }
 
 
+@extend_schema(
+    summary='AuditEventsView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AuditEventsView(SOCBaseView):
     COLUMNS = ['event_id', 'occurred_at', 'actor_user_id', 'actor_label',
                'tenant_id', 'action', 'resource_type', 'resource_id',

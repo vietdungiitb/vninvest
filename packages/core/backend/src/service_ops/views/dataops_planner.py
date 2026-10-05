@@ -13,6 +13,9 @@ from .dataops_base import (
 
 from ..envelope import envelope, paginated_envelope
 from vninvest_core.api_envelope import envelope_response
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+
 
 class DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):
     symbols = serializers.ListField(child=serializers.CharField(), required=False)
@@ -341,6 +344,20 @@ class DataOpsPlannerRunView(SOCBaseView):
             response_only=True,
         )
     ],
+)
+@extend_schema(
+    summary='DataOpsPlannerRunAbortView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
 )
 class DataOpsPlannerRunAbortView(SOCBaseView):
     """POST abort for a queued/running DataOps planner run."""

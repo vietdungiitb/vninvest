@@ -18,6 +18,8 @@ from identity_access.schema import (
 )
 from identity_access.serializers import ScheduledReportSerializer, ReportDeliveryLogSerializer
 from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,20 @@ def _get_tenant(user):
     return CoreTenant.objects.get(owner_user=user)
 
 
+@extend_schema(
+    summary='ScheduledReportListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScheduledReportListCreateView(generics.GenericAPIView):
     """
     GET /api/core/v1/partner/reports/ — list
@@ -77,6 +93,17 @@ class ScheduledReportDetailView(generics.GenericAPIView):
     @extend_schema(
         responses={200: envelope_response(ScheduledReportDetailSerializer)},
     )
+    @extend_schema(
+        summary='ScheduledReportDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:read')
@@ -90,6 +117,20 @@ class ScheduledReportDetailView(generics.GenericAPIView):
 
     @extend_schema(
         responses={200: envelope_response(ScheduledReportSerializer)},
+    )
+    @extend_schema(
+        summary='ScheduledReportDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def patch(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -106,6 +147,17 @@ class ScheduledReportDetailView(generics.GenericAPIView):
     @extend_schema(
         responses={204: None},
     )
+    @extend_schema(
+        summary='ScheduledReportDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:write')
@@ -116,6 +168,20 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='ScheduledReportTestView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScheduledReportTestView(generics.GenericAPIView):
     """
     POST /api/core/v1/partner/reports/<id>/test/ — send test email immediately

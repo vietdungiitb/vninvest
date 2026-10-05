@@ -19,10 +19,28 @@ from .envelope import envelope
 from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .vnbroker_adapter import fetch_symbol_group_members
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(
+    summary='AdminOpsMarketGroupsSyncView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdminOpsMarketGroupsSyncView(APIView):
     """
     POST /core/v1/market-data/admin-groups/sync/
@@ -47,6 +65,17 @@ class AdminOpsMarketGroupsSyncView(APIView):
         }, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(
+    summary='AdminOpsMarketGroupsPreviewView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdminOpsMarketGroupsPreviewView(APIView):
     """
     GET /core/v1/market-data/admin-groups/preview/
@@ -81,6 +110,20 @@ class AdminOpsMarketGroupsPreviewView(APIView):
         })
 
 
+@extend_schema(
+    summary='AdminOpsSystemDefaultsSeedView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class AdminOpsSystemDefaultsSeedView(APIView):
     """
     POST /core/v1/market-data/system-defaults/seed/

@@ -11,6 +11,9 @@ from rest_framework.response import Response
 from ..envelope import envelope
 from ..models import CachedSymbolGroup, CustomSymbolGroup
 from ..views.base import SOCBaseView
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 
 def _slugify(name: str) -> str:
@@ -51,6 +54,20 @@ def _category_to_type(category: str) -> str:
     return 'other'
 
 
+@extend_schema(
+    summary='SymbolGroupListView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SymbolGroupListView(SOCBaseView):
     """
     GET  /api/soc/symbol-groups/  → Danh sách nhóm mã (cached predefined + custom).
@@ -169,6 +186,17 @@ class SymbolGroupDetailView(SOCBaseView):
         summary='Chi tiết nhóm mã tuỳ chỉnh',
         tags=['SOC Symbol Groups'],
     )
+    @extend_schema(
+        summary='SymbolGroupDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, slug: str):
         group = self._get_group_or_404(slug)
         if not group:
@@ -178,6 +206,20 @@ class SymbolGroupDetailView(SOCBaseView):
     @extend_schema(
         summary='Cập nhật nhóm mã tuỳ chỉnh',
         tags=['SOC Symbol Groups'],
+    )
+    @extend_schema(
+        summary='SymbolGroupDetailView PUT',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def put(self, request, slug: str):
         group = self._get_group_or_404(slug)
@@ -216,6 +258,17 @@ class SymbolGroupDetailView(SOCBaseView):
         summary='Xoá nhóm mã tuỳ chỉnh',
         tags=['SOC Symbol Groups'],
     )
+    @extend_schema(
+        summary='SymbolGroupDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, slug: str):
         group = self._get_group_or_404(slug)
         if not group:
@@ -224,6 +277,20 @@ class SymbolGroupDetailView(SOCBaseView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='SymbolGroupSyncView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SymbolGroupSyncView(SOCBaseView):
     """
     POST /api/soc/symbol-groups/sync/  → Trigger sync nhóm thị trường từ vnbroker provider.

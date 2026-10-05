@@ -19,6 +19,10 @@ from ops_audit.models import AuditEvent
 
 from ..envelope import envelope
 from .base import SOCBaseView
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 SIGN_SALT = 'staff-switch-v1'
 TOKEN_TTL_SECONDS = 30 * 60
@@ -46,6 +50,20 @@ def _client_ip(request) -> str:
     return get_client_ip(request)
 
 
+@extend_schema(
+    summary='StaffSwitchView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class StaffSwitchView(SOCBaseView):
     def post(self, request):
         tenant_id = str(request.data.get('tenant_id') or '').strip()

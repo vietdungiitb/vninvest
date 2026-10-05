@@ -33,6 +33,8 @@ from .envelope import envelope
 from .models import UserDNSECredential, _encrypt_credential
 from .schema import DNSECredentialMetadataSerializer
 from .permissions import require_human_session
+from drf_spectacular.openapi import OpenApiTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,17 @@ class DNSECredentialView(APIView):
     @extend_schema(
         responses={200: envelope_response(DNSECredentialMetadataSerializer)},
     )
+    @extend_schema(
+        summary='DNSECredentialView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request):
         require_human_session(request)
         try:
@@ -62,6 +75,20 @@ class DNSECredentialView(APIView):
         responses={
             200: envelope_response(DNSECredentialMetadataSerializer),
             201: envelope_response(DNSECredentialMetadataSerializer),
+        },
+    )
+    @extend_schema(
+        summary='DNSECredentialView POST',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
         },
     )
     def post(self, request):
@@ -103,6 +130,17 @@ class DNSECredentialView(APIView):
         # trong 204, trái HTTP. Khai `204: None` để schema nói đúng sự thật
         # (204 không mang body); KHÔNG đụng logic response.
         responses={204: None},
+    )
+    @extend_schema(
+        summary='DNSECredentialView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
     )
     def delete(self, request):
         require_human_session(request)

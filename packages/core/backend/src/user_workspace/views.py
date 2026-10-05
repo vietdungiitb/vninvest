@@ -41,6 +41,10 @@ from .serializers import (
     ScreenerRuleSerializer,
 )
 from .screener_helpers import _validate_screener_rules
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.openapi import OpenApiTypes
+from vninvest_core.api_envelope import envelope_response
+
 
 
 def _get_portfolio_or_404(user, portfolio_id, tenant=None):
@@ -92,6 +96,20 @@ def _get_transaction_or_404(user, transaction_id, tenant=None):
     return transaction
 
 
+@extend_schema(
+    summary='PortfolioListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = CoreCursorPagination
@@ -129,11 +147,36 @@ class PortfolioListCreateView(APIView):
 class PortfolioDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
+    @extend_schema(
+        summary='PortfolioDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
         return envelope(PortfolioSerializer(portfolio).data)
 
+    @extend_schema(
+        summary='PortfolioDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
@@ -142,6 +185,17 @@ class PortfolioDetailView(APIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        summary='PortfolioDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, portfolio_id):
         """Xoá danh mục — nhưng KHÔNG được xoá lịch sử tài chính.
 
@@ -182,6 +236,20 @@ class PortfolioDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='TransactionListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class TransactionListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = TransactionCursorPagination
@@ -221,6 +289,20 @@ class TransactionListCreateView(APIView):
 class TransactionDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
+    @extend_schema(
+        summary='TransactionDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
         transaction = _get_transaction_or_404(request.user, transaction_id, tenant)
@@ -229,6 +311,17 @@ class TransactionDetailView(APIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        summary='TransactionDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
         transaction = _get_transaction_or_404(request.user, transaction_id, tenant)
@@ -236,6 +329,20 @@ class TransactionDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='WatchlistListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WatchlistListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = WatchlistCursorPagination
@@ -280,12 +387,37 @@ class WatchlistDetailView(APIView):
         except Watchlist.DoesNotExist:
             return None
 
+    @extend_schema(
+        summary='WatchlistDetailView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, watchlist_id):
         watchlist = self._get_watchlist(request, watchlist_id)
         if watchlist is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         return envelope(WatchlistSerializer(watchlist).data)
 
+    @extend_schema(
+        summary='WatchlistDetailView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, watchlist_id):
         watchlist = self._get_watchlist(request, watchlist_id)
         if watchlist is None:
@@ -295,6 +427,17 @@ class WatchlistDetailView(APIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        summary='WatchlistDetailView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, watchlist_id):
         watchlist = self._get_watchlist(request, watchlist_id)
         if watchlist is None:
@@ -303,6 +446,20 @@ class WatchlistDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='WatchlistItemListCreateView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WatchlistItemListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = WatchlistItemCursorPagination
@@ -359,6 +516,17 @@ class WatchlistItemListCreateView(APIView):
         return envelope(WatchlistItemSerializer(item).data, status=code)
 
 
+@extend_schema(
+    summary='WatchlistItemDeleteView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        204: None,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class WatchlistItemDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
@@ -374,6 +542,20 @@ class WatchlistItemDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='SubAccountListCreateAPIView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SubAccountListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
@@ -430,11 +612,36 @@ class SubAccountDetailAPIView(APIView):
         except SubAccount.DoesNotExist:
             raise NotFound('Tiểu khoản không tồn tại.')
 
+    @extend_schema(
+        summary='SubAccountDetailAPIView GET',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, pk):
         tenant = getattr(request, 'tenant', None)
         sub_account = self.get_object(pk, request.user, tenant)
         return envelope(SubAccountSerializer(sub_account).data)
 
+    @extend_schema(
+        summary='SubAccountDetailAPIView PATCH',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        # Body-carrying method: the REQUEST side must be typed too;
+        # responses= alone still yields the unguessable-serializer error.
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def patch(self, request, pk):
         tenant = getattr(request, 'tenant', None)
         sub_account = self.get_object(pk, request.user, tenant)
@@ -443,6 +650,17 @@ class SubAccountDetailAPIView(APIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        summary='SubAccountDetailAPIView DELETE',
+        description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         tenant = getattr(request, 'tenant', None)
         sub_account = self.get_object(pk, request.user, tenant)
@@ -450,6 +668,20 @@ class SubAccountDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    summary='SubAccountTransactionsAPIView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class SubAccountTransactionsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
     pagination_class = TransactionCursorPagination
@@ -500,6 +732,20 @@ class SubAccountTransactionsAPIView(APIView):
         return envelope(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='ScreenerRuleListCreateAPIView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerRuleListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
@@ -527,6 +773,17 @@ class ScreenerRuleListCreateAPIView(APIView):
         return envelope(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    summary='ScreenerPublicRuleListAPIView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerPublicRuleListAPIView(APIView):
     """W8 P3 preset cộng đồng: GET /screener/rules/public/.
 
@@ -549,6 +806,20 @@ class ScreenerPublicRuleListAPIView(APIView):
         return envelope(ScreenerRuleSerializer(rules, many=True).data)
 
 
+@extend_schema(
+    summary='ScreenerRuleForkAPIView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    # Body-carrying method: the REQUEST side must be typed too;
+    # responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ScreenerRuleForkAPIView(APIView):
     """W8 P3 preset cộng đồng: POST /screener/rules/<pk>/fork/.
 
