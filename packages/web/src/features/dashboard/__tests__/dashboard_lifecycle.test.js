@@ -1,15 +1,22 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
+import { jest, describe, test, expect, beforeEach, beforeAll } from "@jest/globals";
 
 // Scoped manual mock: the fake React harness lives in test/mocks/, NOT in
 // <rootDir>/__mocks__/ — Jest auto-applies a node-module manual mock to every
 // suite, which broke 11/18 suites. See test/mocks/react.js + ledger Entry 234.
-jest.mock("react", () => require("../../../../test/mocks/react.js"));
+//
+// ESM: this package is `"type": "module"`, so `require` does not exist here.
+// Use `jest.unstable_mockModule` + a dynamic `import()` in the factory.
+jest.unstable_mockModule("react", () => import("../../../../test/mocks/react.js"));
 
 let useCoreDashboardData;
 let collectUniqueSortedSymbols;
 let coreApiAdapter;
+let mockReact;
 
 beforeAll(async () => {
+  // Must resolve the mock BEFORE the hook under test is imported, otherwise
+  // `useCoreDashboardData` captures the real React and its state is invisible.
+  mockReact = await import("react");
   ({ useCoreDashboardData } = await import("../useCoreDashboardData.js"));
   ({ collectUniqueSortedSymbols } = await import("../../../utils/dashboardSymbols.js"));
   ({ coreApiAdapter } = await import("../../../adapters/coreApiAdapter.js"));
@@ -18,8 +25,7 @@ beforeAll(async () => {
 describe("SaaS Native Dashboard Lifecycle Tests", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
-    const m = require("react");
-    m._resetMockState();
+    mockReact._resetMockState();
   });
 
   // ---------------------------------------------------------------------------
@@ -77,7 +83,7 @@ describe("SaaS Native Dashboard Lifecycle Tests", () => {
 
       const hookResult = useCoreDashboardData({ portfolioId: 1, enabled: true });
 
-      const m = require("react");
+      const m = mockReact;
       const effectObj = m._getMockEffects().find(e => e.deps && e.deps.some(d => d === 0));
       expect(effectObj).toBeDefined();
 
@@ -111,7 +117,7 @@ describe("SaaS Native Dashboard Lifecycle Tests", () => {
 
       const hookResult = useCoreDashboardData({ portfolioId: 1, enabled: true });
 
-      const m = require("react");
+      const m = mockReact;
       const effectObj = m._getMockEffects().find(e => e.deps && e.deps.some(d => d === 0));
       expect(effectObj).toBeDefined();
 
