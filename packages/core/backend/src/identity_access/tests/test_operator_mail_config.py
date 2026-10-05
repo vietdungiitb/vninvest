@@ -13,7 +13,7 @@ sys.modules['googleapiclient.discovery'] = MagicMock()
 import json
 from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
-from django.test import TransactionTestCase, override_settings
+from django.test import TestCase, override_settings
 from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -29,7 +29,12 @@ TEST_FERNET_KEY = Fernet.generate_key().decode()
     DEFAULT_FROM_EMAIL='fallback@vninvest.vn'
 )
 @patch.dict(os.environ, {'MAIL_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
-class OperatorMailConfigAPITests(TransactionTestCase):
+# `TestCase`, not `TransactionTestCase`: these tests never need a committed write.
+# `TransactionTestCase` flushes all 123 tables after every test (measured 12.9-14.6s
+# per TRUNCATE here), which is what made this module cost 175s for 8 tests.
+# `test_activate_config_and_concurrency_deactivation` is named for concurrency but
+# is single-threaded: it only asserts that activating one config flips the other.
+class OperatorMailConfigAPITests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()

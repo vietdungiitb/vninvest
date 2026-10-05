@@ -6346,3 +6346,109 @@ runner de do tung test **khong dung** — wrapper lam 387 loi nen bo.
   khong co test nao bat duoc regression o 3 app do. Pham vi kiem chuc co that la
   `manage.py spectacular` (no import toan bo view) + `manage.py check`.
   Full suite se chay lai sau khi toi uu `TransactionTestCase` o commit sau.
+
+## Entry 247: Toi uu `TransactionTestCase` (suite 26 -> 19 phut) + sua 7 view bi khai sai envelope (2026-10-05)
+
+- **Date**: 2026-10-05
+- **Branch**: `dev` (tu `359731b25`)
+- **Scope**: 3 file test `identity_access` + 3 file view + baseline. Khong migration.
+
+### 1. Do chi phi: 1130 s / 427 test cua `identity_access`
+
+Do tung label roi do lai 4 module cham nhat, tat ca deu la `TransactionTestCase`:
+
+| Module | Truoc | Sau | Ghi chu |
+|---|---|---|---|
+| `test_login_upgrade` | 227.2s | 52s | 12 test OK |
+| `test_register_upgrade` | 223.5s | 8.6s | 10 test OK, **co sua them** |
+| `test_operator_mail_config` | 175.1s | 61s | 8 test OK |
+| `test_tenantreg_c5_service_account_uniqueness` | 156.2s | **khong doi** | xem §3 |
+| **Tong `identity_access`** | **1130.5s** | **241.3s** | 427 test OK |
+
+Nguyen nhan: `TransactionTestCase` flush toan bo DB **sau moi test**, va mot
+lan `TRUNCATE` tren 123 bang do duoc o **12.9-14.6 s**.
+
+### 2. Hai chinh sua bat buoc, khong phai chi doi base class
+
+**a) `on_commit` bi `TestCase` bo qua.** `test_happy_path_registration_atomic_
+provisioning` assert `trigger_email_verification_flow.delay` da duoc goi, nhung
+view dispatch qua `transaction.on_commit(...)`
+(`identity_access/views/register.py:287,605`). `TestCase` **huy** callback khi
+rollback ⇒ mock khong bao gio duoc goi ⇒ assertion vo nghia. Do la ly do test
+nay **thuc su** can `TransactionTestCase`. Sua bang
+`self.captureOnCommitCallbacks(execute=True)` — giu nhanh va giu coverage.
+
+**b) `IntegrityError` lam hong transaction.** `test_tc_concurrency_01` expect
+`IntegrityError` tu DB constraint. Trong `TestCase` loi do lam transaction cu
+hong, moi truy van sau do trong cung test deu that bai. Bo them
+`transaction.atomic()` (savepoint) quanh `assertRaises`.
+
+Ca 2 truong hop deu **test bat duoc** khi chuyen base class — la ly do khong
+the doi `mechanical` toan bo 8 class.
+
+### 3. Mot class **khong** chuyen, va co ly do ghi san trong code
+
+`DuplicateServiceAccountMergeTests` ghi ro:
+`TransactionTestCase (not TestCase) on purpose: the DROP/ADD CONSTRAINT has to
+commit on its own, because PostgreSQL refuses ALTER TABLE while deferred FK
+trigger events from earlier inserts in the same transaction are still pending.`
+
+Dung — `ALTER TABLE` that trong transaction co deferred FK event bi Postgres tu
+choi. Giu nguyen `TransactionTestCase`, ton 156 s.
+
+### 4. 7 view bi khai SAI payload trong commit truoc — da sua
+
+`test_flat_views_are_not_documented_as_envelope`
+(`vninvest_core/tests/test_api_envelope_schema.py:528`) **do duoi lenh bat**:
+
+```
+'F4_FLAT GET /core/v1/advisory/status/{advisory_id}/'
+'FLAT GET|PATCH /core/v1/widget/config/'
+'FLAT GET /core/v1/widget/ad/'
+'FLAT GET /api/v1/content/display/'
+'FLAT POST /api/v1/metrics/log/view/'
+'FLAT POST /api/v1/metrics/log/click/{campaign_id}/'
+```
+
+Tat ca return `Response({...})` **phang** (khong boc envelope) ma commit truoc
+khai bang `envelope_response()` ⇒ schema khai dang `{data, meta}` khong co that.
+Da doi sang `OpenApiTypes.OBJECT` (van la schema, van tinh la da document) cho 7
+view do. `support/views.py` khong bi canh bao ⇒ no tra envelope that.
+
+Lesson: them `@extend_schema` **kem** kiem shape that cua view, khong chi them
+de tat loi.
+
+### 5. `operation_id` o cap class lam hong schema
+
+Drf-spectacular: `using @extend_schema on viewset class ... with parameters
+operation_id or operation will most likely result in a broken schema`. Chuyen
+`operation_id` xuong **method** `get` cua `TicketDetailView`. Ket qua: loi 986
+(unique 181) va khong con canh bao.
+
+### 6. Hoan nguyen mot sua SAI o commit truoc
+
+`test_warm_intraday_universe_consumes_plan_items_and_persists_rows`: commit
+`e6664b34e` da **doi assertion FRESH -> WARM** do mot lan full-suite bao `warm`.
+Do la **quan sat sai** — fixture ghi tick tai `timezone.now()`
+(`test_tasks.py:594`) va coverage dung `as_of = timezone.now()`
+(`global_symbol_coverage.py:468`) ⇒ tuoi ~0, nam trong `_INTRADAY_FRESH_WINDOW`
+(1h) ⇒ FRESH. Chay rieng va chay ca gói `data_ingest` deu ra FRESH. Da hoan
+nguyen ve FRESH.
+
+Day la lan thu hai trong session nay toi sua test theo mot lan quan sat le
+(thoai trong Task 6.3 cua VNINVEST_WORKFLOW: 3 lan sai cung mot nguyen nhan) —
+`hostname`-va-clock phai chay nhieu lan moi duoc.
+
+### 7. Xac minh
+
+- `run_tests.py` (tests + src): **PASS 2870/2870**, 1002 s / 18.8 phut
+  (truoc khi toi uu: 1511 s; tai dau session: 2870 OK nhung `--src-only` timeout
+  >25 phut)
+- `manage.py spectacular`: Errors=986 (181 unique) Warnings=184 (182 unique)
+- `check-openapi-schema-budget.py`: OK, bang baseline
+- `test_api_envelope_schema`: 21/21 OK
+- `pre-push-gate.mjs`: 17 PASS / 0 SKIP / 0 FAIL
+
+CHUA CHAY: playwright visual, vitest component suite. Con ~6 phut de toi uu —
+`test_tenantreg_c5` (156 s, co ly do ky thiet) va cac module con lai cua
+`user_workspace` (475 s) / `service_ops` (204 s).

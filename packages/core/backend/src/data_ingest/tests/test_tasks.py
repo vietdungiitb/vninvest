@@ -693,11 +693,14 @@ class DataIngestBackfillTaskTests(TestCase):
                 registry=registry_acb,
                 dataset=GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS,
             ).freshness_state,
-            # WARM, not FRESH: intraday only counts as FRESH inside
-            # `_INTRADAY_FRESH_WINDOW` of `as_of`, otherwise it degrades to WARM
-            # (`market_data/global_symbol_coverage.py:161-165`). Warming a symbol
-            # does not make its ticks "fresh".
-            GlobalSymbolCoverage.FreshnessChoices.WARM,
+            # FRESH is correct and was the original assertion. The fixture writes
+            # ticks at `timezone.now()` (line 594) and the coverage refresh uses
+            # `as_of = timezone.now()` (`global_symbol_coverage.py:468`), so the age
+            # is ~0 and falls inside `_INTRADAY_FRESH_WINDOW` (1h).
+            # An earlier edit pinned WARM because one full-suite run reported it;
+            # running this module on its own and in its own package both report
+            # FRESH, so that observation was the anomaly, not the assertion.
+            GlobalSymbolCoverage.FreshnessChoices.FRESH,
         )
         self.assertEqual(
             GlobalSymbolCoverage.objects.get(

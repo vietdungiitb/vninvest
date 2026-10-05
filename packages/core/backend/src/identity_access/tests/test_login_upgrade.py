@@ -11,7 +11,7 @@ sys.modules['googleapiclient'] = MagicMock()
 sys.modules['googleapiclient.discovery'] = MagicMock()
 
 from django.contrib.auth import get_user_model
-from django.test import TransactionTestCase, override_settings
+from django.test import TestCase, override_settings
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -26,7 +26,12 @@ User = get_user_model()
     LOGIN_SUBNET_LIMIT_THRESHOLD=15,
     LOGIN_USER_LIMIT_THRESHOLD=3,
 )
-class SaaSUserLoginUpgradeTests(TransactionTestCase):
+# `TestCase`, not `TransactionTestCase`: nothing here needs a committed write.
+# `TransactionTestCase` flushes the WHOLE database after every test, and with 123
+# tables one TRUNCATE measured 12.9-14.6s on this Postgres — so the 12 tests in
+# this class cost 227s, all of it teardown. `TestCase` wraps each test in a
+# transaction and rolls it back instead, which is the right tool here.
+class SaaSUserLoginUpgradeTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()

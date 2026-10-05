@@ -195,19 +195,24 @@ class TicketListCreateView(APIView):
         return Response(SupportTicketListSerializer(ticket).data, status=status.HTTP_201_CREATED)
 
 
-@extend_schema(
-    summary='Chi tiet 1 ticket',
-    operation_id='support_ticket_detail',
-    responses={
-        200: envelope_response(SupportTicketListSerializer),
-        401: OpenApiTypes.OBJECT,
-        403: OpenApiTypes.OBJECT,
-        404: OpenApiTypes.OBJECT,
-    },
-)
 class TicketDetailView(APIView):
     permission_classes = [IsAuthenticated, IsTicketOwnerOrStaff]
 
+    # `operation_id` is set per METHOD, not on the class: drf-spectacular warns that
+    # a class-level `operation_id` "will most likely result in a broken schema" and
+    # it would also be applied to every method. It is needed here because
+    # `/tickets/` and `/tickets/{ticket_id}/` both derive `core_v1_tickets_retrieve`
+    # now that both views are documented.
+    @extend_schema(
+        summary='Chi tiet 1 ticket',
+        operation_id='support_ticket_detail',
+        responses={
+            200: envelope_response(SupportTicketListSerializer),
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, ticket_id):
         tenant = getattr(request, 'tenant', None)
         ticket = _ticket_query_for_user(request.user, tenant).filter(id=ticket_id).first()
