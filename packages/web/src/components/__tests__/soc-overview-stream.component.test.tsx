@@ -103,6 +103,11 @@ describe("SocOverviewPanel — P3 SSE overview stream", () => {
     render(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("SVC A")).toBeTruthy());
 
+    // SocOverviewPanel.tsx:226 — stream chỉ mở khi `streamEnabled`, tức cần
+    // `!loading`. Dữ liệu đã render chưa chắc `loading` đã false, nên phải CHỜ
+    // EventSource được tạo thay vì giả định nó có sẵn (nếu không, test fail theo
+    // timing chứ không phải theo logic).
+    await waitFor(() => expect(esInstances.length).toBeGreaterThan(0));
     const es = esInstances[0] as unknown as ESInstance;
     expect(es).toBeTruthy();
     await act(async () => { es.triggerOpen(); });
@@ -125,6 +130,8 @@ describe("SocOverviewPanel — P3 SSE overview stream", () => {
     adapterMocks.getSocOverviewSummary.mockResolvedValue(baseline);
     render(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("SVC A")).toBeTruthy());
+    // Xem ghi chú ở test trên: stream mở sau khi `loading` false.
+    await waitFor(() => expect(esInstances.length).toBeGreaterThan(0));
     const es = esInstances[0] as unknown as ESInstance;
     expect(es).toBeTruthy();
     expect(screen.getByText(/Polling|Đang kết nối/)).toBeTruthy();

@@ -6671,3 +6671,40 @@ khong xuat hien trong harness, test fail ma khong bao gi sai logic.
 - jest dashboard_lifecycle: **PASS 5/5**
 - jest toan bo web: **PASS 271/271, 20/20 suites**
 - CHUA CHAY: playwright visual, vitest component
+---
+
+## Entry 252 - Chay duoc vitest component: 1 race test that (moi)
+
+### 1. Trang thai
+
+`npm run test:components` (vitest) **CHUA BAO GIO chay duoc** trong phien nay.
+Sau khi chay: **105/105 file, 699/699 test PASS**.
+
+### 2. Loi that: race cua TEST, khong phai bug san pham
+
+`soc-overview-stream.component.test.tsx` that tai
+`expect(esInstances[0]).toBeTruthy()` — `EventSource` chua duoc tao.
+
+Ly do: `SocOverviewPanel.tsx:226`
+
+```
+const streamEnabled = isDocVisible && ... && !loading;
+```
+
+SSE **chi mo khi `!loading`**. Test chi cho `waitFor` data render ("SVC A"),
+chua cho `loading` ve false, nen EventSource chua kip sinh. Test 2 trong cung
+file pass tinh co — no phai race, dung la test 1.
+
+Sua: `await waitFor(() => expect(esInstances.length).toBeGreaterThan(0))` truoc
+khi lay `esInstances[0]`. Ap dung cho ca 2 test de khong con test nao phu thuoc
+timing.
+
+KHONG bat buoc `!loading` — day la hanh vi dung: khong mo socket khi chua co
+gi de hien thi.
+
+### 3. Xac minh
+
+- vitest 1 file: 2/2 PASS, chay 3 lan lien deu xanh (khong con flake)
+- vitest toan bo: **105/105 file, 699/699 test PASS** (truoc 104/105, 698/699)
+
+CHUA CHAY: `npm run test:visual` (playwright) — xem Entry 253
