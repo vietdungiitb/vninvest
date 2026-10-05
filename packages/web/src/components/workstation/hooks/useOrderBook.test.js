@@ -10,10 +10,13 @@ const mockAdapter = {
   getRealtimeDepthChart: jest.fn(),
 };
 
-// `jest.mock` chứ KHÔNG `jest.unstable_mockModule`: babel ép hook về CommonJS,
-// còn `unstable_mockModule` chỉ chặn ESM `import()` ⇒ mock im lặng không ăn,
-// adapter thật được gọi và mọi `expect(mockAdapter...)` thành 0 lần.
-jest.mock('../../../adapters/coreApiAdapter.js', () => ({
+// `jest.unstable_mockModule`, NOT `jest.mock`: package.json declares
+// `"type": "module"`, so EVERY `.js` file is native ESM regardless of
+// `jest.config.js` (`extensionsToTreatAsEsm` lists only `.jsx/.ts/.tsx`).
+// In native ESM `jest.mock` is rewritten into a `require` call, which throws
+// `ReferenceError: require is not defined` and killed this whole suite. The
+// ESM-correct pair is `unstable_mockModule` + a dynamic `import()`.
+jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 
