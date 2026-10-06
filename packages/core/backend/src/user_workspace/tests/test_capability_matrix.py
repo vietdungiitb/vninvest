@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import ast
 import pathlib
+from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -574,3 +576,124 @@ class OpeningBalanceWritePathTests(TestCase):
         )
         self.assertEqual(resp.status_code, 400, f'nhan {resp.status_code}: {resp.content[:300]}')
         self.assertFalse(Portfolio.objects.filter(name='no-source').exists())
+
+
+class SafeMethodNotWriteLockedTests(TestCase):
+    """B4 — `WorkspacePermission` phai CHI khoa method ghi.
+
+    Ban dau ap `portfolio_write` cho ca class nen `get()` cua list/detail view
+    cung bi khoa: `viewer` co `dashboard:read` nhung khong co `sa:write`, va
+    `WORKSPACE_PERMISSIONS['portfolio_read']` thanh khoa chet. Do la hoi quy
+    kha nang doc — nguoi dung mat quyen doc danh muc cua chinh minh.
+    """
+
+    def _member(self, username, role):
+        user = User.objects.create_user(username=username, password='x')
+        owner = User.objects.create_user(username=f'{username}-owner', password='x')
+        tenant = CoreTenant.objects.create(
+            tenant_code=f't-{username}', display_name=username,
+            owner_user=owner, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        TenantMember.objects.create(tenant=tenant, user=user, role=role)
+        return user, tenant
+
+    def _client(self, user, tenant):
+        client = APIClient()
+        client.force_login(user)
+        client.defaults['HTTP_X_TENANT_ID'] = tenant.public_id
+        return client
+
+    def test_viewer_can_still_read_portfolios(self):
+        user, tenant = self._member('sm-viewer', 'viewer')
+        Portfolio.objects.create(
+            name='p', tenant=tenant, user=user,
+            opening_balance=Decimal('1000'), opening_balance_source='fixture',
+        )
+        client = self._client(user, tenant)
+        resp = client.get('/core/v1/workspace/portfolios/')
+        self.assertEqual(
+            resp.status_code, 200,
+            f'viewer mat quyen DOC danh muc: {resp.status_code} {resp.content[:250]}',
+        )
+
+    def test_viewer_can_still_read_transactions(self):
+        user, tenant = self._member('sm-viewer-tx', 'viewer')
+        portfolio = Portfolio.objects.create(
+            name='p', tenant=tenant, user=user,
+            opening_balance=Decimal('1000'), opening_balance_source='fixture',
+        )
+        Transaction.objects.create(
+            portfolio=portfolio, tenant=tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5),
+            price=Decimal('10000'), quantity=100,
+        )
+        client = self._client(user, tenant)
+        resp = client.get(f'/core/v1/workspace/portfolios/{portfolio.pk}/transactions/')
+        self.assertEqual(
+            resp.status_code, 200,
+            f'viewer mat quyen DOC giao dich: {resp.status_code} {resp.content[:250]}',
+        )
+
+    def test_viewer_is_still_blocked_from_writing(self):
+        """B4 khong duoc sua thanh "mo cho tat ca"."""
+        user, tenant = self._member('sm-viewer-w', 'viewer')
+        client = self._client(user, tenant)
+        resp = client.post(
+            '/core/v1/workspace/portfolios/', {'name': 'x'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 403, resp.content[:250])
+
+
+class OpeningBalanceValidationScopeTests(TestCase):
+    """M2/M3 — validator dung pham vi va khop `max_length` cua cot DB."""
+
+    def _owner(self, username):
+        user = User.objects.create_user(username=username, password='x')
+        tenant = CoreTenant.objects.create(
+            tenant_code=f't-{username}', display_name=username,
+            owner_user=user, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        client = APIClient()
+        client.force_login(user)
+        client.defaults['HTTP_X_TENANT_ID'] = tenant.public_id
+        return user, tenant, client
+
+    def test_source_longer_than_db_column_is_400_not_500(self):
+        """M2: serializer `max_length=64` vs cot DB `varchar(32)` cho HTTP 500."""
+        _u, _t, client = self._owner('ob-long')
+        resp = client.post(
+            '/core/v1/workspace/portfolios/',
+            {'name': 'x', 'opening_balance': '1000',
+             'opening_balance_source': 'a' * 33},
+            format='json',
+        )
+        self.assertEqual(
+            resp.status_code, 400,
+            f'nguon qua dai phai la 400, nhan {resp.status_code}: {resp.content[:250]}',
+        )
+
+    def test_unrelated_patch_is_not_blocked_by_missing_source(self):
+        """M3: danh muc so du co, nguon rong — PATCH doi TEN van phai chay."""
+        user, tenant, client = self._owner('ob-rename')
+        portfolio = Portfolio.objects.create(
+            name='old', tenant=tenant, user=user,
+            opening_balance=Decimal('1000000'), opening_balance_source='',
+        )
+        resp = client.patch(
+            f'/core/v1/workspace/portfolios/{portfolio.pk}/',
+            {'name': 'new'}, format='json',
+        )
+        self.assertEqual(
+            resp.status_code, 200,
+            f'PATCH doi ten bi chan oi: {resp.status_code} {resp.content[:250]}',
+        )
+        portfolio.refresh_from_db()
+        self.assertEqual(portfolio.name, 'new')
+
+    def test_setting_balance_without_source_is_rejected(self):
+        _u, _t, client = self._owner('ob-nosrc2')
+        resp = client.post(
+            '/core/v1/workspace/portfolios/',
+            {'name': 'x', 'opening_balance': '1000'}, format='json',
+        )
+        self.assertEqual(resp.status_code, 400, resp.content[:250])

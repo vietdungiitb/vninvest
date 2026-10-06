@@ -4,15 +4,16 @@ import type { AllocationItem, HoldingItem, PortfolioItem, PortfolioSummary } fro
 /**
  * Unwrap the backend envelope.
  *
- * `user_workspace/envelope.py` wraps list payloads as
- * `{data: {count, results}, meta}`, and `services/http.ts` returns the axios
- * response untouched (no response interceptor unwrap — that is deliberate, it
- * also handles the token refresh). So `response.data.results` was always
- * `undefined` and every function here returned an empty array: the mobile
- * portfolio dashboard showed nothing at all.
+ * `user_workspace/envelope.py` has **two** list shapes, and the difference is
+ * per endpoint:
  *
- * Accepts both shapes so a future backend change that stops wrapping cannot
- * silently return an empty list again.
+ *   `envelope([...])`            -> `{data: [ ... ], meta}`   (holdings, technicals)
+ *   `paginated_envelope([...])`  -> `{data: {count, results}, meta}` (portfolios, transactions)
+ *
+ * `services/http.ts` returns the axios response untouched (its response
+ * interceptor only handles the token refresh), so this must unwrap here.
+ * Handling only the paginated shape made `getHoldings` and `getAllocation`
+ * return `[]` — the same empty-list bug this function exists to fix, just moved.
  */
 function unwrapList<T>(payload: unknown): T[] {
   if (Array.isArray(payload)) {
@@ -22,6 +23,9 @@ function unwrapList<T>(payload: unknown): T[] {
     const envelope = payload as { data?: unknown; results?: unknown };
     if (Array.isArray(envelope.results)) {
       return envelope.results as T[];
+    }
+    if (Array.isArray(envelope.data)) {
+      return envelope.data as T[];
     }
     if (envelope.data && typeof envelope.data === 'object') {
       const inner = envelope.data as { results?: unknown };

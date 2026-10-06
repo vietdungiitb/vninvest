@@ -55,21 +55,30 @@ interface TransactionForm {
 function usePortfolios() {
   const [portfolios, setPortfolios] = useState<{ id: string | number; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  // Same reason as `useTransactions`: setState after unmount leaks, and a
+  // late response would overwrite fresher state.
+  const mountedRef = useRef(true);
+  const requestIdRef = useRef(0);
 
   const reload = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       const res = (await (coreApiAdapter as any).getPortfolios()) as PortfoliosResponse;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setPortfolios(res?.results ?? []);
     } catch {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setPortfolios([]);
     } finally {
-      setLoading(false);
+      if (mountedRef.current && requestId === requestIdRef.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     void reload();
+    return () => { mountedRef.current = false; };
   }, [reload]);
 
   return { portfolios, loading };
@@ -80,20 +89,26 @@ function useTransactions({ portfolioId }: { portfolioId?: string | number } = {}
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  // Một ref `mountedRef` không đủ: nó theo dõi mount/unmount, không theo dõi
+  // **danh tính request**. Đổi `portfolioId` thì request cũ còn bay sẽ thấy
+  // `mountedRef.current === true` và ghi đè danh sách của portfolio mới.
+  // `requestIdRef` đánh số từng lần tải; chỉ lần tải mới nhất được ghi state.
+  const requestIdRef = useRef(0);
 
   const reload = useCallback(async () => {
     if (!portfolioId) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await (coreApiAdapter as any).getTransactions(portfolioId) as TransactionsResponse;
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setTransactions((res?.results ?? []) as Transaction[]);
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setError(err && typeof err === 'object' && 'message' in err ? (err as Error).message : "Không thể tải giao dịch.");
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (mountedRef.current && requestId === requestIdRef.current) setLoading(false);
     }
   }, [portfolioId]);
 

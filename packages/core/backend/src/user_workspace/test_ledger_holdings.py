@@ -504,12 +504,20 @@ class PortfolioSummaryNavWiringTest(TestCase):
         # `portfolio_valuation` chặn NAV đúng theo thiết kế — đó là một test
         # riêng ở `test_review_findings_wave2.py`, không phải trạng thái mà
         # endpoint này phải phục vụ.
-        Transaction.objects.create(
+        #
+        # `bulk_create` vì `create()` sẽ bắn `post_save` và signal P0-2 tự dựng
+        # `LedgerEntry` + `CashFlow` — trùng `external_id` với hai dòng dựng tay
+        # ngay bên dưới ⇒ `IntegrityError`. Fixture này cố ý dựng trạng thái
+        # **sau backfill** (0022 đã ghi, ứng dụng chưa từng ghi), nên phải bỏ qua
+        # signal chứ không được để signal làm thay.
+        Transaction.objects.bulk_create([
+        Transaction(
             portfolio=self.portfolio, tenant=self.tenant, symbol='VCB',
             transaction_type=BUY, date=date(2026, 9, 20),
             price=Decimal('50000'), quantity=100,
             fee=Decimal('1000'), tax=Decimal('500'), external_id='navwire-1',
-        )
+        ),
+        ])
         buy = LedgerEntry.objects.create(
             tenant=self.tenant, portfolio=self.portfolio, entry_type='BUY',
             symbol='VCB', trade_date=date(2026, 9, 20), quantity=100,
@@ -580,11 +588,16 @@ class PortfolioSummaryNavWiringTest(TestCase):
         """
         from user_workspace.models import CashFlow, LedgerEntry
 
-        Transaction.objects.create(
+        # `bulk_create`: xem `setUp` — `create()` bắn signal P0-2 và tự ghi
+        # `LedgerEntry(external_id='navwire-2')`, trùng với dòng dựng tay ngay
+        # dưới đây. Fixture cố ý dựng trạng thái sau-backfill.
+        Transaction.objects.bulk_create([
+        Transaction(
             portfolio=self.portfolio, tenant=self.tenant, symbol='ACB',
             transaction_type=BUY, date=date(2026, 9, 20),
             price=Decimal('30000'), quantity=10, external_id='navwire-2',
-        )
+        ),
+        ])
         acb = LedgerEntry.objects.create(
             tenant=self.tenant, portfolio=self.portfolio, entry_type='BUY',
             symbol='ACB', trade_date=date(2026, 9, 20), quantity=10,
@@ -611,11 +624,14 @@ class PortfolioSummaryNavWiringTest(TestCase):
         """
         from user_workspace.models import CashFlow, LedgerEntry
 
-        Transaction.objects.create(
+        # `bulk_create`: xem `setUp` — tránh signal P0-2 ghi trùng khoá.
+        Transaction.objects.bulk_create([
+        Transaction(
             portfolio=self.portfolio, tenant=self.tenant, symbol='VCB',
             transaction_type=SELL, date=date(2026, 9, 21),
             price=Decimal('55000'), quantity=150, external_id='navwire-3',
-        )
+        ),
+        ])
         sell = LedgerEntry.objects.create(
             tenant=self.tenant, portfolio=self.portfolio, entry_type='SELL',
             symbol='VCB', trade_date=date(2026, 9, 21), quantity=150,

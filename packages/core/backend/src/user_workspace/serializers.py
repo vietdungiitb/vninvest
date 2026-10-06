@@ -61,20 +61,30 @@ class PortfolioSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     opening_balance_source = serializers.CharField(
-        max_length=64,
+        # Phải khớp `models.py:57-58` (`max_length=32`). Đặt 64 ở đây làm giá
+        # trị 33..64 ký tự lọt qua serializer rồi nổ `DataError` ở tầng DB ⇒
+        # HTTP 500 thay vì 400, kèm mất luôn dòng audit.
+        max_length=32,
         required=False,
         allow_blank=True,
         allow_null=True,
     )
 
     def validate(self, attrs):
-        # NAV is only computable when the balance is set, and a balance without a
-        # stated provenance is an accounting figure nobody can trace later.
-        balance = attrs.get('opening_balance', getattr(self.instance, 'opening_balance', None))
-        source = attrs.get(
-            'opening_balance_source',
-            getattr(self.instance, 'opening_balance_source', None),
-        )
+        # NAV chỉ tính được khi có số dư mở đầu, và một số dư không rõ nguồn gốc
+        # là số liệu kế toán không ai truy vết được sau này.
+        #
+        # Chỉ kiểm khi request **chạm** vào `opening_balance`. Đọc
+        # `self.instance` một cách vô điều kiện sẽ chặn luôn những PATCH không
+        # liên quan (đổi tên chẳng hạn) trên mọi danh mục cũ đã có số dư mà
+        # thiếu nguồn — một lỗi dữ liệu lịch sử biến thành danh mục không sửa
+        # được tên. `partial=True` là thứ quyết định phạm vi này.
+        if 'opening_balance' not in attrs:
+            return attrs
+        balance = attrs.get('opening_balance')
+        source = attrs.get('opening_balance_source')
+        if source is None:
+            source = getattr(self.instance, 'opening_balance_source', None)
         if balance not in (None, '') and not (source or '').strip():
             raise serializers.ValidationError({
                 'opening_balance_source': (

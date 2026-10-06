@@ -19,14 +19,39 @@ tính được sau giao dịch đầu tiên.
 **Không sửa `ledger/services.py`.** File đó đang được claim `in-progress` của
 agent khác (`docs/CLAIMS.md:277`). Module này chỉ **ghi**, không đọc cache.
 
-**Bất biến append-only — vì sao xoá giao dịch không xoá dòng sổ.**
+---
+
+## Khoá `external_id` — phải trùng lược đồ của `0022`
+
+Migration `0022` đã dựng sẵn cột `external_id` cho mọi giao dịch tồn tại:
+
+    source_ref = str(tx.external_id or '').strip() or f'manual:tx:{tx.pk}'
+    # migrations/0022_backfill_transaction_to_ledger.py:105
+
+Module này dùng **đúng biểu thức đó**. Lý do — bản đầu của module tự sinh
+khoá `tx:<pk>` riêng, tạo ra namespace **rời** với `0022`:
+
+- `0022` đã ghi `brk-1` (giao dịch có mã broker) hoặc `manual:tx:7` (nhập tay)
+- module tìm `tx:7` ⇒ không thấy ⇒ ghi thêm một dòng nữa
+- ⇒ `CashFlow` bị **đếm trùng**, `nav` sai, và `nav_reason` rỗng tức hệ
+  thống trả số sai một cách tự tin không cảnh báo.
+
+Tái hiện được: 1 giao dịch backfill + 1 lần `save()` không đổi ⇒ tổng
+`CashFlow` bằng **hai lần** số tiền thật.
+
+Bản sửa cũng bỏ việc so khớp bằng `startswith` trần: `'tx:59'.startswith('tx:5')`
+là `True`, nên với portfolio hơn 50 giao dịch, sửa giao dịch pk=5 sẽ đảo nhầm
+dòng sổ của pk=59. Dấu phân cách `:v` trong `f'{ref}:v{n}'` khiến
+`'tx:59:v1'.startswith('tx:5:v')` là `False` — phải có cả hai dấu `:`.
+
+## Bất biến append-only — vì sao xoá giao dịch không xoá dòng sổ
 
 `AppendOnlyMixin.delete()` raise vô điều kiện (`models.py:1004-1008`) và
 `migrations/0023_append_only_guards.py` có trigger Postgres chặn `UPDATE`/
 `DELETE`. Xoá `LedgerEntry` là vi phạm thiết kế, không phải bug. Nên:
 
 - sửa giao dịch → tạo entry `ADJUSTMENT` trừ dòng cũ (`reversal_of`), rồi ghi
-  dòng mới;
+  dòng mới với khoá `f'{ref}:v{n}'`;
 - xoá giao dịch → tạo entry `ADJUSTMENT` trừ dòng đang hiệu lực, không ghi
   dòng mới.
 
@@ -34,47 +59,77 @@ Ràng buộc `uniq_ledger_entry_single_reversal` (`models.py:1157-1161`) cho ph�
 mỗi dòng bị đảo **đúng một lần** ⇒ mỗi lần sửa phải đảo dòng *đang hiệu lực*,
 không phải dòng gốc.
 
-**Không dùng cờ `app.allow_ledger_mutation`** (`0023:39`) ở đây. Cờ đó dành cho
-migration `0022` chạy một lần; dùng ở runtime để lách trigger là đúng kiểu
-lỗi mà wave này sinh ra để diệt.
+**Không dùng cờ `app.allow_ledger_mutation`** (`0023:39`). Cờ đó dành cho
+migration `0022` chạy một lần; dùng ở runtime để lách trigger là đúng kiểu lỗi
+mà wave này sinh ra để diệt.
+
+## Sai số có chủ đích
+
+`cash_flows_for` ghi **toàn bộ** số tiền broker thực sự chuyển, kể cả phần bán
+vượt số lượng đang giữ. `ledger/holdings.py:215,250-256` chỉ ghi nhận phần có
+cost basis (`min(qty, position.quantity)`). Hai con số **cố ý lệch nhau** và
+`services.py:263-278` mô tả đúng trường hợp này: phần chênh là tiền đang chờ
+đối soát, và `cash_cross_check` là cơ chế bắt. Vì vậy ở đây **không** cắt theo
+`sellable` — cắt sẽ làm mất thông tin đối soát.
 """
 
+import logging
 from decimal import Decimal
 
 from django.db import transaction as db_transaction
+from django.db.models import Q
 
 from user_workspace.models import CashFlow, LedgerEntry, Transaction
+
+logger = logging.getLogger(__name__)
 
 #: Tiền tệ D-05: R1 chỉ VND. Multi-currency defer.
 CURRENCY = 'VND'
 
-#: Khoá idempotency. `uniq_ledger_entry_tenant_external_id` chỉ áp cho
-#: `external_id != ''`, nên ta luôn ghi khoá có tiền tố để ràng buộc có hiệu lực.
-#: Dạng: `tx:<pk>` cho bản đầu, `tx:<pk>:v<n>` cho các bản sau khi sửa.
-BASE_EXTERNAL_ID = 'tx:{pk}'
-VERSIONED_EXTERNAL_ID = 'tx:{pk}:v{version}'
+#: Trùng `0022` (`migrations/0022_backfill_transaction_to_ledger.py:47`). Giữ
+#: hằng số riêng thay vì import từ migration: import module migration sẽ kéo
+#: `django.db.migrations` vào runtime.
+MANUAL_REF_PREFIX = 'manual:tx:'
+
+#: Hậu tố phiên bản, có dấu phân cách rõ ràng — xem mục "Bất biến" ở trên.
+VERSION_SEPARATOR = ':v'
 
 
 def _money(value) -> Decimal:
-    return Decimal(str(value if value is not None else 0))
+    return Decimal(str(value if value is not None else 0)).quantize(Decimal('0.01'))
+
+
+def source_ref_for(transaction) -> str:
+    """Khoá `external_id` của giao dịch — **phải trùng `0022:105`**."""
+    broker_ref = str(transaction.external_id or '').strip()
+    return broker_ref or f'{MANUAL_REF_PREFIX}{transaction.pk}'
+
+
+def _versioned_ref(ref: str, version: int) -> str:
+    return f'{ref}{VERSION_SEPARATOR}{version}'
 
 
 def cash_flows_for(transaction):
-    """Dòng tiền theo D-06 — cùng luật với `ledger/holdings.py:181,252-256,274`.
+    """Dòng tiền theo D-06 — cùng luật với `ledger/holdings.py`.
 
-    `amount` có dấu: dương = tiền vào, âm = tiền ra. Trả list
-    `(flow_type, amount)`.
+    `amount` có dấu: dương = tiền vào, âm = tiền ra.
 
-    - BUY: tiền ra `price*quantity`, cộng phí và thuế (chi phí vốn vào giá).
-    - SELL: tiền vào `price*quantity`, trừ phí và thuế (realized P&L đã trừ cả
-      hai ở `holdings.py:253`).
-    - DIVIDEND: tiền vào `price*quantity` (cổ tức mỗi cổ phiếu × số cổ phiếu
-      được trả), trừ phí và thuế.
+    `quantity <= 0` thì bỏ **trọn** giao dịch, kể cả phí và thuế — khớp
+    `holdings.py:167-176`, vốn phát ra `non_positive_quantity` rồi `continue`
+    trước khi chạm phí/thuế. Ghi phí cho một lệnh không khớp có vị thế là dữ
+    liệu bịa, và `cash_cross_check` sẽ báo động vô nghĩa.
+
+    Ghi toàn bộ số lượng bán, không cắt theo vị thế đang giữ: xem mục
+    "Sai số có chủ đích".
     """
-    gross = _money(transaction.price) * _money(transaction.quantity)
+    quantity = _money(transaction.quantity)
+    kind = transaction.transaction_type
+    if quantity <= 0:
+        return []
+
+    gross = _money(transaction.price) * quantity
     fee = _money(transaction.fee)
     tax = _money(transaction.tax)
-    kind = transaction.transaction_type
 
     if kind == Transaction.TransactionType.BUY:
         flows = [(CashFlow.FlowType.BUY, -gross)]
@@ -83,7 +138,7 @@ def cash_flows_for(transaction):
     elif kind == Transaction.TransactionType.DIVIDEND:
         flows = [(CashFlow.FlowType.DIVIDEND, gross)]
     else:
-        flows = []
+        return []
 
     if fee:
         flows.append((CashFlow.FlowType.FEE, -fee))
@@ -103,44 +158,42 @@ def _write_flows(entry, flows):
         )
 
 
+def _entries_for_ref(transaction, ref):
+    """Mọi dòng sổ cái thuộc giao dịch này.
+
+    `startswith(f'{ref}{VERSION_SEPARATOR}')` chứ KHÔNG dùng `startswith(ref)`:
+    với `ref = 'tx:5'`, biểu thức thứ hai khớp luôn `'tx:59'` và `'tx:50:v1'`.
+    """
+    return LedgerEntry.objects.filter(
+        tenant_id=transaction.tenant_id,
+        portfolio_id=transaction.portfolio_id,
+    ).filter(
+        Q(external_id=ref) | Q(external_id__startswith=f'{ref}{VERSION_SEPARATOR}')
+    )
+
+
 def active_entry_for(transaction):
     """Dòng sổ cái đang hiệu lực của giao dịch, hoặc `None`.
 
-    "Đang hiệu lực" = dòng có khoá `tx:<pk>` mà chưa bị dòng nào đảo. Các bản
-    `v1..vn` cũng xét vì PATCH ghi khoá có phiên bản.
+    "Đang hiệu lực" = dòng có khoá `ref` hoặc `ref:v<n>` mà chưa bị dòng nào đảo.
+    `uniq_ledger_entry_single_reversal` giữ mỗi dòng chỉ bị đảo một lần, nên
+    "có reversal" là đủ để kết luận dòng đó không còn hiệu lực.
     """
-    prefix = f'tx:{transaction.pk}'
-    entries = (
-        LedgerEntry.objects
-        .filter(tenant_id=transaction.tenant_id, portfolio_id=transaction.portfolio_id)
-        .filter(external_id__startswith=prefix)
-        .order_by('-pk')
-        .prefetch_related('reversals')
-    )
-    for entry in entries:
-        # `uniq_ledger_entry_single_reversal` giữ mỗi dòng chỉ bị đảo một lần,
-        # nên "có reversal" là đủ để kết luận dòng đó không còn hiệu lực.
+    for entry in _entries_for_ref(transaction, source_ref_for(transaction)).order_by('-pk'):
         if not entry.reversals.exists():
             return entry
     return None
 
 
-def _next_version(transaction):
-    prefix = f'tx:{transaction.pk}:v'
-    return LedgerEntry.objects.filter(
-        tenant_id=transaction.tenant_id,
-        portfolio_id=transaction.portfolio_id,
+def _next_version(transaction, ref):
+    prefix = f'{ref}{VERSION_SEPARATOR}'
+    return _entries_for_ref(transaction, ref).filter(
         external_id__startswith=prefix,
     ).count() + 1
 
 
-def _reverse(entry):
-    """Đảo một dòng sổ cái bằng dòng `ADJUSTMENT` trừ ngược dòng tiền.
-
-    `LedgerEntry` là sổ chỉ-append nên không xoá/sửa dòng cũ; dòng mới mang
-    `reversal_of` trỏ về nó. Các dòng tiền bị đảo dấu nên tổng `CashFlow` của
-    portfolio vẫn đúng bằng 0 sau khi đảo trọn vẹn một giao dịch.
-    """
+def _reverse(entry, *, actor=None):
+    """Đảo một dòng sổ cái bằng dòng `ADJUSTMENT` trừ ngược dòng tiền."""
     reverse = LedgerEntry.objects.create(
         tenant_id=entry.tenant_id,
         portfolio_id=entry.portfolio_id,
@@ -155,7 +208,7 @@ def _reverse(entry):
         source=LedgerEntry.Source.ADJUSTMENT,
         external_id='',
         reversal_of=entry,
-        created_by_id=entry.created_by_id,
+        created_by_id=entry.created_by_id or getattr(actor, 'pk', None),
     )
     _write_flows(
         reverse,
@@ -165,7 +218,7 @@ def _reverse(entry):
     return reverse
 
 
-def _write_entry(transaction, *, actor=None):
+def _write_entry(transaction, ref, *, actor=None):
     entry = LedgerEntry.objects.create(
         tenant_id=transaction.tenant_id,
         portfolio_id=transaction.portfolio_id,
@@ -178,19 +231,30 @@ def _write_entry(transaction, *, actor=None):
         tax=_money(transaction.tax),
         market=LedgerEntry.Market.UNKNOWN,
         source=LedgerEntry.Source.MANUAL,
-        external_id=BASE_EXTERNAL_ID.format(pk=transaction.pk),
+        external_id=ref,
         created_by=actor,
     )
     _write_flows(entry, cash_flows_for(transaction))
     return entry
 
 
+def _matches_current_data(entry, transaction, flows):
+    return (
+        entry.quantity == int(transaction.quantity or 0)
+        and _money(entry.price) == _money(transaction.price)
+        and _money(entry.fee) == _money(transaction.fee)
+        and _money(entry.tax) == _money(transaction.tax)
+        and [(f, _money(a)) for f, a in
+             CashFlow.objects.filter(entry=entry).order_by('pk')
+             .values_list('flow_type', 'amount')] == flows
+    )
+
+
 def sync_transaction_to_ledger(transaction, *, actor=None):
     """Đảm bảo `CashFlow` của giao dịch khớp với `Transaction`.
 
-    Idempotent: gọi lại với giao dịch không đổi thì **không** ghi thêm dòng. Đây
-    là yêu cầu của AC — `post_save` bắn cả lần `save()` lặp lại không có thay
-    đổi.
+    Idempotent: gọi lại với giao dịch không đổi thì **không** ghi thêm dòng —
+    kể cả khi dòng đã có sẵn từ migration `0022`.
 
     Trả `True` nếu ghi dòng mới, `False` nếu đã khớp.
     """
@@ -203,45 +267,19 @@ def sync_transaction_to_ledger(transaction, *, actor=None):
         return False
 
     flows = cash_flows_for(transaction)
+    ref = source_ref_for(transaction)
     current = active_entry_for(transaction)
+    if current is not None and _matches_current_data(current, transaction, flows):
+        return False
+
     if current is not None:
-        recorded = list(
-            CashFlow.objects
-            .filter(entry=current)
-            .order_by('pk')
-            .values_list('flow_type', 'amount')
-        )
-        if [(f, _money(a)) for f, a in recorded] == flows and (
-            current.quantity == int(transaction.quantity or 0)
-            and _money(current.price) == _money(transaction.price)
-            and _money(current.fee) == _money(transaction.fee)
-            and _money(current.tax) == _money(transaction.tax)
-        ):
-            return False
         # Dữ liệu nguồn đổi: đảo dòng cũ rồi ghi bản mới. Khoá bản mới có phiên
         # bản vì `uniq_ledger_entry_tenant_external_id` không cho trùng khoá.
-        _reverse(current)
-        entry = LedgerEntry.objects.create(
-            tenant_id=transaction.tenant_id,
-            portfolio_id=transaction.portfolio_id,
-            entry_type=transaction.transaction_type,
-            symbol=str(transaction.symbol or '').strip().upper(),
-            trade_date=transaction.date,
-            quantity=int(transaction.quantity or 0),
-            price=_money(transaction.price),
-            fee=_money(transaction.fee),
-            tax=_money(transaction.tax),
-            market=LedgerEntry.Market.UNKNOWN,
-            source=LedgerEntry.Source.MANUAL,
-            external_id=VERSIONED_EXTERNAL_ID.format(
-                pk=transaction.pk, version=_next_version(transaction),
-            ),
-            created_by=actor,
-        )
-        _write_flows(entry, flows)
-        return True
-
-    _write_entry(transaction, actor=actor)
+        _reverse(current, actor=actor)
+        _write_entry(transaction, _versioned_ref(ref, _next_version(transaction, ref)),
+                     actor=actor)
+    else:
+        _write_entry(transaction, ref, actor=actor)
     return True
 
 
@@ -252,34 +290,39 @@ def reverse_transaction_from_ledger(transaction, *, actor=None):
     current = active_entry_for(transaction)
     if current is None:
         return False
-    _reverse(current)
+    _reverse(current, actor=actor)
     return True
 
 
-@db_transaction.atomic
-def sync_transaction_on_save(transaction, *, actor=None):
+def _run_isolated(operation, transaction, *, actor=None):
+    """Chạy phần ghi sổ cái trong **savepoint riêng**.
+
+    Bản đầu bọc `@atomic` ở **ngoài** `try/except`. Exception bị nuốt bên trong
+    khối atomic nên `atomic.__exit__` tưởng thành công và đi `COMMIT` — nhưng
+    PostgreSQL đã hủy transaction nên `COMMIT` ném lỗi, kéo theo **rollback
+    cả bản ghi `Transaction` hợp lệ của người dùng**. Đó là biến lỗi sổ cái
+    thành mất giao dịch, đúng cái docstring cũ nói là không được.
+
+    Ở đây `atomic` nằm **bên trong** `try`: lỗi rollback savepoint, `except`
+    bắt được, transaction ngoài vẫn sống.
+    """
     try:
-        return sync_transaction_to_ledger(transaction, actor=actor)
+        with db_transaction.atomic():
+            return operation(transaction, actor=actor)
     except Exception:  # noqa: BLE001
         # Đường ghi `Transaction` phải sống sót. NAV sẽ bị chặn bằng
         # `nav_reason` thay vì trả số sai — đó là hành vi an toàn hơn là làm
         # hỏng việc ghi giao dịch chỉ vì sổ cái lỗi.
-        import logging
-        logging.getLogger(__name__).error(
-            'sync_transaction_to_ledger failed for transaction pk=%s',
+        logger.error(
+            'ledger sync failed for transaction pk=%s',
             getattr(transaction, 'pk', None), exc_info=True,
         )
         return False
 
 
-@db_transaction.atomic
+def sync_transaction_on_save(transaction, *, actor=None):
+    return _run_isolated(sync_transaction_to_ledger, transaction, actor=actor)
+
+
 def reverse_transaction_on_delete(transaction, *, actor=None):
-    try:
-        return reverse_transaction_from_ledger(transaction, actor=actor)
-    except Exception:  # noqa: BLE001
-        import logging
-        logging.getLogger(__name__).error(
-            'reverse_transaction_from_ledger failed for transaction pk=%s',
-            getattr(transaction, 'pk', None), exc_info=True,
-        )
-        return False
+    return _run_isolated(reverse_transaction_from_ledger, transaction, actor=actor)
