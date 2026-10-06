@@ -183,14 +183,35 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
           <Text style={styles.subtitle}>{summary?.portfolio_name || t('dashboard.portfolio_fallback')}</Text>
           <Text style={styles.meta}>{t('dashboard.email_label')}: {user?.email || '-'}</Text>
           <Text style={styles.meta}>{t('dashboard.plan_label')}: {user?.plan || '-'}</Text>
-          {summary?.last_updated ? <Text style={styles.meta}>{t('dashboard.last_update')}: {summary.last_updated}</Text> : null}
+          {summary?.as_of ? <Text style={styles.meta}>{t('dashboard.last_update')}: {summary.as_of}</Text> : null}
+          {summary?.reconciliation_required ? (
+            <Text style={styles.metricSub}>{t('dashboard.reconciliation_required')}</Text>
+          ) : null}
         </View>
 
         <View style={styles.gridRow}>
           <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>{t('dashboard.nav_label')}</Text>
+            {/* `nav` stays `null` when the backend refused to compute it
+                (missing `opening_balance`, no prices, ledger not backfilled).
+                Showing 0 there would be a fabricated balance, so the reason is
+                surfaced instead. */}
+            {summary?.nav === null || summary?.nav === undefined ? (
+              <Text style={styles.metricValue}>—</Text>
+            ) : (
+              <Text style={styles.metricValue}>{formatVnd(summary.nav, locale)} VND</Text>
+            )}
+            {summary?.nav_reason ? (
+              <Text style={styles.metricSub}>{summary.nav_reason}</Text>
+            ) : null}
+          </View>
+          <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.total_value')}</Text>
             <Text style={styles.metricValue}>{formatVnd(summary?.total_market_value, locale)} VND</Text>
           </View>
+        </View>
+
+        <View style={styles.gridRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.unrealized_pl')}</Text>
             <Text style={[styles.metricValue, { color: plColor(summary?.total_unrealized_pl) }]}>{formatVnd(summary?.total_unrealized_pl, locale)} VND</Text>
