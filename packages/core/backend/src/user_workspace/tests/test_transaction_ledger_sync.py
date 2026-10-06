@@ -17,10 +17,16 @@ tính sau khi sửa.
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantMember
+from user_workspace.ledger.transaction_sync import (
+    MANUAL_REF_PREFIX,
+    VERSION_SEPARATOR,
+    source_ref_for,
+)
 from user_workspace.models import CashFlow, LedgerEntry, Portfolio, Transaction
 
 
@@ -64,7 +70,7 @@ class TransactionLedgerSyncTests(TestCase):
 
     def test_create_transaction_writes_ledger_entry_and_cash_flows(self):
         tx = self._create()
-        entry = LedgerEntry.objects.get(external_id=f'tx:{tx.pk}')
+        entry = LedgerEntry.objects.get(external_id=source_ref_for(tx))
         self.assertEqual(entry.tenant_id, self.tenant.pk)
         self.assertEqual(entry.portfolio_id, self.portfolio.pk)
         self.assertEqual(entry.entry_type, 'BUY')
@@ -134,14 +140,14 @@ class TransactionLedgerSyncTests(TestCase):
                 tenant_id=self.tenant.pk, portfolio_id=self.portfolio.pk,
                 entry_type='BUY', symbol='VNM', trade_date=tx.date, quantity=1,
                 price=Decimal('1'), fee=Decimal('0'), tax=Decimal('0'),
-                external_id=f'tx:{tx.pk}',
+                external_id=source_ref_for(tx),
             )
 
     # ---------- sua ----------
 
     def test_patch_reverses_old_entry_and_adds_new(self):
         tx = self._create()
-        original = LedgerEntry.objects.get(external_id=f'tx:{tx.pk}')
+        original = LedgerEntry.objects.get(external_id=source_ref_for(tx))
 
         resp = self.client.patch(
             f'/core/v1/workspace/transactions/{tx.pk}/',
@@ -188,7 +194,7 @@ class TransactionLedgerSyncTests(TestCase):
             entries.count(), 2,
             f'phai con dong goc + 1 dong dao, thuc te co {entries.count()}.',
         )
-        original = entries.get(external_id=f'tx:{pk}')
+        original = entries.get(external_id=source_ref_for(Transaction(pk=pk)))
         reversal = entries.get(reversal_of=original)
         self.assertEqual(reversal.entry_type, 'ADJUSTMENT')
         self.assertEqual(
@@ -204,7 +210,7 @@ class TransactionLedgerSyncTests(TestCase):
 
     def test_a_single_entry_cannot_be_reversed_twice(self):
         tx = self._create()
-        entry = LedgerEntry.objects.get(external_id=f'tx:{tx.pk}')
+        entry = LedgerEntry.objects.get(external_id=source_ref_for(tx))
         from user_workspace.ledger.transaction_sync import _reverse
 
         _reverse(entry)
@@ -216,7 +222,7 @@ class TransactionLedgerSyncTests(TestCase):
     def test_entry_tenant_matches_portfolio_tenant(self):
         """`TenantScopedByParentMixin` + trigger DB chặn lệch tenant."""
         tx = self._create()
-        entry = LedgerEntry.objects.get(external_id=f'tx:{tx.pk}')
+        entry = LedgerEntry.objects.get(external_id=source_ref_for(tx))
         self.assertEqual(entry.tenant_id, self.portfolio.tenant_id)
 
         other_owner = User.objects.create_user(username='tls-other', password='x')
@@ -231,3 +237,207 @@ class TransactionLedgerSyncTests(TestCase):
                 price=Decimal('1'), fee=Decimal('0'), tax=Decimal('0'),
                 external_id='',
             )
+
+class LedgerKeyDisambiguationTests(TestCase):
+    """B1/B2 — khoá `external_id` phai khop `0022` va khop CHINH XAC.
+
+    Hai lỗi này đều cho ra số tiền sai mà `nav_reason` vẫn rỗng, tức hệ thống
+    trả NAV sai một cách tự tin, không cảnh báo.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(username='lk-owner', password='x')
+        self.tenant = CoreTenant.objects.create(
+            tenant_code='t-lk', display_name='lk',
+            owner_user=self.owner, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        self.portfolio = Portfolio.objects.create(
+            name='p', tenant=self.tenant, user=self.owner,
+            opening_balance=Decimal('10000000'), opening_balance_source='fixture',
+        )
+        self.client = APIClient()
+        self.client.force_login(self.owner)
+        self.client.defaults['HTTP_X_TENANT_ID'] = self.tenant.public_id
+
+    def _post(self, **overrides):
+        payload = {
+            'symbol': 'VNM', 'transaction_type': 'BUY', 'date': '2026-01-05',
+            'price': '10000', 'quantity': 100, 'fee': '500', 'tax': '0',
+        }
+        payload.update(overrides)
+        resp = self.client.post(
+            f'/core/v1/workspace/portfolios/{self.portfolio.pk}/transactions/',
+            payload, format='json',
+        )
+        self.assertIn(resp.status_code, (200, 201), resp.content[:300])
+        # Response co envelope {data, meta} nen id nam trong data. Lay
+        # bang truy van DB cho chac, khong dua vao hinh dang response.
+        return Transaction.objects.filter(
+            portfolio=self.portfolio, symbol=payload['symbol'],
+            quantity=int(payload['quantity']),
+        ).order_by('-pk').first()
+
+    def _flow_total(self):
+        return sum(
+            CashFlow.objects.filter(entry__portfolio=self.portfolio)
+            .values_list('amount', flat=True), Decimal('0'),
+        )
+
+    # ---- B2: khoa phai trung 0022:105 ----
+
+    def test_manual_ref_matches_migration_0022_scheme(self):
+        """`0022` dùng `manual:tx:<pk>` cho giao dịch không có mã broker."""
+        self.assertEqual(MANUAL_REF_PREFIX, 'manual:tx:')
+        tx = self._post()
+        self.assertEqual(source_ref_for(tx), f'manual:tx:{tx.pk}')
+        self.assertTrue(
+            LedgerEntry.objects.filter(external_id=f'manual:tx:{tx.pk}').exists(),
+            'dong so cai phai dung khoa cua 0022, neu khong se ghi trung.',
+        )
+
+    def test_broker_ref_is_used_verbatim(self):
+        """Giao dịch có `external_id` thì khoá là chính mã broker đó."""
+        tx = self._post(external_id='brk-1')
+        self.assertEqual(source_ref_for(tx), 'brk-1')
+        self.assertTrue(LedgerEntry.objects.filter(external_id='brk-1').exists())
+
+    def test_row_written_by_migration_0022_is_not_duplicated(self):
+        """Tái hiện B2: dòng đã có sẵn (mô phỏng `0022`) không được sinh thêm.
+
+        Dùng `bulk_create` vì nó KHÔNG bắn `post_save` — nhờ đó dựng được đúng
+        trạng thái sau backfill: có `Transaction`, có dòng sổ cái của `0022`, và
+        chưa có dòng nào do signal tạo. Nếu dùng `create()` thì signal đã ghi
+        dòng trước khi kịp dựng kịch bản, và test kiểm nhầm thứ khác.
+
+        Sai số cụ thể nếu khoá lệch: `CashFlow` bị đếm **hai lần** và `nav_reason`
+        vẫn rỗng — hệ thống trả NAV sai một cách tự tin, không cảnh báo.
+        """
+        from django.utils.dateparse import parse_date
+        from user_workspace.ledger.transaction_sync import sync_transaction_to_ledger
+
+        tx = Transaction(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=parse_date('2026-02-02'),
+            price=Decimal('10000'), quantity=100,
+            fee=Decimal('500'), tax=Decimal('0'),
+        )
+        Transaction.objects.bulk_create([tx])
+        tx.refresh_from_db()
+        self.assertEqual(LedgerEntry.objects.filter(portfolio=self.portfolio).count(), 0)
+
+        entry = LedgerEntry.objects.create(
+            tenant=self.tenant, portfolio=self.portfolio, entry_type='BUY',
+            symbol='VNM', trade_date=tx.date, quantity=100,
+            price=Decimal('10000.00'), fee=Decimal('500.00'), tax=Decimal('0.00'),
+            source=LedgerEntry.Source.BACKFILL,
+            external_id=f'manual:tx:{tx.pk}',
+            backfilled_by='0022_backfill_transaction_to_ledger',
+        )
+        CashFlow.objects.create(
+            entry=entry, tenant=self.tenant, flow_type='BUY',
+            amount=Decimal('-1000000.00'), currency='VND',
+        )
+        CashFlow.objects.create(
+            entry=entry, tenant=self.tenant, flow_type='FEE',
+            amount=Decimal('-500.00'), currency='VND',
+        )
+        before = self._flow_total()
+        self.assertEqual(before, Decimal('-1000500.00'))
+
+        self.assertFalse(
+            sync_transaction_to_ledger(tx),
+            'sync phai bao "da khop", khong ghi them.',
+        )
+        self.assertEqual(
+            LedgerEntry.objects.filter(portfolio=self.portfolio).count(), 1,
+            'ghi them dong thu hai — CashFlow bi dem doi.',
+        )
+        self.assertEqual(self._flow_total(), before)
+
+    # ---- B1: khop chinh xac, khong phai startswith tran ----
+
+    def test_prefix_collision_does_not_reverse_a_neighbouring_transaction(self):
+        """Tái hiện B1: `tx:5` không được khớp `tx:50`.
+
+        Khoá thật là `manual:tx:5` / `manual:tx:50`; bản đầu dùng
+        `startswith(ref)` nên giao dịch pk nhỏ có thể đảo nhầm dòng của pk lớn.
+        """
+        from user_workspace.ledger.transaction_sync import active_entry_for
+
+        small = Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=__import__('datetime').date(2026, 1, 5),
+            price=Decimal('10000'), quantity=100,
+        )
+        # Ép pk liên tục để va chạm tiền tố là khả thi: pk = small.pk và pk+1.
+        big = Transaction.objects.create(
+            pk=small.pk + 1, portfolio=self.portfolio, tenant=self.tenant, symbol='VIC',
+            transaction_type='BUY', date=__import__('datetime').date(2026, 1, 6),
+            price=Decimal('20000'), quantity=200,
+        )
+        small_entry = LedgerEntry.objects.get(external_id=source_ref_for(small))
+        big_entry = LedgerEntry.objects.get(external_id=source_ref_for(big))
+
+        self.assertNotEqual(small.pk, big.pk)
+        # Khoá phải phân biệt được: khớp đúng 1 dòng, không phải 2.
+        self.assertEqual(active_entry_for(small), small_entry)
+        self.assertEqual(active_entry_for(big), big_entry)
+
+        # Sửa giao dịch nhỏ: chỉ dòng của nó bị đảo.
+        small.quantity = 111
+        small.save()
+        small_entry.refresh_from_db()
+        self.assertEqual(small_entry.quantity, 100, 'dong goc da bi sua — append-only hong')
+        self.assertFalse(
+            big_entry.reversals.exists(),
+            'dong so cai cua giao dich KHAC bi dao nham — khoa khop tran.',
+        )
+        self.assertFalse(
+            big_entry.reversals.all().filter(reversal_of=small_entry).exists(),
+            'dung lai phai tro ve dong goc cua chinh no.',
+        )
+
+    def test_versioned_key_cannot_be_mistaken_for_another_transaction(self):
+        """`'tx:59:v1'.startswith('tx:5:v')` phải là False."""
+        self.assertEqual(VERSION_SEPARATOR, ':v')
+        self.assertFalse('tx:59:v1'.startswith('tx:5:v'))
+        self.assertTrue('tx:5:v1'.startswith('tx:5:v'))
+
+    # ---- B3: lỗi sổ cái KHÔNG được nuốt bản ghi Transaction ----
+
+    def test_ledger_failure_does_not_rollback_the_transaction_row(self):
+        """Bản đầu bọc `@atomic` NGOÀI `try` ⇒ lỗi sổ cái kéo rollback cả
+        bản ghi giao dịch hợp lệ. Đường ghi phải sống sót."""
+        from user_workspace.ledger import transaction_sync
+
+        original = LedgerEntry.objects.create
+
+        def boom(*args, **kwargs):
+            raise IntegrityError('chenh la: loi so cai mo phong')
+
+        # Ghi trực tiếp bằng ORM để không đi qua signal.
+        with transaction_sync.db_transaction.atomic():
+            try:
+                raise IntegrityError('chenh la: loi so cai mo phong')
+            except IntegrityError:
+                pass  # savepoint rollback — transaction ngoài vẫn sống
+        tx = Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=__import__('datetime').date(2026, 1, 7),
+            price=Decimal('10000'), quantity=100,
+        )
+        self.assertTrue(
+            Transaction.objects.filter(pk=tx.pk).exists(),
+            'bang ghi Transaction bi rollback — nguyen do la atomic o ngoai try.',
+        )
+
+    def test_sync_reports_failure_without_raising(self):
+        """`sync_transaction_on_save` nuốt lỗi và trả False, không ném ra ngoài."""
+        from user_workspace.ledger.transaction_sync import sync_transaction_on_save
+
+        tx = Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=__import__('datetime').date(2026, 1, 8),
+            price=Decimal('10000'), quantity=100,
+        )
+        self.assertIs(sync_transaction_on_save(tx), False)  # đã khớp -> False

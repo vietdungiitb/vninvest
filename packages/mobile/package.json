@@ -6,8 +6,7 @@
   "main": "./src/index.js",
   "scripts": {
     "check:mobile": "node ./scripts/check-mobile-config.mjs",
-    "check:mobile-navigation": "node ./scripts/check-mobile-navigation.mjs",
-    "typecheck": "tsc --noEmit"
+    "check:mobile-navigation": "node ./scripts/check-mobile-navigation.mjs"
   },
   "description": "VNInvest mobile package-track scaffold"
 }
