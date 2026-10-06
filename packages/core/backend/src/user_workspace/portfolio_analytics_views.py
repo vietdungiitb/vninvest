@@ -15,7 +15,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
-from rest_framework import permissions
+# P1-5: `status` phai co o module scope. Hai dong trong
+# `PortfolioScreenerRuleDetailView.put` dung `status.HTTP_400_BAD_REQUEST`
+# nhung chi co `permissions` duoc import o day; `status` chi duoc import
+# BEN TRONG ham `delete` (alias `http_status`) nen o scope module khong
+# ton tai => `NameError` => HTTP 500 thay vi 400 khi payload PUT sai.
+from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
@@ -2900,10 +2905,21 @@ class ScreenerScheduleListCreateView(APIView):
         ok, cleaned = _validate_schedule_payload(request.data if isinstance(request.data, dict) else {})
         if not ok:
             return Response({'detail': cleaned}, status=400)
-        # Rule IDs must exist for this user
-        existing = set(
-            ScreenerRule.objects.filter(user=request.user, pk__in=cleaned['rule_ids']).values_list('pk', flat=True)
+        # Rule IDs must exist for this user **and, when known, in this tenant**.
+        # Filtering only on `user` lets a multi-tenant user attach a rule that
+        # belongs to tenant A to a schedule living in tenant B.
+        #
+        # `tenant` is optional here on purpose. Returning 400 when it is None
+        # would block a request that was previously accepted, and the tenant is
+        # resolved further down anyway (that fallback is what this app already
+        # relies on). When the tenant IS resolved — the production path — the
+        # filter is enforced; when it is not, behaviour is unchanged.
+        rule_qs = ScreenerRule.objects.filter(
+            user=request.user, pk__in=cleaned['rule_ids'],
         )
+        if tenant is not None:
+            rule_qs = rule_qs.filter(tenant=tenant)
+        existing = set(rule_qs.values_list('pk', flat=True))
         missing = [r for r in cleaned['rule_ids'] if r not in existing]
         if missing:
             return Response({'detail': f'Rule không tồn tại: {missing}'}, status=400)
@@ -3055,7 +3071,14 @@ class ScreenerScheduleRunNowView(APIView):
         job_ids = []
         for rid in (sched.rule_ids or []):
             try:
-                rule = ScreenerRule.objects.filter(pk=int(rid), user=request.user).first()
+                # Scope by the schedule's tenant, not just `user`: a rule from
+                # another tenant would otherwise run and write its result into
+                # this tenant's run history.
+                if sched.tenant_id is None:
+                    continue
+                rule = ScreenerRule.objects.filter(
+                    pk=int(rid), user=request.user, tenant_id=sched.tenant_id,
+                ).first()
                 if rule is None:
                     continue
                 try:

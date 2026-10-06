@@ -108,7 +108,9 @@ def broker_providers_api(request):
                 'is_configured': False,
             })
             continue
-        config = get_user_broker_config(request.user, provider)
+        config = get_user_broker_config(
+            request.user, provider, tenant=getattr(request, 'tenant', None),
+        )
         items.append({
             'id': provider,
             'status': (config.status if config else UserBrokerConfig.StatusChoices.NEVER_CONNECTED),
@@ -145,12 +147,13 @@ def broker_config_schema_api(request, provider):
 @api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def broker_config_api(request, provider):
+    tenant = getattr(request, 'tenant', None)
     """CRUD config broker của user. POST validate theo field, lưu Fernet, chỉ trả preview."""
     normalized = _require_provider(provider)
     user = request.user
 
     if request.method == 'DELETE':
-        config = get_user_broker_config(user, normalized)
+        config = get_user_broker_config(user, normalized, tenant=tenant)
         if config:
             config.set_secrets({})
             config.status = UserBrokerConfig.StatusChoices.NEVER_CONNECTED
@@ -161,7 +164,7 @@ def broker_config_api(request, provider):
         return envelope({'ok': True, 'message': 'Đã xoá cấu hình broker.'})
 
     if request.method == 'GET':
-        return envelope(_serialize_config(get_user_broker_config(user, normalized)))
+        return envelope(_serialize_config(get_user_broker_config(user, normalized, tenant=tenant)))
 
     # POST — validate theo schema từng provider, chỉ lưu field trong schema
     data = request.data if isinstance(request.data, dict) else {}
@@ -175,7 +178,7 @@ def broker_config_api(request, provider):
     if errors:
         raise ValidationErrorException(detail=errors, code='validation_error')
 
-    config = set_user_broker_secrets(user, normalized, secrets)
+    config = set_user_broker_secrets(user, normalized, secrets, tenant=tenant)
     config.status = UserBrokerConfig.StatusChoices.NEVER_CONNECTED
     config.last_error = ''
     config.save(update_fields=['status', 'last_error', 'updated_at'])
@@ -196,10 +199,11 @@ def broker_config_api(request, provider):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def broker_test_connection_api(request, provider):
+    tenant = getattr(request, 'tenant', None)
     """Enqueue test-connection (trả job_id ngay, <500ms). Poll qua broker_job_status_api."""
     normalized = _require_provider(provider)
     user = request.user
-    config = get_user_broker_config(user, normalized)
+    config = get_user_broker_config(user, normalized, tenant=tenant)
     if not config or not config.has_secrets():
         raise ValidationErrorException(
             detail='Chưa cấu hình credentials. Lưu cấu hình trước khi kiểm tra.',
@@ -218,7 +222,10 @@ def broker_test_connection_api(request, provider):
         )
     cache.set(cache_key, count + 1, TEST_CONN_WINDOW_SECONDS)
 
-    job = test_broker_connection_task.delay(config.id)
+    job = test_broker_connection_task.delay(
+        config.id,
+        tenant_id=getattr(tenant, 'id', None),
+    )
     return envelope(
         {'job_id': job.id, 'state': 'pending'}, status=status.HTTP_202_ACCEPTED)
 
