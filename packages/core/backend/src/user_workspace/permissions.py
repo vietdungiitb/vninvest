@@ -52,28 +52,42 @@ WORKSPACE_PERMISSIONS = {
 
 
 def has_workspace_permission(request, permission: str) -> bool:
-    """True nếu actor của request có `permission` trong tenant hiện tại.
+    """True n?u actor c?a request c? `permission` trong tenant hi?n t?i.
 
-    Dùng lại `get_tenant_permissions()` — cùng một nguồn sự thật với
-    `identity_access`, nên custom_role cũng được áp dụng như nhau.
+    D?ng l?i `get_tenant_permissions()` - c?ng m?t ngu?n s? th?t v?i
+    `identity_access`, n?n custom_role c?ng du?c ?p d?ng nhau.
 
-    Fail-closed: không xác định được actor thì trả `False`. Một endpoint
-    tài chính không được phép "có lẽ là được" khi không biết ai đang hỏi.
+    `permission` c? th? l? khoa workspace (`portfolio_write`) HO?C permission
+    g?c c?a tenant (`sa:write`). Khoa duoc ?n sang permission g?c qua
+    `WORKSPACE_PERMISSIONS` tru?c khi so.
+
+    S?a nay ch? ra tu test runtime, khong phai tu doc code: `get_tenant_permissions`
+    tra permission TEN cua `SYSTEM_ROLE_PERMISSIONS` (`sa:write`), trong khi
+    `WorkspacePermission.has_permission` chuyen tiep khoa khai bao
+    (`portfolio_write`). So sanh hai ten khac nhau luon cho False, nen moi role
+    khong phai `owner` deu bi 403 o moi endpoint co `WorkspacePermission` - ke ca
+    `admin` va `editor` co quyen thiet. Do la fail-closed nhung KHOA QUA TAY.
+    `owner` khong loi vi `SYSTEM_ROLE_PERMISSIONS['owner'] == ['*']` va `*` duoc
+    xu ly o truoc khi so sanh - do cung la ly do test cu chua bat loi nay.
+
+    Fail-closed: khong xac dinh duoc actor thi tra `False`. Mot endpoint
+    tai chinh khong duoc phep "co le la duoc" khi khong biet ai dang hoi.
     """
     user = getattr(request, 'user', None)
     if user is None or not getattr(user, 'is_authenticated', False):
         return False
     try:
         perms = get_tenant_permissions(request)
-    except Exception:  # noqa: BLE001 — lỗi phân giải quyền thì chặn
+    except Exception:  # noqa: BLE001 - l?i phan giai quyen thi chan
         logger.error(
-            'has_workspace_permission: cannot resolve permissions — denying',
+            'has_workspace_permission: cannot resolve permissions - denying',
             exc_info=True,
         )
         return False
     if '*' in perms:
         return True
-    return permission in perms
+    resolved = WORKSPACE_PERMISSIONS.get(permission, permission)
+    return resolved in perms
 
 
 class WorkspacePermission(BasePermission):
