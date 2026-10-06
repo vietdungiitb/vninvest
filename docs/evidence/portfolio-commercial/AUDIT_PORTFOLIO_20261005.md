@@ -95,18 +95,41 @@ Mọi số dòng đo bằng `(Get-Content <file> -Encoding utf8).Count` tại `d
 
 **Tác động:** thành viên role `viewer` tạo / sửa / xoá `Portfolio` và `Transaction` trong tenant đó. Đây là lớp leo thang đặc quyền mà `permissions.py:34-40` mô tả đã sửa cho broker — nhưng endpoint nhạy cảm nhất thì chưa.
 
-### P0-2 — Ghi `Transaction` không cập nhật `LedgerEntry`/`CashFlow` ⇒ NAV sai âm thầm
+### P0-2 — Ghi `Transaction` không cập nhật `LedgerEntry`/`CashFlow` ⇒ NAV bị chặn vĩnh viễn
+
+> **⚠ ĐÃ SỬA 2026-10-05 — bản đầu của tài liệu này kết luận sai.**
+> Bản đầu viết *"NAV sai âm thầm"* và *"báo động giả `cash_cross_check` cho mọi danh mục"*. Cả hai **không đúng**. Bản đầu đọc `ledger/services.py` một phần và suy ra phần còn lại thay vì đọc.
+> Lỗi phát hiện khi viết test runtime, không phải khi đọc code.
+
+**Cơ chế thật** — `ledger/services.py` đọc **hai nguồn khác nhau**:
+
+| Thứ | Đọc từ đâu | Được ghi ở runtime? |
+|---|---|---|
+| `holdings`, `cash` (P&L) | `Transaction` — `_queryset`, `services.py:42-47` | ✅ có (`views.py:285`) |
+| `cash_flow_total` (NAV) | `CashFlow` — `services.py:348` | ❌ **không ai** |
+
+Hệ quả đo được, tại `services.py:374`:
+
+```python
+if (has_entries or has_legacy_transactions) and not has_flow_rows:
+    return _blocked(NAV_BLOCKER_CASH_FLOWS_EMPTY, ...)
+```
+
+⇒ có giao dịch mà `CashFlow` rỗng thì `nav = null` với
+`nav_reason='cash_flows_not_backfilled'`. Đây là **fail-closed đúng thiết kế
+LED-03 R5**, không phải số sai. Và `cash_cross_check` (`services.py:399`) cần
+`opening_balance is not None` mới chạy, nên ở trạng thái mặc định nó **không**
+báo động giả.
+
+**Tác động thật:** `nav` không bao giờ tính được sau giao dịch đầu tiên —
+mọi danh mục trả `nav: null`. Đó vẫn là lỗi nghiêm trọng, chỉ là khác loại.
 
 | Bước | Bằng chứng |
 |---|---|
 | API chỉ ghi bảng `Transaction` | `views.py:285` `serializer.save(portfolio=portfolio, tenant=portfolio.tenant)` |
-| Không có signal nối | `signals.py:28-132` — không receiver `Transaction → LedgerEntry` |
+| Không có signal nối | `signals.py` trước khi sửa — không receiver `Transaction → LedgerEntry` |
 | Không có writer nào | grep `LedgerEntry.objects.create` / `CashFlow.objects.create` ngoài test: chỉ `migrations/0022_backfill_transaction_to_ledger.py:156,161` (`0022:250-251` là `operations=[RunPython(...)]`, không phải chỗ backfill) |
-| Hệ quả | `ledger/services.py:348-352` `cash_flow_total` đọc từ `CashFlow` ⇒ đứng yên trong khi `Transaction` tăng |
-| Guard không bắt | `ledger/services.py:374` `not has_flow_rows` **không** kích hoạt vì `0022` đã tạo dòng rồi |
-| Báo động giả | `ledger/services.py:399-417` `cash_cross_check` bật `reconciliation_required` cho **mọi** danh mục có giao dịch mới |
-
-**Tác động:** sai số tài chính, không phải lỗi cosmetic.
+| Hệ quả | `services.py:374` ⇒ `nav = null` |
 
 ### P0-3 — `opening_balance` không có đường ghi ⇒ `nav` là `null` vĩnh viễn
 

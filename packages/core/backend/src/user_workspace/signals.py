@@ -93,6 +93,39 @@ def sync_transaction_registry_on_delete(sender, instance, **kwargs):
     sync_holding_demand_for_portfolio_symbol(instance.portfolio, instance.symbol)
 
 
+@receiver(post_delete, sender=Transaction)
+def reverse_transaction_from_ledger_on_delete(sender, instance, **kwargs):
+    """P0-2 — xoá `Transaction` thì đảo dòng sổ cái, KHÔNG xoá dòng sổ cái.
+
+    `LedgerEntry` là sổ chỉ-append: `AppendOnlyMixin.delete()` raise vô điều
+    kiện (`models.py:1004-1008`) và `migrations/0023_append_only_guards.py` có
+    trigger Postgres chặn. Nên đảo bằng dòng `ADJUSTMENT` trỏ `reversal_of`.
+
+    Không dùng cờ `app.allow_ledger_mutation` (`0023:39`): cờ đó dành cho
+    migration `0022` chạy một lần, dùng ở runtime để lách trigger là đúng kiểu
+    lỗi wave này sinh ra để diệt.
+    """
+    from .ledger.transaction_sync import reverse_transaction_on_delete as _reverse
+
+    _reverse(instance)
+
+
+@receiver(post_save, sender=Transaction)
+def sync_transaction_to_ledger_on_save(sender, instance, **kwargs):
+    """P0-2 — ghi `LedgerEntry` + `CashFlow` khi `Transaction` được lưu.
+
+    Không có receiver này thì `CashFlow` chỉ có dòng từ migration `0022` và mọi
+    giao dịch mới làm `portfolio_valuation` chặn NAV bằng
+    `nav_reason='cash_flows_not_backfilled'` (`ledger/services.py:374`).
+
+    `holdings` và `cash` (P&L) đọc thẳng từ `Transaction` nên đã đúng sẵn; chỗ
+    thiếu là nguồn tiền mặt dùng cho NAV.
+    """
+    from .ledger.transaction_sync import sync_transaction_on_save as _sync
+
+    _sync(instance)
+
+
 @receiver(pre_save, sender=Portfolio)
 @receiver(pre_save, sender=Watchlist)
 @receiver(pre_save, sender=TrackedSymbol)
