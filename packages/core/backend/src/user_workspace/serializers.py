@@ -1,6 +1,8 @@
 """
 User Workspace domain serializers.
 """
+from decimal import Decimal
+
 from rest_framework import serializers
 from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, DNSECredential, ScreenerRule
 
@@ -39,9 +41,54 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
+    """
+    `opening_balance` was on the model since migration 0021 but absent from
+    `fields`, so there was no write path for it: every portfolio returned
+    `nav: null` with `nav_reason='no_opening_balance'` (ledger/valuation.py).
+    Both fields are writable now; the ledger still stays the only reader of the
+    balance, so accepting it here does not bypass the ledger.
+
+    `MinValueValidator` lives here, not on the model, on purpose: adding it to
+    `models.py` would make Django generate a new migration, and migration leaf
+    numbers are coordinator-owned in this repository.
+    """
+
+    opening_balance = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        min_value=Decimal('0'),
+        required=False,
+        allow_null=True,
+    )
+    opening_balance_source = serializers.CharField(
+        max_length=64,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+
+    def validate(self, attrs):
+        # NAV is only computable when the balance is set, and a balance without a
+        # stated provenance is an accounting figure nobody can trace later.
+        balance = attrs.get('opening_balance', getattr(self.instance, 'opening_balance', None))
+        source = attrs.get(
+            'opening_balance_source',
+            getattr(self.instance, 'opening_balance_source', None),
+        )
+        if balance not in (None, '') and not (source or '').strip():
+            raise serializers.ValidationError({
+                'opening_balance_source': (
+                    'Phai ghi nguon goc cua so du mo dau de so lieu nay con truy vet duoc.'
+                ),
+            })
+        return attrs
+
     class Meta:
         model = Portfolio
-        fields = ['id', 'name', 'description', 'is_default', 'created_at']
+        fields = [
+            'id', 'name', 'description', 'is_default',
+            'opening_balance', 'opening_balance_source', 'created_at',
+        ]
         read_only_fields = ['id', 'created_at']
 
 
