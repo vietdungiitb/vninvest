@@ -3,7 +3,7 @@
   "_measured_at": "2026-10-07",
   "_scanner": "docs/audit-uiux/scripts/scan-ui-guidelines.mjs",
   "_reproduce": "node packages/web/scripts/check-uiux-budget.mjs",
-  "total": 261,
+  "total": 246,
   "rules": {
     "NAV-1": {
       "prio": "P1",
@@ -19,7 +19,7 @@
     },
     "I18N-1": {
       "prio": "P2",
-      "count": 34
+      "count": 19
     },
     "A11Y-11": {
       "prio": "P2",

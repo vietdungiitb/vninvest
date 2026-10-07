@@ -1,3 +1,4 @@
+import { formatNumber } from "../../i18n";
 import { createElement, useEffect, useState } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -47,7 +48,7 @@ function MetricCard({ label, value, color }: { label: string; value: string | nu
 }
 
 export function SocDataInventorySection() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const { state, actions } = useDataOps();
   const { inventory, loading, coverage } = state;
   const [queueTiers, setQueueTiers] = useState<QueueTierData[]>([]);
@@ -156,11 +157,11 @@ export function SocDataInventorySection() {
                 style: dt.total_rows > 0
                   ? { borderColor: "var(--color-success-500, #34d399)", background: "rgba(var(--soc-rgb-10b981) / 0.08)" }
                   : {},
-                title: `${dt.total_rows.toLocaleString()} ${t("soc.dataops.label_rows")} \u2022 ${dt.symbols} ${t("soc.dataops.label_symbols")}`,
+                title: `${formatNumber(dt.total_rows, localeTag)} ${t("soc.dataops.label_rows")} \u2022 ${dt.symbols} ${t("soc.dataops.label_symbols")}`,
               },
                 createElement("div", { className: styles.metricLabel }, dt.label),
                 createElement("div", { className: styles.metricValue,  },
-                  dt.total_rows.toLocaleString(),
+                  formatNumber(dt.total_rows, localeTag),
                 ),
                 createElement("div", { }, `${dt.symbols} ${t("soc.dataops.label_symbols")}${dt.earliest_date ? ` \u2022 ${dt.earliest_date}` : ""}`),
               ),
@@ -180,7 +181,7 @@ export function SocDataInventorySection() {
                 createElement("div", { className: styles.yearBarTrack },
                   createElement("div", { className: styles.yearBarFill, style: { width: `${pct}%` } }),
                 ),
-                createElement("span", { className: styles.yearCount }, yr.rows.toLocaleString()),
+                createElement("span", { className: styles.yearCount }, formatNumber(yr.rows, localeTag)),
               );
             }),
           ),
@@ -210,7 +211,7 @@ export function SocDataInventorySection() {
                     createElement("td", { style: { fontWeight: 600, color: g.type === "custom" ? "var(--color-success-400, #5eead4)" : "inherit" } },
                       `${g.type === "custom" ? "\u2605 " : ""}${g.name}`,
                     ),
-                    createElement("td", null, g.symbol_count.toLocaleString()),
+                    createElement("td", null, formatNumber(g.symbol_count, localeTag)),
                     createElement("td", null,
                       createElement(
                         "span",
@@ -224,9 +225,9 @@ export function SocDataInventorySection() {
                       ),
                     ),
                     createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "var(--color-warning-500, #fbbf24)" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 }, title: g.calendar_days != null && g.calendar_days < 30 ? t("soc.dataops.calendar_days_warning") : undefined },
-                      g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
+                      g.calendar_days != null ? `${formatNumber(g.calendar_days, localeTag)} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
                     ),
-                    createElement("td", { style: { fontWeight: 600 } }, g.total_rows.toLocaleString()),
+                    createElement("td", { style: { fontWeight: 600 } }, formatNumber(g.total_rows, localeTag)),
                     createElement("td", { style: { whiteSpace: "nowrap", fontSize: "var(--fs-xs)" } },
                       g.earliest_date && g.latest_date ? `${g.earliest_date} \u2013 ${g.latest_date}` : t("soc.dataops.fallback_na"),
                     ),

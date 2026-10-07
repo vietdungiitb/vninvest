@@ -1,3 +1,4 @@
+import { formatNumber } from "../i18n";
 import { useState, useEffect, useCallback, createElement } from "react";
 import {
   Bar,
@@ -329,8 +330,8 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
                   e("td", { className: styles.td }, rec.action),
                   e("td", { className: styles.td }, rec.provider),
                   e("td", { className: styles.td }, rec.model),
-                  e("td", { className: styles.td }, rec.tokens_in.toLocaleString()),
-                  e("td", { className: styles.td }, rec.tokens_out.toLocaleString()),
+                  e("td", { className: styles.td }, formatNumber(rec.tokens_in, localeTag)),
+                  e("td", { className: styles.td }, formatNumber(rec.tokens_out, localeTag)),
                   e("td", { className: styles.td }, `$${parseFloat(rec.cost || "0").toFixed(6)}`),
                   e("td", { className: styles.td }, `${rec.latency_ms}ms`),
                   e("td", { className: styles.td },
