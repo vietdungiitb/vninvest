@@ -17,6 +17,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "../../context/LangContext";
 import { usePortfolioResource, asRows, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 export interface HoldingRow {
   symbol?: string;
@@ -70,7 +71,11 @@ export function PortfolioHoldingsPage({
   adapter?: PortfolioAdapter;
 }) {
   const { t } = useI18n();
-  const api = adapter as PortfolioAdapter;
+  // B0: `adapter` la prop TUY CHON de test inject duoc. Trong app that
+  // main.tsx -> pageRegistry khong truyen prop nao, nen phai fallback ve
+  // `defaultCoreApiAdapter` — neu khong, moi trang se nem
+  // "Cannot read properties of undefined" khi chay that.
+  const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("market_value");

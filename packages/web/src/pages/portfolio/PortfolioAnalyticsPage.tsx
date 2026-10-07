@@ -24,10 +24,11 @@ import { useCallback, useMemo } from "react";
 import { useI18n } from "../../context/LangContext";
 import { PortfolioChart, type NavPoint } from "../../components/portfolio/PortfolioChart";
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 type Metrics = {
   observations?: number;
-  performance?: { twr?: number | null; mwr?: number | null; default_method?: string } | null;
+  performance?: { twr?: WrValue; mwr?: WrValue; default_method?: string } | null;
   risk?: {
     volatility?: number | null; var_95_daily?: number | null;
     max_drawdown?: number | null; concentration?: Record<string, number> | null;
@@ -45,6 +46,22 @@ type Metrics = {
 
 const DASH = "—";
 
+type WrValue = number | null | { value?: number | null; method?: string };
+
+/**
+ * `performance()` trả `{'value': …, 'method': 'TWR', 'calculation_version': …}`
+ * (`analytics.py:152,156,235-240`) — KHÔNG phải số thuần. Nếu coi là number thì
+ * `Number.isFinite(object)` = false ⇒ mọi thẻ TWR/MWR hiện "Chưa đủ dữ liệu"
+ * dù BE đã tính được (audit B4/M1).
+ */
+function metricValue(raw: WrValue | number | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  const inner = raw.value;
+  if (inner === null || inner === undefined || !Number.isFinite(inner)) return null;
+  return inner;
+}
+
 /** Số đo trực tiếp từ BE; null/NaN ⇒ DASH, KHÔNG phải 0. */
 function metric(v: number | null | undefined, digits = 4): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return DASH;
@@ -58,7 +75,11 @@ export function PortfolioAnalyticsPage({
   adapter?: PortfolioAdapter;
 }) {
   const { t } = useI18n();
-  const api = adapter as PortfolioAdapter;
+  // B0: `adapter` la prop TUY CHON de test inject duoc. Trong app that
+  // main.tsx -> pageRegistry khong truyen prop nao, nen phai fallback ve
+  // `defaultCoreApiAdapter` — neu khong, moi trang se nem
+  // "Cannot read properties of undefined" khi chay that.
+  const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
 
   const fetchMetrics = useCallback(
     (id: string | number) => api.getPortfolioMetrics?.(id) ?? Promise.resolve(null),
@@ -93,10 +114,10 @@ export function PortfolioAnalyticsPage({
   const cards: Array<{ key: string; label: string; value: string; group: string }> = [
     { group: "performance", key: "twr",
       label: t("portfolioWorkspace.analytics.twr", { defaultValue: "TWR" }),
-      value: metric(m0.performance?.twr, 6) },
+      value: metric(metricValue(m0.performance?.twr), 6) },
     { group: "performance", key: "mwr",
       label: t("portfolioWorkspace.analytics.mwr", { defaultValue: "MWR" }),
-      value: metric(m0.performance?.mwr, 6) },
+      value: metric(metricValue(m0.performance?.mwr), 6) },
     { group: "risk", key: "volatility",
       label: t("portfolioWorkspace.analytics.volatility", { defaultValue: "Biến động" }),
       value: metric(m0.risk?.volatility, 6) },

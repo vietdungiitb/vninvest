@@ -9,8 +9,7 @@
  * ma khong co id, workspace tu chon danh mục dau tien (xem `usePortfolioWorkspace`).
  */
 
-import { useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   PortfolioWorkspace,
   type WorkspaceTabId,
@@ -31,10 +30,12 @@ function tabFromPath(pathname: string): WorkspaceTabId {
 export function PortfolioWorkspacePage() {
   const params = useParams();
   const navigate = useNavigate();
-  const tab = useMemo(
-    () => tabFromPath(typeof window !== "undefined" ? window.location.pathname : ""),
-    [],
-  );
+  // B5: phải theo `location` của router. Trước đây đọc `window.location.pathname`
+  // trong `useMemo(..., [])` ⇒ đổi tab đổi URL nhưng `aria-current` vẫn báo tab
+  // cũ, và nội dung không đổi. Cả 5 route trỏ cùng một component nên React
+  // KHÔNG remount ⇒ state cũ còn nguyên (audit B5).
+  const location = useLocation();
+  const tab = tabFromPath(location.pathname);
   // Chuyển tab = đổi path để deep-link + F5 giữ đúng màn hình.
   const onTabChange = (next: WorkspaceTabId) => {
     const id = params.portfolioId ?? "";
