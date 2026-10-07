@@ -425,6 +425,17 @@ class PortfolioSummaryView(APIView):
         return envelope(payload, meta=build_meta(ledger))
 
 
+@extend_schema(
+    summary='PortfolioChartView (native route)',
+    description='Alias of equity-curve — delegates to PortfolioEquityCurveView. Kept for existing clients; do not compare the two responses.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioChartView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/chart/ — daily portfolio value."""
     permission_classes = [permissions.IsAuthenticated]
@@ -435,6 +446,17 @@ class PortfolioChartView(APIView):
         return PortfolioEquityCurveView().get(request, portfolio_id=portfolio_id)
 
 
+@extend_schema(
+    summary='PortfolioEquityCurveView (native route)',
+    description='Daily NAV series. `nav` is null + `nav_reason` on days where any held symbol has no price — never 0.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioEquityCurveView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/equity-curve/ — daily NAV history."""
     permission_classes = [permissions.IsAuthenticated]
@@ -524,6 +546,17 @@ def _benchmark_returns(symbol, date_from, date_to):
     return [(cur - prev) / prev for prev, cur in zip(closes, closes[1:]) if prev != 0], None
 
 
+@extend_schema(
+    summary='PortfolioMetricsView (native route)',
+    description='Risk/return/benchmark metrics for one portfolio. Every metric group is `null` + a `*_reason` when data is missing; never a fabricated zero. See PortfolioMetricsView docstring.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioMetricsView(APIView):
     """GET /core/v1/workspace/portfolios/<id>/metrics/ — chỉ số THẬT.
 
@@ -603,6 +636,17 @@ class PortfolioMetricsView(APIView):
         return envelope(payload)
 
 
+@extend_schema(
+    summary='PortfolioAllocationView (native route)',
+    description='Value weight per symbol, with `industry` for sector grouping. `weight_covers_all_holdings` is false when any symbol lacks a price, so weights do not total 100%.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAllocationView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/allocation/ — symbol weight breakdown."""
     permission_classes = [permissions.IsAuthenticated]
