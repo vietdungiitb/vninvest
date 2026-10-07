@@ -1513,7 +1513,7 @@ export default function WhaleBubbleChart({
                         <select
                           value={bubbleThreshold}
                           onChange={(event) => setBubbleThreshold(Number(event.target.value))}
-                          className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-[11px] font-semibold text-slate-100 outline-none transition-colors hover:border-slate-500"
+                          className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-[11px] font-semibold text-slate-100 outline-none focus:outline-none focus:border-cyan-400 transition-colors hover:border-slate-500"
                           aria-label={t('whaleAnalytics.filterSelectLabel', { defaultValue: 'Chọn ngưỡng bubble' })}
                         >
                           {BUBBLE_FILTER_PRESETS.map((preset) => (

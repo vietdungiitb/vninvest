@@ -3,9 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- UX-01: `color-scheme` cho trinh duyet biet nen la TOI sang hay sang.
+         App mac dinh DARK (src/index.css:6-13 gan `dark:` vao `[data-theme]`),
+         nen mac dinh khai bao dark; khi user bat light, `UserSettingsPage` doi
+         `data-theme` va gan `color-scheme` theo -> scrollbar/input native doi
+         mau nen thay vi trang ben duong sang. -->
+    <meta name="color-scheme" content="dark light" />
+    <!-- theme-color: khi doi `data-theme`, shell cap nhat meta nay de thanh
+         dong trinh duyet doi theo nen trang (Android/Chrome) -->
+    <meta name="theme-color" content="#020b23" />
     <title>VNInvest — Quản lý Danh mục Đầu tư</title>
   </head>
   <body class="bg-gray-950 text-gray-100">
+    <!-- UX-01 skip link: web-design-guidelines (Accessibility) bat buoc
+         "include skip link for main content". Dich `#main-content` khai tai
+         `src/layouts/full/FullLayout.tsx`. An bang clip-path chu khong dung
+         `display:none` - `display:none` loai khoi cay khong dung keyboard. -->
+    <a
+      href="#main-content"
+      class="skip-link"
+    >Đến nội dung chính</a>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

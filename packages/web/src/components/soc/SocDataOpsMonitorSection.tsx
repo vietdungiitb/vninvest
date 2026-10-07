@@ -1,3 +1,4 @@
+import { formatNumber } from "../../i18n";
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -170,7 +171,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
 }
 
 export function SocDataOpsMonitorSection() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const { state, actions } = useDataOps();
   const { coverage: rawCoverage, loading, errors } = state as unknown as { coverage: CoverageData | null; loading: Record<string, boolean>; errors: Record<string, string | null> };
   const [streamCoverage, setStreamCoverage] = useState<CoverageData | null>(null);
@@ -587,7 +588,7 @@ export function SocDataOpsMonitorSection() {
                           "tr",
                           { key: item.dataset, },
                           createElement("td", { }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
-                          createElement("td", { }, item.backlog_count.toLocaleString())
+                          createElement("td", { }, formatNumber(item.backlog_count, localeTag))
                         )
                       ),
                       (!observability.backlog?.by_dataset || observability.backlog.by_dataset.length === 0) &&
@@ -707,8 +708,8 @@ export function SocDataOpsMonitorSection() {
                         "tr",
                         { key: item.tier, },
                         createElement("td", { }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
-                        createElement("td", { }, item.symbol_count.toLocaleString()),
-                        createElement("td", { }, item.backlog_symbols.toLocaleString())
+                        createElement("td", { }, formatNumber(item.symbol_count, localeTag)),
+                        createElement("td", { }, formatNumber(item.backlog_symbols, localeTag))
                       )
                     ),
                     (!observability.backlog?.by_tier || observability.backlog.by_tier.length === 0) &&
@@ -751,7 +752,7 @@ export function SocDataOpsMonitorSection() {
               breached.map(([q, d]) =>
                 createElement("div", { key: q },
                   `\u26A0 ${t("soc.dataops.queue_depth_alert", {
-                    queue: q, depth: d.toLocaleString(), threshold: QUEUE_DEPTH_ALERT_THRESHOLD,
+                    queue: q, depth: formatNumber(d, localeTag), threshold: QUEUE_DEPTH_ALERT_THRESHOLD,
                   })}`
                 )
               )
@@ -774,7 +775,7 @@ export function SocDataOpsMonitorSection() {
                       fontWeight: d >= QUEUE_DEPTH_WARN_THRESHOLD ? 700 : 400,
                       color: queueDepthTone(d),
                     },
-                  }, d.toLocaleString())
+                  }, formatNumber(d, localeTag))
                 )
               )
             )
@@ -894,10 +895,10 @@ export function SocDataOpsMonitorSection() {
                       return createElement(
                         "td",
                         { key: stateKey, title: total > 0 ? `${count} / ${total} (${(ratio * 100).toFixed(1)}%)` : undefined, style: { background: bg, color: count > 0 ? col : undefined, fontWeight: ratio > 0.2 ? 700 : 400, textAlign: "center" as const } },
-                        count > 0 ? count.toLocaleString() : "—"
+                        count > 0 ? formatNumber(count, localeTag) : "—"
                       );
                     }),
-                    createElement("td", { }, total.toLocaleString())
+                    createElement("td", { }, formatNumber(total, localeTag))
                   );
                 })
               )
