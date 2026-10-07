@@ -438,4 +438,12 @@ class ExpandPhaseIsNonDestructiveTests(TestCase):
         )
         tx.full_clean()
         self.assertEqual(Transaction.objects.count(), 1)
-        self.assertEqual(LedgerEntry.objects.count(), 0)
+        # Trước P0-2 assertion này là `== 0`, khẳng định lưu `Transaction`
+        # không sinh bản ghi ledger. P0-2 (`signals.py`
+        # `sync_transaction_to_ledger_on_save`) đã đồng bộ `Transaction` →
+        # `LedgerEntry` + `CashFlow`, nên `== 0` thành sai lệch.
+        #
+        # Ý đồ của test là D-24: phase expand **không phá** bảng cũ. Giữ đúng
+        # ý đồ: bảng `Transaction` còn ghi được, và ledger sinh đúng 1 entry
+        # cho 1 transaction — nhiều hơn 1 cũng là sai (double-write).
+        self.assertEqual(LedgerEntry.objects.count(), 1)

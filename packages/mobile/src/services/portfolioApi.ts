@@ -1,101 +1,113 @@
 import authClient from './http';
 import type { AllocationItem, HoldingItem, PortfolioItem, PortfolioSummary } from '../types/portfolio';
 
-export async function getPortfolios(): Promise<PortfolioItem[]> {
-  const response = await authClient.get<{ results?: PortfolioItem[] }>('/core/v1/workspace/portfolios/');
-  return response.data?.results ?? [];
+/**
+ * Unwrap the backend envelope.
+ *
+ * `user_workspace/envelope.py` has **two** list shapes, and the difference is
+ * per endpoint:
+ *
+ *   `envelope([...])`            -> `{data: [ ... ], meta}`   (holdings, technicals)
+ *   `paginated_envelope([...])`  -> `{data: {count, results}, meta}` (portfolios, transactions)
+ *
+ * `services/http.ts` returns the axios response untouched (its response
+ * interceptor only handles the token refresh), so this must unwrap here.
+ * Handling only the paginated shape made `getHoldings` and `getAllocation`
+ * return `[]` — the same empty-list bug this function exists to fix, just moved.
+ */
+function unwrapList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+  if (payload && typeof payload === 'object') {
+    const envelope = payload as { data?: unknown; results?: unknown };
+    if (Array.isArray(envelope.results)) {
+      return envelope.results as T[];
+    }
+    if (Array.isArray(envelope.data)) {
+      return envelope.data as T[];
+    }
+    if (envelope.data && typeof envelope.data === 'object') {
+      const inner = envelope.data as { results?: unknown };
+      if (Array.isArray(inner.results)) {
+        return inner.results as T[];
+      }
+    }
+  }
+  return [];
 }
 
-type CoreTransaction = {
-  symbol: string;
-  transaction_type: 'BUY' | 'SELL' | 'DIVIDEND';
-  quantity: number | string;
-  price: number | string;
-  fee?: number | string;
-};
+function unwrapObject(payload: unknown): Record<string, unknown> {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const envelope = payload as { data?: unknown };
+    if (envelope.data && typeof envelope.data === 'object' && !Array.isArray(envelope.data)) {
+      return envelope.data as Record<string, unknown>;
+    }
+    return payload as Record<string, unknown>;
+  }
+  return {};
+}
 
-const toNumber = (value: number | string | undefined | null): number => {
-  if (value === undefined || value === null) {
+export async function getPortfolios(): Promise<PortfolioItem[]> {
+  const response = await authClient.get('/core/v1/workspace/portfolios/');
+  return unwrapList<PortfolioItem>(response.data);
+}
+
+const toNumber = (value: unknown): number => {
+  if (value === undefined || value === null || value === '') {
     return 0;
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const buildHoldingsFromTransactions = (transactions: CoreTransaction[]): HoldingItem[] => {
-  const bySymbol = new Map<string, { quantity: number; costBasis: number }>();
-
-  transactions.forEach((tx) => {
-    const symbol = String(tx.symbol || '').trim().toUpperCase();
-    if (!symbol) {
-      return;
-    }
-
-    const quantity = Math.max(0, toNumber(tx.quantity));
-    const price = Math.max(0, toNumber(tx.price));
-    const fee = Math.max(0, toNumber(tx.fee));
-    const side = String(tx.transaction_type || '').toUpperCase();
-
-    const current = bySymbol.get(symbol) || { quantity: 0, costBasis: 0 };
-
-    if (side === 'BUY') {
-      current.quantity += quantity;
-      current.costBasis += quantity * price + fee;
-      bySymbol.set(symbol, current);
-      return;
-    }
-
-    if (side === 'SELL' && current.quantity > 0) {
-      const sellQty = Math.min(quantity, current.quantity);
-      const avgCost = current.quantity > 0 ? current.costBasis / current.quantity : 0;
-      current.quantity -= sellQty;
-      current.costBasis = Math.max(0, current.costBasis - sellQty * avgCost);
-      bySymbol.set(symbol, current);
-    }
-  });
-
-  return Array.from(bySymbol.entries())
-    .filter(([, value]) => value.quantity > 0)
-    .map(([symbol, value]) => {
-      const avgCost = value.quantity > 0 ? value.costBasis / value.quantity : 0;
-      const marketValue = value.quantity * avgCost;
-      return {
-        symbol,
-        quantity: value.quantity,
-        avg_cost: avgCost,
-        current_price: avgCost,
-        market_value: marketValue,
-        unrealized_pl: 0,
-        unrealized_pl_pct: 0,
-      };
-    });
-};
-
-async function loadPortfolioTransactions(portfolioId: number): Promise<CoreTransaction[]> {
-  const response = await authClient.get<{ results?: CoreTransaction[] }>(
-    `/core/v1/workspace/portfolios/${portfolioId}/transactions/`
-  );
-  return response.data?.results ?? [];
-}
-
+/**
+ * Read the backend summary instead of re-deriving one on the client.
+ *
+ * This used to rebuild holdings from raw transactions and then report
+ * `total_unrealized_pl: 0`, `total_realized_pl: 0` and `total_dividends: 0` as
+ * hardcoded zeros — the UI showed a flat zero P&L even when the ledger held
+ * real figures. `/summary/` already computes `realized_pnl`, `dividend_income`
+ * and `nav` from the ledger (portfolio_analytics_views.py:286-304).
+ *
+ * Money arrives as strings; convert once, here.
+ */
 export async function getSummary(portfolioId: number): Promise<PortfolioSummary> {
-  const transactions = await loadPortfolioTransactions(portfolioId);
-  const holdings = buildHoldingsFromTransactions(transactions);
-  const totalMarketValue = holdings.reduce((sum, item) => sum + toNumber(item.market_value), 0);
+  const response = await authClient.get(`/core/v1/workspace/portfolios/${portfolioId}/summary/`);
+  const raw = unwrapObject(response.data);
 
   return {
-    total_market_value: totalMarketValue,
-    total_unrealized_pl: 0,
-    total_unrealized_pl_pct: 0,
-    total_realized_pl: 0,
-    total_dividends: 0,
-    last_updated: new Date().toISOString(),
+    portfolio_name: typeof raw.portfolio_name === 'string' ? raw.portfolio_name : undefined,
+    total_market_value: toNumber(raw.total_market_value),
+    total_cost: toNumber(raw.total_cost),
+    total_unrealized_pl: toNumber(raw.total_unrealized_pnl),
+    total_unrealized_pl_pct: toNumber(raw.total_unrealized_pnl_pct),
+    total_realized_pl: toNumber(raw.realized_pnl),
+    total_dividends: toNumber(raw.dividend_income),
+    // Fail-closed on the wire too: a `nav` the backend refused to compute is
+    // surfaced as `null`, not silently turned into 0 by `toNumber`.
+    nav: raw.nav === null || raw.nav === undefined ? null : toNumber(raw.nav),
+    nav_reason: typeof raw.nav_reason === 'string' && raw.nav_reason ? raw.nav_reason : undefined,
+    cash: toNumber(raw.cash),
+    stock_value: raw.stock_value === null || raw.stock_value === undefined ? null : toNumber(raw.stock_value),
+    num_holdings: toNumber(raw.num_holdings),
+    reconciliation_required: raw.reconciliation_required === true,
+    as_of: typeof raw.as_of === 'string' ? raw.as_of : undefined,
   };
 }
 
 export async function getHoldings(portfolioId: number): Promise<HoldingItem[]> {
-  const transactions = await loadPortfolioTransactions(portfolioId);
-  return buildHoldingsFromTransactions(transactions);
+  const response = await authClient.get(`/core/v1/workspace/portfolios/${portfolioId}/holdings/`);
+  const items = unwrapList<HoldingItem>(response.data);
+  return items.map((item) => ({
+    symbol: String(item.symbol ?? '').trim().toUpperCase(),
+    quantity: toNumber(item.quantity),
+    avg_cost: toNumber(item.avg_cost),
+    current_price: toNumber(item.current_price),
+    market_value: toNumber(item.market_value),
+    unrealized_pl: toNumber(item.unrealized_pl),
+    unrealized_pl_pct: toNumber(item.unrealized_pl_pct),
+  }));
 }
 
 export async function getAllocation(portfolioId: number): Promise<AllocationItem[]> {

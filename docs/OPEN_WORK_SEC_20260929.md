@@ -1,6 +1,7 @@
-# OPEN WORK — 5 P0 bị chặn bởi quyền của owner
+# OPEN WORK (SEC / billing / CI) — 5 P0 bị chặn bởi quyền của owner
 
 **Ngày:** 2026-09-29
+**Đã đổi tên:** 2026-10-07 từ `OPEN_WORK_20260929.md` (ghi chú giải thích bên dưới)
 **Nguồn:** 3 audit độc lập trong 1 phiên (SEC-01..03 / SAFE-01..04 / SAFE-05..07 + TEN-01..06) → **42 lỗi còn lại**
 **Branch:** `feat/portfolio-p0-closure` · **Claim:** `docs/CLAIMS.md` dòng `portfolio-p0-closure`
 
@@ -9,6 +10,37 @@ lệnh tái tạo, và lý do chặn. Không mục nào được coi là đã xo
 
 > **Nguyên tắc:** viết ở đây nghĩa là **chưa làm**. Không mục nào có bằng chứng
 > `Pass` vì không mục nào đã chạy được.
+
+---
+
+> ## ⚠ HỆ SỐ ĐỘC LẬP — KHÔNG TRÙNG VỚI `OPEN_WORK_20260927.md`
+>
+> File này nhóm việc **SEC / billing / CI** (2026-09-29).
+> `OPEN_WORK_20260927.md` dùng **cùng số hiệu `OW-01..OW-05`** cho **việc hoàn toàn khác**.
+>
+> | Số hiệu | Ở file này (SEC) | Ở `OPEN_WORK_20260927.md` |
+> |---|---|---|
+> | `OW-01` | Rotate 7 secret — **CHƯA CHẠY** | URL-routing — **ĐÃ ĐÓNG** (Entry 241) |
+> | `OW-02` | Rotate `BROKER_SECRET_KEY` — **chưa đổi** | `commercial/views.py` 500 — **đã merge PR #73** |
+> | `OW-03` | Trả billing + bật CI — **CHƯA CHẠY** | `AuditLogListView` fail-closed SOC |
+> | `OW-04` | Ledger quy trình — **ĐÃ XỬ LÝ** (xem mục dưới) | `STRICT_TURNSTILE_ENFORCEMENT` |
+> | `OW-05` | `UserDNSECredential` legacy store | P0-SEC-01: 9 secret trong git history |
+>
+> **Tra cứu phải ghi rõ tên file. Không dùng số hiệu `OW-nn` để tra** — số hiệu trùng
+> ở 2 file và có thể chỉ tới việc khác nhau.
+>
+> ### Vì sao đổi tên (2026-10-07)
+> `AGENTS.md` trỏ "6 việc còn tồn đọng (OW-01..OW-06)" — người đọc sẽ tra `OW-01` ở file 27,
+> thấy **"ĐÃ ĐÓNG"**, và **bỏ sót việc rotate secret (P0)**. Xem
+> `docs/PLAN_QUYET_DINH_4_VIEC_20261007.md` quyết định 4.
+>
+> ### OW-04 Ở FILE NÀY ĐÃ SAI — đã đóng
+> Mục OW-04 ghi *"ledger chưa ghi vì file còn trong deny list §2"*. **Không còn đúng**:
+> - `packages/web/scripts/check-multi-agent.mjs` `DENY_LIST` **không có** `CODE_CHANGE_AUDIT_LEDGER.md`
+>   (đã gỡ khỏi deny-list 2026-10-03, Owner chốt)
+> - `docs/CODE_CHANGE_AUDIT_LEDGER.md` **Entry 241** đã ghi
+>
+> → Đóng mục này, không cần hành động gì thêm.
 
 ---
 
@@ -134,22 +166,32 @@ $ head -3 .github/workflows-disabled/README.md
 
 ---
 
-## OW-04 — `docs/CODE_CHANGE_AUDIT_LEDGER.md` (quy trình, P1)
+## OW-04 - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (quy trinh, P1) - DA DONG 2026-10-07
 
-**Trạng thái:** chưa ghi. File nằm trong deny list §2 nên agent không commit được.
+**Trang thai goc (SAI):** ~~chua ghi. File nam trong deny list 2 nen agent khong commit duoc.~~
 
-Cần bổ sung các entry sau (nội dung đã sẵn trong commit của PR này):
+**Bang chung da dong:**
+- `packages/web/scripts/check-multi-agent.mjs` `DENY_LIST` **khong chua** `CODE_CHANGE_AUDIT_LEDGER.md`
+  (da go khoi deny-list ngay 2026-10-03, Owner chot, muc Q-01 cua `AGENTS.md`).
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` **Entry 241** da ghi ngay 2026-10-03.
+- Rang buoc con lai: ledger append-only, moi Entry la 1 `## Entry N` rieng de hunk tach duoc.
 
-- Migration `0008` sửa `is_active` trên `TenantMember` — **vì sao sửa migration đã
-  apply không vi phạm BR-07** (`django_migrations` không có cột checksum).
-- 4 cache key thêm `tenant_id` — vector rò cross-tenant đã đóng.
-- Kill-switch: 0 caller → 2 lớp; fail-open → fail-closed.
-- 7 endpoint tài chính có kiểm tra quyền theo tenant.
-- 12 call site FE đọc tenant qua SSOT.
-- `BROKER_SECRET_KEY` set fail-fast + `CORE_PAT_PEPPER` bỏ default.
+**Viec can lam:** ~~bo sung entry~~ -> **khong con**. Neu phat sinh Entry moi, append theo
+quy uoc ledger (khong can claim truoc, khong can `--no-verify`).
 
----
+<details>
+<summary>Noi dung goc (giu de doi chieu, da het hieu luc)</summary>
 
+Can bo sung cac entry sau (noi dung da san trong commit cua PR nay):
+
+- Migration `0008` sua `is_active` tren `TenantMember`
+- 4 cache key them `tenant_id`
+- Kill-switch: fail-open -> fail-closed
+- 7 endpoint tai chinh co kiem tra quyen theo tenant
+- 12 call site FE doc tenant qua SSOT
+- `BROKER_SECRET_KEY` set fail-fast + `CORE_PAT_PEPPER` co default
+
+</details>
 ## OW-05 — Quyết định về `UserDNSECredential` legacy store (SEC-02, P2 → có thể thành P0)
 
 **Trạng thái:** chưa quyết.
