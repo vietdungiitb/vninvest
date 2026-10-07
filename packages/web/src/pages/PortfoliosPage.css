@@ -179,7 +179,7 @@ button,
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background, border-color;
+  transition: background, border-color 0.2s;
 }
 
 button:hover,

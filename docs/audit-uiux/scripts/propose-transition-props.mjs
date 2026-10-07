@@ -47,6 +47,21 @@ function walk(dir, out = []) {
   return out;
 }
 
+/** SỬA CHỮA: các rule đã bị script v1 làm mất duration (0s => mất chuyển động). */
+function findMissingDuration(root) {
+  const bad = [];
+  for (const f of walk(root)) {
+    const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
+    lines.forEach((ln, i) => {
+      // `transition: a, b;` — danh sách thuoc tinh, KHONG co thoi gian
+      if (/^\s*transition\s*:\s*[a-zA-Z-]+(\s*,\s*[a-zA-Z-]+)+\s*;\s*$/.test(ln)) {
+        bad.push({ file: f, line: i, text: ln });
+      }
+    });
+  }
+  return bad;
+}
+
 /** tach cac rule block, tra [{selector, body, startLine, endLine}] */
 function parseBlocks(txt) {
   const blocks = [];
@@ -134,6 +149,8 @@ for (const f of walk(ROOT)) {
       file: f, startLine: b.startLine, endLine: b.endLine,
       selector: b.selector, ordered,
       hasVariant: variants.length > 0,
+      // duration goc cua `transition: all ...` — de khôi phuc khi sua
+      duration: (/transition\s*:\s*all\b([^;]*);/.exec(b.body) ?? [])[1]?.trim() ?? "",
     });
   }
 }
@@ -159,10 +176,16 @@ for (const [file, list] of byFile) {
   // dong that su chua `transition: all` (co the cach dong selector mot vai dong).
   for (const c of [...list].sort((a, b) => b.startLine - a.startLine)) {
     for (let i = c.startLine - 1; i < Math.min(c.endLine, lines.length); i += 1) {
-      if (!/transition\s*:\s*all\b/.test(lines[i] ?? "")) continue;
+      const m = /^(\s*)transition\s*:\s*all\b([^;]*);/.exec(lines[i] ?? "");
+      if (!m) continue;
+      // PHẢI GIỮ PHẦN THỜI GIAN. `transition: color, background;` KHÔNG có
+      // duration ⇒ CSS mặc định `transition-duration: 0s` ⇒ hover chớp tức thay
+      // vì mất hẳn chuyển động. Đây là regression thật do script v1 gây ra
+      // (bị audit Stage 5 bắt: 49 khai báo không còn số thời gian).
+      const tail = (m[2] ?? "").trim();
+      const duration = tail || "0.2s";
       const list2 = c.ordered.length ? c.ordered.join(", ") : "opacity";
-      const indent = (lines[i].match(/^\s*/) ?? [""])[0];
-      lines[i] = `${indent}transition: ${list2};`;
+      lines[i] = `${m[1]}transition: ${list2} ${duration};`;
       applied += 1;
       break;
     }
@@ -170,7 +193,35 @@ for (const [file, list] of byFile) {
   fs.writeFileSync(file, lines.join("\n"), "utf8");
 }
 
-console.log(`\n${"-".repeat(78)}`);
-console.log(`co bien the hover/focus: ${changes.filter((c) => c.hasVariant).length}/${changes.length}`);
-console.log(`doan khong duoc: ${changes.filter((c) => !c.ordered.length).length}`);
-console.log(APPLY ? `da sua ${applied}/${changes.length}` : `chua sua gi (them --apply de ap dung)`);
+  console.log(`\n${"-".repeat(78)}`);
+  console.log(`co bien the hover/focus: ${changes.filter((c) => c.hasVariant).length}/${changes.length}`);
+  console.log(`doan khong duoc: ${changes.filter((c) => !c.ordered.length).length}`);
+  console.log(APPLY ? `da sua ${applied}/${changes.length}` : `chua sua gi (them --apply de ap dung)`);
+
+  // ---------------------------------------------------------------
+  // SUA CHUA: rule bi script v1 bo mat thoi gian chuyen dong.
+  // `transition: color, background;` => duration mac dinh 0s => mat animation.
+  // Ban nay them `0.2s` (gia tri pho bien nhat cua repo) va ghi ro lai.
+  // ---------------------------------------------------------------
+  const missing = findMissingDuration(ROOT);
+  console.log(`\n${"-".repeat(78)}`);
+  console.log(`rule thieu duration (0s => mat chuyen dong): ${missing.length}`);
+  for (const m of missing.slice(0, 8)) {
+    console.log(`   ${m.file}:${m.line + 1}  ${m.text.trim()}`);
+  }
+  if (missing.length > 8) console.log(`   … +${missing.length - 8} nữa`);
+  if (APPLY && missing.length) {
+    let fixed = 0;
+    for (const f of [...new Set(missing.map((m) => m.file))]) {
+      const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
+      missing.filter((m) => m.file === f).forEach((m) => {
+        const ln = lines[m.line];
+        const mm = /^(\s*)transition\s*:\s*([a-zA-Z-]+(?:\s*,\s*[a-zA-Z-]+)+)\s*;\s*$/.exec(ln ?? "");
+        if (!mm) return;
+        lines[m.line] = `${mm[1]}transition: ${mm[2]} 0.2s;`;
+        fixed += 1;
+      });
+      fs.writeFileSync(f, lines.join("\n"), "utf8");
+    }
+    console.log(`da khoi phuc duration cho ${fixed}/${missing.length} rule`);
+  }
