@@ -27,6 +27,7 @@ from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
 from .endpoint_safety import UnsafeEndpointError, assert_safe_outbound_url
+from .permissions import WorkspacePermission
 from .ledger import (
     build_meta,
     get_cached_ledger,
@@ -475,7 +476,8 @@ class PortfolioAnalyticsView(APIView):
 
 class PortfolioSyncView(APIView):
     """POST /api/portfolio/portfolios/<portfolio_id>/sync/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def post(self, request, portfolio_id):
         _get_user_portfolio(request, portfolio_id)
@@ -647,7 +649,8 @@ class PortfolioAIAdvisoryAutoRefreshInfoView(APIView):
 
 class PortfolioAIAdvisoryRefreshView(APIView):
     """POST /api/portfolio/ai-advisory/<symbol>/refresh/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def post(self, request, symbol):
         from advisory.views import AdvisoryRefreshView
@@ -672,7 +675,8 @@ class PortfolioAIAdvisoryRefreshView(APIView):
 )
 class PortfolioAICommandCenterView(APIView):
     """GET/PUT /api/portfolio/ai-command-center/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def _get_or_create_user_credential(self, user):
         """Get or create UserAICredential for the user."""
@@ -1089,7 +1093,8 @@ class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
     append a history entry with source='rollback'. Full config returned in
     history[i].config so GET alone is enough to inspect any version.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def post(self, request):
         from advisory.models import SystemAISettings, UserAICredential
@@ -1159,7 +1164,8 @@ class PortfolioAICommandCenterTestView(APIView):
     - local: gọi GET /models đến custom_endpoint hoặc localhost
     - openai/gemini/claude: gửi 1 tin nhắn test tối thiểu
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'broker_manage'
     throttle_classes = [AIEndpointProbeThrottle]
 
     def post(self, request):
@@ -1437,7 +1443,8 @@ class PortfolioUserConfigLegacyView(APIView):
 
     Cung cấp event gate status (advisory_whale_signal_enabled) cho SaaS frontend.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def get(self, request):
         from identity_access.models import UserProfile
@@ -1938,7 +1945,8 @@ class PortfolioWhaleBacktestStatsView(APIView):
 )
 class PortfolioScreenerRuleDetailView(APIView):
     """GET/PUT/DELETE /api/portfolio/screener/rules/<pk>/"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def _get_rule(self, request, pk):
         from user_workspace.models import ScreenerRule
@@ -2495,7 +2503,8 @@ class PortfolioScreenerRuleRunView(APIView):
     # P0.6 deviation (see IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md §1.3):
     # run intentionally ALLOWS inactive rules so template previews (P0.4,
     # stored as is_active=False) can execute without appearing in list/detail.
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
     throttle_classes = [ScreenerRunThrottle]
 
     def post(self, request, pk):
@@ -2887,7 +2896,8 @@ def _schedule_to_dict(s):
 class ScreenerScheduleListCreateView(APIView):
     """P2.4: GET/POST /screener/schedules/"""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def get(self, request):
         from user_workspace.models import ScreenerSchedule
@@ -2963,7 +2973,8 @@ class ScreenerScheduleListCreateView(APIView):
 class ScreenerScheduleDetailView(APIView):
     """P2.4: GET/PUT/DELETE /screener/schedules/<id>/"""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def _get(self, request, pk):
         from user_workspace.models import ScreenerSchedule
@@ -3039,7 +3050,8 @@ class ScreenerScheduleDetailView(APIView):
 class ScreenerScheduleRunNowView(APIView):
     """P2.4: POST /screener/schedules/<id>/run-now/ — enqueue task per rule."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def post(self, request, pk):
         from user_workspace.models import ScreenerRule
@@ -3175,7 +3187,8 @@ class ScreenerTemplatesView(APIView):
 class ScreenerHistoryListView(APIView):
     """P2.3: GET /screener/history/?rule_id=&page=&limit= — list + DELETE clear all."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def get(self, request):
         from user_workspace.models import ScreenerRunHistory
@@ -3247,7 +3260,8 @@ class ScreenerHistoryListView(APIView):
 class ScreenerHistoryDetailView(APIView):
     """P2.3: GET/DELETE /screener/history/<id>/"""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    required_workspace_permission = 'portfolio_write'
 
     def get(self, request, pk):
         from user_workspace.models import ScreenerRunHistory

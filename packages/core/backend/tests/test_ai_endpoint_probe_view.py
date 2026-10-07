@@ -31,6 +31,7 @@ from rest_framework import status  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 
 from advisory.tests.envelope import unwrapped
+from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 TEST_URL = '/core/v1/workspace/ai-command-center/test-connection/'
 
@@ -50,6 +51,9 @@ class SSRFProbeBlockedTests(TestCase):
         self.user = User.objects.create_user(
             username='ssrf-probe-user', password='x', email='ssrf@example.com'
         )
+        # Endpoint test-connection -> `broker_manage` (`settings:write`),
+        # chi `admin`/`owner` co token nay trong SYSTEM_ROLE_PERMISSIONS.
+        grant_tenant(self.user, role='admin', tenant_code='ssrf-probe-tenant')
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
