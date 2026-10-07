@@ -89,6 +89,13 @@ export function FullLayout() {
       e(
         'main',
         {
+          // UX-01: `id` la dich cua skip link o `index.html`; `tabIndex={-1}` de
+          // moi khi focus dich, trinh duyet KHONG cuon vong theo sau moi link.
+          // Khong dung `tabIndex=0` (skill fixing-accessibility §2: "do not use
+          // tabindex greater than 0" - day la 0 nen van an toan, nhung -1 ro
+          // rang hơn vi `<main>` khong phai muc tieu Tab binh thuong).
+          id: 'main-content',
+          tabIndex: -1,
           className: 'flex-1 p-[var(--sp-6,1.5rem)] overflow-auto',
           role: 'main'
         },

@@ -80,7 +80,11 @@ describe("SocDataOpsMonitorSection - queue depth (Slice G)", () => {
     await screen.findByText("soc.dataops.queue_depth_title");
     // tên queue + số depth render thô (không qua t)
     expect(screen.getByText("realtime_prefetch")).toBeTruthy();
-    expect(screen.getByText("5,000")).toBeTruthy();
+    // UX-07: test trước đây kỳ vọng "5,000" — đó là `toLocaleString()` không
+  // tham số, tức theo locale CỦA MÁY CHẠY TEST (jsdom mặc định en-US).
+  // Nay dùng `formatNumber(x, localeTag)` với `localeTag='vi-VN'` ⇒ "5.000".
+  // Đây chính là lỗi mà luat I18N-1 nhắm tới: app đổi sang EN vẫn ra kiểu Việt.
+  expect(screen.getByText("5.000")).toBeTruthy();
     expect(screen.getByText("celery")).toBeTruthy();
     // banner cảnh báo có role=status
     expect(screen.getByRole("status")).toBeTruthy();
