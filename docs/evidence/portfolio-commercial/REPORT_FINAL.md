@@ -98,26 +98,44 @@ Mọi gate mới đều có bằng chứng **fail trước / pass sau**, thực 
 bởi `portfolio-w3-api` (`docs/CLAIMS.md:277`). Đề xuất 3 phương án ở
 `portfolio-p0-gates.md` §5.1.
 
-### 6.2 Hai nguồn nói ngược nhau — cần Owner chốt
+### 6.2 P0-LEGAL-01 — ĐÃ CHỐT (2026-09-27, ghi nhận 2026-10-06)
 
-`AGENTS.md:73` — **P0-LEGAL-01**: license `vnbroker` chưa ký ⇒ R3 live trading
-không tồn tại.
-`docs/CLAIMS.md:251` — Owner chốt 2026-09-27: `vnbroker` là **sở hữu của chủ
-repo** ⇒ *"không còn blocker pháp lý"*, R3 live trading được phép.
+Hai nguồn từng nói ngược nhau:
 
-Wave 6 (LIV-01..05, 21–28 ed) không thể mở tới khi chốt.
+- `AGENTS.md:73` — license `vnbroker` chưa ký ⇒ R3 live trading không tồn tại.
+- `docs/CLAIMS.md:251` — Owner chốt 2026-09-27: `vnbroker` là **sở hữu của chủ
+  repo** ⇒ *"không còn blocker pháp lý"*, R3 live trading **được phép**.
 
-### 6.3 Bốn claim `in-progress` đều stale
+**Owner đã chỉ định 2026-10-06: theo claim.** Nghĩa là `AGENTS.md:73` là dòng
+**stale**.
 
-| Claim | Dòng | Ngày | Bằng chứng |
-|---|---|---|---|
-| `portfolio-exec-plan` | 251 | 09-27 | Branch không tồn tại; 3/7 file đã bị archive |
-| `sec03-secret-scan` | 259 | 09-28 | Tự ghi push `--no-verify`; PR #46 chưa merge |
-| `portfolio-w3-api` | 277 | 09-29 | `docs/evidence/wave3-api/` không tồn tại |
-| `owner-audit-fix` | 942 | — | Thiếu cột ngày; file đã bị commit bởi `1e1b6e0c4` |
+`AGENTS.md` nằm trong shared-file deny list ở **cả hai** gate
+(`check-multi-agent.mjs:28`, `.githooks/pre-commit:21`) ⇒ hook chặn commit, và
+gate còn chặn luôn cả trường hợp **claim khai báo** file đó (đã thử, bị BLOCK).
+Theo `AGENT_PROTOCOL.md` §2: ghi vào claim + báo coordinator, không tự sửa.
 
-Đang **chặn file** mà không ai giữ — gồm `portfolio_analytics_views.py`,
-`views_dnse.py`, `ledger/services.py`, `adapters/core/workspace.js`.
+⇒ **Bản sửa viết sẵn** nằm ở `docs/evidence/portfolio-commercial/AGENTS_MD_HANDOVER.md`
+(kèm 3 mục stale khác đã xác minh). Owner dán và commit.
+
+**Hệ quả cho kế hoạch:** Wave 6 (LIV-01..05, 21–28 ed) **mở được** về mặt pháp
+lý. Ràng buộc còn lại là kỹ thuật, không phải pháp lý.
+
+### 6.3 Bốn claim `in-progress` — ĐÃ HỦY (2026-10-06)
+
+Owner chỉ định hủy. Ghi bằng **dòng `superseded` ở cuối `CLAIMS.md`**, không
+xoá dòng cũ (`AGENT_PROTOCOL.md:67-68`: xoá claim là mất bằng chứng về lý do
+phạm vi đổi). Commit `8149e96af`.
+
+| Claim | Dòng | Bằng chứng không tiến triển |
+|---|---|---|
+| `portfolio-exec-plan` | 251 | Branch `docs/portfolio-exec-plan-20260927` không tồn tại; 3/7 file đã bị archive |
+| `sec03-secret-scan` | 259 | Tự ghi push `--no-verify`; PR #46 chưa merge |
+| `portfolio-w3-api` | 277 | `docs/evidence/wave3-api/` không tồn tại |
+| `owner-audit-fix` | 942 | Thiếu cột ngày; file đã bị commit bởi `1e1b6e0c4` |
+
+Hệ quả: mở được `portfolio_analytics_views.py`, `views_dnse.py`,
+`ledger/services.py`, `adapters/core/workspace.js`. Đã làm phần còn lại của
+SAFE-04 trên 2 file đầu (mục 2 và mục 10).
 
 ### 6.4 Bảy dòng tài liệu sai đã xác minh
 
@@ -183,3 +201,56 @@ do phải tự chạy lại thay vì tin lời.
 
 **Không merge được khi mục 6.1 còn nguyên**: suite đỏ mà không ai được sửa là
 trạng thái không đóng được.
+---
+
+## 10. Phần đã làm sau khi hủy claim (2026-10-06)
+
+Claim `opencode-portfolio-safe04-pav`, commit `20c114840`. Ba lỗi đã đóng:
+
+| Mã | Lỗi | Sửa |
+|---|---|---|
+| **P1-5** | `status` chưa import ở module scope, `pav:1960,1966` dùng `status.HTTP_400_BAD_REQUEST` ⇒ `NameError` ⇒ **HTTP 500** thay vì 400 | Import ở module scope |
+| **P1-6** | `ScreenerRule` tra bằng `filter(user=…)` **không lọc `tenant`**, trong khi `ScreenerSchedule.tenant` NOT NULL ⇒ user đa tenant gắn rule tenant A vào schedule tenant B, và rule đó ghi kết quả vào history tenant B | Lọc `tenant` ở schedule-POST và run-now |
+| **P1-8** | Cả **6** call site `views_broker.py` bỏ qua tham số `tenant` ⇒ `UserBrokerConfig.tenant` luôn NULL ⇒ constraint `uniq_broker_config_legacy_no_tenant` chiếm ưu ⇒ **user ở hai tenant dùng chung một hàng credential**, và `DELETE` xoá credential của cả hai. `test_broker_connection_task` cũng không nhận `tenant_id` nên guard ở `tasks.py` bị vô hiệu | Truyền `tenant` vào 6 chỗ + `tenant_id` cho task |
+
+**Một lần tự sửa quyết định sai.** Lần đầu P1-6 trả **400 cứng** khi
+`request.tenant` là `None`. Điều đó chặn một request trước đây chạy được và làm
+`test_screener_schedule::test_crud` thất bại — **lặp lại đúng lỗi B4** (siết
+quá tay). Đã đổi thành lọc `tenant` **có điều kiện**: khi tenant resolve được
+(đường production) thì có lọc; khi không thì giữ hành vi cũ.
+
+### 10.1 Đã thử và **hoàn nguyên** — cần lát riêng
+
+7 nhánh `else: <chỉ lọc user>` trong `portfolio_analytics_views.py` là **fail-open
+thật** (`services.py` không có; đường kích hoạt: bypass superuser ở
+`identity_access/middleware.py`). Đổi sang 404 fail-closed làm **35 test** đỏ.
+
+Nguyên nhân đã xác minh: DRF `force_authenticate` gán `request.user` **sau khi**
+`TenantResolutionMiddleware` đã chạy, nên lúc middleware chạy user còn là
+`AnonymousUser` và tenant không resolve được **dù header có đủ**. Sửa đúng phải
+đổi 35 test sang `force_login` + thêm header — đó là **thay đổi hạ tầng test**,
+không phải vá lỗ hổng.
+
+Đã revert **cả code lẫn fixture** sau khi sửa được 23/35 và còn 12 đỏ với nguyên
+nhân rối rắm (Celery không chạy inline, `tenant_not_found`, history không tạo
+được). Không giao một thay đổi hạ tầng test chưa đóng vào lát bảo mật.
+
+⇒ **Cần lát riêng**, thứ tự đề xuất:
+1. Đổi hạ tầng fixture: `force_authenticate` → `force_login` + `X-Tenant-ID`
+   trong toàn bộ test `user_workspace` — làm một PR riêng, không kèm logic.
+2. Sau đó mới đổi 7 nhánh `else` sang `lookup(...)` fail-closed.
+3. Chạy lại `test_capability_matrix.py` để chứng minh bộ lọc không hỏng.
+
+### 10.2 Bài học
+
+**`git show HEAD:<file> | Out-File -Encoding utf8` trong PowerShell làm hỏng
+file không dấu.** Pipe đi qua bộ giải mã cp1252 của console nên `—` (E2 80 94)
+thành `ΓÇö` (3 ký tự) và tiếng Việt hỏng theo. Diff báo **549 dòng thay đổi**
+trong khi thực tế chỉ có 3 sửa — và mọi trích dẫn `file:line` vào file đó đều
+sai. Đã phát hiện bằng cách đếm `\u0393\u00c7`, khôi phục bằng `git checkout`
+(binary-safe) rồi áp lại bằng script Python đọc/ghi `encoding="utf-8"` tường minh.
+
+Đây chính là hazard "đọc file không dấu bằng công cụ đoán encoding" — mà tài liệu
+của chính phiên này đã ghi. Việc nó xảy ra lần nữa **ngay trong lúc viết tài liệu
+đó** là bằng chứng cho việc phải ghi hazard có kèm lệnh tái lập, không chỉ bằng
+lời.
