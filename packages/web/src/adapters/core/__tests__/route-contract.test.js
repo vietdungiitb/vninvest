@@ -14,10 +14,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-// Jest runs this suite as ESM, so `__dirname` does not exist.
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+// `jest.config.js` sets `extensionsToTreatAsEsm` to [.jsx, .ts, .tsx] only, so this
+// `.js` suite is transformed to CommonJS by babel-jest and `import.meta` is a
+// SyntaxError. The old comment here claimed the opposite ("Jest runs this suite as
+// ESM, so `__dirname` does not exist"), which is why the suite never executed.
+const HERE = __dirname;
 const ADAPTER_DIR = path.resolve(HERE, "..");
 
 // Read the manifest with fs rather than `import ... from "./x.json"`: ESM JSON

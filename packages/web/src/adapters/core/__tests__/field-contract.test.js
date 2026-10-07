@@ -23,9 +23,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+// `jest.config.js` sets `extensionsToTreatAsEsm` to [.jsx, .ts, .tsx] only, so a
+// `.js` test file is transformed to CommonJS by babel-jest and `import.meta` is a
+// SyntaxError there. `__dirname` is the correct idiom for this suite.
+// Same fix applied to `route-contract.test.js` in this commit.
+const HERE = __dirname;
 // __tests__ -> core -> adapters -> src -> web -> packages -> repo root
 const REPO = path.resolve(HERE, "..", "..", "..", "..", "..", "..");
 const SERIALIZERS_PY = path.join(
