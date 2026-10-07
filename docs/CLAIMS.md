@@ -983,3 +983,24 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | 3 | Xoá `docs/_workflow/` | **Owner** | Template của hệ thống `hermes` sinh cho project khác (`LESSONS.md` ghi "cho du an eoffice-be"). 9/9 gate `CHUA CHAY`; gate duy nhất `git ls-files \| head -1`. Repo đã có gate thật: `.githooks/pre-push` + `scripts/pre-push-gate.mjs`. |
 | 4 | Sửa `AGENTS.md:58` | **Owner** | **deny-list** — agent không tự sửa. Bản vá nội dung đã chuẩn bị trong `docs/OPEN_WORK_SEC_20260929.md` header. |
 | 5 | Dựng Postgres + `CORE_DATABASE_URL` → chạy BE test | **Owner** | Không có môi trường ⇒ **không có kết luận**. Chưa có kết luận nào về BE test là đáng tin. |
+
+---
+
+## 2026-10-07 - Xoá 2 branch remote đã hợp nhất (Owner duyệt, kiểm chứng trước khi xoá)
+
+> Owner chỉ định: *"branch không dùng nữa thì xoá; dữ liệu đã merge vào dev thì xoá đi"*.
+> **KHÔNG xoá trước khi kiểm chứng nội dung** — `CLAIMS.md:959` từng ghi "không tiến triển"
+> là **SAI**, đã bị bác sau kiểm chứng. Đây chính là bẫy `docs/LESSONS/multi-agent.md` **L-M02**
+> (đọc head thật, không tin mô tả).
+
+| agent | branch | scope | files | status | date | note |
+|---|---|---|---|---|---|---|
+| delete-merged-branches-20261007 | feat/portfolio-p0-20261005 | XOÁ 2 branch remote đã hợp nhất vào `dev` theo NỘI DUNG | (remote refs) | done | 2026-10-07 | **SHA đã xoá (tra cứu bằng SHA vì mất tên branch):** `docs/portfolio-exec-plan-20260927` = `a75b42c6f33a807bf12d20d30f9a67b3f7fe4af5` · `feat/portfolio-w3-api` = `6f6257aefb6796abfd194a56fff19f88374e9f03`. **Bằng chứng đã hợp nhất:** (a) toàn bộ gate `.githooks/pre-commit`, `.githooks/pre-push`, `scripts/pre-push-gate.mjs`, `tools/opencode-global/*` có trên **cả** `dev` lẫn `w3-api`; (b) **1332/1583** file `.md` chỉ-có-ở-branch-cũ tìm thấy trong `docs/archive/` trên `dev`; (c) khác biệt còn lại chủ yếu là **35.605 dòng xoá** — hệ quả `00c2764fa docs: archive 1368 file .md`; (d) `frontend/` cũ (React CRA) = **0 file** trên `dev`, đã chuyển sang monorepo `packages/web/` (517 file, Vite `main.tsx`); (e) `user_workspace/tests.py` đã tách thành `tests/`; (f) `packages/web/src/adapters/core/crawl.js` bị xoá có chủ đích (`owner-audit-fix` Slice D — 32 method trỏ route backend không phục vụ). **Quan hệ:** `portfolio-exec-plan` là merge-base, `w3-api` kế thừa từ nó (`a75b42c6f` ancestor). **PR mở:** `gh pr list --state open` → `[]` (không có PR nào trỏ 2 branch này). **Lưu ý:** `git merge-base --is-ancestor` báo "chưa có trong dev" là **false negative** vì `dev` nhận nội dung qua squash/archive-apply, khác SHA — đừng dùng lệnh đó kết luận branch stale. |
+
+### Bài học rút ra (đã ghi vào `docs/LESSONS/`)
+
+| # | Bài học | Nơi ghi |
+|---|---|---|
+| 1 | `git merge-base --is-ancestor <sha> dev` trả "chưa merge" **không đồng nghĩa** branch stale — `dev` có thể đã nhận nội dung qua squash/cherry-pick/archive-apply với SHA khác | `docs/LESSONS/migrations.md` **L-M02** (đọc head thật, không chỉ dựa vào quan hệ SHA) |
+| 2 | Mô tả trạng thái trong `CLAIMS.md` là **nhận định của agent trước**, không phải bằng chứng. Lần này `CLAIMS.md:959` sai 2/4 mục | `docs/LESSONS/INDEX.md` §1.3 (chỉ ghi khi có bằng chứng) |
+| 3 | Trước khi xoá branch: kiểm 3 tầng — PR mở, quan hệ nội dung (`git diff` thực tế), và **file đích có tồn tại không** | `docs/LESSONS/multi-agent.md` (checklist verify-before-action) |
