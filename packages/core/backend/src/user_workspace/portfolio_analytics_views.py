@@ -481,6 +481,128 @@ class PortfolioEquityCurveView(APIView):
         return envelope({'portfolio_id': portfolio_id, 'curve': curve})
 
 
+def _nav_series(holdings, symbols, date_from):
+    """`[{date, nav_float}]` — NAV danh mục theo ngày, dùng cho chỉ số.
+
+    Ngày thiếu giá cho **một số** mã ⇒ bỏ qua ngày đó. Lấy giá vốn thay cho giá
+    thiếu sẽ tạo ra một đường cong trông thuyết phục nhưng hoàn toàn bịa —
+    cùng lý do LED-03 AC4 mà `PortfolioEquityCurveView` đã áp dụng.
+    """
+    from market_data.models import DailyPrice
+
+    prices = (
+        DailyPrice.objects.filter(symbol__in=symbols, date__gte=date_from)
+        .order_by('date', 'symbol')
+    )
+    date_price_map: dict[date, dict[str, Decimal]] = {}
+    for p in prices:
+        date_price_map.setdefault(p.date, {})[p.symbol] = Decimal(str(p.close))
+    series = []
+    for day in sorted(date_price_map):
+        day_prices = date_price_map[day]
+        if any(sym not in day_prices for sym in holdings):
+            continue
+        series.append({
+            'date': day,
+            'nav': float(sum(day_prices[sym] * h['quantity'] for sym, h in holdings.items())),
+        })
+    return series
+
+
+def _benchmark_returns(symbol, date_from, date_to):
+    """Lợi nhuận ngày của chỉ số. `([], 'no_benchmark_data')` khi thiếu giá."""
+    from market_data.models import DailyPrice
+
+    rows = (
+        DailyPrice.objects
+        .filter(symbol=symbol, date__gte=date_from, date__lte=date_to)
+        .order_by('date').values_list('close', flat=True)
+    )
+    closes = [float(c) for c in rows if c is not None]
+    if len(closes) < 2:
+        return [], 'no_benchmark_data'
+    return [(cur - prev) / prev for prev, cur in zip(closes, closes[1:]) if prev != 0], None
+
+
+class PortfolioMetricsView(APIView):
+    """GET /core/v1/workspace/portfolios/<id>/metrics/ — chỉ số THẬT.
+
+    S-00b. `risk_metrics` / `benchmark_metrics` / `performance` / `freshness`
+    trong `user_workspace/ledger/analytics.py` là **code chết**: traverse cho
+    thấy 0 caller ngoài test. Code viết đúng nhưng không endpoint nào gọi.
+
+    Ràng buộc D7 — không bịa số:
+    - Thiếu dữ liệu ⇒ `null` **kèm** `reason_code`, không phải 0.
+    - `sharpe`/`sortino`/`correlation` KHÔNG có ở backend (`grep -c` = 2 comment,
+      0, 0) nên endpoint này không khai chúng; FE không được hiện card cho 3 số này.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        from django.utils import timezone as _tz
+
+        from user_workspace.ledger.analytics import (
+            DEFAULT_BENCHMARK,
+            benchmark_metrics,
+            freshness,
+            performance,
+            risk_metrics,
+        )
+
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
+        if not holdings:
+            return envelope({
+                'portfolio_id': portfolio_id,
+                'performance': None, 'risk': None, 'benchmark': None,
+                'freshness': None, 'reason': 'no_holdings', 'observations': 0,
+            })
+
+        symbols = list(holdings)
+        series = _nav_series(holdings, symbols, date.today() - timedelta(days=365))
+        navs = [row['nav'] for row in series]
+        daily_returns = [(c - p) / p for p, c in zip(navs, navs[1:]) if p]
+
+        payload = {
+            'portfolio_id': portfolio_id,
+            'performance': None, 'risk': None, 'benchmark': None,
+            'freshness': None, 'observations': len(series),
+        }
+
+        if len(daily_returns) >= 1:
+            # `cash_flows` rỗng ⇒ `mwr` = None (thiếu dòng tiền thật) — đúng, không bịa.
+            payload['performance'] = performance(daily_returns, [])
+        else:
+            payload['performance_reason'] = 'insufficient_nav_history'
+
+        if len(daily_returns) >= 2:
+            payload['risk'] = risk_metrics(daily_returns, market_values=navs)
+        else:
+            payload['risk_reason'] = 'insufficient_nav_history'
+
+        if len(series) >= 2:
+            bench, reason = _benchmark_returns(
+                DEFAULT_BENCHMARK, series[0]['date'], series[-1]['date'])
+            if reason is None and len(bench) == len(daily_returns):
+                out = benchmark_metrics(daily_returns, bench, benchmark=DEFAULT_BENCHMARK)
+                out['benchmark'] = DEFAULT_BENCHMARK
+                payload['benchmark'] = out
+            else:
+                payload['benchmark_reason'] = reason or 'benchmark_length_mismatch'
+        else:
+            payload['benchmark_reason'] = 'insufficient_nav_history'
+
+        try:
+            now = _tz.now()
+            payload['freshness'] = freshness(as_of=now, now=now)
+        except Exception as exc:  # noqa: BLE001
+            payload['freshness'] = None
+            payload['freshness_reason'] = type(exc).__name__
+
+        return envelope(payload)
+
+
 class PortfolioAllocationView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/allocation/ — symbol weight breakdown."""
     permission_classes = [permissions.IsAuthenticated]
