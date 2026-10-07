@@ -54,8 +54,21 @@ BE test cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1` (settings.py:27-34 raise `I
 - Gate chạy thật (CI billing không dùng được): `check-multi-agent` exit 0 · `verify-deny-extract` **8/8** + 9/9 negative · `scan-secrets` 3591 file · `verify-trailer-bypass` 3/3 · `verify-hook-mode` 4/4. Mô phỏng vòng lặp `DENY` của hook: ledger `ALLOWED`, `AGENTS.md` vẫn `BLOCKED`.
 - Tác dụng phụ có lợi: **claim ledger trong `docs/CLAIMS.md` giờ được phép** — vòng khai-báo-claim của ledger không còn bị chặn vô lý.
 ### DOC MỐC 2026-09-27 — đọc `docs/OPEN_WORK_20260927.md` ĐẦU TIÊN khi nhận session mới
-`verified: 2026-09-27 @ 0605189`
-Chứa: 6 việc còn tồn đọng (OW-01..OW-06, đủ `file:line` + nguyên nhân) · việc owner phải làm trước deploy · **baseline test đã biết** (BE `602 test — failures=10, errors=3`; 1 flake FE) để khỏi điều tra lại · bẫy quy trình đã gặp · quy tắc chạy test BE. 150+ `docs/*_HANDOFF_*.md` khác là **archive lịch sử**, không phải trạng thái hiện tại.
+`verified: 2026-09-27 @ 0605189` · **cập nhật 2026-10-07**
+Chứa: **baseline test đã biết** (BE `602 test — failures=10, errors=3`; 1 flake FE) để khỏi điều tra lại · bẫy quy trình đã gặp · quy tắc chạy test BE. 150+ `docs/*_HANDOFF_*.md` khác là **archive lịch sử**, không phải trạng thái hiện tại.
+
+⚠ **SỐ HIỆU `OW-nn` TRÙNG NHAU GIỮA 2 FILE — tra cứu phải ghi rõ tên file.**
+Có **2** file open-work dùng cùng số hiệu `OW-01..OW-05` cho **việc hoàn toàn khác nhau**:
+
+| Số hiệu | `OPEN_WORK_20260927.md` | `OPEN_WORK_SEC_20260929.md` (đổi tên 2026-10-07) |
+|---|---|---|
+| `OW-01` | URL-routing `vninvest_core` — **ĐÃ ĐÓNG** (Entry 241) | Rotate 7 secret (SEC-01) — **CHƯA CHẠY** |
+| `OW-02` | `commercial/views.py` 500 cho member — **đã merge PR #73** | Rotate `BROKER_SECRET_KEY` → `SecretStore` — code xong, **chưa đổi** |
+| `OW-03` | `AuditLogListView` fail-closed SOC | Trả billing + bật CI — **CHƯA CHẠY** |
+| `OW-04` | `STRICT_TURNSTILE_ENFORCEMENT` | Ledger quy trình — **ĐÃ Đóng 2026-10-07** |
+| `OW-05` | P0-SEC-01: 9 secret trong git history | `UserDNECredential` legacy store |
+
+**Không dùng "OW-01..OW-06" làm danh sách tra cứu** — 3/5 mục ở file 27 đã đóng, còn rotate secret (P0) ở file 29 **chưa chạy**. Chi tiết: `docs/OPEN_WORK_SEC_20260929.md` header.
 ### VERIFY 6 slice `tenantreg-*` (2026-09-27) — code **ĐÃ CÓ ĐỦ**, 13/13 P0 đã sửa, test chạy thật
 `verified: 2026-09-27 @ 0605189` · Nguồn sự thật cho trạng thái claim: `docs/CLAIMS.md`, KHÔNG phải file này.
 Sửa 1 hiểu nhầm đã làm 1 phiên báo sai: câu "6 agent `tenantreg-*` còn bị giữ file" ở mục Portfolio Commercial là **stale**. `CLAIMS.md:57-62` cả 6 dòng `released`, `OPEN_WORK_20260927.md:8` ghi "đã merge". Đừng suy ra thiếu code từ AGENTS.md — hãy đọc CLAIMS.md.
