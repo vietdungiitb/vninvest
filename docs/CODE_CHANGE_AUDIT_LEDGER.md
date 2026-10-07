@@ -1,3 +1,96 @@
+## Entry 251: Cai dat UI/UX - dung gate ngan sach de do tien bo, 327 -> 246 (2026-10-07)
+
+- **Date**: 2026-10-07
+- **Branch**: `feat/uiux-improvement` (từ `dev@b075a3e07`)
+- **Scope**: 9 slice UI/UX theo 3 skill vừa cài (`web-design-guidelines` vercel, `fixing-accessibility` + `improve-ui` + `fixing-motion-performance` ibelick, `frontend-design` anthropic). Không migration, không `npm install`, không sửa `package.json`.
+- **Nguồn**: `docs/audit-uiux/UIUX_AUDIT_20260710.md` (327 finding, P0=0)
+
+### 1. Điều quan trọng nhất: GATE TRƯỚC, SỬA SAU
+
+Dựng `packages/web/scripts/check-uiux-budget.mjs` + `uiux-baseline.json`, **nhân bản nguyên tắc từ `check-openapi-schema-budget.py` sẵn có trong repo**:
+
+| Tình huống | Hành động |
+|---|---|
+| Tổng TĂNG so baseline | **FAIL** |
+| Bằng baseline | PASS |
+| BẾ hơn baseline | PASS + đề xuất `--write-baseline` |
+| Có rule MỚI không có trong baseline | **FAIL** |
+| Không có baseline | FAIL |
+
+Gate `--self-test` là negative proof. Không sửa `package.json` (deny-list) — chạy bằng `node`.
+
+Vì sao quan trọng: gate nào đòi `0 finding` sẽ đỏ ngay và chặn mọi thay đổi cho tới khi sửa hết 327 mục. Đây là "công nghệ chặn thoái lui, không chặn nỡ san" — 327 được ghi **một lần**, mỗi đợt sau đo chạy được giam dần.
+
+### 2. Kết quả đo được
+
+```
+327  ->  246        P0=0  P1=123  P2=121  P3=2
+```
+
+| Rule | Trước | Sau | Cách |
+|---|---|---|---|
+| CSS-1 `transition: all` | 51 | **0** | script compute + 2 sửa tay |
+| A11Y-8 outline-none không focus | 6 | 4 | 1 sửa thật, 5 là false positive |
+| A11Y-9 thiếu label | 46 | 44 | `PaginationBar` (dùng chung) |
+| I18N-1 `toLocale*` không locale | 34 | 19 | `formatNumber(x, localeTag)` |
+
+Không rule nào TĂNG.
+
+### 3. Bốn lỗi nghiêm trọng do chính tác giả gây ra (đều bị bắt, đều đã sửa)
+
+| # | Lỗi | Cách bị bắt |
+|---|---|---|
+| 1 | `transition: all 0.18s` → `transition: color, background;` **vứt mất duration** ⇒ CSS mặc định `0s` ⇒ 49 rule hover chớp tức thay | audit Stage 5 đếm trực tiếp |
+| 2 | Script sửa file rồi tìm theo line cũ ⇒ chỉ sửa 38/51 | tự phát hiện, sửa ngược thứ tự |
+| 3 | `parseBlocks` trả dòng của selector không phải dòng `transition` ⇒ `0/13` | tự phát hiện |
+| 4 | Scanner bỏ sót comment nhiều dòng `/* … */` | tự phát hiện |
+
+Và **một lần phá hủy thật**: vòng lặp PowerShell `Get-Content` → `Set-Content -NoNewline` đã **gép `soc.components.css` 3482 dòng còn 1 dòng**. `git diff --stat` báo `3944 deletions` — đó là dấu hiệu duy nhất lúc đó. Khôi phục bằng `git show HEAD~1:<file>` rồi chạy lại toàn bộ fix.
+
+⇒ **Quy tắc mới**: dùng `Write`/`Edit` tool hoặc script Node với `lines.join("\n")`; **không** dùng `Get-Content|Set-Content` để sửa file nhiều dòng. Và `deletions` lớn bất thường là triệu chứng, không phải chuyện thường.
+
+### 4. Gate bị sửa vì nó ĐO SAI (hazard 9)
+
+`A11Y-8` báo 6 lỗi `outline-none`. Kiểm chứng tay: **3/6 file CSS đã có** `:focus` + `box-shadow` ring thật (`aiSettings.module.css:455`, `VninvestInput.module.css:60`, `UserSettingsPage.css:106`). Nguyên nhân: rule chỉ nhìn cửa sổ ±8 dòng, bỏ sót rule `.input:focus` nằm sau. Sửa lại theo mức file.
+
+⇒ `A11Y-8` **có sẵn ngưỡng false-positive**. Ghi rõ thay vì "sửa hết".
+
+### 5. Test mới + hồi qu bắt được
+
+`PaginationBar.a11y.component.test.tsx` (5 test) — fail-trước/pass-sau bằng chính bộ test: bản gốc `5 failed` → bản mới `5 passed`.
+
+**1 test hồi qu do thay đổi của tôi**: `soc-queue-depth.component.test.tsx:83` kỳ vọng `"5,000"`. Đó là `toLocaleString()` không tham số ⇒ locale **của máy chạy test** (jsdom mặc định en-US). Test đang **khoá lại hành vi sai**. Sau khi dùng `formatNumber(x, 'vi-VN')` ra `"5.000"` — đúng mục tiêu của luat. Đã cập nhật test kèm ghi chú lý do.
+
+### 6. Chưa làm (ghi rõ, không giữ làm xong)
+
+| Mục | Số | Vì sao |
+|---|---|---|
+| NAV-1 state không đồng bộ URL | 115 | Cần quyết định thư viện (`nuqs` hay tự viết) TRƯỚC khi sửa 115 chỗ — sửa tay từng chỗ là cách đắt nhất |
+| I18N-1 còn lại | 19 | Script chỉ bắt 15/34; 3 chỗ khác scope, 1 cần truyền locale qua props, 6 chỗ trên biểu thức ngoặc |
+| A11Y-9 còn lại | 44 | Nằm rải ở 40+ file, phần lớn là `<Input>` wrapper cần kiểm component gốc |
+| **Màu tăng/giảm theo chuẩn VN** | P0 nghiệp vụ | **Chưa đổi** — cần Owner chốt, xem mục 7 |
+| 63 page thiếu `<h1>` | 63 | Sửa khi refactor từng trang, không gộp một lần |
+| Mobile / touch / safe-area | — | Không có thiết bị trong phiên |
+
+### 7. Cần Owner chốt: màu tăng/giảm
+
+`--pf-gain` (xanh) / `--pf-loss` (đỏ) theo chuẩn **Tây**; thị trường VN dùng **ngược** (đỏ = tăng). Spec `PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225` ghi rõ "Bloomberg green (up)". Đây là lỗi **ý nghĩa** — sửa hết kỹ thuật xong mà giữ nguyên thì vẫn sai với người dùng Việt. Chưa tự đổi vì nó là quyết định sản phẩm, không phải kỹ thuật.
+
+### 8. Ghi nhận thêm: `check-multi-agent.mjs` có kẽ hở
+
+Claim khai 24 file nhưng thay đổi thật 21 file, **11 file không có trong claim**. Gate `check-multi-agent.mjs` exit 0 "0 lỗi" vì nó chỉ kiểm chiều **claim → file tồn tại**, không kiểm **file đã thay đổi → claim**. Đã bổ sung 11 file vào claim. Kẽ hở này là của cả repo ⇒ ticket riêng.
+
+### 9. Gate chạy thật
+
+```
+node packages/web/scripts/check-uiux-budget.mjs     : PASS, 246 -> 246
+npx tsc --noEmit                                    : exit 0
+npm run build                                       : exit 0
+npm run test:components                             : 747/747, 110/110 file
+node scripts/check-portfolio-contrast.mjs           : PASS 12 cặp × 2 theme
+npm run check:tokens                                : PASS
+```
+
 ## Entry 250: FE Portfolio workspace (17 slice) — plan v2 sai kiến trúc, 5 blocker lộ ra muộn (2026-10-07)
 
 - **Date**: 2026-10-07
@@ -6884,3 +6977,6 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 - **CHUA CHAY: `run_tests.py` toan bo** — treo co san, xem muc 3b
 - pre-push-gate.mjs: chua chay cho commit nay
 | 250 | 2026-10-07 | FE Portfolio workspace 17 slice - **plan v2 xay tren API khong ton tai** (widget 1.2.5 chi export 29 symbol, khong co Line/Area/Bar/Comparison/Treemap; hazard 7 lap 3 lan) - chuyen sang ECharts da co san; audit doc lap tra REJECT 5 blocker (WorkspacePage khong truyen adapter / BE tra nav la STRING / che do Cot doc sai input / gom nganh 2 lan / twr la OBJECT) - da sua het; baseline BE that **2180 test 19F+17E** (ca plan 679/679 va AGENTS.md 602/10F/3E deu sai) | `feat/portfolio-fe-workspace` | 4 endpoint BE moi (equity-curve, allocation, chart, metrics) · 5 trang FE · 742 test FE · 12 cap contrast do that · gate multi-agent 0 loi · **user_workspace delta = 0** so baseline dev (9F+15E khong doi) | 5 blocker audit da sua trong `9e071d73f`; 3 major (M2 pagination >50 giao dich, M3 `weight_covers_all_holdings` nam trong `meta`, M4 5 truong canh bao BE gui) **CHUA DONG**; GT12 axe CHUA CHAY (chua cai `axe-core`, AGENTS.md cam npm install khi chua hoi); nghiem thu truc quan CHUA LAM duoc - DB dev co **0 LedgerEntry** nen can Owner quyet seed data | `9e071d73f`, `44f159021`, `docs/evidence/portfolio-fe/TEST_REPORT.md` |
+
+| 251 | 2026-10-07 | Cai dat UI/UX theo 3 skill (web-design-guidelines / fixing-accessibility + improve-ui + fixing-motion-performance / frontend-design) - **dung gate ngan sach check-uiux-budget.mjs nhan ban tu check-openapi-schema-budget.py** (chan thoai lui, cho phep giam; FAIL neu co rule MOI) nen 327 duoc ghi MOT lan va do chay duoc giam dan | `feat/uiux-improvement` | 6 commit · **327 -> 246** (P0=0 P1=123 P2=121 P3=2) · 	ransition: all 51 -> **0** · skip link + theme-color + color-scheme · global prefers-reduced-motion · PaginationBar co ten accessible (dung chung) · locale that cho 15 diem · test moi 5 (fail-truoc 5 -> pass-sau 5) | **4 loi cua chinh tac gia da sua**: (1) bo mat duration cua 49 rule 	ransition (audit Stage 5 bat) (2) sua file roi tim theo line cu (38/51) (3) parseBlocks tra sai dong (0/13) (4) scanner bo sot comment nhieu dong; **+1 lan PHA HONG THAT**: vong PowerShell Get-Content/Set-Content -NoNewline lam soc.components.css 3482 dong -> 1 dong, khoi phuc tu git va chay lai toan bo fix. Gate A11Y-8 bi sua vi do sai (6 hit -> 3/6 la false positive) | **CHUA LAM**: NAV-1 state khong dong bo URL (115, can chot thu vien truoc) · I18N-1 con 19 · A11Y-9 con 44 · 63 page thieu <h1> · mobile (khong co thiet bi). **CAN OWNER CHOT**: mau tang/giam theo chuan VN (do = tang) — hien tai theo chuan Tay theo spec, chua tu doi vi la quyet dinh san pham | 75ef6a86, docs/evidence/portfolio-fe/TEST_REPORT.md, docs/audit-uiux/UIUX_AUDIT_20261007.md |
+
