@@ -41,3 +41,55 @@
   - [ ] Với test nhạy cảm encoding/locale (Windows cp1252) → đã kiểm tra riêng?
   - [ ] Đã xác nhận test suite chạy trên đúng DB engine của môi trường đích?
 - **Proof:** `AGENTS.md` mục Portfolio Commercial - "Bài học coordinator đã trả giá: cả 4 agent báo gate PASS; merge lại chạy thì **198 test `errors=1`** ... `0019:264-272` `print()` tiếng Việt có dấu ⇒ `UnicodeEncodeError` trên cp1252 ⇒ làm `migrate` thất bại giữa chừng. Gate trên máy agent **không** đại diện cho máy khác."
+
+## L-G04: Con so dem duoc KHONG phai con so LOI - phan loai theo muc do truoc khi bao cao
+
+- **Nguyen nhan:** scanner dem "mot mau van ban" roi tu doong bang "N loi".
+  Khong tach muc do, nen **noi manh gap voi thuc te**.
+- **Hau qua that (4/5 muc bi thoi phong, doc lai trong `docs/audit-uiux/UIUX_AUDIT_20261007.md` muc 10):**
+
+| Muc | Da bao | Thật | Sai vi sao |
+|---|---|---|---|
+| state khong dong bo URL | 115 | **29** | Dem moi useState, ke ca form input ma deep-link vo nghia |
+| thieu label | 44 | 45 | Gan dung nhung chua tach theo muc tap trung |
+| thieu h1 | 63 | **24** | Bo qua shell da render h1; "sua" theo so cu se tao 33 trang co **hai** h1 |
+| locale that | 19 | **21** | Revert ca lot keo mat 2 diem da sua dung |
+
+- **Khi nao gap:** moi khi bao cao mot con so tu dong (scanner, lint, grep). Rat pho bien.
+- **QUY TAC:** truoc khi ghi mot con so vao bao cao:
+  1. **Phan loai theo muc do** (that / tuong doi / khong phai loi).
+  2. Kiem chung **it nhat 3** muc nang cao nhat bang tay, doc `file:line` that.
+  3. Neu co mau danh tinh — vd shell da render h1 — **doc kien truc truoc khi dem**.
+     Dem khong kiem chung kien truc la nguon sai lon nhat.
+  4. Ghi ro **vi sao** con so phai tach ra, khong bao cao mot so.
+- **CHECKLIST:**
+  - [ ] Da tach "that / tuong doi / khong phai loi" chua?
+  - [ ] Da doc kien truc dung khong (khong dem tren ma nguon)?
+  - [ ] Neu sua theo danh sach nay co lam **hai** thu bi trung khong (vd 2 h1)?
+  - [ ] Con so co kem **lenh tai tao** khong?
+- **Proof:** muc 10 cua `docs/audit-uiux/UIUX_AUDIT_20261007.md`.
+
+## L-G05: `git diff --stat` deletions BAT THUONG = trieu chung, dung phai cham vao
+
+- **Hau qua that:** mot vong lap PowerShell doc file roi ghi lai bang `Set-Content -NoNewline`
+  lam `soc.components.css` **3.482 dong -> 1 dong**. Commit ghi `3944 deletions`.
+  Chi thay mau do **SAU** khi da commit va do lai so dong.
+- **QUY TAC:** moi commit, neu `deletions` vuot so dong sua thi **dung lai**:
+  1. `git show --stat HEAD`
+  2. Do lai so dong: so sanh file hien tai voi `git show dev:<file>`
+  3. Khoi phuc: `git show HEAD~1:<file> > <file>` roi **chay lai toan bo fix**.
+- **CHECKLIST:**
+  - [ ] `deletions` co vuot so dong sua khong?
+  - [ ] File nao giam > 10 dong khong doi-chu y?
+
+## L-G06: Revert theo LOT keo mat ca fix da lam DUNG o file khac
+
+- **Hau qua that:** `TenantAdminBillingPage.tsx` loi scope nen revert **ca file do**;
+  nhung file do da sua 2 diem `toLocaleString()` **dung o cho khac** bi revert theo.
+  Ket qua: I18N-1 tu 19 (da bao) thanh **21** so voi thuc te.
+- **QUY TAC:** revert **theo file**, va **do lai con so truoc/sau** o nhung file
+  da sua dung bi revert theo. Khong bao cao "da xong" bang nho so truoc revert.
+- **CHECKLIST:**
+  - [ ] Revert tung file chu khong phai ca lot?
+  - [ ] Da kiem tra file bi revert keo theo co mat fix nao khong?
+
