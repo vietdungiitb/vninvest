@@ -197,6 +197,54 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     },
 
     /**
+     * S-00a - daily NAV history (duong cong van gia).
+     *
+     * Backend tra `{portfolio_id, curve: [{date, nav, nav_reason, missing_symbols}]}`.
+     * `nav` la `null` + `nav_reason` khi ngay do thieu gia cho it nhat ma nao -
+     * KHONG coi la 0 (LED-03 AC4).
+     * @returns {Promise<{portfolio_id: number, curve: object[]}>}
+     */
+    getPortfolioEquityCurve(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioEquityCurve");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/equity-curve/`);
+    },
+
+    /**
+     * S-00a - phan bo theo ma (weight_pct). Moi row co them `industry` tu S-00c
+     * de FE group-by sector ma khong can goi them endpoint.
+     * @returns {Promise<{portfolio_id: number, total_value: string|null, allocation: object[]}>}
+     */
+    getPortfolioAllocation(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocation");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/`);
+    },
+
+    /**
+     * S-00a - alias cua `equity-curve` (`PortfolioChartView` goi thang
+     * `PortfolioEquityCurveView().get(...)`). Giu de khong pha client cu; code
+     * moi DUNG `getPortfolioEquityCurve`.
+     * @returns {Promise<{portfolio_id: number, curve: object[]}>}
+     */
+    getPortfolioChart(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioChart");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/chart/`);
+    },
+
+    /**
+     * S-00b - chi so THAT: performance / risk / benchmark / freshness.
+     *
+     * ⚠ Doc contract truoc khi ve chart: khi thieu du lieu moi nhom la `null`
+     * **kem** `<nhom>_reason`. Backend KHONG tinh `sharpe`/`sortino`/
+     * `correlation` nen response khong co 3 key do - FE KHONG duoc ve card
+     * cho chung. Mot so = 0 o day co nghia la 0 that, khong phai "chua co".
+     * @returns {Promise<{performance: object|null, risk: object|null, benchmark: object|null, freshness: object|null}>}
+     */
+    getPortfolioMetrics(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioMetrics");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/metrics/`);
+    },
+
+    /**
      * Get technicals for all holdings in a portfolio.
      * @param {number|string} portfolioId
      * @returns {Promise<{results: object[]}>}
