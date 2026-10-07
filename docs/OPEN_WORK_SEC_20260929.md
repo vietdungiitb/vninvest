@@ -46,7 +46,7 @@ lệnh tái tạo, và lý do chặn. Không mục nào được coi là đã xo
 
 ## OW-01 — Rotate 7 secret (SEC-01, P0)
 
-**Trạng thái:** `CHƯA CHẠY (chờ owner)`
+**Trạng thái:** `CHƯA CHẠY (chờ owner)` · **2/5 điều kiện tiên quyết ĐÃ ĐẠT** (kiểm 2026-10-07)
 **Chặn:** cần network tới GitHub / DNSE / Django / Ad signing.
 
 7 secret phải revoke + phát hành lại **cùng lúc** (D-29 — rotate là một sự kiện):
@@ -76,17 +76,24 @@ scan-secrets: OK, no secrets found          # 0 secret thật trong tracked file
 
 **Còn lại (không làm được nếu thiếu owner):**
 
-1. `SELECT count(*) FROM identity_access_userdnsecredential` — **bắt buộc** chạy
-   trước khi rotate `DNSE_CREDENTIAL_FERNET_KEY`. Store này dùng
-   `_encrypt_credential` riêng (`identity_access/models.py:879-892`), **không**
-   qua `SecretStore` và **không có** `secret_version`, nên lệnh
-   `reencrypt_broker_secrets` cố tình bỏ qua nó. Rotate key ⇒ mất toàn bộ
-   credential DNSE cũ.
-2. Xác nhận `0 UserBrokerConfig` đang ở `secret_version=1` trước khi chạy
-   `reencrypt_broker_secrets --apply` (lệnh có sẵn:
+0. ⚠ **PHÁT HIỆN MỚI 2026-10-07 — DB dev thiếu 4 migration.**
+   `SELECT secret_version FROM user_workspace_userbrokerconfig` → **cột không tồn tại**.
+   Nguyên nhân: `django_migrations` trên DB dev cao nhất `0019_pf4_tenant_and_financial_guards`,
+   trong khi code đã có `0020`…`0023`.
+   ⇒ Phải `python manage.py migrate` **trước** khi chạy `reencrypt_broker_secrets`,
+   nếu không lệnh sẽ lỗi vì thiếu cột `secret_version`.
+
+1. ✅ **ĐÃ KIỂM 2026-10-07** — `SELECT count(*) FROM identity_access_userdnsecredential` → **0**.
+   Store này dùng `_encrypt_credential` riêng (`identity_access/models.py:879-892`), **không**
+   qua `SecretStore` và **không có** `secret_version`, nên lệnh `reencrypt_broker_secrets`
+   cố tình bỏ qua nó. Rotate key ⇒ mất toàn bộ credential DNSE cũ.
+   **Trên DB dev không mất gì (0 bản ghi).** ⚠ Phải chạy lại trên DB THẬT.
+2. ⏳ Chưa làm — xác nhận `0 UserBrokerConfig` đang ở `secret_version=1` (cần #0 trước),
+   rồi `reencrypt_broker_secrets --apply` (lệnh có sẵn:
    `user_workspace/management/commands/reencrypt_broker_secrets.py`).
-3. Thông báo user trước khi rotate (session/PAT cũ sẽ vô hiệu) — D-29.
-4. Tạo `docs/evidence/SEC-01/{gates,rotate-log,pb-answers}.md` với ảnh đã che.
+3. ⏳ Thông báo user trước khi rotate (session/PAT cũ sẽ vô hiệu) — D-29.
+4. ⏳ Tạo `docs/evidence/SEC-01/{gates,rotate-log,pb-answers}.md` — **sau** khi rotate,
+   không tạo trước (tạo trước là báo cáo không có bằng chứng).
 
 **Không tự purge git history** (`AGENTS.md` cấm khi còn agent chạy):
 `git log --all -S 'DNSE_CREDENTIAL_FERNET_KEY'` → **27 commit**,
@@ -130,17 +137,26 @@ $ grep -rn BROKER_SECRET docker-compose*.yml compose.dev.env.example
 
 ## OW-03 — Trả billing + bật lại CI (SAFE-07, SEC-03 R6, P0)
 
-**Trạng thái:** `CHƯA CHẠY` — không thể chạy từ phía agent.
+**Trạng thái:** `CHƯA CHẠY` — không thể chạy từ phía agent. **Xác minh lại 2026-10-07: tình trạng không đổi.**
 
 ```
-$ git ls-files '.github/workflows/*.yml'
-0 file          # tất cả nằm trong .github/workflows-disabled/
+$ git ls-files '.github/workflows/*.yml' | wc -l
+1                  # CHỈ secret-scan.yml
+
+$ ls .github/workflows-disabled/
+backend.yml  core-api.yml  governance-release-gate.yml  large-file-guard.yml
+multi-agent-gate.yml  opencore-doc-sync-gate.yml  web-ci.yml  web.yml
+                     + README.md
+8 workflow bị disable — không đổi so với 2026-09-27.
 
 $ head -3 .github/workflows-disabled/README.md
 # GitHub Actions - ĐÃ TẮT 2026-09-27
 # 200/200 run gần nhất thất bại. Nguyên nhân gốc: recent account payments
 # have failed / spending limit needs to be increased. — fail sau 2-3 giây,
 ```
+
+⚠ **Hệ quả:** ngoài `secret-scan`, mọi gate (test, tsc, multi-agent) chỉ chạy **cục bộ**
+qua `.githooks/pre-push`. Không có CI làm lưới an toàn khi máy dev hỏng.
 
 **Đã làm trong PR này (để sẵn sàng khi bật):**
 - `.github/workflows/secret-scan.yml` — đã viết, **chưa bao giờ chạy**.
@@ -192,22 +208,38 @@ Can bo sung cac entry sau (noi dung da san trong commit cua PR nay):
 - `BROKER_SECRET_KEY` set fail-fast + `CORE_PAT_PEPPER` co default
 
 </details>
-## OW-05 — Quyết định về `UserDNSECredential` legacy store (SEC-02, P2 → có thể thành P0)
+## OW-05 — `UserDNSECredential` legacy store (SEC-02) — ✅ ĐÃ CHỌN (b) 2026-10-07
 
-**Trạng thái:** chưa quyết.
+**Trạng thái:** đã quyết — chọn **(b)**, xác minh bằng số liệu thật.
 
 `UserDNSECredential` dùng `_encrypt_credential` / `_decrypt_credential` riêng
 (`identity_access/models.py:879-892, 997-1004`), **không** qua `SecretStore`,
-**không có** `secret_version`. Lệnh `reencrypt_broker_secrets` cố tình bỏ qua nó
+**không có** `secret_version`. Lệnh `reencrypt_broker_secrets` cố t ý bỏ qua nó
 (`reencrypt_broker_secrets.py:97`).
 
-⇒ Rotate `DNSE_CREDENTIAL_FERNET_KEY` **sẽ mất toàn bộ credential DNSE cũ**, và
-không có đường migrate. Rủi ro chỉ an toàn **sau** khi rotate (OW-01).
+**Số liệu kiểm chứng 2026-10-07 (đọc lại trước khi quyết):**
 
-**Hai lựa chọn, cần owner chọn:**
-- (a) Thêm `secret_version` cho model legacy → có đường rotate an toàn.
-- (b) Ghi rõ ngoài phạm vi, mở ticket riêng, và **không** coi SEC-02 là đóng
-  vật lý khi còn 1 store chưa versioning.
+```sql
+SELECT count(*) FROM identity_access_userdnsecredential;   --> 0
+```
+
+⇒ Trên **DB dev** store rỗng ⇒ rotate `DNSE_CREDENTIAL_FERNET_KEY` **không mất credential nào**.
+Rủi ro "mất toàn bộ credential DNSE cũ" **không xảy ra với dữ liệu hiện có**.
+
+**Quyết định: (b) — ghi ngoài phạm vi, KHÔNG thêm migration lúc này.**
+
+Lý do không chọn (a):
+- Thêm `secret_version` cho một bảng **0 bản ghi** là việc không cần thiết
+- DB dev đang thiếu migration `0020`–`0023` (`django_migrations` cao nhất `0019`); thêm
+  migration mới làm rối thêm tình trạng này
+
+**Điều kiện mở lại lên P0 — phải kiểm lại trên DB THẬT, không phải DB dev:**
+- [ ] `SELECT count(*) FROM identity_access_userdnsecredential` > 0 trên production
+      ⇒ **dừng rotate** `DNSE_CREDENTIAL_FERNET_KEY` cho tới khi có đường migrate
+- [ ] Hoặc owner xác nhận chấp nhận mất credential DNSE cũ
+
+⚠ **Kết luận trên chỉ đúng cho DB dev.** Store ở môi trường production có thể khác.
+Không coi SEC-02 **đóng vật lý** khi còn 1 store chưa versioning.
 
 ---
 
