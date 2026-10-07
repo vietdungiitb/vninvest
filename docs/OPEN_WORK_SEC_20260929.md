@@ -151,7 +151,29 @@ $ grep -rn BROKER_SECRET docker-compose*.yml compose.dev.env.example
 
 ## OW-03 — Trả billing + bật lại CI (SAFE-07, SEC-03 R6, P0)
 
-**Trạng thái:** `CHƯA CHẠY` — không thể chạy từ phía agent. **Xác minh lại 2026-10-07: tình trạng không đổi.**
+**Trạng thái:** `CHỦ ĐỘNG TẮT` — Owner quyết định 2026-10-07: **phát triển bằng dev local,
+merge thẳng vào `dev`, KHÔNG dùng CI của GitHub.**
+
+**Hệ quả đã chấp nhận (ghi rõ để không ai hỏi lại):**
+- **SAFE-07 sẽ KHÔNG đạt** trong bảng đối chiếu slice — đây là quyết định có chủ đích,
+  không phải thiếu sót. Xem `docs/DOI_CHIEU_PLAN_BACKEND_FRONTEND_PORTFOLIO_20261007.md`.
+- **Gate thực tế chạy ở local**, không phải CI:
+  - `.githooks/pre-commit` → `check-multi-agent` (deny-list + migration trùng số)
+  - `.githooks/pre-push` → `scripts/pre-push-gate.mjs` — **17 PASS / 0 SKIP / 0 FAIL**
+    gồm `tsc --noEmit`, `check-multi-agent`, `envelope-contract`, `openapi-budget`,
+    `route-contract`, `field-contract`, `secret-scan`
+- ⇒ **Mọi thay đổi phải chạy gate local trước khi push.** Không có lưới an toàn thứ hai.
+
+**Khi nào cần bật lại CI:**
+- Đưa lên production
+- Nhiều người/thiết bị cùng push (dev local không thay thế được CI cho trường hợp đó)
+- Cần audit trail cho compliance
+
+**8 workflow sẵn sàng bật:**
+```bash
+git mv .github/workflows-disabled/*.yml .github/workflows/
+```
+Chưa làm — sẽ 40/40 fail với `steps=0` nếu billing chưa xong.
 
 ```
 $ git ls-files '.github/workflows/*.yml' | wc -l

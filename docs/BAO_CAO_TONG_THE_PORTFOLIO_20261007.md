@@ -122,7 +122,71 @@ PortfolioAllocationView   import trong urls.py, 0 path()
 
 ---
 
-## PHẦN 4 — HƯỚNG HOÀN THIỆN
+## PHẦN 3b — BACKEND CÒN THIẾU GÌ (trả lời trực tiếp câu hỏi Owner)
+
+> Owner hỏi: *"chưa code chưa làm — trả lời backend còn thiếu gì"*
+> Đo bằng lệnh, 2026-10-07.
+
+### 3b.1 Backend ĐÃ ĐỦ (không cần code thêm)
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| 5/5 model Wave 2 | `LedgerEntry:1040` · `CashFlow:1211` · `PositionSnapshot:1268` · `ValuationSnapshot:1324` · `IdempotencyRecord:1387` |
+| 16 hàm analytics | `twr` · `mwr` · `xnpv` · `xirr` · `performance` · `benchmark_metrics` · `risk_metrics` · `allocation` · `freshness` · `daily_series` · `chain_link` · `percentile` … |
+| NAV engine | `valuation.py:compute_nav` + `portfolio_valuation` |
+| Append-only guard 2 tầng | `AppendOnlyMixin` — Python **và** DB trigger (migration `0023`) |
+| Transaction → Ledger tự động | `signals.py:sync_transaction_to_ledger_on_save` |
+| Pagination + filter | `CoreCursorPagination` (portfolio) · `TransactionCursorPagination` + filter `symbol` |
+| RFC 9457 `problem+json` | 28 match |
+| OpenAPI baseline + envelope | `openapi-schema-baseline.json` + 87 match |
+| 3 view equity-curve/allocation/chart | **CÓ LOGIC THẬT** (`_compute_holdings`, `DailyPrice`) — chỉ thiếu route |
+| Secret management | `SecretStore` + `secret_version` + `reencrypt_broker_secrets` |
+| Test coverage ledger/analytics | `test_ledger_models_wave2.py` · `test_analytics_wave2.py` · `test_ledger_migration_backfill.py` |
+| **Không có stub** | Grep `NotImplementedError`/`TODO`/`stub` trong `user_workspace` → chỉ comment + tên lớp test |
+
+### 3b.2 Backend CÒN THIẾU — chia 2 mức
+
+**Mức 1: rẻ, nên làm ngay**
+
+| # | Thiếu | Bằng chứng | ed |
+|---|---|---|---|
+| **B1** | **3 route cho view đã có** | `PortfolioChartView` / `EquityCurveView` / `AllocationView` import trong `urls.py` nhưng **0 `path()`** | **0.5** |
+| **B2** | BRK-01 credential deprecation **410** | `dnse_credential_views.py` — grep `410\|deprecat` → **0** | 4 |
+| **B3** | PAP-04 phần **plan gating** | `MODE_PAPER`/`MODE_LIVE` có (`views_dnse.py:303-344`); gating theo `CoreTenant.Plan` chưa thấy | 2 |
+
+**Mức 2: wave lớn, chưa bắt đầu**
+
+| # | Thiếu | Bằng chứng | ed |
+|---|---|---|---|
+| **B4** | PAP-01 `VirtualBrokerEngine` | **0 match toàn repo** | 4 |
+| **B5** | PAP-02 `TradingDockPanel` (FE nhưng cần endpoint hỗ trợ) | **0 match** | 3 |
+| **B6** | LIV-01 **approval gate** cho live order | Kill-switch có (SAFE-03); approval chưa có | 4 |
+| **B7** | LIV-02 `OrderEvent` | **0 match** | 4 |
+| **B8** | LIV-03 `RiskLimit` + enforcement | **0 match** | 5 |
+| **B9** | LIV-04 canary release | `canary` 14 match nhưng ở AI advisory, không phải trading | 4 |
+| **B10** | LIV-05 DR drill | Không có runbook | 4 |
+| **B11** | OPS-01 SLO/error budget **cho trading** | 148 match `SLO` nhưng ở AI advisory | 4 |
+| **B12** | OPS-03 PITR (backup có rồi, thiếu point-in-time recovery) | `scripts/test-backup-restore.sh` có; PITR chưa | 2 |
+| **B13** | OPS-05 retention policy 7 năm (cho dữ liệu tài chính) | 248 match `retention` nhưng ở token/UI | 2 |
+| **B14** | OPS-06 SBOM CycloneDX | **0 file** | 2 |
+| **B15** | OPS-04 ASVS L2 + pen test | **0 match** | 5 |
+| **B16** | OPS-02 load test | Không có kịch bản | 3 |
+| **B17** | BRK-06 SOC panel Broker Ops (backend endpoint cho panel) | Panel đang ở `/portfolios`, không phải SOC | 3 |
+
+### 3b.3 Trả lời thẳng câu hỏi
+
+> **Backend core (ledger + analytics + API) ĐÃ ĐỦ** — không cần code thêm cho
+> nghiệp vụ danh mục/holdings/NAV/chỉ số. Wave 2 hoàn hảo 12/12.
+>
+> **Backend còn thiếu tập trung ở 2 nơi:**
+> 1. **Live trading** (B6–B10): `RiskLimit`, `OrderEvent`, approval gate, canary — **0 match**.
+>    Đây là 21 ed, và giờ **đã mở khoá** sau khi bạn xác nhận license.
+> 2. **Compliance/hardening** (B12–B16): ASVS, SBOM, PITR, load test — **0 match**, 18 ed.
+>
+> **Việc rẻ nhất còn lại: B1 = 0.5 ed** thêm 3 dòng `path()` — mở khóa FE-02 + FE-06.
+
+---
+
 
 ### Phase A — Mở khóa giá trị đã có (~21.5 ed, ưu tiên cao)
 
@@ -207,12 +271,12 @@ vì ledger + analytics + API đã xong — chỉ thiếu lớp trình bày.
 | 2 | Rotate secret | ✅ **Trì hoãn có chủ đích** | Mở lại khi lên production |
 | 3 | Sửa `package.json` | ✅ **Đã cho phép** | Mở PAP-05 |
 | 4 | Migrate DB thật | ✅ **Đã xong** | — |
-| 5 | **Trả billing GitHub** | ⏳ **Chưa** | SAFE-07 + CI gate |
+| 5 | **Trả billing GitHub** | ✅ **CHỦ ĐỘNG TẮT** (2026-10-07) | Owner chọn dev local, không dùng CI |
 | 6 | Xác nhận mức độ ưu tiên Phase A | ⏳ | Quyết định lộ trình |
 
-**Về #5 (billing):** bạn nói phần mềm đang phát triển nên không cần. Đồng ý về mặt
-ưu tiên — CI có 8 workflow bị disable là **chấp nhận được** khi dev local. Nhưng cần
-ghi nhận: **SAFE-07 sẽ không bao giờ đạt** cho tới khi bật lại. Xem Phase E ghi rõ.
+**Về #5 (billing):** Owner đã chốt 2026-10-07 — **phát triển bằng dev local, merge
+thẳng `dev`, không dùng CI GitHub**. Hệ quả: **SAFE-07 không đạt** (đây là quyết định,
+không phải thiếu sót). Gate thực tế chạy ở local: `.githooks/pre-push` → **17 PASS**.
 
 ---
 
