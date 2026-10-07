@@ -20,6 +20,47 @@
   --sp-md: 0.75rem;
   --sp-lg: 1rem;
   --sp-xl: 1.5rem;
+
+  /* ------------------------------------------------------------------
+   * S-01 - Portfolio workspace tokens.
+   *
+   * Dat O DAY (soc.tokens.css) chu khong tao file rieng:
+   *  - AGENTS.md: token o `soc.tokens.css`, class o `soc.components.css`;
+   *    `soc.module.css` chi la barrel 3 dong, 0 token 0 class.
+   *  - `scripts/check-tokens.mjs:8` quet roots `src/components|src/pages|
+   *    src/layouts|src/theme` - thu muc `src/styles/` KHONG duoc quet, nen
+   *    file token dat o do se khong doi duoc gate nao nhin thay (audit M2).
+   *
+   * MAU TANG/GIAM - doc ky truoc khi dung:
+   * Spec `PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225` quy dinh
+   * chuan WESTERN: gain = xanh (#00B96B), loss = do (#F23645), va goi ro
+   * "Bloomberg green (up)". Token duoi day THEO SPEC.
+   *
+   * ⚠ CONG TRANG BO MO CHUA DONG: thi truong Viet Nam dung chuan NGHICH -
+   * DO = tang, XANH = giam. Hai quy uoc ton tai cung luc trong mot san pham
+   * tai chinh la loi. Giu nguyen theo spec cho den khi Owner chot; xem
+   * docs/KE_HOACH_THIET_KE_FRONTEND_PORTFOLIO_20261007.md §6 (cau hoi mo).
+   *
+   * Do contrast bang `node scripts/check-portfolio-contrast.mjs` - gate doc
+   * THAT file nay, khong phai bang mau tinh san nhu `check:contrast`.
+   */
+  --pf-surface: #0b1424;
+  --pf-gain: #34d399;
+  --pf-loss: #f87171;
+  --pf-flat: #94a3b8;
+  --pf-accent: #22d3ee;
+  /* nen nhat cho badge +/-: chu tham hon nen panel de khong "chay" */
+  --pf-positive-soft: #0d2a22;
+  --pf-negative-soft: #2c1418;
+  --pf-positive-text: #6ee7b7;
+  --pf-negative-text: #fca5a5;
+  /* Chart: 5 sac phan bo cho treemap/sunburst. Thu tu = do lon, nen cac
+     sac sau ghi chu de doc theo tieu chi dinh luong tien cua nguoi dung. */
+  --pf-chart-1: #22d3ee;
+  --pf-chart-2: #34d399;
+  --pf-chart-3: #f59e0b;
+  --pf-chart-4: #a855f7;
+  --pf-chart-5: #f472b6;
   --r-sm: 6px;
   --r-md: 8px;
   --r-lg: 12px;
@@ -92,6 +133,24 @@
   --accent-purple-rgb: 126 34 206;
   --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
   --shadow-pop: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* S-01 - portfolio, light theme. Gia tri chon de do chung dat >= 4.5:1
+     tren nen san (xem `node scripts/check-portfolio-contrast.mjs`).
+     Nen light la nen TRANG nen can bien mau sang ban toi hon ban dark. */
+  --pf-surface: #ffffff;
+  --pf-gain: #047857;
+  --pf-loss: #b91c1c;
+  --pf-flat: #475569;
+  --pf-accent: #0e7490;
+  --pf-positive-soft: #d1fae5;
+  --pf-negative-soft: #fee2e2;
+  --pf-positive-text: #065f46;
+  --pf-negative-text: #991b1b;
+  --pf-chart-1: #0e7490;
+  --pf-chart-2: #047857;
+  --pf-chart-3: #b45309;
+  --pf-chart-4: #7e22ce;
+  --pf-chart-5: #be185d;
   /* legacy bg aliases → light surfaces */
   --soc-rgb-081734: 248 250 252;
   --soc-rgb-0f172a: 241 245 249;
