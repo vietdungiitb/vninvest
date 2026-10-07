@@ -207,7 +207,7 @@ pattern hợp lệ. 3 case còn lại thật:
 | **1** | **Không có skip link** — không tìm thấy `skip-link` / `skipToContent` / "Đến nội dung" ở bất kỳ đâu | `Select-String -Path packages/web/src/**/*.tsx,... -Pattern "skip-link\|skipToContent"` → 0 hit | P1 |
 | **2** | **75 page nhưng chỉ 12 `<h1>`** — 63 page không có `<h1>` nào; screen reader không có điểm neo đầu trang | `Select-String -Pattern "<h1"` trong `src/pages` → 12 hit / 75 file | P1 |
 | **3** | **Thiếu `<meta name="theme-color">`** và `color-scheme` | `index.html` chỉ có viewport (dòng 5); `Select-String "color-scheme"` trong toàn bộ CSS → 0 hit | P2 |
-| **4** | **Nhãn màu tài chính theo chuẩn Tây** — `soc` và `portfolioWorkspace` đều dùng xanh = lãi, đỏ = lỗ. Thị trường VN dùng **ngược lại** (đỏ = tăng, xanh = giảm) | `docs/archive/docs-flat/portfolio_ui_ux/PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225` ghi rõ "Bloomberg green (up)"; token `--pf-gain` (xanh) / `--pf-loss` (đỏ) | **P0 nghiệp vụ** |
+| **4** | **Nhãn màu tài chính theo chuẩn Tây** — `soc` và `portfolioWorkspace` đều dùng xanh = lãi, đỏ = lỗ. Thị trường VN **dùng GIỐNG Bloomberg**: xanh = tăng, đỏ = giảm ⇒ token hiện tại **đã đúng**, không cần đổi (Owner chốt 2026-10-08) | `docs/archive/docs-flat/portfolio_ui_ux/PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225` ghi rõ "Bloomberg green (up)"; token `--pf-gain` (xanh) / `--pf-loss` (đỏ) | **P0 nghiệp vụ** |
 | **5** | **Dark mode mặc định kể cả khi OS sáng** — chủ đích, nhưng phải nói rõ với người dùng | `src/index.css:6-13` (comment giải thích) | P3 |
 | **6** | Bảng số chưa `tabular-nums` — 20 file có `<table>` mà không khai (bỏ qua file đã có class `pf-`) | output scanner rule TYPO-2 | P2 |
 
@@ -384,3 +384,149 @@ Không rule nào tăng. Gate chặn được hồi quy.
 `PaginationBar.a11y.component.test.tsx` (5 test) — fail-trước/pass-sau bằng chính bộ test: bản gốc **5 failed** → bản mới **5 passed**.
 
 1 test hồi qu do thay đổi của tôi: `soc-queue-depth.component.test.tsx:83` kỳ vọng `"5,000"` — đó là `toLocaleString()` không tham số ⇒ locale **của máy chạy test** (jsdom mặc định en-US). Test đang khoá lại hành vi sai; sau khi dùng `formatNumber(x, 'vi-VN')` ra `"5.000"`. Đã cập nhật kèm ghi chú.
+
+
+---
+
+
+## 10. PHÂN TÍCH 5 MỤC CÒN LẠI — CON SỐ CŨ CỦA TÔI BỊ THỔI PHỒNG
+
+> Nguyên tắc: **đếm máy không phải đếm lỗi.** Mỗi mục dưới đây được đo lại
+> bằng script riêng, và 3/5 mục **con số cũ sai**. Đây là bài học L-F06 áp
+> dụng lại cho chính báo cáo của tôi.
+
+Tái lập: `node docs/audit-uiux/scripts/scan-ui-guidelines.mjs packages/web/src`
+
+### 10.1 NAV-1 — con số 115 là **thổi phồng ~4 lần**
+
+Scanner chỉ làm một phép: thấy `useState(filter|search|sort|page|tab)` trong file
+không dùng `useNavigate` ⇒ báo. Nhưng **không phải cái nào cũng là lỗi**.
+
+Phân loại lại theo mức độ:
+
+| Nhóm | File | Điểm | Đánh giá |
+|---|---|---|---|
+| **A — Thật** | 12 | **29** | Bảng có phân trang + filter. Gửi link cho đồng nghiệp → **họ thấy dữ liệu không lọc**. Đây mới là lỗi |
+| **B — Tương đối** | 30 | 84 | Có filter/sort nhưng hiếm khi gửi link. Nên sửa nhưng không gấp |
+| **C — Không phải lỗi** | 2 | 2 | `AdvisoryOrderTicket.js:14` `quantity`, `DNSEConnectionPanel.js` `orderQuantity` — **ô nhập trong form**, deep-link sẽ vô nghĩa và còn nguy hiểm |
+
+⇒ Việc cần làm thật: **29 điểm / 12 file**, không phải 115.
+
+**Nhóm A (ưu tiên cao nhất)**:
+
+| File | State |
+|---|---|
+| `components/dashboard/CoreDashboardPositionDeck.tsx` | `activeTab`, `pageSize`, `currentPage` |
+| `components/dashboard/FactsFirstModularPositionDeck.jsx` | `activeTab`, `pageSize`, `currentPage` |
+| `pages/admin/AdminCoreAuditTracePage.tsx` | `filtersDraft`, `filters`, `selectedRequestId` |
+| `pages/admin/AdminCoreJobsPage.tsx` | `filtersDraft`, `filters` |
+| `pages/admin/AdminCorePATsPage.tsx` | `filtersDraft`, `filters` |
+| `pages/admin/AdminCoreServiceAccountsPage.tsx` | `filtersDraft`, `filters` |
+| `pages/admin/AdminCoreTenantsPage.tsx` | `searchDraft`, `search`, `page` |
+| `pages/admin/AdminBillingFleetPage.tsx` | `page`, `search` |
+| `pages/admin/AdminAuditPage.tsx` | `page` |
+| `pages/tenant-admin/TenantAdminMembersPage.tsx` | `searchQuery`, `roleFilter`, `activeTab` |
+| `pages/portfolio/PortfolioHoldingsPage.tsx` | `search`, `sortKey`, `sortDir` |
+| `features/advertising/components/CampaignTable.jsx` | `sorting`, `globalFilter` |
+
+**Vì sao vẫn cần chốt thư viện trước**: `PortfolioHoldingsPage` + `AIAuditLogsPanel`
++ `AdminCore*Page` đều có **cả bộ lọc + phân trang + sắp xếp**. Sửa tay = lặp
+cùng một đoạn parse/serialize `URLSearchParams` 12 lần. Một hook `useUrlState`
+viết một lần rồi áp cho cả 12 là rẻ hơn nhiều.
+
+### 10.2 I18N-1 — 19 còn lại, và có 1 lỗi **tôi tự gây ra**
+
+Không phải 19 "lỗi chưa ai đụng". Phân loại:
+
+| Loại | Số | Đánh giá |
+|---|---|---|
+| `new Date(x).toLocaleString()` (ngày/giờ) | phần lớn | `toLocaleString()` trên **Date** khác `toLocaleString()` trên **number**. Cần `Intl.DateTimeFormat(localeTag, …)`, không dùng lại `formatNumber` |
+| `(s.total_rows ?? 0).toLocaleString()` | vài chỗ | Script không bắt vì biểu thức có ngoặc. Sửa tay được, chỉ là script chưa khoét |
+| `ui/calendar.tsx` | 1 | Không gọi `useI18n()` — cần truyền `locale` qua props |
+| `TenantAdminBillingPage.tsx` | 3 | `useI18n()` gọi ở dòng 117 nhưng dùng ở dòng 85–101 ⇒ khác scope |
+
+⚠ **`AIUsageDashboard.tsx:204-205` là do tôi bỏ sót**: script `fix-locale.mjs`
+báo sửa 2 điểm trong file đó nhưng sau đó tôi revert file khi `TenantAdminBillingPage`
+lỗi scope — **kéo cả 2 điểm đã sửa đúng đi lại**. Đây là cái giá của revert theo
+lô thay vì theo file. Cần sửa lại.
+
+⇒ Còn **21 điểm**, không phải 19. Và cần một helper `formatDateTime` mới — hiện
+chưa có (`LangContext.js:110` chỉ có `formatDate` trả nguyên `d`).
+
+### 10.3 A11Y-9 — 44 còn lại, tập trung đủ để sửi rẻ
+
+Đã loại trừ `<Input>` wrapper (`ui/input.tsx:6` có sẵn prop `label` render
+`<label>`). Còn lại là **control thô**. Phân bố:
+
+| Nhóm | Số | Nghĩa |
+|---|---|---|
+| `features/advertising/components` | **15** | Sửa một chỗ → được nhiều màn hình |
+| `pages/admin` | 10 | |
+| `pages/tenant-admin` | 8 | |
+| `components/ui` | 5 | **Sửa ở đây = được mọi trang** |
+| `components/alert-center` | 3 | |
+| còn lại | 4 | rải rác, 1 điểm/lần |
+
+`components/ui/command.tsx:17` là ví dụ điển hình: `<input>` chỉ có `placeholder`
+— `placeholder` **không phải** accessible name.
+
+⇒ 45 điểm nhưng **tập trung**: sửa 5 file trong `components/ui` + 15 trong
+advertising = 20/45 chỉ bằng 2 nhóm. Không cần chạm 40+ file.
+
+### 10.4 `<h1>` — con số 63 sai, và **thêm `<h1>` vào chỗ đã có sẽ tạo 2 `<h1>`**
+
+Đây là mục tôi sai nặng nhất vì bỏ qua kiến trúc có sẵn:
+
+`components/ShellPageTemplate.js:119` **đã render `<h1>`**, kèm
+`role="region"` + `aria-labelledby` ở dòng 106–107. **42 file dùng shell này.**
+Có test khoá hành vi đó: `dom-landmarks.component.test.tsx:24-25`.
+
+| Nhóm | Số |
+|---|---|
+| Tự viết `<h1>` riêng | 11 |
+| **Đi qua shell (đã có `<h1>`)** | **33** ← không phải lỗi |
+| **Thật sự không có `<h1>`** | **24** |
+
+⇒ Nếu tôi "sửa" theo danh sách 63 trang cũ thì **33 trang sẽ có 2 `<h1>`**.
+
+**24 trang thật** gồm 6 trang auth (`AuthLoginPage` … `AuthVerifyEmailPage`),
+`DashboardPage`, `StockDetailPage`, `SupportPage`, `TransactionsPage`,
+`UpgradePage`, `UserSettingsPage`, `WhaleAdvisoryPage`, 5 trang admin, và
+**5 trang portfolio tôi tự viết trong đợt trước** — cái này là nợ của tôi.
+
+### 10.5 Mobile — không phải "chưa kiểm", mà là **thiếu 4 thứ cụ thể**
+
+Đo được:
+
+| Hạng mục | Trạng thái |
+|---|---|
+| `viewport` | ✅ `width=device-width, initial-scale=1` — **không** có `user-scalable=no` ⇒ không chặn zoom |
+| Responsive Tailwind | Có: `sm:` 30 · `md:` 59 · `lg:` 43 · `xl:` 35 · `2xl:` 3 |
+| `@media` | 48 chỗ |
+| Sidebar mobile | `FullLayout.tsx:14-29` có `mobileSidebarOpen`, toggle, đóng khi chuyển trang |
+| `safe-area-inset-*` | **0** — trên iPhone có notch, thanh trên/dưới sẽ bị đè |
+| `touch-action: manipulation` | **0** — nhấn nút trên mobile chậm ~300ms do chờ double-tap-zoom |
+| `overscroll-behavior` | **0** — kéo modal/drawer sẽ kéo luôn cả trang |
+
+⇒ Không phải "chưa kiểm được" mà là **3 thiếu cụ thể**, mỗi cái sửa được
+bằng vài dòng CSS ở `index.css`:
+- `env(safe-area-inset-*)` cho header/sidebar cố định
+- `touch-action: manipulation` cho control tương tác
+- `overscroll-behavior: contain` cho modal/drawer
+
+Việc **không thể làm trong phiên này** là kiểm bằng thiết bị thật (viewport
+thật, focus ring trên touch, tốc độ cuộn). Cái đó cần máy/Playwright.
+
+### 10.6 Tóm tắt: con số cũ vs con số thật
+
+| Mục | Tôi đã báo | Thật | Sai vì sao |
+|---|---|---|---|
+| NAV-1 | 115 | **29** (12 file) | Đếm mọi `useState`, kể cả form input vô nghĩa deep-link |
+| I18N-1 | 19 | **21** | Revert lô kéo mất 2 điểm đã sửa đúng |
+| A11Y-9 | 44 | **45** | Đếm gần đúng nhưng chưa tách theo mức tập trung |
+| `<h1>` | 63 | **24** | Bỏ qua shell đã render `<h1>`; "sửa" theo số cũ sẽ tạo 33 trang có 2 `<h1>` |
+| Mobile | "chưa kiểm" | **3 thiếu cụ thể** | Không đo ⇒ nói chung chung |
+
+⇒ Tổng việc thật còn lại **ít hơn nhiều** so với con số đầu: **29 + 21 + 45 + 24
++ 3 rule CSS**. Đều tập trung theo nhóm, không phải rải đều.
+
