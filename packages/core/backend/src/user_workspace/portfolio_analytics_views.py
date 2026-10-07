@@ -131,6 +131,115 @@ def _compute_holdings(portfolio_id, tenant=None):
     return holdings_from_ledger(get_cached_ledger(portfolio_id, tenant))
 
 
+# S-00c: chuỗi "" cho ngành rỗng. FE dùng đúng giá trị này để hiện
+# "Chưa phân ngành" + `industry_reason` thay vì gộp mọi mã chưa có ngành
+# vào một slice tên là "Khác" — làm người dùng tưởng đó là một ngành thật.
+UNCLASSIFIED_INDUSTRY = ''
+
+
+def _industry_profile_map(symbols):
+    """`{symbol: (company_name, industry)}` từ `market_data.StockProfile`.
+
+    Nguồn: `market_data/models.py` — `StockProfile.company_name` (:32) và
+    `StockProfile.industry` (:40, verbose_name='Ngành'). Cả hai được
+    `data_ingest/tasks.py` (:1254-1284) đồng bộ từ upstream listing client.
+
+    Trả map rỗng khi app `market_data` chưa có trong INSTALLED_APPS hoặc
+    bảng chưa migrate — view không được sập vì thiếu dữ liệu tên/ngành.
+    """
+    try:
+        from market_data.models import StockProfile
+    except Exception:  # pragma: no cover - market_data chưa cài
+        return {}
+    try:
+        rows = StockProfile.objects.filter(symbol__in=list(symbols)).values('symbol', 'company_name', 'industry')
+    except Exception:  # pragma: no cover - chưa migrate
+        return {}
+    return {
+        r['symbol']: (r.get('company_name') or '', r.get('industry') or UNCLASSIFIED_INDUSTRY)
+        for r in rows
+    }
+
+
+def _allocation_rows(values, profiles):
+    """Danh sách allocation đã sắp xếp theo `weight_pct` giảm dần.
+
+    Tách riêng khỏi view để test được không cần DB — mọi quyết định về shape
+    (thứ tự, `null` thay vì 0, ngành rỗng) nằm ở đây.
+    """
+    total = sum(values.values(), Decimal('0'))
+    rows = [
+        {
+            'symbol': sym,
+            'value': str(round(v, 2)),
+            'weight_pct': round(float(v / total * 100), 2),
+            # S-00c: ngành để FE group-by sector mà không cần gọi thêm endpoint.
+            'industry': profiles.get(sym, ('', UNCLASSIFIED_INDUSTRY))[1],
+        }
+        for sym, v in values.items()
+    ]
+    rows.sort(key=lambda x: -x['weight_pct'])
+    return rows
+
+
+def _build_holdings_payload(holdings, price_map, profiles):
+    """Payload holdings đã enrich — thuần, không chạm DB.
+
+    `profiles` = output của `_industry_profile_map`: `{symbol: (company_name, industry)}`.
+
+    Ràng buộc không được phá (S-00c):
+    - Mã thiếu giá ⇒ `market_value`/`unrealized_pnl`/`weight_pct`/`price_change_pct`
+      là `null` **kèm reason**, KHÔNG phải 0 (xem LED-03 AC4 trong view).
+    - `weight_pct` tính trên tổng các mã **có** giá; mã thiếu giá không vào mẫu số
+      vì nếu vào sẽ làm méo tỷ trọng của các mã đã có giá.
+    """
+    results = []
+    for sym, h in holdings.items():
+        snap = price_map.get(sym)
+        current_price = Decimal(str(snap.price)) if snap and snap.price is not None else None
+        quantity = h['quantity']
+        cost_value = h['avg_cost'] * quantity
+        if current_price is None:
+            market_value = None
+            unrealized_pnl = None
+            pnl_pct = None
+        else:
+            market_value = current_price * quantity
+            unrealized_pnl = market_value - cost_value
+            pnl_pct = (float(unrealized_pnl / cost_value * 100) if cost_value else None)
+        company_name, industry = profiles.get(sym, ('', UNCLASSIFIED_INDUSTRY))
+        results.append({
+            'symbol': sym,
+            'company_name': company_name,
+            'industry': industry,
+            'industry_reason': None if industry else 'no_master_profile',
+            'quantity': quantity,
+            'avg_cost': str(round(h['avg_cost'], 2)),
+            'current_price': None if current_price is None else str(current_price),
+            'market_value': None if market_value is None else str(round(market_value, 2)),
+            'unrealized_pnl': (None if unrealized_pnl is None else str(round(unrealized_pnl, 2))),
+            'unrealized_pnl_pct': None if pnl_pct is None else round(pnl_pct, 2),
+            # LED-03 AC4: chỉ đặt reason khi **thiếu** giá. Điều kiện đảo ngược
+            # làm 2 test `NoFabricatedZeroInViewTests` đỏ — đã bắt bằng
+            # `python manage.py test user_workspace` (delta so với baseline).
+            'price_missing_reason': None if current_price is not None else 'no_quote_for_today',
+            'stale': snap.stale if snap else True,
+            'price_change_pct': (None if snap is None or snap.price_change_pct is None
+                                 else round(float(snap.price_change_pct), 2)),
+        })
+    priced_total = sum(
+        (Decimal(r['market_value']) for r in results if r['market_value'] is not None),
+        Decimal('0'),
+    )
+    for r in results:
+        if r['market_value'] is None or not priced_total:
+            r['weight_pct'] = None
+        else:
+            r['weight_pct'] = round(float(Decimal(r['market_value']) / priced_total * 100), 2)
+    results.sort(key=lambda x: x['symbol'])
+    return results
+
+
 @extend_schema(
     summary='PortfolioHoldingsView (native route)',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
@@ -156,40 +265,24 @@ class PortfolioHoldingsView(APIView):
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         price_map = {s.symbol: s for s in snaps}
-        results = []
-        for sym, h in holdings.items():
-            snap = price_map.get(sym)
-            # LED-03 AC4: KHÔNG thay giá thiếu bằng giá vốn.
-            # Bản cũ: `current_price = snap.price if snap else h['avg_cost']` — khi
-            # không có giá, giá vốn được dùng làm giá hiện tại nên
-            # `unrealized_pnl = 0` **tình cờ** đúng, tức hệ thống báo "không lãi
-            # không lỗ" cho một mã mà nó thực ra chưa biết giá. Người dùng đọc
-            # đó là "giá ngang giá vốn". Giá trị thiếu phải là `null` + lý do.
-            current_price = Decimal(str(snap.price)) if snap and snap.price is not None else None
-            quantity = h['quantity']
-            cost_value = h['avg_cost'] * quantity
-            if current_price is None:
-                market_value = None
-                unrealized_pnl = None
-                pnl_pct = None
-            else:
-                market_value = current_price * quantity
-                unrealized_pnl = market_value - cost_value
-                pnl_pct = (float(unrealized_pnl / cost_value * 100)
-                           if cost_value else None)
-            results.append({
-                'symbol': sym,
-                'quantity': quantity,
-                'avg_cost': str(round(h['avg_cost'], 2)),
-                'current_price': None if current_price is None else str(current_price),
-                'market_value': None if market_value is None else str(round(market_value, 2)),
-                'unrealized_pnl': (None if unrealized_pnl is None
-                                   else str(round(unrealized_pnl, 2))),
-                'unrealized_pnl_pct': None if pnl_pct is None else round(pnl_pct, 2),
-                'price_missing_reason': None if current_price is not None else 'no_quote_for_today',
-                'stale': snap.stale if snap else True,
-            })
-        return envelope(sorted(results, key=lambda x: x['symbol']))
+        profiles = _industry_profile_map(symbols)
+        payload = _build_holdings_payload(holdings, price_map, profiles)
+        # S-00c: `data` GIỮ NGUYÊN là list phẳng — 3 consumer đang chạy đọc
+        # shape này (`useCoreDashboardData.js:133`, `WatchlistContext.tsx:253`,
+        # `useWhaleAdvisoryData.js:223`, tất cả qua `normalizeHoldingsList`).
+        # Không đổi `data` thành `{holdings: [...]}`: sẽ phá cả 3.
+        # Số tổng đi vào `meta` vì `envelope()` đã hỗ trợ sẵn.
+        unpriced_symbols = sorted(r['symbol'] for r in payload if r['market_value'] is None)
+        priced_total = sum(
+            (Decimal(r['market_value']) for r in payload if r['market_value'] is not None),
+            Decimal('0'),
+        )
+        return envelope(payload, meta={
+            'priced_total_value': str(round(priced_total, 2)),
+            'unpriced_symbols': unpriced_symbols,
+            'weight_covers_all_holdings': not unpriced_symbols,
+            'count': len(payload),
+        })
 
 
 @extend_schema(
@@ -332,6 +425,17 @@ class PortfolioSummaryView(APIView):
         return envelope(payload, meta=build_meta(ledger))
 
 
+@extend_schema(
+    summary='PortfolioChartView (native route)',
+    description='Alias of equity-curve — delegates to PortfolioEquityCurveView. Kept for existing clients; do not compare the two responses.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioChartView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/chart/ — daily portfolio value."""
     permission_classes = [permissions.IsAuthenticated]
@@ -342,6 +446,17 @@ class PortfolioChartView(APIView):
         return PortfolioEquityCurveView().get(request, portfolio_id=portfolio_id)
 
 
+@extend_schema(
+    summary='PortfolioEquityCurveView (native route)',
+    description='Daily NAV series. `nav` is null + `nav_reason` on days where any held symbol has no price — never 0.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioEquityCurveView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/equity-curve/ — daily NAV history."""
     permission_classes = [permissions.IsAuthenticated]
@@ -388,6 +503,150 @@ class PortfolioEquityCurveView(APIView):
         return envelope({'portfolio_id': portfolio_id, 'curve': curve})
 
 
+def _nav_series(holdings, symbols, date_from):
+    """`[{date, nav_float}]` — NAV danh mục theo ngày, dùng cho chỉ số.
+
+    Ngày thiếu giá cho **một số** mã ⇒ bỏ qua ngày đó. Lấy giá vốn thay cho giá
+    thiếu sẽ tạo ra một đường cong trông thuyết phục nhưng hoàn toàn bịa —
+    cùng lý do LED-03 AC4 mà `PortfolioEquityCurveView` đã áp dụng.
+    """
+    from market_data.models import DailyPrice
+
+    prices = (
+        DailyPrice.objects.filter(symbol__in=symbols, date__gte=date_from)
+        .order_by('date', 'symbol')
+    )
+    date_price_map: dict[date, dict[str, Decimal]] = {}
+    for p in prices:
+        date_price_map.setdefault(p.date, {})[p.symbol] = Decimal(str(p.close))
+    series = []
+    for day in sorted(date_price_map):
+        day_prices = date_price_map[day]
+        if any(sym not in day_prices for sym in holdings):
+            continue
+        series.append({
+            'date': day,
+            'nav': float(sum(day_prices[sym] * h['quantity'] for sym, h in holdings.items())),
+        })
+    return series
+
+
+def _benchmark_returns(symbol, date_from, date_to):
+    """Lợi nhuận ngày của chỉ số. `([], 'no_benchmark_data')` khi thiếu giá."""
+    from market_data.models import DailyPrice
+
+    rows = (
+        DailyPrice.objects
+        .filter(symbol=symbol, date__gte=date_from, date__lte=date_to)
+        .order_by('date').values_list('close', flat=True)
+    )
+    closes = [float(c) for c in rows if c is not None]
+    if len(closes) < 2:
+        return [], 'no_benchmark_data'
+    return [(cur - prev) / prev for prev, cur in zip(closes, closes[1:]) if prev != 0], None
+
+
+@extend_schema(
+    summary='PortfolioMetricsView (native route)',
+    description='Risk/return/benchmark metrics for one portfolio. Every metric group is `null` + a `*_reason` when data is missing; never a fabricated zero. See PortfolioMetricsView docstring.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioMetricsView(APIView):
+    """GET /core/v1/workspace/portfolios/<id>/metrics/ — chỉ số THẬT.
+
+    S-00b. `risk_metrics` / `benchmark_metrics` / `performance` / `freshness`
+    trong `user_workspace/ledger/analytics.py` là **code chết**: traverse cho
+    thấy 0 caller ngoài test. Code viết đúng nhưng không endpoint nào gọi.
+
+    Ràng buộc D7 — không bịa số:
+    - Thiếu dữ liệu ⇒ `null` **kèm** `reason_code`, không phải 0.
+    - `sharpe`/`sortino`/`correlation` KHÔNG có ở backend (`grep -c` = 2 comment,
+      0, 0) nên endpoint này không khai chúng; FE không được hiện card cho 3 số này.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        from django.utils import timezone as _tz
+
+        from user_workspace.ledger.analytics import (
+            DEFAULT_BENCHMARK,
+            benchmark_metrics,
+            freshness,
+            performance,
+            risk_metrics,
+        )
+
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
+        if not holdings:
+            return envelope({
+                'portfolio_id': portfolio_id,
+                'performance': None, 'risk': None, 'benchmark': None,
+                'freshness': None, 'reason': 'no_holdings', 'observations': 0,
+            })
+
+        symbols = list(holdings)
+        series = _nav_series(holdings, symbols, date.today() - timedelta(days=365))
+        navs = [row['nav'] for row in series]
+        daily_returns = [(c - p) / p for p, c in zip(navs, navs[1:]) if p]
+
+        payload = {
+            'portfolio_id': portfolio_id,
+            'performance': None, 'risk': None, 'benchmark': None,
+            'freshness': None, 'observations': len(series),
+        }
+
+        if len(daily_returns) >= 1:
+            # `cash_flows` rỗng ⇒ `mwr` = None (thiếu dòng tiền thật) — đúng, không bịa.
+            payload['performance'] = performance(daily_returns, [])
+        else:
+            payload['performance_reason'] = 'insufficient_nav_history'
+
+        if len(daily_returns) >= 2:
+            payload['risk'] = risk_metrics(daily_returns, market_values=navs)
+        else:
+            payload['risk_reason'] = 'insufficient_nav_history'
+
+        if len(series) >= 2:
+            bench, reason = _benchmark_returns(
+                DEFAULT_BENCHMARK, series[0]['date'], series[-1]['date'])
+            if reason is None and len(bench) == len(daily_returns):
+                out = benchmark_metrics(daily_returns, bench, benchmark=DEFAULT_BENCHMARK)
+                out['benchmark'] = DEFAULT_BENCHMARK
+                payload['benchmark'] = out
+            else:
+                payload['benchmark_reason'] = reason or 'benchmark_length_mismatch'
+        else:
+            payload['benchmark_reason'] = 'insufficient_nav_history'
+
+        try:
+            now = _tz.now()
+            payload['freshness'] = freshness(as_of=now, now=now)
+        except Exception as exc:  # noqa: BLE001
+            payload['freshness'] = None
+            payload['freshness_reason'] = type(exc).__name__
+
+        return envelope(payload)
+
+
+@extend_schema(
+    summary='PortfolioAllocationView (native route)',
+    description='Value weight per symbol, with `industry` for sector grouping. `weight_covers_all_holdings` is false when any symbol lacks a price, so weights do not total 100%.',
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAllocationView(APIView):
     """GET /api/portfolio/portfolios/<portfolio_id>/allocation/ — symbol weight breakdown."""
     permission_classes = [permissions.IsAuthenticated]
@@ -402,6 +661,7 @@ class PortfolioAllocationView(APIView):
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         price_map = {s.symbol: s for s in snaps}
+        profiles = _industry_profile_map(symbols)
         values = {}
         unpriced = []
         total = Decimal('0')
@@ -426,11 +686,7 @@ class PortfolioAllocationView(APIView):
                 'unpriced_symbols': sorted(unpriced),
                 'reason': 'no_market_prices',
             })
-        allocation = sorted(
-            [{'symbol': sym, 'value': str(round(v, 2)), 'weight_pct': round(float(v / total * 100), 2)}
-             for sym, v in values.items()],
-            key=lambda x: -x['weight_pct'],
-        )
+        allocation = _allocation_rows(values, profiles)
         return envelope({
             'portfolio_id': portfolio_id,
             'total_value': str(round(total, 2)),

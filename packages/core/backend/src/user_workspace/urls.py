@@ -9,6 +9,7 @@ from .portfolio_analytics_views import (
     PortfolioChartView,
     PortfolioEquityCurveView,
     PortfolioAllocationView,
+    PortfolioMetricsView,
     PortfolioAnalyticsView,
     PortfolioSyncView,
     PortfolioTechnicalsView,
@@ -54,6 +55,19 @@ urlpatterns = [
     path('workspace/portfolios/<int:portfolio_id>/holdings/', PortfolioHoldingsView.as_view(), name='portfolio-holdings'),
     path('workspace/portfolios/<int:portfolio_id>/summary/', PortfolioSummaryView.as_view(), name='portfolio-summary'),
     path('workspace/portfolios/<int:portfolio_id>/analytics/', PortfolioAnalyticsView.as_view(), name='portfolio-analytics'),
+    # FE portfolio workspace (S-00a): 3 view da ton tai va da duoc import tu truoc nhung
+    # CHUA co path() nao tro toi chung - xem docs/KE_HOACH_THIET_KE_FRONTEND_PORTFOLIO_20261007.md S-00a.
+    # `PortfolioChartView` la ALIAS: no goi thang `PortfolioEquityCurveView().get(...)`
+    # (portfolio_analytics_views.py:339-342) nen tra DUNG NOI DUNG voi `equity-curve`.
+    # Giu lai de khong pha contract cho client cu, khong dung de so sanh 2 lan.
+    path('workspace/portfolios/<int:portfolio_id>/equity-curve/', PortfolioEquityCurveView.as_view(), name='portfolio-equity-curve'),
+    path('workspace/portfolios/<int:portfolio_id>/allocation/', PortfolioAllocationView.as_view(), name='portfolio-allocation'),
+    path('workspace/portfolios/<int:portfolio_id>/chart/', PortfolioChartView.as_view(), name='portfolio-chart'),
+    # S-00b: 4 ham analytics (performance/risk_metrics/benchmark_metrics/freshness)
+    # da co san trong `ledger/analytics.py` nhung 0 caller - code chet. Route nay
+    # la noi gọi DAU TIEN cua chung. Chi bao 4 nhom metric co that; KHONG khai
+    # sharpe/sortino/correlation vi backend khong tinh (grep -c = 2 comment, 0, 0).
+    path('workspace/portfolios/<int:portfolio_id>/metrics/', PortfolioMetricsView.as_view(), name='portfolio-metrics'),
     path('workspace/portfolios/<int:portfolio_id>/technicals/', PortfolioTechnicalsView.as_view(), name='portfolio-technicals'),
     path('workspace/transactions/<int:transaction_id>/', views.TransactionDetailView.as_view(), name='transaction-detail'),
     path('workspace/watchlists/', views.WatchlistListCreateView.as_view(), name='watchlist-list'),
