@@ -21,11 +21,27 @@ const ROOT = process.argv[2] ?? "packages/web/src";
 const EXTS = new Set([".tsx", ".jsx", ".ts", ".js", ".css"]);
 const SKIP_DIR = new Set(["node_modules", "__tests__", "tests", "__mocks__"]);
 
-/** Dòng comment: `//`, `*`, `/*`, `<!--`, hoặc nằm trong khối JSDoc. */
-function isCommentLine(line) {
+/**
+ * Dòng comment: `//`, `*`, `/*`, `<!--`.
+ *
+ * PHẢI theo dõi TRẠNG THÁI comment nhiều dòng `/* … *\/`, không chỉ prefix:
+ * dòng nằm GIỮA `/*` và `*\/` không bat dau bang `*` (vd "  thuoc tinh nay…")
+ * nên scanner dem nham - da gap o comment CSS vua viet trong slice UX-02.
+ */
+function isCommentLine(line, state) {
   const t = line.trim();
-  return t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
-    || t.startsWith("<!--") || t.startsWith("* ") || /^https?:\/\//.test(t);
+  if (state.inBlock) {
+    if (t.includes("*/")) state.inBlock = false;
+    return true;
+  }
+  if (t.startsWith("//") || t.startsWith("<!--")) return true;
+  if (t.startsWith("/*")) {
+    if (!t.includes("*/")) state.inBlock = true;
+    return true;
+  }
+  if (t.startsWith("*")) return true;
+  if (/^https?:\/\//.test(t)) return true;
+  return false;
 }
 
 function isTestFile(f) {
@@ -254,7 +270,8 @@ for (const f of files) {
   const txt = fs.readFileSync(f, "utf8");
   const isCss = f.endsWith(".css");
   const raw = txt.split(/\r?\n/);
-  const lines = raw.filter((l) => !isCommentLine(l));
+  const cState = { inBlock: false };
+  const lines = raw.filter((l) => !isCommentLine(l, cState));
   const rel = f.replace(/\\/g, "/").replace(/^packages\/web\//, "");
   const base = {
     file: f, rel, isCss, lines,

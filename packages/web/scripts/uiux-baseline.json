@@ -1,0 +1,57 @@
+{
+  "_comment": "Baseline do bang lenh: node scripts/check-uiux-budget.mjs --write-baseline (tu packages/web). Cong nay CHAN THOAI LUI, khong chan no san. Giam so voi baseline la tiến bộ - hãy --write-baseline de chot lai.",
+  "_measured_at": "2026-10-07",
+  "_scanner": "docs/audit-uiux/scripts/scan-ui-guidelines.mjs",
+  "_reproduce": "node packages/web/scripts/check-uiux-budget.mjs",
+  "total": 265,
+  "rules": {
+    "NAV-1": {
+      "prio": "P1",
+      "count": 115
+    },
+    "CSS-2": {
+      "prio": "P2",
+      "count": 46
+    },
+    "A11Y-9": {
+      "prio": "P2",
+      "count": 46
+    },
+    "I18N-1": {
+      "prio": "P2",
+      "count": 34
+    },
+    "A11Y-8": {
+      "prio": "P1",
+      "count": 6
+    },
+    "A11Y-11": {
+      "prio": "P2",
+      "count": 5
+    },
+    "A11Y-5": {
+      "prio": "P1",
+      "count": 3
+    },
+    "A11Y-7": {
+      "prio": "P2",
+      "count": 3
+    },
+    "TYPO-3": {
+      "prio": "P3",
+      "count": 2
+    },
+    "A11Y-4": {
+      "prio": "P2",
+      "count": 2
+    },
+    "A11Y-10": {
+      "prio": "P2",
+      "count": 2
+    },
+    "A11Y-2": {
+      "prio": "P1",
+      "count": 1
+    }
+  }
+}
