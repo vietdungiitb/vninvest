@@ -46,8 +46,22 @@ lệnh tái tạo, và lý do chặn. Không mục nào được coi là đã xo
 
 ## OW-01 — Rotate 7 secret (SEC-01, P0)
 
-**Trạng thái:** `CHƯA CHẠY (chờ owner)` · **2/5 điều kiện tiên quyết ĐÃ ĐẠT** (kiểm 2026-10-07)
-**Chặn:** cần network tới GitHub / DNSE / Django / Ad signing.
+**Trạng thái:** `CHỦ ĐỘNG TRÌ HOÃN` — Owner quyết định 2026-10-07: phần mềm đang **giai đoạn
+phát triển**, **không rotate lúc này**. Không phải "quên" — có lý do đo được.
+**Mở lại khi:** (a) lên production, (b) repo thành public, hoặc (c) cấp access repo cho bên thứ ba.
+
+**Vì sao mô tả cũ đã sai** (kiểm chứng 2026-10-07):
+- `compose.dev.env` **KHÔNG tracked** — commit `2db35ed85` đã untrack; `.gitignore:49` có `compose*.env`
+- File tracked chỉ chứa `<REQUIRED>`, không có giá trị thật
+
+**Đo thật trong git history:**
+
+| Secret | Commit chứa giá trị thật | Còn dùng? | Kết luận |
+|---|---|---|---|
+| `DNSE_CREDENTIAL_FERNET_KEY` | **7** | **KHÔNG** — key đã chết (khác key hiện tại), DB có **0** `UserDNESCredential` | Rotate vô nghĩa, không mất dữ liệu nào |
+| `CORE_PAT_PEPPER` | **11** | **CÓ** — giá trị hiện tại **trùng** giá trị trong history | **Đây mới là cái cần xử lý** |
+
+**Repo PRIVATE** (`gh repo view` → `isPrivate: true`) ⇒ rủi ro ở mức "người có access repo".
 
 7 secret phải revoke + phát hành lại **cùng lúc** (D-29 — rotate là một sự kiện):
 
@@ -137,7 +151,29 @@ $ grep -rn BROKER_SECRET docker-compose*.yml compose.dev.env.example
 
 ## OW-03 — Trả billing + bật lại CI (SAFE-07, SEC-03 R6, P0)
 
-**Trạng thái:** `CHƯA CHẠY` — không thể chạy từ phía agent. **Xác minh lại 2026-10-07: tình trạng không đổi.**
+**Trạng thái:** `CHỦ ĐỘNG TẮT` — Owner quyết định 2026-10-07: **phát triển bằng dev local,
+merge thẳng vào `dev`, KHÔNG dùng CI của GitHub.**
+
+**Hệ quả đã chấp nhận (ghi rõ để không ai hỏi lại):**
+- **SAFE-07 sẽ KHÔNG đạt** trong bảng đối chiếu slice — đây là quyết định có chủ đích,
+  không phải thiếu sót. Xem `docs/DOI_CHIEU_PLAN_BACKEND_FRONTEND_PORTFOLIO_20261007.md`.
+- **Gate thực tế chạy ở local**, không phải CI:
+  - `.githooks/pre-commit` → `check-multi-agent` (deny-list + migration trùng số)
+  - `.githooks/pre-push` → `scripts/pre-push-gate.mjs` — **17 PASS / 0 SKIP / 0 FAIL**
+    gồm `tsc --noEmit`, `check-multi-agent`, `envelope-contract`, `openapi-budget`,
+    `route-contract`, `field-contract`, `secret-scan`
+- ⇒ **Mọi thay đổi phải chạy gate local trước khi push.** Không có lưới an toàn thứ hai.
+
+**Khi nào cần bật lại CI:**
+- Đưa lên production
+- Nhiều người/thiết bị cùng push (dev local không thay thế được CI cho trường hợp đó)
+- Cần audit trail cho compliance
+
+**8 workflow sẵn sàng bật:**
+```bash
+git mv .github/workflows-disabled/*.yml .github/workflows/
+```
+Chưa làm — sẽ 40/40 fail với `steps=0` nếu billing chưa xong.
 
 ```
 $ git ls-files '.github/workflows/*.yml' | wc -l
