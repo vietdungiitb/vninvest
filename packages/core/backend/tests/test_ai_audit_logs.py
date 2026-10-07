@@ -27,6 +27,7 @@ from advisory.serializers import sanitize_sensitive_fields, AIAuditLogSerializer
 from identity_access.security import encrypt_user_api_key
 from identity_access.models import UserProfile
 from identity_access.tests.envelope import unwrapped
+from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 
 class SanitizeHelpersTests(TestCase):
@@ -141,6 +142,7 @@ class AuditLogAPIGetTests(TestCase):
             email='audit@example.com',
             password='testpass123',
         )
+        grant_tenant(self.user, role='viewer', tenant_code='audit-reader-tenant')
         self.client.force_authenticate(user=self.user)
 
         for i in range(5):
@@ -234,6 +236,7 @@ class AuditLogCreationViaPUTTests(TestCase):
             email='put-audit@example.com',
             password='testpass123',
         )
+        grant_tenant(self.user, role='editor', tenant_code='put-audit-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_put_creates_audit_log(self):
@@ -273,6 +276,11 @@ class AuditLogCreationViaTestConnectionTests(TestCase):
             email='test-audit@example.com',
             password='testpass123',
         )
+        # Endpoint test-connection khai bao `broker_manage` -> `settings:write`.
+        # Trong `SYSTEM_ROLE_PERMISSIONS` (resolve_tenant.py:27) chi `admin` va
+        # `owner` co token nay — `editor` chi co `settings:read`. Dung `admin`:
+        # probe goi API thu cua provider, khong phai thao tac editor lam duoc.
+        grant_tenant(self.user, role='admin', tenant_code='test-audit-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_openclaw_creates_success_audit_log(self):
@@ -315,6 +323,7 @@ class UserConfigEndpointTests(TestCase):
             email='uc@example.com',
             password='testpass123',
         )
+        grant_tenant(self.user, role='viewer', tenant_code='uc-reader-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_get_userconfig_returns_event_gate(self):

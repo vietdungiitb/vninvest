@@ -30,6 +30,7 @@ from rest_framework.test import APIClient
 from advisory.advisory_helpers import PROMPT_CONFIG_HISTORY_LIMIT
 from advisory.models import SystemAISettings, UserAICredential
 from advisory.tests.envelope import unwrapped
+from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
 ROLLBACK_URL = '/core/v1/workspace/ai-command-center/prompt-config/rollback/'
@@ -42,6 +43,7 @@ class PromptConfigHistoryTests(TestCase):
         self.user = User.objects.create_user(
             username='f7-user', email='f7@example.com', password='testpass123',
         )
+        grant_tenant(self.user, role='editor', tenant_code='f7-history-tenant')
         self.client.force_authenticate(user=self.user)
         self.system = SystemAISettings.objects.create(
             name='F7 System',
@@ -136,6 +138,8 @@ class PromptConfigHistoryTests(TestCase):
         """User A history ≠ User B (multi-tenant isolation C-AC3 extension)."""
         user_b = User.objects.create_user(username='f7-b', email='b@example.com', password='testpass123')
         client_b = APIClient()
+        # User B o tenant rieng: test dang kiem tra moi user co history rieng.
+        grant_tenant(user_b, role='editor', tenant_code='f7-history-tenant-b')
         client_b.force_authenticate(user=user_b)
 
         self._put_config({'whale': {'enabled': True, 'lookback': 30}})

@@ -1004,3 +1004,29 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | 1 | `git merge-base --is-ancestor <sha> dev` trả "chưa merge" **không đồng nghĩa** branch stale — `dev` có thể đã nhận nội dung qua squash/cherry-pick/archive-apply với SHA khác | `docs/LESSONS/migrations.md` **L-M02** (đọc head thật, không chỉ dựa vào quan hệ SHA) |
 | 2 | Mô tả trạng thái trong `CLAIMS.md` là **nhận định của agent trước**, không phải bằng chứng. Lần này `CLAIMS.md:959` sai 2/4 mục | `docs/LESSONS/INDEX.md` §1.3 (chỉ ghi khi có bằng chứng) |
 | 3 | Trước khi xoá branch: kiểm 3 tầng — PR mở, quan hệ nội dung (`git diff` thực tế), và **file đích có tồn tại không** | `docs/LESSONS/multi-agent.md` (checklist verify-before-action) |
+
+---
+
+## 2026-10-07 - SAFE-04 xong (PR #75): 15 endpoint ghi `portfolio_analytics_views.py` da co kiem tra quyen
+
+> Dong claim `opencode-portfolio-safe04-pav` (L960). Claim do khai tu 2026-10-06 nhung
+> file `test_capability_matrix_pav.py` **chua ton tai** => SAFE-04 chua bao gio duoc lam.
+
+| agent | branch | scope | files | status | date | note |
+|---|---|---|---|---|---|---|
+| safe04-capability-matrix | feat/safe04-capability-matrix | Kenh `required_workspace_permission` cho 15 endpoint ghi trong `portfolio_analytics_views.py` (13 class) + gate moi quet AST + runtime | packages/core/backend/src/user_workspace/portfolio_analytics_views.py, packages/core/backend/src/user_workspace/tests/{test_capability_matrix_pav.py (new),tenant_test_helpers.py (new)}, packages/core/backend/tests/{test_ai_audit_logs.py,test_ai_cc_config_isolation.py,test_ai_cc_prompt_history.py,test_ai_endpoint_probe_view.py,test_ai_management_center.py} | done | 2026-10-07 | **PR #75 MERGEABLE**, commit `386c1a826`. **Buoc 1 (gate truoc fix): RED 15/15 endpoint** — chung minh lo hong co that. **Buoc 2 fix:** 13 class them `WorkspacePermission` + `required_workspace_permission`. **Buoc 3 fix hoi quy:** 5 file test AI CC tao user khong thuoc tenant nao => nhan `403` truoc khi validate payload. `SystemAISettings`/`UserAICredential` deu gan theo TENANT nen user khong tenant khong co gi de doc/ghi — **403 la hanh vi DUNG, khong phai test hong**. **Da do (Postgres that):** gate moi **9 test OK**; capability+ledger **38 test OK**; **toan bo `tests/` 679 test OK**; baseline `dev` (worktree sach) 679 test co **1 error** (`test_admin_login_page_is_servable`) => het ca error baseline; `makemigrations --check` No changes detected. **CHUA CHAY:** 25 file test `src/*/tests/`, Playwright, mobile, `agent-sync.ps1`. |
+
+### 2 bai hoc trong slice nay (gia y them cho `docs/LESSONS/`)
+
+| # | Bai hoc | Cach phat hien |
+|---|---|---|
+| 1 | **Decorator tren `method` vo dung voi `WorkspacePermission`** — chi doc khai bao tren **class**. Do bang lenh: `_declared_permissions(ViewClass)` tra `[]` trong khi `getattr(ViewClass.post, 'required_workspace_permission')` tra `['portfolio_write']` | Test do doc source PASS (decorator co that) nhung runtime van `403` ca `owner` => buoc phai kiem chung **runtime**, khong chi doc source |
+| 2 | **Gate danh sach VIET TAY khong bat duoc file moi.** `test_capability_matrix.py` khai `views_dnse.*` / `views_broker.*` bang tay nen `portfolio_analytics_views.py` lot keu nhung khong ai thay | File moi quet **AST** nen khong lot theo nguyen tac giai thiet |
+
+### Bai hoc ve quy trinh (nay la ca 2 trong 2 ngay)
+
+| # | Bai hoc |
+|---|---|
+| 3 | Khi bi dau file van ghi "CHO MAY xac minh", **do lai bang lenh truoc khi ghi ket luan**. Claim 959 noi 2 branch "khong tiem trien" — kiem chung `git diff` that cho thay **da hop nhat day du**, chi khac SHA (squash/archive-apply). Suýt xoa 1992 + 2112 commit |
+| 4 | **Baseline phai do tren worktree sach truoc khi so**, khong so voi ky vong. Baseline `dev` co 1 error san; neu so "43 fail" vs "0 fail" se ket luan sai huong sua |
+| 5 | Khi mot thay doi lam **43 test do**, phai kiem tra tung file con lai truoc khi ket luan "het loi". Sua 3 file con 3 fail, sua them 2 file moi sach |
