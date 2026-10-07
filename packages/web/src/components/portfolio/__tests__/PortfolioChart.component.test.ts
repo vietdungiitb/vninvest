@@ -105,10 +105,11 @@ describe("buildOption", () => {
     expect(opt.series[0].data.length).toBe(opt.xAxis.data.length);
   });
 
-  test("treemap nhan du lieu da gom nganh", () => {
+  test("treemap gon theo nganh KHI bat groupBySector", () => {
     const opt = buildOption({
       kind: "treemap",
       ariaLabel: "Phân bổ",
+      groupBySector: true,
       items: [
         { name: "VNM", value: 60, industry: "Thực phẩm" },
         { name: "FPT", value: 40, industry: "Công nghệ" },
@@ -119,6 +120,21 @@ describe("buildOption", () => {
       { name: "Thực phẩm", value: 60 },
       { name: "Công nghệ", value: 40 },
     ]);
+  });
+
+  test("mac dinh KHONG gon nganh - giu tach theo ma", () => {
+    // S-11 fix B3: chi gom khi trang noi ro muon gom. Mac dinh gom se lam
+    // checkbox "gom theo nganh" hanh dong nguoc.
+    const opt = buildOption({
+      kind: "treemap",
+      ariaLabel: "Phân bổ",
+      items: [
+        { name: "VNM", value: 60, industry: "Thực phẩm" },
+        { name: "FPT", value: 40, industry: "Công nghệ" },
+      ],
+    }) as { series: Array<{ data: Array<{ name: string }> }> };
+    const names = opt.series[0].data.map((d) => d.name).sort();
+    expect(names).toEqual(["FPT", "VNM"]);
   });
 
   test("khong dung type chart ma chua import (bat loi khi goi nham)", () => {
@@ -149,10 +165,37 @@ describe("emptyReason", () => {
   test("tat ca nav null -> bao ly do", () => {
     expect(
       emptyReason({
-        kind: "bar", ariaLabel: "NAV",
+        kind: "line", ariaLabel: "NAV",
         points: [{ date: "a", nav: null }, { date: "b", nav: null }],
       }),
     ).toBe("insufficient_nav_history");
+  });
+
+  test("chuoi NAV la STRING tu BE van duoc dung", () => {
+    // B1: BE tra `str(round(nav,2))` (portfolio_analytics_views.py:477).
+    expect(
+      emptyReason({
+        kind: "line", ariaLabel: "NAV",
+        points: [{ date: "a", nav: "100" }, { date: "b", nav: "110" }],
+      }),
+    ).toBeNull();
+  });
+
+  test("bar rong bao no_market_prices vi doc items, khong phai points", () => {
+    // B2: che do "Cot" lay dau vao tu `items` (phan bo), khong phai chuoi NAV.
+    expect(
+      emptyReason({
+        kind: "bar", ariaLabel: "PB",
+        points: [{ date: "a", nav: 1 }, { date: "b", nav: 2 }],
+        items: [],
+      }),
+    ).toBe("no_market_prices");
+    expect(
+      emptyReason({
+        kind: "bar", ariaLabel: "PB",
+        items: [{ name: "VNM", value: 10 }],
+      }),
+    ).toBeNull();
   });
 
   test("khong co item co gia tri duong -> bao no_market_prices", () => {

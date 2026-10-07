@@ -55,10 +55,13 @@ echarts.use([
   LabelLayout, UniversalTransition, CanvasRenderer,
 ]);
 
-/** 1 điểm NAV — khớp `market_data.models.DailyPrice.close` và chuỗi NAV BE. */
+/** 1 điểm NAV. `nav` là **string** khi lấy từ API — BE trả
+ *  `'nav': str(round(nav, 2))` (`portfolio_analytics_views.py:477`) nên
+ *  `typeof nav === "number"` loại RÚI mọi điểm ⇒ chart luôn trống (audit B1).
+ */
 export interface NavPoint {
   date: string;
-  nav: number | null;
+  nav: number | string | null;
 }
 
 export type PortfolioChartKind = "line" | "bar" | "treemap" | "sunburst" | "pie";
@@ -69,6 +72,14 @@ export interface PortfolioChartProps {
   points?: NavPoint[];
   /** Phân bổ. Mỗi mục cần `industry` (S-00c) để group-by ngành. */
   items?: Array<{ name: string; value: number; industry?: string }>;
+  /**
+   * Gom `items` theo `industry` trước khi vẽ (treemap/sunburst/pie).
+   *
+   * Phải là MỘT chỗ duy nhất: nếu trang đã gom sẵn rồi chart gom lần hai thì
+   * mọi mục đã mất `industry` ⇒ tất cả rơi vào "Chưa phân ngành" và checkbox
+   * "gom theo ngành" hành động ngược (audit B3).
+   */
+  groupBySector?: boolean;
   /** Đơn vị tiền tệ, dùng trong tooltip. */
   valueFormat?: (v: number) => string;
   height?: number;
@@ -85,13 +96,22 @@ export interface PortfolioChartProps {
  * Vì sao quan trọng: nếu đổi `null` thành 0 thì biểu đồ sẽ "rơi" xuống sàn 0
  * đúng những ngày hệ thống chưa biết giá — trông như danh mục sụp sàn.
  * Đây đúng là loại lỗi mà gate "bars render" không bắt được.
+ *
+ * BE trả `nav` dạng chuỗi (`str(round(nav, 2))`), nên phải ép kiểu CÓ KIỂM SOÁT:
+ * `Number("")` = 0 và `Number("abc")` = NaN, cả hai đều phải bị loại, không
+ * được biến thành điểm dữ liệu.
  */
 export function usableNavPoints(points: NavPoint[] | undefined): Array<{ date: string; nav: number }> {
   if (!Array.isArray(points)) return [];
-  return points
-    .filter((p): p is { date: string; nav: number } =>
-      p && typeof p.date === "string" && typeof p.nav === "number" && Number.isFinite(p.nav))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const out: Array<{ date: string; nav: number }> = [];
+  for (const p of points) {
+    if (!p || typeof p.date !== "string") continue;
+    if (p.nav === null || p.nav === undefined || p.nav === "") continue;
+    const n = typeof p.nav === "number" ? p.nav : Number(String(p.nav).trim());
+    if (!Number.isFinite(n)) continue;
+    out.push({ date: p.date, nav: n });
+  }
+  return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
 /** Gom mã theo ngành. Ngành rỗng gom vào `unclassifiedLabel`, KHÔNG gom vào "Khác" giả. */
@@ -118,7 +138,7 @@ function readTokenColor(name: string, fallback: string): string {
 
 export function buildOption(props: PortfolioChartProps): Record<string, unknown> {
   const {
-    kind, points, items, valueFormat, colors, ariaLabel,
+    kind, points, items, valueFormat, colors, ariaLabel, groupBySector,
   } = props;
   const fmt = valueFormat ?? ((v: number) => String(v));
   const palette = colors ?? [
@@ -129,9 +149,30 @@ export function buildOption(props: PortfolioChartProps): Record<string, unknown>
     readTokenColor("--pf-chart-5", "#f472b6"),
   ];
 
-  if (kind === "line" || kind === "bar") {
+  // Chế độ cột: đầu vào là `items` (phân bổ theo mã/ngành), KHÔNG phải `points`.
+  // Trước đây nhánh này đọc `points` trong khi trang Phân bổ truyền `items`
+  // ⇒ biểu đồ luôn rỗng (audit B2).
+  if (kind === "bar") {
+    const rows = (items ?? [])
+      .filter((i) => typeof i?.value === "number" && Number.isFinite(i.value) && i.value > 0)
+      .sort((a, b) => b.value - a.value);
+    return {
+      aria: { enabled: true, description: ariaLabel },
+      grid: { left: 56, right: 16, top: 16, bottom: 56 },
+      tooltip: { trigger: "axis", valueFormatter: (v: unknown) => (typeof v === "number" ? fmt(v) : "—") },
+      xAxis: { type: "category", data: rows.map((r) => r.name) },
+      yAxis: { type: "value" },
+      series: [{
+        type: "bar",
+        name: ariaLabel,
+        data: rows.map((r) => r.value),
+        itemStyle: { color: palette[0] },
+      }],
+    };
+  }
+
+  if (kind === "line") {
     const usable = usableNavPoints(points);
-    const isLine = kind === "line";
     return {
       // Không có title trong chart: tiêu đề do `<h2>` của trang đảm nhiệm,
       // để screen reader không đọc trùng.
@@ -144,21 +185,22 @@ export function buildOption(props: PortfolioChartProps): Record<string, unknown>
       xAxis: { type: "category", data: usable.map((p) => p.date) },
       yAxis: { type: "value", scale: true },
       series: [{
-        type: isLine ? "line" : "bar",
+        type: "line",
         name: ariaLabel,
         data: usable.map((p) => p.nav),
         showSymbol: false,
-        smooth: isLine ? true : undefined,
-        areaStyle: isLine ? { opacity: 0.12 } : undefined,
+        smooth: true,
+        areaStyle: { opacity: 0.12 },
         itemStyle: { color: palette[0] },
       }],
     };
   }
 
-  const grouped = kind === "treemap" || kind === "sunburst"
+  // Gom theo ngành ở ĐÂY, đúng một lần (xem ghi chú `groupBySector`).
+  const grouped = groupBySector
     ? groupByIndustry(items ?? [])
     : (items ?? [])
-        .filter((i) => typeof i?.value === "number" && i.value > 0)
+        .filter((i) => typeof i?.value === "number" && Number.isFinite(i.value) && i.value > 0)
         .map((i) => ({ name: i.name, value: i.value }))
         .sort((a, b) => b.value - a.value);
 
@@ -197,7 +239,7 @@ export function buildOption(props: PortfolioChartProps): Record<string, unknown>
 /** Chart có gì để vẽ không — trả về lý do để trang hiện chữ thay vì khung rỗng. */
 export function emptyReason(props: PortfolioChartProps): string | null {
   const { kind, points, items } = props;
-  if (kind === "line" || kind === "bar") {
+  if (kind === "line") {
     return usableNavPoints(points).length >= 2 ? null : "insufficient_nav_history";
   }
   const usable = (items ?? []).filter((i) => typeof i?.value === "number" && i.value > 0);

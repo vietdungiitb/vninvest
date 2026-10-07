@@ -14,6 +14,7 @@ import { useCallback, useMemo } from "react";
 import { useI18n } from "../../context/LangContext";
 import { PortfolioChart, type NavPoint } from "../../components/portfolio/PortfolioChart";
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 const EMPTY_CURVE_REASON = "no_equity_curve";
 
@@ -48,7 +49,11 @@ export function PortfolioOverviewPage({
   adapter?: PortfolioAdapter;
 }) {
   const { t } = useI18n();
-  const api = adapter as PortfolioAdapter;
+  // B0: `adapter` la prop TUY CHON de test inject duoc. Trong app that
+  // main.tsx -> pageRegistry khong truyen prop nao, nen phai fallback ve
+  // `defaultCoreApiAdapter` — neu khong, moi trang se nem
+  // "Cannot read properties of undefined" khi chay that.
+  const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
 
   const fetchSummary = useCallback(
     (id: string | number) => api.getPortfolioSummary?.(id) ?? Promise.resolve(null),

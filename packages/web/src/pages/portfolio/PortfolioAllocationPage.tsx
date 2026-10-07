@@ -17,10 +17,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "../../context/LangContext";
 import {
   PortfolioChart,
-  groupByIndustry,
   type PortfolioChartKind,
 } from "../../components/portfolio/PortfolioChart";
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 interface AllocationPayload {
   total_value?: string | null;
@@ -44,7 +44,11 @@ export function PortfolioAllocationPage({
   adapter?: PortfolioAdapter;
 }) {
   const { t } = useI18n();
-  const api = adapter as PortfolioAdapter;
+  // B0: `adapter` la prop TUY CHON de test inject duoc. Trong app that
+  // main.tsx -> pageRegistry khong truyen prop nao, nen phai fallback ve
+  // `defaultCoreApiAdapter` — neu khong, moi trang se nem
+  // "Cannot read properties of undefined" khi chay that.
+  const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
   const [mode, setMode] = useState<PortfolioChartKind>("treemap");
   const [bySector, setBySector] = useState(true);
 
@@ -66,12 +70,9 @@ export function PortfolioAllocationPage({
       .filter((r) => r.name && Number.isFinite(r.value) && r.value > 0);
   }, [payload.allocation]);
 
-  // Chế độ bar cần chuỗi NAV-free: dùng chính giá trị mã. Không nhầm `value`
-  // của phân bổ với chuỗi NAV của biểu đồ đường.
-  const chartItems = useMemo(
-    () => (bySector ? groupByIndustry(items) : items),
-    [items, bySector],
-  );
+  // KHÔNG gom ở trang này. Gom 1 lần duy nhất trong `PortfolioChart` qua prop
+  // `groupBySector` — trước đây trang gom rồi chart gom tiếp nên mọi mục mất
+  // `industry` và treemap chỉ còn 1 ô "Chưa phân ngành" (audit B3).
 
   const unpriced = payload.unpriced_symbols ?? [];
   const partial = payload.weight_covers_all_holdings === false || unpriced.length > 0;
@@ -115,8 +116,9 @@ export function PortfolioAllocationPage({
       )}
 
       <PortfolioChart
-        kind={mode === "bar" ? "bar" : mode}
-        items={chartItems}
+        kind={mode}
+        items={items}
+        groupBySector={bySector}
         ariaLabel={t("portfolioWorkspace.allocation.chartLabel", {
           defaultValue: "Phân bổ danh mục theo tỷ trọng giá trị",
         })}
