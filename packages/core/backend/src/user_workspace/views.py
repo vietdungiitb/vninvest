@@ -31,7 +31,11 @@ class WatchlistCursorPagination(CoreCursorPagination):
 class WatchlistItemCursorPagination(CoreCursorPagination):
     ordering = '-added_at'
 from .models import Portfolio, Transaction, Watchlist, WatchlistItem, PriceAlert, SubAccount, ScreenerRule
-from .permissions import TenantScopePermission
+from .permissions import (
+    TenantScopePermission,
+    WorkspacePermission,
+    required_workspace_permission,
+)
 from .serializers import (
     PortfolioSerializer,
     TransactionSerializer,
@@ -110,8 +114,9 @@ def _get_transaction_or_404(user, transaction_id, tenant=None):
         404: OpenApiTypes.OBJECT,
     },
 )
+@required_workspace_permission('portfolio_write')
 class PortfolioListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
     pagination_class = CoreCursorPagination
 
     def get(self, request):
@@ -144,8 +149,9 @@ class PortfolioListCreateView(APIView):
         return envelope(PortfolioSerializer(portfolio).data, status=status.HTTP_201_CREATED)
 
 
+@required_workspace_permission('portfolio_write')
 class PortfolioDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
 
     @extend_schema(
         summary='PortfolioDetailView GET',
@@ -250,8 +256,9 @@ class PortfolioDetailView(APIView):
         404: OpenApiTypes.OBJECT,
     },
 )
+@required_workspace_permission('portfolio_write')
 class TransactionListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
     pagination_class = TransactionCursorPagination
 
     def get(self, request, portfolio_id):
@@ -286,8 +293,9 @@ class TransactionListCreateView(APIView):
         return envelope(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
 
 
+@required_workspace_permission('portfolio_write')
 class TransactionDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
 
     @extend_schema(
         summary='TransactionDetailView PATCH',
@@ -556,8 +564,9 @@ class WatchlistItemDeleteView(APIView):
         404: OpenApiTypes.OBJECT,
     },
 )
+@required_workspace_permission('portfolio_write')
 class SubAccountListCreateAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
 
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
@@ -600,8 +609,9 @@ class SubAccountListCreateAPIView(APIView):
         return envelope(SubAccountSerializer(sub_account).data, status=status.HTTP_201_CREATED)
 
 
+@required_workspace_permission('portfolio_write')
 class SubAccountDetailAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
 
     def get_object(self, pk, user, tenant):
         try:
@@ -682,8 +692,9 @@ class SubAccountDetailAPIView(APIView):
         404: OpenApiTypes.OBJECT,
     },
 )
+@required_workspace_permission('portfolio_write')
 class SubAccountTransactionsAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission, WorkspacePermission]
     pagination_class = TransactionCursorPagination
 
     def get_sub_account(self, pk, user, tenant):

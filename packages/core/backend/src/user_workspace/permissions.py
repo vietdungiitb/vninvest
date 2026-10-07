@@ -55,10 +55,23 @@ def has_workspace_permission(request, permission: str) -> bool:
     """True nếu actor của request có `permission` trong tenant hiện tại.
 
     Dùng lại `get_tenant_permissions()` — cùng một nguồn sự thật với
-    `identity_access`, nên custom_role cũng được áp dụng như nhau.
+    `identity_access`, nên custom_role cũng được áp dụng nhau.
+
+    `permission` có thể là khóa workspace (`portfolio_write`) HOẴC permission
+    gốc của tenant (`sa:write`). Khóa được quy đổi sang permission gốc qua
+    `WORKSPACE_PERMISSIONS` trước khi so.
+
+    Sửa này chỉ ra từ test runtime, không phải từ đọc code: `get_tenant_permissions`
+    trả permission TÊN của `SYSTEM_ROLE_PERMISSIONS` (`sa:write`), trong khi
+    `WorkspacePermission.has_permission` chuyển tiếp khóa khai báo
+    (`portfolio_write`). So sánh hai tên khác nhau luôn cho False, nên mọi role
+    không phải `owner` đều bị 403 ở mọi endpoint có `WorkspacePermission` — kể cả
+    `admin` và `editor` có quyền thiết. Đó là fail-closed nhưng **khóa quá tay**.
+    `owner` không lỗi vì `SYSTEM_ROLE_PERMISSIONS['owner'] == ['*']` và `*` được
+    xử lý ở trước khi so sánh — đó cũng là lý do test cũ chưa bắt lỗi này.
 
     Fail-closed: không xác định được actor thì trả `False`. Một endpoint
-    tài chính không được phép "có lẽ là được" khi không biết ai đang hỏi.
+    tài chính không được phép "có lỉ là được" khi không biết ai đang hỏi.
     """
     user = getattr(request, 'user', None)
     if user is None or not getattr(user, 'is_authenticated', False):
@@ -67,13 +80,14 @@ def has_workspace_permission(request, permission: str) -> bool:
         perms = get_tenant_permissions(request)
     except Exception:  # noqa: BLE001 — lỗi phân giải quyền thì chặn
         logger.error(
-            'has_workspace_permission: cannot resolve permissions — denying',
+            'has_workspace_permission: cannot resolve permissions - denying',
             exc_info=True,
         )
         return False
     if '*' in perms:
         return True
-    return permission in perms
+    resolved = WORKSPACE_PERMISSIONS.get(permission, permission)
+    return resolved in perms
 
 
 class WorkspacePermission(BasePermission):
@@ -91,11 +105,21 @@ class WorkspacePermission(BasePermission):
     Decorator là bắt buộc (`required_workspace_permission`) chứ không suy ra
     từ tên view: suy ra từ tên là đoán, và một view tên sai sẽ hở. Thiếu
     decorator ⇒ `has_permission` trả `False` (deny), đúng R3.
+
+    **CHỈ áp cho method GHI.** Method an toàn đi qua không cần khai báo quyền
+    ghi: `viewer` có `dashboard:read` nhưng không có `sa:write`, nên nếu áp
+    `portfolio_write` cho cả `get()` của một list/detail view thì người dùng
+    mất quyền ĐỌC danh mục của chính mình. Đây là hồi quy khả năng đọc, phát
+    hiện khi đo bằng HTTP chứ không phải lúc đọc code.
     """
 
     message = 'Bạn không có quyền thực hiện thao tác này trong tenant hiện tại.'
 
+    SAFE_METHODS = frozenset({'GET', 'HEAD', 'OPTIONS'})
+
     def has_permission(self, request, view) -> bool:
+        if request.method in self.SAFE_METHODS:
+            return True
         required = _declared_permissions(view)
         if not required:
             # R3: deny-by-default. View tài chính chưa khai báo quyền thì
