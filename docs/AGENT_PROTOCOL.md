@@ -361,3 +361,45 @@ cmd /c mklink /J ..\core-team\packages\web\node_modules packages\web\node_module
 | DB riêng | `docker exec vninvest-dev-core-db createdb -U vninvest -O vninvest <ten>` |
 | Claim | Mỗi agent tự khai |
 | Merge + góp deny list | **Coordinator** — một người, một thời điểm |
+
+---
+
+## 11. Planning Gate — đọc bài học trước khi lập kế hoạch
+
+> Thêm 2026-10-07. Mục đích: chuyển "kinh ngọc từ lỗi cũ" thành **quy tắc bắt buộc kiểm tra**,
+> vì các lỗi quy trình đã lặp lại nhiều lần dù đã được ghi nhận.
+
+### 11.1 Khi nào bắt buộc chạy
+
+**Trước khi**: tạo todo list / kế hoạch chi tiết · khai claim trong `CLAIMS.md` · bắt đầu sửa code.
+
+### 11.2 Cách thực hiện
+
+Gọi skill [`project-lessons`](../skills/project-lessons/SKILL.md) với:
+- `taskDescription` — mô tả task/slice (bắt buộc)
+- `filePaths` — file dự kiến sửa (khuyến nghị)
+- `actions` — `migrate` / `edit` / `claim` / `rebase` / `gate` / `build` / `test` / `db` / `shared` (khuyến nghị)
+
+Skill sẽ chọn lọc theo tag, chỉ đọc lesson liên quan từ `docs/LESSONS/`, trả về
+`LESSONS APPLICABLE` + `MANDATORY CHECKLIST` (tối đa ~20 dòng).
+
+### 11.3 Yêu cầu bắt buộc trong plan
+
+Plan PHẢI chứa **một trong hai dạng**:
+
+- `Lessons áp dụng: [L-XXX, L-M01, ...]`
+- `Lessons áp dụng: NONE – <lý do ngắn>`
+
+Và **tick các mục trong `MANDATORY CHECKLIST`** trước khi coi slice là xong.
+
+### 11.4 Điều KHÔNG được
+
+- **KHÔNG** đọc toàn bộ `docs/LESSONS/` (context bloat) — để skill chọn lọc
+- **KHÔNG** gọi skill xong mà không ghi `Lessons áp dụng` vào plan → quy tắc không thi hành được
+- **KHÔNG** tự thêm lesson mới vào `docs/LESSONS/` — cần team leader phê duyệt (`docs/LESSONS/INDEX.md` §1.3)
+- **KHÔNG** bỏ qua fallback `multi-agent.md` khi task có từ khóa `claim`/`shared`/`migration`/`worktree`/`rebase`/`gate`/`agent`
+
+### 11.5 Áp dụng cho
+
+Cả **agent chính tự lập kế hoạch** lẫn **planner subagent**. Khi tách task cho subagent,
+phải truyền kèm danh sách lessons đã trích.
