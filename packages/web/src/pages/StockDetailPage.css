@@ -244,7 +244,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform, color, background, border-color;
+  transition: transform, color, background, border-color 0.2s ease;
 }
 
 .sdp-watch-btn:hover {
@@ -280,7 +280,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform, color, background, border-color;
+  transition: transform, color, background, border-color 0.2s ease;
 }
 
 .sdp-alert-btn:hover {
@@ -303,7 +303,7 @@
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform, color, background, border-color, box-shadow;
+  transition: transform, color, background, border-color, box-shadow 0.2s ease;
   box-shadow: 0 0 12px rgba(var(--sdp-cyan-rgb) / 0.2);
 }
 
@@ -414,7 +414,7 @@
   font-weight: 700;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform, color, background, border-color;
+  transition: transform, color, background, border-color 0.2s;
 }
 
 .sdp-witness-clear-btn:hover {
@@ -878,7 +878,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform, background;
+  transition: transform, background 0.2s ease;
 }
 
 .sdp-retry-btn:hover {
@@ -1712,7 +1712,7 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   white-space: nowrap;
-  transition: color, background;
+  transition: color, background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sdp-tab-btn:hover {
@@ -1991,7 +1991,7 @@
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
-  transition: color, background;
+  transition: color, background 0.2s ease;
   white-space: nowrap;
 }
 
@@ -2308,7 +2308,7 @@
   border-radius: 8px;
   background: rgba(var(--sdp-white-rgb) / 0.02);
   border: 1px solid transparent;
-  transition: background, border-color;
+  transition: background, border-color 0.15s ease;
   animation: tlSlideIn 0.3s ease-out;
 }
 
@@ -2593,7 +2593,7 @@
   justify-content: center;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: transform, color, background;
+  transition: transform, color, background 0.2s ease;
 }
 
 .sdp-drawer-close-btn:hover {
@@ -2616,7 +2616,7 @@
   border: 1px solid rgba(var(--sdp-border-rgb) / 0.5);
   padding: 16px 18px;
   border-radius: 16px;
-  transition: background, border;
+  transition: background, border 0.25s ease;
 }
 
 .sdp-drawer-source-card.sdp-source-active {
@@ -2665,7 +2665,7 @@
   font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
-  transition: color, background;
+  transition: color, background 0.15s ease;
 }
 
 .sdp-indicator-pill:hover {
@@ -2767,7 +2767,7 @@
   padding: 10px 20px;
   border-radius: 12px;
   cursor: pointer;
-  transition: transform, box-shadow;
+  transition: transform, box-shadow 0.2s ease;
 }
 
 .sdp-drawer-save-btn:hover {
