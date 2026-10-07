@@ -1,3 +1,111 @@
+## Entry 250: FE Portfolio workspace (17 slice) — plan v2 sai kiến trúc, 5 blocker lộ ra muộn (2026-10-07)
+
+- **Date**: 2026-10-07
+- **Branch**: `feat/portfolio-fe-workspace` (từ `dev@0b5ea4a0e`)
+- **Scope**: 5 màn hình Portfolio (Overview / Holdings / Allocation / Analytics / Activity) + 4 endpoint BE + token + gate contrast mới + 5 route + i18n 86 key. Không migration, không `npm/pip install`, không sửa `package.json`.
+- **Owner đã chốt trong session**: chỉ read-side (chưa có broker API key) · merge thẳng `dev` không dùng GitHub CI · widget giữ `1.2.5` · `vnbroker` là license của Owner · rotate secret trì hoãn tới production.
+
+### 1. Kết quả tổng mức
+
+| Nhóm | Slice | Commit |
+|---|---|---|
+| Plan | Stage 1–3 + audit plan → plan v3 | `b0df609d9` |
+| Claim | khai claim | `5e1a0da16` |
+| BE | S-00a 3 route · S-00b metrics · S-00c sector/name/weight/24h | `c286b3381` `4e4708233` `8a30a6aa5` |
+| FE | S-01/S-01b token + gate · S-02 adapter · S-03 chart ECharts | `ecc1c8742` `531fcd572` `c574ed798` |
+| FE | S-04..S-11 shell + 5 trang + route + i18n | commit `S-04..S-11` |
+| Fix | 5 blocker audit Stage 5 | `9e071d73f` |
+| Fix | manifest 4 route | `44f159021` |
+
+**Test mới**: BE 17 · FE 31 → sau fix tổng **742 test FE / 109 file**.
+
+### 2. BLOCKER GỐC — plan v2 xây trên API không tồn tại (hazard 7, lặp 3 lần)
+
+`vninvestcharts-widget` **1.2.5 không export component series nào**:
+
+```
+node --input-type=module -e "import('./packages/web/node_modules/vninvestcharts-widget/dist/index.js').then(m=>console.log(Object.keys(m).length))"
+→ 29
+→ BaseAdapter, DjangoVnstockAdapter, MeasurementOverlay, MockAdapter, PaperTradePanel,
+  SettingsModal, UDFDataAdapter, VNInvestCharts, VNInvestMultiCharts, WidgetEmptyState,
+  WidgetErrorBoundary, WidgetI18nContext, WidgetI18nProvider, WorkspaceSerializer,
+  createLocalStorageAdapter, createMockBars, createRestAdapter, evaluateRuntimePolicy,
+  getIndicator, injectVNInvestChartsCSS, isDrawingToolName, listDrawingTools,
+  registerIndicator, resolveRequestedRuntime, shouldForceLegacyRuntime, useWidgetI18n,
+  version, widgetMessagesEn, widgetMessagesVi
+```
+
+**KHÔNG CÓ** `Line` · `Area` · `Bar` · `Comparison` · `Treemap` · `Sunburst` · `Donut`.
+Cả T1–T6 của plan v2 ("map NAV vào field `close`", "series `Comparison`") đều
+trỏ vào API không tồn tại.
+
+**Quyết định D1**: dùng **ECharts** cho toàn bộ chart portfolio — `echarts ^6.0.0`
++ `echarts-for-react ^3.0.6` **đã là dependency**, có sẵn pattern tree-shake tại
+`WhaleBubbleChart.jsx:17-28`. Không thêm dependency, không sửa `package.json`.
+
+### 3. Học bài về quy trình (3 bài, đều tốn ít nhất 1 vòng audit)
+
+| # | Bài học | Bằng chứng |
+|---|---|---|
+| 1 | **Đọc *tên* trong bundle ≠ API tồn tại.** Lặp lần 3: plan v2, audit plan, và cả tôi khi review đều kết luận `registerSeries("Comparison")` là API dùng được | Cách đúng: liệt kê `Object.keys(module)` |
+| 2 | **Test render page lẻ không bắt được lỗi cấp app.** 31 test đầu đều truyền `adapter` bằng tay ⇒ `PortfolioWorkspacePage` không truyền `adapter` cho 5 page con lọt qua **730 test xanh** | `portfolio-real-path.component.test.tsx` mới đi đúng đường `main.tsx → routeCatalog → pageRegistry → WorkspacePage → page` |
+| 3 | **Assertion phải bám contract thật của BE, không bám ví dụ trong plan.** 4/4 lỗi blocker đều là lệch type giữa FE và BE: `nav` string vs number · `twr` object vs number · `allocation` có/thiếu `industry` · `?days=` FE gửi mà BE không đọc | Sửa ở FE sau khi đọc `file:line` của BE |
+
+### 4. Gate mới + gate chết
+
+- **Mới**: `packages/web/scripts/check-portfolio-contrast.mjs` — đọc **thật** `soc.tokens.css`, 12 cặp × 2 theme, thấp nhất 5.36:1, có `--self-test`.
+  Vì sao cần: `npm run check:contrast` in ra bảng 7 cặp admin **tĩnh**, không đọc file nào — xoá sạch palette portfolio vẫn PASS exit 0.
+- **Chết**: `npm run hardcode:scan` (không tồn tại) · `python src/manage.py` (sai path) · `axe` (chưa cài) · `route-contract.test.js` (lỗi ESM **pre-existing**).
+
+### 5. Baseline BE — hazard 6 nặng nhất
+
+Cả 3 nguồn đều sai:
+
+| Nguồn | Ghi | Đúng? |
+|---|---|---|
+| plan v2 `:165` | "679/679 OK" | ❌ |
+| `AGENTS.md:58` | "602 test — failures=10, errors=3" | ❌ stale |
+| `OPEN_WORK_20260927.md:53,412` | "602 test — failures=10, errors=3" | ❌ stale |
+| **đo thật 2026-10-07** | **2180 test — 19F + 17E + 6 skip** | ✅ |
+
+⇒ GT9 **không bao giờ xanh được**. Tiêu chí đúng là **delta = 0**.
+Bằng chứng: `docs/evidence/portfolio-fe/GT9-baseline.txt`.
+`user_workspace`: baseline `dev` 636 test / 9F+15E → sau thay đổi **653 / 9F+15E**, delta 0.
+
+### 6. Cạm bẫy môi trường mới
+
+- **Container `vninvest-dev-core-api` KHÔNG có volume mount** — code được bake vào
+  image (`docker inspect … --format '{{range .Mounts}}'` → rỗng). Muốn test code
+  vừa sửa phải `docker cp` từng file vào. Nếu không, mọi kết luận "delta = 0"
+  là **bằng chứng giả** vì test chạy trên code cũ.
+- **`manage.py`**: host = `packages/core/backend/manage.py`, container = `/app/src/manage.py`.
+- Namespace route = `user_workspace` ⇒ `reverse()` phải có namespace, không có thì
+  `NoReverseMatch` **dù pattern đúng**.
+- Route thật ở prefix **`/core/v1/`**; `/api/...` chỉ là `legacy_proxy_view` bắt-tất-cả.
+
+### 7. Dữ liệu thật khi bàn giao
+
+`Portfolio=1 · LedgerEntry=0 · CashFlow=0 · DailyPrice=4.533.080 (VN30: 2.998)`.
+⇒ **không có holding nào để vẽ chart**. 5 màn hình hiện empty state có mã lý do,
+không hiện số giả. **Chưa thể nghiệm thu trực quan** — cần Owner quyết có seed
+dữ liệu danh mục vào DB dev không.
+
+### 8. Bài học từ 2 mutation no-op (hazard 10)
+
+Hai mutation đầu tiên của tôi **báo 14/14 xanh** dù tôi tưởng đã làm hỏng code:
+
+1. Thêm `p.nav === null ? 0 : ...` vào filter ⇒ trả `0` = falsy ⇒ vẫn bị lọc ⇒ **no-op**.
+2. Đổi `&&` thành `||` ⇒ do thứ tự ưu tiên, biểu thức vẫn tương đương ⇒ **no-op**.
+
+Chỉ mutation thứ 3 (cho `null` qua filter **rồi** ép `0`) mới thật sự làm test đỏ.
+⇒ Không được báo "PASS" cho gate chỉ vì exit code bằng 0.
+
+### 9. CHƯA CHẠY (không tính là Pass)
+
+`GT7` migration check · `GT8` migrate · `GT12` axe (chưa cài `axe-core`, `AGENTS.md` cấm `npm install` khi chưa hỏi) · `GT13` WCAG thủ công · `npm test` (2 suite fail ESM pre-existing) · Playwright E2E · mobile.
+
+Chi tiết: `docs/evidence/portfolio-fe/TEST_REPORT.md`.
+
 ## Entry 241: Đóng 4 mục `OPEN_WORK_20260927.md` — trong đó **2 mục viết trên tiền đề sai** + errata OW-06 (2026-10-03)
 
 - **Date**: 2026-10-03
@@ -6775,3 +6883,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
   `commercial`)
 - **CHUA CHAY: `run_tests.py` toan bo** — treo co san, xem muc 3b
 - pre-push-gate.mjs: chua chay cho commit nay
+| 250 | 2026-10-07 | FE Portfolio workspace 17 slice - **plan v2 xay tren API khong ton tai** (widget 1.2.5 chi export 29 symbol, khong co Line/Area/Bar/Comparison/Treemap; hazard 7 lap 3 lan) - chuyen sang ECharts da co san; audit doc lap tra REJECT 5 blocker (WorkspacePage khong truyen adapter / BE tra nav la STRING / che do Cot doc sai input / gom nganh 2 lan / twr la OBJECT) - da sua het; baseline BE that **2180 test 19F+17E** (ca plan 679/679 va AGENTS.md 602/10F/3E deu sai) | `feat/portfolio-fe-workspace` | 4 endpoint BE moi (equity-curve, allocation, chart, metrics) · 5 trang FE · 742 test FE · 12 cap contrast do that · gate multi-agent 0 loi · **user_workspace delta = 0** so baseline dev (9F+15E khong doi) | 5 blocker audit da sua trong `9e071d73f`; 3 major (M2 pagination >50 giao dich, M3 `weight_covers_all_holdings` nam trong `meta`, M4 5 truong canh bao BE gui) **CHUA DONG**; GT12 axe CHUA CHAY (chua cai `axe-core`, AGENTS.md cam npm install khi chua hoi); nghiem thu truc quan CHUA LAM duoc - DB dev co **0 LedgerEntry** nen can Owner quyet seed data | `9e071d73f`, `44f159021`, `docs/evidence/portfolio-fe/TEST_REPORT.md` |
