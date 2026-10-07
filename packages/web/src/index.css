@@ -285,7 +285,7 @@
     border: 1px solid rgba(51, 65, 85, 0.6);
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(16px);
-    transition: all 0.3s ease;
+    transition: background, border, box-shadow;
     box-shadow:
       0 4px 24px -1px rgba(0, 0, 0, 0.2),
       inset 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -691,4 +691,68 @@
       #166534
     );
   }
+}
+
+/* =====================================================================
+   UX-01 — Skip link (web-design-guidelines > Accessibility)
+   "Headings hierarchical <h1>–<h6>; include skip link for main content"
+
+   Dùng `clip-path` chứ không `display: none`: phần tử `display:none` bị loại
+   khỏi cây truy cập nên phím Tab không tới được. Cách này giữ nó ở tab
+   order, chỉ thu gọn hình ảnh cho tới khi focus.
+   ===================================================================== */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-panel, #020b23);
+  color: var(--text-primary, #f1f5f9);
+  border: 1px solid var(--accent-cyan, #22d3ee);
+  border-radius: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 0;
+  /* focusing thi focus ring phai nhin thay - skill fixing-accessibility §7
+     "do not remove focus outlines without a visible replacement" */
+  outline: 2px solid var(--accent-cyan, #22d3ee);
+  outline-offset: 2px;
+}
+
+/* =====================================================================
+   UX-02 — prefers-reduced-motion (web-design-guidelines > Animation)
+   "Honor prefers-reduced-motion" + fixing-motion-performance §5.
+
+   Khoa o muc GLOBAL thay vi sua 57 file CSS: mot khai bao tat ca mo hinh
+   chay nhanh nhat, va file CSS sau do khong can `@media` rieng.
+   Dinh huong con lai: giu chuyen dong, chi rut ngan (skill §2
+   "prefer downgrading technique over removing motion entirely").
+   ===================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =====================================================================
+   UX-06 — tabular-nums (web-design-guidelines > Typography)
+   "font-variant-numeric: tabular-nums for number columns/comparisons"
+
+   Dat o `td`/`th` nen moi bang so deu co chieu so giong nhau, doc khong
+   nhay cot khi doi du lieu.
+   ===================================================================== */
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
 }

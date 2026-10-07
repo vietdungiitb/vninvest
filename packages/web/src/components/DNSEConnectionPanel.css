@@ -122,7 +122,7 @@
   background: var(--color-bg-panel);
   color: var(--color-text-primary);
   font-size: 0.875rem;
-  transition: all 0.2s;
+  transition: border-color, box-shadow, outline;
 }
 
 .dnse-panel__field input:focus {
@@ -152,7 +152,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: opacity, background, border-color;
 }
 
 .dnse-panel__btn:hover:not(:disabled) {
