@@ -46,8 +46,22 @@ lệnh tái tạo, và lý do chặn. Không mục nào được coi là đã xo
 
 ## OW-01 — Rotate 7 secret (SEC-01, P0)
 
-**Trạng thái:** `CHƯA CHẠY (chờ owner)` · **2/5 điều kiện tiên quyết ĐÃ ĐẠT** (kiểm 2026-10-07)
-**Chặn:** cần network tới GitHub / DNSE / Django / Ad signing.
+**Trạng thái:** `CHỦ ĐỘNG TRÌ HOÃN` — Owner quyết định 2026-10-07: phần mềm đang **giai đoạn
+phát triển**, **không rotate lúc này**. Không phải "quên" — có lý do đo được.
+**Mở lại khi:** (a) lên production, (b) repo thành public, hoặc (c) cấp access repo cho bên thứ ba.
+
+**Vì sao mô tả cũ đã sai** (kiểm chứng 2026-10-07):
+- `compose.dev.env` **KHÔNG tracked** — commit `2db35ed85` đã untrack; `.gitignore:49` có `compose*.env`
+- File tracked chỉ chứa `<REQUIRED>`, không có giá trị thật
+
+**Đo thật trong git history:**
+
+| Secret | Commit chứa giá trị thật | Còn dùng? | Kết luận |
+|---|---|---|---|
+| `DNSE_CREDENTIAL_FERNET_KEY` | **7** | **KHÔNG** — key đã chết (khác key hiện tại), DB có **0** `UserDNESCredential` | Rotate vô nghĩa, không mất dữ liệu nào |
+| `CORE_PAT_PEPPER` | **11** | **CÓ** — giá trị hiện tại **trùng** giá trị trong history | **Đây mới là cái cần xử lý** |
+
+**Repo PRIVATE** (`gh repo view` → `isPrivate: true`) ⇒ rủi ro ở mức "người có access repo".
 
 7 secret phải revoke + phát hành lại **cùng lúc** (D-29 — rotate là một sự kiện):
 
