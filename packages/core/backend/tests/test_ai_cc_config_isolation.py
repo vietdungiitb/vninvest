@@ -29,6 +29,7 @@ from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings, UserAICredential
 from advisory.tests.envelope import unwrapped
+from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
 
@@ -45,6 +46,11 @@ class AICommandCenterIsolationTests(TestCase):
         self.user_b = User.objects.create_user(
             username='cc-iso-b', email='b@example.com', password='testpass123',
         )
+        # SAFE-04: endpoint da co `WorkspacePermission`. Hai user phai thuoc
+        # tenant thi moi chay toi validation — nguoc lai nhan 403 truoc khi
+        # kiem tra payload, va test doi 400 thanh 403.
+        grant_tenant(self.user_a, role='editor', tenant_code='cc-iso-tenant')
+        grant_tenant(self.user_b, role='editor', tenant_code='cc-iso-tenant')
         self.client_a.force_authenticate(user=self.user_a)
         self.client_b.force_authenticate(user=self.user_b)
 

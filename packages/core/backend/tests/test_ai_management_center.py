@@ -32,6 +32,7 @@ from unittest.mock import patch
 import httpx
 
 from advisory.models import UserAICredential, SystemAISettings
+from user_workspace.tests.tenant_test_helpers import grant_tenant
 from identity_access.security import encrypt_user_api_key
 from identity_access.models import UserProfile
 from identity_access.tests.envelope import unwrapped
@@ -130,6 +131,7 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
             email='cc@example.com',
             password='testpass123',
         )
+        grant_tenant(self.user, role='viewer', tenant_code='cc-view-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_get_returns_default_config_when_no_credential_exists(self):
@@ -200,6 +202,7 @@ class PortfolioAICommandCenterViewPutTests(TestCase):
             email='cc-put@example.com',
             password='testpass123',
         )
+        grant_tenant(self.user, role='editor', tenant_code='cc-put-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_put_saves_provider_and_model(self):
@@ -279,6 +282,8 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
             email='test-view@example.com',
             password='testpass123',
         )
+        # `test-connection` -> `broker_manage` (`settings:write`): chi admin/owner.
+        grant_tenant(self.user, role='admin', tenant_code='test-view-tenant')
         self.client.force_authenticate(user=self.user)
 
     def test_openclaw_returns_success(self):
