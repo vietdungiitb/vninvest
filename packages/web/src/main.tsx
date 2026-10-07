@@ -27,6 +27,8 @@ function resolvePageComponent(routeId: string) {
   else if (routeId === 'watchlist') registryId = 'core-watchlist';
   else if (routeId === 'transactions') registryId = 'core-transactions';
   else if (routeId === 'portfolios') registryId = 'core-portfolios';
+  // S-11: 5 route danh muc cung dung MOT entry. Component doc tab tu path.
+  else if (routeId.startsWith('portfolio-')) registryId = 'portfolio-workspace';
   else if (routeId === 'settings') registryId = 'core-user-settings';
 
   const component = getPageComponent(registryId);
@@ -139,6 +141,13 @@ function App() {
         createElement(Route, { path: 'screener', element: createElement(resolvePageComponent('screener')) }),
         createElement(Route, { path: 'transactions', element: createElement(resolvePageComponent('transactions')) }),
         createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
+        // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + F5 giu dung
+        // tab. Cung tro toi MOT entry `portfolio-workspace`; tab lay tu path.
+        createElement(Route, { path: 'portfolios/:portfolioId/overview', element: createElement(resolvePageComponent('portfolio-overview')) }),
+        createElement(Route, { path: 'portfolios/:portfolioId/holdings', element: createElement(resolvePageComponent('portfolio-holdings')) }),
+        createElement(Route, { path: 'portfolios/:portfolioId/allocation', element: createElement(resolvePageComponent('portfolio-allocation')) }),
+        createElement(Route, { path: 'portfolios/:portfolioId/analytics', element: createElement(resolvePageComponent('portfolio-analytics')) }),
+        createElement(Route, { path: 'portfolios/:portfolioId/activity', element: createElement(resolvePageComponent('portfolio-activity')) }),
         createElement(Route, { path: 'ai-advisory', element: createElement(resolvePageComponent('ai-advisory')) }),
         createElement(Route, { path: 'upgrade', element: createElement(resolvePageComponent('upgrade')) }),
         createElement(Route, { path: 'admin-crawl-control', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-crawl-control'))) }),
