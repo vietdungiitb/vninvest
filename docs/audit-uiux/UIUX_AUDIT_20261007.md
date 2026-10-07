@@ -261,3 +261,44 @@ Script **không** trả lời được, cần người/camera test:
   ```
 - Số liệu bản đồ route tái lập bằng `docs/audit-uiux/scripts/` hoặc đọc
   `packages/web/src/app/routeCatalog.js` (49 mục, regex 8 trường).
+
+---
+
+## 8. CÀI ĐẶT SKILL — CHỈ COMMIT `skills-lock.json`, KHÔNG COMMIT THÂN SKILL
+
+```
+npx skills add ibelick/ui-skills -y --agent "*"
+npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-guidelines -y --agent "*"
+npx skills add https://github.com/anthropics/skills --skill frontend-design -y --agent "*"
+```
+
+⚠ Cần `-y --agent "*"`: bản `npx skills add` gốc mở prompt chọn skill và **hủy
+ngay** khi stdin không phải TTY — không có gì được cài.
+
+**Kết quả cài**:
+
+| Skill | Nguồn | Vai trò trong audit |
+|---|---|---|
+| `web-design-guidelines` | vercel-labs | bảng 40+ luật — nguồn chính |
+| `fixing-accessibility` | ibelick/ui-skills | 9 nhóm ưu tiên a11y |
+| `ui-skills-root` | ibelick/ui-skills | định tuyến chọn skill nhỏ nhất |
+| `baseline-ui` · `improve-ui` · `fixing-motion-performance` · `fixing-metadata` · `create-design-md` | ibelick/ui-skills | bổ sung (motion / metadata / baseline) |
+| `frontend-design` | anthropics/skills | thiết kế component, không dùng cho audit |
+
+**Vì sao chỉ commit `skills-lock.json`**:
+`skills/{baseline-ui,fixing-accessibility,…}` là **symlink/junction** trỏ vào
+`.agents/skills/` — mà `.agents/` đã nằm trong `.gitignore:96`:
+
+```
+Get-ChildItem skills -Recurse -Force | ? { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }
+→ skills\baseline-ui, skills\create-design-md, skills\fixing-accessibility,
+  skills\fixing-metadata, skills\fixing-motion-performance, skills\frontend-design,
+  skills\improve-ui, skills\ui-skills-root, skills\web-design-guidelines   (9 reparse point)
+```
+
+Commit 9 symlink đó sẽ tạo **link hỏng** trên máy khác (đích không có trong repo).
+`skills-lock.json` đã lưu đủ nguồn + `computedHash` cho từng skill ⇒ cài lại được
+bằng 3 lệnh trên. Đây là cơ chế đúng.
+
+⚠ **Không xóa đệ quy `skills/`** — đi qua junction sẽ xóa cả `.agents/skills/`
+(đã xảy ra 1 lần trong repo này, ghi ở `AGENTS.md`).
