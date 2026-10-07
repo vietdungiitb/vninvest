@@ -1,5 +1,8 @@
 # AUDIT UI/UX TOÀN DIỆN — vninvest web app
 
+> **CẬP NHẬT sau đợt cải tiến (`feat/uiux-improvement`)** — xem mục 9.
+> Kết quả đo được: **327 → 246** (P0=0 · P1=123 · P2=121 · P3=2), không rule nào tăng.
+
 - **Ngày**: 2026-10-07
 - **Phạm vi**: `packages/web/src` — 454 file · **49 route** · **75 page** (không tính file test)
 - **Base**: `dev@3adcdd428`
@@ -302,3 +305,82 @@ bằng 3 lệnh trên. Đây là cơ chế đúng.
 
 ⚠ **Không xóa đệ quy `skills/`** — đi qua junction sẽ xóa cả `.agents/skills/`
 (đã xảy ra 1 lần trong repo này, ghi ở `AGENTS.md`).
+
+---
+
+## 9. KẾT QUẢ CẢI TIẾN (eat/uiux-improvement, 7 commit)
+
+### 9.1 Đo được bằng gate, không phải bằng cảm nhận
+
+packages/web/scripts/check-uiux-budget.mjs — **nhân bản nguyên tắc từ check-openapi-schema-budget.py sẵn có trong repo**:
+
+| Tình huống | Hành động |
+|---|---|
+| Tổng TĂNG so baseline | **FAIL** |
+| Bằng baseline | PASS |
+| BẾ hơn baseline | PASS + đề xuất `--write-baseline` |
+| Có rule MỚI không khai trong baseline | **FAIL** |
+| Không có baseline | FAIL |
+
+Gate có `--self-test` (negative proof). Không sửa `package.json` (deny-list).
+
+`
+node packages/web/scripts/check-uiux-budget.mjs              # gate
+node packages/web/scripts/check-uiux-budget.mjs --write-baseline
+node docs/audit-uiux/scripts/scan-ui-guidelines.mjs packages/web/src   # số liệu gốc
+`
+
+### 9.2 Delta
+
+| Rule | P | Trước | Sau | Cách |
+|---|---|---|---|---|
+| CSS-1 `transition: all` | P1 | 51 | **0** | script compute danh sách property thật + 2 sửa tay |
+| A11Y-8 outline-none không focus | P1 | 6 | 4 | 1 sửa thật; 5 là false positive (mục 9.4) |
+| A11Y-9 thiếu label | P2 | 46 | 44 | `PaginationBar` — component dùng chung |
+| I18N-1 `toLocale*` không locale | P2 | 34 | 19 | `formatNumber(x, localeTag)` — helper có sẵn |
+| A11Y-5 `<div onClick>` | P1 | 3 | 3 | chưa làm |
+| NAV-1 state không đồng bộ URL | P1 | 115 | 115 | **chưa làm** (mục 9.5) |
+| **TỔNG** | | **327** | **246** | P0=0 P1=123 P2=121 P3=2 |
+
+Không rule nào tăng. Gate chặn được hồi quy.
+
+### 9.3 Đã làm
+
+- **UX-00** gate + baseline.
+- **UX-01** skip link (`index.html` → `#main-content` ở `FullLayout.tsx`), `<meta name="color-scheme">`, `<meta name="theme-color">`. Trước đó toàn repo **không có** skip link.
+- **UX-02** `@media (prefers-reduced-motion: reduce)` ở mức global thay vì sửa 46 file; bỏ 51 `transition: all`.
+- **UX-03** `WhaleBubbleChart.jsx:1516` — `<select>` bỏ outline vô điều kiện → thêm `focus:border-cyan-400` như 2 select anh em.
+- **UX-05** `PaginationBar`: 8 nút icon có `aria-label`; 2 `<select>` có `<label htmlFor>`.
+- **UX-07** 15 chỗ `toLocaleString()` → `formatNumber(x, localeTag)`.
+
+### 9.4 Sai lầm đã phát hiện và sửa (ghi lại vì đã "PASS" nhiều lần)
+
+| # | Sai lầm | Cách bị bắt |
+|---|---|---|
+| 1 | `transition: all 0.18s` → `transition: color, background;` **vứt mất duration** ⇒ CSS mặc định `0s` ⇒ **49 rule hover chớp tức thay** | audit Stage 5 đếm trực tiếp |
+| 2 | Sửa file rồi tìm theo line cũ ⇒ chỉ sửa 38/51 | tự phát hiện |
+| 3 | `parseBlocks` trả dòng của selector không phải dòng `transition` ⇒ `0/13` | tự phát hiện |
+| 4 | Scanner bỏ sót comment nhiều dòng `/* … */` | tự phát hiện |
+| 5 | Vòng PowerShell `Get-Content` → `Set-Content -NoNewline` **gép `soc.components.css` 3482 dòng còn 1 dòng** | `git diff --stat` báo `3944 deletions` |
+| 6 | Gate A11Y-8 báo 6 lỗi nhưng **3/6 file CSS đã có** `:focus` + `box-shadow` ring thật | kiểm chứng tay |
+
+⇒ **Quy tắc mới**: dùng `Write`/`Edit` tool hoặc script Node với `lines.join("\n")`; **không** dùng `Get-Content|Set-Content` để sửa file nhiều dòng. `deletions` bất thường là triệu chứng, không phải chuyện thường.
+
+⇒ **A11Y-8 có sẵn ngưỡng false-positive.** "Có `:focus` không" cần phần tử đã render, regex không đủ.
+
+### 9.5 Chưa làm — ghi rõ, không giữ làm xong
+
+| Mục | Số | Vì sao |
+|---|---|---|
+| NAV-1 state không đồng bộ URL | 115 | Cần chốt thư viện (`nuqs` hay tự viết) **trước** — sửa tay 115 chỗ là cách đắt nhất |
+| I18N-1 còn lại | 19 | Script bắt 15/34; 3 chỗ khác scope, 1 cần truyền locale qua props, 6 chỗ trên biểu thức ngoặc |
+| A11Y-9 còn lại | 44 | Rải ở 40+ file, phần lớn là `<Input>` wrapper cần kiểm component gốc |
+| **Màu tăng/giảm chuẩn VN** | P0 nghiệp vụ | **Chưa đổi** — cần Owner chốt (mục 4 #4) |
+| 63 page thiếu `<h1>` | 63 | Gộp khi refactor từng trang, không dồn một lần |
+| Mobile / touch / safe-area | — | Không có thiết bị trong phiên |
+
+### 9.6 Test mới
+
+`PaginationBar.a11y.component.test.tsx` (5 test) — fail-trước/pass-sau bằng chính bộ test: bản gốc **5 failed** → bản mới **5 passed**.
+
+1 test hồi qu do thay đổi của tôi: `soc-queue-depth.component.test.tsx:83` kỳ vọng `"5,000"` — đó là `toLocaleString()` không tham số ⇒ locale **của máy chạy test** (jsdom mặc định en-US). Test đang khoá lại hành vi sai; sau khi dùng `formatNumber(x, 'vi-VN')` ra `"5.000"`. Đã cập nhật kèm ghi chú.
