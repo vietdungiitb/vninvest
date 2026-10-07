@@ -46,8 +46,13 @@ function OffsetPaginationBar({ total, page, size, onPageChange, onSizeChange }) 
             "0—/0—/0". Không sửa gì khác để không ảnh hưởng layout rộng. */}
         <span className="whitespace-nowrap shrink-0">{from}–{to} / {total}</span>
         <span aria-hidden="true">•</span>
-        <span className="whitespace-nowrap shrink-0">Kích thước trang</span>
+        {/* UX-05: span chi la text, KHONG gan ten accessible cho <select>.
+            Do la component dung chung cho MOI bang co phan trang nen thieu
+            ten o day = thieu ten o hang loat man hinh. Dung <label htmlFor>
+            de click chu cung doi chon duoc (skill fixing-accessibility §5). */}
+        <label htmlFor="v2-page-size" className="whitespace-nowrap shrink-0">Kích thước trang</label>
         <select
+          id="v2-page-size"
           value={size}
           onChange={(e) => onSizeChange(Number(e.target.value))}
           className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300 hover:border-slate-600 focus:border-cyan-600 focus:text-cyan-200 focus:outline-none"
@@ -56,24 +61,28 @@ function OffsetPaginationBar({ total, page, size, onPageChange, onSizeChange }) 
         </select>
       </div>
       <div className="flex items-center gap-1.5">
+        {/* UX-05: nut chi co icon. `title` KHONG du la ten accessible tin
+            cay (chi hien khi hover, bi doc bo qua tren touch).
+            skill fixing-accessibility §1: "icon-only buttons must have
+            aria-label or aria-labelledby". Giu `title` de con chu khi hover. */}
         <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1}
-          title="Đầu" className={NAV_BTN_DEFAULT}>
-          <IconFirst />
+          aria-label="Đầu" title="Đầu" className={NAV_BTN_DEFAULT}>
+          <IconFirst aria-hidden="true" />
         </button>
         <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1}
-          title="Trước" className={NAV_BTN_DEFAULT}>
-          <IconPrev />
+          aria-label="Trước" title="Trước" className={NAV_BTN_DEFAULT}>
+          <IconPrev aria-hidden="true" />
         </button>
         <span className="min-w-[52px] whitespace-nowrap text-center text-slate-400 tabular-nums">
           Trang {page} / {totalPages}
         </span>
         <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
-          title="Tiếp" className={NAV_BTN_NEXT}>
-          <IconNext />
+          aria-label="Tiếp" title="Tiếp" className={NAV_BTN_NEXT}>
+          <IconNext aria-hidden="true" />
         </button>
         <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}
-          title="Cuối" className={NAV_BTN_DEFAULT}>
-          <IconLast />
+          aria-label="Cuối" title="Cuối" className={NAV_BTN_DEFAULT}>
+          <IconLast aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -98,8 +107,10 @@ function CursorPaginationBar({
       <div className="flex items-center gap-2 text-slate-500">
         <span className="whitespace-nowrap shrink-0">Trang {currentPage || 1}</span>
         <span aria-hidden="true">•</span>
-        <span className="whitespace-nowrap shrink-0">Kích thước trang</span>
+        {/* UX-05: xem ghi chu o khoi select thu nhat. */}
+        <label htmlFor="v2-page-size-b" className="whitespace-nowrap shrink-0">Kích thước trang</label>
         <select
+          id="v2-page-size-b"
           value={pageSize}
           onChange={(e) => onSizeChange(Number(e.target.value))}
           className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300 hover:border-slate-600 focus:border-cyan-600 focus:text-cyan-200 focus:outline-none"
@@ -109,20 +120,20 @@ function CursorPaginationBar({
       </div>
       <div className="flex items-center gap-1.5">
         <button type="button" onClick={onFirst} disabled={!hasPrev || loading}
-          title="Đầu" className={NAV_BTN_DEFAULT}>
-          <IconFirst />
+          aria-label="Đầu" title="Đầu" className={NAV_BTN_DEFAULT}>
+          <IconFirst aria-hidden="true" />
         </button>
         <button type="button" onClick={onPrev} disabled={!hasPrev || loading}
-          title="Trước" className={NAV_BTN_DEFAULT}>
-          <IconPrev />
+          aria-label="Trước" title="Trước" className={NAV_BTN_DEFAULT}>
+          <IconPrev aria-hidden="true" />
         </button>
         <button type="button" onClick={onNext} disabled={!hasNext || loading}
-          title="Tiếp" className={NAV_BTN_NEXT}>
-          {loading ? <IconSpinner /> : <IconNext />}
+          aria-label="Tiếp" title="Tiếp" className={NAV_BTN_NEXT}>
+          {loading ? <IconSpinner aria-hidden="true" /> : <IconNext aria-hidden="true" />}
         </button>
         <button type="button" onClick={onLast} disabled={!hasLast || loading}
-          title="Cuối" className={NAV_BTN_DEFAULT}>
-          <IconLast />
+          aria-label="Cuối" title="Cuối" className={NAV_BTN_DEFAULT}>
+          <IconLast aria-hidden="true" />
         </button>
       </div>
     </div>

@@ -3,7 +3,7 @@
   "_measured_at": "2026-10-07",
   "_scanner": "docs/audit-uiux/scripts/scan-ui-guidelines.mjs",
   "_reproduce": "node packages/web/scripts/check-uiux-budget.mjs",
-  "total": 265,
+  "total": 261,
   "rules": {
     "NAV-1": {
       "prio": "P1",
@@ -15,19 +15,19 @@
     },
     "A11Y-9": {
       "prio": "P2",
-      "count": 46
+      "count": 44
     },
     "I18N-1": {
       "prio": "P2",
       "count": 34
     },
-    "A11Y-8": {
-      "prio": "P1",
-      "count": 6
-    },
     "A11Y-11": {
       "prio": "P2",
       "count": 5
+    },
+    "A11Y-8": {
+      "prio": "P1",
+      "count": 4
     },
     "A11Y-5": {
       "prio": "P1",

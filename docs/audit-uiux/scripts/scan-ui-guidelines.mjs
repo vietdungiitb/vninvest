@@ -127,9 +127,29 @@ const RULES = [
     name: "outline-none KHÔNG có focus thay thế",
     check(ctx) {
       if (!/outline-none|outline\s*:\s*none/.test(ctx.line)) return null;
-      const scope = ctx.isCss ? ctx.block : (ctx.line + ctx.next2.join(" "));
-      if (/focus-visible|focus:|focus\s*:|:focus/.test(scope)) return null;
-      return `${ctx.line.trim().slice(0, 130)}  → bỏ outline mà không có focus thay thế`;
+      if (!ctx.isCss) {
+        // JSX/TSX: Tailwind `outline-none` chỉ OK nếu cùng chỗ có `focus:`/`focus-visible:`
+        const scope = ctx.line + ctx.next2.join(" ");
+        if (/focus-visible|focus:|focusRing|ring-/.test(scope)) return null;
+        // phần tử không focusable (panel, overlay, wrapper) => outline vô nghĩa
+        if (/role="(dialog|presentation|none)"|aria-hidden/.test(ctx.block)) return null;
+        return `${ctx.line.trim().slice(0, 130)}  → bỏ outline mà không có focus thay thế`;
+      }
+      // CSS: file co `outline: none` o dau do, va file KHONG co bat ky rule
+      // `:focus` nao dat chi bao hien nhin thay (border-color / box-shadow /
+      // outline). Do o MUC FILE chu khong phai selector tung dong: selector
+      // nhieu phan tu (`.dnse-panel__field input`, `.domainPill`) lam matcher
+      // theo ten don le that - da 6/7 false positive o cac file CSS cua repo.
+      const focusBlocks = ctx.focusBlocks ?? [];
+      const visible = focusBlocks.some((b) =>
+        /border-color\s*:|box-shadow\s*:|outline\s*:/.test(b)
+        && !/outline\s*:\s*none/.test(b));
+      if (visible) return null;
+      if (focusBlocks.length > 0) {
+        // co :focus nhung khong doi gi => viet ro de nguoi doc quyet dinh
+        return `${ctx.line.trim().slice(0, 120)}  → có :focus nhưng không đổi chỉ báo nhìn thấy`;
+      }
+      return `${ctx.line.trim().slice(0, 130)}  → bỏ outline mà không có :focus thay thế`;
     },
   },
   {
@@ -274,7 +294,9 @@ for (const f of files) {
   const lines = raw.filter((l) => !isCommentLine(l, cState));
   const rel = f.replace(/\\/g, "/").replace(/^packages\/web\//, "");
   const base = {
-    file: f, rel, isCss, lines,
+    file: f, rel, isCss, lines, fileText: txt,
+    // noi dung moi rule co chua `:focus` — dung cho luat A11Y-8
+    focusBlocks: [...txt.matchAll(/([^{}]*:focus[^{}]*)\{([^{}]*)\}/g)].map((m) => m[2]),
     fileHasReducedMotion: /prefers-reduced-motion/.test(txt),
     fileHasTabular: /tabular-nums|fontVariantNumeric/.test(txt),
     fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation/.test(txt),
@@ -288,6 +310,17 @@ for (const f of files) {
       ...base,
       line,
       index: i,
+      // selector dang sua (CSS): doc nguoc dong hien tai tim dau `}` roi `.ten`
+      selectorName: isCss ? (() => {
+        for (let j = i; j >= 0 && j >= i - 40; j -= 1) {
+          const m = /(?:^|\})\s*([^{}@]+?)\s*\{[^{}]*$/.exec(lines.slice(0, j + 1).join("\n"));
+          if (m) {
+            const nm = m[1].trim().split(/\s+|,|:is\(|:where\(/).pop();
+            if (nm && /^[A-Za-z][\w-]*$/.test(nm)) return nm;
+          }
+        }
+        return null;
+      })() : null,
       block: win(8).join("\n"),
       next1: win(1).slice(1, 2),
       next2: win(2).slice(1),
