@@ -259,10 +259,18 @@ const RULES = [
       if (!m) return null;
       if (ctx.fileHasUrlSync) return null;
       // W3-2 (2026-10-08): rule nay ban ra o dau wave 2, khi `useUrlState`
-      // (`packages/web/src/hooks/useUrlState.ts`) chua ton tai — nen danh sach
-      // thoat o `fileHasUrlSync` (dong nay) va CA CHUOI `useState(...)` trong
-      // message deu bo sot hook do. Hau qua: `CampaignTable.jsx` da deep-link
-      // bang `useUrlValue` van bi bao "useState("sortCol") khong dong bo URL".
+      // chua ton tai — nen message hardcode chuoi `useState("...")`. Da doi de
+      // lay ten hook that tu `const [x, setx] = <hook>(...)`.
+      //
+      // ⚠ **KHONG** them `useUrlState|useUrlValue` vao `fileHasUrlSync` (dong
+      // nay). Da thu mot lan (xem git log W3-2) va audit Stage 5 BA LOI:
+      // escape do la **CAP FILE** — file chi can goi hook 1 lan la moi
+      // `useState` filter trong file bi che, ke ca `searchDraft` cua
+      // `AdminCoreTenantsPage.tsx:27` la `useState` THAT chua sync.
+      // Do do 4/17 hit giam cua W3-2 den tu NOI escape chu khong phai sua
+      // code. Gate yeu hon la thu tien cho AC — tra ve danh sach thoat goc,
+      // giu gate nghiem. CampaignTable.jsx con 3 hit gia; chung duoc ghi ro
+      // trong bao cao thay vi xoa bang cach lam yeu gate.
       const call = ctx.line.match(/const\s*\[\s*(\w+)\s*,[^\]]*?=\s*(\w+)/);
       const src = call ? call[2] : "useState";
       return `${src}("${m[1]}") khong dong bo URL  → mat deep-link  (${ctx.rel})`;
@@ -322,10 +330,10 @@ for (const f of files) {
     focusBlocks: [...txt.matchAll(/([^{}]*:focus[^{}]*)\{([^{}]*)\}/g)].map((m) => m[2]),
     fileHasReducedMotion: /prefers-reduced-motion/.test(txt),
     fileHasTabular: /tabular-nums|fontVariantNumeric/.test(txt),
-    // W3-2 (2026-10-08): `useUrlState` / `useUrlValue` la hook deep-link do
-    // wave 2 tu viet (`src/hooks/useUrlState.ts`, boc `useSearchParams` cua
-    // react-router-dom). File goi 2 hook nay **CO** dong bo URL ⇒ khong duoc bao.
-    fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation|useUrlState|useUrlValue/.test(txt),
+    // GHI CHU W3-2: da thu them `useUrlState|useUrlValue` vao regex nay. Audit
+    // Stage 5 BA LOI nen DA GOC LAI — xem comment o rule NAV-1. Escape cap
+    // file che ca `useState` chua sync trong cung file.
+    fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation/.test(txt),
   };
   const doneOnce = new Set();
 

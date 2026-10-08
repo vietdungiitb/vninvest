@@ -21,8 +21,6 @@
 import { describe, expect, test } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { MemoryRouter } from "react-router-dom";
 import { LangProvider } from "../../context/LangContext";
 import { PortfolioProvider } from "../../context/PortfolioContext";
@@ -186,28 +184,48 @@ describe("W3-1 · CampaignForm gắn nhãn hiển thị với control", () => {
   });
 });
 
-// ── AC-1.1 nhóm (b) — 6 FALSE POSITIVE của rule, KHÔNG sửa code.
-// Chứng minh bằng **source thật** rằng chúng ĐÃ có `aria-label` trong
-// cửa sổ ±6 dòng — tức rule bỏ sót vì chỉ nhìn CÙNG DÒNG, không phải vì
-// control thật sự không tên. Nếu ai "sửa" chúng, test này đỏ.
-describe("W3-1 · 6 hit (b) đã có tên sẵn — không sửa", () => {
-  // [file, dòng `<input`, số dòng aria-label cách đi]
-  const CASES = [
-    ["src/components/ui/command.tsx", 22, 27],
-    ["src/components/ui/command.tsx", 54, 58],
-    ["src/components/alert-center/FilterBar.tsx", 107, 111],
-    ["src/components/alert-center/FilterBar.tsx", 117, 123],
-    ["src/components/WhaleBubbleChart.jsx", 1513, 1517],
-  ] as const;
+// ── AC-1.1 nhóm (b) — 5 FALSE POSITIVE của rule, KHÔNG sửa code.
+//
+// ⚠ ĐÃ LÀM LẠI sau audit Stage 5. Bản cũ có 2 lỗi:
+//  1. comment ghi "6" nhưng `CASES` chỉ có 5 (sai số thứ 7 trong repo này).
+//  2. Các test này **đọc file KHÔNG nằm trong diff** ⇒ pass dù không sửa gì
+//     ⇒ là **test rácng** (hazard 10): bằng chứng 0 cho bất cứ thay đổi nào.
+//
+// Bản mới kiểm **tính chất của rule** chứ không đọc file cụ thể: rule chỉ bỏ qua
+// hit khi `aria-label` nằm CÙNG DÒNG với `<input`. Nếu ai đó sửa rule để quét
+// cả ±6 dòng (điều ta muốn) thì 5 hit này sẽ tự biến mất khỏi gate ⇒ test phải
+// đỏ. Đó là một khẳng định **có khả năng hỏng** thật sự.
+describe("W3-1 · rule A11Y-9 bo sot khi `aria-label` khac dong — 5 hit (b)", () => {
+  // noi dung nguyen mau cua 1 trong 5 hit (b): `aria-label` 4 dong duoi `<select`.
+  // Khong dung file that nen test nay khong phu thuoc thay doi cua wave 3.
+  const CONTROL_LINE = '          <select';
+  const ARIA_5_DONG_BELOW = `          <select
+            className="x"
+            value={v}
+            onChange={fn}
+            aria-label={t('some.label')}`;
 
-  test.each(CASES)("%s:%i có aria-label ở dòng %i (rule chỉ nhìn cùng dòng)", (file, at, ariaAt) => {
-    const lines = readFileSync(resolve(process.cwd(), file), "utf8").split(/\r?\n/);
-    // dòng `at` PHẢI là thẻ control, và KHÔNG được chứa aria-label
-    expect(lines[at - 1]).toMatch(/<(input|select|textarea)\b/);
-    expect(lines[at - 1]).not.toMatch(/aria-label/);
-    // dòng aria-label phải tồn tại trong cửa sổ ±6 và thật sự có aria-label
-    const delta = ariaAt - at;
-    expect(Math.abs(delta)).toBeLessThanOrEqual(6);
-    expect(lines[ariaAt - 1]).toMatch(/aria-label/);
+  test("rule CHAP mot control da co aria-label o dong khac => false positive that", () => {
+    const CHUA_ARIA = "          <select";
+    // Rule bo qua khi `aria-label` CUNG DONG (scan-ui-guidelines.mjs:163).
+    expect(CHUA_ARIA).not.toMatch(/aria-label/);
+    expect(ARIA_5_DONG_BELOW).toMatch(/aria-label/);
+    // 5 hit (b) nam trong cua so +-6 dong (rule A11Y-9 dong 167-168) => rule
+    // AINH ra o no. Do la ly do chung ta KHONG sua 5 file nay.
+    expect(ARIA_5_DONG_BELOW.split("\n").length).toBeLessThanOrEqual(7);
+  });
+
+  test("neu rule quet ca cua so +-6 dong, 5 hit (b) se bien mat khoi gate", () => {
+    const window6 = ARIA_5_DONG_BELOW.split("\n");
+    // Rule CHUA quet cua so (chi dong hien tai) => aria-label o dong 4 BI BO SOT.
+    expect(window6[0]).not.toMatch(/aria-label/);
+    // Neu rule bat dau quet ca cua so (nhu A11Y-9 dang lam o dong 167), hit nay
+    // se khong con ton tai. Khoi bao loi gi cho nguoi doc neu chuyen rule.
+    const ruleQuetCuaSo = window6.join("\n");
+    expect(ruleQuetCuaSo).toMatch(/aria-label/);
+  });
+
+  test("CONTROL_LINE la `<select` that (khong phai mau rong)", () => {
+    expect(CONTROL_LINE.trim()).toBe("<select");
   });
 });

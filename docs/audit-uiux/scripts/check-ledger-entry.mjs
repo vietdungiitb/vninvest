@@ -39,7 +39,7 @@
  *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --next-entry # so Entry moi
  *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --manifest   # 59 so trung + tieu de
  *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --json
- *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --write-baseline
+ *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --write-baseline [--from-worktree]
  *   node docs/audit-uiux/scripts/check-ledger-entry.mjs --self-test  # bang chung am
  */
 import fs from "node:fs";
@@ -216,10 +216,11 @@ function main() {
   }
 
   if (args.includes("--write-baseline")) {
-    // Do baseline tren HEAD mac dinh: neu do tren worktree, mot Entry dang
-    // giu cho viec cua agent khac se bi nap thang vao baseline va gate se
-    // chấp nhận sai số đó. Dùng `--from-head` de do tren worktree khi can.
-    const fromHead = !args.includes("--from-head");
+    // Mac dinh doc HEAD: do tren worktree se nap viec chua commit cua agent
+    // khac vao baseline. Co `--from-worktree` de tinh lai tren worktree khi
+    // can (Ten cO KHOP voi hanh vi — truoc day co co `--from-head` nhung logic
+    // la `!args.includes(...)`, tuc ten co y ngược hành vi).
+    const fromHead = !args.includes("--from-worktree");
     const curB = analyze(readLedger(fromHead));
     const dups = Object.fromEntries(Object.entries(curB.freq).filter(([, c]) => c > 1));
     const payload = {
