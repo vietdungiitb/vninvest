@@ -3,6 +3,8 @@ const vi = {
     loading: 'Đang tải...',
     notAvailable: '—',
     noPermission: 'Bạn không có quyền truy cập trang này.',
+    acknowledge: 'Đã xem nhận',
+    searchPages: 'Tìm trang',
     language: 'Ngôn ngữ',
     vietnamese: 'Tiếng Việt',
     english: 'English',
@@ -6176,8 +6178,6 @@ const vi = {
     errors: {
       loadFailed: 'Không tải được dữ liệu.',
 noPermission: 'Bạn không có quyền truy cập trang này.',
-    acknowledge: 'Đã xem nhận',
-    searchPages: 'Tìm trang',
     },
   },
   tenantSettings: {
