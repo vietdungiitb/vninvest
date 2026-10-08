@@ -1,3 +1,189 @@
+## Entry 256: UI/UX wave 3 — 4/6 slice, 2 audit bat 2 blocker nghiem trong cua tac gia (2026-10-08)
+
+- **Nhánh**: `feat/uiux-wave3` → merge `--no-ff` vào `dev` = **`890a60208`**; push `dev 7aeef9503..890a60208`, sau do `890a60208..12d0702fe` (REPORT_FINAL)
+- **Base**: `dev` @ `7aeef9503`
+- **Claim**: `uiux-wave3` — **released** (`docs/CLAIMS.md`)
+- **Ke hoach**: `docs/PLAN_UIUX_WAVE3.md` rev 3 · **Bao cao**: `docs/REPORT_FINAL_UIUX_WAVE3.md`
+- **Quy trinh**: `multi-agent-workflow` — **Mode B (solo)**, 8 stage
+
+### Quy trinh: 3 vong audit doc lap, CA 3 deu bat loi cua chinh tac gia
+
+| Vong | Verdict | Ket qua |
+|---|---|---|
+| Stage 2 — Audit Plan vong 1 | **`NEED_REVISION`** | 20 objection. 4 la loi cua toi, 16 dung |
+| Stage 2 — Audit Plan vong 2 | **`AGREE`** | 10/10 objection nang da dong; 7 objection moi da dong het |
+| Stage 5 — Audit Code | **`REJECT`** | **2 blocker · 5 major · 7 minor**, `confidence: high` |
+
+**Vi sao Mode B chu khong chia agent song song**: 5 file trung giua slice A11Y-9 va
+NAV-1 (`AdminCoreTenantsPage` · `AdminBillingFleetPage` · `AdminAuditPage` ·
+`TenantAdminMembersPage` · `CampaignTable`) ⇒ chay song song tai tao Hazard 1.
+
+### Gate do duoc (exit code that)
+
+| Gate | Truoc `dev` @ `7aeef9503` | Sau `890a60208` |
+|---|---|---|
+| `scan-ui-guidelines.mjs` | `TONG 224` · NAV-1 112 · A11Y-9 44 | **`TONG 172`** · NAV-1 **99** · A11Y-9 **5** |
+| `check-uiux-budget.mjs` | exit 0, −22 | exit 0, **−74** |
+| `check-ledger-entry.mjs` (gate **MOI**) | — | exit 0 · `--self-test` 4/4 |
+| `npx tsc --noEmit` | exit 0 | exit 0 |
+| `npm run lint` | **exit 1** — 3711 problems, **1 error** | **exit 0** — 3743 problems, **0 error** |
+| `npm run test:components` | **exit 1** — 2 failed / 802 | **exit 0** — **817/817**, 117 file |
+
+**Khong doi**: `CSS-2` 46 · `A11Y-11` 5 · `A11Y-8` 4 · `A11Y-5` 3 · `A11Y-7` 3 ·
+`A11Y-4` 2 · `A11Y-10` 2 · `TYPO-3` 2 · `A11Y-2` 1 · `I18N-1` 0.
+
+### 9 muc "CHUA LAM" cua Entry 255 → trang thai
+
+| # | Muc | Ket qua |
+|---|---|---|
+| 1 | FU-02b A11Y-9 44 hit | **DONG 44 → 5**. 5 con lai la false positive cua rule (da co ten) |
+| 2 | FU-05 11/12 file | **MOT PHAN 7/11** (NAV-1 −13). 4 file con lai, 9 hit |
+| 3 | AC-3 6/14 trang | **CHUA LAM** |
+| 4 | AC-4 script import-graph | **CHUA LAM** |
+| 5 | NAV-1 ngoai scope | Giu ngoai scope theo Owner, ghi ro |
+| 6 | Mobile CHUA CHAY | **CHUA LAM** (Playwright emulation) |
+| 7 | flake | **DONG** — 2 co che khac nhau |
+| 8 | lint | **DONG** — `lint` exit 1 → **exit 0** |
+| 9 | ledger 59 so trung | **DONG theo D-3** — gate chan tai phat + `--next-entry`, **khong** danh so lai lich su |
+
+### BA phat hien lon nhat (tu tim, khong ai nho)
+
+1. **Scanner in SAI SO DONG** — `scan-ui-guidelines.mjs:294` loc bo dong comment roi
+   in `i + 1` cua mang **da loc** ⇒ moi `file:line` lech, dung bang so dong comment
+   dung truoc. Do tren 224 hit: **135 hit lech, 89 hit dung**, lech lon nhat **36 dong**
+   (`WhaleBubbleChart.jsx`). Ban sua: mang `kept` giu `{text, soDong}`, `lines` **van la
+   mang da loc**, them `trueLine`. **BAT BUOC khong bo `.filter`** — `prev6/next6/block`
+   tinh tren mang da loc; bo filter ⇒ cua so ±6 chua comment ⇒ rule A11Y-9 doi ket qua
+   ⇒ **count doi ⇒ gate doi hanh vi**. AC-0.2 chung minh: **11 rule count + TONG khong doi**.
+   ⇒ Giai thich **co che** cua nhieu lan "sai so thu 5/6/7" o wave 1-2: **con so dem
+   dung, chi dong sai**.
+2. **`docs/TEST_REPORT_UIUX_WAVE2.md` sai 2 cho** — loi lint that o
+   `OrderFlowRadarPanel.js:155:6` **khong phai** `FactsFirstWhaleBubbleChart.jsx`
+   (dong 36 ghi sai, cung 155:6 cung message ⇒ ghep nham khi copy); va baseline
+   `test:components` **da DO** (2 failed / 802) chu khong xanh nhu ghi.
+3. **Rule NAV-1 quet CA COMMENT** — mot dong comment chua `URLSearchParams` lam file
+   duoc coi la "da dong bo URL" ⇒ **3 hit bien mat khong phai vi sua code**. Chinh
+   comment giai thich bug cua toi gay ra dieu do.
+
+### HAI BLOCKER do chinh tac gia (audit Stage 5 bat, da sua)
+
+- **B1 — `CampaignTable.jsx`: sap xep giam dan hong hoan toan.** `setSortDesc(
+  Boolean(row?.desc))` truyen **boolean** vao `boolCodec("asc","desc")`
+  (`useUrlState.ts:50`) — `serialize` nhan **string**. `serialize(true)` → `true` →
+  query string ep thanh `"true"` → `parse("true")` → `undefined` → fallback `false`.
+  **Khong loi nao bi bao** vi `.jsx` khong qua `tsc` va khong test nao render component
+  nay. Da viet `SORT_DIR_CODEC` rieng, doi ca setter lan `sorting` memo sang so sanh chuoi.
+- **B2 — `i18n/vi.js`: 2 key nam sai cho.** `acknowledge` + `searchPages` bi chen vao
+  **`advertising.errors`** thay vi `common` (`en.js` dung o `common`) ⇒
+  `common.acknowledge` undefined o tieng Viet ⇒ `LangContext.js:102` tra **chinh key**
+  ⇒ `OptimizationModal.jsx:89` render `aria-label="common.acknowledge: FPT"` —
+  **ten accessible name la chuoi rac**.
+  ⚠ **`npm run i18n:scan:strict` exit 0 TRUOC KHI SUA** — gate i18n nay **MU**.
+
+### Tu goi lai chinh minh — khong sua gate de AC cua minh trong dat
+
+W3-2 tung them `useUrlState|useUrlValue` vao `fileHasUrlSync` de xoa 3 hit gia.
+Audit chi ra escape do la **CAP FILE** — file chi can goi hook 1 lan thi moi
+`useState` trong file bi che, ke ca `AdminCoreTenantsPage.tsx:27 searchDraft` la
+`useState` THAT chua sync. Do do **4/17 hit giam cua W3-2 den tu noi escape**, khong
+phai sua code. ⇒ **DA GOC LAI**. NAV-1 di tu 95 (ban lam yeu) → 96 → **99** (ban
+nghiem). Giu lai phan sua `message` (lay ten hook that thay vi hardcode `useState`).
+
+### Gate moi: `check-ledger-entry.mjs` (W3-0)
+
+Dung **Hazard 2 ap sang ledger**: 59 so `## Entry` trung co san (305 header, 243 so
+khac nhau); `Entry 33`/`53` la hai noi dung khac nhau cung so, `Entry 62` xuat hien
+**3 lan**. Agent tu doan so Entry thay vi doc head that ⇒ ca hai prepend o dau file
+⇒ mot hunk khong tach duoc.
+
+- Luu **DA TAP TAN SUAT** (`number -> expectedCount`), **KHONG** luu tap so: tap don
+  thuan se **khong bat** duoc `## Entry 33` lan 3 vi 33 da nam trong tap 59.
+- So **khong** co trong baseline: `count=1` ⇒ PASS (Entry moi hop le), `count>=2` ⇒ FAIL.
+- `--write-baseline` doc **HEAD** mac dinh (`--from-worktree` de doc worktree) — doc
+  worktree se nap viec chua commit cua agent khac vao baseline.
+- **KHONG danh so lai 59 so trung** (Owner chot): se lam hong moi trich dan `Entry N`
+  trong `AGENTS.md` / `CLAIMS.md` / `docs/*`.
+- Bang chung am: `--self-test` 4/4 + end-to-end harness (inject `Entry 33` x3 va
+  `Entry 999` x2 ⇒ **exit 1**, bat dung 2 loi, **khong** bao 59 loi co san).
+- Gac vao `scripts/agent-sync.ps1` ngay sau `check-multi-agent.mjs` ⇒ moi agent sau
+  nay deu chay.
+
+### Hai CO CHE flake (tach nhau — audit vong 1 chi thay mot)
+
+| Co che | Trieu chung | Sua | Bang chung |
+|---|---|---|---|
+| **AC-4.1a** phi nap module | `await import()` **trong than test** ⇒ thoi gian nap bi tinh vao **timeout cua test**. `AIUsageAnalyticsPage` fail o **27527 ms** > timeout 20000 | dua `await import` len **module scope** (top-level await) | `tests` cua file **33.89 s → 1.30 s** (chi phi chuyen sang phase collect `import 4.29 s`). Ap dung cho ca 2 file |
+| **AC-4.1b** settle race | `AdminUsersPage` fail o **306 ms** ⇒ **khong phai timeout**, ma assert **dong bo** khi `SocUsersPanel` con o trang thai `loading` (`SocUsersPanel.tsx:154-156`) | them `waitFor` theo dung pattern test ke ben | Sua **test**, **khong** sua code san pham |
+
+**AC-4.2 — bang chung co dieu kien tai, khong phai "3 lan xanh"**: chay full suite voi
+`--maxWorkers=2` ⇒ **154.37 s** (2.5× mac dinh 60.44 s) ⇒ **van 117/117 file, 817/817
+test, exit 0**. ⚠ **Khong tai lap duoc** — ghi ro, khong giong "da het flake".
+
+### Ba regression cua chinh tac gia (da bat truoc khi commit)
+
+1. `OptimizationModal.jsx`: dat `aria-label` **duoi dong `<input`** ⇒ rule khong dem,
+   scanner van bao hit o file vua sua. Sua bang cach dat **cung dong**.
+2. `input-otp.tsx`: copy `aria-label` ma quen xoa ban cu ⇒ `TS17001` (tsc bat).
+3. Wrapper setter viet **arrow inline** ⇒ identity moi moi render ⇒ `useEffect` thieu dep
+   ⇒ eslint **2 error moi**. Fix bang `useCallback` + guard idempotent
+   `if (currentPage !== 1)`. ⚠ **KHONG** them setter vao deps thang ⇒
+   `setSearchParams` doi identity moi khi `location.search` doi ⇒ **vong tron**.
+
+⚠ **Warning lint 3710 → 3743 (+33)**: tat ca la `react/jsx-no-literals` tu **29
+attribute literal `id=`/`htmlFor=`** ma W3-1 them de gan nhan voi control. Rule nay da
+bat san **3581** lan trong repo; `id="..."` la HTML dung. **Bao cao day du, khong giu nham.**
+
+### CHUA LAM — ly do cu the (de ticket sau co viec lam ngay)
+
+| Viec | Ly do | Viec can lam truoc |
+|---|---|---|
+| **W3-3a** AC-3 6 trang | Can `renderRoutePage()` dung chung co cay provider day du; 6 trang loi khac nhau (`page-heading-fu02c.component.test.tsx:186-194`) | Viet helper 1 lan, roi them 6 case |
+| **W3-3b** AC-4 script | Import graph **tinh** ⇒ `<h1>` sinh qua bien khong lo (`WorkstationShell.tsx:53` = `e("h1",…)`, `WhaleAdvisoryBentoHeader.js:44` la `'h1'` tren dong rieng) | Script **bat buoc phai bao ro phan dong** |
+| **W3-5** mobile | `playwright.config.ts` **da co** nhung moi project deu `dependencies:['setup']`; `auth.setup.ts:5-30` login that vao `**/dashboard` tren `vite preview` **tinh** (khong backend) ⇒ ca 6 project chet truoc than test. Thieu webkit/firefox | Them 1 project **khong** `dependencies` + `testMatch` + `browserName: 'chromium'`. Ngoai ra `index.css:788,798,804-805` **da co san** 3 rule mobile tu wave 2 ⇒ AC chi con **2 tieu chi co fail-truoc**; `env(safe-area-inset-*)` tra `0px` trong headless ⇒ **khong kiem chung duoc** |
+| **4/11 file NAV-1** (9 hit) | Ca 4 dung `filters` la **object phang 5-7 field** + `setFilters({...filtersDraft})` khi Apply — khac 7 file da lam (moi field 1 tham so URL) | Can primitive moi `useUrlRecord` (mot ban ghi, co prefix) **+ test identity** |
+
+⚠ **AC-2.4 la tieu chi BAT KHA THI** (hazard 6): plan doi "NAV-1 giam ≥ 26 hit".
+7 file giam **17**, 4 file con lai chi con **9** ⇒ tong 26, nhung **3 hit phai giu**:
+`searchDraft` (`AdminCoreTenantsPage.tsx:27`) va `AdvisoryOrderTicket.quantity` +
+`DNSEConnectionPanel.orderQuantity` (o nhap trong form, deep-link vo nghia —
+`HANDOFF_UIUX_REMAINING_20261008.md:38-39`). ⇒ **Tran thuc te = 21.** Can Owner quyet.
+
+### Gate CHUA CHAY / han che cua bang chung
+
+- `pwsh -File scripts/agent-sync.ps1` — **CHUA CHAY**: script **tu choi chay** vi
+  worktree co `M docs/CODE_CHANGE_AUDIT_LEDGER.md` cua agent khac. Khong stash/commit
+  file do (hazard 11). **Da chay TAY tung gate** ma script goi: `check-multi-agent` 0 ·
+  `check-ledger-entry` 0 · `tsc` 0 · `build` 0 · `check_opencore_doc_sync.ps1` 0.
+- `check_large_files.ps1` — **Fail, co san**: fail o `scratch/test-clone/vnbroker/…`,
+  `packages/core/backend/…`, `SocOverviewPanel.tsx`, `SocDataOpsMonitorSection.tsx` —
+  **khong file nao cua wave 3**. `vi.js`/`en.js` nam trong allowlist.
+- Leaf migration — **N/A**: `git diff 7aeef9503..HEAD --name-only` → **0 file `.py`**.
+- Test moi co **fail-truoc**: copy 13 file ra `%TEMP%` → `git show HEAD:<file>` ghi de →
+  chay → **exit 1, 5 failed / 8 passed** → khoi phuc → **exit 0, 13/13**
+  (dung cach nay vi hazard 11, **khong** dung `git checkout --`).
+  ⚠ **8 test pass ca hai ben**: 5 case nhom (b) (da viet lai thanh kiem tinh chat cua
+  rule tren mau noi tai) + `InputOtp 4 o` (wave 2 da them `aria-label` o file do).
+  **Khong tinh 13/13 la bang chung cho 13 fix.**
+- Mobile tren **thiet bi that** — **CHUA CHAY**: khong co thiet bi. Chromium headless
+  khong co notch, khong phai Safari iOS, khong do duoc focus ring khi cham that.
+
+### BAI HOC QUY TRINH (Stage 8)
+
+1. **Dung sua gate de AC cua minh trong dat.** Noi `fileHasUrlSync` de xoa 3 hit gia,
+   roi tuong W3-2 "−17 hit"; audit do duoc **4/17 den tu noi escape**. Goc lai ⇒
+   NAV-1 95 → 99, tuc **so thap hon so toi tung khoe**.
+2. **So lieu tu tai lieu khac phai do lai truoc khi dung.** `TEST_REPORT_UIUX_WAVE2.md`
+   gan sai file loi lint va ghi sai trang thai baseline test.
+3. **Mot dong comment co the lam yeu gate** khi regex quet toan file — va chinh comment
+   giai thich bug cua toi gay ra dieu do.
+4. **Co che cua mot bug co the la hai bug.** Flake "1 file" thuc ra la 2 co che; chi
+   sua mot cai thi gate van do.
+5. **`.jsx` khong qua `tsc` ⇒ truyen sai kieu la bug im lang.**
+6. **`git add` chi duong dan tuong minh** khi nhieu agent dung chung thu muc.
+7. **Noi "khong tai lap duoc" con hon noi "da het flake."** Bang chung phai co dieu
+   kien tai, khong phai "3 lan xanh".
+
+
 ## Entry 255: ĐÓNG VÒNG UI/UX follow-up wave 2 — 7/7 slice, 2 audit độc lập bắt 3 lỗi của tác giả (2026-10-08)
 
 - **Nhánh**: `feat/uiux-followup` → merge vào `dev` (`--no-ff`, **không squash** để revert được từng slice)
@@ -7144,4 +7330,5 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 251 | 2026-10-07 | Cai dat UI/UX theo 3 skill (web-design-guidelines / fixing-accessibility + improve-ui + fixing-motion-performance / frontend-design) - **dung gate ngan sach check-uiux-budget.mjs nhan ban tu check-openapi-schema-budget.py** (chan thoai lui, cho phep giam; FAIL neu co rule MOI) nen 327 duoc ghi MOT lan va do chay duoc giam dan | `feat/uiux-improvement` | 6 commit · **327 -> 246** (P0=0 P1=123 P2=121 P3=2) · 	ransition: all 51 -> **0** · skip link + theme-color + color-scheme · global prefers-reduced-motion · PaginationBar co ten accessible (dung chung) · locale that cho 15 diem · test moi 5 (fail-truoc 5 -> pass-sau 5) | **4 loi cua chinh tac gia da sua**: (1) bo mat duration cua 49 rule 	ransition (audit Stage 5 bat) (2) sua file roi tim theo line cu (38/51) (3) parseBlocks tra sai dong (0/13) (4) scanner bo sot comment nhieu dong; **+1 lan PHA HONG THAT**: vong PowerShell Get-Content/Set-Content -NoNewline lam soc.components.css 3482 dong -> 1 dong, khoi phuc tu git va chay lai toan bo fix. Gate A11Y-8 bi sua vi do sai (6 hit -> 3/6 la false positive) | **CHUA LAM** (so da do lai 2026-10-08, xem `docs/audit-uiux/UIUX_AUDIT_20261007.md` muc 10 — 4/5 con so cu bi thoi phong): NAV-1 state khong dong bo URL **29 diem / 12 file that** (khong phai 115; 84 diem tuong doi, 2 diem la form input khong nen deep-link) · I18N-1 con **21** (khong phai 19) · A11Y-9 con **45** tap trung o 2 nhom · thieu `<h1>` that **24 trang** (khong phai 63; 33 trang di qua `ShellPageTemplate.js:119` da co h1, sua them se tao 2 h1) · mobile: thieu `safe-area-inset` / `touch-action: manipulation` / `overscroll-behavior`, thieu kiem thiet bi that. **MAU TAI CHINH: Owner chot 2026-10-08 — VN dung GIONG Bloomberg (xanh = tang, do = giam) ⇒ token hien tai da dung, khong doi.**| 75ef6a86, docs/evidence/portfolio-fe/TEST_REPORT.md, docs/audit-uiux/UIUX_AUDIT_20261007.md |
 | 254 | 2026-10-08 | **UI/UX follow-up wave 2** — Owner chot: deep-link dùng `useSearchParams` có sẵn (react-router-dom 6.30.3), **không** thêm dependency vì `package.json` + `package-lock.json` deny-list. 3/5 slice xong: **FU-01** `<h1>` vào `PortfolioWorkspace.tsx` (5 route portfolio dùng chung 1 entry `pageRegistry.js:210-211`; **không** thêm ở 5 file tab con sẽ ra 2 h1) · **FU-02a** `aria-label` fallback cho `command.tsx` (`Command`+`CommandInput`; `placeholder` KHÔNG phải accessible name), `input-otp.tsx` **đã có sẵn** `Digit N` nên chỉ thêm prop `digitLabel` cho i18n · **FU-03** 3 rule mobile trong `index.css` (`touch-action: manipulation`, `overscroll-behavior: contain`, `env(safe-area-inset-*)`) | `feat/uiux-followup` | 5 commit · **19 test mới** (fail-trước 11+4 → pass-sau 11+8) · `index.css` 758→806 (+48/−0) | **Gate chạy thật**: `check-uiux-budget` PASS · `check:tokens` PASS · `tsc --noEmit` exit 0 · `npm run build` 34.70s · `test:components` **112 file / 766 test PASS** (baseline 110/747) | **Sai số lần thứ 5**: handoff ghi 24 trang thiếu h1, thật **19** — đếm theo tên file thay vì theo `pageRegistry.js` (L-G04 + **L-G07 mới**). **A11Y-9 vẫn 44** vì scanner so `aria-label` cùng dòng — gate chỉ chặn tăng nên PASS, đừng dùng số này đo chất lượng. **Mobile CHƯA CHẠY** trên thiết bị thật. **CHƯA LÀM**: FU-02b (~41 điểm A11Y), FU-02c (18 trang h1), FU-04 (I18N), FU-05 (NAV-1). Ngoài ra ledger có sẵn **59 số Entry trùng nhau** (lỗi có sẵn, không sửa ở commit này). |
 | 255 | 2026-10-08 | **ĐÓNG VÒNG UI/UX follow-up wave 2** — 7/7 slice, merge `feat/uiux-followup` → `dev` (`--no-ff`, không squash). Owner chốt: `useSearchParams` có sẵn (không thêm dependency) · thứ tự h1→A11Y→mobile→locale→deep-link · **thu hẹp phạm vi** (FU-02b + 11/12 file NAV-1 tách ticket). **2 audit độc lập bắt 3 lỗi của tác giả**: ① "18 trang thiếu h1" thật chỉ **4** (14 trang đã có h1 qua `createElement("h1")` / component con / alias `@/` — sai số thứ 6) · ② **4 trang admin KHÔNG có h1** ở nhánh "không có quyền" (`return <p>{t('common.noPermission')}</p>`) — assertion `toBeLessThanOrEqual(1)` che mất từ FU-01 · ③ `<h1>` DashboardPage luôn tiếng Việt (prop `t` có default, `dashboard.title` không tồn tại) | `feat/uiux-followup` → `dev` | **14 commit** · **57 test mới** (110/747 → 116/804) · plan + handoff + audit doc lap Stage 2 + TEST_REPORT · **gate 246 → 224** | Đủ 7 stage `multi-agent-workflow`; Stage 2 = **NEED_REVISION** (sửa 8/8), Stage 5 = **REJECT** (sửa 7/9) | **Gate sau rebase**: `check-uiux-budget` 0 (I18N-1 19→0, NAV-1 115→112) · `check:tokens`/`contrast`/`dom-landmarks`/`ts-imports`/`i18n-hardcoded`/`admin-spa-routes`/`i18n:scan:strict`/`shell` 0 · `tsc` 0 · `build` 42.94s · `test:components` **116 file / 804 test PASS** · `agent-sync` 0, 0 trùng migration · `lint` **exit 1** nhưng lỗi **có sẵn** (`FactsFirstWhaleBubbleChart.jsx:155`, chứng minh `git diff dev..HEAD` = rỗng; 3712 → 3712 problems) | **Flake có sẵn**: `whale-advisory-a11y` R1.1 (chạy riêng 12/12 pass). **CHƯA LÀM**: FU-02b A11Y-9 44 hit · FU-05 11/12 file · AC-3 6/14 trang · AC-4 script import-graph · 86 hit NAV-1 ngoài scope · mobile `CHƯA CHẠY` trên thiết bị thật. **Bài học**: audit subagent độc lập **không phải nghi thức** (bắt 2 lỗi HIGH tôi không thấy); `toBeLessThanOrEqual(1)` là assertion rác; gate không tồn tại trả exit 1 như gate đỏ. |
+| 256 | 2026-10-08 | **UI/UX wave 3** - Mode B (solo; 5 file trung giua slice A11Y-9 va NAV-1 nen khong chia agent song song). **4/6 slice xong**: W3-0 scanner so dong + gate ledger · W3-1 A11Y-9 44->5 · W3-2 deep-link 7/11 file NAV-1 P1 · W3-4 2 co che flake + 1 error lint | `feat/uiux-wave3` -> `dev` | **`TONG 224 -> 172`** (NAV-1 112 -> **99**, A11Y-9 44 -> **5**) · `lint` exit **1 -> 0** (1 error -> **0**) · `test:components` exit **1 -> 0** (2 failed/802 -> **817/817**, 117 file) · `tsc` 0 · `check-uiux-budget` 0 · gate moi `check-ledger-entry` 0 (`--self-test` 4/4) | **3 phat hien lon**: (1) scanner in **SAI SO DONG** (`scan-ui-guidelines.mjs:294` loc bo dong comment roi in index cua mang da loc; do tren 224 hit co **135 hit lech**, toi da **36 dong**) - giai thich co che cua nhieu lan 'sai so thu 5/6/7'; (2) `TEST_REPORT_UIUX_WAVE2.md` gan sai file loi lint va ghi sai trang thai baseline test; (3) rule NAV-1 quet CA COMMENT. **Audit 3 vong** (Stage 2 `NEED_REVISION` 20 obj -> `AGREE` 7 obj; Stage 5 **`REJECT`** 2 blocker 5 major) - ca 2 blocker deu **im lang**: truyen **boolean** vao `boolCodec` lam **sap xep giam dan hong hoan toan** (`.jsx` khong qua `tsc`), 2 key i18n chen sai cho lam **accessible name la chuoi `common.acknowledge`** (ma `i18n:scan:strict` van exit 0). **Tu goi lai chinh minh**: da tung noi escape cua rule NAV-1 de AC cua minh trong dat, audit do duoc 4/17 hit giam den tu noi escape ⇒ **DA GOC LAI** (NAV-1 95 -> 99). **CHUA LAM**: W3-3 (AC-3 6 trang + AC-4 script import-graph), W3-5 (Playwright mobile emulation), 4/11 file NAV-1 P1. **AC-2.4 la tieu chi bat kha thi** (tran thuc te 21) - can Owner quyet. Bao cao day du: `docs/REPORT_FINAL_UIUX_WAVE3.md` |
 
