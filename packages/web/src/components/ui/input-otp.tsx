@@ -7,10 +7,15 @@ interface InputOtpProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onCh
   onChange?: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * Nhan cho tung o. Mac dinh `Digit`. Caller nen truyen ban i18n
+   * (vi du `t('auth.otpDigit')`) thay vi chuoi hardcode.
+   */
+  digitLabel?: string;
 }
 
 const InputOtp = React.forwardRef<HTMLDivElement, InputOtpProps>(
-  ({ length = 6, value = '', onChange, disabled, className, ...props }, ref) => {
+  ({ length = 6, value = '', onChange, disabled, className, digitLabel, ...props }, ref) => {
     const inputsRef = React.useRef<HTMLInputElement[]>([]);
 
     const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +80,7 @@ const InputOtp = React.forwardRef<HTMLDivElement, InputOtpProps>(
               'focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
-            aria-label={`Digit ${index + 1}`}
+            aria-label={`${digitLabel ?? 'Digit'} ${index + 1}`}
           />
         ))}
       </div>
