@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useI18n } from '../../context/LangContext.js';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
@@ -39,9 +39,10 @@ export default function FactsFirstModularPositionDeck({
     DECK_URL_SPEC,
     DECK_URL_DEFAULTS,
   );
-  const setActiveTab = (v) => setUrlState({ activeTab: v });
-  const setPageSize = (v) => setUrlState({ pageSize: v });
-  const setCurrentPage = (v) => setUrlState({ currentPage: v });
+  // W3-4 (AC-4.3): xem ghi chu o ban TSX — wrapper phai `useCallback`.
+  const setActiveTab = useCallback((v) => setUrlState({ activeTab: v }), [setUrlState]);
+  const setPageSize = useCallback((v) => setUrlState({ pageSize: v }), [setUrlState]);
+  const setCurrentPage = useCallback((v) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('holdings');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
@@ -139,9 +140,11 @@ export default function FactsFirstModularPositionDeck({
     }
   }, [selectedSymbol, symbolOptions]);
 
+  // W3-4 (AC-4.3): xem ghi chu o ban TSX — guard `currentPage !== 1` lam effect
+  // idempotent, tranh vong tron khi setter doi identity theo `location.search`.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [symbolScope, selectedSymbol]);
+    if (currentPage !== 1) setCurrentPage(1);
+  }, [symbolScope, selectedSymbol, currentPage, setCurrentPage]);
 
   const activeSymbolSet = useMemo(() => {
     if (selectedSymbol !== 'all') {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
@@ -77,9 +77,12 @@ export function CoreDashboardPositionDeck({
     DECK_URL_SPEC,
     DECK_URL_DEFAULTS,
   );
-  const setActiveTab = (v: DeckTab) => setUrlState({ activeTab: v });
-  const setPageSize = (v: number) => setUrlState({ pageSize: v });
-  const setCurrentPage = (v: number) => setUrlState({ currentPage: v });
+  // W3-4 (AC-4.3): wrapper phai de `useCallback` — `setState` cua React co identity
+  // on dinh, nhung arrow inline TAO ham moi MOI LAN RENDER. Neu them no vao deps
+  // cua `useEffect` thi effect chay lai lien tuc (loop). Fix = useCallback.
+  const setActiveTab = useCallback((v: DeckTab) => setUrlState({ activeTab: v }), [setUrlState]);
+  const setPageSize = useCallback((v: number) => setUrlState({ pageSize: v }), [setUrlState]);
+  const setCurrentPage = useCallback((v: number) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
@@ -175,9 +178,15 @@ export function CoreDashboardPositionDeck({
     }
   }, [selectedSymbol, symbolOptions]);
 
+  // W3-4 (AC-4.3): `setCurrentPage` phai co trong deps. `setSearchParams` cua
+  // react-router doi identity MOI LAN khi `location.search` doi, nen `setUrlState`
+  // (va wrapper cua no) KHONG on dinh. Neu goi `setCurrentPage(1)` vo dieu kien
+  // trong effect, moi lan ghi lai URL se lam doi identity setter => effect chay
+  // lai => VONG TRON. Guard `currentPage !== 1` lam effect idempotent: khi da o
+  // trang 1 thi khong ghi URL, vong lap khong khoi dong.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [symbolScope, selectedSymbol]);
+    if (currentPage !== 1) setCurrentPage(1);
+  }, [symbolScope, selectedSymbol, currentPage, setCurrentPage]);
 
   const activeSymbolSet = useMemo(() => {
     if (selectedSymbol !== 'all') {
