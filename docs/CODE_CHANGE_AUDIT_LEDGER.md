@@ -1,3 +1,77 @@
+## Entry 255: ĐÓNG VÒNG UI/UX follow-up wave 2 — 7/7 slice, 2 audit độc lập bắt 3 lỗi của tác giả (2026-10-08)
+
+- **Nhánh**: `feat/uiux-followup` → merge vào `dev` (`--no-ff`, **không squash** để revert được từng slice)
+- **Claim**: `uiux-followup` — **released**
+- **Quyết định Owner (2026-10-08)**: (1) deep-link dùng `useSearchParams` có sẵn của react-router-dom 6.30.3 — **không** thêm dependency; (2) thứ tự FU-01 → FU-02 → FU-03 → FU-04 → FU-05; (3) **thu hẹp phạm vi** — B-1 (FU-02b) và B-3 (FU-05 11/12 file) tách ticket riêng.
+
+### Quy trình `multi-agent-workflow` đã chạy đủ 7 stage
+
+| Stage | Kết quả |
+|---|---|
+| 1 Plan | `docs/PLAN_UIUX_WAVE2_FINAL.md` — **baseline gate kèm exit code thật**, ghi rõ `npm run check:i18n` **không tồn tại** (hazard 9) |
+| 2 Audit Plan | subagent **read-only** → **NEED_REVISION**; sửa **8/8** phản đối |
+| 3 Claim | `docs/CLAIMS.md`, commit riêng `8a0bbbc37`, trước khi sửa dòng đầu tiên |
+| 4 Code | 6 commit code, mỗi slice 1 commit + test fail-trước |
+| 5 Audit Code | subagent **read-only** → **REJECT** (3 blocker / 6 major); sửa **7/9** |
+| 6 Test | `docs/TEST_REPORT_UIUX_WAVE2.md` — 14 gate, mỗi dòng có exit code |
+| 7 Sync/Merge | `agent-sync.ps1` OK, rebase sạch, **chạy lại gate sau rebase**, merge + push |
+
+### Ba lỗi lớn do hai audit độc lập bắt được — không phải lỗi style
+
+**① Sai số lần thứ 6 — "18 trang thiếu `<h1>`" thật ra chỉ 4.**
+14/18 trang **đã có** đúng 1 `<h1>`, chỉ là không nằm trong *file page*:
+- 4 trang auth: `createElement("h1", …)` tại `AuthLoginPage.tsx:134`, `AuthRegisterPage.tsx:147`, `AuthVerifyEmailPage.tsx:101`, `AuthResetPasswordPage.tsx:152`
+- 4 trang admin: qua `AdminPageHeader` → `pages/admin/adminUi.tsx:25`
+- `SupportPage.tsx:311`, `TransactionsPage.tsx:194`, `UserSettingsPage.tsx:182`, `UpgradePage.tsx:54` — dạng `e("h1", …)`
+- `market/ShellStockDetailPage.js` → `components/WorkstationShell.tsx:53`
+- `signals/WhaleAdvisoryPage.tsx` → `components/advisory/WhaleAdvisoryBentoHeader.js:44` (dùng tại :338)
+
+**Nguyên nhân**: script grep `<h1` trong file page nên bỏ qua (a) `createElement` chứ không phải JSX, (b) `<h1>` đến từ component con, (c) import alias `@/` mà regex không theo. L-G04 (phân loại mức độ) + **L-G07** (đếm route theo `pageRegistry.js`, không theo tên file).
+
+**② 4 trang admin thật sự KHÔNG CÓ `<h1>` trong nhánh "không có quyền".**
+`AdminBillingFleetPage.tsx:71` (và 3 trang nữa) có `return (<p>{t('common.noPermission')}</p>)` — **trang trần**, không heading. Assertion `toBeLessThanOrEqual(1)` của tôi **che mất** lỗi này từ FU-01, vì `≤1` cũng pass khi **0** `<h1>`. Đổi sang `toHaveLength(1)` là lộ ngay. Đã sửa cả 4 (thêm `AdminPageHeader` + `<p>` lỗi).
+
+**③ `<h1>` của `DashboardPage` luôn tiếng Việt.**
+Prop `t` có default `(_key, defaultText) => defaultText` (`DashboardPage.tsx:135`) và `pageRegistry.js:32` không truyền prop ⇒ `<h1>` không bao giờ qua i18n thật; `dashboard.title` còn **không tồn tại** ở cả `vi.js` lẫn `en.js`. Đã sửa: `DashboardHeading()` tự gọi `useI18n()`, thêm key `dashboard.title` cho 2 locale.
+
+### Gate đo lại (sau rebase)
+
+| Gate | Exit | Kết quả |
+|---|---|---|
+| `check-uiux-budget` | 0 | **246 → 224** (−22). `I18N-1` 19→0 · `NAV-1` 115→112 |
+| `check:tokens` · `check:contrast` | 0 · 0 | 72 allowlisted · 7×2 tone pairs |
+| `check:dom-landmarks` · `check:ts-imports` · `check:i18n-hardcoded` | 0 · 0 · 0 | |
+| `check:admin-spa-routes` · `i18n:scan:strict` · `check:shell` | 0 · 0 · 0 | |
+| `tsc --noEmit` | 0 | 0 error |
+| `npm run build` | 0 | 42.94s |
+| `npm run test:components` | 0 | **116 file / 804 test** (baseline 110/747, +57 test) |
+| `npm run lint` | **1** | ⚠ **1 error CÓ SẴN** ở `FactsFirstWhaleBubbleChart.jsx:155`; chứng minh pre-existing (`git diff dev..HEAD` cho file = rỗng). dev 3712 problems → HEAD 3711, **không tăng** |
+| `agent-sync.ps1` | 0 | rebase sạch, 0 trùng số migration, OpenCore doc sync PASS |
+
+### Flake có sẵn (không do wave này)
+`components/__tests__/whale-advisory-a11y.component.test.tsx` — chạy riêng **12/12 pass**; full suite dưới tải thì 1–2 fail (R1.1 timeout). `git log dev..HEAD` cho file = rỗng. **Cần ticket riêng.**
+
+### Bài học quy trình (Stage 8)
+
+1. **Audit độc lập bằng subagent read-only có giá trị thật, không phải nghi thức.** Nó bắt 2 lỗi HIGH mà tôi không thấy khi tự đọc code mình vừa viết — một lỗi về **số liệu** (18 → 4), một lỗi về **chất lượng assertion** (`≤1` che mất 4 trang thiếu `<h1>`). Nếu tự audit, cả hai lọt.
+2. **`toBeLessThanOrEqual(1)` là assertion rác khi mục tiêu là "đúng 1".** Nó pass ở cả 0 lẫn 1. Dùng `toHaveLength(1)`.
+3. **Con số "tôi đã kiểm" phải kèm lệnh tạo ra nó.** 6 lần trong wave này tôi đưa ra con số rồi phải sửa lại; nguyên nhân chung: lấy output scanner / đếm theo tên file thay vì đo.
+4. **`npm run <gate>` không tồn tại trả exit 1 y như gate đỏ.** `npm run check:i18n` không có trong `package.json` — phải ghi `KHÔNG TỒN TẠI` chứ không ghi "fail" (hazard 9).
+5. **Worktree/hook không cần cho Mode B**, nhưng `agent-sync.ps1` **từ chối chạy** khi còn untracked ⇒ đã dùng `.git/info/exclude` thay vì sửa `.gitignore` (file shared, cần commit).
+
+### CHƯA LÀM (Owner chốt tách ticket)
+
+| # | Việc | Số liệu |
+|---|---|---|
+| 1 | **FU-02b** — accessible name | A11Y-9 còn **44 hit**: advertising 15 · admin 10 · tenant-admin 8 · alert-center 3 · rải rác 8 |
+| 2 | **FU-05** — deep-link 11/12 file | **26/29 hit**: `CoreDashboardPositionDeck`, `FactsFirstModularPositionDeck`, `AdminCore{AuditTrace,Jobs,PATs,ServiceAccounts,Tenants}Page`, `AdminBillingFleetPage`, `AdminAuditPage`, `TenantAdminMembersPage`, `CampaignTable` |
+| 3 | **FU-02c AC-3** | 6/14 trang chưa có test phòng thủ (không render ổn định trong jsdom) |
+| 4 | **FU-02c AC-4** | script đếm `<h1>` theo import graph transitive (alias-aware) |
+| 5 | **NAV-1 ngoài scope** | 86 hit / 32 file |
+| 6 | **Mobile** | **CHƯA CHẠY** trên thiết bị thật — header/sidebar `position: fixed` còn cần padding safe-area riêng |
+| 7 | **flake** | `whale-advisory-a11y` R1.1 |
+| 8 | **lint** | `FactsFirstWhaleBubbleChart.jsx:155` (có sẵn, ngoài phạm vi) |
+| 9 | **ledger** | 59 số Entry trùng nhau (có sẵn) |
 ## Entry 254: UI/UX follow-up wave 2 — FU-01 h1 + FU-02a A11Y primitive + FU-03 mobile (2026-10-08)
 
 - **Date**: 2026-10-08
@@ -7069,4 +7143,5 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 
 | 251 | 2026-10-07 | Cai dat UI/UX theo 3 skill (web-design-guidelines / fixing-accessibility + improve-ui + fixing-motion-performance / frontend-design) - **dung gate ngan sach check-uiux-budget.mjs nhan ban tu check-openapi-schema-budget.py** (chan thoai lui, cho phep giam; FAIL neu co rule MOI) nen 327 duoc ghi MOT lan va do chay duoc giam dan | `feat/uiux-improvement` | 6 commit · **327 -> 246** (P0=0 P1=123 P2=121 P3=2) · 	ransition: all 51 -> **0** · skip link + theme-color + color-scheme · global prefers-reduced-motion · PaginationBar co ten accessible (dung chung) · locale that cho 15 diem · test moi 5 (fail-truoc 5 -> pass-sau 5) | **4 loi cua chinh tac gia da sua**: (1) bo mat duration cua 49 rule 	ransition (audit Stage 5 bat) (2) sua file roi tim theo line cu (38/51) (3) parseBlocks tra sai dong (0/13) (4) scanner bo sot comment nhieu dong; **+1 lan PHA HONG THAT**: vong PowerShell Get-Content/Set-Content -NoNewline lam soc.components.css 3482 dong -> 1 dong, khoi phuc tu git va chay lai toan bo fix. Gate A11Y-8 bi sua vi do sai (6 hit -> 3/6 la false positive) | **CHUA LAM** (so da do lai 2026-10-08, xem `docs/audit-uiux/UIUX_AUDIT_20261007.md` muc 10 — 4/5 con so cu bi thoi phong): NAV-1 state khong dong bo URL **29 diem / 12 file that** (khong phai 115; 84 diem tuong doi, 2 diem la form input khong nen deep-link) · I18N-1 con **21** (khong phai 19) · A11Y-9 con **45** tap trung o 2 nhom · thieu `<h1>` that **24 trang** (khong phai 63; 33 trang di qua `ShellPageTemplate.js:119` da co h1, sua them se tao 2 h1) · mobile: thieu `safe-area-inset` / `touch-action: manipulation` / `overscroll-behavior`, thieu kiem thiet bi that. **MAU TAI CHINH: Owner chot 2026-10-08 — VN dung GIONG Bloomberg (xanh = tang, do = giam) ⇒ token hien tai da dung, khong doi.**| 75ef6a86, docs/evidence/portfolio-fe/TEST_REPORT.md, docs/audit-uiux/UIUX_AUDIT_20261007.md |
 | 254 | 2026-10-08 | **UI/UX follow-up wave 2** — Owner chot: deep-link dùng `useSearchParams` có sẵn (react-router-dom 6.30.3), **không** thêm dependency vì `package.json` + `package-lock.json` deny-list. 3/5 slice xong: **FU-01** `<h1>` vào `PortfolioWorkspace.tsx` (5 route portfolio dùng chung 1 entry `pageRegistry.js:210-211`; **không** thêm ở 5 file tab con sẽ ra 2 h1) · **FU-02a** `aria-label` fallback cho `command.tsx` (`Command`+`CommandInput`; `placeholder` KHÔNG phải accessible name), `input-otp.tsx` **đã có sẵn** `Digit N` nên chỉ thêm prop `digitLabel` cho i18n · **FU-03** 3 rule mobile trong `index.css` (`touch-action: manipulation`, `overscroll-behavior: contain`, `env(safe-area-inset-*)`) | `feat/uiux-followup` | 5 commit · **19 test mới** (fail-trước 11+4 → pass-sau 11+8) · `index.css` 758→806 (+48/−0) | **Gate chạy thật**: `check-uiux-budget` PASS · `check:tokens` PASS · `tsc --noEmit` exit 0 · `npm run build` 34.70s · `test:components` **112 file / 766 test PASS** (baseline 110/747) | **Sai số lần thứ 5**: handoff ghi 24 trang thiếu h1, thật **19** — đếm theo tên file thay vì theo `pageRegistry.js` (L-G04 + **L-G07 mới**). **A11Y-9 vẫn 44** vì scanner so `aria-label` cùng dòng — gate chỉ chặn tăng nên PASS, đừng dùng số này đo chất lượng. **Mobile CHƯA CHẠY** trên thiết bị thật. **CHƯA LÀM**: FU-02b (~41 điểm A11Y), FU-02c (18 trang h1), FU-04 (I18N), FU-05 (NAV-1). Ngoài ra ledger có sẵn **59 số Entry trùng nhau** (lỗi có sẵn, không sửa ở commit này). |
+| 255 | 2026-10-08 | **ĐÓNG VÒNG UI/UX follow-up wave 2** — 7/7 slice, merge `feat/uiux-followup` → `dev` (`--no-ff`, không squash). Owner chốt: `useSearchParams` có sẵn (không thêm dependency) · thứ tự h1→A11Y→mobile→locale→deep-link · **thu hẹp phạm vi** (FU-02b + 11/12 file NAV-1 tách ticket). **2 audit độc lập bắt 3 lỗi của tác giả**: ① "18 trang thiếu h1" thật chỉ **4** (14 trang đã có h1 qua `createElement("h1")` / component con / alias `@/` — sai số thứ 6) · ② **4 trang admin KHÔNG có h1** ở nhánh "không có quyền" (`return <p>{t('common.noPermission')}</p>`) — assertion `toBeLessThanOrEqual(1)` che mất từ FU-01 · ③ `<h1>` DashboardPage luôn tiếng Việt (prop `t` có default, `dashboard.title` không tồn tại) | `feat/uiux-followup` → `dev` | **14 commit** · **57 test mới** (110/747 → 116/804) · plan + handoff + audit doc lap Stage 2 + TEST_REPORT · **gate 246 → 224** | Đủ 7 stage `multi-agent-workflow`; Stage 2 = **NEED_REVISION** (sửa 8/8), Stage 5 = **REJECT** (sửa 7/9) | **Gate sau rebase**: `check-uiux-budget` 0 (I18N-1 19→0, NAV-1 115→112) · `check:tokens`/`contrast`/`dom-landmarks`/`ts-imports`/`i18n-hardcoded`/`admin-spa-routes`/`i18n:scan:strict`/`shell` 0 · `tsc` 0 · `build` 42.94s · `test:components` **116 file / 804 test PASS** · `agent-sync` 0, 0 trùng migration · `lint` **exit 1** nhưng lỗi **có sẵn** (`FactsFirstWhaleBubbleChart.jsx:155`, chứng minh `git diff dev..HEAD` = rỗng; 3712 → 3712 problems) | **Flake có sẵn**: `whale-advisory-a11y` R1.1 (chạy riêng 12/12 pass). **CHƯA LÀM**: FU-02b A11Y-9 44 hit · FU-05 11/12 file · AC-3 6/14 trang · AC-4 script import-graph · 86 hit NAV-1 ngoài scope · mobile `CHƯA CHẠY` trên thiết bị thật. **Bài học**: audit subagent độc lập **không phải nghi thức** (bắt 2 lỗi HIGH tôi không thấy); `toBeLessThanOrEqual(1)` là assertion rác; gate không tồn tại trả exit 1 như gate đỏ. |
 
