@@ -152,7 +152,10 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
       label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '—',
       cumulative_cvd: Number(item.cumulative_cvd || 0),
     }));
-  }, [filteredCvdSeries]);
+    // W3-4 (AC-4.3): `locale` DUNG o dong tren (`toLocaleTimeString(locale, …)`)
+    // nhung thieu trong deps ⇒ doi ngon ngu khong doi nhan gio. Day la 1 error
+    // lint da co san (pre-existing, `git diff dev..HEAD` cho file nay = rong).
+  }, [filteredCvdSeries, locale]);
 
   const liveSignal = latestRealtimeAlert || latestSignal;
   const liveStrength = Number(liveSignal?.strength || darkFlow?.strength || 0);
