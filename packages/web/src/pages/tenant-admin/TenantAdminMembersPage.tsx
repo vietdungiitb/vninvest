@@ -9,6 +9,25 @@ import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
 import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
+import { useUrlState, stringCodec, type UrlStateCodec } from "../../hooks/useUrlState";
+
+type MembersTab = "members" | "invites";
+type MembersUrlState = { searchQuery: string; roleFilter: string; activeTab: MembersTab };
+
+const MEMBERS_TABS: readonly MembersTab[] = ["members", "invites"];
+// W3-2 (AC-2.3): `spec`/`defaults` o CAP MODULE => identity on dinh giua render,
+// `useMemo([params, spec, defaults])` trong `useUrlState.ts:117` moi memo hoa duoc.
+const MEMBERS_URL_SPEC: { [K in keyof MembersUrlState]: UrlStateCodec<MembersUrlState[K]> } = {
+  searchQuery: stringCodec,
+  // 'all' la mac dinh ⇒ serialize tra `undefined` cho 'all' (khong ghi tham so).
+  roleFilter: { parse: stringCodec.parse, serialize: (v: string) => (v === "all" ? undefined : v) },
+  activeTab: {
+    parse: (raw) =>
+      raw != null && (MEMBERS_TABS as readonly string[]).includes(raw) ? (raw as MembersTab) : undefined,
+    serialize: (v) => (v === "members" ? undefined : v),
+  },
+};
+const MEMBERS_URL_DEFAULTS: MembersUrlState = { searchQuery: "", roleFilter: "all", activeTab: "members" };
 interface Member {
   member_id: string;
   username: string;
@@ -62,9 +81,16 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"members" | "invites">("members");
+  // W3-2 (AC-2.1): 3 state nay la loc + tab cua bang thanh vien. Truoc day chi
+  // trong RAM ⇒ gui link cho nguoi khac thi ho thay trang CHUA loc.
+  // `spec`/`defaults` o CAP MODULE (AC-2.3) de identity on dinh giua render.
+  const [{ searchQuery, roleFilter, activeTab }, setUrlState] = useUrlState(
+    MEMBERS_URL_SPEC,
+    MEMBERS_URL_DEFAULTS,
+  );
+  const setSearchQuery = (v: string) => setUrlState({ searchQuery: v });
+  const setRoleFilter = (v: string) => setUrlState({ roleFilter: v });
+  const setActiveTab = (v: MembersTab) => setUrlState({ activeTab: v });
   const [inviteForm, setInviteForm] = useState<{ invited_email: string; role: string; custom_role_id: string }>({
     invited_email: "", role: "viewer", custom_role_id: "",
   });
@@ -265,7 +291,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                 ))}
               </div>
               <div className="memberSearch">
-                <input
+                <input aria-label={t("tenantMembers.searchPlaceholder")}
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}

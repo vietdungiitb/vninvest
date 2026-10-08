@@ -15,6 +15,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const hintId = hint ? `${inputId}-hint` : undefined;
     const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
 
+    // W3-1 (AC-1.1): `placeholder` KHONG phai accessible name. Khi caller khong
+    // truyen `label`, truoc day `<input>` khong co ten -> screen reader doc
+    // "edit text" khong biet la truong nao. Fallback ve `placeholder` neu co.
+    // Neu caller truyen `aria-label` qua props, gia tri do duoc ghi de o duoi.
+    const ariaLabel = label ?? (props['aria-label'] as string | undefined) ?? props.placeholder;
+
     return (
       <div className="w-full">
         {label && (
@@ -25,7 +31,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
+        <input aria-label={ariaLabel}
           type={type}
           id={inputId}
           className={cn(

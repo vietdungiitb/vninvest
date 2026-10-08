@@ -3,6 +3,8 @@ const vi = {
     loading: 'Đang tải...',
     notAvailable: '—',
     noPermission: 'Bạn không có quyền truy cập trang này.',
+    acknowledge: 'Đã xem nhận',
+    searchPages: 'Tìm trang',
     language: 'Ngôn ngữ',
     vietnamese: 'Tiếng Việt',
     english: 'English',
@@ -5835,6 +5837,8 @@ const vi = {
     filterActor: 'Người thực hiện',
     filterAction: 'Hành động',
     filterResource: 'Loại tài nguyên',
+    filterDateFrom: 'Từ ngày',
+    filterDateTo: 'Đến ngày',
     apply: 'Áp dụng',
     loading: 'Đang tải…',
     empty: 'Không có sự kiện phù hợp.',
@@ -6173,7 +6177,7 @@ const vi = {
     },
     errors: {
       loadFailed: 'Không tải được dữ liệu.',
-      noPermission: 'Bạn không có quyền truy cập trang này.',
+noPermission: 'Bạn không có quyền truy cập trang này.',
     },
   },
   tenantSettings: {

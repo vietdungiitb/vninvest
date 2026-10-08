@@ -1,9 +1,30 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
 import { ClipboardList, BarChart3, Fish, Bot } from 'lucide-react';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
+import { useUrlState, intCodec, type UrlStateCodec } from '../../hooks/useUrlState';
+
+type DeckTab = 'overview' | 'technical' | 'whale' | 'ai';
+type DeckUrlState = { activeTab: DeckTab; pageSize: number; currentPage: number };
+
+const DECK_TABS: readonly DeckTab[] = ['overview', 'technical', 'whale', 'ai'];
+const DECK_TAB_CODEC: UrlStateCodec<DeckTab> = {
+  parse: (raw) =>
+    raw != null && (DECK_TABS as readonly string[]).includes(raw) ? (raw as DeckTab) : undefined,
+  // mac dinh 'overview' => khong ghi tham so cho gia tri mac dinh
+  serialize: (v) => (v === 'overview' ? undefined : v),
+};
+
+// W3-2 (AC-2.3): `spec`/`defaults` o CAP MODULE => identity on dinh giua render,
+// `useMemo([params, spec, defaults])` trong hook that su memo hoa.
+const DECK_URL_SPEC: { [K in keyof DeckUrlState]: UrlStateCodec<DeckUrlState[K]> } = {
+  activeTab: DECK_TAB_CODEC,
+  pageSize: intCodec,
+  currentPage: intCodec,
+};
+const DECK_URL_DEFAULTS: DeckUrlState = { activeTab: 'overview', pageSize: 10, currentPage: 1 };
 
 interface Holding {
   symbol?: string;
@@ -49,13 +70,23 @@ export function CoreDashboardPositionDeck({
   onSelectSymbol = undefined,
   className = '',
 }: CoreDashboardPositionDeckProps) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // W3-2 (AC-2.1): `activeTab` + `pageSize` + `currentPage` la 3 state cua bang
+  // co phan trang. Truoc day chi trong RAM ⇒ gui link cho nguoi khac thi ho
+  // thay trang 1, co loc sai. `spec`/`defaults` o CAP MODULE (AC-2.3).
+  const [{ activeTab, pageSize, currentPage }, setUrlState] = useUrlState(
+    DECK_URL_SPEC,
+    DECK_URL_DEFAULTS,
+  );
+  // W3-4 (AC-4.3): wrapper phai de `useCallback` — `setState` cua React co identity
+  // on dinh, nhung arrow inline TAO ham moi MOI LAN RENDER. Neu them no vao deps
+  // cua `useEffect` thi effect chay lai lien tuc (loop). Fix = useCallback.
+  const setActiveTab = useCallback((v: DeckTab) => setUrlState({ activeTab: v }), [setUrlState]);
+  const setPageSize = useCallback((v: number) => setUrlState({ pageSize: v }), [setUrlState]);
+  const setCurrentPage = useCallback((v: number) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = (tabId: DeckTab) => {
     setActiveTab(tabId);
     setCurrentPage(1);
   };
@@ -147,9 +178,15 @@ export function CoreDashboardPositionDeck({
     }
   }, [selectedSymbol, symbolOptions]);
 
+  // W3-4 (AC-4.3): `setCurrentPage` phai co trong deps. `setSearchParams` cua
+  // react-router doi identity MOI LAN khi `location.search` doi, nen `setUrlState`
+  // (va wrapper cua no) KHONG on dinh. Neu goi `setCurrentPage(1)` vo dieu kien
+  // trong effect, moi lan ghi lai URL se lam doi identity setter => effect chay
+  // lai => VONG TRON. Guard `currentPage !== 1` lam effect idempotent: khi da o
+  // trang 1 thi khong ghi URL, vong lap khong khoi dong.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [symbolScope, selectedSymbol]);
+    if (currentPage !== 1) setCurrentPage(1);
+  }, [symbolScope, selectedSymbol, currentPage, setCurrentPage]);
 
   const activeSymbolSet = useMemo(() => {
     if (selectedSymbol !== 'all') {

@@ -51,8 +51,15 @@ vi.mock("@/hooks/useWhaleAdvisoryData.js", async (importOriginal) => {
 
 import { ConfirmProvider } from "@/components/ConfirmModal.js";
 
-async function renderPage() {
-  const { WhaleAdvisoryPage } = await import("../../pages/signals/WhaleAdvisoryPage.tsx");
+// W3-4 (AC-4.1a) — nap module o CAP MODULE (top-level await), KHONG trong
+// `renderPage()`. Truoc day phai nnap o dong 55 ben trong ham, va `renderPage()`
+// duoc goi tu trong `it(...)` ⇒ thoi gian nap module bi tinh vao TIMEOUT cua
+// test. Do la ly do Entry 255 ghi file nay la flake. Do lao duoc cua
+// `page-heading-fu02c.component.test.tsx`: sau khi dua `await import` ra cap
+// module, thoi gian `tests` cua file do giam tu 33.89 s xuong 1.30 s.
+const { WhaleAdvisoryPage } = await import("../../pages/signals/WhaleAdvisoryPage.tsx");
+
+function renderPage() {
   return render(createElement(
     ConfirmProvider,
     null,
@@ -73,7 +80,7 @@ describe("advisory a11y + structure (W1/W2/W4/W6)", () => {
   });
 
   it("R1.1 — không còn render bubble chart trong trang", async () => {
-    await renderPage();
+    renderPage();
     expect(pageSource).not.toContain("FactsFirstWhaleBubbleChart");
     expect(pageSource).not.toContain("WhaleBubbleChart");
   });
@@ -83,44 +90,44 @@ describe("advisory a11y + structure (W1/W2/W4/W6)", () => {
   });
 
   it("R2.2 — chỉ còn 3 tab hỗ trợ (Rủi ro / Lịch sử / Backtest)", async () => {
-    await renderPage();
+    renderPage();
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(3);
   });
 
   it("R2.2 — telemetry nằm trong footer, không phải tab", async () => {
-    await renderPage();
+    renderPage();
     const telemetry = screen.getByTestId("advisory-local-telemetry");
     expect(telemetry.tagName.toLowerCase()).toBe("details");
     expect(telemetry.closest('[role="tabpanel"]')).toBeNull();
   });
 
   it("R2.3 — sidebar không còn cột số liệu bịa (0% / ▲0 / GD)", async () => {
-    await renderPage();
+    renderPage();
     expect(document.body.textContent).not.toContain("GD");
     expect(document.body.textContent).not.toMatch(/\b0%/);
   });
 
   it("R2.6 — không còn badge LIVE tĩnh trong sidebar", async () => {
-    await renderPage();
+    renderPage();
     expect(document.body.textContent).not.toMatch(/\bLIVE\b/);
   });
 
   it("R4.6 — nút so sánh không còn role=checkbox lồng trong button", async () => {
-    const { container } = await renderPage();
+    const { container } = renderPage();
     expect(container.querySelector('button [role="checkbox"]')).toBeNull();
   });
 
   it("R4.1 — mã không có tư vấn thì hiện empty state đúng nghĩa", async () => {
     hookState.items = [];
-    await renderPage();
+    renderPage();
     const empty = await screen.findByTestId("empty-no-advisory");
     expect(empty.textContent).toContain("chưa có tư vấn");
   });
 
   it("R4.2 — metric không có dữ liệu hiện —, không phải 0", async () => {
     hookState.items = [{ symbol: "FPT", side: "UNKNOWN", created_at: null }];
-    await renderPage();
+    renderPage();
     const intensity = await screen.findByTestId("metric-intensity");
     expect(intensity.textContent?.trim()).toBe("—");
     expect(document.body.textContent).not.toContain("0 VNĐ");
@@ -128,14 +135,14 @@ describe("advisory a11y + structure (W1/W2/W4/W6)", () => {
 
   it("R4.4 — lỗi tải hiện banner kèm mã lỗi và nút thử lại", async () => {
     hookState.error = "provider_model_not_found";
-    await renderPage();
+    renderPage();
     const banner = await screen.findByTestId("advisory-error-banner");
     expect(banner.getAttribute("role")).toBe("alert");
     expect(screen.getByTestId("advisory-error-code").textContent).toContain("provider_model_not_found");
   });
 
   it("requires confirm before deleting current advisory", async () => {
-    await renderPage();
+    renderPage();
     fireEvent.click(screen.getByText("Xóa tư vấn"));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toBeTruthy();
@@ -146,7 +153,7 @@ describe("advisory a11y + structure (W1/W2/W4/W6)", () => {
 
   it("aria-live row message vẫn còn", async () => {
     hookState.rowMessages = { FPT: "Thành công" };
-    const { container } = await renderPage();
+    const { container } = renderPage();
     expect(container.querySelector("[aria-live='polite']")).toBeTruthy();
   });
 });

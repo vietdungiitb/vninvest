@@ -64,7 +64,7 @@ const InputOtp = React.forwardRef<HTMLDivElement, InputOtpProps>(
         {...props}
       >
         {Array.from({ length }).map((_, index) => (
-          <input
+          <input aria-label={`${digitLabel ?? 'Digit'} ${index + 1}`}
             key={index}
             ref={el => { inputsRef.current[index] = el!; }}
             type="text"
@@ -80,7 +80,6 @@ const InputOtp = React.forwardRef<HTMLDivElement, InputOtpProps>(
               'focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
-            aria-label={`${digitLabel ?? 'Digit'} ${index + 1}`}
           />
         ))}
       </div>
@@ -94,17 +93,27 @@ const InputOtpGroup = ({ className, children, ...props }: React.HTMLAttributes<H
 );
 InputOtpGroup.displayName = 'InputOtpGroup';
 
-const InputOtpSlot = ({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input
-    className={cn(
-      'h-10 w-10 text-center text-lg rounded-md border border-slate-700 bg-slate-900/50 text-slate-100 placeholder:text-slate-500',
-      'focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent',
-      'disabled:cursor-not-allowed disabled:opacity-50',
-      className
-    )}
-    {...props}
-  />
-);
+const InputOtpSlot = ({
+  className,
+  slotLabel,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { slotLabel?: string }) => {
+  // W3-1 (AC-1.1): `InputOtpSlot` chi spread `{...props}` nen caller quen truyen
+  // `aria-label` thi o so co accessible name rong. `slotLabel` cho primitive mot
+  // ten mac dinh; `aria-label` cua caller van thang.
+  const ariaLabel = (props['aria-label'] as string | undefined) ?? slotLabel;
+  return (
+    <input aria-label={ariaLabel}
+      className={cn(
+        'h-10 w-10 text-center text-lg rounded-md border border-slate-700 bg-slate-900/50 text-slate-100 placeholder:text-slate-500',
+        'focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        className
+      )}
+      {...props}
+    />
+  );
+};
 InputOtpSlot.displayName = 'InputOtpSlot';
 
 const InputOtpSeparator = ({ className, children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (

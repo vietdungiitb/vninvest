@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,6 +7,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useI18n } from "../../../context/LangContext.js";
+import { useUrlValue, stringCodec } from "../../../hooks/useUrlState";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_COLORS,
@@ -47,10 +48,45 @@ function formatDate(iso) {
   }
 }
 
+// W3-2: codec 2 gia tri cho huong sap xep. Mac dinh "asc" nen `serialize`
+// tra `undefined` cho "asc" => khong ghi tham so khi dang o mac dinh.
+const SORT_DIR_CODEC = {
+  parse: (raw) => (raw === "desc" ? "desc" : undefined),
+  serialize: (v) => (v === "asc" ? undefined : v),
+};
+
 export default function CampaignTable({ campaigns = [], loading, onEdit, onDelete }) {
   const { t } = useI18n();
-  const [sorting, setSorting] = useState([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // W3-2 (AC-2.1): sap xep + loc toan cuc la 2 state cua bang. Truoc day chi
+  // trong RAM ⇒ gui link cho nguoi khac thi ho thay bang CHUA sap xep/loc.
+  // `sorting` la mang `[{ id, desc }]` cua react-table ⇒ tach thanh 2 tham so
+  // URL: `sort` (cot) + `sortDir` (`asc`/`desc`).
+const [sortCol, setSortCol] = useUrlValue("sort", stringCodec, "");
+  // ⚠ `boolCodec` (useUrlState.ts:50) serialize nhan **string** ("asc"/"desc"),
+  // KHONG phai boolean. Truoc day truyen `Boolean(row?.desc)` ⇒ serialize(true)
+  // tra `true` ⇒ query string ep thanh chuoi "true" ⇒ parse("true") tra
+  // `undefined` ⇒ fallback `false` ⇒ SAP XEP GIAM DAN HONG HOAN TOAN, va
+  // khong co loi nao bi bao vi `.jsx` khong qua `tsc`.
+  // Sua bang cach truyen CHUOI nhu codec mong doi.
+  //
+  // (Khong goi ten hook hay query-string trong comment nay: regex escape cua
+  // rule NAV-1 quet TOAN BO file ke ca comment, se coi file nay la "da dong
+  // bo URL" va lam 3 hit nay bien mat khoi gate.)
+  const [sortDesc, setSortDesc] = useUrlValue("sortDir", SORT_DIR_CODEC, "asc");
+  const sorting = useMemo(
+    () => (sortCol ? [{ id: sortCol, desc: sortDesc === "desc" }] : []),
+    [sortCol, sortDesc]
+  );
+  const setSorting = useCallback(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      const row = next?.[0];
+      setSortCol(row?.id ?? "");
+      setSortDesc(row?.desc ? "desc" : "asc");
+    },
+    [sorting, setSortCol, setSortDesc]
+  );
+  const [globalFilter, setGlobalFilter] = useUrlValue("q", stringCodec, "");
 
   const columns = useMemo(
     () => [
@@ -146,7 +182,7 @@ export default function CampaignTable({ campaigns = [], loading, onEdit, onDelet
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <input
+        <input aria-label={t("advertising.campaign.searchPlaceholder")}
           type="text"
           value={globalFilter ?? ""}
           onChange={(e) => setGlobalFilter(e.target.value)}

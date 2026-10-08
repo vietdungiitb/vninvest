@@ -1,10 +1,20 @@
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useI18n } from '../../context/LangContext.js';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
 import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
 import { ClipboardList, BarChart3, Fish, Bot, LayoutDashboard } from 'lucide-react';
+import { useUrlState, intCodec, stringCodec } from '../../hooks/useUrlState';
+
+const DECK_TABS = ['overview', 'technical', 'whale', 'ai'];
+const DECK_TAB_CODEC = {
+  parse: (raw) => (raw != null && DECK_TABS.includes(raw) ? raw : undefined),
+  serialize: (v) => (v === 'overview' ? undefined : v),
+};
+// W3-2 (AC-2.3): spec/defaults o CAP MODULE => identity on dinh giua cac render.
+const DECK_URL_SPEC = { activeTab: DECK_TAB_CODEC, pageSize: intCodec, currentPage: intCodec };
+const DECK_URL_DEFAULTS = { activeTab: 'overview', pageSize: 10, currentPage: 1 };
 
 export default function FactsFirstModularPositionDeck({
   holdings = [],
@@ -24,9 +34,15 @@ export default function FactsFirstModularPositionDeck({
   className = '',
 }) {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // W3-2 (AC-2.1): 3 state cua bang co phan trang => deep-link bang URL.
+  const [{ activeTab, pageSize, currentPage }, setUrlState] = useUrlState(
+    DECK_URL_SPEC,
+    DECK_URL_DEFAULTS,
+  );
+  // W3-4 (AC-4.3): xem ghi chu o ban TSX — wrapper phai `useCallback`.
+  const setActiveTab = useCallback((v) => setUrlState({ activeTab: v }), [setUrlState]);
+  const setPageSize = useCallback((v) => setUrlState({ pageSize: v }), [setUrlState]);
+  const setCurrentPage = useCallback((v) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('holdings');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
@@ -124,9 +140,11 @@ export default function FactsFirstModularPositionDeck({
     }
   }, [selectedSymbol, symbolOptions]);
 
+  // W3-4 (AC-4.3): xem ghi chu o ban TSX — guard `currentPage !== 1` lam effect
+  // idempotent, tranh vong tron khi setter doi identity theo `location.search`.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [symbolScope, selectedSymbol]);
+    if (currentPage !== 1) setCurrentPage(1);
+  }, [symbolScope, selectedSymbol, currentPage, setCurrentPage]);
 
   const activeSymbolSet = useMemo(() => {
     if (selectedSymbol !== 'all') {

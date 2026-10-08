@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CampaignFormSchema } from "../types/advertising.js";
 import { useI18n } from "../../../context/LangContext.js";
 
-function FieldLabel({ children, required }) {
+function FieldLabel({ children, required, htmlFor }) {
   return (
-    <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
       {children}
       {required && <span className="ml-0.5 text-red-500">*</span>}
     </label>
@@ -93,8 +93,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       {/* Name */}
       <div>
-        <FieldLabel required>{t("advertising.campaign.name")}</FieldLabel>
-        <input
+        <FieldLabel required htmlFor="cf-name">{t("advertising.campaign.name")}</FieldLabel>
+        <input id="cf-name"
           {...register("name")}
           placeholder={t("advertising.campaign.namePlaceholder")}
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -105,9 +105,9 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
       {/* Type + Status row */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <FieldLabel required>{t("advertising.campaign.type")}</FieldLabel>
-          <select
-            {...register("campaign_type")}
+          <FieldLabel required htmlFor="cf-campaign_type">{t("advertising.campaign.type")}</FieldLabel>
+<select id="cf-campaign_type"
+              {...register("campaign_type")}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="internal_promo">{t("advertising.campaign.typeInternal")}</option>
@@ -116,9 +116,9 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
           <FieldError error={errors.campaign_type} />
         </div>
         <div>
-          <FieldLabel required>{t("advertising.campaign.status")}</FieldLabel>
-          <select
-            {...register("status")}
+          <FieldLabel required htmlFor="cf-status">{t("advertising.campaign.status")}</FieldLabel>
+<select id="cf-status"
+              {...register("status")}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="draft">{t("advertising.campaign.statusDraft")}</option>
@@ -132,8 +132,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
 
       {/* Banner URLs */}
       <div>
-        <FieldLabel required>{t("advertising.campaign.bannerUrl")}</FieldLabel>
-        <input
+        <FieldLabel required htmlFor="cf-banner_url">{t("advertising.campaign.bannerUrl")}</FieldLabel>
+        <input id="cf-banner_url"
           {...register("banner_url")}
           type="url"
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -143,16 +143,16 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <FieldLabel>{t("advertising.campaign.bannerUrlRetina")}</FieldLabel>
-          <input
+          <FieldLabel htmlFor="cf-banner_url_retina">{t("advertising.campaign.bannerUrlRetina")}</FieldLabel>
+          <input id="cf-banner_url_retina"
             {...register("banner_url_retina")}
             type="url"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div>
-          <FieldLabel>{t("advertising.campaign.bannerUrlSvg")}</FieldLabel>
-          <input
+          <FieldLabel htmlFor="cf-banner_url_svg">{t("advertising.campaign.bannerUrlSvg")}</FieldLabel>
+          <input id="cf-banner_url_svg"
             {...register("banner_url_svg")}
             type="url"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -178,8 +178,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
       {/* Dimensions */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <FieldLabel required>{t("advertising.campaign.bannerWidth")}</FieldLabel>
-          <input
+          <FieldLabel required htmlFor="cf-banner_width">{t("advertising.campaign.bannerWidth")}</FieldLabel>
+          <input id="cf-banner_width"
             {...register("banner_width", { valueAsNumber: true })}
             type="number"
             min="1"
@@ -188,8 +188,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
           <FieldError error={errors.banner_width} />
         </div>
         <div>
-          <FieldLabel required>{t("advertising.campaign.bannerHeight")}</FieldLabel>
-          <input
+          <FieldLabel required htmlFor="cf-banner_height">{t("advertising.campaign.bannerHeight")}</FieldLabel>
+          <input id="cf-banner_height"
             {...register("banner_height", { valueAsNumber: true })}
             type="number"
             min="1"
@@ -198,8 +198,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
           <FieldError error={errors.banner_height} />
         </div>
         <div>
-          <FieldLabel required>{t("advertising.campaign.weight")}</FieldLabel>
-          <input
+          <FieldLabel required htmlFor="cf-weight">{t("advertising.campaign.weight")}</FieldLabel>
+          <input id="cf-weight"
             {...register("weight", { valueAsNumber: true })}
             type="number"
             min="1"
@@ -212,8 +212,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
 
       {/* Destination URL */}
       <div>
-        <FieldLabel required>{t("advertising.campaign.destinationUrl")}</FieldLabel>
-        <input
+        <FieldLabel required htmlFor="cf-destination_url">{t("advertising.campaign.destinationUrl")}</FieldLabel>
+        <input id="cf-destination_url"
           {...register("destination_url")}
           type="url"
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -224,8 +224,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
       {/* Dates */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <FieldLabel required>{t("advertising.campaign.startDate")}</FieldLabel>
-          <input
+          <FieldLabel required htmlFor="cf-start_date">{t("advertising.campaign.startDate")}</FieldLabel>
+          <input id="cf-start_date"
             {...register("start_date")}
             type="datetime-local"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -233,8 +233,8 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
           <FieldError error={errors.start_date} />
         </div>
         <div>
-          <FieldLabel required>{t("advertising.campaign.endDate")}</FieldLabel>
-          <input
+          <FieldLabel required htmlFor="cf-end_date">{t("advertising.campaign.endDate")}</FieldLabel>
+          <input id="cf-end_date"
             {...register("end_date")}
             type="datetime-local"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -245,9 +245,9 @@ export default function CampaignForm({ campaign, onSubmit, onCancel, loading }) 
 
       {/* Targeting Rules */}
       <div>
-        <FieldLabel>{t("advertising.campaign.targetingRules")}</FieldLabel>
-        <textarea
-          {...register("targeting_rules")}
+        <FieldLabel htmlFor="cf-targeting_rules">{t("advertising.campaign.targetingRules")}</FieldLabel>
+<textarea id="cf-targeting_rules"
+            {...register("targeting_rules")}
           rows={3}
           placeholder={t("advertising.campaign.targetingRulesPlaceholder")}
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
