@@ -14,9 +14,10 @@
  * "900.000" mà so chuỗi thì sai).
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useI18n } from "../../context/LangContext";
 import { usePortfolioResource, asRows, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
+import { useUrlState, stringCodec, boolCodec, type UrlStateCodec } from "../../hooks/useUrlState";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 export interface HoldingRow {
@@ -61,8 +62,21 @@ function signed(v: string | number | null | undefined, digits = 2): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(digits)}`;
 }
 
-type SortKey = "symbol" | "market_value" | "unrealized_pnl" | "unrealized_pnl_pct"
-  | "weight_pct" | "price_change_pct";
+type SortKey = "symbol" | "market_value" | "unrealized_pnl" | "unrealized_pnl_pct"  | "weight_pct" | "price_change_pct";
+
+/**
+ * FU-05: chi nhan gia tri `sortKey` nam trong `SortKey`. Neu de `stringCodec`,
+ * nguoi dung go `?sortKey=; DROP TABLE` se loi vao comparator o L112.
+ * Co tren URL => dung fallback (mac dinh `market_value`).
+ */
+const SORT_KEYS: readonly SortKey[] = [
+  "symbol", "market_value", "unrealized_pnl", "unrealized_pnl_pct",
+  "weight_pct", "price_change_pct",
+];
+const sortKeyCodec: UrlStateCodec<SortKey> = {
+  parse: (raw) => (raw != null && (SORT_KEYS as readonly string[]).includes(raw) ? (raw as SortKey) : undefined),
+  serialize: (v) => (v === "market_value" ? undefined : v),
+};
 
 export function PortfolioHoldingsPage({
   portfolioId, adapter,
@@ -76,10 +90,20 @@ export function PortfolioHoldingsPage({
   // `defaultCoreApiAdapter` — neu khong, moi trang se nem
   // "Cannot read properties of undefined" khi chay that.
   const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
-  const [search, setSearch] = useState("");
-  const [sector, setSector] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("market_value");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // FU-05: 4 state nay la bo loc/sap xep cua bang ⇒ deep-link bang URL de gui
+  // link cho nguoi khac thi ho thay DUNG man hinh dang xem. Dung `useUrlState`
+  // (`useSearchParams` co san cua react-router-dom) thay 4 useState.
+  const [{ search, sector, sortKey, sortDir }, setUrlState] = useUrlState(
+    {
+      search: stringCodec,
+      sector: stringCodec,
+      sortKey: sortKeyCodec,
+      sortDir: boolCodec<"asc" | "desc">("desc", "asc"),
+    },
+    { search: "", sector: "", sortKey: "market_value" as SortKey, sortDir: "desc" as "asc" | "desc" },
+  );
+  const setSearch = (v: string) => setUrlState({ search: v });
+  const setSector = (v: string) => setUrlState({ sector: v });
 
   const fetchHoldings = useCallback(
     (id: string | number) => api.getPortfolioHoldings?.(id) ?? Promise.resolve([]),
@@ -123,8 +147,9 @@ export function PortfolioHoldingsPage({
   }, [all, search, sector, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("desc"); }
+    // 1 lan patch thay vi 2 lan setState ⇒ chi 1 entry trong lich su trinh duyet
+    if (key === sortKey) setUrlState({ sortDir: sortDir === "asc" ? "desc" : "asc" });
+    else setUrlState({ sortKey: key, sortDir: "desc" });
   };
 
   const ariaSort = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : "none");

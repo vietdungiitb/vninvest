@@ -9,6 +9,7 @@ import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
 import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
 import { CoreDashboardPositionDeck } from "../components/dashboard/CoreDashboardPositionDeck.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
+import { useI18n } from "../context/LangContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
 import { dedupAndSortAlerts } from "../utils/alertDedup.js";
@@ -100,6 +101,24 @@ function LoadingSkeleton({ rows = 3 }: LoadingSkeletonProps) {
 interface ErrorBannerProps {
   message?: string;
   t?: (key: string, defaultText: string) => string;
+}
+
+/**
+ * FU-02c: DashboardPage co 3 nhanh `return` (empty / error / main). Chi them
+ * `<h1>` o nhanh main se lam mat heading luc chua co danh muc hoac bi loi =>
+ * phai dung o CA 3. Dung helper de khong quyen mot nhanh nao.
+ */
+function DashboardHeading() {
+  // M-6 (audit Stage 5): phai lay `t` tu `useI18n()`, KHONG nhan tu prop.
+  // Prop `t` cua DashboardPage co default `(_key, defaultText) => defaultText`
+  // (L135) va `pageRegistry.js:32` khong truyen prop nao => neu nhan tu prop thi
+  // `<h1>` LUON ra tieng Viet, ke ca khi locale la `en`.
+  const { t } = useI18n();
+  return e(
+    "h1",
+    { className: "core-dashboard-title" },
+    t("dashboard.title", { defaultValue: "Tổng quan" }),
+  );
 }
 
 function ErrorBanner({ message, t = (_key: string, defaultText: string) => defaultText }: ErrorBannerProps) {
@@ -303,6 +322,7 @@ export function DashboardPage({
   if (!enabled || !resolvedPortfolioId) {
     return (
       <div className={"core-dashboard-page core-dashboard-page--empty " + className}>
+        <DashboardHeading />
         <p className="core-dashboard-empty-hint">{t("dashboard.empty", "Chọn danh mục để xem tổng quan.")}</p>
       </div>
     );
@@ -311,6 +331,7 @@ export function DashboardPage({
   if (error) {
     return (
       <div className={"core-dashboard-page " + className}>
+        <DashboardHeading />
         <ErrorBanner message={error} t={t} />
       </div>
     );
@@ -318,6 +339,7 @@ export function DashboardPage({
 
   return (
     <div className={"core-dashboard-page " + className}>
+      <DashboardHeading />
 
       <div className="core-dashboard-slot core-dashboard-slot--stats">
         <PageErrorBoundary>

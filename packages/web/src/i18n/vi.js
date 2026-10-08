@@ -2334,6 +2334,10 @@ const vi = {
     backToLogin: 'Quay lại đăng nhập',
   },
   dashboard: {
+    // FU-02c/M-6: `<h1>` của `DashboardPage`. Trước đó `<h1>` lấy từ prop `t`
+    // có default `(_key, defaultText) => defaultText` ⇒ LUÔN ra tiếng Việt,
+    // kể cả khi locale là `en`. Đây là key cho nhu cầu đó.
+    title: 'Tổng quan',
     emptyTitle: 'Chưa có danh mục nào',
     noPortfolio: 'Tạo danh mục đầu tiên để bắt đầu theo dõi tài sản, giao dịch và hiệu suất ngay trên ứng dụng.',
     createPortfolioCta: '+ Tạo danh mục đầu tiên',

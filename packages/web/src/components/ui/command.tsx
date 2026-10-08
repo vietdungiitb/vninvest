@@ -7,11 +7,16 @@ interface CommandProps extends React.HTMLAttributes<HTMLDivElement> {
   onValueChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  'aria-label'?: string;
 }
 
 const Command = React.forwardRef<HTMLDivElement, CommandProps>(
-  ({ value, onValueChange, placeholder = 'Search...', className, children, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col', className)} {...props}>
+  ({ value, onValueChange, placeholder = 'Search...', className, children, ...props }, ref) => {
+    // `placeholder` KHONG phai accessible name — fallback ve no de input luon
+    // co ten khi caller khong truyen `aria-label`.
+    const { ['aria-label']: ariaLabel, ...divProps } = props;
+    return (
+    <div ref={ref} className={cn('flex flex-col', className)} {...divProps}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
         <input
@@ -19,6 +24,7 @@ const Command = React.forwardRef<HTMLDivElement, CommandProps>(
           value={value}
           onChange={e => onValueChange(e.target.value)}
           placeholder={placeholder}
+          aria-label={ariaLabel ?? placeholder}
           className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-900/50 pl-10 pr-10 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
         />
         {value && (
@@ -34,7 +40,8 @@ const Command = React.forwardRef<HTMLDivElement, CommandProps>(
       </div>
       <div className="mt-2 max-h-[300px] overflow-y-auto overflow-x-hidden">{children}</div>
     </div>
-  )
+    );
+  }
 );
 Command.displayName = 'Command';
 
@@ -46,6 +53,9 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProps>(
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
+      // `placeholder` khong phai accessible name — fallback ve no khi caller
+      // khong truyen `aria-label`, giong `Command` o tren.
+      aria-label={props['aria-label'] ?? props.placeholder}
       className={cn(
         'flex h-10 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500',
         'focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent',
