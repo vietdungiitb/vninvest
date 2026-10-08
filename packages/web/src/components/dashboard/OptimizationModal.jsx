@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import useAIAdvisor from '../../hooks/useAIAdvisor.js';
+import { useI18n } from '../../context/LangContext.js';
 
 export default function OptimizationModal({ onClose, holdings, technicals, analytics, currentScore, alerts }) {
+  const { t } = useI18n();
   const [strategy, setStrategy] = useState('conservative'); // 'conservative' | 'aggressive'
   const [acknowledged, setAcknowledged] = useState({}); // { symbol: true }
   const [expandedSymbol, setExpandedSymbol] = useState(null);
@@ -84,8 +86,8 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
           ) : recommendations.map((rec) => (
             <div key={rec.symbol} className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-all">
               <div className="flex items-center p-4 gap-4">
-                <input 
-                  type="checkbox" 
+<input aria-label={`${t("common.acknowledge")}: ${rec.symbol}`}
+                  type="checkbox"
                   checked={acknowledged[rec.symbol] || false}
                   onChange={() => toggleAcknowledge(rec.symbol)}
                   className="w-5 h-5 rounded-md border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"

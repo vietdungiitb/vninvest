@@ -5,8 +5,20 @@ import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { AdminPageHeader, AdminMetricCard, AdminEmptyState } from './adminUi.js';
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 const fmtVND = (v: any, localeTag = 'vi-VN') => new Intl.NumberFormat(localeTag).format(Number(v || 0));
+
+type BillingUrlState = { page: number; status: string; plan: string; search: string };
+
+// W3-2 (AC-2.3): khai o CAP MODULE de identity cua `spec`/`defaults` on dinh.
+const BILLING_URL_SPEC: { [K in keyof BillingUrlState]: UrlStateCodec<BillingUrlState[K]> } = {
+  page: intCodec,
+  status: stringCodec,
+  plan: stringCodec,
+  search: stringCodec,
+};
+const BILLING_URL_DEFAULTS: BillingUrlState = { page: 1, status: '', plan: '', search: '' };
 
 export function AdminBillingFleetPage() {
   const { t, localeTag } = useI18n();
@@ -18,10 +30,15 @@ export function AdminBillingFleetPage() {
   const [count, setCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState('');
-  const [plan, setPlan] = useState('');
-  const [search, setSearch] = useState('');
+  // W3-2 (AC-2.1): bo loc + phan trang cua bang hoa don ⇒ deep-link bang URL.
+  const [{ page, status, plan, search }, setUrlState] = useUrlState(
+    BILLING_URL_SPEC,
+    BILLING_URL_DEFAULTS,
+  );
+  const setPage = (v: number) => setUrlState({ page: v });
+  const setStatus = (v: string) => setUrlState({ status: v });
+  const setPlan = (v: string) => setUrlState({ plan: v });
+  const setSearch = (v: string) => setUrlState({ search: v });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [exporting, setExporting] = useState(false);
@@ -107,19 +124,19 @@ export function AdminBillingFleetPage() {
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterAll')} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterAll')}</option>
             {['paid', 'past_due', 'open', 'draft', 'void', 'uncollectible'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterPlanAll')} value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterPlanAll')}</option>
             {['free', 'starter', 'pro', 'enterprise', 'custom', 'internal'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminBillingFleet.searchPh')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminBillingFleet.searchPh')} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminBillingFleet.searchPh')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <button type="button" onClick={() => setPage(1)} className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t('adminBillingFleet.apply')}</button>
           <button type="button" disabled={exporting} onClick={doExport} className="rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40">{t('adminBillingFleet.export')}</button>
         </div>
@@ -148,9 +165,9 @@ export function AdminBillingFleetPage() {
           <AdminEmptyState>{loading ? t('adminBillingFleet.loading') : t('adminBillingFleet.empty')}</AdminEmptyState>
         )}
         <div className="mt-3 flex items-center justify-between">
-          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
+          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
           <span className="text-xs text-slate-500">{t('adminBillingFleet.pageOf', { page, pages: totalPages, total: count })}</span>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setPage((p) => p + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
+          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
         </div>
       </div>
     </div>

@@ -258,7 +258,22 @@ const RULES = [
       const m = ctx.line.match(/const\s*\[\s*(\w*(filter|search|sort|page|tab|query|q)\w*)\s*,/i);
       if (!m) return null;
       if (ctx.fileHasUrlSync) return null;
-      return `useState("${m[1]}") không đồng bộ URL  → mất deep-link  (${ctx.rel})`;
+      // W3-2 (2026-10-08): rule nay ban ra o dau wave 2, khi `useUrlState`
+      // chua ton tai — nen message hardcode chuoi `useState("...")`. Da doi de
+      // lay ten hook that tu `const [x, setx] = <hook>(...)`.
+      //
+      // ⚠ **KHONG** them `useUrlState|useUrlValue` vao `fileHasUrlSync` (dong
+      // nay). Da thu mot lan (xem git log W3-2) va audit Stage 5 BA LOI:
+      // escape do la **CAP FILE** — file chi can goi hook 1 lan la moi
+      // `useState` filter trong file bi che, ke ca `searchDraft` cua
+      // `AdminCoreTenantsPage.tsx:27` la `useState` THAT chua sync.
+      // Do do 4/17 hit giam cua W3-2 den tu NOI escape chu khong phai sua
+      // code. Gate yeu hon la thu tien cho AC — tra ve danh sach thoat goc,
+      // giu gate nghiem. CampaignTable.jsx con 3 hit gia; chung duoc ghi ro
+      // trong bao cao thay vi xoa bang cach lam yeu gate.
+      const call = ctx.line.match(/const\s*\[\s*(\w+)\s*,[^\]]*?=\s*(\w+)/);
+      const src = call ? call[2] : "useState";
+      return `${src}("${m[1]}") khong dong bo URL  → mat deep-link  (${ctx.rel})`;
     },
   },
   {
@@ -291,7 +306,23 @@ for (const f of files) {
   const isCss = f.endsWith(".css");
   const raw = txt.split(/\r?\n/);
   const cState = { inBlock: false };
-  const lines = raw.filter((l) => !isCommentLine(l, cState));
+  // W3-0 (2026-10-08): giu CHI SO DONG THAT cung voi mang da loc.
+  //
+  // Truoc day chi con `lines = raw.filter(...)` roi in `i + 1` => moi
+  // `file:line` in ra lech, dung bang so dong comment dung truoc vi tri do
+  // (do `lines` khong con chua dong comment nua). Do lech tich luy toi 36 dong
+  // tren `WhaleBubbleChart.jsx`. Day la nguyen nhan goc cua nhieu lan "sai so".
+  //
+  // PHAI giu `lines` da loc nguyen ven: `prev6`/`next6`/`block`/`next1..3`
+  // duoc tinh tren mang da loc (dong 306-341). Bo `.filter` se lam cua so +-6
+  // chua ca dong comment => rule A11Y-9 (dong nay tim `<label` trong +-6) doi
+  // ket qua => COUNT doi => gate doi hanh vi. AC-0.2 khoa 11 rule count.
+  const kept = [];
+  raw.forEach((l, idx) => {
+    if (!isCommentLine(l, cState)) kept.push({ t: l, n: idx + 1 });
+  });
+  const lines = kept.map((k) => k.t);
+  const trueLine = kept.map((k) => k.n);
   const rel = f.replace(/\\/g, "/").replace(/^packages\/web\//, "");
   const base = {
     file: f, rel, isCss, lines, fileText: txt,
@@ -299,6 +330,9 @@ for (const f of files) {
     focusBlocks: [...txt.matchAll(/([^{}]*:focus[^{}]*)\{([^{}]*)\}/g)].map((m) => m[2]),
     fileHasReducedMotion: /prefers-reduced-motion/.test(txt),
     fileHasTabular: /tabular-nums|fontVariantNumeric/.test(txt),
+    // GHI CHU W3-2: da thu them `useUrlState|useUrlValue` vao regex nay. Audit
+    // Stage 5 BA LOI nen DA GOC LAI — xem comment o rule NAV-1. Escape cap
+    // file che ca `useState` chua sync trong cung file.
     fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation/.test(txt),
   };
   const doneOnce = new Set();
@@ -335,8 +369,8 @@ for (const f of files) {
       try { out = r.check(ctx); } catch { out = null; }
       if (!out) continue;
       doneOnce.add(r.id);
-      if (isTestFile(f)) { skippedTests.push({ rule: r.id, file: rel, line: i + 1 }); continue; }
-      findings.push({ rule: r.id, prio: r.prio, name: r.name, file: rel, line: i + 1, src: out });
+      if (isTestFile(f)) { skippedTests.push({ rule: r.id, file: rel, line: trueLine[i] }); continue; }
+      findings.push({ rule: r.id, prio: r.prio, name: r.name, file: rel, line: trueLine[i], src: out });
     }
   });
 }

@@ -97,6 +97,26 @@ vi.mock("../../context/PortfolioContext.js", async () => {
   };
 });
 
+// ── W3-4 (AC-4.1a) — nap module o CAP MODULE, KHONG trong than test ──────────
+//
+// Ly do: `await import()` ben trong test bi tinh vao TIMEOUT cua test. Do that
+// file chay chung voi 116 file khac, thoi gian nap module len toi
+// 27.5 s (baseline do duoc) > timeout 20 s ⇒ fail, trong khi file chay rieng
+// chi mat 8 s. Nang module ra khoi test ⇒ nap o luc collect, khong con nam
+// trong budget cua tung test.
+//
+// Vì sao KHONG chi tang timeout: comment o dong 139-142 cua file nay ghi ro
+// "KHONG phai lua chon" — 5 s mac dinh fail khi chay full suite va nguyen nhan
+// goc la `cleanup` khong chay con sot DOM. Tang len 30 s chi che them.
+// Top-level `await` ⇒ module da san SANG khi vitest collect file nay, nen
+// phai nap KHONG nam trong budget cua tung test.
+const P = {
+  agentFederation: await import("../AIAgentFederationPage"),
+  usageAnalytics: await import("../AIUsageAnalyticsPage"),
+  adminUsers: await import("../admin/AdminUsersPage"),
+  dashboard: await import("../DashboardPage"),
+  adminUi: await import("../admin/adminUi"),
+};
 afterEach(cleanup);
 vi.restoreAllMocks();
 
@@ -123,7 +143,7 @@ function wrapRoute(path: string, el: React.ReactElement) {
 // 4 trang THIẾU THẬT (đã kiểm chứng từng trang, xem PLAN §2 FU-02c)
 describe("FU-02c — 4 trang thiếu thật", () => {
   test("AIAgentFederationPage co 1 h1 khong rong", async () => {
-    const { AIAgentFederationPage } = await import("../AIAgentFederationPage");
+    const { AIAgentFederationPage } = P.agentFederation
     wrapRoute("/settings/ai/agents", <AIAgentFederationPage />);
     const h1 = countH1();
     expect(h1).toHaveLength(1);
@@ -131,7 +151,7 @@ describe("FU-02c — 4 trang thiếu thật", () => {
   }, 20000);
 
   test("AIUsageAnalyticsPage co 1 h1 khong rong", async () => {
-    const { AIUsageAnalyticsPage } = await import("../AIUsageAnalyticsPage");
+    const { AIUsageAnalyticsPage } = P.usageAnalytics
     wrapRoute("/settings/ai/usage", <AIUsageAnalyticsPage />);
     const h1 = countH1();
     expect(h1).toHaveLength(1);
@@ -143,15 +163,24 @@ describe("FU-02c — 4 trang thiếu thật", () => {
   }, 20000);
 
   test("AdminUsersPage co 1 h1 khong rong", async () => {
-    const { AdminUsersPage } = await import("../admin/AdminUsersPage");
+    const { AdminUsersPage } = P.adminUsers
     wrapRoute("/admin/users", <AdminUsersPage />);
+    // W3-4 (AC-4.1b) — SETTLE RACE, khong phai timeout. Test nay assert DONG BO
+    // (`countH1()` ngay sau `wrapRoute`), nhung `SocUsersPanel` o trang thai
+    // `loading` return som (SocUsersPanel.tsx:154-156) ⇒ DOM chua settle ⇒
+    // `countH1()` co the thay 0 hoac 2. Do la 1 trong 2 failure cua baseline
+    // (`test:components` 2 failed | 802 passed), fail o **306 ms** — ham y
+    // chung to `waitFor`, khong phai module-import cost.
+    // Chi sua TEST (them `waitFor`), KHONG sua code san pham.
+    await waitFor(() => {
+      expect(countH1()).toHaveLength(1);
+    }, { timeout: 4000 });
     const h1 = countH1();
-    expect(h1).toHaveLength(1);
     expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
   }, 20000);
 
   test("AdminUsersPanel van giu h2/h3 (phan cap khong bi phong)", async () => {
-    const { AdminUsersPage } = await import("../admin/AdminUsersPage");
+    const { AdminUsersPage } = P.adminUsers
     // `SocUsersPanel` o trang thai `loading` return som (SocUsersPanel.tsx:154-156)
     // va khong co h2 — phai cho no settle truoc khi kiem tra phan cap.
     wrapRoute("/admin/users", <AdminUsersPage />);
@@ -163,7 +192,7 @@ describe("FU-02c — 4 trang thiếu thật", () => {
   });
 
   test("DashboardPage co 1 h1 o NHANH MAIN", async () => {
-    const { DashboardPage } = await import("../DashboardPage");
+    const { DashboardPage } = P.dashboard
     wrapRoute("/core/dashboard", <DashboardPage />);
     const h1 = countH1();
     expect(h1).toHaveLength(1);
@@ -173,7 +202,7 @@ describe("FU-02c — 4 trang thiếu thật", () => {
   // DashboardPage nhanh "khong co danh muc" — dung helper DashboardHeading
   // o CA 3 nhanh return nen van phai co h1.
   test("DashboardPage nhanh EMPTY van co h1 (khong phai chi nhanh main)", async () => {
-    const { DashboardPage } = await import("../DashboardPage");
+    const { DashboardPage } = P.dashboard
     wrapRoute("/core/dashboard", <DashboardPage className="" />);
     expect(countH1()).toHaveLength(1);
   }, 20000);
@@ -228,7 +257,7 @@ describe("FU-02c — 14 trang đã có h1, không được thêm lần 2", () =>
   }, 20000);
 
   test("h1 trong 14 trang khong bi render trùng", async () => {
-    const { AdminPageHeader } = await import("../admin/adminUi");
+    const { AdminPageHeader } = P.adminUi
     // Bọc cùng provider như wrapRoute — `AdminPageHeader` nằm trong cây admin
     // mà các trang kia render; render trần sẽ vỡ context.
     render(

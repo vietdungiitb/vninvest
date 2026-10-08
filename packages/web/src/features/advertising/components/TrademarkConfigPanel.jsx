@@ -118,14 +118,14 @@ export default function TrademarkConfigPanel() {
           <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                <label htmlFor="tm-activation-ts" className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {t("advertising.trademark.activationTime")}
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t("advertising.trademark.activationTimeHelp")}
                 </p>
               </div>
-              <input
+              <input id="tm-activation-ts"
                 type="datetime-local"
                 value={formatDateForInput(activationTs)}
                 onChange={(e) => setActivationTs(parseDateFromInput(e.target.value))}
