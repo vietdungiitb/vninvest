@@ -168,3 +168,76 @@ describe("useUrlValue — bien don", () => {
     expect(seenUrl).toContain("q=HPG");
   });
 });
+
+// ── W3-2 (AC-2.3) — identity cua gia tri phai ON DINH giua cac render ────────
+//
+// Vì sao AC này tồn tại: `useUrlState.ts:117` khai `useMemo` phụ thuộc `spec`
+// va `defaults`. Neu caller truyen OBJECT LITERAL trong render (kieu
+// `{ page: intCodec, ... }`) thi `spec` doi identity moi lan render ⇒ `value`
+// la object moi ⇒ moi thay doi khac cung gay render moi.
+//
+// Wave 2 DA DANH MOT LAN: bug `boolCodec` (xem
+// `docs/TEST_REPORT_UIUX_WAVE2.md:76`). 11 file cua W3-2 deu khai
+// `SPEC`/`DEFAULTS` o CAP MODULE de tranh dieu nay — test nay khoa lai
+// chinh sach do, va bat nguoc lai neu ai trai ve literal trong render.
+describe("W3-2 AC-2.3 · spec/defaults o cap module ⇒ gia tri ON DINH khi URL khong doi", () => {
+  /**
+   * Luu y khoa: chi so sanh cac render **cung mot `location.search`**.
+   * Khi URL doi thi `params` doi ⇒ `useMemo` tinh lai ⇒ tra object moi la
+   * DUNG. Bảo đảm chi có ý nghĩa khi người dùng chưa đổi URL.
+   */
+  test("spec + defaults khai o module: cung URL ⇒ cUNG mot object qua nhieu render", () => {
+    const SPEC = { page: intCodec, search: stringCodec };
+    const DEFAULTS = { page: 1, search: "" };
+    const pairs: { search: string; state: unknown }[] = [];
+
+    function Probe() {
+      const loc = useLocation();
+      const [state] = useUrlState(SPEC, DEFAULTS);
+      pairs.push({ search: loc.search, state });
+      return <pre data-testid="v">{JSON.stringify(state)}</pre>;
+    }
+
+    const router = createMemoryRouter([{ path: "/", element: <Probe /> }]);
+    render(<RouterProvider router={router} />);
+    act(() => { router.navigate("/?page=3&search=FPT"); });
+    // render them voi **cung URL** (re-navigate ve cung dia chi)
+    act(() => { router.navigate("/?page=3&search=FPT"); });
+    act(() => { router.navigate("/?page=3&search=FPT"); });
+
+    const bySearch = new Map<string, unknown[]>();
+    for (const p of pairs) {
+      if (!bySearch.has(p.search)) bySearch.set(p.search, []);
+      bySearch.get(p.search)!.push(p.state);
+    }
+    // moi nhom theo URL phai CHI CO MOT identity
+    expect(bySearch.size).toBeGreaterThan(0);
+    for (const [search, states] of bySearch) {
+      expect(states.length).toBeGreaterThanOrEqual(1);
+      for (const s of states) expect(s).toBe(states[0]);
+      void search;
+    }
+  });
+
+  test("spec truyen LITERAL trong render: cung URL van ra object KHAC nhau (bat duoc)", () => {
+    const DEFAULTS = { page: 1 };
+    const pairs: { search: string; state: unknown }[] = [];
+
+    function Probe() {
+      const loc = useLocation();
+      // COT Y giai thieu mau phai tranh - giu de test bat duoc khi ai viet lai.
+      const [state] = useUrlState({ page: intCodec }, DEFAULTS);
+      pairs.push({ search: loc.search, state });
+      return <pre data-testid="v">{JSON.stringify(state)}</pre>;
+    }
+
+    const router = createMemoryRouter([{ path: "/", element: <Probe /> }]);
+    render(<RouterProvider router={router} />);
+    act(() => { router.navigate("/?page=5"); });
+    act(() => { router.navigate("/?page=5"); });
+
+    const same = pairs.filter((p) => p.search === "?page=5");
+    expect(same.length).toBeGreaterThanOrEqual(2);
+    expect(same[1].state).not.toBe(same[0].state);
+  });
+});

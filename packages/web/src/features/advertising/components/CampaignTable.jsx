@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,6 +7,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useI18n } from "../../../context/LangContext.js";
+import { useUrlValue, stringCodec, boolCodec } from "../../../hooks/useUrlState";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_COLORS,
@@ -49,8 +50,26 @@ function formatDate(iso) {
 
 export default function CampaignTable({ campaigns = [], loading, onEdit, onDelete }) {
   const { t } = useI18n();
-  const [sorting, setSorting] = useState([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // W3-2 (AC-2.1): sap xep + loc toan cuc la 2 state cua bang. Truoc day chi
+  // trong RAM ⇒ gui link cho nguoi khac thi ho thay bang CHUA sap xep/loc.
+  // `sorting` la mang `[{ id, desc }]` cua react-table ⇒ tach thanh 2 tham so
+  // URL: `sort` (cot) + `sortDir` (`asc`/`desc`).
+  const [sortCol, setSortCol] = useUrlValue("sort", stringCodec, "");
+  const [sortDesc, setSortDesc] = useUrlValue("sortDir", boolCodec("asc", "desc"), false);
+  const sorting = useMemo(
+    () => (sortCol ? [{ id: sortCol, desc: sortDesc }] : []),
+    [sortCol, sortDesc]
+  );
+  const setSorting = useCallback(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      const row = next?.[0];
+      setSortCol(row?.id ?? "");
+      setSortDesc(Boolean(row?.desc));
+    },
+    [sorting, setSortCol, setSortDesc]
+  );
+  const [globalFilter, setGlobalFilter] = useUrlValue("q", stringCodec, "");
 
   const columns = useMemo(
     () => [
