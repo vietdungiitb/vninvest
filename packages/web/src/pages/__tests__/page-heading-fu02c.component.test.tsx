@@ -170,18 +170,28 @@ describe("FU-02c — 4 trang thiếu thật", () => {
     expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
   }, 20000);
 
+  // DashboardPage nhanh "khong co danh muc" — dung helper DashboardHeading
+  // o CA 3 nhanh return nen van phai co h1.
   test("DashboardPage nhanh EMPTY van co h1 (khong phai chi nhanh main)", async () => {
-    // empty = chua chon danh muc. Neu chi them <h1> o nhanh main thi
-    // luc nay mat heading — day la ly do dung helper DashboardHeading.
     const { DashboardPage } = await import("../DashboardPage");
     wrapRoute("/core/dashboard", <DashboardPage className="" />);
-    expect(countH1().length).toBeLessThanOrEqual(1);
+    expect(countH1()).toHaveLength(1);
   }, 20000);
 });
 
 // ---------------------------------------------------------------- AC-3
 // 14 trang ĐÃ CÓ h1 trước đây. KHÔNG được thêm h1 lần nữa.
 describe("FU-02c — 14 trang đã có h1, không được thêm lần 2", () => {
+  // ⚠ **AC-3 phủ 8/14.** 6 trang còn lại CHƯA có test phòng thủ, vì khi thử
+  // thêm vào thì **không render ổn định trong jsdom** — mỗi lần một kiểu khác:
+  //   - `SupportPage` / `TransactionsPage` / `UserSettingsPage` / `UpgradePage`:
+  //     nạp dữ liệu bất đồng bộ, đếm h1 quá sớm thấy 0, chờ lâu vẫn 0.
+  //   - `market/ShellStockDetailPage` → `WorkstationShell.tsx:53` là component con,
+  //     cần cây provider khác.
+  //   - `signals/WhaleAdvisoryPage` → `WhaleAdvisoryBentoHeader.js:44` qua prop.
+  // Ép chúng vào `toHaveLength(1)` lúc này chỉ tạo ra **test đỏng vì harness**,
+  // không phải vì code. Ghi lại đây thay vì làm xanh giả.
+  // Cần một `renderRoutePage()` dùng chung cho cây provider đầy đủ — CHƯA LÀM.
   // Import TƯỜNG — dynamic `import(`../${mod}`)` làm Vite cảnh báo
   // "invalid import: a file extension must be included in the static part".
   const ALREADY = {
@@ -206,12 +216,15 @@ describe("FU-02c — 14 trang đã có h1, không được thêm lần 2", () =>
     ["admin/AdminAnalyticsPage", "AdminAnalyticsPage", "/admin/analytics"],
   ];
 
-  test.each(ROUTES)("%s dung 1 h1", async (_key, exportName, path) => {
+  test.each(ROUTES)("%s co DUNG MOT h1", async (_key, exportName, path) => {
     const mod = (await ALREADY[_key]()) as Record<string, React.ComponentType>;
     const C = mod[exportName];
     expect(C).toBeTypeOf("function");
     wrapRoute(path, <C />);
-    expect(countH1().length).toBeLessThanOrEqual(1);
+    // M-3 (audit Stage 5): `toHaveLength(1)` CHỨNG KHÔNG phải
+    // `toBeLessThanOrEqual(1)`. `≤1` cũng pass khi **0** h1 ⇒ AC-3 mà không
+    // bắt được lỗi "mất h1" — tức là AC không kiểm được gì.
+    expect(countH1()).toHaveLength(1);
   }, 20000);
 
   test("h1 trong 14 trang khong bi render trùng", async () => {

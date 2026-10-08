@@ -64,12 +64,12 @@ const PAGE_SIZE = 25;
 
 const GROUP_ORDER = ["price", "technical_momentum", "technical_ma", "technical_advanced", "volume", "price_position", "fundamental"];
 
-function formatValue(val: any, format: Format): string {
+function formatValue(val: any, format: Format, locale?: string): string {
   if (val === null || val === undefined) return "—";
   switch (format) {
     case "pct": return typeof val === "number" ? val.toFixed(2) + "%" : Number(val).toFixed(2) + "%";
     case "ratio": return typeof val === "number" ? val.toFixed(2) + "×" : Number(val).toFixed(2) + "×";
-    case "number": return typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(val);
+    case "number": return typeof val === "number" ? val.toLocaleString(locale, { maximumFractionDigits: 2 }) : String(val);
     case "date": return String(val);
     default: return String(val);
   }
@@ -130,7 +130,7 @@ export function ScreenerResultsTable({
   onServerSort,
   fetchAllRows,
 }: ScreenerResultsTableProps) {
-  const { t, formatNumber } = useI18n();
+  const { t, formatNumber, localeTag } = useI18n();
   const [sortKey, setSortKey] = useState<keyof ScreenerRow | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -485,7 +485,7 @@ export function ScreenerResultsTable({
                           ? createElement("a", { href: "/stocks/" + row.symbol, style: { color: "var(--accent-cyan, #06b6d4)", textDecoration: "none", fontWeight: "bold" } }, row.symbol)
                           : col.key === "ai_advisory"
                             ? createElement(ScreenerScoreCard, { advisory: row.ai_advisory })
-                            : formatValue(row[col.key], col.format),
+                            : formatValue(row[col.key], col.format, localeTag),
                       ),
                     ),
                     // P2.5: row actions — watchlist + alert (D12)
