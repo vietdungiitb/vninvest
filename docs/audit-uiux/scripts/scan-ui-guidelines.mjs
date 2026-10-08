@@ -291,7 +291,23 @@ for (const f of files) {
   const isCss = f.endsWith(".css");
   const raw = txt.split(/\r?\n/);
   const cState = { inBlock: false };
-  const lines = raw.filter((l) => !isCommentLine(l, cState));
+  // W3-0 (2026-10-08): giu CHI SO DONG THAT cung voi mang da loc.
+  //
+  // Truoc day chi con `lines = raw.filter(...)` roi in `i + 1` => moi
+  // `file:line` in ra lech, dung bang so dong comment dung truoc vi tri do
+  // (do `lines` khong con chua dong comment nua). Do lech tich luy toi 36 dong
+  // tren `WhaleBubbleChart.jsx`. Day la nguyen nhan goc cua nhieu lan "sai so".
+  //
+  // PHAI giu `lines` da loc nguyen ven: `prev6`/`next6`/`block`/`next1..3`
+  // duoc tinh tren mang da loc (dong 306-341). Bo `.filter` se lam cua so +-6
+  // chua ca dong comment => rule A11Y-9 (dong nay tim `<label` trong +-6) doi
+  // ket qua => COUNT doi => gate doi hanh vi. AC-0.2 khoa 11 rule count.
+  const kept = [];
+  raw.forEach((l, idx) => {
+    if (!isCommentLine(l, cState)) kept.push({ t: l, n: idx + 1 });
+  });
+  const lines = kept.map((k) => k.t);
+  const trueLine = kept.map((k) => k.n);
   const rel = f.replace(/\\/g, "/").replace(/^packages\/web\//, "");
   const base = {
     file: f, rel, isCss, lines, fileText: txt,
@@ -335,8 +351,8 @@ for (const f of files) {
       try { out = r.check(ctx); } catch { out = null; }
       if (!out) continue;
       doneOnce.add(r.id);
-      if (isTestFile(f)) { skippedTests.push({ rule: r.id, file: rel, line: i + 1 }); continue; }
-      findings.push({ rule: r.id, prio: r.prio, name: r.name, file: rel, line: i + 1, src: out });
+      if (isTestFile(f)) { skippedTests.push({ rule: r.id, file: rel, line: trueLine[i] }); continue; }
+      findings.push({ rule: r.id, prio: r.prio, name: r.name, file: rel, line: trueLine[i], src: out });
     }
   });
 }

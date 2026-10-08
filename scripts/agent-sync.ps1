@@ -121,6 +121,16 @@ Step 5 "Chay gate"
 & node packages/web/scripts/check-multi-agent.mjs
 if ($LASTEXITCODE -ne 0) { Die "check:multi-agent that bai" }
 
+# 5a. So Entry cua ledger phai khong TRUNG MOI.
+#
+# 2026-10-08 (W3-0): ledger co san 59 so Entry trung (305 header, 243 so khac
+# nhau) — Hazard 2 cua skill multi-agent-workflow: agent tu doan so Entry thay vi
+# doc head that, hai agent cung prepend o dau file => mot hunk khong tach duoc.
+# Cong nay CHAN TRUNG MOI, KHONG chan 59 nhom co san (khong chan moi agent).
+# KHONG danh so lai lich su: se lam hong moi trich dan "Entry N".
+& node docs/audit-uiux/scripts/check-ledger-entry.mjs
+if ($LASTEXITCODE -ne 0) { Die "check-ledger-entry that bai — co so Entry TRUNG MOI (dung --next-entry de lay so moi)" }
+
 $touchedBE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'packages/core/backend/*' }
 $touchedFE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'packages/web/*' -or $_ -like 'packages/web/*' }
 
