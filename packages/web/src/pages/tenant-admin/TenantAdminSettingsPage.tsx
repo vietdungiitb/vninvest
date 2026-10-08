@@ -44,7 +44,7 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 export function TenantAdminSettingsPage() {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const { activeTenantId } = usePortfolio();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -174,7 +174,7 @@ export function TenantAdminSettingsPage() {
 
         {settings.updated_at && (
           <p style={{ marginTop: '20px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-            {t('tenantSettings.lastUpdated') || 'Last updated'}: {new Date(settings.updated_at).toLocaleString()}
+            {t('tenantSettings.lastUpdated') || 'Last updated'}: {formatDateTime(settings.updated_at)}
           </p>
         )}
 

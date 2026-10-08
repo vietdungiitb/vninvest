@@ -12,6 +12,10 @@ vi.mock("../../../context/LangContext.js", async () => {
     useI18n: () => ({
       t: (key: string, opts?: any) => tr(key, opts),
       formatNumber: (n: unknown) => String(n ?? ""),
+      // FU-04: `ScreenerHistory` chuyen sang `formatDateTime` (co san trong
+      // `LangContext.js:86`) — mock phai khai bao no thi moi render duoc.
+      formatDateTime: (d: unknown) => (d ? String(d) : ""),
+      localeTag: "vi-VN",
     }),
   };
 });

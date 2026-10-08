@@ -202,8 +202,8 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
   }, [days, modelFilter, statusFilter, usageClient, localeTag, t]);
 
   const summaryCards = [
-    { label: t("aiUsageAnalytics.totalRequests"), value: aggregate?.total_requests?.toLocaleString() || "0", key: "requests" },
-    { label: t("aiUsageAnalytics.totalTokens"), value: ((aggregate?.total_tokens_in || 0) + (aggregate?.total_tokens_out || 0)).toLocaleString(), key: "tokens" },
+    { label: t("aiUsageAnalytics.totalRequests"), value: formatNumber(aggregate?.total_requests ?? 0), key: "requests" },
+    { label: t("aiUsageAnalytics.totalTokens"), value: formatNumber((aggregate?.total_tokens_in || 0) + (aggregate?.total_tokens_out || 0)), key: "tokens" },
     { label: t("aiUsageAnalytics.totalCost"), value: `$${parseFloat(aggregate?.total_cost || "0").toFixed(4)}`, key: "cost" },
     { label: t("aiUsageAnalytics.avgLatency"), value: aggregate?.avg_latency ? `${Math.round(aggregate.avg_latency)}ms` : "0ms", key: "latency" },
   ];

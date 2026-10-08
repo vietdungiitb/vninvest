@@ -171,7 +171,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
 }
 
 export function SocDataOpsMonitorSection() {
-  const { t, localeTag } = useI18n();
+  const { t, localeTag, formatDateTime } = useI18n();
   const { state, actions } = useDataOps();
   const { coverage: rawCoverage, loading, errors } = state as unknown as { coverage: CoverageData | null; loading: Record<string, boolean>; errors: Record<string, string | null> };
   const [streamCoverage, setStreamCoverage] = useState<CoverageData | null>(null);
@@ -504,7 +504,7 @@ export function SocDataOpsMonitorSection() {
           createElement(
             "span",
             { },
-            `${t("soc.dataops.observability_updated_at")}: ${new Date(observability.updated_at).toLocaleString()}`
+            `${t("soc.dataops.observability_updated_at")}: ${formatDateTime(observability.updated_at)}`
           ),
         createElement(
           "div",
@@ -818,7 +818,7 @@ export function SocDataOpsMonitorSection() {
           createElement(
             "span",
             { },
-            `${t("soc.dataops.coverage_updated_at")}: ${new Date(coverage.updated_at).toLocaleString()}`
+            `${t("soc.dataops.coverage_updated_at")}: ${formatDateTime(coverage.updated_at)}`
           )
       ),
       createElement("p", { }, t("soc.dataops.coverage_description")),

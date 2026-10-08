@@ -111,7 +111,7 @@ describe("FU-02c — 4 trang thiếu thật", () => {
     const h1 = countH1();
     expect(h1).toHaveLength(1);
     expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   test("AIUsageAnalyticsPage co 1 h1 khong rong", async () => {
     const { AIUsageAnalyticsPage } = await import("../AIUsageAnalyticsPage");
@@ -119,7 +119,11 @@ describe("FU-02c — 4 trang thiếu thật", () => {
     const h1 = countH1();
     expect(h1).toHaveLength(1);
     expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
-  });
+    // `AIUsageDashboard` bat dau poll API nen can thoi gian cho no settle
+    // duoi tai full suite. Timeout o day KHONG phai lua chon: dat mac dinh
+    // 5s thi test nay fail khi chay chung voi 100+ file khac, va do
+    // `cleanup` khong chay => DOM ban con lai => test SAU do thay 2 h1.
+  }, 20000);
 
   test("AdminUsersPage co 1 h1 khong rong", async () => {
     const { AdminUsersPage } = await import("../admin/AdminUsersPage");
@@ -127,7 +131,7 @@ describe("FU-02c — 4 trang thiếu thật", () => {
     const h1 = countH1();
     expect(h1).toHaveLength(1);
     expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   test("AdminUsersPanel van giu h2/h3 (phan cap khong bi phong)", async () => {
     const { AdminUsersPage } = await import("../admin/AdminUsersPage");
