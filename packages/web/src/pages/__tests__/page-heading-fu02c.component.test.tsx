@@ -63,6 +63,23 @@ vi.mock("../../hooks/useAlertCenterRealtime.js", () => ({
   useAlertCenterRealtime: () => ({ alerts: [], connected: false }),
 }));
 
+// `AIUsageDashboard` poll API thật qua adapter ⇒ len xuong o 5000ms mac dinh
+// khi chay chung voi 100+ file. Mock adapter cho data rong ⇒ render tat ngay,
+// va **khong con phai** dua test nay vao trong bat ky timeout cao nao.
+vi.mock("../../adapters/coreApiAdapter.js", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>(
+    "../../adapters/coreApiAdapter.js",
+  );
+  return {
+    ...actual,
+    defaultCoreApiAdapter: {
+      ...(actual.defaultCoreApiAdapter as object),
+      getAIUsageAnalytics: vi.fn().mockResolvedValue({}),
+      getAIAuditLogs: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+    },
+  };
+});
+
 vi.mock("../../context/PortfolioContext.js", async () => {
   const actual = await vi.importActual<typeof import("../../context/PortfolioContext")>(
     "../../context/PortfolioContext",
