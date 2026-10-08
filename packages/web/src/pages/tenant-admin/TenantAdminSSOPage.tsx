@@ -242,7 +242,7 @@ export function TenantAdminSSOPage({
                   className={[`${styles.field}`, ta.sso_4].filter(Boolean).join(" ")}
                   style={{ gap: "10px" }}
                 >
-                  <input
+                  <input aria-label={t("tenantSSO.isEnabledLabel")}
                     type="checkbox"
                     id="sso-enabled"
                     checked={formData.is_enabled}
@@ -265,7 +265,7 @@ export function TenantAdminSSOPage({
                 ) : (
                   <div className={`${styles.form}`}>
                     <Field label={t("tenantSSO.idpEntityIdLabel")} help={t("tenantSSO.idpEntityIdHelp")}>
-                      <input
+                      <input aria-label={t("tenantSSO.idpEntityIdLabel")}
                         className={`${styles.input}`}
                         type="text"
                         value={formData.idp_entity_id}
@@ -279,7 +279,7 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.idpSsoUrlLabel")} help={t("tenantSSO.idpSsoUrlHelp")}>
-                      <input
+                      <input aria-label={t("tenantSSO.idpSsoUrlLabel")}
                         className={`${styles.input}`}
                         type="url"
                         value={formData.idp_sso_url}
@@ -293,7 +293,7 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.idpX509CertLabel")} help={t("tenantSSO.idpX509CertHelp")}>
-                      <textarea
+                      <textarea aria-label={t("tenantSSO.idpX509CertLabel")}
                         className={[`${styles.input}`, ta.sso_8].filter(Boolean).join(" ")}
                         value={formData.idp_x509_cert}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -307,7 +307,7 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.domainHintLabel")} help={t("tenantSSO.domainHintHelp")}>
-                      <input
+                      <input aria-label={t("tenantSSO.domainHintLabel")}
                         className={`${styles.input}`}
                         type="text"
                         value={formData.domain_hint}
@@ -322,7 +322,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.spEntityIdLabel")} help={t("tenantSSO.spEntityIdHelp")}>
                       <div className={ta.sso_9}>
-                        <input
+                        <input aria-label={t("tenantSSO.spEntityIdLabel")}
                           className={[`${styles.input}`, ta.sso_10].filter(Boolean).join(" ")}
                           type="text"
                           value={formData.sp_entity_id}
@@ -346,7 +346,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.spAcsUrlLabel")} help={t("tenantSSO.spAcsUrlHelp")}>
                       <div className={ta.sso_12}>
-                        <input
+                        <input aria-label={t("tenantSSO.spAcsUrlLabel")}
                           className={[`${styles.input}`, ta.sso_13].filter(Boolean).join(" ")}
                           type="url"
                           value={formData.sp_acs_url}

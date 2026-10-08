@@ -107,19 +107,19 @@ export function AdminBillingFleetPage() {
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterAll')} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterAll')}</option>
             {['paid', 'past_due', 'open', 'draft', 'void', 'uncollectible'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterPlanAll')} value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterPlanAll')}</option>
             {['free', 'starter', 'pro', 'enterprise', 'custom', 'internal'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminBillingFleet.searchPh')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminBillingFleet.searchPh')} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminBillingFleet.searchPh')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <button type="button" onClick={() => setPage(1)} className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t('adminBillingFleet.apply')}</button>
           <button type="button" disabled={exporting} onClick={doExport} className="rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40">{t('adminBillingFleet.export')}</button>
         </div>

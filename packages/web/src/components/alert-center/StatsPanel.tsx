@@ -48,7 +48,7 @@ export function StatsPanel(props: StatsPanelProps) {
 
       <div className={`${soc.searchWrapper}`} style={{ marginBottom: 12 }}>
         <span className={soc.searchIcon}>⌕</span>
-        <input
+        <input aria-label={t("alertCenter.statsSearch")}
           type="text"
           className={soc.searchInputWithIcon}
           value={props.searchTerm}

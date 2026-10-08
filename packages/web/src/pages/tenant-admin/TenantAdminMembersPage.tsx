@@ -265,7 +265,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                 ))}
               </div>
               <div className="memberSearch">
-                <input
+                <input aria-label={t("tenantMembers.searchPlaceholder")}
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
