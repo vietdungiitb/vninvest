@@ -1,3 +1,92 @@
+## Entry 254: UI/UX follow-up wave 2 — FU-01 h1 + FU-02a A11Y primitive + FU-03 mobile (2026-10-08)
+
+- **Date**: 2026-10-08
+- **Branch**: `feat/uiux-followup` (từ `dev@61c602733`)
+- **Claim**: `uiux-followup` — `docs/CLAIMS.md`, mục "Claim moi 2026-10-08"
+- **Quyết định Owner (2026-10-08)**: deep-link dùng **`useSearchParams` có sẵn** của
+  react-router-dom 6.30.3 — **không** thêm dependency vì `packages/web/package.json`
+  và `package-lock.json` đều nằm trong deny-list. Thứ tự ưu tiên: FU-01 h1 →
+  FU-02 A11Y → FU-03 mobile → FU-04 I18N → FU-05 NAV-1. **3/5 slice xong.**
+- **Nguồn**: `docs/audit-uiux/HANDOFF_UIUX_REMAINING_20261008.md`
+
+### Điều quan trọng nhất: số đếm sai lần thứ 5
+
+Số trang thiếu `<h1>` trong handoff là **24**, thật là **19**. Tôi đếm theo **tên
+file** (`"*Page.tsx"`) thay vì theo `pages/pageRegistry.js`, nên tính nhầm 5 file
+`Portfolio*Page.tsx` — đó là **tab con**, không phải route. Đối chiếu registry thật:
+10 component tự viết `<h1>` · 32 đi qua `ShellPageTemplate` (đã có `<h1>`) ·
+**19 thật sự thiếu**. Thêm bài học **L-G07** vào `docs/LESSONS/build-gates.md`
+(nối L-G04: đếm theo registry, không theo tên file).
+
+### FU-01 — `<h1>` cho 5 route Portfolio
+
+5 route `/portfolios/:id/*` đều map về **một** entry `portfolio-workspace`
+(`pages/pageRegistry.js:210-211`) ⇒ đặt `<h1>` ở khung
+`pages/portfolio/PortfolioWorkspace.tsx`, **không** ở 5 file tab con — thêm vào
+tab sẽ tạo **hai** `<h1>` trên mọi trang portfolio.
+
+Test mới `__tests__/portfolio-heading.component.test.tsx` (11 test):
+**fail-trước 11 failed → pass-sau 11 passed**. Test khoá `toHaveLength(1)` nên bắt
+được lỗi "thêm h1 ở tab con".
+
+### FU-02a — tên accessible cho primitive `components/ui`
+
+`placeholder` **không** phải accessible name (WCAG).
+
+- `components/ui/command.tsx`: `Command` + `CommandInput` thêm `aria-label`
+  fallback về `placeholder`. Phải tách `aria-label` ra khỏi `divProps` để **không**
+  truyền nhầm xuống `<div>` bao — có test khoá hành vi này.
+- `components/ui/input-otp.tsx`: **đã có sẵn** `aria-label="Digit N"` ở dòng 83.
+  Scanner A11Y-9 báo sai dòng 62 (đó là `.map`, không phải `<input>`). Không sửa
+  logic — chỉ thêm prop `digitLabel` để caller truyền bản i18n thay vì hardcode
+  tiếng Anh.
+
+Test mới `components/ui/__tests__/ui-primitives-a11y.component.test.tsx` (8 test):
+**fail-trước 4 failed → pass-sau 8 passed**.
+
+### FU-03 — 3 rule mobile đo được
+
+Đo bằng grep trong `src/`: `safe-area-inset-*` = 0, `touch-action` = 0,
+`overscroll-behavior` = 0. `viewport` meta **đã đúng** nên không sửa.
+
+1. `touch-action: manipulation` trên control tương tác — bỏ double-tap-zoom delay
+   ~300ms (không dùng `none`, sẽ chặn cuộn/zoom hợp lệ).
+2. `overscroll-behavior: contain` trên `[role=dialog]`, `[role=alertdialog]`,
+   `.drawerOverlay`, `.drawerContent`, `.schedulerModalOverlay`.
+3. `body` padding theo `env(safe-area-inset-left/right)` — iPhone notch ở
+   landscape. `env()` = 0px trên desktop nên không cần media query.
+
+### Gate đã chạy thật
+
+| Gate | Kết quả |
+|---|---|
+| `node scripts/check-uiux-budget.mjs` | **PASS** (0 tăng) |
+| `npm run check:tokens` | **PASS** (72 allowlisted, 0 violations) |
+| `npx tsc --noEmit` | exit 0 |
+| `npm run build` | built in 34.70s |
+| `npm run test:components` | **112 file / 766 test PASS** (baseline 110/747) |
+
+### Hạn chế đã biết — đừng đọc nhầm số liệu
+
+- **A11Y-9 vẫn = 44** sau FU-02a. Scanner so `<input` với `aria-label` **cùng một
+  dòng**; code đúng đặt `aria-label` ở dòng riêng nên scanner không thấy. Gate chỉ
+  chặn **tăng** nên vẫn PASS — **con số này không dùng làm thước đo chất lượng**, hãy
+  tin test.
+- **Mobile `CHƯA CHẠY`** trên thiết bị thật. Sửa CSS không thay thế được kiểm bằng
+  viewport thật / focus ring khi touch.
+- `safe-area` chỉ áp cho `body` theo chiều ngang; header/sidebar
+  `position: fixed` của từng module vẫn cần padding riêng.
+
+### CHƯA LÀM (cho session sau)
+
+- **FU-02b**: A11Y-9 còn ~41 điểm — `features/advertising/components` (15),
+  `pages/admin` (10), `pages/tenant-admin` (8), `alert-center` (3), rải rác (5).
+- **FU-02c**: `<h1>` còn 18 trang — 4 auth, 5 admin, 9 khác.
+- **FU-04**: I18N-1 — 5 file chắc chắn sửa + **7 file false positive** (đã có locale,
+  đừng đụng: `SocSignalsPanel` `tag`, `ScreenerSchedulePanel` `tag`,
+  `BrokerSettingsSection`/`SocBrokerPanel`/`SocUsersPanel` `locale`,
+  `stock-detail/*`, `AIAdvisorAlertPanel`).
+- **FU-05**: NAV-1 — 29 điểm / 12 file, dùng `useSearchParams`.
 ## Entry 251: Cai dat UI/UX - dung gate ngan sach de do tien bo, 327 -> 246 (2026-10-07)
 
 - **Date**: 2026-10-07
