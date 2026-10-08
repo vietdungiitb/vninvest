@@ -14,7 +14,7 @@ function fmtCompact(v, locale) {
   return n.toLocaleString(locale);
 }
 
-function formatPercentDelta(value, locale) {
+function formatPercentDelta(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }

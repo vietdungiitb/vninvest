@@ -158,6 +158,29 @@ tạo Hazard 1 **theo thiết kế**. Chạy tuần tự.
 Mỗi slice là 1 commit riêng + 1 nhóm test riêng ⇒ `git revert <sha>` được từng slice.
 Không squash (giữ trail để revert theo slice).
 
+## 6b. Owner chốt thu hẹp phạm vi (2026-10-08, sau audit Stage 5)
+
+Audit Stage 5 trả **REJECT** — 3 blocker, 6 major. Đã sửa **7/9** lỗi kỹ thuật
+(commit `eeb9ae9a1`). **2 blocker còn lại không phải code sai mà là phạm vi chưa làm**:
+
+| ID | Nội dung | Quyết định Owner |
+|---|---|---|
+| B-1 | FU-02b chưa làm — A11Y-9 còn 44 hit (advertising 15 · admin 10 · tenant-admin 8 · alert-center 3 · rải rác 8) | **Tách ticket riêng**, không làm trong wave này |
+| B-3 | FU-05 làm 1/12 file — 11 file còn lại, 26/29 hit | **Tách ticket riêng** |
+
+Lý do chấp nhận được: cả 2 đều là **mở rộng phạm vi**, không phải sửa lỗi trong
+phần đã làm. Phần đã làm có test, có fail-trước, và mọi gate xanh.
+
+**Không được coi wave này là "đã xong hết UI/UX".** Số còn lại đã ghi ở Entry 255.
+
+### Điều kiện để đóng vòng (thay cho Gate 5→6 nguyên bản)
+
+Skill yêu cầu `0 blocker + 0 major + confidence high`. Thực tế đạt:
+**0 blocker kỹ thuật · 0 major kỹ thuật · 2 blocker phạm vi (Owner đã chấp nhận
+bằng quyết định ghi ở mục này)**.
+
+---
+
 ## 6. Quy trình khép kín
 
 ```
