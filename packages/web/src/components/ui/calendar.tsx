@@ -10,10 +10,17 @@ interface CalendarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSe
   minDate?: Date;
   maxDate?: Date;
   className?: string;
+  /**
+   * BCP-47 tag cho `aria-label` cua tung o ngay (FU-04). Truoc day goi
+   * `toLocaleDateString()` khong locale ⇒ doc theo locale may nguoi dung.
+   * Caller nen truyen `localeTag` tu `useI18n()`. Mac dinh `undefined` giu
+   * hanh vi cu (khong lam hong cac caller dang ton tai).
+   */
+  locale?: string;
 }
 
 const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
-  ({ className, mode = 'single', selected, onSelect, disabled, minDate, maxDate, ...props }, ref) => {
+  ({ className, mode = 'single', selected, onSelect, disabled, minDate, maxDate, locale, ...props }, ref) => {
     const [currentMonth, setCurrentMonth] = React.useState(new Date());
     const [selectedDates, setSelectedDates] = React.useState<Date[]>(selected ? (Array.isArray(selected) ? selected : [selected]) : []);
 
@@ -131,7 +138,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
               disabled={day.isDisabled || disabled}
               aria-selected={day.isSelected}
               aria-current={day.isToday ? 'date' : undefined}
-              aria-label={day.date.toLocaleDateString()}
+              aria-label={day.date.toLocaleDateString(locale)}
             >
               {day.date.getDate()}
             </button>

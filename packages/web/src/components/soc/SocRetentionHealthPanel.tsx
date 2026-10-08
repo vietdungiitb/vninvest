@@ -37,7 +37,7 @@ interface SocRetentionHealthPanelProps {
 }
 
 export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthPanelProps) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
 
   if (!retentionHealth) return null;
 
@@ -112,7 +112,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
         createElement(
           "div",
           { className: styles.metricValue,  },
-          (retentionHealth.latest_run?.deleted_rows || 0).toLocaleString()
+          formatNumber(retentionHealth.latest_run?.deleted_rows ?? 0)
         )
       ),
       createElement(
