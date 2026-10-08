@@ -102,6 +102,19 @@ interface ErrorBannerProps {
   t?: (key: string, defaultText: string) => string;
 }
 
+/**
+ * FU-02c: DashboardPage co 3 nhanh `return` (empty / error / main). Chi them
+ * `<h1>` o nhanh main se lam mat heading luc chua co danh muc hoac bi loi =>
+ * phai dung o CA 3. Dung helper de khong quyen mot nhanh nao.
+ */
+function DashboardHeading({ t }: { t: (key: string, defaultText: string) => string }) {
+  return e(
+    "h1",
+    { className: "core-dashboard-title" },
+    t("dashboard.title", "Tổng quan"),
+  );
+}
+
 function ErrorBanner({ message, t = (_key: string, defaultText: string) => defaultText }: ErrorBannerProps) {
   return e(
     "div",
@@ -303,6 +316,7 @@ export function DashboardPage({
   if (!enabled || !resolvedPortfolioId) {
     return (
       <div className={"core-dashboard-page core-dashboard-page--empty " + className}>
+        <DashboardHeading t={t} />
         <p className="core-dashboard-empty-hint">{t("dashboard.empty", "Chọn danh mục để xem tổng quan.")}</p>
       </div>
     );
@@ -311,6 +325,7 @@ export function DashboardPage({
   if (error) {
     return (
       <div className={"core-dashboard-page " + className}>
+        <DashboardHeading t={t} />
         <ErrorBanner message={error} t={t} />
       </div>
     );
@@ -318,6 +333,7 @@ export function DashboardPage({
 
   return (
     <div className={"core-dashboard-page " + className}>
+      <DashboardHeading t={t} />
 
       <div className="core-dashboard-slot core-dashboard-slot--stats">
         <PageErrorBoundary>
