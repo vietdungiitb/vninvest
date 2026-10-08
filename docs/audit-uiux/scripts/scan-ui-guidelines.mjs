@@ -258,7 +258,14 @@ const RULES = [
       const m = ctx.line.match(/const\s*\[\s*(\w*(filter|search|sort|page|tab|query|q)\w*)\s*,/i);
       if (!m) return null;
       if (ctx.fileHasUrlSync) return null;
-      return `useState("${m[1]}") không đồng bộ URL  → mất deep-link  (${ctx.rel})`;
+      // W3-2 (2026-10-08): rule nay ban ra o dau wave 2, khi `useUrlState`
+      // (`packages/web/src/hooks/useUrlState.ts`) chua ton tai — nen danh sach
+      // thoat o `fileHasUrlSync` (dong nay) va CA CHUOI `useState(...)` trong
+      // message deu bo sot hook do. Hau qua: `CampaignTable.jsx` da deep-link
+      // bang `useUrlValue` van bi bao "useState("sortCol") khong dong bo URL".
+      const call = ctx.line.match(/const\s*\[\s*(\w+)\s*,[^\]]*?=\s*(\w+)/);
+      const src = call ? call[2] : "useState";
+      return `${src}("${m[1]}") khong dong bo URL  → mat deep-link  (${ctx.rel})`;
     },
   },
   {
@@ -315,7 +322,10 @@ for (const f of files) {
     focusBlocks: [...txt.matchAll(/([^{}]*:focus[^{}]*)\{([^{}]*)\}/g)].map((m) => m[2]),
     fileHasReducedMotion: /prefers-reduced-motion/.test(txt),
     fileHasTabular: /tabular-nums|fontVariantNumeric/.test(txt),
-    fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation/.test(txt),
+    // W3-2 (2026-10-08): `useUrlState` / `useUrlValue` la hook deep-link do
+    // wave 2 tu viet (`src/hooks/useUrlState.ts`, boc `useSearchParams` cua
+    // react-router-dom). File goi 2 hook nay **CO** dong bo URL ⇒ khong duoc bao.
+    fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation|useUrlState|useUrlValue/.test(txt),
   };
   const doneOnce = new Set();
 

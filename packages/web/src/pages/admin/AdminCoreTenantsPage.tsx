@@ -6,6 +6,17 @@ import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
+
+type TenantsUrlState = { search: string; status: string; page: number };
+
+// W3-2 (AC-2.3): `spec`/`defaults` o CAP MODULE => identity on dinh giua render.
+const TENANTS_URL_SPEC: { [K in keyof TenantsUrlState]: UrlStateCodec<TenantsUrlState[K]> } = {
+  search: stringCodec,
+  status: stringCodec,
+  page: intCodec,
+};
+const TENANTS_URL_DEFAULTS: TenantsUrlState = { search: '', status: '', page: 1 };
 
 export function AdminCoreTenantsPage() {
   const { t, localeTag } = useI18n();
@@ -15,8 +26,16 @@ export function AdminCoreTenantsPage() {
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [searchDraft, setSearchDraft] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  // W3-2 (AC-2.1): `searchDraft`/`statusDraft` la O DANG SOAN — giu o local
+  // (dong bo ca hai se gay `useEffect` loop). Chi `search`/`status`/`page` da
+  // AP DUNG moi vao URL.
+  const [{ search, status, page }, setUrlState] = useUrlState(
+    TENANTS_URL_SPEC,
+    TENANTS_URL_DEFAULTS,
+  );
+  const setSearch = (v: string) => setUrlState({ search: v });
+  const setStatus = (v: string) => setUrlState({ status: v });
+  const setPage = (v: number) => setUrlState({ page: v });
   const [registry, setRegistry] = useState<any>(null);
   const [detail, setDetail] = useState<any>(null);
   const [loadingRegistry, setLoadingRegistry] = useState(false);
@@ -24,7 +43,6 @@ export function AdminCoreTenantsPage() {
   const [error, setError] = useState<any>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   // R1 pagination (BE StandardPageNumberPagination, default 20/trang).
-  const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
@@ -319,7 +337,7 @@ export function AdminCoreTenantsPage() {
             <button
               type="button"
               disabled={!hasPrev || loadingRegistry}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => setPage(Math.max(1, page - 1))}
               className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
             >
               {t('adminCoreTenants.prevPage')}
@@ -334,7 +352,7 @@ export function AdminCoreTenantsPage() {
             <button
               type="button"
               disabled={!hasNext || loadingRegistry}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
               className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
             >
               {t('adminCoreTenants.nextPage')}

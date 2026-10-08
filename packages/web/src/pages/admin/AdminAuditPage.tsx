@@ -4,8 +4,30 @@ import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { AdminPageHeader, AdminEmptyState } from './adminUi.js';
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 const ACTIONS = ['create', 'update', 'delete', 'access', 'auth', 'revoke'];
+
+type AuditUrlState = {
+  page: number; tenantId: string; actor: string; action: string;
+  resourceType: string; dateFrom: string; dateTo: string;
+};
+
+// W3-2 (AC-2.3): `spec` + `defaults` khai o CAP MODULE de identity khong doi
+// giua cac lan render. Truoc day truyen object literal trong render lam
+// `useMemo([params, spec, defaults])` (useUrlState.ts:117) luon tinh lai.
+const AUDIT_URL_SPEC: { [K in keyof AuditUrlState]: UrlStateCodec<AuditUrlState[K]> } = {
+  page: intCodec,
+  tenantId: stringCodec,
+  actor: stringCodec,
+  action: stringCodec,
+  resourceType: stringCodec,
+  dateFrom: stringCodec,
+  dateTo: stringCodec,
+};
+const AUDIT_URL_DEFAULTS: AuditUrlState = {
+  page: 1, tenantId: '', actor: '', action: '', resourceType: '', dateFrom: '', dateTo: '',
+};
 
 export function AdminAuditPage() {
   const { t } = useI18n();
@@ -16,13 +38,17 @@ export function AdminAuditPage() {
   const [count, setCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
-  const [page, setPage] = useState(1);
-  const [tenantId, setTenantId] = useState('');
-  const [actor, setActor] = useState('');
-  const [action, setAction] = useState('');
-  const [resourceType, setResourceType] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  // W3-2 (AC-2.1): 7 state nay la bo loc + phan trang cua bang audit. Truoc day
+  // chi nam trong RAM nen gui link cho nguoi khac thi ho thay man hinh CHUA loc.
+  const [{ page, tenantId, actor, action, resourceType, dateFrom, dateTo }, setUrlState] =
+    useUrlState(AUDIT_URL_SPEC, AUDIT_URL_DEFAULTS);
+  const setPage = (v: number) => setUrlState({ page: v });
+  const setTenantId = (v: string) => setUrlState({ tenantId: v });
+  const setActor = (v: string) => setUrlState({ actor: v });
+  const setAction = (v: string) => setUrlState({ action: v });
+  const setResourceType = (v: string) => setUrlState({ resourceType: v });
+  const setDateFrom = (v: string) => setUrlState({ dateFrom: v });
+  const setDateTo = (v: string) => setUrlState({ dateTo: v });
   const [openId, setOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -142,9 +168,9 @@ export function AdminAuditPage() {
           <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-200">{JSON.stringify(openRow, null, 2)}</pre>
         ) : null}
         <div className="mt-3 flex items-center justify-between">
-          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
+          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
           <span className="text-xs text-slate-500">{t('adminAudit.pageOf', { page, pages: totalPages, total: count })}</span>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setPage((p) => p + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
+          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
         </div>
       </div>
     </div>

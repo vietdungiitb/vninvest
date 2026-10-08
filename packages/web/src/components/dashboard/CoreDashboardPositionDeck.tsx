@@ -4,6 +4,27 @@ import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
 import { ClipboardList, BarChart3, Fish, Bot } from 'lucide-react';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
+import { useUrlState, intCodec, type UrlStateCodec } from '../../hooks/useUrlState';
+
+type DeckTab = 'overview' | 'technical' | 'whale' | 'ai';
+type DeckUrlState = { activeTab: DeckTab; pageSize: number; currentPage: number };
+
+const DECK_TABS: readonly DeckTab[] = ['overview', 'technical', 'whale', 'ai'];
+const DECK_TAB_CODEC: UrlStateCodec<DeckTab> = {
+  parse: (raw) =>
+    raw != null && (DECK_TABS as readonly string[]).includes(raw) ? (raw as DeckTab) : undefined,
+  // mac dinh 'overview' => khong ghi tham so cho gia tri mac dinh
+  serialize: (v) => (v === 'overview' ? undefined : v),
+};
+
+// W3-2 (AC-2.3): `spec`/`defaults` o CAP MODULE => identity on dinh giua render,
+// `useMemo([params, spec, defaults])` trong hook that su memo hoa.
+const DECK_URL_SPEC: { [K in keyof DeckUrlState]: UrlStateCodec<DeckUrlState[K]> } = {
+  activeTab: DECK_TAB_CODEC,
+  pageSize: intCodec,
+  currentPage: intCodec,
+};
+const DECK_URL_DEFAULTS: DeckUrlState = { activeTab: 'overview', pageSize: 10, currentPage: 1 };
 
 interface Holding {
   symbol?: string;
@@ -49,13 +70,20 @@ export function CoreDashboardPositionDeck({
   onSelectSymbol = undefined,
   className = '',
 }: CoreDashboardPositionDeckProps) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // W3-2 (AC-2.1): `activeTab` + `pageSize` + `currentPage` la 3 state cua bang
+  // co phan trang. Truoc day chi trong RAM ⇒ gui link cho nguoi khac thi ho
+  // thay trang 1, co loc sai. `spec`/`defaults` o CAP MODULE (AC-2.3).
+  const [{ activeTab, pageSize, currentPage }, setUrlState] = useUrlState(
+    DECK_URL_SPEC,
+    DECK_URL_DEFAULTS,
+  );
+  const setActiveTab = (v: DeckTab) => setUrlState({ activeTab: v });
+  const setPageSize = (v: number) => setUrlState({ pageSize: v });
+  const setCurrentPage = (v: number) => setUrlState({ currentPage: v });
   const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = (tabId: DeckTab) => {
     setActiveTab(tabId);
     setCurrentPage(1);
   };
