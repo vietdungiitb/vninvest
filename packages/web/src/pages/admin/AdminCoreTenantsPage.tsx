@@ -445,7 +445,7 @@ export function AdminCoreTenantsPage() {
           <h3 className="text-base font-semibold text-slate-950 dark:text-white">
             {t('adminCoreTenants.switchTitle', { name: switchTarget.display_name || switchTarget.tenant_code || switchTarget.id })}
           </h3>
-          <input
+          <input aria-label={t('adminCoreTenants.switchReasonPh')}
             type="text"
             value={switchReason}
             onChange={(e) => setSwitchReason(e.target.value)}

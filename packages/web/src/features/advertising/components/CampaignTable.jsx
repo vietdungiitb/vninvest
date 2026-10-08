@@ -146,7 +146,7 @@ export default function CampaignTable({ campaigns = [], loading, onEdit, onDelet
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <input
+        <input aria-label={t("advertising.campaign.searchPlaceholder")}
           type="text"
           value={globalFilter ?? ""}
           onChange={(e) => setGlobalFilter(e.target.value)}

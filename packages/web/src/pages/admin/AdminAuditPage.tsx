@@ -80,15 +80,15 @@ export function AdminAuditPage() {
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder={t('adminAudit.filterTenant')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
-          <input value={actor} onChange={(e) => setActor(e.target.value)} placeholder={t('adminAudit.filterActor')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
-          <select value={action} onChange={(e) => setAction(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <input aria-label={t('adminAudit.filterTenant')} value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder={t('adminAudit.filterTenant')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminAudit.filterActor')} value={actor} onChange={(e) => setActor(e.target.value)} placeholder={t('adminAudit.filterActor')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <select aria-label={t('adminAudit.filterAction')} value={action} onChange={(e) => setAction(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminAudit.filterAction')}</option>
             {ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
-          <input value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder={t('adminAudit.filterResource')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminAudit.filterResource')} value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder={t('adminAudit.filterResource')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminAudit.filterDateFrom')} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
+          <input aria-label={t('adminAudit.filterDateTo')} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <button type="button" onClick={() => setPage(1)} className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t('adminAudit.apply')}</button>
           <button
             type="button"
