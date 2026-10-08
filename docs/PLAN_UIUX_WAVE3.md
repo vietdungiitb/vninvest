@@ -10,11 +10,30 @@ Mọi trích dẫn `file:line` là **số dòng thật**, đọc bằng công c�
 
 ---
 
-## 0. ĐÁP ỨNG 20 PHẢN ĐỐI CỦA STAGE 2 (audit `NEED_REVISION`)
+## 0. ĐÁP ỨNG PHẢN ĐỐI CỦA STAGE 2
 
-Audit: `C:\Users\PHAMVI~1\AppData\Local\Temp\opencode\w3\PLAN_AUDIT_OUT.md` (20 objection,
-`confidence: high`). **Tôi đã tự kiểm lại từng phản đối trên đĩa trước khi nhận** —
-4 phản đối tôi xác nhận sai là của tôi, 16 phản đối còn lại đều đúng.
+### 0.A Vòng 2 — verdict `AGREE`, `confidence: high`, 7 objection mới (đã đóng hết)
+
+Audit vòng 2 (`PLAN_AUDIT_OUT2.md`): **10/10** objection nặng của vòng 1 đã đóng **đúng**,
+tác giả audit **tự chạy lại** và khớp tuyệt đối (ledger `305/243/59` + tần suất;
+`A11Y-9` `44/16` với **16/16** số hit từng file; phân loại `38/6/0`; `NAV-1` `112/43`
+→ `86/32`; scanner **11** header rule; deny-list **10 entry**). Điều kiện để vào code:
+
+| # | Mức | Nội dung | Xử lý ở rev 3 |
+|---|---|---|---|
+| **N-01** | **cao** | Project Playwright mới thiếu `testMatch` ⇒ `--project=<tên>` chạy **cả 18 spec** chụp có-auth ⇒ đỏ **vì lý do khác với AC-5.1** | §9 AC-5.1: **bắt buộc** `testMatch: /mobile-ergonomics\.spec\.ts/` + `browserName: 'chromium'` tường minh |
+| **N-02** | TB | AC-4.1a **đảo chiều** nội dung comment mà nó dẫn làm bằng chứng — `:139-142` viết *"KHÔNG phải lựa chọn"*, plan nói ngược lại | §8 viết lại đúng nguyên văn + thêm yêu cầu sửa **isolation/cleanup** (nguyên nhân gốc comment chỉ ra) |
+| **N-03** | thấp | Citation `playwright.config.ts:23,28,34,44,49` sai 2/5, thiếu 1 | → `28,33,38,44,49` |
+| **N-04** | thấp | Tiêu chí nhóm (b) mô tả lệch với danh sách (`input-otp.tsx:67` lệch 16 dòng) | §5: tiêu chí (b) thành "trong **±6 dòng thật**", ghi `input-otp.tsx:67` là ngoại lệ đã kiểm tay |
+| **N-05** | thấp | AC-0.3 bỏ trống trường hợp số **không có trong baseline** (đúng lúc `256` của agent khác nằm trong worktree) | §4 AC-0.3: `count=1` ⇒ exit 0; `count≥2` ⇒ exit 1 |
+| **N-06** | rất thấp | AC-2.3 dẫn `useUrlState.ts:113`, thật là `:112` | → `:112` |
+| **N-07** | thấp | Non-goal 11 lệch quy định cứng của `AGENTS.md` mà plan không tự nêu | §10.11 đánh dấu **ngoại lệ cần Owner xác nhận** |
+
+### 0.B Vòng 1 — verdict `NEED_REVISION`, 20 objection (đã đóng hết)
+
+Audit vòng 1 (`PLAN_AUDIT_OUT.md`): **20 objection**, `confidence: high`. **Tôi đã tự kiểm
+lại từng phản đối trên đĩa trước khi nhận** — 4 phản đối là lỗi của tôi, 16 phản đối
+còn lại đều đúng.
 
 | # | Mức | Nội dung | Xử lý ở rev 2 |
 |---|---|---|---|
@@ -291,6 +310,9 @@ Script mới `docs/audit-uiux/scripts/check-ledger-entry.mjs`:
   (tổng 59 nhóm trùng).
   - Trùng **vượt** tần suất ⇒ **exit 1**.
   - Khớp tần suất ⇒ **exit 0 + cảnh báo**.
+  - **Số KHÔNG có trong baseline** (Entry mới): `count = 1` ⇒ **exit 0** (hợp lệ);
+    `count ≥ 2` ⇒ coi như trùng ⇒ **exit 1 + cảnh báo**. Không bỏ trống định nghĩa
+    này — đúng lúc `256` của agent khác đang nằm trong worktree (mục 0.0).
   - ⚠ Dùng tập đơn thuần sẽ **không bắt** được `## Entry 33` lần thứ 3, vì 33 đã
     nằm trong tập 59 ⇒ đó là lỗ hổng thiết kế, không phải chi tiết.
 - `--self-test` → âm: file mẫu có trùng **vượt** tần suất ⇒ **exit ≠ 0**.
@@ -320,7 +342,7 @@ packages/web/scripts/check-multi-agent.mjs`; **không** phải
 | Nhóm | Số | Tiêu chí | Hành động |
 |---|---|---|---|
 | **(a) thật** | **38** | không `aria-label` **và** không `<label>` trong ±6 dòng thật | thêm `aria-label` (i18n qua `t()`) |
-| **(b) false positive của rule** | **6** | đã có `aria-label` nhưng **không cùng dòng** | **KHÔNG** sửa code; ghi vào bảng |
+| **(b) false positive của rule** | **6** | đã có `aria-label` **trong ±6 dòng thật** nhưng **không cùng dòng** | **KHÔNG** sửa code; ghi vào bảng |
 | **(c)** | **0** | form input mà deep-link vô nghĩa | **nhóm trống** — xem ghi chú |
 
 6 hit nhóm (b) — `file:line` **thật**, đã tự kiểm:
@@ -329,7 +351,7 @@ packages/web/scripts/check-multi-agent.mjs`; **không** phải
 |---|---|---|
 | `packages/web/src/components/ui/command.tsx:22` | 27 | đã có `aria-label={ariaLabel ?? placeholder}` |
 | `packages/web/src/components/ui/command.tsx:54` | 58 | `CommandInput` |
-| `packages/web/src/components/ui/input-otp.tsx:67` | 83 | `${digitLabel ?? 'Digit'} ${index + 1}` — lệch 16 dòng, ngoài ±6 |
+| `packages/web/src/components/ui/input-otp.tsx:67` | 83 | `${digitLabel ?? 'Digit'} ${index + 1}` — **lệch 16 dòng, NGOÀI ±6** ⇒ theo cửa sổ ±6 thuộc (a), nhưng theo tiêu chí "rule chỉ nhìn cùng dòng" vẫn là (b) — **ngoại lệ đã kiểm tay**, xem ghi chú |
 | `packages/web/src/components/alert-center/FilterBar.tsx:107` | 111 | |
 | `packages/web/src/components/alert-center/FilterBar.tsx:117` | 123 | |
 | `packages/web/src/components/WhaleBubbleChart.jsx:1513` | 1517 | `<select>`; delta scanner = **36** |
@@ -448,7 +470,7 @@ Không viết hook thứ hai. Dùng `useUrlState` / `useUrlValue` + `intCodec` /
 
 ### AC-2.3 Memo ổn định — **AC chặn một bug đã xảy ra 1 lần**
 
-`useUrlState.ts:113` lặp `Object.keys(spec)`, `useMemo` phụ thuộc `spec`
+`useUrlState.ts:112` lặp `Object.keys(spec)`, `useMemo` phụ thuộc `spec`
 (`:117`). Caller truyền object literal `{...}` **trong render** ⇒ `spec` đổi mỗi lần
 ⇒ `value` là object mới mỗi render. Wave 2 đã dính **đúng lỗi này** ở `boolCodec`
 (`docs/TEST_REPORT_UIUX_WAVE2.md:76`: "bắt bug `boolCodec`").
@@ -520,9 +542,13 @@ Bằng chứng: 27527 ms > timeout **20000** (`page-heading-fu02c.component.test
 (`renderPage()`), để nạp ở lúc collect, không tính vào timeout test.
 - **Đo được**: `AIUsageAnalyticsPage` < 3 s trong full suite.
 
-⚠ **KHÔNG** chỉ tăng `timeout` — 20 s **đã là lựa chọn có chủ ý** và đã được tài liệu
-hoá tại `page-heading-fu02c.component.test.tsx:139-142`. Tăng timeout không xoá cơ
-chế, chỉ che nó.
+⚠ **KHÔNG** chỉ tăng `timeout`. Comment `page-heading-fu02c.component.test.tsx:139-142`
+viết: *"Timeout o day **KHONG phai lua chon**: dat mac dinh 5s thi test nay fail khi chay
+chung voi 100+ file khac, va do `cleanup` khong chay => DOM ban con lai => test SAU do thay
+2 h1."* ⇒ **20 s là hệ quả bắt buộc, KHÔNG phải lựa chọn thiết kế**, và comment chỉ ra
+nguyên nhân gốc là **`cleanup` không chạy còn sót DOM**. Tăng lên 30 s chỉ che thêm, không
+xoá cơ chế. ⇒ **AC-4.1a phải sửa luôn isolation/cleanup**, không chỉ chuyển `await import`
+lên module scope.
 
 ### AC-4.1b — Settle race (chỉ giải thích `AdminUsersPage`)
 Bằng chứng: fail ở **306 ms** ⇒ **không** phải timeout. Test
@@ -577,7 +603,7 @@ chính hazard 9 mà skill cảnh báo. Đã sửa.
 
 ### 9.2 Vì sao `npm run test:visual` nguyên trạng **không chạy được** (sửa O-01)
 
-- `playwright.config.ts:23,28,34,44,49`: mọi project trừ `setup` đều có
+- `playwright.config.ts:28,33,38,44,49`: mọi project trừ `setup` đều có
   `dependencies: ['setup']` + `storageState: 'tests/visual/.auth/user.json'`.
 - `packages/web/tests/visual/auth.setup.ts:5-30` **bắt buộc login thật**:
   `page.goto('/login')` → điền `testuser@vninvest.vn` →
@@ -591,12 +617,23 @@ chính hazard 9 mà skill cảnh báo. Đã sửa.
 ⇒ **AC-5.3 ("route bị auth chặn → CHƯA CHẠY") không che được**, vì auth chặn ở
 mức **project**, không phải mức route.
 
-### AC-5.1 Chỉ 2 tiêu chí **có fail-trước** (sửa O-02/O-03)
-Thêm **1 project mới** trong `packages/web/playwright.config.ts`: không
-`dependencies`, `storageState: { cookies: [], origins: [] }`, viewport **393×851** +
-`hasTouch: true` (lấy của project `mobile-chrome` sẵn có qua
-`devices['Pixel 5']`, **không** dùng 390×844 vì 390×844 là `iPhone 12` ⇒ cần webkit
-không cài). Chạy `npm run test:visual --project=<tên mới>`.
+### AC-5.1 Chỉ 2 tiêu chí **có fail-trước** (sửa O-02/O-03/N-01)
+Thêm **1 project mới** trong `packages/web/playwright.config.ts`: **không**
+`dependencies`, `storageState: { cookies: [], origins: [] }`,
+**`browserName: 'chromium'`** tường minh (vì `devices['Pixel 5']` kéo theo
+`isMobile` chỉ hỗ trợ Chromium), viewport **393×851** + `hasTouch: true` (lấy của
+project `mobile-chrome` sẵn có qua `devices['Pixel 5']`, **không** dùng 390×844 vì
+390×844 là `iPhone 12` ⇒ cần webkit không cài).
+
+⚠ **BẮT BUỘC khai `testMatch`** (sửa N-01 — không có nó, lệnh chạy sẽ đỏ **vì lý do sai**):
+`playwright.config.ts:6` đặt `testDir: './tests/visual'`, mặc định `testMatch` của
+Playwright là `**/*.@(spec|test)…` ⇒ project mới không `testMatch` sẽ nhận **toàn bộ
+18 file `*.spec.ts`** trong thư mục đó. Chúng được chụp **có auth**
+(`tests/visual/*-snapshots/`) trong khi project mới để `storageState` rỗng ⇒ đỏ hàng
+loạt **không liên quan gì tới AC-5.1**. ⇒ project mới **phải** có
+`testMatch: /mobile-ergonomics\.spec\.ts/`.
+
+Lệnh chạy: `npm run test:visual --project=<tên project mới>` ⇒ chạy **đúng 1 file**.
 
 1. **Given** app build + `vite preview` · **When** mở route không cần auth ·
    **Then** `document.documentElement.scrollWidth <= window.innerWidth`
@@ -647,8 +684,13 @@ không cài). Chạy `npm run test:visual --project=<tên mới>`.
 10. **KHÔNG** đụng `docs/audit-uiux/scripts/scan-blocks.mjs` hay bất kỳ script nào
     trong `packages/web/scripts/` — ngoài phạm vi, cần hỏi Owner riêng.
 11. **KHÔNG** đụng `docs/CODE_CHANGE_AUDIT_LEDGER.md` — agent khác đang ghi dở trong
-    cùng thư mục (mục 0.0). Entry retrospective nằm trong
-    `docs/REPORT_FINAL_UIUX_WAVE3.md`.
+    cùng thư mục (mục 0.0).
+    > ⚠ **ĐÂY LÀ NGOẠI LỆ CẦN OWNER XÁC NHẬN** so với `AGENTS.md` mục "Ghi chú ledger"
+    > (bắt buộc append 1 `## Entry N` sau mọi thay đổi). Lý do rất hợp lý: Hazard 1 —
+    > agent khác đang giữ 57 dòng **chưa commit** trong cùng file, mỗi bên prepend ở
+    > đầu file sẽ hợp nhất thành một hunk không tách được. Entry retrospective của
+    > wave 3 nằm đầy đủ trong `docs/REPORT_FINAL_UIUX_WAVE3.md` và **coordinator ghi hộ
+    > sau khi ledger sạch**.
 
 ---
 
