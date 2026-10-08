@@ -39,7 +39,15 @@ export function AdminUsageFleetPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!isStaffGate) {
-    return (<p>{t('common.noPermission')}</p>);
+    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON — khong
+  // co `<h1>` ⇒ screen reader khong biet dang o trang nao. Dung
+  // `AdminPageHeader` nhu 4 trang admin con lai de moi trang luon co 1 h1.
+  return (
+    <div className="admin-no-permission">
+      <AdminPageHeader title={t("routes.adminUsageFleetPage")} />
+      <p>{t("common.noPermission")}</p>
+    </div>
+  );
   }
 
   const top = overview?.top_tenants || [];

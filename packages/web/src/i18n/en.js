@@ -2339,6 +2339,8 @@ const en = {
     backToLogin: 'Back to login',
   },
   dashboard: {
+    // FU-02c/M-6: `<h1>` của `DashboardPage` — xem ghi chú ở `vi.js`.
+    title: 'Overview',
     emptyTitle: 'No portfolios yet',
     noPortfolio: 'Create your first portfolio to start tracking assets, transactions, and performance directly in the app.',
     createPortfolioCta: '+ Create your first portfolio',

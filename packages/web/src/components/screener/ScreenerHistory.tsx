@@ -64,7 +64,7 @@ export function actionBadge(t: (k: string) => string, action: HistoryAction) {
 }
 
 export function ScreenerHistory({ runs: fallbackRuns }: ScreenerHistoryProps) {
-  const { t, formatNumber } = useI18n();
+  const { t, formatNumber, formatDateTime } = useI18n();
   const queryClient = useQueryClient();
   const [currentPrices, setCurrentPrices] = useState<Record<string, number | null> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -292,7 +292,7 @@ export function ScreenerHistory({ runs: fallbackRuns }: ScreenerHistoryProps) {
               createElement(
                 "span",
                 { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } },
-                `${t("screener.history.runAt")}: ${new Date(run.timestamp).toLocaleString()} · ${formatNumber(run.rows.length)} ${t("screener.history.matches")}` +
+                `${t("screener.history.runAt")}: ${formatDateTime(new Date(run.timestamp))} · ${formatNumber(run.rows.length)} ${t("screener.history.matches")}` +
                   (run.serverId != null && serverBacktest[run.serverId]
                     ? ` · Win ${formatNumber(Math.round(serverBacktest[run.serverId].winRate))}% (server)`
                     : "")

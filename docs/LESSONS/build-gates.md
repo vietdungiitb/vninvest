@@ -93,3 +93,23 @@
   - [ ] Revert tung file chu khong phai ca lot?
   - [ ] Da kiem tra file bi revert keo theo co mat fix nao khong?
 
+
+## L-G07: Dem file theo TEN, khong phai theo REGISTRY - component con khong phai route
+
+- **Hau qua that:** 5 file `pages/portfolio/Portfolio*Page.tsx` co ten dung
+  `*Page.tsx` nen script dem nhu route-level. That su **5 route portfolio deu map
+  ve MOT entry** `portfolio-workspace` (`pageRegistry.js:210-211`) - 5 file do la
+  **tab con** cua `PortfolioWorkspace`. Dem theo ten file => **24** thay vi **19**.
+  Sai lan thu 5 trong 5 muc (xem L-G04).
+- **QUY TAC:** truoc khi dem "so trang thieu X", tra nguon su that la gi:
+  1. `pageRegistry.js` / `routeCatalog.js` - danh sach route THAT.
+  2. Grep cac component nao duoc `import()` that trong registry.
+  3. Tinh theo **component duoc render**, khong theo ten file.
+- **CHECKLIST:**
+  - [ ] Da lay danh sach route tu registry chu khong phai tu ten file chua?
+  - [ ] File ten co `Shell`/`Page` nhung co that su la route khong? (vi du
+      `market/ShellStockDetailPage.js` - co `Shell` trong ten nhung khong dung
+      `ShellPageTemplate`)
+  - [ ] Co nhieu route dung chung 1 component khong? (khi do chi 1 lan sua)
+- **Proof:** muc 4 cua `docs/audit-uiux/HANDOFF_UIUX_REMAINING_20261008.md`.
+

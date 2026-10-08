@@ -18,12 +18,18 @@ import { LangProvider } from "../../../context/LangContext";
 import { PortfolioProvider } from "../../../context/PortfolioContext";
 import { PortfolioHoldingsPage } from "../PortfolioHoldingsPage";
 import { PortfolioActivityPage } from "../PortfolioActivityPage";
+import { MemoryRouter } from "react-router-dom";
 
 function wrap(node: React.ReactElement) {
   return render(
-    <PortfolioProvider>
-      <LangProvider>{node}</LangProvider>
-    </PortfolioProvider>,
+    // FU-05: `PortfolioHoldingsPage` goi `useUrlState` -> can `<Router>`.
+    // MemoryRouter o day chi de cung cap context; deep-link that duoc kiem
+    // o file rieng (`portfolio-deep-link-fu05.component.test.tsx`).
+    <MemoryRouter>
+      <PortfolioProvider>
+        <LangProvider>{node}</LangProvider>
+      </PortfolioProvider>
+    </MemoryRouter>,
   );
 }
 

@@ -66,12 +66,15 @@ function formatDateField(value: string | null | undefined, fmtDate: (d: string) 
   return fmtDate(value);
 }
 
-function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt }: {
+function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt, formatNumber }: {
   data: CostTrend["monthly"];
   currency: string;
   projectedNext: number | null;
   projectedChangePct: number | null;
   tt: (k: string, opts?: object) => string;
+  // FU-04: CostTrendChart là component RIÊNG (không gọi useI18n) nên phải nhận
+  // formatter từ cha thay vì `.toLocaleString()` theo locale máy người dùng.
+  formatNumber: (n: number, opts?: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => string;
 }): ReactNode {
   if (!data || data.length === 0) {
     return <ShellEmptyState description={tt("tenantBilling.costTrendEmpty")} />;
@@ -81,8 +84,8 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt 
   return (
     <div>
       <div className={ta.bill_3}>
-        <span className={ta.bill_4}>{tt("tenantBilling.costTotal")}: <strong className={ta.bill_5}>{total.toLocaleString()} {currency}</strong></span>
-        <span className={ta.bill_6}>{tt("tenantBilling.costAvg")}: <strong className={ta.bill_7}>{avg.toLocaleString()} {currency}</strong></span>
+        <span className={ta.bill_4}>{tt("tenantBilling.costTotal")}: <strong className={ta.bill_5}>{formatNumber(total)} {currency}</strong></span>
+        <span className={ta.bill_6}>{tt("tenantBilling.costAvg")}: <strong className={ta.bill_7}>{formatNumber(avg)} {currency}</strong></span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data}>
@@ -97,7 +100,7 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt 
       </ResponsiveContainer>
       {projectedNext != null && projectedChangePct != null && projectedChangePct > 20 && (
         <div className={ta.bill_8}>
-          {tt("tenantBilling.costForecast", { projected: projectedNext.toLocaleString(), pct: projectedChangePct })}
+          {tt("tenantBilling.costForecast", { projected: formatNumber(projectedNext as number), pct: projectedChangePct })}
         </div>
       )}
     </div>
@@ -113,7 +116,7 @@ interface TenantAdminBillingPageProps {
 }
 
 export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
-  const { t, formatCurrency: fmtCurrency, formatDate: fmtDate } = useI18n();
+  const { t, formatCurrency: fmtCurrency, formatDate: fmtDate, formatNumber } = useI18n();
   const { ability } = usePortfolio();
   const toast = useToast();
   const confirm = useConfirm();
@@ -234,9 +237,10 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
               data={costTrend?.monthly || []}
               currency={costTrend?.currency || "VND"}
               projectedNext={costTrend?.projected_next ?? null}
-              projectedChangePct={costTrend?.projected_change_pct ?? null}
-              tt={t}
-            />
+          projectedChangePct={costTrend?.projected_change_pct ?? null}
+          tt={t}
+          formatNumber={formatNumber}
+        />
           </ShellPanel>
 
           <ShellPanel title={t("tenantBilling.subscriptionTitle")} actions={refreshAction}>

@@ -16,6 +16,9 @@ export function AIAgentFederationPage({ className = "" }: AIAgentFederationPageP
     e(Link, { to: "/settings/ai", className: styles.hubBackLink },
       t("aiCommandCenter.backToHub")
     ),
+    // FU-02c: trang nay khong co <h1> => screen reader khong tim thay tieu de trang.
+    // Pattern giong AICommandCenterPage.tsx:172 (styles.pageTitle + key i18n).
+    e("h1", { className: styles.pageTitle }, t("routes.aiAgentFederation")),
     e(AIAgentFederationPanel, null),
   );
 }

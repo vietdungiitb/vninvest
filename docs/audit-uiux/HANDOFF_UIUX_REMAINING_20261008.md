@@ -16,11 +16,16 @@ Tôi đã báo 5 con số, **4/5 sai** vì lấy output scanner làm số lỗi:
 | NAV-1 | 115 | **29 điểm / 12 file** |
 | I18N-1 | 19 | **19–21** (tuỳ cách đếm, xem §2) |
 | A11Y-9 | 44 | **45** |
-| Thiếu `<h1>` | 63 | **24** |
+| Thiếu `<h1>` | 63 | **19** |
 | Mobile | "chưa kiểm" | **3 thiếu cụ thể** |
 
-⚠ **Sửa `<h1>` theo danh sách 63 trang cũ sẽ tạo 33 trang có 2 `<h1>`** —
+⚠ **Sửa `<h1>` theo danh sách 63 trang cũ sẽ tạo 32 trang có 2 `<h1>`** —
 `ShellPageTemplate.js:119` đã render `<h1>`.
+
+⚠ **Và 24 (số ở bảng trên) cũng sai — thật là 19.** Tôi đếm theo **tên file**
+(`*Page.tsx`) thay vì theo `pageRegistry.js`. 5 file `Portfolio*Page.tsx` là tab
+con, không phải route. Đây là lần thứ 5 trong 5 mục mà con số tôi đưa ra phải
+sửa lại — xem `docs/LESSONS/build-gates.md` L-G04.
 
 ---
 
@@ -133,33 +138,53 @@ Các điểm còn lại đã xác nhận có thật:
 
 ---
 
-## 4. `<h1>` — P1, 24 trang · dễ sửa nhưng dễ gây hỏng ngược
+## 4. `<h1>` — P1, 19 trang · dễ sửa nhưng dễ gây hỏng ngược
 
 ### Cơ chế đã có (ĐỪNG viết lại)
 `components/ShellPageTemplate.js:119` render `<h1>` + `role="region"` +
 `aria-labelledby` ở `:106-107`. **42 file dùng shell này.**
 Test khoá hành vi: `components/__tests__/dom-landmarks.component.test.tsx`.
 
-**Phân bố 68 route-level page**: 11 tự viết `<h1>` · 33 qua shell (đã có) ·
-**24 thật sự thiếu**.
+**Phân bồ đúng theo `pageRegistry.js` (61 component thật sự được render)**:
+10 tự viết `<h1>` · 32 qua shell (đã có) · **19 thật sự thiếu**.
 
-### 24 trang cần sửa
+⚠ **Con số 19 này CŨNG SAI — audit Stage 2 (2026-10-08) đã sửa thành 4.**
+14/19 trang đã có đúng 1 `<h1>`, chỉ là không nằm trong file page mà đến từ
+`createElement("h1", …)` hoặc component con (`adminUi.tsx:24` qua `AdminPageHeader`,
+`WorkstationShell.tsx:53`, `WhaleAdvisoryBentoHeader.js:44`). Bằng chứng từng trang
+ở `docs/PLAN_UIUX_WAVE2_FINAL.md` §2 FU-02c. **Đây là sai số thứ 6** — xem
+`docs/LESSONS/build-gates.md` L-G04 + L-G07. Số đo duy nhất đáng tin là DOM thật
+(`getAllByRole`), không phải grep.
 
-| Nhóm | Số | Trang |
+⚠ **Đừng đếm theo tên file.** 5 file `pages/portfolio/Portfolio*Page.tsx` **không
+phải route-level** — 5 route portfolio đều map về **1 entry**
+`portfolio-workspace` (`pageRegistry.js:214-215` — dòng 210-211 là `core-portfolios`,
+trích cũ SAI). `<h1>` phải nằm trong
+`PortfolioWorkspace.tsx` (khung dùng chung), **không** nằm trong 5 file tab.
+Thêm vào tab ⇒ 2 `<h1>` trên mọi trang portfolio.
+
+### 19 trang cần sửa
+
+| Nhóm | Số | Trang (đã đối chiếu `pageRegistry.js`) |
 |---|---|---|
-| Auth | 4 | `AuthLoginPage` `AuthRegisterPage` `AuthResetPasswordPage` `AuthVerifyEmailPage` (đã kiểm: thư mục `pages/auth` chỉ có đúng 4 file `*Page.tsx`) |
-| Admin | 5 | `AdminAnalyticsPage` `AdminAuditPage` `AdminBillingFleetPage` `AdminUsageFleetPage` `AdminUsersPage` |
-| **Portfolio** | **6** | `PortfolioWorkspacePage` `PortfolioOverviewPage` `PortfolioHoldingsPage` `PortfolioAllocationPage` `PortfolioAnalyticsPage` `PortfolioActivityPage` — **đều KHÔNG dùng shell, đều thiếu h1. Nợ của tôi, sửa trước** |
-| Khác | 9 | `DashboardPage` `StockDetailPage` `SupportPage` `TransactionsPage` `UpgradePage` `UserSettingsPage` `WhaleAdvisoryPage` `AIAgentFederationPage` `AIUsageAnalyticsPage` |
+| Auth | 4 | `auth/AuthLoginPage` · `auth/AuthRegisterPage` · `auth/AuthVerifyEmailPage` · `auth/AuthResetPasswordPage` |
+| Admin | 5 | `admin/AdminUsersPage` · `AdminBillingFleetPage` · `AdminUsageFleetPage` · `AdminAuditPage` · `AdminAnalyticsPage` |
+| **Portfolio** | **1** | `portfolio/PortfolioWorkspacePage` — 5 route dùng chung entry này. **Sửa `PortfolioWorkspace.tsx`** (khung), không sửa 5 file tab |
+| Khác | 9 | `DashboardPage` · `SupportPage` · `TransactionsPage` · `UserSettingsPage` · `UpgradePage` · `market/ShellStockDetailPage.js` · `signals/WhaleAdvisoryPage.tsx` · `AIAgentFederationPage.tsx` · `AIUsageAnalyticsPage.tsx` |
 
-Tổng: 4 + 5 + 6 + 9 = **24** ✅ khớp số đã kiểm chứng.
+Tổng: 4 + 5 + 1 + 9 = **19** ✅
+
+⚠ **`market/ShellStockDetailPage.js` tên có `Shell` nhưng KHÔNG dùng
+`ShellPageTemplate`** — đây là shell riêng của market, vẫn phải tự thêm `<h1>`.
+Không tin tên file.
 
 ### ⚠ Hai cái bẫy đã kiểm tra
 1. `app/routeCatalog.js` có `titleKey` nhưng **không component nào render nó** (grep
    `titleKey` chỉ ra trong chính `routeCatalog.js`) ⇒ `titleKey` **không** giúp
    gắn `<h1>`. Đừng tin nó.
-2. `pages/portfolio/PortfolioWorkspace.tsx` là **component con**, không phải route — đừng thêm
-   `<h1>` vào nó (sẽ thành 2 `<h1>` trên `PortfolioWorkspacePage`).
+2. `pages/portfolio/PortfolioWorkspace.tsx` là **khung dùng chung cho cả 5 tab** —
+   đây là chỗ **ĐÚNG** để đặt `<h1>` (1 cái phục vụ 5 route). 5 file
+   `Portfolio*Page.tsx` là tab con, **đừng** thêm `<h1>` vào chúng.
 
 ---
 

@@ -3,7 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const e = createElement;
 
-function fmtCompact(v) {
+function fmtCompact(v, locale) {
   if (v == null) return '—';
   const n = Number(v);
   if (!Number.isFinite(n)) return '—';
@@ -11,7 +11,7 @@ function fmtCompact(v) {
   if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString(undefined);
+  return n.toLocaleString(locale);
 }
 
 function formatPercentDelta(value) {
@@ -75,7 +75,7 @@ function useI18n() {
       };
       return map[key] || options?.defaultValue || key;
     },
-    formatDateTime: (val) => new Date(val).toLocaleString('vi-VN'),
+    formatDateTime: (val, locale) => new Date(val).toLocaleString(locale),
   };
 }
 
@@ -83,7 +83,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
   // NOTE: OrderFlowRadarPanel intentionally shows today's intraday CVD;
   // session-date cross-day sync is deferred to SD-06/backend lane.
   // This is a deliberate design tradeoff to always showcase live active money-flow delta.
-  const { t, formatDateTime } = useI18n();
+  const { t, formatDateTime, locale } = useI18n();
   const cvdSeries = useMemo(() => orderFlowData?.cvd_series || [], [orderFlowData]);
   const darkFlow = orderFlowData?.dark_flow || {};
   const latestSignal = orderFlowData?.latest_signal || null;
@@ -149,7 +149,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
   const chartData = useMemo(() => {
     return filteredCvdSeries.map((item) => ({
       ...item,
-      label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—',
+      label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '—',
       cumulative_cvd: Number(item.cumulative_cvd || 0),
     }));
   }, [filteredCvdSeries]);
@@ -322,7 +322,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
         e(
           'p',
           { className: 'mt-1 text-[10px] text-slate-500' },
-          liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString(undefined) : '—',
+          liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString(locale) : '—',
         ),
       ),
     ),
@@ -378,7 +378,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
                   e(XAxis, { dataKey: 'label', tick: { fill: '#64748b', fontSize: 10 }, axisLine: false, tickLine: false }),
                   e(YAxis, { tick: { fill: '#64748b', fontSize: 10 }, tickFormatter: fmtCompact, axisLine: false, tickLine: false }),
                   e(Tooltip, {
-                    formatter: (value) => [fmtCompact(value), t('whaleAlertsDashboard.cvdLabel', { defaultValue: 'CVD Tích Lũy' })],
+                    formatter: (value) => [fmtCompact(value, locale), t('whaleAlertsDashboard.cvdLabel', { defaultValue: 'CVD Tích Lũy' })],
                     labelStyle: { color: '#cbd5e1', fontSize: 11 },
                     contentStyle: { background: '#090f1d', border: '1px solid #334155', borderRadius: 12 },
                   }),

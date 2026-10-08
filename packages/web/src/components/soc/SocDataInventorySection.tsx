@@ -126,8 +126,8 @@ export function SocDataInventorySection() {
   return createElement("div", { className: styles.inventoryRoot },
 
     createElement("div", { className: styles.metricGrid },
-      MetricCard({ label: t("soc.dataops.total_rows"), value: (s.total_rows ?? 0).toLocaleString(), color: "var(--accent-cyan, #06b6d4)" }),
-      MetricCard({ label: t("soc.dataops.total_symbols"), value: (s.total_symbols ?? 0).toLocaleString(), color: toneColor("success") }),
+      MetricCard({ label: t("soc.dataops.total_rows"), value: formatNumber(s.total_rows ?? 0), color: "var(--accent-cyan, #06b6d4)" }),
+      MetricCard({ label: t("soc.dataops.total_symbols"), value: formatNumber(s.total_symbols ?? 0), color: toneColor("success") }),
       MetricCard({ label: t("soc.dataops.earliest_date"), value: s.earliest_date ?? t("soc.dataops.fallback_na"), color: toneColor("warning") }),
       MetricCard({ label: t("soc.dataops.latest_date"), value: s.latest_date ?? t("soc.dataops.fallback_na"), color: toneColor("danger") }),
     ),

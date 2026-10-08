@@ -8,7 +8,7 @@ import { useI18n } from '../../context/LangContext.js';
 const e = createElement;
 
 export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compact = false }) {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const [secondsAgo, setSecondsAgo] = useState(null);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compa
       null,
       e('span', { className: 'font-medium' }, statusLabel),
       secondsAgo != null && e('span', { className: 'ml-1 opacity-75' }, `· ${ageLabel}`),
-      lastEventAt && !compact && e('span', { className: 'ml-1 opacity-50' }, `(${new Date(lastEventAt).toLocaleTimeString()})`)
+      lastEventAt && !compact && e('span', { className: 'ml-1 opacity-50' }, `(${formatDateTime(lastEventAt)})`)
     )
   );
 }
