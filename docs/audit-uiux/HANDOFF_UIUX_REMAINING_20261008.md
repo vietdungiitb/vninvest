@@ -148,9 +148,18 @@ Test khoá hành vi: `components/__tests__/dom-landmarks.component.test.tsx`.
 **Phân bồ đúng theo `pageRegistry.js` (61 component thật sự được render)**:
 10 tự viết `<h1>` · 32 qua shell (đã có) · **19 thật sự thiếu**.
 
+⚠ **Con số 19 này CŨNG SAI — audit Stage 2 (2026-10-08) đã sửa thành 4.**
+14/19 trang đã có đúng 1 `<h1>`, chỉ là không nằm trong file page mà đến từ
+`createElement("h1", …)` hoặc component con (`adminUi.tsx:24` qua `AdminPageHeader`,
+`WorkstationShell.tsx:53`, `WhaleAdvisoryBentoHeader.js:44`). Bằng chứng từng trang
+ở `docs/PLAN_UIUX_WAVE2_FINAL.md` §2 FU-02c. **Đây là sai số thứ 6** — xem
+`docs/LESSONS/build-gates.md` L-G04 + L-G07. Số đo duy nhất đáng tin là DOM thật
+(`getAllByRole`), không phải grep.
+
 ⚠ **Đừng đếm theo tên file.** 5 file `pages/portfolio/Portfolio*Page.tsx` **không
 phải route-level** — 5 route portfolio đều map về **1 entry**
-`portfolio-workspace` (`pageRegistry.js:210-211`). `<h1>` phải nằm trong
+`portfolio-workspace` (`pageRegistry.js:214-215` — dòng 210-211 là `core-portfolios`,
+trích cũ SAI). `<h1>` phải nằm trong
 `PortfolioWorkspace.tsx` (khung dùng chung), **không** nằm trong 5 file tab.
 Thêm vào tab ⇒ 2 `<h1>` trên mọi trang portfolio.
 
