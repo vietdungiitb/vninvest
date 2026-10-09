@@ -22,7 +22,7 @@ Mỗi dòng là **một lệnh đã chạy thật** với exit code thật. Khô
 | `npm run check:shell` | **0** | PASS |
 | `npx tsc --noEmit` | **0** | 0 error |
 | `npm run build` | **0** | `tsc && vite build` — built in 46.99s |
-| `npm run test:components` | **0** | **116 file / 804 test PASS** |
+| `npm run test:components` | **CHƯA ỔN ĐỊNH** | ⚠ **ĐÃ SỬA SỐ Ở ĐÂY (2026-10-09).** Bản gốc ghi `exit 0 — 116 file / 804 test PASS`. Đo lại ở `dev` @ `7aeef9503`: **1 lần đỏ** = `exit 1`, `2 failed \| 802 passed (804)`; **2 lần sau xanh** = `exit 0`, `116/804`. ⇒ **không tái lập được**. Xem mục "Flake đã biết" |
 | `npm run lint` | **1** | ⚠ xem mục "Lint" bên dưới |
 | `node packages/web/scripts/check-multi-agent.mjs` (cwd = root) | **0** | cảnh báo claim cũ, không chặn |
 | `pwsh -File scripts/agent-sync.ps1` | **CHƯA CHẠY** | Stage 7 chạy sau rebase |
@@ -33,16 +33,32 @@ Mỗi dòng là **một lệnh đã chạy thật** với exit code thật. Khô
 ```
 155:6  error  React Hook useMemo has a missing dependency: 'locale'
               react-hooks/exhaustive-deps
-  file: src/components/FactsFirstWhaleBubbleChart.jsx
+  file: src/components/OrderFlowRadarPanel.js        ← ĐÃ SỬA (2026-10-09)
 ```
+
+> ⚠ **ĐÃ SỬA 2026-10-09 — bản gốc ghi sai file.** Bản gốc ghi
+> `src/components/FactsFirstWhaleBubbleChart.jsx`. Đo lại:
+> ```
+> npm run lint --silent   # eslint src
+>   src\components\OrderFlowRadarPanel.js
+>     155:6  error  React Hook useMemo has a missing dependency: 'locale'  react-hooks/exhaustive-deps
+> ```
+> Cùng `155:6` **cùng message** ⇒ copy-paste gán nhầm file.
+> `FactsFirstWhaleBubbleChart.jsx` **chỉ có warning**, không có error.
+> Chi tiết: ledger `## Entry 256` + `## Entry 257`.
 
 **Đã chứng minh là pre-existing**, không phải do wave này:
 
 ```bash
-git diff dev..HEAD --stat -- packages/web/src/components/FactsFirstWhaleBubbleChart.jsx
-# (rỗng — file giống hệt dev, 52 dòng cả hai bên)
-git show dev:...FactsFirstWhaleBubbleChart.jsx | Measure-Object -Line   # 52
+# File THẬT chứa lỗi (bản gốc dùng nhầm file này):
+git diff dev..HEAD --stat -- packages/web/src/components/OrderFlowRadarPanel.js
+# (rỗng — file giống hệt dev ở cả hai bên)
 ```
+
+Lưu ý: lệnh `git show dev:…FactsFirstWhaleBubbleChart.jsx` ở bản gốc **vẫn đúng
+cho file đó** (52 dòng, không đổi) — nhưng nó **không liên quan** tới lỗi lint,
+vì lỗi không nằm ở file đó. Giữ dòng này không có tác dụng gì cho kết luận
+"pre-existing"; lệnh đúng là lệnh trên.
 
 Số liệu so sánh:
 
