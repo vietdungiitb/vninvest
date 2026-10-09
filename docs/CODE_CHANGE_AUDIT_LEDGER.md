@@ -1,3 +1,84 @@
+## Entry 260: UI/UX wave 6 phan 2 - PHUONG AN (a) boc Router cho test, NAV-1 80 -> 60, dong 2 lint error (2026-10-09)
+
+- **Nhanh**: `feat/uiux-w6-soc-router` -> `dev`
+- **PR**: **#80** - **DA MERGE** (`c008cba39`)
+- **Claim**: `uiux-w6-soc-router` (`docs/CLAIMS.md`)
+- **Tien cua**: `docs/audit-uiux/HANDOFF_UIUX_WAVE6_20261010.md` §2.3 - Owner chon **(a)**
+- **Nhật ký đầy đủ**: `docs/audit-uiux/SESSION_LOG_WAVE6_20261009.md`
+- **Pham vi**: 5 component SOC + 7 file test + 1 helper moi. **KHONG** sua `hooks/useUrlState.ts` (xem "Vi sao boc Router la sua dung goc").
+
+### Ket qua: NAV-1 **80 -> 60 hit**, 6/7 file SOC ve 0
+
+| File | Hit |
+|---|---|
+| `SocUsersPanel.tsx` | 5 -> **0** |
+| `SocDataOpsConfigSection.tsx` | 3 -> **0** |
+| `SocDataOpsMonitorSection.tsx` | 3 -> **0** |
+| `SocSchedulerBoard.tsx` | 2 -> **0** |
+| `DataOpsContext.tsx` | 1 -> **0** |
+| `SocOverviewPanel.tsx` | 7 -> **1** (`debouncedSearch`, giu co y dich) |
+| `SocSignalsPanel.tsx` | 11 - **KHONG dung** (da thu, rollback) |
+
+2 hit con lai co y dich: `debouncedSearch` / `debouncedSymbol` la **ban sao debounce** cua o tim kiem => dua ca hai vao URL la 2 nguon su that cho 1 khai niem.
+
+### Vi sao boc Router trong test la SUA DUNG GOC
+
+`useUrlValue` -> `useSearchParams` -> `useLocation()` **throw** ngoai `<Router>` (`react-router-dom@6.30.3`). Nhung component nay **DA can Router o production** (`main.tsx` boc `BrowserRouter` tu dau) => thieu Router trong test la **thieu sot cua test**, khong phai gioi han cua code.
+
+**Vi vay KHONG sua `hooks/useUrlState.ts`** de "chiu duoc" thieu Router: loi do phai no len o production, khong duoc nuot.
+
+Helper moi `packages/web/src/components/__tests__/socRouterHarness.tsx` (dung chung): `renderInRouter` + `rerender` boc lai trong cung cay `MemoryRouter` + `SearchProbe` doc `location.search` THAT.
+
+### 6 BUG RUNTIME BAT DUOC - do CHINH viec chuyen state sang URL
+
+Khong cai nao ton tai truoc; tat ca do `useState` -> `useUrlState`.
+
+| # | Bug | Hau qua | Bat boi |
+|---|---|---|---|
+| 1 | `page` trong deps cua effect debounce | moi lan bam trang bi `setPage(1)` **de mat** lua chon | `W6-1` (URL ra `page=1` thay vi `2`) |
+| 2 | effect goi `load(1)` hardcode | deep-link `?page=3` bi bo qua | `W6-3` |
+| 3 | `setPage(1)` chay o mount | xoa mat deep-link ngay lap tuc | `W6-O1` |
+| 4 | clamp `safePage` khi `services` con rong | `totalPages=1` => ghi de URL **vinh vien** | `W6-O1` |
+| 5 | setter cua `useUrlValue` nhan **gia tri**, khong phai updater lambda | truyen lambda => ghi chuoi ham vao URL | `tsc` TS2345 (5 call site) |
+| 6 | `<output>` cua probe co implicit ARIA role `status` | pha assertion `queryByRole("status")` cua test khac | `soc-queue-depth` do |
+
+**Bai hoc dat nhat**: them `page` vao deps de **het canh bao eslint** => **3 test do**. ESLint dung; cach sua cua supervisor sai. Cach dung: `ref` tro toi setter moi nhat + `useCallback` deps rong. `useCallback` boc `setOverviewState` **khong giup** (`setState` doi tham chieu moi render).
+
+### 2 LINT ERROR do PR #80 (commit `3ac025ec9`) tao ra - da dong o PR nay
+
+`setPage` closure khong on dinh => `exhaustive-deps` yeu cau them. Da thu them `page` vao deps => 3 test W6-O1/O1b/O3 do (xem bang o tren). Disable 1 cho, kem ly do + bang chung test.
+
+### Line ending - bay kinh nghiet
+
+`WriteAllText` bien file sang CRLF lam diff phinh **142 dong -> 3976 dong / 3892 xoa**. Nguyen nhan: **moi file trong repo co line-ending khac nhau** - `SocOverviewPanel.tsx` la CRLF, `SocScreenerPanel.tsx` la LF. Chuan hoa ve LF cho 9 file, **giu CRLF** cho `SocOverviewPanel.tsx`.
+
+Do lai bang `git diff --numstat` **truoc khi commit**, khong tin mat thuong.
+
+### Gate chay that tren `dev` sau merge
+
+| Gate | Exit | Ghi chu |
+|---|---|---|
+| `npx tsc --noEmit` | **0** | = baseline |
+| `npm run lint` | **0** | **0 error**, 3764 warning |
+| `npm run test:components` | **0** | **120 file / 854 test PASS** |
+| `nav1-report.mjs` | 0 | **80 -> 60** hit |
+| `check-uiux-budget` | **0** | 0 tang |
+| `pre-push-gate` (chay tay) | **0** | 17 PASS / 0 FAIL |
+
+**FAIL-BEFORE / PASS-ASTER**: revert 2 fix cua `SocOverviewPanel` => `W6-O1` + `W6-O1b` FAIL; khoi phuc bang `Copy-Item` tu `%TEMP%` (**KHONG** dung `git checkout --`, hazard 11).
+
+### `SocSignalsPanel.tsx` (11 hit) - DA THU, CHUA XONG, DA ROLLBACK
+
+Khong merge thay doi chua verify. 11 hit = 7 that + **4 false positive** (`configTab`/`detectionTab`/`retentionTab`/`rulesTab` la **cache du lieu** `SignalTabData<T>` khong phai tab dang chon). Khi boc Router cho 2 test file, **2 test co san bat dau fail** (phan trang tra 20 thay vi 25); da xac minh nguyen nhan o phan chuyen state sang URL, **khong** phai do boc Router. Component co 4 subtab lazy-load + polling + chon nhieu.
+
+### CHUA CHAY
+
+BE test (khong lien quan) · Playwright mobile (can backend that) · `check-shell.mjs` (**hong san**, `ERR_UNKNOWN_FILE_EXTENSION`) · gate qua pre-push hook (`core.bare`, xem `## Entry 259` §Ket qua 3) · `npm run build` (da chay `tsc --noEmit` 0).
+
+### Bai hoc quy trinh
+
+**"Het canh bao eslint" khong phai tieu chuan dat.** Thêm dep de lam sach lint da lam hong 3 test - mau thuan, khong phai mau thuan hinh thuc. Va **`WriteAllText` lam doi line-ending cua ca file** nen `git diff --numstat` phai chay truoc moi commit.
+
 ## Entry 259: UI/UX wave 6 - dong gate `check-h1-graph` (Fail -> PASS) + NAV-1 slice SOC (89 -> 80) + sua 2 bug cua BO GATE (2026-10-09)
 
 - **Nhanh**: `feat/uiux-w6-registry` -> `dev` (PR **#77**), `feat/uiux-w6-soc` -> `dev` (PR **#78**) - **CA HAI DA MERGE**
@@ -7654,3 +7735,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 258 | 2026-10-09 | **UI/UX wave 5 / NAV-1** - Mode B (solo, doc/script only). Tien cua handoff wave 4 §2.2. **KHONG sua 1 dong runtime code o `packages/web/src`** (`git diff` cuoi = 0 file trong `src`). Do lai truoc khi sua: viet `nav1-classify.mjs` (moi) tach 104 hit thanh **A=12** (nhanh `\|q` rong) + **C=3** (`searchParams` tu `useSearchParams` — chinh no la URL) + **D=89** (ung vien THAT) | `feat/uiux-wave5-nav1` | **`TONG 177 -> 162`** (NAV-1 **104 -> 89**) · baseline `uiux-baseline.json` **chot lai 162** · self-test scanner **5 -> 8 case** (them T6/T7/T8) · classify **A=0 C=0 D=89** (D giu nguyen ⇒ khong bo sot ung vien that) | **3 loi cua RULE, tat ca co bang chung chay that**: (1) nhanh `\|q` rong trong `NAME_RE` khop BAT KY ten chu `q` (`quantity` · `queueTiers` · `quota` · `selectedRequestId` khop `Req`**`q`**`uest`); (2) thieu escape `useSearchParams`/`useRouterSearchParams`; (3) **`nav1-report.mjs:54` TU VIET LAI regex** cua gate — dung chinh comment header "KHONG tu viet lai regex", lam bao cao LECH gate (`escaped` 7->23 trong khi gate chi giam 15) | **FAIL-BEFORE THAT**: T6 + T8 **FAIL** tren rule cu, PASS 6/8 ⇒ **8/8** sau khi sua; **inject bug vao CODE THAT** (`WhaleBubbleChart.jsx`, da khoi phuc): `secretStatusFilter` **BIA** (gate con bat loi that) · `quote` **KHONG bat** (trade-off ghi ro §6 — de bat `quote` phai phan tinh kieu du lieu, khong phai regex) | Gate chay that: `check-uiux-budget` 0 · `check-multi-agent` 0 · `check-ledger-entry` 0 · `tsc` 0 · `lint` 0 error/3754 warn (=baseline) · `test:components` **119 file / 844 test PASS** (=baseline) · `build` exit 0 36.13s. **CHUA CHAY**: `check-h1-graph` · `check:tokens`/`contrast`/`dom-landmarks`/`ts-imports`/`i18n-hardcoded`/`admin-spa-routes`/`shell` · `i18n:scan:strict` · `check_large_files` · `pre-push-gate` · Playwright · BE test. **89 hit con lai la CODE THAT**, khong giam duoc bang rule — can ke hoach rieng. `check-h1-graph --gate` van DO vi `shell-ai-command-center`, **can Owner quyet** |
 
 | 259 | 2026-10-09 | **UI/UX wave 6** - Mode A (3 worker + supervisor, **2 worker bi gap rate-limit**). (1) `check-h1-graph --gate` **Fail -> PASS** (`shell-ai-command-center` registry chet, treo 2 session) - go ENTRY, **khong xoa file** (van export `src/index.js:20` + `check-shell.mjs:37,454` + parity test; xoa file thuoc R0.8 cua plan AI CC P0 chua mo). Negative test: inject `injected-orphan` -> gate exit 1. (2) NAV-1 slice SOC **89 -> 80 hit**, 4/11 file ve 0; **32 hit bi chan** co bang chung (`useSearchParams` -> `useLocation()` throw ngoai Router, 11/11 file test khong MemoryRouter); 4 hit false positive (`SignalTabData<T>` la cache, khong phai tab). (3) **2 bug that cua bo gate**: `GIT_*` bi ke thua vao fixture tam (chay tay 17/17 PASS, qua hook FAIL) + `core.bare=true` quay lai lien tuc khi push tu worktree (**CHUA xac dinh thu pham**). Push bo qua hook bang `gh`, ly do ghi trong commit `chore(audit)`, khong `--no-verify` im lang. Gate tren `dev` sau merge: `h1-graph` 0 · `nav1-report` 0 (89->80) · scanner self-test 8/8 · `tsc` 0 · `test:components` **120 file / 847 test PASS** (baseline 119/844) · `check-uiux-budget` 0 · `check-multi-agent` 0. **CHUA CHAY**: `check-shell.mjs` (hong san, `ERR_UNKNOWN_FILE_EXTENSION`), BE test, Playwright mobile, gate qua hook. |
+| 260 | 2026-10-09 | **UI/UX wave 6 phan 2 - phuong AN (a)** - Owner chon (a) sau khi Entry 259 bao lai 32 hit SOC bi chan boi `useSearchParams` -> `useLocation()` throw ngoai Router. Boc `MemoryRouter` cho test (helper moi `__tests__/socRouterHarness.tsx`) + migrate 5 panel SOC. **NAV-1 80 -> 60**, **6/7 file SOC ve 0**. **KHONG sua `hooks/useUrlState.ts`** de "chiu duoc" thieu Router - loi do phai no len o production. **6 bug runtime bat duoc, KHONG cai nao ton tai truoc** (tat ca do `useState` -> URL): `page` trong deps cua effect (de mat lua chon cua nguoi dung) · `load(1)` hardcode (bo qua deep-link) · `setPage(1)` o mount (xoa deep-link) · clamp `safePage` khi `services` rong (ghi de URL vinh vien) · setter nhan **gia tri** chu khong phai updater lambda (5 call site) · `<output>` co implicit role `status` (pha assertion test khac). **Bai hoc dat nhat**: them `page` vao deps de **het canh bao eslint** => **3 test do**; cach dung la `ref` tro setter moi nhat + `useCallback` deps rong. **2 lint error** do commit `3ac025ec9` tao ra da dong trong PR nay. **`WriteAllText` lam doi line-ending ca file** -> diff phinh 142 -> 3976 dong; chuan hoa LF cho 9 file, giu CRLF cho `SocOverviewPanel` (moi file co line-ending khac nhau). `SocSignalsPanel` (11 hit) **da thu, chua xong, da rollback** (2 test co san fail; 4/11 la false positive `SignalTabData<T>`). Gate tren `dev`: `tsc` 0 · `lint` **0 error** · `test:components` **120 file / 854 test PASS** · `check-uiux-budget` 0 · `pre-push-gate` 17/17 (tay). **CHUA CHAY**: BE test, Playwright, `check-shell.mjs` (hong san), gate qua hook. Nhat ky day du: `docs/audit-uiux/SESSION_LOG_WAVE6_20261009.md`. |
