@@ -1,6 +1,6 @@
 ## Entry 257: UI/UX wave 4 - dong not viec do cua wave 3, AC-2.4 bat kha thi da sua, 2 major scanner (2026-10-09)
 
-- **Nhanh**: `feat/uiux-wave4` → `dev`
+- **Nhanh**: `feat/uiux-wave4` → merge `--no-ff` vào `dev` = **`1633e8317`**; push `dev ea0002d00..1633e8317`
 - **Base**: `dev` @ `ea0002d00`
 - **Claim**: `uiux-wave4` (`docs/CLAIMS.md`)
 - **Ke hoach**: `docs/PLAN_UIUX_WAVE4.md` **rev 2** · **Audit**: `docs/PLAN_AUDIT_UIUX_WAVE4.md` + `docs/PLAN_AUDIT2_UIUX_WAVE4.md` · **Bao cao**: `docs/REPORT_FINAL_UIUX_WAVE4.md` · **Bàn giao**: `docs/audit-uiux/HANDOFF_UIUX_WAVE4_20261009.md`
