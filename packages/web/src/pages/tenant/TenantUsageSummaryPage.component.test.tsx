@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import { createElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as LangContext from "../../context/LangContext.js";
 import * as PortfolioContext from "../../context/PortfolioContext.js";
@@ -33,10 +34,27 @@ const i18nValue = {
   formatDateTime: (dt: unknown) => dt,
 };
 
+/**
+ * WAVE 7 / NAV-1 — trang doc `tab` bang `useUrlValue` (`react-router-dom`), nen
+ * moi `render` phai co `<Router>`.
+ *
+ * KHONG bo wrapper: `useUrlValue` -> `useSearchParams` -> `useLocation()` nem
+ * `useLocation() may be used only in the context of a <Router> component.`
+ * Do la ly do 3 test trong file nay do khi `tab` duoc chuyen sang URL.
+ * Pattern lay theo `soc-nav1-url-state.component.test.tsx`.
+ */
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    createElement(QueryClientProvider, { client }, createElement(TenantUsageSummaryPage)),
+    createElement(
+      MemoryRouter,
+      { initialEntries: ["/"] },
+      createElement(
+        QueryClientProvider,
+        { client },
+        createElement(TenantUsageSummaryPage),
+      ),
+    ),
   );
 }
 

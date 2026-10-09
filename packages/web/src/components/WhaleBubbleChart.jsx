@@ -29,6 +29,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import { useI18n } from '../context/LangContext';
 import { createCoreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useOrderBubbleCoordinates } from '../hooks/useOrderBubbleCoordinates.js';
+import { useUrlValue, stringCodec } from '../hooks/useUrlState';
 import { useCallback } from 'react';
 import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter.js';
 import { createWhaleTooltipFormatter } from '../utils/whaleTooltipFormatter.js';
@@ -605,7 +606,9 @@ export default function WhaleBubbleChart({
   const [hoveredPanel, setHoveredPanel] = useState(null);
   const [bubbleThreshold, setBubbleThreshold] = useState(0);
   const [isInfoPanelVisible, setIsInfoPanelVisible] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' or 'signals'
+  // WAVE 6 / NAV-1 — tab chua dong bo URL: F5 luon quay ve `overview`.
+  // Mac dinh giong het `useState` cu (`overview`) va KHONG ghi ra URL.
+  const [activeTab, setActiveTab] = useUrlValue('wb_tab', stringCodec, 'overview'); // 'overview' or 'signals'
   const [orderFlowSignals, setOrderFlowSignals] = useState([]);
   const [loadingSignals, setLoadingSignals] = useState(false);
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { createElement } from "react";
+import { useUrlValue, stringCodec } from "../../hooks/useUrlState";
 
 /**
  * WorkstationLayout - Responsive layout wrapper for Stock Detail Workstation
@@ -22,7 +23,9 @@ import { createElement } from "react";
 export function WorkstationLayout({ children, enabled = true, className = "" }) {
   const e = createElement;
   const [isMobile, setIsMobile] = useState(false);
-  const [activeTab, setActiveTab] = useState("chart"); // chart | orderbook | tradelog
+  // WAVE 6 / NAV-1 — tab mobile chua dong bo URL: F5 luon quay ve `chart`.
+  // Mac dinh giong het `useState` cu (`chart`) va KHONG ghi ra URL.
+  const [activeTab, setActiveTab] = useUrlValue("ws_tab", stringCodec, "chart"); // chart | orderbook | tradelog
 
   // Check feature flag from window.__ENV__ or localStorage, fallback to enabled prop
   const isFeatureEnabled = useMemo(() => {
