@@ -1112,3 +1112,5 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 
 | `uiux-w6-soc-router` | `feat/uiux-w6-soc-router` -> `dev` | **released** (PR #80 merged c008cba39) | Phuong an (a) handoff wave 6 §2.3: moc Router cho test + migrate 9/32 hit SOC con lai. File: `components/soc/{DataOpsContext,SocDataOpsConfigSection,SocDataOpsMonitorSection,SocSchedulerBoard}.tsx` + 5 file test + `__tests__/socRouterHarness.tsx` + sua 2 lint error trong `SocOverviewPanel.tsx`. |
 | `uiux-w6-session-log` | `docs/uiux-w6-session-log` -> `dev` | **in-progress** | Nhat ky day du session wave 6 + ban giao viec ton dong. File: `docs/audit-uiux/SESSION_LOG_WAVE6_20261009.md` (moi) + `## Entry 260` ledger. |
+
+| `uiux-w6-handoff-fix` | `docs/uiux-w6-handoff-fix` -> `dev` | **in-progress** | Don branch da merge + danh dau SUPERSEDED cho handoff cu. File: 2 file docs trong `docs/audit-uiux/` + 1 dong CLAIMS. Khong doi code runtime. |
