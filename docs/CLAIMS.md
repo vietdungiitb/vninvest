@@ -1109,3 +1109,5 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | `uiux-w6-registry` | `feat/uiux-w6-registry` -> `dev` | **in-progress** | Giu entry registry `shell-ai-command-center`. File: `packages/web/src/pages/pageRegistry.js` (xoá 2 dong entry chet). KHONG xoa `ShellAiCommandCenterPage.tsx` (van export o `src/index.js:20`, `check-shell.mjs:37,454`, `ai-cc-form-parity.component.test.ts:102`; xoa file thuoc R0.8 cua plan AI CC chua mo). |
 
 | `uiux-wave6-report` | `docs/uiux-wave6-report` -> `dev` | **done** (PR #79 merged  4e7d1709) | Viet `## Entry 259` ledger + `docs/REPORT_FINAL_UIUX_WAVE6.md` + `docs/audit-uiux/HANDOFF_UIUX_WAVE6_20261010.md`. File: 3 file docs vua noi + 1 dong index ledger. |
+
+| `uiux-w6-soc-router` | `feat/uiux-w6-soc-router` -> `dev` | **in-progress** | Phuong an (a) handoff wave 6 §2.3: moc Router cho test + migrate 9/32 hit SOC con lai. File: `components/soc/{DataOpsContext,SocDataOpsConfigSection,SocDataOpsMonitorSection,SocSchedulerBoard}.tsx` + 5 file test + `__tests__/socRouterHarness.tsx` + sua 2 lint error trong `SocOverviewPanel.tsx`. |

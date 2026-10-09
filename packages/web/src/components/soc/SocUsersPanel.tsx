@@ -2,6 +2,10 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+// WAVE 6 / NAV-1 — hook URL có sẵn (không thêm dependency). `useUrlValue` gọi
+// `useSearchParams` ⇒ component **bắt buộc** nằm trong `<Router>`; test tương ứng
+// đã bọc `MemoryRouter` (xem `soc-users.component.test.tsx`).
+import { useUrlValue, intCodec, stringCodec } from "../../hooks/useUrlState";
 import styles from "./soc.module.css";
 
 const e = createElement;
@@ -52,12 +56,15 @@ export function SocUsersPanel() {
   const [error, setError] = useState("");
   const [rows, setRows] = useState<SocUserRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  // WAVE 6 / NAV-1 — phân trang + bộ lọc đồng bộ URL (deep-link + nút Back + F5).
+  // `page` dùng `intCodec`; ô nhập `search` dùng `replace: true` vì gắn thẳng
+  // `onChange` — không thì **mỗi ký tự** đẩy 1 history entry (lỗi đã xảy ra wave 4).
+  const [page, setPage] = useUrlValue("users_page", intCodec, 1);
+  const [search, setSearch] = useUrlValue("users_q", stringCodec, "", { replace: true });
   const [plan, setPlan] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [staffFilter, setStaffFilter] = useState("");
-  const [activeFilter, setActiveFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useUrlValue("users_status", stringCodec, "", { replace: true });
+  const [staffFilter, setStaffFilter] = useUrlValue("users_staff", stringCodec, "", { replace: true });
+  const [activeFilter, setActiveFilter] = useUrlValue("users_active", stringCodec, "", { replace: true });
   const [planModal, setPlanModal] = useState<{ id: number; username?: string; plan: string } | null>(null);
   const [lockTarget, setLockTarget] = useState<{ id: number; username?: string; next: boolean } | null>(null);
   const [reason, setReason] = useState("");
@@ -77,7 +84,10 @@ export function SocUsersPanel() {
       });
       setRows(res.results || []);
       setTotal(res.count || 0);
-      setPage(pageNum);
+      // ⚠ KHÔNG `setPage(pageNum)` ở đây: `load` chạy trong effect debounce, mỗi
+      // lần ghi `setParams` là 1 history entry ⇒ lọc 1 lần là sinh entry thừa.
+      // Việc đồng bộ trang do **người dùng bấm nút trang** đảm nhiệm; reset về
+      // trang 1 khi đổi bộ lọc nằm ở effect bên dưới (có so sánh trước).
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("soc.users.load_fail"));
     } finally {
@@ -85,11 +95,36 @@ export function SocUsersPanel() {
     }
   }, [t, search, plan, statusFilter, staffFilter, activeFilter]);
 
+  // Đổi bộ lọc ⇒ nạp lại và về trang 1 (giữ hành vi cũ).
+  //
+  // ⚠ **KHÔNG để `page` trong deps.** `load` không phụ thuộc `page` (nó nhận
+  // `pageNum` qua tham số), nên effect này chỉ chạy lại khi **bộ lọc** đổi.
+  // Trước đây `page` nằm trong deps ⇒ mỗi lần bấm nút trang, effect chạy lại và
+  // `setPage(1)` **đè mất** lựa chọn của người dùng. Bắt được bởi test `W6-1`
+  // (`users_page=1` thay vì `2`) — đúng loại bug "test xanh nhưng tính năng hỏng".
+  //
+  // `filterKey` gom các bộ lọc thành chuỗi: so sánh chuỗi ổn định hơn so sánh 5
+  // biến riêng lẻ (useEffect so sánh tham chiếu).
+  const filterKey = `${search}|${plan}|${statusFilter}|${staffFilter}|${activeFilter}`;
+  const firstFilterRunRef = useRef(true);
+  // `page` đọc qua ref: effect theo dõi **bộ lọc** mà vẫn nạp đúng trang hiện
+  // tại (kể cả trang tới từ deep-link). Không đưa `page` vào deps — xem giải thích
+  // ở effect bên dưới.
+  const pageRef = useRef(page);
+  pageRef.current = page;
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => { load(1); }, 400);
+    // Lần chạy đầu (mount): giữ `page` từ deep-link, KHÔNG reset.
+    if (firstFilterRunRef.current) {
+      firstFilterRunRef.current = false;
+    } else if (page !== 1) {
+      setPage(1);
+      return; // load(1) chạy ở effect kế tiếp, sau khi `page` đã về 1.
+    }
+    debounceRef.current = setTimeout(() => { load(pageRef.current); }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
 
   async function handleLockConfirm() {
     if (!lockTarget) return;
@@ -232,12 +267,16 @@ export function SocUsersPanel() {
       e("div", { className: styles.metricLabel },
         e("button", {
           type: "button", className: styles.actionBtn,
-          disabled: page <= 1 || loading, onClick: () => load(page - 1),
+          // WAVE 6: `load` **không** tự ghi `page` nữa ⇒ nút phải ghi URL
+          // (không `replace`: người dùng muốn Back quay trang trước).
+          disabled: page <= 1 || loading,
+          onClick: () => { const next = Math.max(1, page - 1); setPage(next); load(next); },
         }, "‹"),
         ` ${t("soc.users.page_of", { page, pages: totalPages, total })} `,
         e("button", {
           type: "button", className: styles.actionBtn,
-          disabled: loading || page >= totalPages, onClick: () => load(page + 1),
+          disabled: loading || page >= totalPages,
+          onClick: () => { const next = page + 1; setPage(next); load(next); },
         }, "›")),
     ),
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocOverviewPanel } from "../soc/SocOverviewPanel.js";
 import { SocPrefetchPanel } from "../soc/SocPrefetchPanel.js";
 import { SocRuntimeKpiPanel } from "../soc/SocRuntimeKpiPanel.js";
@@ -55,7 +56,7 @@ describe("SocOverviewPanel retry (COC-05)", () => {
       });
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
 
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
@@ -81,7 +82,7 @@ describe("SocOverviewPanel retry (COC-05)", () => {
       ],
     });
 
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
 
     await waitFor(() => {
       expect(screen.getByText("soc.slo.uptime_label 98.77%")).toBeTruthy();

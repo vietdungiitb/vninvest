@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, cleanup, waitFor } from "@testing-library/react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocOverviewPanel } from "../soc/SocOverviewPanel.js";
 
 const adapterMocks = vi.hoisted(() => ({
@@ -100,7 +101,7 @@ describe("SocOverviewPanel — P3 SSE overview stream", () => {
   });
 
   it("hiển thị Live khi SSE mở, và snapshot mới qua stream thay đổi dữ liệu", async () => {
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("SVC A")).toBeTruthy());
 
     // SocOverviewPanel.tsx:226 — stream chỉ mở khi `streamEnabled`, tức cần
@@ -128,7 +129,7 @@ describe("SocOverviewPanel — P3 SSE overview stream", () => {
 
   it("fallback polling khi socket đóng (error) → vẫn render dữ liệu", async () => {
     adapterMocks.getSocOverviewSummary.mockResolvedValue(baseline);
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("SVC A")).toBeTruthy());
     // Xem ghi chú ở test trên: stream mở sau khi `loading` false.
     await waitFor(() => expect(esInstances.length).toBeGreaterThan(0));

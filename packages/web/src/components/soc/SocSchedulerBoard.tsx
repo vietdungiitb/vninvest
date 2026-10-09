@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
+// WAVE 6 / NAV-1 — hook URL có sẵn; `useUrlValue` ⇒ cần `<Router>` (test đã bọc).
+import { useUrlValue, intCodec, stringCodec } from "../../hooks/useUrlState";
 import styles from "./soc.module.css";
 
 interface SchedulerJob {
@@ -320,7 +322,8 @@ function JobHistoryDrawer({
   t: (key: string, o?: any) => string;
 }) {
   const [history, setHistory] = useState<JobRunHistory | null>(null);
-  const [page, setPage] = useState(1);
+  // WAVE 6 / NAV-1 — lịch sử chạy: phân trang đồng bộ URL.
+  const [page, setPage] = useUrlValue("sched_hist_page", intCodec, 1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -427,7 +430,8 @@ function JobHistoryDrawer({
               {
                 type: "button",
                 disabled: !history.previous,
-                onClick: () => setPage((p) => Math.max(1, p - 1)),
+                // WAVE 6: setter `useUrlValue` nhận giá trị, không phải updater lambda.
+                onClick: () => setPage(Math.max(1, page - 1)),
                 className: styles.pageBtnSmall,
               },
               t("soc.dataops.run_history_previous")
@@ -437,7 +441,7 @@ function JobHistoryDrawer({
               {
                 type: "button",
                 disabled: !history.next,
-                onClick: () => setPage((p) => p + 1),
+                onClick: () => setPage(page + 1),
                 className: styles.pageBtnSmall,
               },
               t("soc.dataops.run_history_next")
@@ -456,7 +460,9 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
   const [health, setHealth] = useState<SchedulerHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [domainFilter, setDomainFilter] = useState("all");
+  // WAVE 6 / NAV-1 — lọc theo domain đồng bộ URL (`replace` vì đây là control
+  // chọn, mỗi lần đổi không nên tạo history entry dài).
+  const [domainFilter, setDomainFilter] = useUrlValue("sched_domain", stringCodec, "all", { replace: true });
   const [confirmModal, setConfirmModal] = useState<{ job: SchedulerJob; action: string } | null>(null);
   const [historyJob, setHistoryJob] = useState<string | null>(null);
   const [actionBanner, setActionBanner] = useState<{ type: "success" | "error"; msg: string; requestId?: string } | null>(null);
