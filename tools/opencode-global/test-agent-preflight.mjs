@@ -32,8 +32,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Script preflight can test nam canh ban canonical (tools/), khong nam trong scripts/
 const PREFLIGHT = resolve(__dirname, "..", "opencode-global", "agent-preflight.mjs");
 
+/**
+ * WAVE 6 (2026-10-09) — xoa moi bien `GIT_*` khoi env cua fixture.
+ *
+ * Ly do: script chay duoi `pre-push` hook, git truyen `GIT_DIR` (tro ve repo
+ * THAT) cho tien trinh con; `spawnSync` ke thua env do. `git init` trong thu
+ * muc tam khi do **re-init vao repo that** thay vi tao `.git` cuc bo
+ * (`warning: re-init: ignored --initial-branch=...`), nen
+ * `writeFileSync(FIX/.git/COMMIT_EDITMSG)` nem ENOENT va self-test FAIL khi
+ * chay qua hook — **PASS khi chay tay**. Xem `verify-trailer-bypass.mjs` cung
+ * file nay va `## Entry 259` cua ledger.
+ */
+const FIX_ENV = { ...process.env };
+for (const k of Object.keys(FIX_ENV)) {
+  if (k.startsWith("GIT_")) delete FIX_ENV[k];
+}
+
 function git(args, cwd) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const r = spawnSync("git", args, { cwd, env: FIX_ENV, encoding: "utf8" });
   return { code: r.status, out: (r.stdout || "").trim() };
 }
 
@@ -74,7 +90,7 @@ function preflight(args, env = {}) {
   const r = spawnSync(process.execPath, [PREFLIGHT, ...args], {
     cwd: FIX,
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: { ...FIX_ENV, ...env },
   });
   return { code: r.status, out: `${r.stdout || ""}${r.stderr || ""}` };
 }

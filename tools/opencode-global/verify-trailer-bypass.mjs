@@ -22,14 +22,37 @@ const PREFLIGHT = join(HERE, "agent-preflight.mjs");
 
 const FIX = mkdtempSync(join(tmpdir(), "trailer-probe-"));
 
+/**
+ * Env cho moi lenh `git` chay trong fixture.
+ *
+ * ⚠ **WAVE 6 (2026-10-09) — bat buoc xoa `GIT_*`.** Script nay chay duoi
+ * `pre-push` hook, git truyen `GIT_DIR` (tro ve repo THAT) cho moi tien trinh con.
+ * `spawnSync` ke thua env cua hook => `git init` trong thu muc tam **khong tao
+ * `.git` o day** ma re-init vao repo that, in ra:
+ *   `warning: re-init: ignored --initial-branch=feat/probe`
+ * Do do `writeFileSync(FIX/.git/COMMIT_EDITMSG)` nem ra
+ *   `ENOENT: ...\trailer-probe-XXXX\.git\COMMIT_EDITMSG`
+ *
+ * Chay tay (`node verify-trailer-bypass.mjs` tu shell) KHONG co `GIT_DIR` nen
+ * **3/3 PASS** — do do self-test "xanh khi chay tay, do khi chay qua hook",
+ * dung trieu chung "script ton tai != script chay".
+ *
+ * Chung minh: `git init` voi `GIT_DIR` tro sang repo khac ta
+ * `warning: re-init` + thu muc tam van khong co `.git`.
+ */
+const FIX_ENV = { ...process.env };
+for (const k of Object.keys(FIX_ENV)) {
+  if (k.startsWith("GIT_")) delete FIX_ENV[k];
+}
+
 function git(args) {
-  const r = spawnSync("git", args, { cwd: FIX, encoding: "utf8" });
+  const r = spawnSync("git", args, { cwd: FIX, env: FIX_ENV, encoding: "utf8" });
   return (r.stdout || "").trim();
 }
 
 function run(msg) {
   writeFileSync(join(FIX, ".git", "COMMIT_EDITMSG"), msg);
-  const r = spawnSync(process.execPath, [PREFLIGHT, "--staged"], { cwd: FIX, encoding: "utf8" });
+  const r = spawnSync(process.execPath, [PREFLIGHT, "--staged"], { cwd: FIX, env: FIX_ENV, encoding: "utf8" });
   return r.status;
 }
 
