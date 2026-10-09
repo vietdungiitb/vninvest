@@ -1,3 +1,130 @@
+## Entry 257: UI/UX wave 4 - dong not viec do cua wave 3, AC-2.4 bat kha thi da sua, 2 major scanner (2026-10-09)
+
+- **Nhanh**: `feat/uiux-wave4` → `dev`
+- **Base**: `dev` @ `ea0002d00`
+- **Claim**: `uiux-wave4` (`docs/CLAIMS.md`)
+- **Ke hoach**: `docs/PLAN_UIUX_WAVE4.md` **rev 2** · **Audit**: `docs/PLAN_AUDIT_UIUX_WAVE4.md` + `docs/PLAN_AUDIT2_UIUX_WAVE4.md` · **Bao cao**: `docs/REPORT_FINAL_UIUX_WAVE4.md` · **Bàn giao**: `docs/audit-uiux/HANDOFF_UIUX_WAVE4_20261009.md`
+- **Quy trinh**: `multi-agent-workflow` — **Mode A (3 worker + 1 supervisor)**, 8 stage
+
+### ⚠ AC-2.4 "NAV-1 giam >= 26" BAT KHA THI - Owner chot sua thanh "giam >= 4"
+
+`HANDOFF_UIUX_WAVE3_20261008.md` §5 dâng câu hỏi này lên Owner. Đo lại bằng
+reimplementation độc lập (**tác giả plan + 2 auditor Stage 2 đều ra cùng số**):
+
+| Số | Giá trị |
+|---|---|
+| `counted` (gate thấy hôm đó) | **99** |
+| bị escape cấp file giấu | **12** |
+| escape **cấp biến** bỏ đi (3 call site `useUrlValue` thật) | **−3** |
+| **sau khi siết rule** | **108** |
+| sửa 4 bản ghi `filters` | **−4** |
+| **cuối wave 4** | **104** |
+
+**3 chỗ handoff đo sai, đã nêu ở `PLAN_UIUX_WAVE4.md` §0.2:**
+
+1. "3 hit cố ý giữ" thật là **7** — 4 file P1 còn lại có **4** `filtersDraft`
+   (không phải 1); cộng `AdminCoreTenantsPage.tsx:27 searchDraft` = 5 draft,
+   cộng 2 ô nhập trong form = **7**.
+2. `selectedRequestId` **không sửa được** — khớp regex nhờ nhánh `|q` là **hiện
+   tượng regex**, không phải bộ lọc.
+3. Ceiling thật từ 99 là **4**, không phải 26. Con số 26 lẫn kết quả W3-2 (đã
+   đạt rồi, rồi bị gỡ lại 4 hit khi rollback escape) với phần chưa làm.
+
+**Escapecấp file chứng minh VÔ DỤNG**: 7 file gọi `useUrlState` đều destructure
+**bản ghi** (`const [{…}, setUrlState] = …`) ⇒ regex `const [ <tên> ,` không khớp
+⇒ **0 hit** ⇒ không file nào đã sửa cần escape; 7 file bị che đều `hasHook=false`.
+
+### 2 major cua audit Stage 5 wave 3 — da dong
+
+- **Major 1** — escape rule NAV-1 chuyển **cấp file → cấp biến**. Cấp file quét
+  cả comment ⇒ 1 dòng comment nhắc tên hook làm **mất mọi hit NAV-1 trong file**
+  (đã xảy ra 1 lần ở wave 3). Nay bằng chứng chỉ đọc từ dòng **không phải
+  comment**, neo vào **call site**.
+- **Major 2** — `setUrlState` luôn `{replace: false}` ⇒ mỗi **ký tự** gõ đẩy 1
+  history entry. Thêm tuỳ chọn `replace` / `replaceKeys` (**mặc định `false` —
+  không đổi hành vi call site cũ**), bật cho 3 trang gắn `onChange` thẳng vào ô
+  nhập: `PortfolioHoldingsPage.tsx:105` · `AdminAuditPage.tsx:109-110` ·
+  `AdminBillingFleetPage.tsx:139`.
+
+### Gate do duoc (exit code that)
+
+| Gate | `dev` @ `ea0002d00` | Sau wave 4 |
+|---|---|---|
+| `scan-ui-guidelines.mjs` | `TONG 172` · NAV-1 **99** | `TONG **177**` · NAV-1 **104** |
+| `… --self-test` | — | **5/5** |
+| `check-uiux-budget.mjs` | exit 0 (172) | exit 0 (**177**) |
+| `check-h1-graph.mjs --self-test` | **KHÔNG TỒN TẠI** | **8/8** |
+| `check-h1-graph.mjs --gate` | **KHÔNG TỒN TẠI** | **exit 1 — lỗi CÓ SẴN**, xem dưới |
+| `npx tsc --noEmit` | exit 0 | exit 0 |
+| `npm run lint` | exit 0 — 3743 problems | exit 0 — 3754 problems, **0 error** |
+| `npm run test:components` | exit 0 — **817/817**, 117 file | exit 0 — **844/844**, 119 file |
+| `playwright --project=mobile-ergonomics` | **project không tồn tại** | exit 0 — **2 passed** |
+
+**Baseline UI/UX NÂNG 172 → 177: vì SIẾT rule, không phải vì NỚI.** Escape cấp file
+đang giấu 12 hit; bỏ nó ra thì gate nghiêm hơn. Gate giữ nguyên "chặn thoái lùi,
+không chặn nợ sẵn": từ 177 trở đi tăng là đỏ.
+
+### Phat hien THAT moi — `/stocks/:symbol` co **2 `<h1>`**
+
+`ShellStockDetailPage.js:32-36` bọc `StockDetailPage` trong `WorkstationShell`
+(`WorkstationShell.tsx:53` render `h1`) **va** `StockDetailPage.tsx:330` →
+`StockDetailHeader.js:76` render `e("h1", …)` thêm nữa ⇒ **2 h1** (WCAG 2.4.6).
+Sửa `h1` → `h2`. An toàn vì `StockDetailHeader` dùng ở **đúng 1 chỗ** và
+`.sdp-company-name` (`StockDetailPage.css:150`) set đủ `margin/font-size/
+font-weight/color/line-height`. Đây chính là thứ bộ test phòng thủ sinh ra để bắt.
+
+### Ba loi cua chinh wave 4, do audit Stage 5 bat
+
+1. **ID-1 (có sẵn, không phải hồi quy)** — `AdminBillingFleetPage.tsx:131,137`
+   gọi **2 setter trong 1 handler** (`setStatus(v); setPage(1);`).
+   `useSearchParams` của `react-router-dom@6.30.3` đóng trên `searchParams` của
+   lần render đó ⇒ lần hai đọc `prev` cũ và **xoá mất** kết quả lần một. Chọn
+   trạng thái hoá đơn **im lặng không ghi được vào URL**. Auditor đã tái lập trên
+   code `dev`.
+2. **ID-2 (mới)** — `filtersDraft` không seed từ URL ⇒ deep-link lọc bảng nhưng
+   form trống, và **1 lần Apply là xoá sạch bộ lọc trong link**.
+3. **ID-3 (mới)** — `replaceKeys` trong `useUrlRecord` **chết lặng lẽ**: `every`
+   chạy trên toàn bộ key của `spec` (spec luôn có key ngoài danh sách).
+
+Ngoài ra **supervisor tự phát hiện self-test của scanner là tautology**: 4/5
+trường hợp **PASS cả khi cố tình làm hỏng** `urlSyncedVars` cho nó đọc cả
+comment — vì `codeLines()` đã lọc comment ở đường ống trước khi hàm kịp thấy.
+Thêm **T5** + cho `urlSyncedVars` tự loại comment. Chứng minh lại: bỏ lọc ⇒
+**FAIL 1/5**.
+
+### Test AC-3 (wave 2) pass vi LY DO SAI
+
+`portfolio-deep-link-fu05` AC-3 gọi `fireEvent.change(input, {value:"HPG"})` —
+**một** sự kiện mang giá trị **đã hoàn chỉnh**. Người dùng thật gõ 3 ký tự ⇒ 3
+sự kiện; với `push`, lịch sử chứa `?search=H`→`?search=HP`→`?search=HPG` và
+`navigate(-1)` chỉ quay về `?search=HP`, **không** phải bảng chưa lọc. Tức AC
+đó bảo vệ một hành vi **không tồn tại**. Đo lại trên `dev`:
+
+```
+expected 'PUSH' to be 'REPLACE'
+expected '/p?search=HP' not to contain 'search='
+```
+
+Đổi hành vi: **không còn undo-bộ-lọc-bằng-nút-Back** (Back sẽ rời trang). Đánh
+đổi có chủ đích: giữ hành vi cũ thì Back phải bấm N lần, N = số ký tự đã gõ.
+Cần Owner biết; nếu sản phẩm cần thì thêm nút "Xoá bộ lọc" (ticket riêng).
+
+### Gate DONG — bao cao trung thuc
+
+`check-h1-graph --gate` **exit 1** vì
+`[unreferenced-registry-entry] shell-ai-command-center`:
+`pageRegistry.js:201` khai entry nhưng `main.tsx` **không có** `<Route>` tương ứng.
+**Có sẵn ở `dev`** (đã kiểm `git show dev:…`) ⇒ không phải hồi quy. Script tái hiện
+độc lập một phát hiện đã ghi ở `AGENTS.md` Entry 228. Cần Owner quyết: nối route
+hay gỡ entry.
+
+### Bai hoc (1 dong cho ledger)
+
+**Một test tự nó chứng minh "pass" chưa đủ — phải cố tình làm HỎNG code để xem
+nó có đỏ không.** Ở wave này có **2** trường hợp: test AC-3 của wave 2 pass vì
+`fireEvent.change` bắn 1 lần, và 4/5 self-test của scanner pass ngay cả khi
+`urlSyncdVars` đọc cả comment. Cả hai đều xanh **trước khi lẫn cũng lẫn sau**.
+
 ## Entry 256: UI/UX wave 3 — 4/6 slice, 2 audit bat 2 blocker nghiem trong cua tac gia (2026-10-08)
 
 - **Nhánh**: `feat/uiux-wave3` → merge `--no-ff` vào `dev` = **`890a60208`**; push `dev 7aeef9503..890a60208`, sau do `890a60208..12d0702fe` (REPORT_FINAL)
@@ -7331,4 +7458,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 254 | 2026-10-08 | **UI/UX follow-up wave 2** — Owner chot: deep-link dùng `useSearchParams` có sẵn (react-router-dom 6.30.3), **không** thêm dependency vì `package.json` + `package-lock.json` deny-list. 3/5 slice xong: **FU-01** `<h1>` vào `PortfolioWorkspace.tsx` (5 route portfolio dùng chung 1 entry `pageRegistry.js:210-211`; **không** thêm ở 5 file tab con sẽ ra 2 h1) · **FU-02a** `aria-label` fallback cho `command.tsx` (`Command`+`CommandInput`; `placeholder` KHÔNG phải accessible name), `input-otp.tsx` **đã có sẵn** `Digit N` nên chỉ thêm prop `digitLabel` cho i18n · **FU-03** 3 rule mobile trong `index.css` (`touch-action: manipulation`, `overscroll-behavior: contain`, `env(safe-area-inset-*)`) | `feat/uiux-followup` | 5 commit · **19 test mới** (fail-trước 11+4 → pass-sau 11+8) · `index.css` 758→806 (+48/−0) | **Gate chạy thật**: `check-uiux-budget` PASS · `check:tokens` PASS · `tsc --noEmit` exit 0 · `npm run build` 34.70s · `test:components` **112 file / 766 test PASS** (baseline 110/747) | **Sai số lần thứ 5**: handoff ghi 24 trang thiếu h1, thật **19** — đếm theo tên file thay vì theo `pageRegistry.js` (L-G04 + **L-G07 mới**). **A11Y-9 vẫn 44** vì scanner so `aria-label` cùng dòng — gate chỉ chặn tăng nên PASS, đừng dùng số này đo chất lượng. **Mobile CHƯA CHẠY** trên thiết bị thật. **CHƯA LÀM**: FU-02b (~41 điểm A11Y), FU-02c (18 trang h1), FU-04 (I18N), FU-05 (NAV-1). Ngoài ra ledger có sẵn **59 số Entry trùng nhau** (lỗi có sẵn, không sửa ở commit này). |
 | 255 | 2026-10-08 | **ĐÓNG VÒNG UI/UX follow-up wave 2** — 7/7 slice, merge `feat/uiux-followup` → `dev` (`--no-ff`, không squash). Owner chốt: `useSearchParams` có sẵn (không thêm dependency) · thứ tự h1→A11Y→mobile→locale→deep-link · **thu hẹp phạm vi** (FU-02b + 11/12 file NAV-1 tách ticket). **2 audit độc lập bắt 3 lỗi của tác giả**: ① "18 trang thiếu h1" thật chỉ **4** (14 trang đã có h1 qua `createElement("h1")` / component con / alias `@/` — sai số thứ 6) · ② **4 trang admin KHÔNG có h1** ở nhánh "không có quyền" (`return <p>{t('common.noPermission')}</p>`) — assertion `toBeLessThanOrEqual(1)` che mất từ FU-01 · ③ `<h1>` DashboardPage luôn tiếng Việt (prop `t` có default, `dashboard.title` không tồn tại) | `feat/uiux-followup` → `dev` | **14 commit** · **57 test mới** (110/747 → 116/804) · plan + handoff + audit doc lap Stage 2 + TEST_REPORT · **gate 246 → 224** | Đủ 7 stage `multi-agent-workflow`; Stage 2 = **NEED_REVISION** (sửa 8/8), Stage 5 = **REJECT** (sửa 7/9) | **Gate sau rebase**: `check-uiux-budget` 0 (I18N-1 19→0, NAV-1 115→112) · `check:tokens`/`contrast`/`dom-landmarks`/`ts-imports`/`i18n-hardcoded`/`admin-spa-routes`/`i18n:scan:strict`/`shell` 0 · `tsc` 0 · `build` 42.94s · `test:components` **116 file / 804 test PASS** · `agent-sync` 0, 0 trùng migration · `lint` **exit 1** nhưng lỗi **có sẵn** (`FactsFirstWhaleBubbleChart.jsx:155`, chứng minh `git diff dev..HEAD` = rỗng; 3712 → 3712 problems) | **Flake có sẵn**: `whale-advisory-a11y` R1.1 (chạy riêng 12/12 pass). **CHƯA LÀM**: FU-02b A11Y-9 44 hit · FU-05 11/12 file · AC-3 6/14 trang · AC-4 script import-graph · 86 hit NAV-1 ngoài scope · mobile `CHƯA CHẠY` trên thiết bị thật. **Bài học**: audit subagent độc lập **không phải nghi thức** (bắt 2 lỗi HIGH tôi không thấy); `toBeLessThanOrEqual(1)` là assertion rác; gate không tồn tại trả exit 1 như gate đỏ. |
 | 256 | 2026-10-08 | **UI/UX wave 3** - Mode B (solo; 5 file trung giua slice A11Y-9 va NAV-1 nen khong chia agent song song). **4/6 slice xong**: W3-0 scanner so dong + gate ledger · W3-1 A11Y-9 44->5 · W3-2 deep-link 7/11 file NAV-1 P1 · W3-4 2 co che flake + 1 error lint | `feat/uiux-wave3` -> `dev` | **`TONG 224 -> 172`** (NAV-1 112 -> **99**, A11Y-9 44 -> **5**) · `lint` exit **1 -> 0** (1 error -> **0**) · `test:components` exit **1 -> 0** (2 failed/802 -> **817/817**, 117 file) · `tsc` 0 · `check-uiux-budget` 0 · gate moi `check-ledger-entry` 0 (`--self-test` 4/4) | **3 phat hien lon**: (1) scanner in **SAI SO DONG** (`scan-ui-guidelines.mjs:294` loc bo dong comment roi in index cua mang da loc; do tren 224 hit co **135 hit lech**, toi da **36 dong**) - giai thich co che cua nhieu lan 'sai so thu 5/6/7'; (2) `TEST_REPORT_UIUX_WAVE2.md` gan sai file loi lint va ghi sai trang thai baseline test; (3) rule NAV-1 quet CA COMMENT. **Audit 3 vong** (Stage 2 `NEED_REVISION` 20 obj -> `AGREE` 7 obj; Stage 5 **`REJECT`** 2 blocker 5 major) - ca 2 blocker deu **im lang**: truyen **boolean** vao `boolCodec` lam **sap xep giam dan hong hoan toan** (`.jsx` khong qua `tsc`), 2 key i18n chen sai cho lam **accessible name la chuoi `common.acknowledge`** (ma `i18n:scan:strict` van exit 0). **Tu goi lai chinh minh**: da tung noi escape cua rule NAV-1 de AC cua minh trong dat, audit do duoc 4/17 hit giam den tu noi escape ⇒ **DA GOC LAI** (NAV-1 95 -> 99). **CHUA LAM**: W3-3 (AC-3 6 trang + AC-4 script import-graph), W3-5 (Playwright mobile emulation), 4/11 file NAV-1 P1. **AC-2.4 la tieu chi bat kha thi** (tran thuc te 21) - can Owner quyet. Bao cao day du: `docs/REPORT_FINAL_UIUX_WAVE3.md` |
-
+| 257 | 2026-10-09 | **UI/UX wave 4** - Mode A (3 worker + 1 supervisor). Dong not viec do cua wave 3: W3-5 mobile Playwright emulation, W3-3 AC-3 (6 trang co test `<h1>`) + AC-4 (script import-graph), 4/11 file NAV-1 P1, 2 major audit Stage 5. **Owner chot AC-2.4**: "NAV-1 giam >= 26" **bat kha thi** -> ceiling that **4** (3 chi tiet handoff do sai: so hit "co y giu" la **7** chu 3; `selectedRequestId` chi khop regex nhanh `q`; 26 lam tron khu ket qua W3-2) | `feat/uiux-wave4` -> `dev` | **`TONG 172 -> 177`** (NAV-1 99 -> **104**) - **baseline NANG viet SIET rule, khong phai NOI**: escape cap file dang giau 12 hit; `lint` **0 error** (3754 problems) � `test:components` **119 file / 844 test PASS** � `tsc` 0 � `build` 48.70s � `check-uiux-budget` 0 � gate moi `check-h1-graph --self-test` **8/8** � `playwright --project=mobile-ergonomics` **exit 0** (7 control < 44px -> `undersized: none`) | **2 major Stage 5 da dong**: (1) escape rule NAV-1 **cap file -> cap bien** (cap file quet ca comment: 1 dong comment nhac ten hook lam MAT moi hit trong file); (2) `setUrlState` `{replace:false}` -> them `replace`/`replaceKeys` (mac dinh `false`) vi moi **ky tu** go day 1 history entry o 3 trang. **+`useUrlRecord`** cho 4 trang admin co object phang 5-7 field. **Phat hien THAT moi: `/stocks/:symbol` co 2 `<h1>`** (`WorkstationShell.tsx:53` + `StockDetailHeader.js:76`, WCAG 2.4.6) - sua `h1`->`h2` | **3 loi cua chinh wave 4, do audit bat**: (1) `AdminBillingFleetPage.tsx:131,137` goi **2 setter trong 1 handler** => `useSearchParams` doc `prev` cu lam mat ket qua (chuyen trang thai hoa don **im lang khong ghi vao URL**) - loi **CO SAN**, auditor tai lap tren `dev`; (2) `filtersDraft` khong seed tu URL => 1 lan Apply **xoa sach bo loc trong link**; (3) `replaceKeys` trong `useUrlRecord` **chet lang le** (`every` chay tren toan bo key cua `spec`). **Tu phat hien**: 4/5 self-test cua scanner la **tautology** - PASS ca khi cam y lam hong `urlSyncdVars` cho doc ca comment; them T5 + cho no tu loai comment. **Gate DONG `check-h1-graph --gate` exit 1**: `shell-ai-command-center` registry khai nhung `main.tsx` khong route - **CO SAN o dev**, can Owner quet | Chi tiet: `docs/PLAN_UIUX_WAVE4.md` (rev 2) · `docs/AUDIT_UIUX_WAVE4.md` · `docs/TEST_REPORT_UIUX_WAVE4.md` · `docs/REPORT_FINAL_UIUX_WAVE4.md` |
