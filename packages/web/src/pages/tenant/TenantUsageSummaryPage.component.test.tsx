@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import { createElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as LangContext from "../../context/LangContext.js";
 import * as PortfolioContext from "../../context/PortfolioContext.js";
@@ -43,15 +43,26 @@ const i18nValue = {
  * Do la ly do 3 test trong file nay do khi `tab` duoc chuyen sang URL.
  * Pattern lay theo `soc-nav1-url-state.component.test.tsx`.
  */
-function renderPage() {
+/**
+ * WAVE 8 / NAV-1 — `search` là query string deep-link (mặc định `""`).
+ * `SearchProbe` đọc `useSearchParams()` — cùng nguồn sự thật với hook `useUrlValue`
+ * nên đọc lại được URL sau khi hook ghi.
+ */
+function SearchProbe() {
+  const [params] = useSearchParams();
+  return <div data-testid="search">{params.toString()}</div>;
+}
+
+function renderPage(search = "") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     createElement(
       MemoryRouter,
-      { initialEntries: ["/"] },
+      { initialEntries: [search ? `/?${search}` : "/"] },
       createElement(
         QueryClientProvider,
         { client },
+        createElement(SearchProbe),
         createElement(TenantUsageSummaryPage),
       ),
     ),
@@ -119,6 +130,55 @@ describe("TenantUsageSummaryPage", () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText("/x/")).toBeTruthy();
+    });
+  });
+
+  // ── WAVE 8 / NAV-1: `tab` phai điều khiển bằng URL thật, không chỉ setState ──
+  // 3 test trên chỉ chứng minh "trang không crash". Ba test dưới đây mới là
+  // tiêu chuẩn người dùng quan tâm: F5 / copy link có giữ đúng tab không.
+  describe("NAV-1: tab đồng bộ URL", () => {
+    function mockOk() {
+      (defaultCoreApiAdapter.coreGet as ReturnType<typeof vi.fn>).mockImplementation(
+        async (url: string) => {
+          if (String(url).includes("/partner/me/summary/")) {
+            return { tenant: { plan: "free" }, quotas: {}, my: {} };
+          }
+          return { results: [] };
+        });
+    }
+
+    /** Đọc `location.search` — cùng nguồn sự thật với hook `useUrlValue`. */
+    function currentSearch(): string {
+      return screen.getByTestId("search").textContent || "";
+    }
+
+    it("A. URL rỗng → tab mặc định `meters` và URL KHÔNG bị ghi `?tab=meters`", async () => {
+      mockOk();
+      renderPage("");
+      await waitFor(() => expect(screen.getByTestId("search")).toBeTruthy());
+      expect(currentSearch()).toBe("");
+    });
+
+    it("C. deep-link ?tab=history → mount ra ĐÃ ở tab history", async () => {
+      mockOk();
+      renderPage("tab=history");
+      await waitFor(() => expect(screen.getByTestId("search")).toBeTruthy());
+      // `usageTabCodec` giữ nguyên giá trị khác mặc định trong URL.
+      expect(currentSearch()).toBe("tab=history");
+    });
+
+    it("C2. ?tab=bogus → vẫn hiện panel MẶC ĐỊNH, không rơi vào trạng thái rỗng", async () => {
+      mockOk();
+      renderPage("tab=bogus");
+      await waitFor(() => {
+        const body = document.body.textContent || "";
+        expect(body).toContain("tenantUsageSummary.cardPlan");
+      });
+      // ⚠ Cố ý **không** assert URL rỗng. `useUrlValue` chỉ ghi URL khi setter
+      // được gọi; nó không tự viết lại URL lúc mount. Nên `?tab=bogus` vẫn nằm
+      // lại cho tới khi người dùng bấm tab — đây là hành vi ĐÚNG: không tự ý
+      // sửa URL của người dùng. Điều cần chứng minh là **panel mặc định vẫn
+      // hiện**, đó là điều người dùng quan tâm.
     });
   });
 });

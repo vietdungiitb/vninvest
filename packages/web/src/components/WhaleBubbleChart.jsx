@@ -29,7 +29,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import { useI18n } from '../context/LangContext';
 import { createCoreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useOrderBubbleCoordinates } from '../hooks/useOrderBubbleCoordinates.js';
-import { useUrlValue, stringCodec } from '../hooks/useUrlState';
+import { useUrlValue, boolCodec } from '../hooks/useUrlState';
 import { useCallback } from 'react';
 import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter.js';
 import { createWhaleTooltipFormatter } from '../utils/whaleTooltipFormatter.js';
@@ -608,7 +608,10 @@ export default function WhaleBubbleChart({
   const [isInfoPanelVisible, setIsInfoPanelVisible] = useState(true);
   // WAVE 6 / NAV-1 — tab chua dong bo URL: F5 luon quay ve `overview`.
   // Mac dinh giong het `useState` cu (`overview`) va KHONG ghi ra URL.
-  const [activeTab, setActiveTab] = useUrlValue('wb_tab', stringCodec, 'overview'); // 'overview' or 'signals'
+  // WAVE 8: `boolCodec` (không phải `stringCodec`) — chỉ có 2 tab nên `boolCodec`
+  // là đủ, và nó **bỏ giá trị mặc định `overview` khỏi URL**. Với `stringCodec`,
+  // bấm về tab "overview" sẽ để lại `?wb_tab=overview`.
+  const [activeTab, setActiveTab] = useUrlValue('wb_tab', boolCodec('overview', 'signals'), 'overview'); // 'overview' or 'signals'
   const [orderFlowSignals, setOrderFlowSignals] = useState([]);
   const [loadingSignals, setLoadingSignals] = useState(false);
 
