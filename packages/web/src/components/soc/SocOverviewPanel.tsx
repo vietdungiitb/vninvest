@@ -6,7 +6,35 @@ import { getStatusBadgeStyle } from "./socStatusColors.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import { formatLastCheck } from "./socTime.js";
 import { useOverviewStream } from "../../hooks/useOverviewStream.js";
+// WAVE 6 / NAV-1 — hook URL có sẵn. `useUrlState` gọi `useSearchParams` ⇒
+// component bắt buộc nằm trong `<Router>`; test đã bọc `MemoryRouter`.
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../../hooks/useUrlState";
 import styles from "./soc.module.css";
+
+/**
+ * WAVE 6 / NAV-1 — spec khai ở MODULE SCOPE, không khai trong thân component.
+ * `useUrlState` memo hoá theo `spec`/`defaults` (`useUrlState.ts:150`) — khai
+ * literal trong render làm `useMemo` tính lại mỗi lần render.
+ *
+ * `domain` dùng `stringCodec` + default `""` thay vì `string | null`: `null`
+ * không serialize được, mà "" đã là "không lọc" (`domainFilter` cũ default
+ * `null`, so sánh bằng `d === domainFilter` nên "" vẫn lọc đúng).
+ * `type` (không phải `interface`): interface không có implicit index signature nên
+ * không thỏa `Record<string, unknown>` của hook.
+ */
+type OverviewUrl = { q: string; status: string; domain: string; sort: string; page: number; size: number };
+const OVERVIEW_URL_SPEC: { [K in keyof OverviewUrl]: UrlStateCodec<OverviewUrl[K]> } = {
+  q: stringCodec,
+  status: stringCodec,
+  domain: stringCodec,
+  sort: stringCodec,
+  page: intCodec,
+  size: intCodec,
+};
+/** Fallback = đúng giá trị `useState` cũ ⇒ URL rỗng vẫn hành vi như cũ. */
+const OVERVIEW_URL_DEFAULTS: OverviewUrl = {
+  q: "", status: "all", domain: "", sort: "name", page: 1, size: 9,
+};
 
 interface ServiceItem {
   service_key: string;
@@ -141,13 +169,31 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const [sloError, setSloError] = useState("");
   const [data, setData] = useState<OverviewData | null>(null);
   const [sloMap, setSloMap] = useState<Record<string, SloRow>>({});
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [domainFilter, setDomainFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"name" | "status" | "latency">("name");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(9);
+  // WAVE 6 / NAV-1 — nhóm bộ lọc + phân trang đồng bộ URL. Dùng `useUrlState`
+  // (patch) thay vì 6 lần `useUrlValue` để **một** lần bấm chỉ tạo **một**
+  // history entry — `useUrlState.ts:135` nêu rõ lý do.
+  //
+  // ⚠ `debouncedSearch` **KHÔNG** đưa vào URL: nó là bản sao debounce của
+  // `search` (`:260` setTimeout 300ms). Ghi cả hai ⇒ 2 nguồn sự thật cho 1 khái
+  // niệm. `search` trong URL là đủ — `debouncedSearch` suy ra khi mount lại.
+  const [overviewState, setOverviewState] = useUrlState(
+    OVERVIEW_URL_SPEC,
+    OVERVIEW_URL_DEFAULTS,
+    { replaceKeys: ["q", "status"] },
+  );
+  const search = overviewState.q;
+  const setSearch = (v: string) => setOverviewState({ q: v });
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const statusFilter = overviewState.status;
+  const setStatusFilter = (v: string) => setOverviewState({ status: v });
+  const domainFilter = overviewState.domain;
+  const setDomainFilter = (v: string) => setOverviewState({ domain: v });
+  const sortBy = overviewState.sort as "name" | "status" | "latency";
+  const setSortBy = (v: "name" | "status" | "latency") => setOverviewState({ sort: v });
+  const page = overviewState.page;
+  const setPage = (v: number) => setOverviewState({ page: v });
+  const pageSize = overviewState.size;
+  const setPageSize = (v: number) => setOverviewState({ size: v });
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [confirmToggle, setConfirmToggle] = useState<ServiceItem | null>(null);
   const [toggleReason, setToggleReason] = useState("");
@@ -317,15 +363,36 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   }, [services, debouncedSearch, statusFilter, domainFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages);
+const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
+  // Clamp trang khi trang trong URL vượt quá số trang thật (ví dụ deep-link
+  // `?page=99` khi chỉ có 2 trang).
+  //
+  // ⚠ CHỈ clamp khi **đã có dữ liệu**. Lúc mount `services` còn rỗng ⇒
+  // `filtered` rỗng ⇒ `totalPages = 1` ⇒ `safePage = 1` ⇒ effect này ghi đè
+  // `?page=3` thành `?page=1` **trước khi** request xong. Đây là lỗi do chính
+  // việc chuyển state sang URL tạo ra: `useState(3)` cũ bị "clamp" về 1 rồi
+  // tự khôi phục khi data tới, còn URL thì bị ghi đè vĩnh viễn.
+  // Bắt được bởi test `W6-O1`.
   useEffect(() => {
+    if (services.length === 0) return;
     if (safePage !== page) setPage(safePage);
-  }, [safePage, page]);
+  }, [safePage, page, services.length]);
 
+  // Đổi bộ lọc ⇒ về trang 1 (giữ hành vi cũ).
+  //
+  // ⚠ BỎ QUA LẦN MOUNT ĐẦU: trước đây `page` là `useState` nên `setPage(1)` ở
+  // mount là vô hại. Nay `page` đọc từ URL ⇒ mount với `?page=3` sẽ bị effect này
+  // **xoá mất** deep-link ngay lập tức. Đây là lỗi do chính việc chuyển sang
+  // URL tạo ra, không phải lỗi có sẵn.
+  const firstFilterRunRef = useRef(true);
   useEffect(() => {
-    setPage(1);
+    if (firstFilterRunRef.current) {
+      firstFilterRunRef.current = false;
+      return;
+    }
+    if (page !== 1) setPage(1);
   }, [debouncedSearch, statusFilter, domainFilter, sortBy, pageSize]);
 
   const stats = useMemo(() => {
@@ -698,9 +765,12 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         createElement(
           "button",
           {
-            className: `${styles.domainPill} ${domainFilter === null ? styles.filterBtnActive : ""}`,
-            "aria-pressed": domainFilter === null,
-            onClick: () => setDomainFilter(null),
+            // WAVE 6: "tất cả" = chuỗi rỗng (`""`), không phải `null` — `null` không
+            // serialize được ra URL. `stringCodec.serialize("")` trả `undefined`
+            // ⇒ nút "Tất cả" **xoá** tham số khỏi URL thay vì ghi `domain=`.
+            className: `${styles.domainPill} ${domainFilter === "" ? styles.filterBtnActive : ""}`,
+            "aria-pressed": domainFilter === "",
+            onClick: () => setDomainFilter(""),
           },
           t("soc.overview.domain_all"),
         ),
@@ -715,7 +785,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               key: d,
               className: `${styles.domainPill} ${active ? styles.filterBtnActive : ""}`,
               "aria-pressed": active,
-              onClick: () => setDomainFilter(active ? null : d),
+              onClick: () => setDomainFilter(active ? "" : d),
             },
             `${d} ${healthy}/${total}`,
           );
