@@ -3,6 +3,8 @@
 - **Nhanh**: `feat/uiux-wave5-nav1` (tao tu `dev` @ `7746d5c1f`)
 - **Claim**: `uiux-wave5-nav1` (`docs/CLAIMS.md`)
 - **Tien cua**: `docs/audit-uiux/HANDOFF_UIUX_WAVE4_20261009.md` §2.2
+- **PR**: **#76** (`feat/uiux-wave5-nav1` -> `dev`) - **DANG OPEN, chua merge**
+- **Bao cao tong ket**: `docs/REPORT_FINAL_UIUX_WAVE5_NAV1.md` - **Ban giao**: `docs/audit-uiux/HANDOFF_UIUX_WAVE5_20261009.md`
 - **Pham vi**: **CHI `docs/audit-uiux/scripts/` + `packages/web/scripts/uiux-baseline.json`**. KHONG sua 1 dong runtime code nao o `packages/web/src` (`git diff` cuoi = 0 file trong `src`).
 
 ### 1. Do lai truoc khi sua - 104 hit khong phai 104 loi
