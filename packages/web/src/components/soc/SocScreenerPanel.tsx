@@ -10,6 +10,8 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
 import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
+// WAVE 6 / NAV-1 — 2 bang (Rules / Results) cung phan trang nen gom chung 1 record.
+import { useUrlState, intCodec, type UrlStateCodec } from "../../hooks/useUrlState";
 
 interface ScreenerConfig {
   scan_interval?: number;
@@ -93,6 +95,17 @@ export function formatScreenerAlertMessage(symbol: unknown, message: unknown): s
   return text;
 }
 
+/** WAVE 6 / NAV-1 — `useUrlState` memo hoa tren `spec`/`defaults`; khai literal
+ *  trong render se lam `useMemo` (useUrlState.ts:150) tinh lai moi lan render.
+ *  `type` (khong phai `interface`): interface KHONG co implicit index signature. */
+type ScreenerPaging = { rulesPage: number; resultsPage: number };
+const SCREENER_PAGING_SPEC: { [K in keyof ScreenerPaging]: UrlStateCodec<ScreenerPaging[K]> } = {
+  rulesPage: intCodec,
+  resultsPage: intCodec,
+};
+/** Fallback = gia tri `useState(1)` cu ⇒ URL rong van hien trang 1. */
+const SCREENER_PAGING_DEFAULTS: ScreenerPaging = { rulesPage: 1, resultsPage: 1 };
+
 export function SocScreenerPanel() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -113,8 +126,12 @@ export function SocScreenerPanel() {
   const [ruleModal, setRuleModal] = useState<{ mode: "create" | "edit"; rule?: ScreenerRule } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
-  const [rulesPage, setRulesPage] = useState(1);
-  const [resultsPage, setResultsPage] = useState(1);
+  // WAVE 6 / NAV-1: 2 trang cua 2 bang. Setter la **patch** nen call site phai
+  // truyen `{ rulesPage: … }`, KHONG phai updater lambda cua `useState`.
+  const [{ rulesPage, resultsPage }, setScreenerPaging] = useUrlState(
+    SCREENER_PAGING_SPEC,
+    SCREENER_PAGING_DEFAULTS,
+  );
   const pageSize = 10;
 
   const fetchData = async () => {
@@ -407,9 +424,9 @@ export function SocScreenerPanel() {
               rules.length > pageSize ? createElement(
                 "div",
                 { className: styles.pagination, style: { marginTop: "0.75rem" } },
-                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage <= 1, onClick: () => setRulesPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage <= 1, onClick: () => setScreenerPaging({ rulesPage: Math.max(1, rulesPage - 1) }) }, t("soc.actions.prev")),
                 createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: rulesPage })),
-                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage * pageSize >= rules.length, onClick: () => setRulesPage((p) => p + 1) }, t("soc.actions.next")),
+                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage * pageSize >= rules.length, onClick: () => setScreenerPaging({ rulesPage: rulesPage + 1 }) }, t("soc.actions.next")),
               ) : null,
             ),
             createElement("div", { className: styles.sectionCard,  },
@@ -471,9 +488,9 @@ export function SocScreenerPanel() {
                       results.length > pageSize ? createElement(
                         "div",
                         { className: styles.pagination, style: { marginTop: "0.5rem" } },
-                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage <= 1, onClick: () => setResultsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage <= 1, onClick: () => setScreenerPaging({ resultsPage: Math.max(1, resultsPage - 1) }) }, t("soc.actions.prev")),
                         createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: resultsPage })),
-                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage * pageSize >= results.length, onClick: () => setResultsPage((p) => p + 1) }, t("soc.actions.next")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage * pageSize >= results.length, onClick: () => setScreenerPaging({ resultsPage: resultsPage + 1 }) }, t("soc.actions.next")),
                       ) : null,
                     ),
               ),
