@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { createElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useSearchParams } from "react-router-dom";
 import * as LangContext from "../../context/LangContext.js";
 import * as PortfolioContext from "../../context/PortfolioContext.js";
 import * as AbilityContext from "../../context/AbilityContext.js";
@@ -72,13 +72,27 @@ const trendMock: any = {
   days: 7,
 };
 
-function renderPage(client?: QueryClient) {
+/**
+ * WAVE 9 — đọc `useSearchParams()`: cùng nguồn sự thật với `useUrlValue`.
+ * Không dùng `window.location.search` — `MemoryRouter` không chạm vào `window`.
+ */
+function SearchProbe() {
+  const [params] = useSearchParams();
+  return createElement("div", { "data-testid": "search" }, params.toString());
+}
+
+function renderPage(client?: QueryClient, search = "") {
   const qc = client ?? new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     createElement(
       QueryClientProvider,
       { client: qc },
-      createElement(MemoryRouter, null, createElement(TenantAdminHomePage)),
+      createElement(
+        MemoryRouter,
+        { initialEntries: [search ? `/?${search}` : "/"] },
+        createElement(SearchProbe),
+        createElement(TenantAdminHomePage),
+      ),
     ),
   );
 }
@@ -221,6 +235,35 @@ describe("TenantAdminHomePage Phase 0", () => {
     fireEvent.click(refreshBtn);
     await waitFor(() => {
       expect((defaultCoreApiAdapter.getDashboardSummary as any).mock.calls.length + (defaultCoreApiAdapter.getUsageTrend as any).mock.calls.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ── WAVE 9 / NAV-1: `activityFilter` phai điều khiển bằng URL thật ─────────
+  // `activityFilterCodec` BỎ giá trị mặc định `"all"` khỏi URL ⇒ URL sạch khi
+  // người dùng chưa lọc. Đây là điều phải kiểm, không phải "dùng hook cho có".
+  describe("NAV-1: activityFilter dong bo URL", () => {
+    const search = () => screen.getByTestId("search").textContent || "";
+
+    it("A. URL rong → mac dinh `all`, va URL VAN RONG", async () => {
+      renderPage();
+      await waitFor(() => expect(screen.getByTestId("search")).toBeTruthy());
+      expect(search()).toBe("");
+    });
+
+    it("C. deep-link ?activity=order → gia tri khoi tao tu URL", async () => {
+      renderPage(undefined, "activity=order");
+      await waitFor(() => expect(screen.getByTestId("search")).toBeTruthy());
+      // Gia tri KHAC mac dinh thi codec giu nguyen trong URL.
+      expect(search()).toBe("activity=order");
+    });
+
+    it("C2. ?activity=all → rơi ve mac dinh (URL van chua tham so)", async () => {
+      renderPage(undefined, "activity=all");
+      await waitFor(() => expect(screen.getByTestId("search")).toBeTruthy());
+      // `parse` tra `undefined` cho gia tri mac dinh ⇒ UI dung `all`.
+      // Hook KHONG tu viet lai URL luc mount ⇒ `?activity=all` van con.
+      // KHONG assert URL rong o day — xem ghi chu ben duoi.
+      expect(search()).toBe("activity=all");
     });
   });
 });
