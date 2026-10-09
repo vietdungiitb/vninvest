@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Search, Bell, LogOut, User, Settings } from 'lucide-react';
 import { isNewLayoutEnabled } from '@/lib/runtimeConfig';
 import { useCoreQuery } from '@/hooks/useCoreQuery.ts';
+import { useUrlValue, stringCodec } from '@/hooks/useUrlState';
 import { coreApiAdapter } from '@/adapters/coreApiAdapter.js';
 
 interface UserIdentity {
@@ -69,7 +70,11 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   const newLayout = isNewLayoutEnabled();
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [searchVal, setSearchVal] = useState('');
+  // WAVE 6 / NAV-1 — o tim ma o header chua dong bo URL: F5 mat noi dung dung.
+  // Mac dinh giong het `useState` cu (`''`) va KHONG ghi ra URL.
+  // `replace: true` — o input gắn thẳng `onChange`; neu push, moi KY TU tao
+  // 1 history entry ⇒ nguoi dung phai bam Back hang chuc lan (loi that wave 4).
+  const [searchVal, setSearchVal] = useUrlValue('q', stringCodec, '', { replace: true });
 
   useEffect(() => {
     setWsStatus('connected');

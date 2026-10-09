@@ -1,5 +1,6 @@
 import React, { createElement, useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useUrlValue, stringCodec } from '../hooks/useUrlState';
 
 const e = createElement;
 
@@ -92,7 +93,9 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
   const sizeDistribution = orderFlowData?.size_distribution || {};
 
   // Local state for client-side ICT slicing
-  const [timeFilter, setTimeFilter] = useState('cả phiên');
+  // WAVE 6 / NAV-1 — loc client-side chua dong bo URL: F5 luon quay ve `cả phiên`.
+  // Mac dinh giong het `useState` cu (`cả phiên`) va KHONG ghi ra URL.
+  const [timeFilter, setTimeFilter] = useUrlValue('cvd_window', stringCodec, 'cả phiên');
 
   // Filter cvdSeries client-side
   const filteredCvdSeries = useMemo(() => {
