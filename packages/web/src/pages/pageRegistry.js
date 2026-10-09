@@ -198,8 +198,19 @@ export const pageRegistry = Object.freeze([
     import("./SupportPage.tsx").then((module) => module.SupportPage)),
   makePageEntry("settings", "baseline", () =>
     import("./system/ShellSettingsPage.tsx").then((module) => module.ShellSettingsPage)),
-  makePageEntry("shell-ai-command-center", "baseline", () =>
-    import("./system/ShellAiCommandCenterPage.tsx").then((module) => module.ShellAiCommandCenterPage)),
+  // GỠ 2026-10-09 (wave 6): entry `shell-ai-command-center` đã bị xoá khỏi
+  // registry. Lý do: `main.tsx` KHÔNG route nào dùng id này ⇒ entry chết, và
+  // `check-h1-graph --gate` báo đúng 1 vi phạm `unreferenced-registry-entry`
+  // từ wave 4 (treo 2 session vì chờ Owner quyết).
+  //
+  // Phạm vi CỐ Ý HẸP — KHÔNG xoá `ShellAiCommandCenterPage.tsx`:
+  //   - file vẫn được export ở `src/index.js:20` (public API của package)
+  //   - `check-shell.mjs:37,454` vẫn import nó
+  //   - `__tests__/ai-cc-form-parity.component.test.ts:102` vẫn assert parity
+  // Việc xoá file thuộc R0.8 của plan AI Command Center (P0 chưa mở), KHÔNG
+  // thuộc wave UI/UX này. Xoá file là việc không khả đảo ngược cho review.
+  //
+  // Nếu sau này cần route lại: thêm entry + <Route> CÙNG một PR.
   makePageEntry("vip-local-control", "baseline", () =>
     import("./vip/VipLocalControlPage.tsx").then((module) => module.VipLocalControlPage)),
   // SM-P4 core user-facing pages
