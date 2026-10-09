@@ -5,9 +5,21 @@ import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
+import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 const DEFAULT_LIMIT = 25;
-const DEFAULT_FILTERS = {
+/** `type` (khong phai `interface`): interface KHONG co implicit index signature
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+type AuditTraceFilters = {
+  search: string;
+  kind: string;
+  action: string;
+  actor: string;
+  reason: string;
+  symbol: string;
+  serviceCode: string;
+};
+const DEFAULT_FILTERS: AuditTraceFilters = {
   search: '',
   kind: '',
   action: '',
@@ -15,6 +27,16 @@ const DEFAULT_FILTERS = {
   reason: '',
   symbol: '',
   serviceCode: '',
+};
+/** WAVE 4 / S4 — khai NGOAI component: literal trong render phá `useMemo` (AC-2.3). */
+const AUDIT_TRACE_FILTERS_SPEC: { [K in keyof AuditTraceFilters]: UrlStateCodec<AuditTraceFilters[K]> } = {
+  search: stringCodec,
+  kind: stringCodec,
+  action: stringCodec,
+  actor: stringCodec,
+  reason: stringCodec,
+  symbol: stringCodec,
+  serviceCode: stringCodec,
 };
 
 function kindLabel(kind: any, t: (key: string) => string) {
@@ -66,7 +88,10 @@ export function AdminCoreAuditTracePage() {
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [filtersDraft, setFiltersDraft] = useState(DEFAULT_FILTERS);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useUrlRecord<AuditTraceFilters>(
+    AUDIT_TRACE_FILTERS_SPEC,
+    DEFAULT_FILTERS,
+  );
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedRequestId, setSelectedRequestId] = useState('');
 

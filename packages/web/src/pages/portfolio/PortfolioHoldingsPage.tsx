@@ -101,6 +101,10 @@ export function PortfolioHoldingsPage({
       sortDir: boolCodec<"asc" | "desc">("desc", "asc"),
     },
     { search: "", sector: "", sortKey: "market_value" as SortKey, sortDir: "desc" as "asc" | "desc" },
+    // Major 2: `search` gắn thẳng `onChange` (L185) nên mỗi KÝ TỰ đẩy 1 history
+    // entry nếu `push`. Chỉ `search` là `replace`; `sortKey`/`sortDir`/`sector`
+    // giữ `push` để nút Back quay lại được bộ lọc trước đó.
+    { replaceKeys: ["search"] },
   );
   const setSearch = (v: string) => setUrlState({ search: v });
   const setSector = (v: string) => setUrlState({ sector: v });
