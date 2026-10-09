@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { renderInRouter, currentUrl } from "./socRouterHarness.js";
 import { SocOverviewPanel } from "../soc/SocOverviewPanel.js";
 
 const adapterMocks = vi.hoisted(() => ({
@@ -37,7 +38,7 @@ describe("SocOverviewPanel — PR-1 W3 maintenance metric", () => {
   it("shows maintenance card with count 1 and unknown 0 when fixture has 1 maintenance", async () => {
     adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: baseServices });
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
     // metric labels are i18n keys in test env
     expect(screen.getByText("soc.overview.maintenance_count")).toBeTruthy();
@@ -60,7 +61,7 @@ describe("SocOverviewPanel — PR-1 W2 bar 6 segments", () => {
   it("renders 6 segments when 6 statuses each have 1 service, total width ≈100%", async () => {
     adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: baseServices });
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    const { container } = render(<SocOverviewPanel />);
+    const { container } = renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
     const bar = container.querySelector('[class*="overviewHealthBar"]');
     expect(bar).toBeTruthy();
@@ -88,7 +89,7 @@ describe("SocOverviewPanel — PR-1 W4 SLO fail", () => {
       services: [{ service_key: "svc_healthy", name: "Healthy SVC", domain: "vnbroker", status: "healthy", is_active: true }],
     });
     adapterMocks.getSocSloOverview.mockRejectedValue(new Error("SLO boom"));
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Healthy SVC")).toBeTruthy());
     expect(screen.getByText("SLO boom")).toBeTruthy();
     expect(screen.getByText("soc.overview.retry_slo")).toBeTruthy();
@@ -113,7 +114,7 @@ describe("SocOverviewPanel — PR-1 W1 toggle confirm", () => {
     });
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
     adapterMocks.updateSocService.mockResolvedValue({});
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Healthy SVC")).toBeTruthy());
     const toggleBtn = screen.getByText("soc.overview.disable_service");
     fireEvent.click(toggleBtn);
@@ -155,7 +156,7 @@ describe("SocOverviewPanel — PR-2 W7 domain strip", () => {
       },
     } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
     expect(screen.getByText("soc.overview.domain_all")).toBeTruthy();
     const vnbrokerPill = screen.getByText("vnbroker 1/1");
@@ -182,7 +183,7 @@ describe("SocOverviewPanel — PR-2 W10 pagination range", () => {
     }));
     adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: many } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("SVC 0")).toBeTruthy());
     expect(screen.getByText("soc.overview.showing_range")).toBeTruthy();
     fireEvent.click(screen.getByText("soc.overview.next_page"));
@@ -203,7 +204,7 @@ describe("SocOverviewPanel — PR-2 W5 empty filtered", () => {
       services: [{ service_key: "svc_a", name: "A SVC", domain: "vnbroker", status: "healthy", is_active: true }],
     } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
     const input = document.querySelector('input[placeholder="soc.overview.search_placeholder"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: "zzz_no_match" } });
@@ -224,7 +225,7 @@ describe("SocOverviewPanel — UI polish W-U2 name title", () => {
       services: [{ service_key: "svc_long", name: longName, domain: "prefetch", status: "healthy", is_active: true }],
     } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    const { container } = render(<SocOverviewPanel />);
+    const { container } = renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText(longName, { exact: false })).toBeTruthy());
     const h4 = container.querySelector('h4[class*="overviewServiceName"]') as HTMLElement;
     expect(h4).toBeTruthy();
@@ -245,7 +246,7 @@ describe("SocOverviewPanel — UI polish W-U4 metric share + W-U7 freshness", ()
       generated_at: "2026-09-16T09:00:00Z",
     } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
     // 6 status cards each render metric_share caption
     expect(screen.getAllByText("soc.overview.metric_share").length).toBe(6);
@@ -270,7 +271,7 @@ describe("SocOverviewPanel — UI polish W-U5 domain pills + row labels", () => 
       },
     } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    const { container } = render(<SocOverviewPanel />);
+    const { container } = renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
     expect(screen.getByText("soc.overview.filter_by_domain")).toBeTruthy();
     expect(screen.getByText("soc.overview.filter_by_status")).toBeTruthy();
@@ -289,7 +290,7 @@ describe("SocOverviewPanel — UI polish uniform card zones", () => {
   it("every card has its own full-width SLO zone (placeholder when no SLO data)", async () => {
     adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: baseServices } as any);
     adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
-    const { container } = render(<SocOverviewPanel />);
+    const { container } = renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
     const cards = container.querySelectorAll('[class*="overviewServiceCard"]');
     expect(cards.length).toBe(6);
@@ -323,13 +324,79 @@ describe("SocOverviewPanel — PR-2 W11 burn per budget", () => {
         { service_key: "svc_disabled", uptime_30d: 0.99, burn_rate_1h: 5, error_budget_remaining: 0.1, slo_target: 0.999 },
       ],
     } as any);
-    render(<SocOverviewPanel />);
+    renderInRouter(<SocOverviewPanel />);
     await waitFor(() => expect(screen.getByText("Low Budget SVC")).toBeTruthy());
     // burn badge for low budget should be red (color var)
     const lowBudgetCard = screen.getByText("Low Budget SVC").closest("div")?.parentElement?.parentElement;
     expect(lowBudgetCard?.textContent).toContain("soc.slo.burn_rate_label");
     // disabled service should not have SLO badges
     const disabledCard = screen.getByText("Disabled SVC").closest("div")?.parentElement?.parentElement;
-    expect(disabledCard?.textContent).not.toContain("soc.slo.burn_rate_label");
+expect(disabledCard?.textContent).not.toContain("soc.slo.burn_rate_label");
+  });
+});
+
+// ---------------------------------------------------------------- WAVE 6 / NAV-1
+// AC: URL là nguồn sự thật. Quan sát người dùng QUAN TÂM — deep-link phải mở
+// đúng trang, và thao tác phải ghi ra URL — chứ không phải proxy "component
+// không crash".
+//
+// Block RIÊNG (không nhét vào block trên): block đó không có `beforeEach` mock ⇒
+// component render ra không có dữ liệu, mọi `getByText` đều fail. Đây là lỗi
+// khi đặt test, không phải lỗi production.
+describe("SocOverviewPanel - WAVE 6 / NAV-1 dong bo URL", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [
+        { service_key: "svc_a", name: "A SVC", domain: "vnbroker", status: "healthy", is_active: true },
+        { service_key: "svc_b", name: "B SVC", domain: "signals", status: "healthy", is_active: true },
+        { service_key: "svc_c", name: "C SVC", domain: "screener", status: "healthy", is_active: true },
+      ],
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] } as any);
+  });
+  afterEach(() => cleanup());
+
+  it("W6-O1: deep-link ?size=1&page=3 thi GIU NGUYEN (trang co that)", async () => {
+    // 3 dịch vụ / size=1 ⇒ **3 trang thật**, nên `?page=3` là deep-link hợp lệ.
+    // Đổi fixture lớn hơn sẽ biến `?page=3` thành trang không tồn tại ⇒ khi đó
+    // clamp về 1 là **đúng** (đây là hành vi sẵn có, không phải hồi quy).
+    renderInRouter(<SocOverviewPanel />, "?size=1&page=3");
+    // size=1 ⇒ mỗi trang 1 dịch vụ; trang 3 hiện "C SVC".
+    await waitFor(() => expect(screen.getByText("C SVC")).toBeTruthy());
+    // Effect "đổi bộ lọc ⇒ setPage(1)" chạy ở mount. Trước khi có `firstRun`
+    // guard, nó xoá mất deep-link ngay lập tức.
+    expect(currentUrl()).toContain("page=3");
+    expect(currentUrl()).toContain("size=1");
+  });
+
+  it("W6-O1b: deep-link ?page=99 vuot so trang thi clamp ve trang cuoi (khong loi)", async () => {
+    renderInRouter(<SocOverviewPanel />, "?size=1&page=99");
+    await waitFor(() => expect(screen.getByText("C SVC")).toBeTruthy());
+    // 3 trang ⇒ clamp về 3, không phải 1. Đây là hành vi clamp có sẵn.
+    await waitFor(() => expect(currentUrl()).toContain("page=3"));
+  });
+
+  it("W6-O2: doi pageSize ghi ?size= vao URL", async () => {
+    renderInRouter(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    // Chọn ĐÚNG select phân trang: `value` = pageSize hiện tại. Trang có nhiều
+    // `select` khác (lọc domain/sort) nên `querySelector("select")` chọn nhầm.
+    const sizeSelect = Array.from(document.querySelectorAll("select")).find(
+      (s) => ["9", "18", "36"].includes((s as HTMLSelectElement).value),
+    ) as HTMLSelectElement;
+    expect(sizeSelect).toBeTruthy();
+    fireEvent.change(sizeSelect, { target: { value: "18" } });
+    await waitFor(() => expect(currentUrl()).toContain("size=18"));
+  });
+
+  it("W6-O3: bam nut trang sau ghi ?page= vao URL", async () => {
+    renderInRouter(<SocOverviewPanel />, "?size=1");
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    // Nút tránh bằng `aria-label="Page N"` (SocOverviewPanel.tsx) — **không** phải
+    // ký tự `›`/`‹`. Test đo đúng nút người dùng thực sự bấm.
+    fireEvent.click(screen.getByLabelText("Page 2"));
+    await waitFor(() => expect(currentUrl()).toContain("page=2"));
   });
 });
