@@ -1,3 +1,132 @@
+## Entry 261: UI/UX wave 7 - BAY TRIEU CHUNG tu MOT bug (`core.bare` chan push), giai phong 2 branch WIP (2026-10-10)
+
+- **Nhanh**: `fix/hook-mode-git-dir-bare` -> `dev`
+- **Claim**: `uiux-w7-corebare`, `uiux-w7-wip-verify` (`docs/CLAIMS.md`)
+- **Tien cua**: `docs/audit-uiux/SESSION_LOG_WAVE6_20261009.md` §5.1, §5.2, §5.7
+- **Pham vi**: 1 file gate + 8 file `packages/web/src` + 1 dong `docs/CLAIMS.md`.
+
+### 1. ROOT CAUSE `core.bare` — het "chua xac dinh"
+
+`SESSION_LOG_WAVE6_20261009.md` §4.2 ghi `core.bare=true` la "CHUA XAC DINH",
+chi flip khi `git push` tu worktree, va de nghi dung **Process Monitor**.
+
+**Da chung minh duoc bang thuc nghiem, khong can Process Monitor:**
+`verify-hook-mode.mjs:58` goi `git init` trong thu muc tam **ma khong loc env**.
+Duoi `pre-push` hook, git truyen `GIT_DIR` (tro ve repo THAT) cho tien trinh con
+va `spawnSync` ke thua env do => lenh **re-init vao repo that**, roi ghi
+`core.bare=true` vao `.git/config` cua vninvest.
+
+| Buoc | Lenh | Ket qua |
+|---|---|---|
+| 1 | `GIT_DIR=<repo>/.git` + `node tools/opencode-global/verify-hook-mode.mjs` | `core.bare` **false -> true** |
+| 2 | chi `git init` trong thu muc tam, `GIT_DIR` ke thua | lap lai `true` |
+| 3 | doc lai | `verify-hook-mode` **FAIL 3/8**; `git add` loi `this operation must be run in a work tree` |
+
+**Mot nguyen nhan, 4 trieu chung** — nen session truoc quy 4 chuyen khac nhau la
+4 viec rieng: (1) chan push, (2) `git status/add/restore` hong, (3) hook-mode
+FAIL 3 case, (4) fix "moi lan lai" bang `git config --local core.bare false`.
+
+**Fix**: loc moi bien `GIT_*` khoi env cho 4 lenh git tao fixture.
+**KHONG** sua 2 lenh git tren repo that (`:83` `git add`, `:108` `git restore`) —
+chung can giu `GIT_DIR`. Luan doan session truoc ("co y khong sua") chi dung mot
+phan: file co **2 lo** lenh git, sua 1 cho khong ai sua ca hai.
+
+**Fail-before/pass-after** (revert rieng fix roi chay lai): revert => `core.bare=true`,
+FAIL 3/8, exit 1 · khoi phuc => **8/8 PASS**, `core.bare=false`, exit 0.
+
+### 2. Gate chan commit — claim STALE (khong phai loi code)
+
+Sau khi sua bug tren, `pre-push-gate` van **FAIL 1/17**. Chay tay: **PASS**.
+Chay `git reset` (index sach) roi chay lai: **PASS** => **chi doc file da staged**.
+
+Bisect 8 file 1 lan: thu pham duy nhat la `WhaleBubbleChart.jsx`.
+Hook bao 2 loi — `claimed-in-progress` + `claim-identity` — exit 2.
+Claim giu file la `uiux-improvement` (2026-10-07), **branch `feat/uiux-improvement`
+khong con ton tai** (da xoa o lan don branch cuoi wave 6) => **claim stale**.
+
+Theo `AGENT_PROTOCOL.md` §3 doi **1 tu trang thai** sang `superseded`, giu nguyen
+phan con lai. Khong xoa dong.
+
+> **Day KHONG phai gate hong.** Day la gate **lam dung viec** — no bat dung thu
+> ma doc bang mat. Kinh nghiem: doi 1 tu trong claim stale giai quyet 2 loi preflight.
+
+### 3. HAZARD MOI: `docs/CLAIMS.md` co line-ending HON TAP
+
+Do byte: **1090 LF + 32 CRLF**. `[IO.File]::ReadAllLines` + `WriteAllLines` chuan
+hoa toan bo ve CRLF => `git diff --numstat` ra **1093/1092** cho thay doi 1 dong.
+`git status` van chi ra 1 file, nen **doc bang mat se rat sai**.
+
+| Cach | `git diff --numstat` |
+|---|---|
+| `ReadAllLines` + `WriteAllLines` | **1093 / 1092** (toan file) |
+| `git cat-file blob HEAD:<path>` khoi phuc | 0 / 0 (sach) |
+| sua **o muc byte**, giu nguyen terminator | **1 / 1** (dung 1 dong) |
+
+Khoi phuc bang `git cat-file blob HEAD:docs/CLAIMS.md` — hash khop chinh xac
+voi `git rev-parse HEAD:<path>` truoc khi dung.
+
+### 4. HAI BRANCH WIP — ca 2 HONG, khong merge duoc nguyen trang
+
+| Branch | Bang chung | Loi that |
+|---|---|---|
+| `feat/uiux-w6-hooks` @ `9885f2ea1` | `vitest`: `Parse failed: Unexpected token` tai `:278` | thua 1 `});` |
+| | **`tsc --noEmit` exit 0** | **`tsc` KHONG bat loi parse** |
+| | 3 test assert `result.current.activeTab` | hook `:246` **van la `useState("giao-dich")`** ⇒ chua migrate |
+| | 1 assertion `2000000000` -> `2000000000000` | mock van la `2000000000` ⇒ **test sai** |
+| `feat/uiux-w6-pages` @ `bae85e53a` | `3 failed \| 841 passed` | `useUrlValue` goi ngoai `<Router>` |
+
+Ca 2 branch **BEHIND `origin/dev` 27 commit**.
+
+**Da giu phan dung**: 4 component cua `hooks` + 3 page cua `pages` + **sua** test
+`TenantUsageSummaryPage.component.test.tsx` (bo `<Router>`). **KHONG** port file
+test hong cua `hooks`, **KHONG** dung `pageRegistry.js` (agent `uiux-w6-registry`
+van giu).
+
+### 5. §5.7 "check-shell.mjs hong" — CHAN DOAN SAI
+
+Script **da DEPRECATED** tu W9 (`check-shell.mjs:1-10` ghi ro ly do). `npm run
+check:shell` chay **7 gate khac** (`check-dom-landmarks` + `check:tokens` +
+`check-stock-detail-shell` + `check-admin-spa-routes` + `check:contrast` +
+`i18n:scan:strict` + `check:i18n-hardcoded`) — chay that: **exit 0, 7/7 xanh**.
+Session truoc goi `node scripts/check-shell.mjs` (bang `check:shell:legacy`,
+comment ro "expected BROKEN") roi ket luan "gate hong".
+
+### Gate chay that tren branch nay
+
+| Gate | Exit | Ghi chu |
+|---|---|---|
+| `npx tsc --noEmit` | **0** | 0 loi |
+| `npm run lint` | **0** | 0 error / 3765 warning |
+| `npm run test:components` | **0** | **120 file / 854 test PASS** (= baseline) |
+| `npm run build` | **0** | 46.48s |
+| `npm run check:shell` | **0** | 7/7 gate con (xem muc 5) |
+| `nav1-report.mjs` | **0** | **60 -> 54 hit** |
+| `verify-hook-mode.mjs` | **0** | **8/8 PASS** (truoc sua: FAIL 1/8) |
+| `pre-push-gate.mjs` | **0** | **17 PASS / 0 SKIP / 0 FAIL** |
+| `check-multi-agent` | **0** | 0 loi, 0 trung so migration |
+
+### CHUA CHAY — khong bao PASS
+
+- **test BE**: khong chay (`CORE_DATABASE_URL` chua set, branch khong sua backend).
+- **Playwright mobile**: can backend that hoac `storageState`.
+- **`scan-ui-guidelines.mjs`**: mat 3-5 phut, khong chay lai trong phien nay.
+- **runtime that tren trinh duyet**: moi kiem chung o muc test; chua bam tay tren UI.
+
+### Bai hoc
+
+1. **"Chua xac dinh" hoac "can Process Monitor" = chua thu dung thuc nghiem.** Ca
+   hai cau deu dung: dat bien roi chay lai la ra ngay.
+2. **Mot nguyen nhan sinh 4 trieu chung.** Session truoc quy tung trieu chung la
+   mot viec rieng ⇒ ton 4 fix tam. Khi gap trieu chung "tu quay lai", tim bien
+   doc **vao** thu muc tam truoc, khong chi config.
+3. **`tsc` exit 0 khong co nghia la file dung** — `vitest` bat duoc parse error
+   ma `tsc` bo qua. Khong bao gio kết luận "file OK" tu `tsc` rieng.
+4. **Gate chay tay vs chay that**: chay tay PASS, qua gate FAIL. Chênh lech la
+   **index** — file da staged. Bisect tung file de tim thu pham.
+5. **File co line-ending hon tap thi phai sua o muc byte.** `ReadAllLines` +
+   `WriteAllLines` la bait, va `git status` KHONG phai hien ra tu phinh.
+6. **Claim stale chan nguoi khac ma khong ai biet.** Branch khong con ton tai =
+   claim do da chet; doi 1 tu sang `superseded` la du.
 ## Entry 260: UI/UX wave 6 phan 2 - PHUONG AN (a) boc Router cho test, NAV-1 80 -> 60, dong 2 lint error (2026-10-09)
 
 - **Nhanh**: `feat/uiux-w6-soc-router` -> `dev`
