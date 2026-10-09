@@ -87,11 +87,14 @@ export function AdminCoreAuditTracePage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [filtersDraft, setFiltersDraft] = useState(DEFAULT_FILTERS);
   const [filters, setFilters] = useUrlRecord<AuditTraceFilters>(
     AUDIT_TRACE_FILTERS_SPEC,
     DEFAULT_FILTERS,
   );
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2): draft
+  // phải seed từ URL, nếu không deep-link lọc bảng còn form trống và 1 lần
+  // Apply sẽ xoá sạch bộ lọc trong link.
+  const [filtersDraft, setFiltersDraft] = useState<AuditTraceFilters>(filters);
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedRequestId, setSelectedRequestId] = useState('');
 

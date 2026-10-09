@@ -241,8 +241,12 @@ export function useUrlRecord<T extends Record<string, unknown>>(
       // Xem `useUrlState` ve **mot** `setParams` duy nhat cho ca patch: hai
       // lan go trong cung tick KHONG compose.
       const keys = Object.keys(spec) as Array<keyof T>;
-      const touched = Object.keys(next);
-      const allReplace = touched.length > 0 && keys.every(
+      const touched = Object.keys(next) as Array<keyof T>;
+      // ⚠ `every` phải chạy trên **`touched`** (key người dùng vừa ghi), KHÔNG
+      // phải trên `keys` (toàn bộ key của spec). Bản đầu tiên dùng `keys` ⇒
+      // `replaceKeys` **chết lặng lẽ** vì spec luôn có key ngoài danh sách
+      // (audit Stage 5, ID-3: "dead code, không test nào bắt").
+      const allReplace = touched.length > 0 && touched.every(
         (k) => replaceAll || Boolean(replaceKeys?.includes(String(k))),
       );
       setParams(

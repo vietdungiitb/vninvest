@@ -33,14 +33,6 @@ type PatsFilters = {
    */
   expiresWithinDays: string;
 };
-/** Ban GOC soan cua form: moi field deu la `string` (o input luon luon la chuoi). */
-type PatsFiltersDraft = {
-  search: string;
-  status: string;
-  serviceAccountId: string;
-  anomalyState: string;
-  expiresWithinDays: string;
-};
 const PATS_FILTERS_DEFAULTS: PatsFilters = {
   search: '',
   status: '',
@@ -77,13 +69,6 @@ export function AdminCorePATsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [actionNote, setActionNote] = useState('');
-  const [filtersDraft, setFiltersDraft] = useState<PatsFiltersDraft>({
-    search: '',
-    status: '',
-    serviceAccountId: '',
-    anomalyState: '',
-    expiresWithinDays: '',
-  });
   // Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
   // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
   // duoc thay doi bo loc vua Apply.
@@ -91,6 +76,8 @@ export function AdminCorePATsPage() {
     PATS_FILTERS_SPEC,
     PATS_FILTERS_DEFAULTS,
   );
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  const [filtersDraft, setFiltersDraft] = useState<PatsFilters>(filters);
   const { t } = useI18n();
 
   useEffect(() => {

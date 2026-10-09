@@ -39,9 +39,15 @@ export function AdminBillingFleetPage() {
     // `status`, `plan` giu `push` de nut Back van quay lai duoc.
     { replaceKeys: ["search"] },
   );
+  // ⚠ WAVE 4 (audit Stage 5, ID-1) — `onChange` **KHÔNG** được gọi 2 setter.
+  // `useSearchParams` của react-router-dom@6.30.3 đóng trên `searchParams` của
+  // lần render đó (không có ref sống) ⇒ hai `setUrlState` trong CÙNG một tick
+  // thì lần hai đọc `prev` cũ và **xoá mất** kết quả lần một. Trước đây
+  // `setStatus(v); setPage(1);` ⇒ đổi trạng thái hoá đơn **không ghi được vào
+  // URL** ⇒ chọn trạng thái im lặng không có tác dụng. Đây là lỗi CÓ SẴN từ
+  // wave 2 (audit đã tái lập trên code `dev`), không phải hồi quy.
+  // ⇒ `status`/`plan` gộp vào MỘT lệnh `setUrlState` ngay tại `onChange`.
   const setPage = (v: number) => setUrlState({ page: v });
-  const setStatus = (v: string) => setUrlState({ status: v });
-  const setPlan = (v: string) => setUrlState({ plan: v });
   const setSearch = (v: string) => setUrlState({ search: v });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -128,13 +134,13 @@ export function AdminBillingFleetPage() {
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <select aria-label={t('adminBillingFleet.filterAll')} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterAll')} value={status} onChange={(e) => { setUrlState({ status: e.target.value, page: 1 }); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterAll')}</option>
             {['paid', 'past_due', 'open', 'draft', 'void', 'uncollectible'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <select aria-label={t('adminBillingFleet.filterPlanAll')} value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+          <select aria-label={t('adminBillingFleet.filterPlanAll')} value={plan} onChange={(e) => { setUrlState({ plan: e.target.value, page: 1 }); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
             <option value="">{t('adminBillingFleet.filterPlanAll')}</option>
             {['free', 'starter', 'pro', 'enterprise', 'custom', 'internal'].map((s) => (
               <option key={s} value={s}>{s}</option>
