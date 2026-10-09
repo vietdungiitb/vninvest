@@ -73,7 +73,12 @@ export function StockDetailHeader({
           { className: "sdp-header-meta" },
           loading
             ? e("div", { className: "sdp-skeleton sdp-skeleton-md", style: { width: "200px", height: "24px" } })
-            : e("h1", { className: "sdp-company-name" }, companyName),
+            // `h2`, KHÔNG phải `h1`: route `/stocks/:symbol` đã có `<h1>` tiêu đề
+            // trang ở `WorkstationShell.tsx:53` ⇒ `h1` ở đây là h1 thứ hai
+            // (WCAG 2.4.6). `.sdp-company-name` (`StockDetailPage.css:150`) set
+            // đủ margin/font-size/font-weight/color/line-height nên đổi thẻ không
+            // đổi hiển thị. Component này chỉ dùng ở `StockDetailPage.tsx:330`.
+            : e("h2", { className: "sdp-company-name" }, companyName),
           e(
             "div",
             { className: "sdp-header-tags" },
