@@ -177,6 +177,42 @@ describe("useUrlRecord — identity (AC-2.3 wave 3: bug da xay ra 1 lan)", () =>
   });
 });
 
+// ── ID-3 (audit Stage 5): `replaceKeys` trong `useUrlRecord` ────────────────
+// Bản đầu tiên chạy `every` trên TOÀN BỘ key của `spec` ⇒ `spec` luôn có key
+// ngoài danh sách ⇒ `replaceKeys` **chết lặng lẽ**. Ba test dưới khoá lại hành vi
+// ĐÚNG, và sẽ đỏ nếu ai đó đưa `every` về chạy trên `keys`.
+describe("ID-3 — `useUrlRecord` `replaceKeys` phai CHUA CHET", () => {
+  test("ghi chi key duoc liet ke → REPLACE", () => {
+    const { router } = mount(
+      <ProbeRecord spec={SPEC} defaults={DEFAULTS} options={{ replaceKeys: ["search"] }} />,
+    );
+    act(() => { setRecord({ search: "fpt" }); });
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+
+  test("ghi key NGOAI danh sach → PUSH", () => {
+    const { router } = mount(
+      <ProbeRecord spec={SPEC} defaults={DEFAULTS} options={{ replaceKeys: ["search"] }} />,
+    );
+    act(() => { setRecord({ status: "active" }); });
+    expect(router.state.historyAction).toBe("PUSH");
+  });
+
+  test("`spec` nhieu hon danh sach van Replace duoc khi chi cham 1 key", () => {
+    // `SPEC` co 3 key, danh sach chi 1. Neu `every` chay tren tat ca key thi
+    // ham nay KHONG BAO gio REPLACE ⇒ test do.
+    const { router } = mount(
+      <ProbeRecord
+        spec={{ search: stringCodec, status: stringCodec, kind: stringCodec, actor: stringCodec }}
+        defaults={{ search: "", status: "", kind: "", actor: "" }}
+        options={{ replaceKeys: ["search"] }}
+      />,
+    );
+    act(() => { setRecord({ search: "fpt" }); });
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+});
+
 // ── Major 2: `replace` ─────────────────────────────────────────────────────
 describe("Major 2 — replace vs push", () => {
   test("MAC DINH van la push (khong doi hanh vi call site cu)", () => {

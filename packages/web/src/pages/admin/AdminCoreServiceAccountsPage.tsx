@@ -44,20 +44,15 @@ export function AdminCoreServiceAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [filtersDraft, setFiltersDraft] = useState<ServiceAccountFilters>({
-    search: '',
-    status: '',
-    environment: '',
-    rotationRisk: '',
-    policyId: '',
-  });
-  // Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
+// Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
   // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
   // duoc thay doi bo loc vua Apply.
   const [filters, setFilters] = useUrlRecord<ServiceAccountFilters>(
     SA_FILTERS_SPEC,
     SA_FILTERS_DEFAULTS,
   );
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  const [filtersDraft, setFiltersDraft] = useState<ServiceAccountFilters>(filters);
   const [actionNote, setActionNote] = useState('');
 
   useEffect(() => {

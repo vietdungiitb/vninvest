@@ -67,11 +67,17 @@ export function AdminCoreJobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [filtersDraft, setFiltersDraft] = useState(DEFAULT_FILTERS);
   const [filters, setFilters] = useUrlRecord<JobFilters>(
     JOB_FILTERS_SPEC,
     DEFAULT_FILTERS,
   );
+  // WAVE 4 (audit Stage 5, ID-2) — seed draft TỪ URL.
+  // Trước đây `filters` là `useState` ⇒ deep-link `?search=fpt` **không** lọc
+  // bảng. Nay `useUrlRecord` lọc bảng đúng, nhưng nếu `filtersDraft` vẫn khởi
+  // tạo rỗng thì form trống trong khi bảng đã lọc, và **một lần bấm Apply là
+  // xoá sạch bộ lọc trong link**. `useState(filters)` lấy giá trị đã phân tích
+  // từ URL ngay ở render đầu ⇒ form và bảng luôn khớp.
+  const [filtersDraft, setFiltersDraft] = useState<JobFilters>(filters);
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedJobId, setSelectedJobId] = useState('');
 
