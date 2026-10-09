@@ -174,6 +174,36 @@ export function urlSyncedVars(lines) {
  * @param {Map<string,string>} synced tu `urlSyncedVars`
  * @returns {{name:string, hook:string}|null}
  */
+/**
+ * WAVE 9 — escape "bien cache du lieu", KHONG phai "tab dang chon".
+ *
+ * `SocSignalsPanel.tsx:359-361` co 4 bien:
+ *   const [configTab, setConfigTab] = useState<SignalTabData<...>>(emptyTab());
+ * Ten chua chu `Tab` nen rule bat nham — nhung chung **khong phai tab**:
+ * `SignalTabData<T>` = `{ loading, loaded, error, data }` la **cache du lieu**
+ * lazy-load. Tab thuc su la `subTab` (`:346`).
+ *
+ * Vì sao khong noi rule "ten chua `Tab` thi bo qua": wave 5 da hoc bai —
+ * noi rule bat rong se lam yeu gate, va `WhaleBubbleChart.wb_tab` /
+ * `WorkstationLayout.ws_tab` la tab THAT, phai van bi bat.
+ *
+ * Vì sao khong escape theo ten: 4 ten nay chi ngau nhiem mot lan, them ten
+ * vao den blacklist se **lan manh** khi file doi. Escape theo **hinh dang khai
+ * bao**, dung cho ca 4 va moi bien cung kieu.
+ *
+ * Phai co **bang chung tren dong code** (khong phai ten ham): dong khai bao
+ * phai co `useState` **kem kieu du lieu** (generic) — `useState('all')` hay
+ * `useState(0)` la gia tri don, van phai bi bat nhu truoc.
+ *
+ * ⚠ Regex chi kiem tra **ten kieu ngay sau `useState<`** chu khong phai noi
+ * dung ca generic. Ly do: `SignalTabData<{ config: Record<string, unknown> }>`
+ * co generic LONG NHAU, nen `[^>]*` dung o dau tien `>` va khong khop.
+ * (Do duoi day — ban regex dau tien KHONG bat T9, va chinh self-test T9 bat
+ * duoc, chu khong phai test doc ma vua them.)
+ */
+export const DATA_CACHE_RE =
+  /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*useState\s*<\s*(\w*(?:Data|Cache|Collection)\w*)/;
+
 export function nav1Candidate(line, synced) {
   const m = line.match(NAME_RE);
   if (!m && !line.match(ANY_DESTRUCTURE_RE)) return null;
@@ -181,6 +211,10 @@ export function nav1Candidate(line, synced) {
   if (!m && !isQueryToken(name)) return null;
   // Escape CAP BIEN: bien nay co that su la key cua hook URL thi bo qua.
   if (synced.has(name)) return null;
+  // Escape CACHE DU LIEU: `useState<SignalTabData<T>>(...)` — gia tri co kieu,
+  // khong phai tab/filter dang chon. KHONG phai moi ten chua "Tab".
+  const cache = line.match(DATA_CACHE_RE);
+  if (cache && cache[1] === name) return null;
   const hook = HOOK_RE.exec(line);
   return { name, hook: hook ? hook[2] : "useState" };
 }
