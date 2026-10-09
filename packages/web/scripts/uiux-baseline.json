@@ -3,11 +3,11 @@
   "_measured_at": "2026-10-09",
   "_scanner": "docs/audit-uiux/scripts/scan-ui-guidelines.mjs",
   "_reproduce": "node packages/web/scripts/check-uiux-budget.mjs",
-  "total": 177,
+  "total": 162,
   "rules": {
     "NAV-1": {
       "prio": "P1",
-      "count": 104
+      "count": 89
     },
     "CSS-2": {
       "prio": "P2",

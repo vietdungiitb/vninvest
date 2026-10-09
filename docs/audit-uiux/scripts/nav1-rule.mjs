@@ -37,21 +37,55 @@
  * `NAME_RE`) nen khong lam lech so dem — nhung day la **han so biet**, khong
  * phai cam on. `nav1-report.mjs --why` in ra tung bien bi bo qua va vi sao.
  *
- * ⚠ **KHONG dung regex nay de "giam so"**. Ha `|q` trong `NAME_RE` se xoa
- * `quantity` / `quota` / `quotesBySymbol` — nhung cai do **la false positive
- * cua rule**, va xoa chung de giam count la lam yeu gate (dung lesson
- * `HANDOFF_UIUX_WAVE3_20261008.md` §4.2 dong 1). No giu nguyen, ghi vao bao
- * cao de can tiep tuc sua **rule**, khong sua **so**.
+ * ⚠ **KHONG dung regex nay de "giam so"** — nghĩa la KHONG cat nhanh tu khoa
+ * (bo `|q`) de con so giam. Wave 5 (2026-10-09) da lam **dung** chuyen nay mot
+ * lan: nhánh `|q` rong bat **false positive** nen da sua thanh `q` phai la tu
+ * doc lap (`Q_STANDALONE`), va them escape `useSearchParams` — **khong cat
+ * hanh vi**. Self-test `T6`+`T7`+`T8` khoa ca hai chieu: sua rule phai loai
+ * duoc `quantity`/`queueTiers`/`searchParams` **va van bat** `q` that +
+ * `statusFilter`.
  */
 
 /**
- * Dieu kien khop `const [ten, ...` — CHI KHI ten chua mot trong:
- * filter | search | sort | page | tab | query | q
+ * Dieu kien khop `const [ten, ...` — CHI KHI ten chua mot trong 6 tu khoa THAT:
+ * filter | search | sort | page | tab | query
  *
- * Giu nguyen y nghia cua wave 2 (ke ca nhánh `q` rong) de khong doi hanh vi
- * gate ngoai y dinh nghia cua chinh minh.
+ * ⚠ **KHONG dua `q` vao regex nay.** Regex nay co co `i` ⇒ bat buoc moi
+ * character class deu case-insensitive, nen `q(?![a-z])` se khop `qValue` mot
+ * cach SAI (do `[a-z]` khop ca chu hoa). Nhanh `q` xu ly bang ham
+ * `isQueryToken` ben duoi — case-sensitive that su.
  */
-export const NAME_RE = /const\s*\[\s*(\w*(filter|search|sort|page|tab|query|q)\w*)\s*,/i;
+export const NAME_RE =
+  /const\s*\[\s*(\w*(filter|search|sort|page|tab|query)\w*)\s*,/i;
+
+/**
+ * WAVE 5 (2026-10-09) — nhanh `q` tach khoi regex.
+ *
+ * Ban goc viet nhanh `|q` rong ⇒ khop BAT KY ten nao co chu `q`:
+ * `quantity` · `orderQuantity` · `quota` · `quotas` · `quotesBySymbol` ·
+ * `queueTiers` · `selectedRequestId` (khop `Req`+`q`+`uest`).
+ * Do dem bang `nav1-classify.mjs` tren `packages/web/src`: **12/104 hit la false
+ * positive loai nay**.
+ *
+ * Quy tac: `q` chi la **ten bien** khi no la ky tu dau tien va het bien, hoac
+ * camelCase (`q` + chu Hoa / so). `q` + chu thuong là tiep mot **tu tieng Anh
+ * khac** ⇒ khong phai bien tim kiem.
+ *
+ *   q ✓ · qValue ✓ · qFilter ✓ · query ✓
+ *   quantity ✗ · quote ✗ · queueTiers ✗ · quotas ✗ · orderQuantity ✗
+ */
+/**
+ * Bat `const [ten, ...` ma KHONG dieu kien tu khoa nao — chi dung de lay ten
+ * cho nhanh `q` (xem `isQueryToken`). Khong dung de quyet dinh la hit.
+ */
+const ANY_DESTRUCTURE_RE = /const\s*\[\s*(\w+)\s*,/;
+
+export function isQueryToken(name) {
+  if (!/^q/i.test(name)) return false;
+  if (name.length === 1) return true;
+  // Phan biet HOA/so (camelCase) voi chu thuong (tu tieng Anh).
+  return /[A-Z0-9_]/.test(name[1]);
+}
 
 /** Lay ten hook that tu `const [x, setX] = <hook>(...)`. */
 const HOOK_RE = /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*(\w+)/;
@@ -74,6 +108,20 @@ const USE_URL_STATE_RE =
  */
 const USE_URL_RECORD_RE =
   /const\s*\[\s*(\w+)\s*,\s*(\w+)\s*\]\s*=\s*useUrlRecord\s*(?:<[^>]*>)?\s*\(/g;
+
+/**
+ * WAVE 5 (2026-10-09) — `useSearchParams` / `useRouterSearchParams` (react-router).
+ *
+ * Bien `searchParams` tu hook nay **CHINH LA URL** — no la nguon doc trang thai
+ * deep-link, khong phai mot bo loc chua dong bo. Truoc wave 5 rule bao loi o
+ * 3 file: `ShellOperationsCenterPage.tsx:40` · `ScreenerPage.tsx:158` ·
+ * `SupportPage.tsx:47`. Self-test `T8` khoa lai hanh vi nay.
+ *
+ * ⚠ Chua them `useUrlSearchParams`/hook tu thu vien khac — chua gap o repo nay.
+ * Khi gap, them vao day chu them regex, KHONG sua choi regex khac.
+ */
+const USE_SEARCH_PARAMS_RE =
+  /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*use(?:Router)?SearchParams\s*\(/g;
 
 /**
  * Tap `ten bien` -> `ten tham so URL` cho cac bien **that su** doc/ghi URL.
@@ -111,6 +159,10 @@ export function urlSyncedVars(lines) {
     while ((m = USE_URL_RECORD_RE.exec(line)) !== null) {
       out.set(m[1], m[1]);
     }
+    USE_SEARCH_PARAMS_RE.lastIndex = 0;
+    while ((m = USE_SEARCH_PARAMS_RE.exec(line)) !== null) {
+      out.set(m[1], "searchParams");
+    }
   }
   return out;
 }
@@ -124,8 +176,9 @@ export function urlSyncedVars(lines) {
  */
 export function nav1Candidate(line, synced) {
   const m = line.match(NAME_RE);
-  if (!m) return null;
-  const name = m[1];
+  if (!m && !line.match(ANY_DESTRUCTURE_RE)) return null;
+  const name = m ? m[1] : ANY_DESTRUCTURE_RE.exec(line)[1];
+  if (!m && !isQueryToken(name)) return null;
   // Escape CAP BIEN: bien nay co that su la key cua hook URL thi bo qua.
   if (synced.has(name)) return null;
   const hook = HOOK_RE.exec(line);
