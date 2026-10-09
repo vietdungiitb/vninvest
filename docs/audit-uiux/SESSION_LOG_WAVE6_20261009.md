@@ -1,5 +1,27 @@
 # NHẬT KÝ SESSION — UI/UX wave 6 (2026-10-09)
 
+> # ⛔ SUPERSEDED — đọc file này trước sẽ lấy thông tin SAI
+>
+> **Bản bàn giao hiện hành**: [`SESSION_LOG_WAVE7_20261010.md`](./SESSION_LOG_WAVE7_20261010.md)
+> (cùng thư mục, `docs/audit-uiux/`).
+>
+> **File này GIỮ LẠI để đối chiếu** — theo `AGENT_PROTOCOL.md` §3 không xoá tài liệu cũ.
+>
+> ## 3 chỗ đã sai sau đó (session wave 7 đã kiểm chứng)
+>
+> | Chỗ ghi ở file này | Thực tế |
+> |---|---|
+> | §4.2 `core.bare` **"CHƯA XÁC ĐỊNH"**, cần **Process Monitor**, "chỉ flip khi `git push` từ worktree" | **Đã chứng minh root cause bằng thực nghiệm** (`verify-hook-mode.mjs:58` `git init` kế thừa `GIT_DIR` ⇒ re-init repo thật). Lặp lại ở **cả hai** worktree, **không cần push**. Chi tiết: Entry 261 |
+> | §5.2 2 branch WIP "**CHƯA VERIFY, CHƯA PUSH**" | **Đã verify: cả 2 HỎNG.** `uiux-w6-hooks` parse error `:278` (mà `tsc` exit 0); `uiux-w6-pages` 3/844 test đỏ. Phần đúng đã vào `dev` qua **PR #83** |
+> | §5.7 "`check-shell.mjs` **hỏng** (`ERR_UNKNOWN_FILE_EXTENSION`), chưa ai sửa" | **Chẩn đoán SAI.** Script **đã DEPRECATED từ W9** (`check-shell.mjs:1-10`). `npm run check:shell` chạy 7 gate khác — chạy thật **exit 0, 7/7 xanh** |
+>
+> ## Vẫn còn giá trị
+>
+> §5.4 (NAV-1 còn lại — **đã đo lại: 54 hit**, không phải 60) · §5.5 (false positive)
+> · §5.6 (`filtersDraft` cố ý bỏ qua) · §5.8 (5 ticket nhỏ) · §6 (bẫy).
+> ⚠ §4.1 vẫn đúng, nhưng **bổ sung**: class bug đó còn xảy ra ở `verify-hook-mode.mjs`
+> — file này bị **bỏ sót** vì lập luận "cố ý không sửa" chỉ đúng một nửa.
+
 > **Đây là tài liệu bàn giao chính thức cho session kế tiếp.**
 > Thay thế `HANDOFF_UIUX_WAVE6_20261010.md` (file đó viết trước phương án (a), đã
 > đánh dấu superseded ở đầu).
