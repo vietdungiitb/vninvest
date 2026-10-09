@@ -456,6 +456,62 @@ if (process.argv.includes("--self-test")) {
     });
   }
 
+  // T9 — WAVE 9: escape "CACHE DU LIEU" phai loai 4 bien kieu
+  // `SignalTabData<T>` (SocSignalsPanel:359-361)…
+  {
+    const r = scan([
+      "export function P() {",
+      "  const emptyTab = <T,>(): SignalTabData<T> => ({ loading: false, loaded: false, error: '', data: null });",
+      "  const [configTab, setConfigTab] = useState<SignalTabData<{ config: Record<string, unknown> }>>(emptyTab());",
+      "  const [detectionTab, setDetectionTab] = useState<SignalTabData<{ whale: Record<string, unknown> }>>(emptyTab());",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T9 escape cache du lieu (SignalTabData<T>)",
+      pass: !r.hits.includes("configTab") && !r.hits.includes("detectionTab"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi KHONG co "configTab"/"detectionTab"`,
+    });
+  }
+
+  // T10 — KHÔNG ĐƯỢC yếu rule: tab/filter THAT su van phai bi bắt.
+  // Đây là case chống lại "nới rule cho dễ": nếu ai đó đổi escape thành
+  // "tên chứa Tab/Filter thì bỏ qua", T10 đỏ ngay.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [activeTab, setActiveTab] = useState('overview');",
+      "  const [wsTab, setWsTab] = useState('chart');",
+      "  const [sortCol, setSortCol] = useState('asc');",
+      "  const [filterStatus, setFilterStatus] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    const want = ["activeTab", "wsTab", "sortCol", "filterStatus"];
+    const missing = want.filter((w) => !r.hits.includes(w));
+    cases.push({
+      id: "T10 tab/filter THAT van bi bat (escape khong lam yeu rule)",
+      pass: missing.length === 0,
+      detail: `hits=[${r.hits.join(",")}] — thieu [${missing.join(",")}]`,
+    });
+  }
+
+  // T11 — `useState` có generic KHÔNG phải cache vẫn phải bị bắt:
+  // `useState<string>('all')` là giá trị đơn, không phải bản ghi có kieu.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [filterTab, setFilterTab] = useState<string>('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T11 useState<T>(gia tri don) van bi bat — escape chi dung cho cache co kieu",
+      pass: r.hits.includes("filterTab"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi CO "filterTab"`,
+    });
+  }
+
   // T4: comment O TRUOC hit khong lam lech so dong (W3-0 AC-0.1) — dang comment
   // loc ra khoi mang nen chi so phai giu lai, khong in `i + 1`.
   {

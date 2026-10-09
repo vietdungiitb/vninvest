@@ -1,3 +1,97 @@
+## Entry 262: UI/UX wave 9 - dong 20 claim stale + escape 4 false positive NAV-1 (2026-10-10)
+
+- **Nhanh**: `chore/close-stale-claims` -> `dev`
+- **Claim**: `uiux-w9-stale-claims`
+- **Tien cua**: `docs/audit-uiux/SESSION_LOG_WAVE7_20261010.md` §5.3 va §5.5
+
+### 1. So claim stale: ghi 4, thuc te 25
+
+| Nguon | Con so |
+|---|---|
+| `SESSION_LOG_WAVE7` §5.3 (va handoff wave 6) | "4 claim stale" |
+| **Dem dung theo quy tac preflight** | **25** |
+
+Sai so nao: dem bang `Get-Content -Tail` ⇒ chi thay 4 dong gan cuoi file. Dem dung
+phai parse theo **dung quy tac preflight doc**:
+
+```js
+line.split("|").map((x) => x.trim())   // .map(trim) — BO TRIM se trai ve 0 dong
+  -> cells[5].toLowerCase() === "in-progress"
+```
+
+⚠ **`.map(trim)` khong phai chi tiet hinh thuc.** Khong trim thi
+`" in-progress" !== "in-progress"` ⇒ script chay xong, **khong bao loi, khong doi
+dong nao**. Da gap 1 lan trong phien nay.
+
+### 2. Tieu chi stale — 2 tang, KHONG dung "tien do"
+
+| Tang | Lenh | Ket qua |
+|---|---|---|
+| 1 | `git rev-parse --verify <branch>` fail | branch **khong con** ⇒ stale |
+| 2 | `git merge-base --is-ancestor <branch> origin/dev` exit 0 | branch **da merge** ⇒ stale |
+
+⚠ Nhac loi: branch con **khong dong nghia la xong**. 5 claim con lai co branch
+con tren remote va **CHUA merge** ⇒ dung la viec dang mo:
+
+`sec03-secret-scan` · `sec02c-reencrypt-command` · `cleanup-decisions` ·
+`cleanup-audit` · `disc-measure`
+
+**25 -> 5.** 6 dong do branch khong con, 14 dong do branch da merge.
+Chi doi **1 tu trang thai** moi dong (`AGENT_PROTOCOL.md` §3, KHONG xoa dong).
+
+### 3. Hai lan lam hong file trong luc lam — va cach bat
+
+| Suy loi | Hau qua | Cach bat |
+|---|---|---|
+| `split(/\n/)` roi `join('')` | **MAT 20 DONG** (1138 -> 1118) | `match(/[^\n]*\n\|[^\n]+\$/g)` de giu terminator |
+| gan lai cho `const` | crash, file **khong duoc ghi** | `let` |
+
+Ca 2 bat duoc bang **doi chieu so dong + so dong khac noi dung** voi `HEAD`, khoi
+phuc bang SHA256 khop `git show HEAD:docs/CLAIMS.md`. Khong tin `git status` —
+no chi ra 1 file, doc bang mat se rat sai (xem muc 5 cua Entry 261).
+
+### 4. Escape 4 false positive — rule + self-test chong no yếu
+
+4 hit `SocSignalsPanel` la **false that**: `configTab`/`detectionTab`/
+`retentionTab`/`rulesTab` la cache du lieu `SignalTabData<T>` =
+`{loading, loaded, error, data}` (`:359-361`), **khong phai tab dang chon** —
+tab la `subTab` (`:346`).
+
+Escape theo **hinh dang khai bao**, KHONG theo ten: `useState<Ten...Data|Cache|Collection>(...)`.
+KHONG noi "ten chua `Tab` thi bo qua" — `wb_tab` / `ws_tab` la tab THAT.
+
+**Self-test +3 case (8 -> 11), T9 la case that su chung minh fix hoat dong:**
+
+| Case | Khoa hieu gi |
+|---|---|
+| **T9** | 4 bien `SignalTabData<T>` phai duoc escape |
+| **T10** | tab/filter THAT (`activeTab`/`wsTab`/`sortCol`/`filterStatus`) **van phai bi bat** — chong "noi rule cho de" |
+| **T11** | `useState<string>('all')` (gia tri don) van bi bat — escape chi dung cho cache co kieu |
+
+⚠ **T9 FAIL truoc, PASS sau.** Regex dau tien dung `[^>]*` nen **khong khop**:
+`SignalTabData<{ config: Record<string, unknown> }>` co generic **long nhau**,
+`[^>]*` dung o dau tien `>`. Neu khong co T9, fix nay da len `dev` **voi bien
+khong bat duoc** va ma khong ai biet.
+
+### 5. Gate chay that
+
+| Gate | Exit | Ghi chu |
+|---|---|---|
+| `scan-ui-guidelines --self-test` | **0** | **11/11 PASS** (truoc 8/8) |
+| `nav1-report.mjs` | **0** | **54 -> 50 hit**; `SocSignalsPanel` **11 -> 7** |
+| `check-uiux-budget` | **0** | 0 tang so voi baseline, **da giam 39** |
+| `npm run test:components` | **0** | **122 file / 870 test PASS** (= baseline) |
+| `check-multi-agent` | **0** | 0 trung so migration |
+
+### Bai hoc
+
+1. **Dem bat buoc dung quy tac gate doc.** Doc bang `Tail` cho con so sai 6 lan.
+2. **Script sua file phai co phep hien "khong doi duoc gi".** Khong co exit code
+   loi ⇒ chay nham roi tin la xong.
+3. **Self-test la thu bat bug, khong phai thu trang tri.** T9 bat regex hong
+   ngay lan dau chay.
+4. **Escaping nhieu cap: doc bo qua nhieu, mot cap la du.** Generic long nhau lam
+   regex `[^>]*` vo dung.
 ## Entry 261: UI/UX wave 7 - BAY TRIEU CHUNG tu MOT bug (`core.bare` chan push), giai phong 2 branch WIP (2026-10-10)
 
 - **Nhanh**: `fix/hook-mode-git-dir-bare` -> `dev`
