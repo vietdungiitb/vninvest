@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocDataOpsMonitorSection } from "../soc/SocDataOpsMonitorSection.js";
 
 const adapterMocks = vi.hoisted(() => ({
@@ -75,7 +76,7 @@ describe("SocDataOpsMonitorSection - queue depth (Slice G)", () => {
 
   it("hiển thị banner + bảng khi queue vượt ngưỡng 200", async () => {
     mockObservability({ realtime_prefetch: 5000, celery: 3 });
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     // test env: t() trả raw key
     await screen.findByText("soc.dataops.queue_depth_title");
     // tên queue + số depth render thô (không qua t)
@@ -92,7 +93,7 @@ describe("SocDataOpsMonitorSection - queue depth (Slice G)", () => {
 
   it("không banner khi mọi queue dưới ngưỡng", async () => {
     mockObservability({ realtime_prefetch: 12, celery: 0 });
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     await screen.findByText("soc.dataops.queue_depth_title");
     expect(screen.queryByRole("status")).toBeNull();
   });

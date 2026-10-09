@@ -10,6 +10,18 @@ import { formatLastCheck } from "./socTime.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { DataOpsContext } from "./DataOpsContext.js";
+// WAVE 6 / NAV-1 — hook URL có sẵn; `useUrlState` ⇒ cần `<Router>` (test đã bọc).
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../../hooks/useUrlState";
+
+/** WAVE 6 — spec ở MODULE SCOPE: `useUrlState` memo hoá theo `spec`/`defaults`. */
+type AuditUrl = { page: number; actor: string; q: string };
+const AUDIT_URL_SPEC: { [K in keyof AuditUrl]: UrlStateCodec<AuditUrl[K]> } = {
+  page: intCodec,
+  actor: stringCodec,
+  q: stringCodec,
+};
+/** Fallback = đúng giá trị `useState` cũ. */
+const AUDIT_URL_DEFAULTS: AuditUrl = { page: 1, actor: "", q: "" };
 import styles from "./soc.module.css";
 
 interface RuntimeConfig {
@@ -185,13 +197,21 @@ export function SocDataOpsConfigSection() {
     validationErrors?: string[];
   } | null>(null);
   const [applying, setApplying] = useState(false);
-  const [auditPage, setAuditPage] = useState(1);
+  // WAVE 6 / NAV-1 — audit: phân trang + 2 bộ lọc đồng bộ URL (gộp 1 patch để
+  // một lần bấm chỉ tạo một history entry).
+  const [auditState, setAuditState] = useUrlState(AUDIT_URL_SPEC, AUDIT_URL_DEFAULTS, {
+    replaceKeys: ["actor", "q"],
+  });
+  const auditPage = auditState.page;
+  const setAuditPage = (v: number) => setAuditState({ page: v });
+  const auditActorFilter = auditState.actor;
+  const setAuditActorFilter = (v: string) => setAuditState({ actor: v });
+  const auditSearch = auditState.q;
+  const setAuditSearch = (v: string) => setAuditState({ q: v });
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditHasMore, setAuditHasMore] = useState(false);
   const [auditTotal, setAuditTotal] = useState(0);
-  const [auditActorFilter, setAuditActorFilter] = useState("");
   const [auditFromDate, setAuditFromDate] = useState("");
-  const [auditSearch, setAuditSearch] = useState("");
   const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
   const [exportingAudits, setExportingAudits] = useState(false);
   const [changeReason, setChangeReason] = useState("");
@@ -958,7 +978,9 @@ export function SocDataOpsConfigSection() {
         createElement(
           "button",
           {
-            onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
+            // WAVE 6: setter của `useUrlState` nhận **giá trị**, KHÔNG phải updater lambda
+// như `useState` — truyền lambda sẽ ghi chuỗi hàm vào URL.
+onClick: () => setAuditPage(Math.max(1, auditPage - 1)),
             disabled: auditPage <= 1,
             className: styles.actionBtn,
             "aria-label": t("soc.dataops.audit_previous"),
@@ -969,7 +991,7 @@ export function SocDataOpsConfigSection() {
         createElement(
           "button",
           {
-            onClick: () => setAuditPage((p) => p + 1),
+            onClick: () => setAuditPage(auditPage + 1),
             disabled: !auditHasMore,
             className: styles.actionBtn,
             "aria-label": t("soc.dataops.audit_next"),

@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState, useMemo, useRef } from "react";
+import { createElement, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -191,7 +191,13 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const sortBy = overviewState.sort as "name" | "status" | "latency";
   const setSortBy = (v: "name" | "status" | "latency") => setOverviewState({ sort: v });
   const page = overviewState.page;
-  const setPage = (v: number) => setOverviewState({ page: v });
+  // `setPage` phải là tham chiếu **ổn định** để đưa vào deps của effect mà không
+  // làm effect chạy lại mỗi render. `setOverviewState` từ `useState` đổi tham
+  // chiếu mỗi render ⇒ `useCallback` bọc quanh nó **không giúp gì** (đã thử,
+  // test W6-O1 đỏ). Cách đúng: `ref` trỏ tới setter mới nhất.
+  const setStateRef = useRef(setOverviewState);
+  setStateRef.current = setOverviewState;
+  const setPage = useCallback((v: number) => setStateRef.current({ page: v }), []);
   const pageSize = overviewState.size;
   const setPageSize = (v: number) => setOverviewState({ size: v });
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
@@ -378,7 +384,7 @@ const safePage = Math.min(page, totalPages);
   useEffect(() => {
     if (services.length === 0) return;
     if (safePage !== page) setPage(safePage);
-  }, [safePage, page, services.length]);
+  }, [safePage, page, services.length, setPage]);
 
   // Đổi bộ lọc ⇒ về trang 1 (giữ hành vi cũ).
   //
@@ -393,7 +399,13 @@ const safePage = Math.min(page, totalPages);
       return;
     }
     if (page !== 1) setPage(1);
-  }, [debouncedSearch, statusFilter, domainFilter, sortBy, pageSize]);
+    // ⚠ Cố ý KHÔNG đưa `page` vào deps — mỗi lần đổi trang cũng là một lần đổi
+    // bộ lọc theo nghĩa của effect này, nên nó sẽ `setPage(1)` **đè mất** lựa
+    // chọn của người dùng (URL ra `page=1` thay vì `page=2`). Đã thử thêm
+    // `page` vào deps cho hết cảnh báo eslint ⇒ 3 test W6-O1/O1b/O3 đỏ.
+    // Bắt được bằng test, không phải bằng đoán.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, domainFilter, sortBy, pageSize, setPage]);
 
   const stats = useMemo(() => {
     return services.reduce(

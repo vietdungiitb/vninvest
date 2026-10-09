@@ -23,10 +23,18 @@ import type { ReactElement } from "react";
 import { render } from "@testing-library/react";
 import { MemoryRouter, useSearchParams } from "react-router-dom";
 
-/** Đọc query string thật của Router đang bọc. */
+/**
+ * Đọc query string thật của Router đang bọc.
+ *
+ * ⚠ Dùng `<div>`, **KHÔNG** `<output>`: `<output>` có implicit ARIA role
+ * `status`, nên `queryByRole("status")` của test khác khớp nhầm và làm hỏng
+ * assertion có sẵn (đã xảy ra ở `soc-queue-depth.component.test.tsx`:
+ * "không banner khi mọi queue dưới ngưỡng" đòi `queryByRole("status")` null).
+ * `div` không có implicit role nên an toàn.
+ */
 export function SearchProbe() {
   const [sp] = useSearchParams();
-  return <output data-testid="url-probe">{sp.toString()}</output>;
+  return <div data-testid="url-probe" aria-hidden="true">{sp.toString()}</div>;
 }
 
 /**
@@ -35,14 +43,30 @@ export function SearchProbe() {
  * @param el     element cần render
  * @param search query string ban đầu, ví dụ `"?users_page=3"`. Bỏ trống = URL sạch.
  */
+/**
+ * Giống {@link renderInRouter} nhưng trả kèm `rerender` **bọc lại trong cùng
+ * cây `MemoryRouter`**.
+ *
+ * ⚠ `rerender` của `@testing-library/react` chỉ thay phần tử gốc — gọi nó với
+ * element KHÔNG có Router thì `useLocation()` throw ngay. Bọc lại ở đây để test
+ * đổi props vẫn nằm trong đúng môi trường Router.
+ */
 export function renderInRouter(el: ReactElement, search = "") {
   const path = search ? `/soc${search}` : "/soc";
-  return render(
+  const view = render(
     <MemoryRouter initialEntries={[path]}>
       <SearchProbe />
       {el}
     </MemoryRouter>,
   );
+  const rerenderInRouter = (next: ReactElement) =>
+    view.rerender(
+      <MemoryRouter initialEntries={[path]}>
+        <SearchProbe />
+        {next}
+      </MemoryRouter>,
+    );
+  return { ...view, rerender: rerenderInRouter };
 }
 
 /**
