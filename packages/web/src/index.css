@@ -758,14 +758,18 @@ table th {
 }
 
 /* =====================================================================
-   FU-03 — mobile ergonomics (3 thieu do duoc, khong phai "chua kiem")
+   FU-03 — mobile ergonomics
 
-   Do bang `Get-ChildItem | Select-String` trong `src/`:
-     safe-area-inset-* = 0, touch-action = 0, overscroll-behavior = 0
+   CA 3 thu deu DA DUOC KHAI trong chinh file nay (cac muc 1/2/3 ben duoi):
+   `touch-action: manipulation`, `overscroll-behavior: contain`,
+   `env(safe-area-inset-*)`.
+   Comment cu (ban 2026-10-02) van noi "safe-area-inset-* = 0, touch-action =
+   0, overscroll-behavior = 0 ... Bien env() = 0px tren desktop nen an toan,
+   khong can media query" — DO la sai: no phu dinh chinh code ngay ben duoi.
+   Da sua 2026-10-09 (slice S1 wave 4).
+
    `viewport` meta DA DUNG (`width=device-width, initial-scale=1`, khong
    co `user-scalable=no`) nen KHONG sua o day.
-
-   Bien env() = 0px tren desktop nen an toan, khong can media query.
 
    GHI CHU: phan nay chi xu ly safe-area NEN NGANG cho `body`. Header/sidebar
    `position: fixed` cua tung module van phan bo padding rieng — xem muc 5
@@ -803,4 +807,47 @@ summary,
 body {
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* 4) WCAG 2.5.5 Target Size (Minimum) — vung cham >= 44x44 CSS px.
+
+   Do that bang `tests/visual/mobile-ergonomics.spec.ts` tren route CONG KHAI
+   (`/login`, `/register`, khai ngoai `ProtectedRoute` — `main.tsx:130-131`)
+   o viewport 393x851 co `hasTouch`: 7 control do duoc nho hon 44 px truoc
+   block nay (input 38 px, button submit 36 px).
+
+   Dung `@media (pointer: coarse)`, KHONG dung `@media (max-width: ...)`:
+   day la thuoc tinh CON TRO, khong phai do rong man hinh. May tinh de ban
+   dat chuot (coarse=false) o cua 1200px se KHONG bi tang kich thuoc, con
+   tablet/mobile o 1920px van duoc. Do do la yeu cau cua AC-1.4.
+
+   `input` chi lay loai text-like: `checkbox`/`radio` la o vuong nho ve tinh
+   dong bo, dat `min-height` se lam no phong to va pha layout. Honeypot
+   (`AuthRegisterPage.tsx:299`, 1x1, `aria-hidden`) cung bi loai de giu nguyen
+   kich thuoc — no khong phai muc tieu cham. */
+@media (pointer: coarse) {
+  button,
+  select,
+  textarea,
+  summary,
+  [role='button'],
+  [role='tab'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not(.invisible-honeypot) {
+    min-height: 44px;
+  }
+
+  /* Control icon-sized: can ca hai chieu de tao vung cham vuot hinh.
+     KHONG dat cho `a[href]` — link trong van ban dai se lam vo layout doc. */
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  summary {
+    min-width: 44px;
+  }
 }
