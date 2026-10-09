@@ -16,6 +16,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import {
+  codeLines,
+  isCommentLine,
+  nav1Candidate,
+  urlSyncedVars,
+} from "./nav1-rule.mjs";
 
 const ROOT = process.argv[2] ?? "packages/web/src";
 const EXTS = new Set([".tsx", ".jsx", ".ts", ".js", ".css"]);
@@ -24,25 +30,14 @@ const SKIP_DIR = new Set(["node_modules", "__tests__", "tests", "__mocks__"]);
 /**
  * Dòng comment: `//`, `*`, `/*`, `<!--`.
  *
+ * ⚠ WAVE 4 (2026-10-09): hàm này đã **chuyển** sang `nav1-rule.mjs` và được
+ * import từ đó, để scanner và `nav1-report.mjs` dùng CHUNG một bản. Trước đây
+ * có 2 bản trong 2 file — nguyên nhân gốc của loạt "số dòng lệch".
+ *
  * PHẢI theo dõi TRẠNG THÁI comment nhiều dòng `/* … *\/`, không chỉ prefix:
  * dòng nằm GIỮA `/*` và `*\/` không bat dau bang `*` (vd "  thuoc tinh nay…")
- * nên scanner dem nham - da gap o comment CSS vua viet trong slice UX-02.
+ * nen scanner dem nham - da gap o comment CSS vua viet trong slice UX-02.
  */
-function isCommentLine(line, state) {
-  const t = line.trim();
-  if (state.inBlock) {
-    if (t.includes("*/")) state.inBlock = false;
-    return true;
-  }
-  if (t.startsWith("//") || t.startsWith("<!--")) return true;
-  if (t.startsWith("/*")) {
-    if (!t.includes("*/")) state.inBlock = true;
-    return true;
-  }
-  if (t.startsWith("*")) return true;
-  if (/^https?:\/\//.test(t)) return true;
-  return false;
-}
 
 function isTestFile(f) {
   return /\.(test|spec)\./.test(path.basename(f));
@@ -255,25 +250,19 @@ const RULES = [
     name: "bộ lọc/sắp xếp/phân trang không đồng bộ URL",
     check(ctx) {
       if (ctx.isCss) return null;
-      const m = ctx.line.match(/const\s*\[\s*(\w*(filter|search|sort|page|tab|query|q)\w*)\s*,/i);
-      if (!m) return null;
-      if (ctx.fileHasUrlSync) return null;
-      // W3-2 (2026-10-08): rule nay ban ra o dau wave 2, khi `useUrlState`
-      // chua ton tai — nen message hardcode chuoi `useState("...")`. Da doi de
-      // lay ten hook that tu `const [x, setx] = <hook>(...)`.
+      // WAVE 4 (2026-10-09, Major 1): escape CHUYỂN TỪ CẤP FILE → CẤP BIẾN.
       //
-      // ⚠ **KHONG** them `useUrlState|useUrlValue` vao `fileHasUrlSync` (dong
-      // nay). Da thu mot lan (xem git log W3-2) va audit Stage 5 BA LOI:
-      // escape do la **CAP FILE** — file chi can goi hook 1 lan la moi
-      // `useState` filter trong file bi che, ke ca `searchDraft` cua
-      // `AdminCoreTenantsPage.tsx:27` la `useState` THAT chua sync.
-      // Do do 4/17 hit giam cua W3-2 den tu NOI escape chu khong phai sua
-      // code. Gate yeu hon la thu tien cho AC — tra ve danh sach thoat goc,
-      // giu gate nghiem. CampaignTable.jsx con 3 hit gia; chung duoc ghi ro
-      // trong bao cao thay vi xoa bang cach lam yeu gate.
-      const call = ctx.line.match(/const\s*\[\s*(\w+)\s*,[^\]]*?=\s*(\w+)/);
-      const src = call ? call[2] : "useState";
-      return `${src}("${m[1]}") khong dong bo URL  → mat deep-link  (${ctx.rel})`;
+      // Bản cũ dùng `ctx.fileHasUrlSync` — quét TOÀN BỘ text của file kể cả
+      // comment, nên (a) 1 dòng comment nhắc tên hook làm mất MỌI hit NAV-1
+      // trong file, và (b) 1 biến đã sync làm che luôn các biến CHƯA sync.
+      // Cả hai đều làm gate yếu đi mà không ai báo.
+      //
+      // Nay chỉ bỏ qua khi biến đó **thật sự** là key của hook URL, và bằng
+      // chứng chỉ đọc từ dòng KHÔNG phải comment. Chi tiết + hạn số biết:
+      // `nav1-rule.mjs`. Số đo trước/sau: `nav1-report.mjs --why`.
+      const cand = nav1Candidate(ctx.line, ctx.urlSynced ?? new Map());
+      if (!cand) return null;
+      return `${cand.hook}("${cand.name}") khong dong bo URL  → mat deep-link  (${ctx.rel})`;
     },
   },
   {
@@ -330,10 +319,10 @@ for (const f of files) {
     focusBlocks: [...txt.matchAll(/([^{}]*:focus[^{}]*)\{([^{}]*)\}/g)].map((m) => m[2]),
     fileHasReducedMotion: /prefers-reduced-motion/.test(txt),
     fileHasTabular: /tabular-nums|fontVariantNumeric/.test(txt),
-    // GHI CHU W3-2: da thu them `useUrlState|useUrlValue` vao regex nay. Audit
-    // Stage 5 BA LOI nen DA GOC LAI — xem comment o rule NAV-1. Escape cap
-    // file che ca `useState` chua sync trong cung file.
-    fileHasUrlSync: /useSearchParams|URLSearchParams|useNavigate|useLocation/.test(txt),
+    // WAVE 4 (Major 1): bien nao THAT SU la key cua hook URL. Tinh tren
+    // `lines` — mang DA LOAI COMMENT — nen comment khong the nhien dan sai.
+    // Thay cho `fileHasUrlSync` cap file (da bo, xem comment o rule NAV-1).
+    urlSynced: urlSyncedVars(lines),
   };
   const doneOnce = new Set();
 
@@ -393,3 +382,106 @@ for (const [rule, xs] of Object.entries(byRule).sort((a, b) => b[1].length - a[1
 console.log(`\n${"-".repeat(80)}`);
 console.log(`TONG = ${findings.length}   P0=${prio.P0} P1=${prio.P1} P2=${prio.P2} P3=${prio.P3}`);
 console.log(`(bỏ qua trong file test: ${skippedTests.length})`);
+
+// ── SELF-TEST (WAVE 4, Major 1) ────────────────────────────────────────────
+// Chay: node docs/audit-uiux/scripts/scan-ui-guidelines.mjs <root> --self-test
+//
+// Gate chi duoc tin khi DA THAY NO BAT VI PHAM. 2 truong hop duoi day chinh la
+// 2 bug da xay ra that cua ban escape CAP FILE:
+//
+//   T1 (a) 1 dong COMMENT chua ten hook → ton tai o CODE, phai KHONG che hit.
+//   T2 (b) file goi hook cho bien A     → khong duoc che hit bien B chua sync.
+//   T3      bien THAT SU la key hook URL → phai duoc che (escape CAP BIEN hoat dong).
+//
+// Self-test chay tren TEXT do bo vao trong RAM, khong tao file, khong can root.
+if (process.argv.includes("--self-test")) {
+  const cases = [];
+  const scan = (src) => {
+    const { lines, trueLine } = codeLines(src);
+    const synced = urlSyncedVars(lines);
+    const hits = [];
+    lines.forEach((l, i) => {
+      const c = nav1Candidate(l, synced);
+      if (c) hits.push(c.name);
+    });
+    return { hits, synced, trueLine };
+  };
+
+  // T1: comment chua `useUrlValue` KHONG duoc che `filterStatus` that.
+  {
+    const r = scan([
+      "// ban doan nay co useUrlValue/useSearchParams trong comment",
+      "/* useUrlValue('x') o day la COMMENT, khong phai code */",
+      "export function P() {",
+      "  const [filterStatus, setFilterStatus] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T1 comment chua ten hook khong che hit",
+      pass: r.hits.includes("filterStatus"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi co "filterStatus"`,
+    });
+  }
+
+  // T2: bien A da sync KHONG duoc che bien B chua sync cung file.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [sortCol, setSortCol] = useUrlValue('sort', stringCodec, '');",
+      "  const [globalFilter, setGlobalFilter] = useState('');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T2 bien A da sync khong che bien B chua sync",
+      pass: r.hits.includes("globalFilter") && !r.hits.includes("sortCol"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi co "globalFilter", KHONG co "sortCol"`,
+    });
+  }
+
+  // T3: escape cap BIEN van hoat dong (khong lam rule te hon).
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [globalFilter, setGlobalFilter] = useUrlValue('q', stringCodec, '');",
+      "  const [page, setPage] = useState(1);",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T3 escape cap bien van hoat dong",
+      pass: r.hits.includes("page") && !r.hits.includes("globalFilter"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi co "page", KHONG co "globalFilter"`,
+    });
+  }
+
+  // T4: comment O TRUOC hit khong lam lech so dong (W3-0 AC-0.1) — dang comment
+  // loc ra khoi mang nen chi so phai giu lai, khong in `i + 1`.
+  {
+    const { trueLine } = codeLines([
+      "// comment 1",
+      "const keepMe = 1;",
+      "const [filterStatus, setFilterStatus] = useState('all');",
+    ].join("\n"));
+    cases.push({
+      id: "T4 so dong that khong lech o comment",
+      pass: trueLine[0] === 2 && trueLine[1] === 3,
+      detail: `trueLine=${JSON.stringify(trueLine)} — mong doi [2,3] (neu in "i+1" se ra [1,2])`,
+    });
+  }
+
+  console.log("");
+  let ok = 0;
+  for (const c of cases) {
+    if (c.pass) ok += 1;
+    console.log(`  ${c.pass ? "PASS" : "FAIL"}  ${c.id}`);
+    console.log(`         ${c.detail}`);
+  }
+  console.log("");
+  if (ok !== cases.length) {
+    console.error(`✗ self-test FAIL — ${cases.length - ok}/${cases.length} truong hop KHONG bat duoc`);
+    process.exit(1);
+  }
+  console.log(`✓ self-test PASS (${ok}/${cases.length})`);
+}

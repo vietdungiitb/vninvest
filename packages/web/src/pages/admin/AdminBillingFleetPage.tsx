@@ -34,6 +34,10 @@ export function AdminBillingFleetPage() {
   const [{ page, status, plan, search }, setUrlState] = useUrlState(
     BILLING_URL_SPEC,
     BILLING_URL_DEFAULTS,
+    // Major 2: `search` la o nhap van ban gan thang `onChange` (L139) ⇒ `push`
+    // se tao 1 history entry cho moi ky tu. Chi `search` `replace`; `page`,
+    // `status`, `plan` giu `push` de nut Back van quay lai duoc.
+    { replaceKeys: ["search"] },
   );
   const setPage = (v: number) => setUrlState({ page: v });
   const setStatus = (v: string) => setUrlState({ status: v });
