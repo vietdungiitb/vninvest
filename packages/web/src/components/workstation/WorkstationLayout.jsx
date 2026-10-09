@@ -1,6 +1,25 @@
 import { useEffect, useState, useMemo } from "react";
 import { createElement } from "react";
-import { useUrlValue, stringCodec } from "../../hooks/useUrlState";
+import { useUrlValue } from "../../hooks/useUrlState";
+
+/**
+ * WAVE 8 / NAV-1 — codec bỏ giá trị MẶC ĐỊNH khỏi URL.
+ *
+ * Vì sao không dùng `stringCodec`: nó chỉ bỏ giá trị **rỗng**
+ * (`serialize: (v) => (v === "" ? undefined : v)`), nên bấm về tab `chart`
+ * sẽ để lại `?ws_tab=chart` — URL bẩn dù người dùng đã về trạng thái mặc định.
+ * Cùng nguyên tắc với `boolCodec` của hook và với `usageTabCodec` bên
+ * `TenantUsageSummaryPage.tsx`.
+ *
+ * `parse` cũng phải trả `undefined` cho giá trị lạ, để `?ws_tab=bogus` rơi về
+ * mặc định thay vì rơi vào trạng thái không có tab nào được chọn.
+ */
+const WS_TABS = ["chart", "orderbook", "tradelog"];
+const WS_TAB_DEFAULT = "chart";
+const wsTabCodec = {
+  parse: (raw) => (WS_TABS.includes(raw) ? raw : undefined),
+  serialize: (v) => (v === WS_TAB_DEFAULT ? undefined : v),
+};
 
 /**
  * WorkstationLayout - Responsive layout wrapper for Stock Detail Workstation
@@ -25,7 +44,9 @@ export function WorkstationLayout({ children, enabled = true, className = "" }) 
   const [isMobile, setIsMobile] = useState(false);
   // WAVE 6 / NAV-1 — tab mobile chua dong bo URL: F5 luon quay ve `chart`.
   // Mac dinh giong het `useState` cu (`chart`) va KHONG ghi ra URL.
-  const [activeTab, setActiveTab] = useUrlValue("ws_tab", stringCodec, "chart"); // chart | orderbook | tradelog
+  // WAVE 8 / NAV-1 — `wsTabCodec` (không phải `stringCodec`): bấm về tab mặc
+  // định `chart` sẽ **xoá** tham số khỏi URL thay vì để lại `?ws_tab=chart`.
+  const [activeTab, setActiveTab] = useUrlValue("ws_tab", wsTabCodec, WS_TAB_DEFAULT); // chart | orderbook | tradelog
 
   // Check feature flag from window.__ENV__ or localStorage, fallback to enabled prop
   const isFeatureEnabled = useMemo(() => {
