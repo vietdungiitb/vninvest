@@ -48,6 +48,24 @@ export default defineConfig({
       use: { ...devices['iPhone 12'], storageState: authFile },
       dependencies: ['setup'],
     },
+    // W3-5 / S1: mobile ergonomics (WCAG 2.5.5 target size + no h-scroll).
+    // Deliberately ISOLATED from the auth `setup` project:
+    //  - no `dependencies`   => the real-login setup never runs here, so this
+    //    project works against a bare `vite preview` with no backend.
+    //  - empty `storageState` => no leftover session from `tests/visual/.auth`.
+    //  - `testMatch` is MANDATORY: without it the default testMatch picks up all
+    //    18 `*.spec.ts` in this dir, every one of which needs auth, and the run
+    //    goes red for reasons unrelated to the AC.
+    {
+      name: 'mobile-ergonomics',
+      testMatch: /mobile-ergonomics\.spec\.ts/,
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 393, height: 851 },
+        hasTouch: true,
+        storageState: { cookies: [], origins: [] },
+      },
+    },
   ],
 
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
