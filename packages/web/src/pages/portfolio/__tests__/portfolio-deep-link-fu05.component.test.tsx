@@ -50,7 +50,7 @@ function UrlSpy() {
   return null;
 }
 
-async function mount(search: string) {
+async function mount(search: string, extraEntries: string[] = []) {
   const router = createMemoryRouter(
     [{ path: "/p", element: (
       <>
@@ -62,7 +62,7 @@ async function mount(search: string) {
         </PortfolioProvider>
       </>
     ) }],
-    { initialEntries: [`/p${search}`] },
+    { initialEntries: [`/p${search}`, ...extraEntries] },
   );
   render(<RouterProvider router={router} />);
   await waitFor(() => expect(screen.queryByText(/Dang t/i)).toBeNull(), { timeout: 4000 });
@@ -84,16 +84,57 @@ describe("FU-05 — PortfolioHoldingsPage deep-link", () => {
     await waitFor(() => expect(url).toContain("search=HPG"));
   });
 
-  test("AC-3: quay lai khoi lich su khoi phuc LOC cu (khong phai URL co param)", async () => {
+  /**
+   * WAVE 4 / Major 2 — VIẾT LẠI, không xoá.
+   *
+   * ⚠ **Bản cũ pass vì LÝ DO SAI (hazard 10).** Nó gọi
+   * `fireEvent.change(input, { value: "HPG" })` — **một** sự kiện mang giá trị
+   * ĐÃ HOÀN CHỈNH — rồi đòi `navigate(-1)` khôi phục bảng chưa lọc. Người dùng
+   * thật gõ 3 ký tự ⇒ **3** sự kiện `change`. Với `push`, lịch sử sẽ chứa
+   * `?search=H` → `?search=HP` → `?search=HPG`, và `navigate(-1)` chỉ quay về
+   * `?search=HP`, **không** phải bảng chưa lọc. Tức là AC cũ đang bảo vệ một
+   * hành vi **không tồn tại** với người dùng thật.
+   *
+   * Major 2 sửa đúng cái đó: `search` ghi bằng `replace` ⇒ cả 3 ký tự là **một**
+   * bước. Observable mới đo được, và **fail-trước**: với code cũ lần ghi cuối là
+   * `PUSH` (đỏ), với code mới là `REPLACE` (xanh).
+   *
+   * Đổi hành vi (cần Owner biết): **không còn undo-bộ-lọc-bằng-nút-Back** —
+   * Back sẽ rời trang. Đánh đổi này là chủ ý: giữ nó thì Back phải bấm N lần với
+   * N = số ký tự đã gõ. Ghi trong `docs/REPORT_FINAL_UIUX_WAVE4.md`.
+   */
+  test("AC-3 (rev 2): go N ky tu → khong tao PUSH entry (Major 2)", async () => {
     const router = await mount("");
     await waitFor(() => expect(screen.getByText("Vingroup")).toBeTruthy());
+    const input = screen.getByRole("searchbox");
 
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "HPG" } });
-    await waitFor(() => expect(screen.queryByText("Vingroup")).toBeNull());
-    await waitFor(() => expect(screen.getByText("Hòa Phát")).toBeTruthy());
+    // Mô phỏng gõ TAY: 3 sự kiện change, không phải 1 sự kiện mang "HPG".
+    fireEvent.change(input, { target: { value: "H" } });
+    await waitFor(() => expect(url).toContain("search=H"));
+    fireEvent.change(input, { target: { value: "HP" } });
+    await waitFor(() => expect(url).toContain("search=HP"));
+    fireEvent.change(input, { target: { value: "HPG" } });
+    await waitFor(() => expect(url).toContain("search=HPG"));
+
+    // Lần ghi cuối phải là REPLACE. Code cũ (push) ⇒ PUSH ⇒ test này ĐỎ.
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+
+  test("AC-3b (rev 2): ca 3 ky tu la MOT buoc undo, khong phai 3", async () => {
+    // `mount` tao 2 entry: index 0 `/p`, index 1 `/p`. Sau khi gõ, `navigate(-1)`
+    // phai quay ve index 0 ⇒ URL KHONG con `search=`.
+    // Code cũ (push mỗi ký tự) ⇒ quay về `?search=HP` ⇒ test này ĐỎ.
+    const router = await mount("", ["/p"]);
+    await waitFor(() => expect(screen.getByText("Vingroup")).toBeTruthy());
+    const input = screen.getByRole("searchbox");
+    fireEvent.change(input, { target: { value: "H" } });
+    fireEvent.change(input, { target: { value: "HP" } });
+    fireEvent.change(input, { target: { value: "HPG" } });
+    await waitFor(() => expect(url).toContain("search=HPG"));
 
     await router.navigate(-1);
-    // Observable: du lieu VFC xuat hien lai, khong chi URL doi nguoi
+    await waitFor(() => expect(url).not.toContain("search="));
+    // Observable: dữ liệu VFC quay lại, không chỉ URL đổi người.
     await waitFor(() => expect(screen.getByText("Vingroup")).toBeTruthy());
   });
 

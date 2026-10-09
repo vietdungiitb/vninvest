@@ -41,7 +41,13 @@ export function AdminAuditPage() {
   // W3-2 (AC-2.1): 7 state nay la bo loc + phan trang cua bang audit. Truoc day
   // chi nam trong RAM nen gui link cho nguoi khac thi ho thay man hinh CHUA loc.
   const [{ page, tenantId, actor, action, resourceType, dateFrom, dateTo }, setUrlState] =
-    useUrlState(AUDIT_URL_SPEC, AUDIT_URL_DEFAULTS);
+    useUrlState(AUDIT_URL_SPEC, AUDIT_URL_DEFAULTS, {
+      // Major 2: `tenantId` va `actor` la O NHAP VAN BAN gan thang `onChange`
+      // (L109-110) ⇒ `push` se tao 1 history entry cho MOI KY TU. Hai key do
+      // `replace`. Cac key con lai (page/action/resourceType/dateFrom/dateTo)
+      // giu `push` de nut Back van quay lai duoc bo loc truoc do.
+      replaceKeys: ["tenantId", "actor"],
+    });
   const setPage = (v: number) => setUrlState({ page: v });
   const setTenantId = (v: string) => setUrlState({ tenantId: v });
   const setActor = (v: string) => setUrlState({ actor: v });

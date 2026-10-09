@@ -5,14 +5,32 @@ import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
+import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 const DEFAULT_LIMIT = 25;
-const DEFAULT_FILTERS = {
+/** `type` (khong phai `interface`): interface KHONG co implicit index signature
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+type JobFilters = {
+  search: string;
+  kind: string;
+  status: string;
+  serviceDomain: string;
+  serviceCode: string;
+};
+const DEFAULT_FILTERS: JobFilters = {
   search: '',
   kind: '',
   status: '',
   serviceDomain: '',
   serviceCode: '',
+};
+/** WAVE 4 / S4 — khai NGOAI component: literal trong render phá `useMemo` (AC-2.3). */
+const JOB_FILTERS_SPEC: { [K in keyof JobFilters]: UrlStateCodec<JobFilters[K]> } = {
+  search: stringCodec,
+  kind: stringCodec,
+  status: stringCodec,
+  serviceDomain: stringCodec,
+  serviceCode: stringCodec,
 };
 
 function kindLabel(kind: any, t: (key: string) => string) {
@@ -49,8 +67,17 @@ export function AdminCoreJobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [filtersDraft, setFiltersDraft] = useState(DEFAULT_FILTERS);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useUrlRecord<JobFilters>(
+    JOB_FILTERS_SPEC,
+    DEFAULT_FILTERS,
+  );
+  // WAVE 4 (audit Stage 5, ID-2) — seed draft TỪ URL.
+  // Trước đây `filters` là `useState` ⇒ deep-link `?search=fpt` **không** lọc
+  // bảng. Nay `useUrlRecord` lọc bảng đúng, nhưng nếu `filtersDraft` vẫn khởi
+  // tạo rỗng thì form trống trong khi bảng đã lọc, và **một lần bấm Apply là
+  // xoá sạch bộ lọc trong link**. `useState(filters)` lấy giá trị đã phân tích
+  // từ URL ngay ở render đầu ⇒ form và bảng luôn khớp.
+  const [filtersDraft, setFiltersDraft] = useState<JobFilters>(filters);
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedJobId, setSelectedJobId] = useState('');
 
