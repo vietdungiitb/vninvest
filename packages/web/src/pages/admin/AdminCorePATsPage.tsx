@@ -5,6 +5,53 @@ import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
+import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
+
+/**
+ * WAVE 4 / S4 — bộ lọc đồng bộ URL.
+ *
+ * ⚠ `spec` và `defaults` khai **NGOÀI** component: truyền object literal trong
+ * thân render làm `useMemo` trong `useUrlRecord` tính lại mỗi lần ⇒ `value` là
+ * object mới mỗi render (AC-2.3 wave 3, bug đã xảy ra 1 lần ở `boolCodec`).
+ *
+ * ⚠ `filtersDraft` **CỐ Ý** không đồng bộ URL — nó là ô **đang soạn**, chưa
+ * Apply. Đồng bộ cả hai sẽ thành vòng lặp `useEffect`.
+ * `expiresWithinDays` là SỐ ⇒ dùng `intCodec`, không phải `stringCodec`.
+ */
+/** `type` (khong phai `interface`): interface KHONG co implicit index signature
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+type PatsFilters = {
+  search: string;
+  status: string;
+  serviceAccountId: string;
+  anomalyState: string;
+  /**
+   * GIỮ KIỂU `string` — không đổi sang `number`. O input luôn phát ra chuỗi và
+   * giá trị này đi thẳng vào `params.expires_within_days` của adapter (xem
+   * `loadTokens`). Đổi sang `number` sẽ phải sửa cả form và chỗ đọc, tăng bề
+   * mặt mà không đổi hành vi. Codec bên dưới chỉ **lọc** giá trị không phải số.
+   */
+  expiresWithinDays: string;
+};
+const PATS_FILTERS_DEFAULTS: PatsFilters = {
+  search: '',
+  status: '',
+  serviceAccountId: '',
+  anomalyState: '',
+  expiresWithinDays: '',
+};
+const PATS_FILTERS_SPEC: { [K in keyof PatsFilters]: UrlStateCodec<PatsFilters[K]> } = {
+  search: stringCodec,
+  status: stringCodec,
+  serviceAccountId: stringCodec,
+  anomalyState: stringCodec,
+  expiresWithinDays: {
+    // Chỉ nhận chuỗi toàn số ⇒ `?expiresWithinDays=abc` bị coi như **không lọc**
+    // thay vì đẩy thẳng xuống adapter.
+    parse: (raw) => (/^\d+$/.test(raw ?? '') ? String(raw) : ''),
+    serialize: (v) => (/^\d+$/.test(v) ? v : undefined),
+  },
+};
 
 export function AdminCorePATsPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -22,20 +69,15 @@ export function AdminCorePATsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [actionNote, setActionNote] = useState('');
-  const [filtersDraft, setFiltersDraft] = useState({
-    search: '',
-    status: '',
-    serviceAccountId: '',
-    anomalyState: '',
-    expiresWithinDays: '',
-  });
-  const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    serviceAccountId: '',
-    anomalyState: '',
-    expiresWithinDays: '',
-  });
+  // Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
+  // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
+  // duoc thay doi bo loc vua Apply.
+  const [filters, setFilters] = useUrlRecord<PatsFilters>(
+    PATS_FILTERS_SPEC,
+    PATS_FILTERS_DEFAULTS,
+  );
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  const [filtersDraft, setFiltersDraft] = useState<PatsFilters>(filters);
   const { t } = useI18n();
 
   useEffect(() => {

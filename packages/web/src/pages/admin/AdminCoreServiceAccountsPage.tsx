@@ -5,6 +5,30 @@ import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
+import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
+
+/**
+ * WAVE 4 / S4 — bộ lọc đồng bộ URL. Xem `AdminCorePATsPage.tsx` cùng thư mục để
+ * biết vì sao `spec`/`defaults` khai ngoài component và vì sao `filtersDraft`
+ * cố ý KHÔNG đồng bộ URL.
+ */
+type ServiceAccountFilters = {
+  search: string;
+  status: string;
+  environment: string;
+  rotationRisk: string;
+  policyId: string;
+};
+const SA_FILTERS_DEFAULTS: ServiceAccountFilters = {
+  search: '', status: '', environment: '', rotationRisk: '', policyId: '',
+};
+const SA_FILTERS_SPEC: { [K in keyof ServiceAccountFilters]: UrlStateCodec<ServiceAccountFilters[K]> } = {
+  search: stringCodec,
+  status: stringCodec,
+  environment: stringCodec,
+  rotationRisk: stringCodec,
+  policyId: stringCodec,
+};
 
 export function AdminCoreServiceAccountsPage() {
   const { t } = useI18n();
@@ -20,20 +44,15 @@ export function AdminCoreServiceAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [filtersDraft, setFiltersDraft] = useState({
-    search: '',
-    status: '',
-    environment: '',
-    rotationRisk: '',
-    policyId: '',
-  });
-  const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    environment: '',
-    rotationRisk: '',
-    policyId: '',
-  });
+// Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
+  // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
+  // duoc thay doi bo loc vua Apply.
+  const [filters, setFilters] = useUrlRecord<ServiceAccountFilters>(
+    SA_FILTERS_SPEC,
+    SA_FILTERS_DEFAULTS,
+  );
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  const [filtersDraft, setFiltersDraft] = useState<ServiceAccountFilters>(filters);
   const [actionNote, setActionNote] = useState('');
 
   useEffect(() => {
