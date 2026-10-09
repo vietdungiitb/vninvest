@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   ShellPageChrome, ShellPanel,
 } from "../../components/ShellPageTemplate.js";
@@ -7,6 +6,7 @@ import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useTenantSelfQuery } from "./useTenantSelfQuery.js";
+import { useUrlValue, type UrlStateCodec } from "../../hooks/useUrlState";
 
 interface MeSummary {
   tenant?: { plan?: string; status?: string; display_name?: string; tenant_code?: string };
@@ -21,10 +21,31 @@ interface TrendPoint {
   value?: number;
 }
 
+type UsageTab = "meters" | "history";
+const USAGE_TABS: readonly UsageTab[] = ["meters", "history"];
+const DEFAULT_TAB: UsageTab = "meters";
+
+/**
+ * NAV-1 (wave 6): `tab` la trang thai TAB nen phai vao URL.
+ *
+ * Vì sao KHONG dung `stringCodec` thang: gia tri la UNION 2 gia tri, dung
+ * `stringCodec` thi `?tab=xyz` se duoc chap nhan ⇒ ca `tab === "meters"` lan
+ * `tab === "history"` deu false ⇒ render ra **khong co panel nao** (khong loi,
+ * chi trang trong). Codec nay tra `undefined` cho gia tri la ⇒ hook fallback
+ * ve `DEFAULT_TAB`.
+ *
+ * `serialize` tra `undefined` cho gia tri mac dinh ⇒ `?tab=meters` KHONG duoc
+ * ghi ra URL (URL sach khi chua dung). Cung nguyen tac voi `boolCodec` cua hook.
+ */
+const usageTabCodec: UrlStateCodec<UsageTab> = {
+  parse: (raw) => (USAGE_TABS as readonly string[]).includes(raw ?? "") ? (raw as UsageTab) : undefined,
+  serialize: (v) => (v === DEFAULT_TAB ? undefined : v),
+};
+
 export function TenantUsageSummaryPage() {
   const { t } = useI18n();
   const { ability } = usePortfolio() as { ability?: { can?: (a: string, s: string) => boolean } };
-  const [tab, setTab] = useState<"meters" | "history">("meters");
+  const [tab, setTab] = useUrlValue<UsageTab>("tab", usageTabCodec, DEFAULT_TAB);
 
   const canRead = ability?.can?.("read", "TenantUsageView") ?? false;
 

@@ -10,10 +10,11 @@
  * Thứ tự: sắp xếp theo ngày giảm dần ngay trên client, vì BE không bảo đảm.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useI18n } from "../../context/LangContext";
 import { asRows, usePortfolioResource, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useUrlValue, intCodec } from "../../hooks/useUrlState";
 
 interface TxRow {
   id?: number | string;
@@ -61,7 +62,13 @@ export function PortfolioActivityPage({
   // `defaultCoreApiAdapter` — neu khong, moi trang se nem
   // "Cannot read properties of undefined" khi chay that.
   const api = (adapter ?? defaultCoreApiAdapter) as PortfolioAdapter;
-  const [page, setPage] = useState(0);
+  // NAV-1 (wave 6): trang phan trang nen dong bo `page` vao URL de deep-link
+  // `?page=2` + nut Back hoat dong. Default `0` giong het `useState(0)` cu
+  // (AC-A: URL rong => gia tri = default cu).
+  // `setPage` cua `useUrlValue` KHONG nhan updater function, nen 2 call-site
+  // duoi truyen gia tri tinh san. Van dung `page` (khong phai `safePage`) de
+  // giong HET updater cu: `p` cu la state thô, chua clamp theo `pageCount`.
+  const [page, setPage] = useUrlValue("page", intCodec, 0);
 
   const fetchTx = useCallback(
     (id: string | number) => api.getTransactions?.(id) ?? Promise.resolve([]),
@@ -115,7 +122,7 @@ export function PortfolioActivityPage({
           <nav className="pf-pager" aria-label={t("portfolioWorkspace.activity.pagerLabel", {
             defaultValue: "Phân trang giao dịch",
           })}>
-            <button type="button" disabled={safePage === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            <button type="button" disabled={safePage === 0} onClick={() => setPage(Math.max(0, page - 1))}>
               {t("portfolioWorkspace.activity.prev", { defaultValue: "Trước" })}
             </button>
             {/* Chỉ hiện khoảng đang xem — BE KHÔNG trả tổng số bản ghi. */}
@@ -127,7 +134,7 @@ export function PortfolioActivityPage({
             <button
               type="button"
               disabled={safePage >= pageCount - 1}
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              onClick={() => setPage(Math.min(pageCount - 1, page + 1))}
             >
               {t("portfolioWorkspace.activity.next", { defaultValue: "Sau" })}
             </button>
