@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocDataOpsMonitorSection } from "../soc/SocDataOpsMonitorSection.js";
 import { SocMatrixScrapeMonitor } from "../soc/SocMatrixScrapeMonitor.js";
 
@@ -80,7 +81,7 @@ describe("SocDataOpsMonitorSection — P0 fixes", () => {
   afterEach(() => cleanup());
 
   it("renders queue tiers when API returns 500? actually queue tiers ok shows FPT", async () => {
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     await waitFor(() => expect(screen.getByText("soc.dataops.queue_tiers")).toBeTruthy());
     // FPT is in examples, may be inside collapsed accordion — expand first
     // For now check that queue tiers title exists (proves no Failed to fetch)
@@ -89,14 +90,14 @@ describe("SocDataOpsMonitorSection — P0 fixes", () => {
 
   it("shows observability empty state when no data and no error", async () => {
     adapterMocks.getSocDataOpsObservability.mockResolvedValue({ backlog: { by_dataset: [], by_tier: [] }, fail_rates: {}, starvation: [], updated_at: new Date().toISOString() } as unknown as Record<string, unknown>);
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     await waitFor(() => expect(screen.getByText("soc.dataops.observability_title")).toBeTruthy());
     // Should not show generic Failed to fetch
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 
   it("coverage matrix shows ratio tooltip (count/total %)", async () => {
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     await waitFor(() => expect(screen.getByText("soc.dataops.coverage_title")).toBeTruthy());
     // 537 / 1533 = 35.0% tooltip on fresh cell
     const freshCell = await screen.findByTitle("537 / 1533 (35.0%)");
@@ -122,7 +123,7 @@ describe("SocDataOpsMonitorSection — P0 fixes", () => {
       starvation: [],
       updated_at: new Date().toISOString(),
     } as unknown as Record<string, unknown>);
-    render(<SocDataOpsMonitorSection />);
+    renderInRouter(<SocDataOpsMonitorSection />);
     const retryBtns = await screen.findAllByRole("button", { name: "soc.overview.retry" });
     expect(retryBtns.length).toBeGreaterThan(0);
     fireEvent.click(retryBtns[0]);

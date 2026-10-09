@@ -10,6 +10,18 @@ import { SocRetentionHealthPanel } from "./SocRetentionHealthPanel.js";
 import { SocAnomalyGuardPanel } from "./SocAnomalyGuardPanel.js";
 import { useDataOpsStream } from "../../hooks/useDataOpsStream.js";
 import { toneColor } from "./socStatusColors.js";
+// WAVE 6 / NAV-1 — hook URL có sẵn; `useUrlState` ⇒ cần `<Router>` (test đã bọc).
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../../hooks/useUrlState";
+
+/** WAVE 6 — spec ở MODULE SCOPE: `useUrlState` memo hoá theo `spec`/`defaults`. */
+type GapsUrl = { page: number; dataset: string; freshness: string };
+const GAPS_URL_SPEC: { [K in keyof GapsUrl]: UrlStateCodec<GapsUrl[K]> } = {
+  page: intCodec,
+  dataset: stringCodec,
+  freshness: stringCodec,
+};
+/** Fallback = đúng giá trị `useState` cũ. */
+const GAPS_URL_DEFAULTS: GapsUrl = { page: 1, dataset: "all", freshness: "all" };
 import styles from "./soc.module.css";
 
 interface QueueTier {
@@ -181,9 +193,16 @@ export function SocDataOpsMonitorSection() {
   const [observability, setObservability] = useState<ObservabilityData | null>(null);
   const [queueTiersError, setQueueTiersError] = useState("");
   const [observabilityError, setObservabilityError] = useState("");
-  const [gapsPage, setGapsPage] = useState(1);
-  const [gapsDatasetFilter, setGapsDatasetFilter] = useState("all");
-  const [gapsFreshnessFilter, setGapsFreshnessFilter] = useState("all");
+  // WAVE 6 / NAV-1 — gaps: phân trang + 2 bộ lọc đồng bộ URL (1 patch = 1 history entry).
+  const [gapsState, setGapsState] = useUrlState(GAPS_URL_SPEC, GAPS_URL_DEFAULTS, {
+    replaceKeys: ["dataset", "freshness"],
+  });
+  const gapsPage = gapsState.page;
+  const setGapsPage = (v: number) => setGapsState({ page: v });
+  const gapsDatasetFilter = gapsState.dataset;
+  const setGapsDatasetFilter = (v: string) => setGapsState({ dataset: v });
+  const gapsFreshnessFilter = gapsState.freshness;
+  const setGapsFreshnessFilter = (v: string) => setGapsState({ freshness: v });
   const [matrixExpanded, setMatrixExpanded] = useState(true);
   const [exportingAudits, setExportingAudits] = useState(false);
   const [exportingRuns, setExportingRuns] = useState(false);
@@ -1006,8 +1025,9 @@ export function SocDataOpsMonitorSection() {
             ? renderPagination(
                 gapsPage,
                 gapsPage * 20 < filteredGaps.length,
-                () => setGapsPage((p) => Math.max(1, p - 1)),
-                () => setGapsPage((p) => p + 1),
+                // WAVE 6: setter của `useUrlState` nhận **giá trị**, không phải updater lambda.
+                () => setGapsPage(Math.max(1, gapsPage - 1)),
+                () => setGapsPage(gapsPage + 1),
                 t
               )
             : null

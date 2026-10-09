@@ -13,6 +13,7 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
   },
 }));
 
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocSchedulerBoard } from "../soc/SocSchedulerBoard.js";
 
 describe("SocSchedulerBoard overdue filter (Slice F2)", () => {
@@ -55,7 +56,7 @@ describe("SocSchedulerBoard overdue filter (Slice F2)", () => {
       ],
     });
 
-    render(<SocSchedulerBoard />);
+    renderInRouter(<SocSchedulerBoard />);
 
     await waitFor(() => {
       expect(screen.getByText("legacy-chronically-late")).toBeTruthy();

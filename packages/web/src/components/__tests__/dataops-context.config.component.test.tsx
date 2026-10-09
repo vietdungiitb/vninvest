@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import { createElement } from "react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { DataOpsProvider, useDataOps } from "../soc/DataOpsContext.js";
 
 const adapterMocks = vi.hoisted(() => ({
@@ -40,7 +41,7 @@ describe("DataOpsContext runtime config (C7.1 — CFG-10)", () => {
   afterEach(() => cleanup());
 
   it("fetches runtime config into state.config + configUpdatedAt", async () => {
-    render(createElement(DataOpsProvider, null, createElement(Probe, null)));
+    renderInRouter(createElement(DataOpsProvider, null, createElement(Probe, null)));
 
     await waitFor(() => {
       expect(screen.getByText("decay: 7")).toBeTruthy();

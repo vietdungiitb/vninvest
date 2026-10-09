@@ -1,5 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+// WAVE 6 / NAV-1 — tab đang chọn đồng bộ URL (deep-link tới đúng mục DataOps).
+import { useUrlValue, stringCodec } from "../../hooks/useUrlState";
 
 interface BackfillRun {
   run_id: string;
@@ -84,7 +86,10 @@ const adapter = defaultCoreApiAdapter as unknown as {
 };
 
 export function DataOpsProvider({ children }: { children: React.ReactNode }) {
-  const [activeSubTab, setActiveSubTab] = useState("inventory");
+  // WAVE 6: `replace: true` — đổi tab là chuyển mục, không nên mỗi lần thêm 1
+  // history entry. Cần `<Router>`; `dataops-context.config.component.test.tsx`
+  // đã bọc `MemoryRouter`.
+  const [activeSubTab, setActiveSubTab] = useUrlValue("dataops_tab", stringCodec, "inventory", { replace: true });
   const [runs, setRuns] = useState<BackfillRun[]>([]);
   const [inventory, setInventory] = useState<InventoryData | null>(null);
   const [coverage, setCoverage] = useState<CoverageData | null>(null);

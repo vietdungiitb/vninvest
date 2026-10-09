@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { createElement } from "react";
+import { renderInRouter } from "./socRouterHarness.js";
 import { SocDataOpsConfigSection } from "../soc/SocDataOpsConfigSection.js";
 import { DataOpsContext, type DataOpsContextValue } from "../soc/DataOpsContext.js";
 
@@ -64,7 +65,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
   afterEach(() => cleanup());
 
   it("renders 14 number inputs with defaults 7 / 30 / 30", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelectorAll('input[type="number"]').length).toBe(14);
     });
@@ -74,7 +75,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
   });
 
   it("shows an inline error when poll interval < 10 and clears it after fixing", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
     });
@@ -91,7 +92,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
   });
 
   it("resets the form back to the saved config", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
@@ -109,7 +110,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
       is_valid: false,
       validation_errors: ["hot_user_demand.poll_interval_seconds phải >= 10"],
     });
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
     });
@@ -129,7 +130,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
 
   it("shows only the changed tier field with runtime-risk impact when cadence changes (C2)", async () => {
     adapterMocks.previewSocDataOpsRuntimeConfig.mockResolvedValue({ is_valid: true, validation_errors: [] });
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="warm_liquid_market.poll_interval_seconds"]')).toBeTruthy();
     });
@@ -189,7 +190,7 @@ describe("SocDataOpsConfigSection audit (C3 — CFG-04/CFG-05 read)", () => {
   afterEach(() => cleanup());
 
   it("renders actor, local timestamp, summary and expands before/after diff", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(screen.getByText("tang hot tier")).toBeTruthy();
     });
@@ -206,7 +207,7 @@ describe("SocDataOpsConfigSection audit (C3 — CFG-04/CFG-05 read)", () => {
   });
 
   it("filters audit rows by summary search", async () => {
-    render(<SocDataOpsConfigSection />);
+    renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(screen.getByText("tang hot tier")).toBeTruthy();
     });
@@ -230,7 +231,7 @@ describe("SocDataOpsConfigSection audit (C3 — CFG-04/CFG-05 read)", () => {
     (URL as unknown as { createObjectURL: typeof createObjectUrl }).createObjectURL = createObjectUrl;
     (URL as unknown as { revokeObjectURL: typeof revokeObjectUrl }).revokeObjectURL = revokeObjectUrl;
 
-    render(<SocDataOpsConfigSection />);
+    renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(screen.getByText("tang hot tier")).toBeTruthy();
     });
@@ -275,7 +276,7 @@ describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)",
   afterEach(() => cleanup());
 
   it("reverts an audit row via apply with rollback action + expected_updated_at", async () => {
-    render(<SocDataOpsConfigSection />);
+    renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(screen.getByText("tang hot tier")).toBeTruthy();
     });
@@ -304,7 +305,7 @@ describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)",
         code: "CONFIG_CONFLICT",
       }),
     );
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
@@ -367,7 +368,7 @@ describe("SocDataOpsConfigSection write guard per-field + schema (C6 — CFG-08/
   afterEach(() => cleanup());
 
   it("disables + locks locked fields, shows per-field badge chips, others stay editable", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-locked="decay_days"]')).toBeTruthy();
     });
@@ -379,7 +380,7 @@ describe("SocDataOpsConfigSection write guard per-field + schema (C6 — CFG-08/
   });
 
   it("renders bounds from schema when present (C6.4 fallback hard-coded otherwise)", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
@@ -434,7 +435,7 @@ describe("SocDataOpsConfigSection presets + freshness (C7 — CFG-10)", () => {
   afterEach(() => cleanup());
 
   it("fills all tier fields via preset buttons (C7.3)", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
     });
@@ -451,7 +452,9 @@ describe("SocDataOpsConfigSection presets + freshness (C7 — CFG-10)", () => {
       ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
       updated_at: "2026-09-18T07:00:00Z",
     };
-    const { container, rerender } = render(createElement(ConfigHarness, { envelope: envelopeA }));
+    // WAVE 6: `renderInRouter` giữ Router cho cả lần `rerender` — `rerender` của
+    // testing-library chỉ thay element gốc, không Router là `useLocation()` throw.
+    const { container, rerender } = renderInRouter(createElement(ConfigHarness, { envelope: envelopeA }));
     await waitFor(() => {
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
@@ -471,7 +474,7 @@ describe("SocDataOpsConfigSection presets + freshness (C7 — CFG-10)", () => {
   });
 
   it("renders last-updated in local time (C7.4)", async () => {
-    const { container } = render(<SocDataOpsConfigSection />);
+    const { container } = renderInRouter(<SocDataOpsConfigSection />);
     await waitFor(() => {
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
