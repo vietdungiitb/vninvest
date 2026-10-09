@@ -471,6 +471,31 @@ if (process.argv.includes("--self-test")) {
     });
   }
 
+  // T5 — ĐÂY mới là bằng chứng THẬT cho AC-4.2(a), và T1 ở trên KHÔNG đủ.
+  //
+  // ⚠ T1 kiểm tra *đường ống* (comment đã bị `codeLines` lọc trước khi
+  // `urlSyncedVars` kịp thấy) ⇒ T1 **tautology**: nó xanh kể cả khi
+  // `urlSyncedVars` đọc trên text thực. Đo được 2026-10-09: cố tình làm hỏng
+  // `urlSyncedVars` (cho nó tự `split` text thay vì nhận mảng đã lọc) thì T1
+  // **vẫn PASS 4/4** — tức gate bảo vệ sai thứ.
+  //
+  // T5 gọi `urlSyncedVars` TRỰC TIẾP với text còn nguyên comment, và đòi nó
+  // **không** nhận ra hook call nằm trong comment. Đây mới là hợp đồng của hàm.
+  {
+    const raw = [
+      "// canh bao: neu them useUrlValue('sort') vao day thi se hong",
+      "/* const [sortCol, setSortCol] = useUrlValue('sort'); */",
+      " * useUrlValue('q') trong JSDoc khong phai code",
+      "const [filterStatus, setFilterStatus] = useState('all');",
+    ].join("\n");
+    const synced = urlSyncedVars(raw.split(/\r?\n/));
+    cases.push({
+      id: "T5 urlSyncedVars BO QUA hook call nam trong comment",
+      pass: synced.size === 0 && !synced.has("sortCol"),
+      detail: `synced=[${[...synced.keys()].join(",")}] — mong doi RONG (comment khong phai code)`,
+    });
+  }
+
   console.log("");
   let ok = 0;
   for (const c of cases) {

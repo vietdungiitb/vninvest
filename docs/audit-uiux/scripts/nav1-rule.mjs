@@ -78,16 +78,23 @@ const USE_URL_RECORD_RE =
 /**
  * Tap `ten bien` -> `ten tham so URL` cho cac bien **that su** doc/ghi URL.
  *
- * ⚠ Phai chay tren mang dong **DA LOAI COMMENT** (`codeLines(...).lines`).
- * Neu chay tren `txt` thuc, comment chua `useUrlValue(` la nhien dan sai — dung
- * chinh loi can sua (a) o dau file nay.
+ * ⚠ **TU LOAI COMMENT TRONG CHINH NHA (defensive).** Scanner truyen san mang
+ * da loc, nhung ham nay duoc `export` cho `nav1-report.mjs` va cho tuong lai.
+ * Do lai 2026-10-09: khi cho no doc **text thuc** co comment, no van nhan ra
+ * hook call nam trong comment ⇒ mot caller trong tuong lai truyen `txt.split()`
+ * la gate lai quay ve dung loi (a) ma wave 4 vua sua. Test `T5` cua scanner
+ * khoa lai dung hanh vi nay.
  *
- * @param {string[]} lines dong code (khong comment)
+ * Loc 2 lan la idempotent: mang da loi roi thì khong còn comment nào để bỏ.
+ *
+ * @param {string[]} lines dong code (uoc tinh da loai comment)
  * @returns {Map<string,string>} tenBien -> tenThamSo
  */
 export function urlSyncedVars(lines) {
+  const state = { inBlock: false };
+  const code = lines.filter((l) => !isCommentLine(l, state));
   const out = new Map();
-  for (const line of lines) {
+  for (const line of code) {
     USE_URL_VALUE_RE.lastIndex = 0;
     let m;
     while ((m = USE_URL_VALUE_RE.exec(line)) !== null) {
