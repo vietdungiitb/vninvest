@@ -6,6 +6,10 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { validateDateRange } from "./socValidation.js";
 import { getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
+// WAVE 6 / NAV-1 — phan trang dong bo URL (deep-link + nut Back + F5 giu trang).
+// `useUrlValue` tra `[T, (next: T) => void]` — KHONG phai updater cua `useState`,
+// nen moi call site phai truyen **gia tri** (`jobsPage - 1`), khong truyen lambda.
+import { useUrlValue, intCodec } from "../../hooks/useUrlState";
 
 interface BackfillJob {
   id: string;
@@ -30,7 +34,8 @@ export function SocDnseBackfillPanel() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [jobsPage, setJobsPage] = useState(1);
+  // WAVE 6 / NAV-1: fallback = 1 ⇒ URL rong van hien trang 1 nhu `useState(1)` cu.
+  const [jobsPage, setJobsPage] = useUrlValue("dnse_jobs_page", intCodec, 1);
   const jobsPageSize = 10;
   const mountedRef = useRef(true);
   const jobsRef = useRef<BackfillJob[]>([]);
@@ -243,9 +248,9 @@ export function SocDnseBackfillPanel() {
                       totalPages > 1 ? createElement(
                         "div",
                         { className: styles.pagination, style: { marginTop: "0.75rem" } },
-                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage <= 1, onClick: () => setJobsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage <= 1, onClick: () => setJobsPage(Math.max(1, jobsPage - 1)) }, t("soc.actions.prev")),
                         createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: safePage })),
-                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage >= totalPages, onClick: () => setJobsPage((p) => p + 1) }, t("soc.actions.next")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage >= totalPages, onClick: () => setJobsPage(jobsPage + 1) }, t("soc.actions.next")),
                       ) : null,
                     );
                     })(),
