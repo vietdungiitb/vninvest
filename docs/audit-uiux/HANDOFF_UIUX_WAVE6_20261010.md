@@ -1,5 +1,30 @@
 # HANDOFF — session sau UI/UX wave 6 (2026-10-10)
 
+> # ⚠️ TÀI LIỆU NÀY ĐÃ BỊ THAY THẾ — ĐỪNG LÀM THEO
+>
+> **Bản đúng:** **`SESSION_LOG_WAVE6_20261009.md`** (cùng thư mục).
+> **Ngày bị thay:** 2026-10-09, sau khi PR #80 merge.
+>
+> **Vì sao hỏng.** File này viết lúc **18:52**, **trước** khi Owner chọn phương án
+> (a) cho 32 hit SOC. Ba chỗ dưới đây đã thành sai:
+>
+> | Chỗ | Nội dung cũ (sai) | Thực tế |
+> |---|---|---|
+> | §0 | `NAV-1 hit = 89 → 80` | **89 → 60** |
+> | §2.3 | *"32 hit SOC bị chặn — **CẦN OWNER CHỌN** (a)/(b)/(c)"* | Owner **đã chọn (a)**; 32 hit đó **đã xử lý xong** |
+> | §2.2 | cần đo lại phân bố 80 hit | đã đo xong, xem `SESSION_LOG` §5.4 |
+>
+> Giữ file lại **để lưu dấu vết** (không xoá — `AGENT_PROTOCOL.md` §3 cấm xoá claim
+> cũ). Nhưng **mọi quyết định phải dựa trên `SESSION_LOG_WAVE6_20261009.md`**.
+>
+> Đây chính là **hazard 3** (trích dẫn thối): tài liệu viết ra rồi tự nó cũ đi
+> trong vài giờ, và người đọc tin nó. Xem skill `agent-lessons`, mục 3.
+
+---
+
+> **Phần dưới đây giữ nguyên theo trạng thái 18:52, để tham khảo lịch sử.**
+> Đọc `SESSION_LOG_WAVE6_20261009.md` cho trạng thái hiện tại.
+
 > **Đọc theo thứ tự này.** Mục 1 là bản đồ, mục 2 là việc dở dang, mục 3 là bẫy đã tốn thời gian thật.
 > Repo `C:\Mujoco Projects\vninvest`, nhánh tích hợp `dev`.
 
