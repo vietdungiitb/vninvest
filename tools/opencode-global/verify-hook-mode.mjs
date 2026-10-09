@@ -27,6 +27,33 @@ if (!existsSync(HOOK)) {
 const orig = readFileSync(AGENTS, "utf8");
 let failed = 0;
 
+/**
+ * WAVE 7 (2026-10-10) — env cho lenh git tao FIXTURE.
+ *
+ * Ly do: script nay chay duoi `pre-push` hook, git truyen `GIT_DIR` (tro ve
+ * repo THAT) cho tien trinh con va `spawnSync` ke thua env do. `git init` o
+ * thu muc tam **khong tao `.git` cuc bo** ma re-init vao repo THAT, roi ghi
+ * `core.bare=true` vao `.git/config` cua vninvest ⇒ `git status/add/restore`
+ * loi `this operation must be run in a work tree` ⇒ **chan push**.
+ *
+ * Do la cung class bug da o `verify-trailer-bypass.mjs` va
+ * `test-agent-preflight.mjs`; 2 file do da sua, file nay bi BO SOT.
+ * Luan doan trong session truoc ("no chay hook trong repo that nen can giu
+ * `GIT_DIR`") chi dung MOT PHAN — file nay co 2 lo lenh git:
+ *
+ *   1. Tao fixture tam   (`:58` `git init`)      ⇒ PHAI bo `GIT_*`  ← sua o day
+ *   2. Do tren repo that (`:83` `git add`, `:108` `git restore`)
+ *                                                 ⇒ PHAI giu `GIT_DIR`
+ *
+ * Sua lo 1, giu nguyen lo 2. Bang chung lan 2 doc lai: dat
+ * `GIT_DIR=<repo>/.git` roi chay file nay, `core.bare` doi `false -> true`;
+ * `verify-hook-mode` FAIL 3/8. Sau khi sua: 8/8 PASS, `core.bare` giu `false`.
+ */
+const FIXTURE_ENV = { ...process.env };
+for (const k of Object.keys(FIXTURE_ENV)) {
+  if (k.startsWith("GIT_")) delete FIXTURE_ENV[k];
+}
+
 function run(cmd, mode) {
   const payload = JSON.stringify({ tool: "bash", tool_input: { command: cmd } });
   const env = { ...process.env };
@@ -55,11 +82,14 @@ console.log("verify-hook-mode — chay hook that tren may nay\n");
 {
   const fx = mkdtempSync(join(tmpdir(), "hook-fallback-"));
   try {
-    spawnSync("git", ["init", "-q", "-b", "main"], { cwd: fx, encoding: "utf8" });
-    spawnSync("git", ["config", "user.email", "p@t.local"], { cwd: fx, encoding: "utf8" });
-    spawnSync("git", ["config", "user.name", "p"], { cwd: fx, encoding: "utf8" });
+    // FIXTURE: bo moi `GIT_*` — xem `FIXTURE_ENV` o tren. `env` phai truyen
+    // `explicit`; bo qua no thi `spawnSync` ke thua `process.env` va lenh
+    // re-init vao repo that.
+    spawnSync("git", ["init", "-q", "-b", "main"], { cwd: fx, env: FIXTURE_ENV, encoding: "utf8" });
+    spawnSync("git", ["config", "user.email", "p@t.local"], { cwd: fx, env: FIXTURE_ENV, encoding: "utf8" });
+    spawnSync("git", ["config", "user.name", "p"], { cwd: fx, env: FIXTURE_ENV, encoding: "utf8" });
     writeFileSync(join(fx, "README.md"), "# x\n", "utf8");
-    spawnSync("git", ["add", "-A"], { cwd: fx, encoding: "utf8" });
+    spawnSync("git", ["add", "-A"], { cwd: fx, env: FIXTURE_ENV, encoding: "utf8" });
 
     const payload = JSON.stringify({ tool: "bash", tool_input: { command: 'git commit -m "commit binh thuong"' } });
     const env = { ...process.env };
