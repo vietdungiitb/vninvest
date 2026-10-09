@@ -1,7 +1,14 @@
 # NHẬT KÝ SESSION — UI/UX wave 6 (2026-10-09)
 
-> **Session này**: tiếp nhận handoff wave 5, merge 4 PR, gỡ 1 gate bị treo 3 wave, đẩy NAV-1 từ **89 → 60 hit**, phát hiện **2 bug thật trong bộ gate** và **6 bug runtime** do chính việc chuyển state sang URL.
-> **Kết quả**: `dev` = `c008cba39`, 4 PR merged, **854/854 test PASS**, `lint` **0 error**, `tsc` 0.
+> **Đây là tài liệu bàn giao chính thức cho session kế tiếp.**
+> Thay thế `HANDOFF_UIUX_WAVE6_20261010.md` (file đó viết trước phương án (a), đã
+> đánh dấu superseded ở đầu).
+>
+> **Đọc theo thứ tự**: §0 trạng thái → §2 việc còn tồn đọng → §6 bẫy → §9 bước đầu tiên.
+> Có bảng triệu chứng ở `agent-lessons` skill khi gặp lỗi lặp lại.
+
+> **Session này**: tiếp nhận handoff wave 5, merge 5 PR (#76–#81), gỡ 1 gate bị treo 3 wave, đẩy NAV-1 từ **89 → 60 hit**, phát hiện **2 bug thật trong bộ gate** và **6 bug runtime** do chính việc chuyển state sang URL.
+> **Kết quả**: `dev` = `37a2123e6`, 5 PR merged, **854/854 test PASS**, `lint` **0 error**, `tsc` 0.
 
 ---
 
@@ -106,7 +113,7 @@ Sửa ở `verify-trailer-bypass.mjs` + `test-agent-preflight.mjs` (xoá mọi `
 
 Xem mục 4.2. Cần bắt được lệnh ghi — thử **Process Monitor**, hoặc `GIT_TRACE=1` khi push.
 
-### 5.2 2 branch WIP — **CHƯA VERIFY, CHƯA PUSH**
+### 5.2 2 branch WIP — **CHƯA VERIFY, CHƯA PUSH** (đã dọn branch đã merge)
 
 | Worktree | Branch | Trạng thái |
 |---|---|---|
@@ -114,6 +121,11 @@ Xem mục 4.2. Cần bắt được lệnh ghi — thử **Process Monitor**, ho
 | `C:\Mujoco Projects\uiux-w6-pages` | `feat/uiux-w6-pages` | commit `bae85e53a` — 3/18 file |
 
 ⚠ **Trước khi làm tiếp**: chạy `tsc` + `test:components` + `nav1-report` trên từng branch. Đỏ ⇒ sửa hoặc revert. **Không** push nguyên trạng.
+
+> **Đã dọn xong cuối session** (không ảnh hưởng 2 branch này):
+> - Xoá worktree `uiux-w6-soc` (đã merge) — **gỡ 2 junction `node_modules` trước**, rồi `git worktree remove`. `node_modules` chính nguyên vẹn (68 entry).
+> - Xoá 11 branch local đã merge + 7 branch remote tương ứng.
+> - Giữ `feat/uiux-w6-hooks` + `feat/uiux-w6-pages` và worktree của chúng.
 
 Nội dung WIP:
 
@@ -230,8 +242,8 @@ Một file nhiều test ⇒ đọc nhầm probe của test trước. **PASS khi 
 |---|---|
 | `docs/CODE_CHANGE_AUDIT_LEDGER.md` → `## Entry 259` | Ledger phiên này (wave 6 phần 1) |
 | `docs/REPORT_FINAL_UIUX_WAVE6.md` | Báo cáo đầy đủ 3 kết quả + 2 bug gate |
-| `docs/audit-uiux/HANDOFF_UIUX_WAVE6_20261010.md` | Bàn giao 13 bẫy (bổ sung mục 6 ở đây) |
-| `docs/audit-uiux/scripts/nav1-rule.mjs` | **Đọc comment đầu file** trước khi sửa rule |
+| `docs/audit-uiux/HANDOFF_UIUX_WAVE6_20261010.md` | **SUPERSEDED** — đã đánh dấu ở đầu, trỏ về file này. Bỏ qua. |
+| skill `agent-lessons` (user-level) | 19 hazard có bằng chứng + guard. Xem khi lỗi lặp lại |
 | `packages/web/src/components/__tests__/socRouterHarness.tsx` | Helper bọc Router — dùng lại cho panel sau |
 
 ---
@@ -242,3 +254,27 @@ Một file nhiều test ⇒ đọc nhầm probe của test trước. **PASS khi 
 2. Xử lý `core.bare` (mục 5.1) — chặn push
 3. Quyết định 2 branch WIP: verify hay revert (mục 5.2)
 4. Sau đó mới chọn: `SocSignalsPanel` (mục 5.3) hoặc 4 hit false positive (mục 5.5)
+
+---
+
+## 10. TỰ TRÍCH — TÀI LIỆU ĐÃ TỰ CŨ TRONG CHÍNH SESSION NÀY
+
+Khi chốt session, file handoff viết ra **18:52** đã bị chính nó làm cho không còn đúng:
+
+| Cho biết | Ngay sau đó |
+|---|---|
+| `NAV-1 = 80` | **60** |
+| *"32 hit — cần Owner chọn (a)/(b)/(c)"* | Owner **đã chọn (a)**, 32 hit đó xong |
+
+Không ai làm sai. **Tài liệu bàn giao là snapshot tại một mốc thời gian**, và
+snapshot đó tự cũ ngay trong session viết ra nó. Session sau đọc file có chữ
+`handoff` trong tên sẽ lấy **thông tin sai** và quyết định sai theo.
+
+**Quy tắc** (xem `agent-lessons` §3 — citation thối trong vài phút):
+
+1. Viết handoff **sau khi mọi thay đổi xong**, không viết giữa chừng rồi làm tiếp.
+2. File nào bị thay thế: đánh dấu **SUPERSEDED ở đầu** + trỏ sang bản mới.
+   **Đừng xoá** (`AGENT_PROTOCOL.md` §3 cấm xoá claim cũ).
+3. Bản mới nên nêu **đường dẫn tuyệt đối** tới bản hiện hành, đừng để mặc
+   `dev = <sha>` rồi bỏ đó.
+4. Session sau: thấy `SUPERSEDED` ở đầu file là bỏ qua ngay, đọc file nó trỏ sang.
