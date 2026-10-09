@@ -496,6 +496,74 @@ if (process.argv.includes("--self-test")) {
     });
   }
 
+  // T6 — WAVE 5: nhanh `|q` RONG trong `NAME_RE` khop BAT KY tu chua chu `q`.
+  // Do duoc 2026-10-09 bang `nav1-classify.mjs`: 12/104 hit la false positive
+  // thuoc loai nay (`quantity` · `orderQuantity` · `queueTiers`×5 · `quotesBySymbol`
+  // · `selectedRequestId` · `quota` · `quotas`).
+  //
+  // ⚠ Test nay **FAIL o ban rule cu** va PASS o ban da sua — la bang chung
+  // fail-before. Khong co no thi "da sua" chi la cam tinh.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [quantity, setQuantity] = useState(0);",
+      "  const [queueTiers, setQueueTiers] = useState([]);",
+      "  const [page, setPage] = useState(1);",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T6 nhanh `|q` rong: quantity/queueTiers KHONG phai bo loc",
+      pass: r.hits.includes("page") && !r.hits.includes("quantity") && !r.hits.includes("queueTiers"),
+      detail:
+        `hits=[${r.hits.join(",")}] — mong doi co "page", ` +
+        `KHONG co "quantity"/"queueTiers" (chua "q"/"que" ma khong phai tim kiem)`,
+    });
+  }
+
+  // T7 — `q` VAN PHAI BAT khi no la bien that. T6 kiem "khong bat qua"; test nay
+  // kiem chua sua nuao lam rule **yeu** di (lesson `HANDOFF_UIUX_WAVE3` §4.2).
+  //
+  // ⚠ `qValue` them vao sau khi do THAT: ban sua dau tien dung `q(?![a-z])` ben
+  // trong regex co co `i` ⇒ `[a-z]` khop ca chu hoa ⇒ `qValue` **khong con
+  // bi bat**. Do la thay doi "giam false positive" lam rule YEU — test nay bat
+  // duoc truoc khi no xay ra.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [q, setQ] = useState('');",
+      "  const [qValue, setQValue] = useState('');",
+      "  const [statusFilter, setStatusFilter] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T7 bien `q` that (q · qValue) VAN bi bat",
+      pass: r.hits.includes("q") && r.hits.includes("qValue") && r.hits.includes("statusFilter"),
+      detail: `hits=[${r.hits.join(",")}] — mong doi co "q", "qValue" VA "statusFilter"`,
+    });
+  }
+
+  // T8 — `useSearchParams`/`useRouterSearchParams` LA co che doc URL ⇒ `searchParams`
+  // KHONG phai "bo loc khong dong bo URL". Do duoc 2026-10-09: 3 hit trong
+  // `ShellOperationsCenterPage.tsx:40`, `ScreenerPage.tsx:158`, `SupportPage.tsx:47`.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [searchParams, setSearchParams] = useRouterSearchParams();",
+      "  const [statusFilter, setStatusFilter] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T8 escape `searchParams` tu useRouterSearchParams",
+      pass: !r.hits.includes("searchParams") && r.hits.includes("statusFilter"),
+      detail:
+        `hits=[${r.hits.join(",")}] — mong doi KHONG co "searchParams" ` +
+        `(no la URL), VAN co "statusFilter"`,
+    });
+  }
+
   console.log("");
   let ok = 0;
   for (const c of cases) {
