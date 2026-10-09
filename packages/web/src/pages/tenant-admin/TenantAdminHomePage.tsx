@@ -11,6 +11,7 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
+import { useUrlValue, type UrlStateCodec } from "../../hooks/useUrlState";
 interface DashboardSummary {
   health_score: number;
   health_breakdown?: { quota: number; activity: number; base: number };
@@ -127,6 +128,13 @@ function eventLabel(type: string, t: (k: string, o?: object) => string): string 
   return type.replace(/_/g, " ");
 }
 
+/** NAV-1 (wave 6) — `activityFilter` mac dinh `"all"` ⇒ khong ghi ra URL. */
+const ACTIVITY_FILTER_DEFAULT = "all";
+const activityFilterCodec: UrlStateCodec<string> = {
+  parse: (raw) => (raw == null || raw === "" || raw === ACTIVITY_FILTER_DEFAULT ? undefined : raw),
+  serialize: (v) => (v === ACTIVITY_FILTER_DEFAULT ? undefined : v),
+};
+
 function timeAgo(iso: string, t: (k: string, o?: object) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -143,12 +151,15 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const { ability } = usePortfolio();
 
   const [trendDays, setTrendDays] = useState(7);
+  // NAV-1 (wave 6): `activityFilter` la bo loc ⇒ vao URL de deep-link + Back.
+  // Gia tri mac dinh `"all"` KHONG ghi ra URL (codec bo qua gia tri mac dinh,
+  // cung nguyen tac voi `boolCodec` cua hook) ⇒ URL sach khi chua filter.
+  const [activityFilter, setActivityFilter] = useUrlValue("activity", activityFilterCodec, "all");
   const [showDeprovision, setShowDeprovision] = useState(false);
   const [deprovisionDone, setDeprovisionDone] = useState(false);
   const [deprovisionError, setDeprovisionError] = useState("");
   const [deprovisioning, setDeprovisioning] = useState(false);
   const [deprovisionConfirm, setDeprovisionConfirm] = useState("");
-  const [activityFilter, setActivityFilter] = useState<string>("all");
 
   const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
 
