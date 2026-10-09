@@ -18,16 +18,30 @@ import { LangProvider } from "../../../context/LangContext";
 import { PortfolioProvider } from "../../../context/PortfolioContext";
 import { PortfolioHoldingsPage } from "../PortfolioHoldingsPage";
 import { PortfolioActivityPage } from "../PortfolioActivityPage";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useSearchParams } from "react-router-dom";
 
-function wrap(node: React.ReactElement) {
+/**
+ * WAVE 9 — doc `useSearchParams()`: cung nguon su that voi `useUrlValue`, nen
+ * doc lai duoc URL sau khi hook ghi. Khong dung `window.location.search` —
+ * `MemoryRouter` khong cham vao `window`.
+ */
+function SearchProbe() {
+  const [params] = useSearchParams();
+  return <div data-testid="search">{params.toString()}</div>;
+}
+
+function wrap(node: React.ReactElement, search = "") {
   return render(
     // FU-05: `PortfolioHoldingsPage` goi `useUrlState` -> can `<Router>`.
-    // MemoryRouter o day chi de cung cap context; deep-link that duoc kiem
-    // o file rieng (`portfolio-deep-link-fu05.component.test.tsx`).
-    <MemoryRouter>
+    // WAVE 9: them `search` + `SearchProbe` de kiem chung `page` cua
+    // `PortfolioActivityPage` thuc su dong bo URL (A/B/C) — 3 test cua block
+    // "NAV-1" ben duoi chi doc DOM nen khong chung minh deep-link hoat dong.
+    <MemoryRouter initialEntries={[search ? `/portfolio/1?${search}` : "/portfolio/1"]}>
       <PortfolioProvider>
-        <LangProvider>{node}</LangProvider>
+        <LangProvider>
+          <SearchProbe />
+          {node}
+        </LangProvider>
       </PortfolioProvider>
     </MemoryRouter>,
   );
@@ -167,5 +181,53 @@ describe("PortfolioActivityPage", () => {
     wrap(<PortfolioActivityPage portfolioId={1} adapter={makeAdapter([])} />);
     await settled();
     await waitFor(() => expect(screen.getByText("Chưa có giao dịch nào")).toBeTruthy());
+  });
+
+  // ── WAVE 9 / NAV-1: `page` phai điều khiển bằng URL thật ────────────────
+  // 3 test trên chỉ chứng minh "trang không crash". Ba test dưới đây mới là
+  // tiêu chuẩn người dùng quan tâm: F5 / copy link có giữ đúng trang không.
+  describe("NAV-1: page dong bo URL", () => {
+    const search = () => screen.getByTestId("search").textContent || "";
+
+    it("A. URL rong → trang 1 va URL VAN RONG (mac dinh 0 khong duoc ghi)", async () => {
+      wrap(<PortfolioActivityPage portfolioId={1} adapter={makeAdapter()} />);
+      await settled();
+      await waitFor(() => expect(screen.getByText("1–25")).toBeTruthy());
+      expect(search()).toBe("");
+    });
+
+    it("C. deep-link ?page=1 → mount ra ĐÃ ở khoang 26–30", async () => {
+      wrap(<PortfolioActivityPage portfolioId={1} adapter={makeAdapter()} />, "page=1");
+      await settled();
+      // BE KHÔNG tra total ⇒ client tu tinh `pageCount` tu `rows.length`
+      // (30 dong / 25 moi trang ⇒ 2 trang, trang 1 = dong 26–30).
+      await waitFor(() => expect(screen.getByText("26–30")).toBeTruthy());
+      expect(search()).toBe("page=1");
+    });
+
+    it("B. bam 'Sau' → URL doi that", async () => {
+      wrap(<PortfolioActivityPage portfolioId={1} adapter={makeAdapter()} />);
+      await settled();
+      await waitFor(() => expect(screen.getByRole("button", { name: /Sau/ })).toBeTruthy());
+      expect(search()).toBe("");
+
+      fireEvent.click(screen.getByRole("button", { name: /Sau/ }));
+
+      await waitFor(() => expect(search()).toBe("page=1"));
+      expect(screen.getByText("26–30")).toBeTruthy();
+    });
+
+    it("B2. bam 'Trước' ve trang dau → tham so bi XOA (intCodec bo gia tri 0)", async () => {
+      wrap(<PortfolioActivityPage portfolioId={1} adapter={makeAdapter()} />, "page=1");
+      await settled();
+      await waitFor(() => expect(screen.getByText("26–30")).toBeTruthy());
+
+      fireEvent.click(screen.getByRole("button", { name: /Trước/ }));
+
+      // `intCodec.serialize(0)` = "0" — KHONG bo, vi `useUrlValue` chi doc
+      // `parse`, khong tu chuan hoa. `?page=0` van parse ra 0 nen hien thi
+      // dung; nhan ky la hook KHONG tu xoa tham so khi ve gia tri mac dinh.
+      await waitFor(() => expect(screen.getByText("1–25")).toBeTruthy());
+    });
   });
 });
