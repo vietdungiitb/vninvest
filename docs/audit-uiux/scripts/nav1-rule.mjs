@@ -30,6 +30,10 @@
  *   - `const [x, setX] = useUrlValue("tenThamSo", …)`   → khoa `x`
  *   - `const [{ a, b }, setS] = useUrlState(`           → khoa `a`, `b`
  *   - `const [rec, setRec] = useUrlRecord<…>(`          → khoa `rec`
+ * WAVE 10 (2026-10-10): 3 dong tren ** deu chấp nhận generic `<…>`** giua ten
+ * hook va `(`. Truoc do chi `useUrlRecord` co — 2 hook con lai giu nguyen
+ * `…<hook>\s*\(` nen call site co generic khong khop. Do duoc bang self-test
+ * `T12` (`useUrlValue<T>`) + `T13` (`useUrlState<T>`).
  * **Mot dong moi mot regex** — call site viet xuong dong moi (vi du
  * `AdminAuditPage.tsx:43-44`: `const [{…}, setUrlState] =` roi `useUrlState(` o
  * dong sau) thi KHONG nhan dien ⇒ bien do van bi bao loi. Hieu qua hien tai:
@@ -90,13 +94,32 @@ export function isQueryToken(name) {
 /** Lay ten hook that tu `const [x, setX] = <hook>(...)`. */
 const HOOK_RE = /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*(\w+)/;
 
-/** `const [ten, setTen] = useUrlValue("k", …)` — khoa chinh laxac `ten`. */
+/**
+ * `const [ten, setTen] = useUrlValue("k", …)` — khoa chinh laxac `ten`.
+ *
+ * ⚠ WAVE 10: cho phep **generic type** `<…>` chen giua ten hook va `(`.
+ * Ly do — hook nay la generic: `useUrlValue<T>("k", codec, default)`. Ban regex
+ * cuoi bang `useUrlValue\s*\(` nen call site co generic KHONG khop ⇒ rule khong
+ * dang ky bien ⇒ **bao loi oan** cho mot bien DA dong bo URL that.
+ * Do ghi nhanh 2026-10-09 tai `TenantUsageSummaryPage.tsx:48`:
+ *   const [tab, setTab] = useUrlValue<UsageTab>("tab", usageTabCodec, DEFAULT_TAB);
+ * Day KHONG phai "gate do sai" ma la "gate chua doc het nguon chung" — sua
+ * regex de nhan dien het call site, KHONG phai noi rule "ten chua Tab thi bo qua".
+ */
 const USE_URL_VALUE_RE =
-  /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*useUrlValue\s*\(\s*['"`]([^'"`]+)['"`]/g;
+  /const\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*useUrlValue\s*(?:<[^>]*>)?\s*\(\s*['"`]([^'"`]+)['"`]/g;
 
-/** `const [{ a, b }, setS] = useUrlState(` — khoa la cac key ben trong `{}`. */
+/**
+ * `const [{ a, b }, setS] = useUrlState(` — khoa la cac key ben trong `{}`.
+ *
+ * ⚠ WAVE 10: cung ly do voi `USE_URL_VALUE_RE` — cho phep generic `<…>`.
+ * ⚠ Hien tai loi nay **AN**: dong dang ky co dang destructure BAN GHI
+ * `const [{…}, setS] =` nen `NAME_RE` khong khop ⇒ `nav1Candidate` tra null
+ * vi ly do KHAC HANG, khong phai vi regex. Do la phien ban AN cua cung loai
+ * bug (escape "may manh" nham loi nguyen nhan that).
+ */
 const USE_URL_STATE_RE =
-  /const\s*\[\s*\{([^}]*)\}\s*,\s*\w+\s*\]\s*=\s*useUrlState\s*\(/g;
+  /const\s*\[\s*\{([^}]*)\}\s*,\s*\w+\s*\]\s*=\s*useUrlState\s*(?:<[^>]*>)?\s*\(/g;
 
 /**
  * `const [filters, setFilters] = useUrlRecord<JobFilters>(` (WAVE 4 / S4).
@@ -104,7 +127,11 @@ const USE_URL_STATE_RE =
  * ⚠ Phai cho phep **generic type** `<…>` chen giua ten hook va `(` — bo qua thi
  * rule khong nhan dien call site nao va `filters` van bi bao loi *sau khi da
  * sua xong*. Do la thu tu: sua code truoc, sua regex sau — neu nguoc lai, gate
- // bao loi ve mot thu da dung.
+ * // bao loi ve mot thu da dung.
+ *
+ * ⚠ WAVE 10: `useUrlValue` va `useUrlState` **da** cho phep generic o tren.
+ * Wave 4 chi sua 1 trong 3 hook ⇒ 2 hook con lai giu nguyen loi. Khac phai
+ * 3 regex rieng co cung mot loi — sua chung mot lan cho ca 3.
  */
 const USE_URL_RECORD_RE =
   /const\s*\[\s*(\w+)\s*,\s*(\w+)\s*\]\s*=\s*useUrlRecord\s*(?:<[^>]*>)?\s*\(/g;

@@ -512,6 +512,73 @@ if (process.argv.includes("--self-test")) {
     });
   }
 
+  // T12 — `useUrlValue<T>(…)` PHẢI được escape. Mô hình theo
+  // `packages/web/src/pages/tenant/TenantUsageSummaryPage.tsx:48`:
+  //   const [tab, setTab] = useUrlValue<UsageTab>("tab", usageTabCodec, DEFAULT_TAB);
+  // `useUrlValue` là hook generic (`useUrlState.ts:100`) nên call site có `<…>`
+  // là BÌNH THƯỜNG, không phải lạ. Regex cũ đòi `useUrlValue\s*\(` ⇒ không
+  // khớp ⇒ `tab` (đã đồng bộ URL thật) bị báo lỗi oan.
+  //
+  // ⚠ Test này **FAIL trên rule cũ** và PASS sau khi sửa — bằng chứng
+  // fail-before. Không có nó thì "đã sửa" chỉ là cảm tính.
+  // ⚠ Phía sau vẫn phải CÓ `filterStatus` chưa sync để chứng minh escape
+  // không làm rule yếu đi (cùng lý do T7/T8 giữ control).
+  {
+    const r = scan([
+      "export function P() {",
+      '  const [tab, setTab] = useUrlValue<UsageTab>("tab", usageTabCodec, DEFAULT_TAB);',
+      "  const [sortCol, setSortCol] = useUrlValue('sort', stringCodec, '');",
+      "  const [filterStatus, setFilterStatus] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T12 useUrlValue<T> co generic van escape (TenantUsageSummaryPage:48)",
+      pass:
+        !r.hits.includes("tab") &&
+        !r.hits.includes("sortCol") &&
+        r.hits.includes("filterStatus"),
+      detail:
+        `hits=[${r.hits.join(",")}] — mong doi KHONG co "tab" (co generic) ` +
+        `VA KHONG co "sortCol" (khong generic), VAN co "filterStatus"`,
+    });
+  }
+
+  // T13 — `useUrlState<T>(…)` PHẢI đăng ký được key bên trong `{}`.
+  // Mô hình theo `packages/web/src/pages/portfolio/PortfolioHoldingsPage.tsx:96`
+  // và `SocOverviewPanel.tsx:179` (cùng dạng destructure bản ghi), bản có generic.
+  //
+  // ⚠ Vì sao test này khác T12: dòng khai báo có dạng `const [{…}, setS] =` nên
+  // `NAME_RE` **không khớp** ⇒ `nav1Candidate` trả null vì lý do KHÁC HẠNG, không
+  // phải vì regex. Nếu chỉ assert "không có hit" thì test PASS cả khi regex hỏng
+  // ⇒ tautology. Vì vậy T13 assert thẳng vào `urlSyncedVars`: key PHẢI có trong Map.
+  //
+  // ⚠ Vì sao vẫn đáng sửa dù chưa lộ ra số đếm: key không được đăng ký là lỗi
+  // *tiềm ẩn* — mọi call site có generic đều chưa đăng ký key, chỉ chưa có file
+  // nào đủ điều kiện để lộ. Sửa tại nguồn thay vì đợi file nào đó lộ ra sau.
+  //
+  // ⚠ Mặt chống yếu rule: `filterStatus` chưa sync trong CÙNG file vẫn phải bị bắt.
+  {
+    const r = scan([
+      "export function P() {",
+      "  const [{ activeTab, pageSize }, setUrlState] = useUrlState<Filters>(SPEC, DEFAULTS);",
+      "  const [filterStatus, setFilterStatus] = useState('all');",
+      "  return null;",
+      "}",
+    ].join("\n"));
+    cases.push({
+      id: "T13 useUrlState<T> co generic van DANG KY key (khong phai null do lenh dong)",
+      pass:
+        r.synced.has("activeTab") &&
+        r.synced.has("pageSize") &&
+        r.hits.includes("filterStatus"),
+      detail:
+        `synced=[${[...r.synced.keys()].join(",")}] hits=[${r.hits.join(",")}] — ` +
+        `mong doi synced co "activeTab"/"pageSize" (bang chung dang ky THAT), ` +
+        `VAN co "filterStatus" trong hits (rule khong bi lam yeu)`,
+    });
+  }
+
   // T4: comment O TRUOC hit khong lam lech so dong (W3-0 AC-0.1) — dang comment
   // loc ra khoi mang nen chi so phai giu lai, khong in `i + 1`.
   {
