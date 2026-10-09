@@ -6,6 +6,19 @@ import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import styles from "./soc.module.css";
+// WAVE 6 / NAV-1 — phan trang 2 bang con cua preview dong bo URL. Setter la
+// **patch** nen call site truyen `{ plannedPage: … }`, KHONG phai updater lambda.
+import { useUrlState, intCodec, type UrlStateCodec } from "../../hooks/useUrlState";
+
+/** `type` (khong phai `interface`): interface KHONG co implicit index signature
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+type PreviewPaging = { plannedPage: number; skippedPage: number };
+const PREVIEW_PAGING_SPEC: { [K in keyof PreviewPaging]: UrlStateCodec<PreviewPaging[K]> } = {
+  plannedPage: intCodec,
+  skippedPage: intCodec,
+};
+/** Fallback = gia tri `useState(0)` cu ⇒ URL rong van hien trang 0. */
+const PREVIEW_PAGING_DEFAULTS: PreviewPaging = { plannedPage: 0, skippedPage: 0 };
 
 const PLANNER_DATASETS = [
   "daily_prices",
@@ -54,8 +67,10 @@ export function SocDataOpsPlannerConsole() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [plannedPage, setPlannedPage] = useState(0);
-  const [skippedPage, setSkippedPage] = useState(0);
+  const [{ plannedPage, skippedPage }, setPreviewPaging] = useUrlState(
+    PREVIEW_PAGING_SPEC,
+    PREVIEW_PAGING_DEFAULTS,
+  );
   const [plannedExpanded, setPlannedExpanded] = useState(false);
   const [skippedExpanded, setSkippedExpanded] = useState(false);
 
@@ -79,8 +94,8 @@ export function SocDataOpsPlannerConsole() {
   const handlePreview = async () => {
     setError(""); setSuccess(""); setPreview(null);
     setPreviewing(true);
-    setPlannedPage(0);
-    setSkippedPage(0);
+    // WAVE 6: reset **mot** patch (giu nguyen hien hu reset ca 2 ve 0).
+    setPreviewPaging({ plannedPage: 0, skippedPage: 0 });
     setPlannedExpanded(false);
     setSkippedExpanded(false);
     try {
@@ -339,13 +354,13 @@ export function SocDataOpsPlannerConsole() {
         ),
       ),
       renderItemsTable(
-        plannedPageItems, plannedPage, plannedTotalPages, setPlannedPage,
+        plannedPageItems, plannedPage, plannedTotalPages, (p) => setPreviewPaging({ plannedPage: p }),
         plannedExpanded, setPlannedExpanded,
         "soc.dataops.planner_planned_items", plannedCount,
         [{ key: "symbol", label: t("soc.dataops.planner_col_symbol") }, { key: "dataset", label: t("soc.dataops.planner_col_dataset") }, { key: "status", label: t("soc.dataops.planner_col_status") }],
       ),
       renderItemsTable(
-        skippedPageItems, skippedPage, skippedTotalPages, setSkippedPage,
+        skippedPageItems, skippedPage, skippedTotalPages, (p) => setPreviewPaging({ skippedPage: p }),
         skippedExpanded, setSkippedExpanded,
         "soc.dataops.planner_skipped_items", skippedCount,
         [{ key: "symbol", label: t("soc.dataops.planner_col_symbol") }, { key: "dataset", label: t("soc.dataops.planner_col_dataset") }, { key: "reason", label: t("soc.dataops.planner_col_reason") }],

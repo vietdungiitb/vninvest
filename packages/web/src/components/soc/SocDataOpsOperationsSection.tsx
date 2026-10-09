@@ -14,6 +14,27 @@ import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGr
 import { validateDateRange } from "./socValidation.js";
 import { formatLastCheck } from "./socTime.js";
 import styles from "./soc.module.css";
+// WAVE 6 / NAV-1 — phan trang dong bo URL. Setter la **patch** nen call site
+// truyen `{ page: … }`, KHONG phai updater lambda cua `useState`.
+import { useUrlState, intCodec, type UrlStateCodec } from "../../hooks/useUrlState";
+
+/** Bang Run Logs: doi pageSize luon reset page (AC-3 cua wave 6) ⇒ gom 1 record
+ *  de **mot** lan `setParams` ⇒ **mot** history entry thay vi hai. */
+type RunLogsPaging = { runLogsPage: number; runLogsPageSize: number };
+const RUN_LOGS_PAGING_SPEC: { [K in keyof RunLogsPaging]: UrlStateCodec<RunLogsPaging[K]> } = {
+  runLogsPage: intCodec,
+  runLogsPageSize: intCodec,
+};
+/** Fallback = gia tri `useState(1)` / `useState(10)` cu. */
+const RUN_LOGS_PAGING_DEFAULTS: RunLogsPaging = { runLogsPage: 1, runLogsPageSize: 10 };
+
+/** 2 bang con cua preview (planned / skipped) — cung reset ve 0 moi lan Preview. */
+type PreviewPaging = { plannedPage: number; skippedPage: number };
+const PREVIEW_PAGING_SPEC: { [K in keyof PreviewPaging]: UrlStateCodec<PreviewPaging[K]> } = {
+  plannedPage: intCodec,
+  skippedPage: intCodec,
+};
+const PREVIEW_PAGING_DEFAULTS: PreviewPaging = { plannedPage: 0, skippedPage: 0 };
 
 interface RunLogEntry {
   run_id: string;
@@ -87,8 +108,10 @@ export function SocDataOpsOperationsSection() {
 
   const { predefined, custom: apiCustomGroups, reload: reloadGroups } = useSymbolGroups();
   const [runLogs, setRunLogs] = useState<RunLogEntry[]>([]);
-  const [runLogsPage, setRunLogsPage] = useState(1);
-  const [runLogsPageSize, setRunLogsPageSize] = useState(10);
+  const [{ runLogsPage, runLogsPageSize }, setRunLogsPaging] = useUrlState(
+    RUN_LOGS_PAGING_SPEC,
+    RUN_LOGS_PAGING_DEFAULTS,
+  );
   const [runLogsHasMore, setRunLogsHasMore] = useState(false);
   const [runLogsLoading, setRunLogsLoading] = useState(false);
 
@@ -111,8 +134,10 @@ export function SocDataOpsOperationsSection() {
 
   // Preview State
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [plannedPage, setPlannedPage] = useState(0);
-  const [skippedPage, setSkippedPage] = useState(0);
+  const [{ plannedPage, skippedPage }, setPreviewPaging] = useUrlState(
+    PREVIEW_PAGING_SPEC,
+    PREVIEW_PAGING_DEFAULTS,
+  );
   const [plannedExpanded, setPlannedExpanded] = useState(true);
   const [skippedExpanded, setSkippedExpanded] = useState(false);
 
@@ -134,8 +159,9 @@ export function SocDataOpsOperationsSection() {
 
   const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSize = Number(e.target.value);
-    setRunLogsPageSize(newSize);
-    setRunLogsPage(1);
+    // WAVE 6: **mot** patch ⇒ **mot** `setParams` ⇒ **mot** history entry cho
+    // "doi pageSize + reset ve trang 1". Truoc day la 2 `setState` (0 history entry).
+    setRunLogsPaging({ runLogsPageSize: newSize, runLogsPage: 1 });
   };
 
   useEffect(() => {
@@ -172,8 +198,8 @@ export function SocDataOpsOperationsSection() {
     }
     setError(""); setSuccess(""); setPreview(null);
     setPreviewing(true);
-    setPlannedPage(0);
-    setSkippedPage(0);
+    // WAVE 6: reset **mot** patch (giu nguyen hien hu reset ca 2 ve 0).
+    setPreviewPaging({ plannedPage: 0, skippedPage: 0 });
     try {
       const result = await adapter.previewSocDataOpsPlanner(buildPayload());
       setPreview(result);
@@ -218,7 +244,7 @@ export function SocDataOpsOperationsSection() {
       }
       setPreview(null);
       fetchRunLogs(1, runLogsPageSize);
-      setRunLogsPage(1);
+      setRunLogsPaging({ runLogsPage: 1 });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.dataops.backfill_failed"));
     } finally {
@@ -251,7 +277,7 @@ export function SocDataOpsOperationsSection() {
     try {
       await adapter.purgeSocDataOpsRunLogs(50);
       await fetchRunLogs(1, runLogsPageSize);
-      setRunLogsPage(1);
+      setRunLogsPaging({ runLogsPage: 1 });
     } catch (err) {
       setError(`Purge: ${err instanceof Error ? err.message : "Failed."}`);
     }
@@ -631,13 +657,13 @@ export function SocDataOpsOperationsSection() {
         ),
       ),
       renderItemsTable(
-        plannedPageItems, plannedPage, plannedTotalPages, setPlannedPage,
+        plannedPageItems, plannedPage, plannedTotalPages, (p) => setPreviewPaging({ plannedPage: p }),
         plannedExpanded, setPlannedExpanded,
         "soc.dataops.planner_planned_items", plannedCount,
         [{ key: "symbol", label: t("soc.dataops.planner_col_symbol") }, { key: "dataset", label: t("soc.dataops.planner_col_dataset") }, { key: "status", label: t("soc.dataops.planner_col_status") }],
       ),
       renderItemsTable(
-        skippedPageItems, skippedPage, skippedTotalPages, setSkippedPage,
+        skippedPageItems, skippedPage, skippedTotalPages, (p) => setPreviewPaging({ skippedPage: p }),
         skippedExpanded, setSkippedExpanded,
         "soc.dataops.planner_skipped_items", skippedCount,
         [{ key: "symbol", label: t("soc.dataops.planner_col_symbol") }, { key: "dataset", label: t("soc.dataops.planner_col_dataset") }, { key: "reason", label: t("soc.dataops.planner_col_reason") }],
@@ -748,7 +774,7 @@ export function SocDataOpsOperationsSection() {
                 createElement(
                   "button",
                   {
-                    onClick: () => setRunLogsPage((p) => Math.max(1, p - 1)),
+                    onClick: () => setRunLogsPaging({ runLogsPage: Math.max(1, runLogsPage - 1) }),
                     disabled: runLogsPage <= 1,
                     className: styles.actionBtn,
                     
@@ -763,7 +789,7 @@ export function SocDataOpsOperationsSection() {
                 createElement(
                   "button",
                   {
-                    onClick: () => setRunLogsPage((p) => p + 1),
+                    onClick: () => setRunLogsPaging({ runLogsPage: runLogsPage + 1 }),
                     disabled: !runLogsHasMore,
                     className: styles.actionBtn,
                     
