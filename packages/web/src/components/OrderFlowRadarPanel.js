@@ -1,8 +1,23 @@
 import React, { createElement, useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUrlValue, stringCodec } from '../hooks/useUrlState';
+import { useUrlValue } from '../hooks/useUrlState';
 
 const e = createElement;
+
+/**
+ * WAVE 8 / NAV-1 — codec bỏ giá trị MẶC ĐỊNH khỏi URL.
+ *
+ * `stringCodec` chỉ bỏ giá trị **rỗng**, nên bấm về "Cả phiên" sẽ để lại
+ * `?cvd_window=cả phiên`. Ở đây mặc định còn chứa **dấu cách** và tiếng Việt có
+ * dấu ⇒ URL đó xấu và dễ vỡ khi copy/paste. Cùng nguyên tắc với `boolCodec`
+ * của hook và `usageTabCodec` bên `TenantUsageSummaryPage.tsx`.
+ */
+const CVD_WINDOWS = ['1h', 'sáng', 'chiều', 'cả phiên'];
+const CVD_WINDOW_DEFAULT = 'cả phiên';
+const cvdWindowCodec = {
+  parse: (raw) => (CVD_WINDOWS.includes(raw) ? raw : undefined),
+  serialize: (v) => (v === CVD_WINDOW_DEFAULT ? undefined : v),
+};
 
 function fmtCompact(v, locale) {
   if (v == null) return '—';
@@ -95,7 +110,9 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
   // Local state for client-side ICT slicing
   // WAVE 6 / NAV-1 — loc client-side chua dong bo URL: F5 luon quay ve `cả phiên`.
   // Mac dinh giong het `useState` cu (`cả phiên`) va KHONG ghi ra URL.
-  const [timeFilter, setTimeFilter] = useUrlValue('cvd_window', stringCodec, 'cả phiên');
+  // WAVE 8: `cvdWindowCodec` (không phải `stringCodec`) — bấm về "Cả phiên" sẽ
+  // xoá tham số khỏi URL thay vì để lại `?cvd_window=cả phiền`. Xem codec ở đầu file.
+  const [timeFilter, setTimeFilter] = useUrlValue('cvd_window', cvdWindowCodec, CVD_WINDOW_DEFAULT);
 
   // Filter cvdSeries client-side
   const filteredCvdSeries = useMemo(() => {
