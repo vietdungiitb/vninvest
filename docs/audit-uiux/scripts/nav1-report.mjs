@@ -18,7 +18,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { codeLines, nav1Candidate, urlSyncedVars } from "./nav1-rule.mjs";
+import { codeLines, isQueryToken, nav1Candidate, NAME_RE, urlSyncedVars } from "./nav1-rule.mjs";
+
+/**
+ * Ten bien duoc `nav1-rule.mjs` coi la ung vien — **dung chung model voi gate**.
+ * Khong viet lai regex o day (xem comment ben trong vong lap `forEach`).
+ */
+function destructureName(line) {
+  const m = line.match(NAME_RE);
+  if (m) return m[1];
+  const any = line.match(/const\s*\[\s*(\w+)\s*,/);
+  if (any && isQueryToken(any[1])) return any[1];
+  return null;
+}
 
 const ROOT = process.argv[2] && !process.argv[2].startsWith("--")
   ? process.argv[2]
@@ -51,15 +63,20 @@ for (const f of walk(ROOT)) {
   const synced = urlSyncedVars(lines);
   const cands = [];
   lines.forEach((l, i) => {
-    const m = l.match(/const\s*\[\s*(\w*(filter|search|sort|page|tab|query|q)\w*)\s*,/i);
-    if (!m) return;
+    // ⚠ WAVE 5 (2026-10-09): ban nay **tu viet lai regex NAV-1** — dung `l.match(...)`
+    // hard-code. Khi rule sua, bao cao va gate LECH so: do duoc `escaped` 7 -> 23
+    // trong khi gate chi giam 104 -> 89, tuc 16 dong "bi bo qua" chi do bao cao
+    // van dung regex cu. Dung `NAME_RE` + `isQueryToken` de 2 noi dung CHUNG
+    // mo hinh — dung comment o header ("KHONG tu viet lai regex") la chinh xac.
+    const name = destructureName(l);
+    if (!name) return;
     const c = nav1Candidate(l, synced);
     cands.push({
-      name: m[1],
+      name,
       line: trueLine[i],
       counted: Boolean(c),
       hook: c ? c.hook : null,
-      key: synced.get(m[1]) ?? null,
+      key: synced.get(name) ?? null,
       code: l.trim().slice(0, 96),
     });
   });
