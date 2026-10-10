@@ -77,21 +77,28 @@ class AdminDashboard:
     """Tính toàn bộ số liệu vận hành. Không giữ trạng thái, gọi được nhiều lần."""
 
     @staticmethod
-    def kpis() -> list[dict]:
+    def kpis(request=None) -> list[dict]:
         """4 thẻ KPI chính (AC S2-AC1).
 
         Giá trị trả về là **số thô**, template mới định dạng — giữ phần định
         dạng ở tầng trình bày để không trộn logic với câu chữ.
+
+        ⚠ `url` chỉ được gắn khi người dùng **có** quyền xem bảng đó.
+        Không kiểm thì thẻ KPI trỏ tới trang 403 — đo được 2026-10-10 với một
+        staff chỉ có `identity_access.view_dailyprice`: cả 4 thẻ đều có link,
+        trong đó 3 trỏ tới bảng user không có quyền (`has_perm` → `False`).
+        Sidebar đã lọc đúng từ trước; dashboard thì không — nay đồng bộ.
         """
         cards = [
-            ("tenant", "Tổ chức", "core_tenants", AdminDashboard._count_tenants, "Nhấp để xem danh sách"),
-            ("user", "Người dùng", "auth_user", AdminDashboard._count_users, "Tài khoản đăng nhập hệ thống"),
-            ("transaction", "Giao dịch 24 giờ", "user_workspace_transaction", AdminDashboard._count_recent_transactions, "Bản ghi mới trong 24 giờ"),
-            ("quota", "Hạn mức API đã dùng", "commercial_quotarecord", AdminDashboard._count_active_tenants, "Tổ chức đang có bản ghi hạn mức"),
+            ("tenant", "Tổ chức", "core_tenants", AdminDashboard._count_tenants, "Nhấp để xem danh sách", "identity_access", "coretenant"),
+            ("user", "Người dùng", "auth_user", AdminDashboard._count_users, "Tài khoản đăng nhập hệ thống", "auth", "user"),
+            ("transaction", "Giao dịch 24 giờ", "user_workspace_transaction", AdminDashboard._count_recent_transactions, "Bản ghi mới trong 24 giờ", "user_workspace", "transaction"),
+            ("quota", "Hạn mức API đã dùng", "commercial_quotarecord", AdminDashboard._count_active_tenants, "Tổ chức đang có bản ghi hạn mức", "commercial", "quotarecord"),
         ]
         result = []
-        for key, label, table, compute, hint in cards:
+        for key, label, table, compute, hint, app_label, model_name in cards:
             outcome = _safe(label, compute, hint)
+            allowed = _can_view(request, app_label, model_name)
             result.append(
                 {
                     "key": key,
@@ -101,9 +108,11 @@ class AdminDashboard:
                     "value": outcome.value,
                     "error": outcome.error,
                     "ok": outcome.ok,
-                    # Chỉ gắn link khi số liệu tính được — link tới bảng rỗng
-                    # cũng hữu ích, nhưng link khi lỗi thì dẫn tới trang 500.
-                    "url": _changelist_url(table) if outcome.ok else None,
+                    # Chỉ gắn link khi số liệu tính được **và** người dùng được
+                    # phép xem — link tới bảng rỗng thì vô dụng, link tới bảng bị
+                    # cấm thì là link hỏng (403).
+                    "url": _changelist_url(table) if (outcome.ok and allowed) else None,
+                    "can_view": allowed,
                 }
             )
         return result
@@ -224,6 +233,22 @@ _CHANGELIST_URLS: dict[str, str] = {
 }
 
 
+def _can_view(request, app_label: str, model_name: str) -> bool:
+    """Người dùng có quyền xem bảng này không.
+
+    Không có `request` (gọi ngoi dây) hoặc không đăng nhập ⇒ coi như **không**
+    được xem. Chọn hướng thất bại vì đây là quyết định hiển thị link, không
+    phải quyền truy cập — Django vẫn tự chặn 403 ở tầng view.
+    """
+    user = getattr(request, "user", None)
+    if user is None or not getattr(user, "is_active", False):
+        return False
+    try:
+        return bool(user.has_perm(f"{app_label}.view_{model_name}"))
+    except Exception:  # noqa: BLE001 - hỏng backend quyền không được phép lộ link
+        return False
+
+
 def _changelist_url(key: str) -> str | None:
     from django.urls import NoReverseMatch, reverse
 
@@ -251,16 +276,24 @@ def _admin_log_url(entry) -> str | None:
         return None
 
 
-def dashboard_context() -> dict:
+def dashboard_context(request=None) -> dict:
     """Context cho template `admin/index.html`.
 
+    `request` dùng để **lọc link KPI theo quyền** — xem `kpis()`.
+    Không truyền `request` thì không thẻ nào có link (hướng thất bại an toàn).
+
     **Không** dùng `admin.site.each_context()` — hàm đó kéo toàn bộ `app_list`
-    và chạy `get_app_list()` cho mọi model, tức là **một truy vấn cho mỗi
-    ModelAdmin** chỉ để dựng menu. Với 15 app và ~112 model đó là trăm truy vấn
-    mỗi lần mở trang chủ.
+    và gọi `get_app_list()` cho mọi model.
+    ⚠ **Đã đo, và con số từng viết sai**: `get_app_list()` **không** tốn truy vấn
+    DB (đo 2026-10-10, superuser mới, cache quyền rỗng):
+        admin.site.get_app_list(req) → queries = 0, has_perm × 194
+    Cái thật sự tốn là **số lần kiểm tra quyền**, không phải truy vấn. Bản gốc
+    ghi "một truy vấn cho mỗi ModelAdmin" là suy đoán chưa kiểm.
+    Ở đây menu lấy từ `vn_groups` và số liệu lấy từ `AdminDashboard`, mỗi số
+    liệu đúng 1 truy vấn tổng hợp, mọi truy vấn đều bọc trong `_safe()`.
     """
     return {
-        "vn_kpis": AdminDashboard.kpis(),
+        "vn_kpis": AdminDashboard.kpis(request),
         "vn_alerts": AdminDashboard.alerts(),
         "vn_activity": AdminDashboard.activity(),
     }

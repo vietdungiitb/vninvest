@@ -269,25 +269,47 @@ def check_vietnamese_labels() -> list[str]:
     return warnings
 
 
+def _ensure_django_ready() -> str | None:
+    """Chuẩn bị môi trường để đếm model. Trả `None` nếu thành công, ngược lại lý do.
+
+    ⚠ Vì sao hàm này tồn tại: `scripts/pre-push-gate.mjs` gọi gate **không** set
+    `DJANGO_SETTINGS_MODULE`. Trước khi có hàm này, nhánh "model chưa khai báo
+    admin" **luôn** rơi vào nhánh báo lỗi môi trường ⇒ check **chết âm thầm**
+    trong đúng đường chạy tự động. Đây đúng là cái bẫy đã ghi ở
+    `docs/LESSONS/INDEX.md` §1.1: quy tắc có trong văn bản nhưng không lệnh nào
+    chạy nó. Gate phải **tự đủ**, không được trông chờ người gọi export biến.
+    """
+    import os
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vninvest_core.settings")
+    # `settings.py:70` ném `ImproperlyConfigured` khi DEBUG thiếu và
+    # `DJANGO_ALLOWED_HOSTS` rỗng — đặt trước khi `django.setup()`.
+    os.environ.setdefault("DJANGO_DEBUG", "1")
+    try:
+        if str(SRC) not in sys.path:
+            sys.path.insert(0, str(SRC))
+        import django
+
+        django.setup()
+        return None
+    except Exception as exc:  # noqa: BLE001 - phải trả lý do, không crash
+        return f"{type(exc).__name__}: {exc}"
+
+
 def check_unregistered_models() -> list[str]:
     """Cảnh báo (không chặn): model chưa có admin.
 
     Không chặn vì không phải model nào cũng nên mở quyền sửa (bảng phái sinh
-    nội bộ). Gate chỉ **báo** để quyết định còn sót là có ý thức.
+    nội bộ, bảng chứa bí mật). Gate chỉ **báo** để quyết định còn sót là có ý
+    thức.
     """
-    warnings = []
+    warnings: list[str] = []
+    reason = _ensure_django_ready()
+    if reason:
+        return [f"KHONG dem duoc model da dang ky admin: {reason}"]
     try:
-        sys.path.insert(0, str(SRC))
-        os_env = None  # noqa: F841 - chi de doc y thuc
-        import django  # noqa: PLC0415
-        from django.apps import apps  # noqa: PLC0415
-
-        os_env = __import__("os").environ.get("DJANGO_SETTINGS_MODULE")
-        if not os_env:
-            return ["Django chua san sang — can DJANGO_SETTINGS_MODULE de dem model"]
-        __import__("os").environ.setdefault("DJANGO_SETTINGS_MODULE", "vninvest_core.settings")
-        django.setup()
-        from django.contrib import admin as django_admin  # noqa: PLC0415
+        from django.apps import apps
+        from django.contrib import admin as django_admin
 
         registered = set()
         for key, model_admin in django_admin.site._registry.items():
