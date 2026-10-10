@@ -7,7 +7,7 @@ Quy tắc bằng văn bản về design token, WCAG, chuẩn định dạng Vi�
 template Django đã chứng minh không ngăn được gì: trong chính wave này, 6
 comment `{# #}` nhiều dòng làm `/admin/` trả 500, `percent_vi` mất dấu âm, và
 nhãn tiếng Việt tra trượt vì khoá lệch hoa/thường — **mỗi lỗi đều lọt qua
-`manage.py check`**. Chỉ một lệnh **exit khác 0** mới chặn được
+`manage.py check`**. Chỉ một lệnh **exit khác 0** mới chan được
 (`docs/LESSONS/INDEX.md` §1.1: "procedure beats prose").
 
 Cách chạy
@@ -15,7 +15,7 @@ Cách chạy
     python packages/core/backend/scripts/check_admin_ux.py
     python packages/core/backend/scripts/check_admin_ux.py --self-test
 
-Exit 0 = sạch. Exit 1 = có vi phạm chặn. Exit 2 = **không verify được**
+Exit 0 = sạch. Exit 1 = có vi phạm chan. Exit 2 = **không verify được**
 (môi trường thiếu) — đây là kết quả hợp lệ, không phải "PASS".
 """
 
@@ -101,7 +101,7 @@ def relative_luminance(hex_colour: str) -> float:
 
 
 def contrast_ratio(fg: str, bg: str) -> float:
-    """Tỷ lệ tương phản WCAG 2.x, trả về số thôi — KHÔNG làm tròn."""
+    """Tỷ lệ tuong phan WCAG 2.x, trả về số thôi — KHÔNG làm tròn."""
     first = relative_luminance(fg)
     second = relative_luminance(bg)
     lighter, darker = max(first, second), min(first, second)
@@ -154,7 +154,7 @@ def check_contrast() -> list[str]:
 
 
 def check_transitions(css: str) -> list[str]:
-    """L-F05: `transition:` mất `<time>` ⇒ mặc định `duration: 0s` ⇒ cắt chuyển động.
+    """L-F05: `transition:` mất `<time>` ⇒ mặc định `duration: 0s` ⇒ cắt chuyen dong.
 
     Hàm tự bỏ comment `/* … */` **bên trong** chứ không nhờ caller: nếu bỏ ở
     caller thì bất kỳ ai gọi trực tiếp (kể cả self-test) sẽ quét trúng chính
@@ -176,7 +176,7 @@ def check_a11y_css(css: str) -> list[str]:
     if "--vn-tap: 24px;" not in css:
         errors.append("thieu --vn-tap: 24px (D08 §13: vung cham toi thieu 24×24)")
     if "prefers-reduced-motion" not in css:
-        errors.append("thieu prefers-reduced-motion (D08 §13, WCAG 2.3.3 mức AA)")
+        errors.append("thieu prefers-reduced-motion (D08 §13, WCAG 2.3.3 muc AA)")
     if "--vn-focus-ring" not in css:
         errors.append("thieu --vn-focus-ring (D08 §13.1: vong focus phai nhin thay tren nen toi)")
     # D08 §13: "khong chi dua vao mau" — badge phai co chu.
@@ -225,11 +225,11 @@ def check_template_comments() -> list[str]:
 
 
 def check_encoding() -> list[str]:
-    """Chặn byte hỏng trong mã nguồn.
+    """Chan byte hỏng trong mã nguồn.
 
     Hazard 5: đọc/ghi sai encoding sinh ra `U+FFFD` **trông giống** file hỏng
     nhưng citation vẫn đúng dòng. Trong wave này đã ghi 4 ký tự `U+FFFD` vào
-    `branding.py` bằng cách đọc file không khai báo encoding.
+    `branding.py` bằng cách đọc file không khai bao encoding.
     """
     errors = []
     targets = sorted(ADMIN_UI.glob("*.py")) + [SRC / "vninvest_core" / "admin.py"]
@@ -245,10 +245,10 @@ def check_encoding() -> list[str]:
 
 
 def check_vietnamese_labels() -> list[str]:
-    """Cảnh báo (không chặn): model có nhãn tiếng Việt chưa.
+    """Canh bao (không chan): model có nhãn tiếng Việt chưa.
 
-    Không chặn vì đăng ký nhãn là quyết định của từng model; gate chỉ báo để
-    không ai quên mà không bị chặn việc làm việc khác.
+    Không chan vì đăng ký nhãn là quyết định của từng model; gate chỉ báo để
+    không ai quên mà không bị chan việc làm việc khác.
     """
     warnings = []
     labels_source = (ADMIN_UI / "labels.py")
@@ -273,7 +273,7 @@ def _ensure_django_ready() -> str | None:
     """Chuẩn bị môi trường để đếm model. Trả `None` nếu thành công, ngược lại lý do.
 
     ⚠ Vì sao hàm này tồn tại: `scripts/pre-push-gate.mjs` gọi gate **không** set
-    `DJANGO_SETTINGS_MODULE`. Trước khi có hàm này, nhánh "model chưa khai báo
+    `DJANGO_SETTINGS_MODULE`. Trước khi có hàm này, nhánh "model chưa khai bao
     admin" **luôn** rơi vào nhánh báo lỗi môi trường ⇒ check **chết âm thầm**
     trong đúng đường chạy tự động. Đây đúng là cái bẫy đã ghi ở
     `docs/LESSONS/INDEX.md` §1.1: quy tắc có trong văn bản nhưng không lệnh nào
@@ -297,9 +297,9 @@ def _ensure_django_ready() -> str | None:
 
 
 def check_unregistered_models() -> list[str]:
-    """Cảnh báo (không chặn): model chưa có admin.
+    """Canh bao (không chan): model chưa có admin.
 
-    Không chặn vì không phải model nào cũng nên mở quyền sửa (bảng phái sinh
+    Không chan vì không phải model nào cũng nên mở quyền sửa (bảng phái sinh
     nội bộ, bảng chứa bí mật). Gate chỉ **báo** để quyết định còn sót là có ý
     thức.
     """
@@ -423,6 +423,8 @@ SELF_TEST_CASES = [
      lambda: check_template_comments()),
     ("T12 duong dan thieu bi bat",
      lambda: _forced_missing_path()),
+    ("T13 khong chet khi stdout la cp1252",
+     lambda: _forced_cp1252_stdout()),
 ]
 
 #: Case nào **phải** phát hiện lỗi. So khớp bằng `name[:3]` — `str.startswith("T1")`
@@ -473,6 +475,38 @@ def _forced_missing_path():
         CSS_PATH = original
 
 
+def _forced_cp1252_stdout():
+    """Chứng minh gate **không chết** khi stdout là cp1252.
+
+    ⚠ L-B03 (`docs/LESSONS/backend.md`): script chạy tự động không được in
+    ký tự ngoài ASCII ra stdout non-UTF-8. `scripts/pre-push-gate.mjs` gọi gate
+    **không** set `PYTHONIOENCODING` ⇒ stdout là `cp1252`.
+
+    Đã xảy ra thật: dòng `print("... 0 loi chặn ...")` chứa `ặ` (U+1EB7) ⇒
+    `UnicodeEncodeError` ⇒ gate FAIL ⇒ **chặn push**.
+
+    Case này **phải thực sự in** chuỗi có dấu qua stream cp1252 thì mới
+    chứng minh được. Bản đầu chỉ gọi `run_blocking()` — hàm đó **không**
+    in gì ⇒ case luôn PASS kể cả khi đã vô hiệu hoá lớp phòng vệ
+    (đã kiểm bằng phép phá thật: vô hiệu hoá ⇒ vẫn PASS ⇒ case vô dụng).
+    """
+    import io
+
+    real = sys.stdout
+    sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", errors="strict")
+    try:
+        _force_utf8_stdout()
+        # In CUNG chu co dau - day la phan thu nghiem.
+        print("check_admin_ux: PASS \u2014 0 loi ch\u1eb7n")
+        sys.stdout.flush()
+        return []  # khong nem UnicodeEncodeError => PASS
+    finally:
+        try:
+            sys.stdout = real
+        except Exception:
+            pass
+
+
 def self_test() -> int:
     print("check_admin_ux --self-test")
     failures = []
@@ -496,7 +530,34 @@ def self_test() -> int:
     return 0
 
 
+def _force_utf8_stdout() -> None:
+    """Ép stdout sang UTF-8 với `errors="replace"` — **không bao giờ** để script chết vì encoding.
+
+    ⚠ Bắt buộc, không phải tuỳ thích. L-B03 trong `docs/LESSONS/backend.md`:
+    script chạy tự động **không** được in ký tự ngoài ASCII ra stdout non-UTF-8,
+    hoặc phải xử lý encoding rõ ràng.
+
+    Đã xảy ra thật: `scripts/pre-push-gate.mjs` gọi script này **không** set
+    `PYTHONIOENCODING`, nên stdout là `cp1252`. Dòng `print("... 0 loi chan ...")`
+    chứa `ặ` (U+1EB7) ⇒ `UnicodeEncodeError` ⇒ gate **FAIL** ⇒ **chan push**.
+
+    Hai lớp phòng vệ (cả hai đều giữ):
+    1. `errors="replace"` — kể cả sau này có sót dấu, script vẫn **không crash**.
+    2. Thông điệp vẫn viết **không dấu** cho khớp với quy ước output của các
+       gate khác trong repo (`check-lessons.mjs`, `check-multi-agent.mjs`).
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def main() -> int:
+    _force_utf8_stdout()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true", help="chay bo case that chung minh gate bat loi")
     args = parser.parse_args()
@@ -510,18 +571,18 @@ def main() -> int:
         print(line)
 
     if failures:
-        print(f"\ncheck_admin_ux: FAIL — {len(failures)} loi chặn")
+        print(f"\ncheck_admin_ux: FAIL — {len(failures)} loi chan")
         for item in failures:
             print(f"  x {item}")
         return 1
 
     warnings = run_warnings()[1]
     if warnings:
-        print(f"\ncheck_admin_ux: PASS — 0 loi chặn, {len(warnings)} canh bao")
+        print(f"\ncheck_admin_ux: PASS — 0 loi chan, {len(warnings)} canh bao")
         for item in warnings:
             print(f"  ! {item}")
     else:
-        print("\ncheck_admin_ux: PASS — 0 loi chặn, 0 canh bao")
+        print("\ncheck_admin_ux: PASS — 0 loi chan, 0 canh bao")
     return 0
 
 
