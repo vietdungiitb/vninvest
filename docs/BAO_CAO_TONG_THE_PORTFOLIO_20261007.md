@@ -171,7 +171,7 @@ PortfolioAllocationView   import trong urls.py, 0 path()
 | **B14** | OPS-06 SBOM CycloneDX | **0 file** | 2 |
 | **B15** | OPS-04 ASVS L2 + pen test | **0 match** | 5 |
 | **B16** | OPS-02 load test | Không có kịch bản | 3 |
-| **B17** | BRK-06 SOC panel Broker Ops (backend endpoint cho panel) | Panel đang ở `/portfolios`, không phải SOC | 3 |
+| **B17** | BRK-06 SOC panel Broker Ops (backend endpoint cho panel) | Panel đang ở `/portfolios/manage`, không phải SOC | 3 |
 
 ### 3b.3 Trả lời thẳng câu hỏi
 
@@ -210,7 +210,7 @@ PortfolioAllocationView   import trong urls.py, 0 path()
 | # | Việc | ed |
 |---|---|---|
 | B1 | BRK-01 credential cutover + deprecation 410 | 4 |
-| B2 | BRK-06 SOC panel Broker Ops đúng chỗ (hiện ở `/portfolios`) | 3 |
+| B2 | BRK-06 SOC panel Broker Ops đúng chỗ (hiện ở `/portfolios/manage`) | 3 |
 
 ### Phase C — Paper trading (~16 ed)
 

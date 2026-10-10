@@ -1,3 +1,64 @@
+## Entry 271: /portfolios mo Portfolio workspace, trang quan ly chuyen sang /portfolios/manage (2026-10-11)
+
+- **Nhanh**: `feat/portfolio-entry` -> `dev`
+- **Claim**: `fe-portfolio-entry`
+- **Phuong an (A)** do Owner chot: `/portfolios` = workspace, `/portfolios/manage` = trang CRUD cu.
+
+### Nguyen nhan goc
+
+`packages/web/src/main.tsx:29` (truoc khi sua) remap route id `portfolios` ->
+`core-portfolios`, khien `PortfolioWorkspacePage` (5 man hinh Portfolio moi) khong toi
+duoc o bat ky URL nao. Sidebar (`sidebaritems.ts:18`) va `navigationCatalog.js:11` chi
+tro toi `/portfolios`.
+
+### Da sua
+
+| File | Thay doi |
+|---|---|
+| `packages/web/src/main.tsx` | `/portfolios` -> `resolvePageComponent('portfolio-workspace')`; them route `portfolios/manage` -> `resolvePageComponent('portfolios')` |
+| `packages/web/src/pages/portfolio/PortfolioWorkspacePage.tsx` | So huu `usePortfolioWorkspace`; `effectiveId = params.portfolioId ?? selectedId`; `onPortfolioChange`/`onTabChange` dieu huong |
+| `packages/web/src/pages/portfolio/PortfolioWorkspace.tsx` | Tro thanh presentational (bo hook + prop `adapter`); nhan props trang thai; them link `/portfolios/manage` |
+| `packages/web/src/pages/PortfoliosPage.tsx` | Them link hang "Chi tiet" -> `/portfolios/<id>/overview` |
+| `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js` | Key `portfolioWorkspace.manage` |
+| `packages/web/src/pages/portfolio/__tests__/portfolio-entry.component.test.tsx` | **MOI**: 4 test |
+
+### Bug co san da dong cung
+
+Truoc day `selectedId` cua o chon khong dieu khien 5 tab con (tab nhan route param,
+khong nhan `selectedId`) => doi danh muc o o chon khong doi du lieu cua tab. Nay
+`effectiveId` la nguon duy nhat cho ca o chon lan 5 tab con.
+
+### Ghi chu doc
+
+Muc BRK-06 tro `/portfolios` trong hai doc duoi day da sua thanh `/portfolios/manage`
+(panel DNSE nam o trang quan ly, khong phai workspace):
+
+- `docs/BAO_CAO_TONG_THE_PORTFOLIO_20261007.md`
+- `docs/DOI_CHIEU_PLAN_BACKEND_FRONTEND_PORTFOLIO_20261007.md`
+
+### Gate da chay
+
+| Gate | Ket qua |
+|---|---|
+| `npx tsc --noEmit` | 0 |
+| `npm run lint` | 0 error (warning co san) |
+| `npm run check:shell` | exit 0 |
+| `npm run check:ts-imports` | PASS |
+| `npx vitest run src/pages/portfolio` | 5 file / **43 test PASS** |
+| `route-catalog-contract` + `main-menu-contract` | 2 file / **10 test PASS** |
+| `npm run build` | exit 0 |
+| `check:multi-agent` | 0 loi |
+
+**CHUA CHAY**: BE test · Playwright/E2E · full FE suite (`test:components`).
+
+### Bai hoc
+
+- L-T01 **tai pham**: Edit tool doi LF -> CRLF lam 2 file `i18n` diff phinh
+  (6726/6725 dong) - bat duoc bang `git diff --numstat`, chuan hoa lai LF truoc khi commit.
+- Contract F-04 (`route-catalog-contract.component.test.ts`) chi kiem mot chieu
+  catalog -> runtime nen route moi `portfolios/manage` KHONG can khai trong `routeCatalog`.
+
+---
 ## Entry 270: E2E/Playwright — CHAY DUOC, tim ra nguyen nhan goc, Owner quyet dinh de lai (2026-10-10)
 
 - **Nhanh**: `docs/record-e2e-blocker` -> `dev`
@@ -8570,3 +8631,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 268 | 2026-10-10 | **O5 - D08 §12.1 làm nguồn sự thật cho design token admin** - Bỏ dict chép, `check_admin_ux.py` **parse thẳng bảng màu từ doc**; thêm gate chặn `--vn-gain`/`--vn-loss` phải **bằng** success/danger (L-F08); cảnh báo màu `soc.tokens.css` lọt vào token admin. **Fail-before thật**: sửa `#0F1117`→`#010203` trong D08 §12.1 ⇒ gate FAIL exit 1. Self-test **21/21**. |
 | 269 | 2026-10-10 | **Chạy thật `entrypoint.sh` trong container** - Đóng mục "CHƯA CHẠY" của O3. Bình thường: migrate → collectstatic **166 file** → repair → daphne, **exit 0**. Fail-before (`--tmpfs staticfiles:ro`): bản mới **exit 1, daphne không khởi động**; bản cũ in `OSError` rồi **vẫn chạy tiếp** `repair_beat_schedule` → `Starting daphne` ⇒ chứng minh bằng đo rằng `|| true` làm server "healthy" với static hỏng. |
 | 270 | 2026-10-10 | **E2E/Playwright — chạy được, tìm ra nguyên nhân gốc** — 15 fail/1 pass, fail ở **bước login**. Backend Docker **đang chạy** (`:8001`, `/api/health/` 200); superuser đã dựng. ⇒ Không phải thiếu môi trường. Gốc rễ: `vite.config.ts` khai `proxy` **chỉ trong `server`, không có trong `preview`**, mà `playwright.config.ts:71` chạy `npm run preview` ⇒ E2E **không bao giờ proxy `/api`** ⇒ login không lưu token. Sửa được bằng `preview: { proxy }` mirror `server.proxy`. Owner chọn **để lại** ⇒ vẫn `CHƯA CHẠY` (ghi rõ lý do, không báo PASS). Thêm: `advertising-admin.spec.ts` có bug — `test.skip()` gọi **sau** `fill()` nên skip không bao giờ chạy. |
+| 271 | 2026-10-11 | **Portfolio entry** - `/portfolios` mo Portfolio workspace, trang quan ly CRUD chuyen sang `/portfolios/manage` (phuong an A do Owner chot) | `feat/portfolio-entry` -> `dev` | `tsc` 0 · `lint` 0 error · `check:shell` 0 · `check:ts-imports` PASS · `vitest src/pages/portfolio` 43/43 · `route-catalog-contract`+`main-menu-contract` 10/10 · `build` 0 · `check-multi-agent` 0 | Root cause `main.tsx:29` remap `portfolios` -> `core-portfolios` khien 5 man hinh Portfolio moi khong toi duoc. Lift `usePortfolioWorkspace` len page, khung thanh presentational; dong bug co san `selectedId` khong dieu khien 5 tab con. Sua BRK-06 trong 2 doc portfolio tro `/portfolios/manage`. **CHUA CHAY**: BE test, Playwright, full FE suite. L-T01 tai pham (Edit tool doi LF->CRLF, da chuan hoa lai). |

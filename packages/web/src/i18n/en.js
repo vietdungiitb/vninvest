@@ -6623,6 +6623,7 @@ const en = {
     pickerLabel: 'Select portfolio',
     noPortfolio: 'No portfolio yet',
     reload: 'Reload',
+    manage: 'Manage portfolios',
     loading: 'Loading…',
     loadError: 'Could not load data',
     tabsLabel: 'Portfolio screens',

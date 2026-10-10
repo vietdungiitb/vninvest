@@ -10,6 +10,7 @@
  */
 
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { usePortfolioWorkspace } from "../../hooks/usePortfolioWorkspace";
 import {
   PortfolioWorkspace,
   type WorkspaceTabId,
@@ -36,21 +37,43 @@ export function PortfolioWorkspacePage() {
   // KHÔNG remount ⇒ state cũ còn nguyên (audit B5).
   const location = useLocation();
   const tab = tabFromPath(location.pathname);
+
+  // Trang sở hữu trạng thái danh mục và truyền xuống khung. Nhờ vậy `effectiveId`
+  // là NGUỒN DUY NHẤT cho cả ô chọn lẫn 5 tab con: vào `/portfolios` (không id)
+  // thì hook tự chọn danh mục đầu tiên và các tab thật sự tải dữ liệu của nó.
+  const { portfolios, selectedId, loading, error, selectPortfolio, reload } =
+    usePortfolioWorkspace();
+  const routeId = params.portfolioId ?? null;
+  const effectiveId = routeId ?? selectedId;
+
+  // Đổi danh mục: cập nhật hook + đổi URL để deep-link/F5 giữ đúng danh mục.
+  const onPortfolioChange = (id: string | number | null) => {
+    selectPortfolio(id);
+    if (id === null) return;
+    navigate(`/portfolios/${id}/${tab}`);
+  };
   // Chuyển tab = đổi path để deep-link + F5 giữ đúng màn hình.
   const onTabChange = (next: WorkspaceTabId) => {
-    const id = params.portfolioId ?? "";
-    navigate(`/portfolios/${id}/${next}`);
+    if (effectiveId === null) return;
+    navigate(`/portfolios/${effectiveId}/${next}`);
   };
 
-  const portfolioId = params.portfolioId ?? null;
-
   return (
-    <PortfolioWorkspace tab={tab} onTabChange={onTabChange}>
-      {tab === "overview" && <PortfolioOverviewPage portfolioId={portfolioId} />}
-      {tab === "holdings" && <PortfolioHoldingsPage portfolioId={portfolioId} />}
-      {tab === "allocation" && <PortfolioAllocationPage portfolioId={portfolioId} />}
-      {tab === "analytics" && <PortfolioAnalyticsPage portfolioId={portfolioId} />}
-      {tab === "activity" && <PortfolioActivityPage portfolioId={portfolioId} />}
+    <PortfolioWorkspace
+      tab={tab}
+      onTabChange={onTabChange}
+      portfolios={portfolios}
+      selectedId={effectiveId}
+      loading={loading}
+      error={error}
+      onPortfolioChange={onPortfolioChange}
+      onReload={() => void reload()}
+    >
+      {tab === "overview" && <PortfolioOverviewPage portfolioId={effectiveId} />}
+      {tab === "holdings" && <PortfolioHoldingsPage portfolioId={effectiveId} />}
+      {tab === "allocation" && <PortfolioAllocationPage portfolioId={effectiveId} />}
+      {tab === "analytics" && <PortfolioAnalyticsPage portfolioId={effectiveId} />}
+      {tab === "activity" && <PortfolioActivityPage portfolioId={effectiveId} />}
     </PortfolioWorkspace>
   );
 }

@@ -7,13 +7,15 @@
  * Không tự dựng danh sách tab bằng `children` rời rạc: tab được khai một
  * chỗ trong `TABS` để tiêu đề i18n và thứ tự luôn khớp với `routeCatalog.js`
  * (S-11 thêm 5 route tương ứng).
+ *
+ * Thuần trình bày (presentational): trạng thái danh mục (`usePortfolioWorkspace`)
+ * do `PortfolioWorkspacePage` sở hữu và truyền xuống qua props. Trước đây khung
+ * tự gọi hook nên `selectedId` của khung và `portfolioId` truyền cho 5 tab là
+ * HAI nguồn khác nhau — đổi danh mục ở ô chọn không đổi dữ liệu các tab.
  */
 
+import { Link } from "react-router-dom";
 import { useI18n } from "../../context/LangContext";
-import {
-  usePortfolioWorkspace,
-  type PortfolioAdapter,
-} from "../../hooks/usePortfolioWorkspace";
 
 export type WorkspaceTabId = "overview" | "holdings" | "allocation" | "analytics" | "activity";
 
@@ -28,16 +30,19 @@ export const TABS: ReadonlyArray<{ id: WorkspaceTabId; labelKey: string }> = [
 export interface PortfolioWorkspaceProps {
   tab: WorkspaceTabId;
   onTabChange: (tab: WorkspaceTabId) => void;
-  adapter?: PortfolioAdapter;
+  portfolios: Array<Record<string, unknown>>;
+  selectedId: string | number | null;
+  loading: boolean;
+  error: string | null;
+  onPortfolioChange: (id: string | number | null) => void;
+  onReload: () => void;
   children: React.ReactNode;
 }
 
 export function PortfolioWorkspace({
-  tab, onTabChange, adapter, children,
+  tab, onTabChange, portfolios, selectedId, loading, error, onPortfolioChange, onReload, children,
 }: PortfolioWorkspaceProps) {
   const { t } = useI18n();
-  const { portfolios, selectedId, loading, error, selectPortfolio, reload } =
-    usePortfolioWorkspace(adapter);
 
   return (
     <section className="pf-workspace" aria-label={t("portfolioWorkspace.title", {
@@ -55,7 +60,7 @@ export function PortfolioWorkspace({
             id="pf-portfolio-select"
             value={selectedId ?? ""}
             disabled={loading || portfolios.length === 0}
-            onChange={(e) => selectPortfolio(e.target.value ? e.target.value : null)}
+            onChange={(e) => onPortfolioChange(e.target.value ? e.target.value : null)}
           >
             {portfolios.length === 0 && (
               <option value="">{t("portfolioWorkspace.noPortfolio", {
@@ -69,9 +74,12 @@ export function PortfolioWorkspace({
             })}
           </select>
         </label>
-        <button type="button" onClick={() => void reload()} disabled={loading}>
+        <button type="button" onClick={() => void onReload()} disabled={loading}>
           {t("portfolioWorkspace.reload", { defaultValue: "Tải lại" })}
         </button>
+        <Link className="pf-workspace__manage" to="/portfolios/manage">
+          {t("portfolioWorkspace.manage", { defaultValue: "Quản lý danh mục" })}
+        </Link>
       </header>
 
       <nav className="pf-workspace__tabs" aria-label={t("portfolioWorkspace.tabsLabel", {
