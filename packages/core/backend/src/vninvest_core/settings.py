@@ -149,7 +149,18 @@ MIDDLEWARE = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # `DIRS` được tra **trước** `APP_DIRS`. Bắt buộc cho lớp trình bày
+        # admin: loader `app_directories` duyệt `INSTALLED_APPS` theo thứ tự và
+        # `django.contrib.admin` đứng ĐẦU, nên template `admin/*.html` đặt trong
+        # app của ta sẽ **không bao giờ** được tìm thấy nếu chỉ dựa vào
+        # `APP_DIRS`.
+        # Đã đo, không giả định — probe 2026-10-10 trước khi thêm dòng này:
+        #   engines["django"].get_template("admin/base.html").origin.name
+        #   => ...\.venv\...\django\contrib\admin\templates\admin\base.html
+        # Ngoài `admin/`, thư mục này không chứa template nào khác ⇒ không thay
+        # đổi hành vi của bất kỳ template nào đang chạy.
+        # Chi tiết: docs/PLAN_DJANGO_ADMIN_UIUX_20261010.md §3.2 và §6 (N2 đã sửa).
+        'DIRS': [os.path.join(BASE_DIR, 'vninvest_core', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -157,6 +168,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Nhóm menu theo nghiệp vụ + số liệu dashboard cho `/admin/`.
+                # Rẻ: đọc `admin.site._registry` trong bộ nhớ, 0 truy vấn DB.
+                'vninvest_core.admin_ui.context_processors.admin_ui',
             ],
         },
     },
