@@ -478,3 +478,67 @@ Ket qua mong doi:
 - Chart nay thanh kien nhat thuc (candle chart-style) thay Area chart.
 - Hien thi duoc movement cua peer stocks trong cac nhom thi truong.
 - Typography va color scheme tro nen sắc nét, gon gang trading screen thuc.
+
+---
+
+## Wave 16 (2026-10-10) — Trạng thái admin sau khi mở toàn bộ tính năng
+
+Tài liệu này trước đây chỉ là roadmap sản phẩm (Bước 1..30) và **không ghi
+trạng thái thực tế của lớp trình bày admin**. Mục này bổ sung phần đó, đo tại
+HEAD sau wave 16. Số liệu đều lấy từ lệnh chạy thật, không ước lượng.
+
+### Số liệu
+
+| Chỉ số | Trước wave 16 | Sau wave 16 |
+|---|---|---|
+| Model có ModelAdmin | 65 | **114** |
+| Model của app ta chưa có admin | 49 | **0** |
+| Model thiếu nhãn tiếng Việt | 0 | **0** |
+
+49 model được mở theo nhóm: `identity_access` 16 · `user_workspace` 15 ·
+`market_data` 5 · `signal_intelligence` 4 · `commercial` 3 · `advisory` 2 ·
+`advertising` / `market_serving` / `ops_audit` / `service_ops` 1 mỗi app.
+
+### Ba chính sách khác nhau khi mở admin (không phải mở chung một kiểu)
+
+1. **Bảng nhật ký / tổng hợp do hệ thống ghi** → `VNReadOnlyMixin`, xem được,
+   không sửa tay. Ví dụ `LedgerEntry`, `PositionSnapshot`, `PATAuditLog`.
+   Một dòng sai trong `LedgerEntry` làm lệch vĩnh viễn phần vốn.
+2. **Bảng bí mật** (`UserDNSECredential`, `SystemBrokerCredential`,
+   `DNSECredential`, `UserBrokerConfig`, `TenantWebhookConfig`) → có admin để
+   theo dõi và thu hồi (xoá được) nhưng trường `*_cipher` là **chỉ đọc** vì là
+   ciphertext; ghi tay sẽ hỏng bản ghi.
+3. **Bảng cấu hình vận hành** → sửa tay đầy đủ.
+
+### Một ngoại lệ có tên
+
+`service_ops.CachedSymbolGroupMember` là bảng ánh xạ thuần, **không có cột
+thời gian nào**, nên không lọc theo thời gian được. Cờ `vn_no_time_filter = True`
+đánh dấu việc này; gate và test tôn trọng cờ. Đây là ngoại lệ được đặt tên, không
+phải lỗi bị bỏ qua.
+
+### Lỗi routing `/admin/` đã sửa và đã kiểm chứng bằng nginx thật
+
+`/admin/advertising` vừa là route SPA vừa là `app_label` của Django. Với
+`location ^~ /admin/advertising` (prefix) nginx nuốt luôn
+`/admin/advertising/adcampaign/`, `…/1/change/` … ⇒ **6 URL admin chết**.
+Đã đổi thành `location = /admin/advertising` (exact match).
+
+Bằng chứng (chạy nginx 1.31.6 thật, `packages/web/scripts/verify-admin-nginx-routing.mjs`):
+- với bản sửa: **28/28 PASS**
+- tạm đổi lại `^~`: **22/28, 6 FAIL** — đúng 6 URL bị nuốt
+
+### Gate liên quan
+
+| Gate | Lệnh | Kết quả |
+|---|---|---|
+| Lớp trình bày admin | `check_admin_ux.py` | PASS — 0 lỗi, 0 cảnh báo |
+| Tự chứng minh gate trên | `check_admin_ux.py --self-test` | 13/13 |
+| Routing hai chiều | `check:admin-spa-routes` | PASS |
+| Tự chứng minh gate trên | `... --self-test` | 4/4 |
+| Nginx thật | `verify-admin-nginx-routing.mjs` | 28/28 |
+
+Cả hai gate đã nối vào `scripts/pre-push-gate.mjs`. Trước wave 16,
+`check:admin-spa-routes` **có trong `package.json` nhưng chưa bao giờ được nối
+vào pre-push** ⇒ nó không chặn được gì; `nginx.conf` lại ghi là đã có trong gate
+— sai. Đã sửa cả hai.
