@@ -542,3 +542,32 @@ Cả hai gate đã nối vào `scripts/pre-push-gate.mjs`. Trước wave 16,
 `check:admin-spa-routes` **có trong `package.json` nhưng chưa bao giờ được nối
 vào pre-push** ⇒ nó không chặn được gì; `nginx.conf` lại ghi là đã có trong gate
 — sai. Đã sửa cả hai.
+
+---
+
+## Wave 17 (2026-10-10) — O5: hai design system, quyết định đã chốt và **bị ép thành công**
+
+Wave 15 ghi nhận D08 (`#0F1117`/`#3B82F6`) và `soc.tokens.css` (`#081734`/`#22d3ee`)
+cùng sống. Owner chốt **D08 cho Django admin**, giữ cặp tăng/giảm Bloomberg (L-F08).
+
+Trước wave 17 quyết định đó chỉ nằm trong đầu và trong comment — không có gì bắt phải giữ:
+
+| Việc | Trước | Sau |
+|---|---|---|
+| Bảng màu D08 trong gate | dict **chép tay** `D08_COLOR_TOKENS` | **parse thẳng** từ `### 12.1` của D08 |
+| `--vn-gain` / `--vn-loss` | quy ước trong comment CSS | gate **chặn** nếu lệch success/danger |
+| Màu SOC lọt vào token admin | không ai canh | **cảnh báo** `mau soc.tokens.css loot vao admin (O5)` |
+
+Vì sao dict chép tay là vấn đề thật: nó là **nguồn sự thật thứ hai**. Sửa bảng màu trong
+doc mà quên sửa dict ⇒ gate vẫn xanh, CSS sai. Nay sửa doc ⇒ gate đỏ.
+
+**Bằng chứng:** đổi `#0F1117` → `#010203` trong D08 §12.1 ⇒
+`FAIL … token --vn-bg phai la #010203 (nguon D08 §12.1), hien tai la #0f1117`.
+
+**Vì sao check SOC là cảnh báo chứ không chặn:** giá trị màu không phân biệt được
+"chép từ SOC" với "cùng là sắc chuẩn". Thật: `#b45309`/`#b91c1c`/`#fca5a5` vừa là sắc
+Tailwind cho light-mode vừa có trong SOC. Chặn ⇒ 3 cảnh báo giả ⇒ mọi người thêm
+allowlist rồi gate chết. Nên: cảnh báo + allowlist có tên + giải thích lý do ngay trong code.
+
+Tương tự, gate **không** báo "màu trùng giữa hai bảng màu" — `#ef4444`/`#f59e0b` thuộc cả
+D08 lẫn SOC. Gate chỉ soi **giá trị của token** (`--vn-…: #hex`).
