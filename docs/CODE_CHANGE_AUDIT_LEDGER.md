@@ -1,3 +1,83 @@
+## Entry 265: He thong LESSONS co cong machine + skill tu dong load theo tag (2026-10-10)
+
+- **Nhanh**: `feat/lessons-machine-gate` -> `dev`
+- **Claim**: `uiux-w12-lessons`
+- **Tien cua**: `docs/audit-uiux/SESSION_LOG_WAVE12_LESSONS_20261010.md` + CHANGELOG vnbroker
+- **So Entry**: doc bang `check-ledger-entry.mjs --next-entry` = **265** (KHONG tu dat)
+- **Merge**: PR #95, `dev` = `b1f4bd8ff`
+
+### 1. Van de: 31 lesson ma KHONG co gi kiem
+
+CHANGELOG vnbrok ghi *"vninvest co `docs/LESSONS/` nhung **khong co** machine gate"* - kiem lai, **dung**.
+
+| Thanh phan | Truoc | Sau |
+|---|---|---|
+| lesson | 31 / 6 file | **37 / 8 file** |
+| cong may | **KHONG** | `scripts/check-lessons.mjs` (12 self-test) |
+| noi vao push gate | khong | `pre-push-gate.mjs` muc `lessons` |
+| skill | `skills/` — **opencode KHONG auto-load** | `.opencode/skills/` |
+
+### 2. Bang chung "van ban khong chan duoc gi" — do, khong doan
+
+Gate chay lan dau vao `docs/LESSONS/` that, bat ngay:
+
+```
+C1       frontend.md co 128 dong > 120 - tach them roi
+DRIFT    INDEX.md §1.5 khong khai tong so lesson
+```
+
+`INDEX.md` §1.5 khai `build-gates (L-G01..L-G02)`, `backend (L-B01..L-B02)`,
+`frontend (L-F01)`, `security (L-S01)`; thuc te **7, 3, 8, 2**. Tong khai **17**,
+thuc te **31** — sai 14 o **4/6 file**, khong ai bi chan.
+
+### 3. Loi thu hai cua CHINH gate — "check im lang = khong co check"
+
+`if (declared && ...)` (ban Python cua vnbroker) chi kiem khi tim thay khai bao. `INDEX.md`
+khong co khai bao tong ⇒ DRIFT **im lang bo qua**, in `1 loi` va trong nhu sach.
+⇒ doi thanh **bat buoc khai tong** (C3) + self-test khoa.
+
+### 4. Khac biet co chu dich vs ban Python
+
+1. **Lesson ID khong dong nhat**: `multi-agent.md` dung `L-001`, file khac `L-F01`.
+   Regex `^## L-[A-Z]\d+` **BO SOT 8/31 lesson** ma khong bao gi. Ban nay nhan ca hai.
+2. Loai BOM + quy CRLF khi dem dong (`Measure-Object -Line` bo dong trong ⇒ lech 10-29 dong).
+3. Self-test **loai `GIT_*`** khi spawn (lesson 17 cua skill `agent-lessons`).
+
+### 5. Wiring chung minh 2 CHIEU
+
+Harness trich **nguyen van block** `lessons` tu `pre-push-gate.mjs`, chay voi helper that:
+cay sach -> `ok|lessons|...`, cay hong -> `bad|lessons| C1 big.md co 201 dong > 120`.
+Khong chay ca file (17 gate, ~10 phut) — can chung minh dung phan dang noi.
+
+### 6. 6 lesson moi (deu tu wave 11)
+
+`L-A01` `git checkout --` pha viec chua commit · `L-G08` gate do o worktree xanh o main tree ·
+`L-F09` 2 `setSearchParams` 1 tick khong compose · `L-F10` object literal lam memo vo hinh
+(treo >600s) · `L-T01` viet file = doi line-ending · `L-T02` citation dung dong nhung sai file.
+
+### 7. ⚠ Toi pham L-T01 HAI LAN trong chinh phien nay
+
+| Lan | Viec | numstat | Nguyen nhan |
+|---|---|---|---|
+| 1 | Append lesson theo CRLF | `137/115` | nghi git luu nhu dia |
+| 2 | **Edit tool** them 13 dong vao `pre-push-gate.mjs` | `392/378` | **Edit tool tu doi LF -> CRLF** |
+
+Ca hai bi bat boi `git diff --numstat` — bai hoc vua viet bat duoc nguoi viet no.
+Da sua ve `14/0` va `21/0`. ⇒ cau hoi "co dung lenh Windows khong?" **khong du**;
+phai hoi "**file nay LUU dang gi?**" bang `git ls-files --eol` / `git cat-file blob`.
+
+### 8. Gate
+
+`check-lessons --self-test` **12/12** · `check-lessons` that **9 file 37/40 sach** ·
+wiring 2 chieu · `node --check` 0 · `check-multi-agent` PASS · `scan-secrets` **3633 file OK**.
+Verify lai tren `dev` **sau merge**: 12/12 + 37/40 sach, exit 0.
+
+### 9. CHUA LAM
+
+Van ban bi HO trong `css-soc.md` (INDEX §1.6) · chuan hoa lesson ID `L-001` -> `L-0X1`
+(chi khi do moi thu hep regex) · noi skill vao `AGENTS.md` nhu muc bat buoc ·
+`pre-push-gate` chua chay tron.
+
 ## Entry 264: UI/UX wave 11 - giai BLOCKER AlertCenter URL + bac bo 2 "bug that" sai (2026-10-10)
 
 - **Nhanh**: `feat/w11-alert-center-url` -> `dev`
@@ -8178,3 +8258,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 259 | 2026-10-09 | **UI/UX wave 6** - Mode A (3 worker + supervisor, **2 worker bi gap rate-limit**). (1) `check-h1-graph --gate` **Fail -> PASS** (`shell-ai-command-center` registry chet, treo 2 session) - go ENTRY, **khong xoa file** (van export `src/index.js:20` + `check-shell.mjs:37,454` + parity test; xoa file thuoc R0.8 cua plan AI CC P0 chua mo). Negative test: inject `injected-orphan` -> gate exit 1. (2) NAV-1 slice SOC **89 -> 80 hit**, 4/11 file ve 0; **32 hit bi chan** co bang chung (`useSearchParams` -> `useLocation()` throw ngoai Router, 11/11 file test khong MemoryRouter); 4 hit false positive (`SignalTabData<T>` la cache, khong phai tab). (3) **2 bug that cua bo gate**: `GIT_*` bi ke thua vao fixture tam (chay tay 17/17 PASS, qua hook FAIL) + `core.bare=true` quay lai lien tuc khi push tu worktree (**CHUA xac dinh thu pham**). Push bo qua hook bang `gh`, ly do ghi trong commit `chore(audit)`, khong `--no-verify` im lang. Gate tren `dev` sau merge: `h1-graph` 0 · `nav1-report` 0 (89->80) · scanner self-test 8/8 · `tsc` 0 · `test:components` **120 file / 847 test PASS** (baseline 119/844) · `check-uiux-budget` 0 · `check-multi-agent` 0. **CHUA CHAY**: `check-shell.mjs` (hong san, `ERR_UNKNOWN_FILE_EXTENSION`), BE test, Playwright mobile, gate qua hook. |
 | 260 | 2026-10-09 | **UI/UX wave 6 phan 2 - phuong AN (a)** - Owner chon (a) sau khi Entry 259 bao lai 32 hit SOC bi chan boi `useSearchParams` -> `useLocation()` throw ngoai Router. Boc `MemoryRouter` cho test (helper moi `__tests__/socRouterHarness.tsx`) + migrate 5 panel SOC. **NAV-1 80 -> 60**, **6/7 file SOC ve 0**. **KHONG sua `hooks/useUrlState.ts`** de "chiu duoc" thieu Router - loi do phai no len o production. **6 bug runtime bat duoc, KHONG cai nao ton tai truoc** (tat ca do `useState` -> URL): `page` trong deps cua effect (de mat lua chon cua nguoi dung) · `load(1)` hardcode (bo qua deep-link) · `setPage(1)` o mount (xoa deep-link) · clamp `safePage` khi `services` rong (ghi de URL vinh vien) · setter nhan **gia tri** chu khong phai updater lambda (5 call site) · `<output>` co implicit role `status` (pha assertion test khac). **Bai hoc dat nhat**: them `page` vao deps de **het canh bao eslint** => **3 test do**; cach dung la `ref` tro setter moi nhat + `useCallback` deps rong. **2 lint error** do commit `3ac025ec9` tao ra da dong trong PR nay. **`WriteAllText` lam doi line-ending ca file** -> diff phinh 142 -> 3976 dong; chuan hoa LF cho 9 file, giu CRLF cho `SocOverviewPanel` (moi file co line-ending khac nhau). `SocSignalsPanel` (11 hit) **da thu, chua xong, da rollback** (2 test co san fail; 4/11 la false positive `SignalTabData<T>`). Gate tren `dev`: `tsc` 0 · `lint` **0 error** · `test:components` **120 file / 854 test PASS** · `check-uiux-budget` 0 · `pre-push-gate` 17/17 (tay). **CHUA CHAY**: BE test, Playwright, `check-shell.mjs` (hong san), gate qua hook. Nhat ky day du: `docs/audit-uiux/SESSION_LOG_WAVE6_20261009.md`. |
 | 264 | 2026-10-10 | **UI/UX wave 11** - Mode B (solo). Tiep nhan 2 commit chua push cua wave 10 va **giai blocker 4.1**. Phat hien chung **THIEU 4 truong URL** (`lane`/`appliedSymbol`/`sessionDate`/`timeframe` van la `useState` + doc URL bang effect tay) - xoa 2 effect ma khong chuyen chung se **MAT deep-link**. Sua: hook so huu 11 truong URL, **XOA 2 effect chu so huu URL thu hai** (`replaceState` bypass React Router nen `useSearchParams` khong thay thay doi cua chinh no; effect mount con TAT filter severity khi doc `?severity=high`) | `feat/w11-alert-center-url` -> `dev` | **NAV-1 44 -> 34** · `vitest` **127 file / 914 test PASS** (dev 125/894) · `tsc` 0 · `lint` **0 error** · `build` 0 · scanner self-test **13/13** · `check-uiux-budget` 0 · `check-multi-agent` 0 · `pre-push-gate` **16/1** (xem Entry 264 5) | **Tai lap rang buoc "2 `setParams` trong 1 tick KHONG compose"** tren `react-router-dom@6.30.3`: `a=1` roi `b=2` => `?b=2` => moi setter phai ghi **TOAN BO** trang thai qua optimistic `stateRef`. `useUrlState.ts` +`keyMap` (giu `?session_date`) +`{replace}` override. **Sai 2**: `keyMap` truyen literal => identity doi moi render => effect `[filters.severityFilter]` chay vo han, **treo >600s** - phai cap module. **Bai hoc lon nhat: 2 "bug that" cua 4.3 (WhaleBubbleChart) CA HAI SAI** - `setActiveTab` chi goi tu 2 nut tab (khong co duong reset), va `whaleAnalyticsSnapshotAdapter.js:319` da map dung `whale_order_count` -> `total_orders` (test hien co fixture chi co field nay van mo duoc tab bar). Handoff ghi **sai file** cho dong 319. Sua chung se la regression. Nhat ky: `docs/audit-uiux/SESSION_LOG_WAVE11_20261010.md` |
+| 265 | 2026-10-10 | **He thong LESSONS co cong machine** - port quy trinh tu vnbroker + widget. `docs/LESSONS/` co **31 lesson nhung khong co gi kiem**; 3 quy tac C1/C2/C3 chi nam tren van ban | `feat/lessons-machine-gate` -> `dev` (PR #95, `b1f4bd8ff`) | lesson **31 -> 37 / 6 -> 8 file** · `check-lessons --self-test` **12/12** · `check-lessons` that **9 file 37/40 sach** · wiring harness 2 chieu (sach->`ok`, hong->`bad`) · `node --check` 0 · `check-multi-agent` PASS · `scan-secrets` **3633 file OK** · verify lai tren `dev` sau merge: 12/12 + 37/40 exit 0 | **Bang chung "van ban khong chan duoc gi"**: gate bat ngay `frontend.md` **128 dong** (vuot C1) va INDEX khai **17 lesson** khi thuc te **31** (sai 14 o 4/6 file). **Skill chuyen `skills/` -> `.opencode/skills/`** - opencode chi auto-load `.opencode/skills/`, nen skill da ton tai **khong bao gio duoc load**. **Loi thu hai cua chinh gate**: `if (declared && ...)` lam DRIFT **im lang** khi INDEX khong khai tong ⇒ doi thanh bat buoc (C3) + self-test. **Khac biet co chu dich vs ban Python**: regex `L-[A-Z]\\d+` **bo sot 8/31 lesson** vi ID khong dong nhat (`L-001` vs `L-F01`) - ban nay nhan ca hai. **6 lesson moi** tu wave 11. **⚠ Toi pham L-T01 hai lan trong chinh phien nay** (Edit tool tu doi LF->CRLF ⇒ `392/378`), ca hai bi `git diff --numstat` bat ⇒ cau hoi dung la "**file LUU dang gi?**". **CHUA LAM**: van ban bi HO trong `css-soc.md` · chuan hoa lesson ID · noi skill vao `AGENTS.md` |
