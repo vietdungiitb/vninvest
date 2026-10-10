@@ -37,12 +37,20 @@
   <script src="{% static 'admin/js/vnadmin-nav.js' %}" defer></script>
 {% endif %}
 {% comment %}
-  Design system của admin. Không dùng `{% block extrastyle %}` vì còn nơi khác
-  (change_list, change_form) cũng gọi `{{ block.super }}` — đặt thẳng ở đây
-  đảm bảo **mọi** trang đều có, kể cả trang con không khai báo extrastyle.
+  Design system của admin. KHÔNG đặt ở `{% block extrastyle %}` vì change_list /
+  change_form cũng gọi `{{ block.super }}` — đặt thẳng ở đây đảm bảo **mọi**
+  trang đều có, kể cả trang con không khai báo extrastyle.
+
+  ⚠ Thứ tự nạp (sửa wave 18 — 2026-10-10): `login.html` của Django tự thêm
+  `login.css` vào `{% block extrastyle %}`. Vì ta đặt `vnadmin.css` **trước**
+  block đó nên `login.css` nạp **sau** và thắng khi độ ưu tiên bằng ⇒ style
+  trang đăng nhập của ta bị ghi đè, nút "Đăng nhập" lại lấy màu chữ của Django.
+
+  Cách sửa: nạp `vnadmin.css` **sau** `{% block extrastyle %}` để thắng đúng
+  bằng thứ tự, không phải bằng `!important` (L-F: đừng leo thang `!important`).
   {% endcomment %}
-<link rel="stylesheet" href="{% static 'admin/css/vnadmin.css' %}">
 {% block extrastyle %}{% endblock %}
+<link rel="stylesheet" href="{% static 'admin/css/vnadmin.css' %}">
 {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}">{% endif %}
 {% block extrahead %}{% endblock %}
 {% block responsive %}
@@ -134,7 +142,19 @@
         <!-- Content -->
         <div id="content" class="{% block coltype %}colM{% endblock %}">
           {% block pretitle %}{% endblock %}
-          {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+          {% comment %}
+            Tieu de changelist: Django mac dinh la "Select <model> to change" —
+            CHUA dich va con "Select" tieng Anh (screenshot: "Select Ho so co phieu
+            to change"). Do `cl` (changelist context) khong ton tai o trang khac,
+            uu tien no truoc; con lai dung `title` cua Django.
+          {% endcomment %}
+          {% block content_title %}
+            {% if cl %}
+              <h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>
+            {% elif title %}
+              <h1>{{ title }}</h1>
+            {% endif %}
+          {% endblock %}
           {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
           {% block content %}
             {% block object-tools %}{% endblock %}
