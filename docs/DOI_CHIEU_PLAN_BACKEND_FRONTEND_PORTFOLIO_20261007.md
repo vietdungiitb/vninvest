@@ -148,9 +148,9 @@ PortfolioAllocationView     -> import trong urls.py, 0 path()
 | **BRK-03** | Capability matrix versioned | `test_capability_matrix.py` + `_pav.py` (PR #75) | ✅ |
 | **BRK-04** | Sync bất đồng bộ + reconciliation | 24 match `reconcil` | ✅ |
 | **BRK-05** | Chống SSRF `test-connection` | `endpoint_safety.py` + `assert_safe_outbound_url` | ✅ |
-| **BRK-06** | SOC panel Broker Ops | `DNSEConnectionPanel` ở `/portfolios` | ⚠ |
+| **BRK-06** | SOC panel Broker Ops | `DNSEConnectionPanel` ở `/portfolios/manage` | ⚠ |
 
-⚠ **BRK-06**: panel DNSE nằm trong trang `/portfolios`, không phải SOC. Đường dẫn khác design spec.
+⚠ **BRK-06**: panel DNSE nằm trong trang `/portfolios/manage`, không phải SOC. Đường dẫn khác design spec.
 
 ---
 
