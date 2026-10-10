@@ -28,6 +28,9 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 SRC = BACKEND / "src"
+#: `…/packages/core/backend/scripts/check_admin_ux.py` -> parents[0]=scripts,
+#: [1]=backend, [2]=core, [3]=packages, [4]=<repo root>.
+REPO = Path(__file__).resolve().parents[4]
 ADMIN_UI = SRC / "vninvest_core" / "admin_ui"
 TEMPLATES = SRC / "vninvest_core" / "templates" / "admin"
 CSS_PATH = SRC / "vninvest_core" / "static" / "admin" / "css" / "vnadmin.css"
@@ -44,22 +47,76 @@ DJANGO_ADMIN_BASE_BLOCKS = {
     "stylesheet_rtl", "title", "userlinks", "usertools", "welcome-msg",
 }
 
-#: 12 token màu lấy từ `docs/saas_design_pack/D08_UI_UX_DESIGN_20261002.md` §12.1.
-#: Màu tăng/giảm theo chuẩn Bloomberg (L-F08, Owner chốt 2026-10-07).
-D08_COLOR_TOKENS = {
-    "--vn-bg": "#0f1117",
-    "--vn-surface": "#161922",
+#: Tài liệu chuẩn — **NGUỒN SỰ THẬT DUY NHẤT** cho bảng màu của Django admin.
+#: O5 (wave 17): trước đây bảng màu bị chép hai lần — một lần trong dict
+#: `D08_COLOR_TOKENS` bên dưới, một lần trong `vnadmin.css`. Hai bản chép đó
+#: trôi dạt theo thời gian và không cái nào báo cho ai biết. Nay `dict` bị
+#: **suy ra từ chính §12.1 của D08**, nên sửa bảng màu trong doc ⇒ gate bắt
+#: được ngay lập tức.
+D08_DOC = REPO / "docs" / "saas_design_pack" / "D08_UI_UX_DESIGN_20261002.md"
+
+#: Vai trò trong §12.1 → token CSS tương ứng. Đây là **ánh xạ vai trò**, không
+#: phải bảng sao chép giá trị màu — giá trị luôn đọc từ doc.
+D08_ROLE_TO_TOKEN = {
+    "nền chính": "--vn-bg",
+    "nền nâng cao": "--vn-surface",
+    "đường viền": "--vn-border",
+    "chữ chính": "--vn-text",
+    "chữ phụ": "--vn-text-muted",
+    "nhấn chính": "--vn-primary",
+    "thành công": "--vn-success",
+    "cảnh báo": "--vn-warning",
+    "nguy hiểm": "--vn-danger",
+}
+
+#: Token dẫn xuất, không có dòng riêng trong §12.1.
+#:   - `--vn-surface-2`: sắc +1 bậc so với `--vn-surface`, dùng cho header/sidebar.
+#:   - `--vn-gain` / `--vn-loss`: chuẩn Bloomberg (L-F08, Owner chốt 2026-10-07)
+#:     ⇒ **bắt buộc bằng** success/danger, không phải màu riêng. Gate kiểm
+#:     bằng chứng minh, xem `check_token_aliases`.
+D08_DERIVED_TOKENS = {
     "--vn-surface-2": "#1e2130",
-    "--vn-border": "#242838",
-    "--vn-text": "#e8eaf0",
-    "--vn-text-muted": "#9aa0ae",
-    "--vn-primary": "#3b82f6",
-    "--vn-success": "#22c55e",
-    "--vn-warning": "#f59e0b",
-    "--vn-danger": "#ef4444",
     "--vn-gain": "#22c55e",
     "--vn-loss": "#ef4444",
 }
+
+
+def load_d08_palette() -> tuple[dict[str, str], list[str]]:
+    """Đọc bảng màu từ D08 §12.1. Trả `(token → màu, lỗi)`.
+
+    Cố ý **parse tài liệu** thay vì chép tay: đây là cách duy nhất để "một nguồn
+    sự thật" (nguyên tắc 3 trong docstring của `admin_ui`) thật sự có hiệu lực.
+    """
+    if not D08_DOC.exists():
+        return {}, [f"khong tim thay {D08_DOC} — khong lay duoc bang mau D08 §12.1"]
+
+    text = D08_DOC.read_text(encoding="utf-8")
+    # Chi lay trong §12.1, dung do bang mau do.
+    start = text.find("### 12.1")
+    if start < 0:
+        return {}, ["D08 khong co muc '### 12.1'"]
+    end = text.find("### 12.", start + 1)
+    section = text[start:end if end > start else len(text)]
+
+    palette: dict[str, str] = {}
+    errors: list[str] = []
+    # | Vai trò | `#RRGGBB` | Dùng cho |
+    row_re = re.compile(r"^\|\s*([^|]+?)\s*\|\s*`(#[0-9a-fA-F]{6})`\s*\|", re.MULTILINE)
+    for role, colour in row_re.findall(section):
+        key = D08_ROLE_TO_TOKEN.get(role.strip().lower())
+        if key is None:
+            continue
+        palette[key] = colour.lower()
+
+    missing = sorted(set(D08_ROLE_TO_TOKEN.values()) - set(palette))
+    if missing:
+        errors.append(
+            f"D08 §12.1 khong co dong cho: {', '.join(missing)} "
+            f"(bang mau doc duoc {len(palette)}/{len(D08_ROLE_TO_TOKEN)})"
+        )
+    palette.update(D08_DERIVED_TOKENS)
+    return palette, errors
+
 
 #: (nền, chữ, ngưỡng) — ngưỡng theo D08 §12.1 (chữ chính >= 12:1, chữ phụ >= 4.5:1).
 D08_CONTRAST_RULES = [
@@ -128,7 +185,10 @@ def strip_python_comments(source: str) -> str:
 
 def check_tokens(css: str) -> list[str]:
     errors = []
-    for token, expected in D08_COLOR_TOKENS.items():
+    palette, load_errors = load_d08_palette()
+    if load_errors:
+        return load_errors
+    for token, expected in palette.items():
         if not re.search(rf"{re.escape(token)}\s*:\s*{re.escape(expected)}\s*;", css):
             actual = re.search(rf"{re.escape(token)}\s*:\s*([^;]+);", css)
             errors.append(
@@ -136,6 +196,85 @@ def check_tokens(css: str) -> list[str]:
                 + (f", hien tai la {actual.group(1).strip()}" if actual else ", hien tai THIEU")
             )
     return errors
+
+
+def check_token_aliases(css: str) -> list[str]:
+    """Màu tăng/giảm phải **bằng** success/danger (chuẩn Bloomberg, L-F08).
+
+    Vì sao cần gate: `--vn-gain`/`--vn-loss` được sinh ra để người đọc CSS
+    hiểu "tăng/giảm" khác với "thành công/nguy hiểm". Nếu ai đó sửa `--vn-gain`
+    thành một sắc xanh khác, bảng giá trị cũng tự đổi theo mà không ai hỏi —
+    và bảng P/L lệch màu so với phần còn lại của admin.
+    """
+    errors = []
+    for gain, semantic in (("--vn-gain", "--vn-success"), ("--vn-loss", "--vn-danger")):
+        def read(token: str) -> str | None:
+            m = re.search(rf"{re.escape(token)}\s*:\s*(#[0-9a-fA-F]{{3,8}})\s*;", css)
+            return m.group(1).lower() if m else None
+
+        g, s = read(gain), read(semantic)
+        if g is None or s is None:
+            errors.append(f"thieu {gain} hoac {semantic} trong vnadmin.css")
+        elif g != s:
+            errors.append(
+                f"{gain} phai BANG {semantic} (L-F08 Bloomberg tang/giam), "
+                f"hien tai {g} != {s}"
+            )
+    return errors
+
+
+#: Màu bị **miễn nhiễm kiểm tra lo**. Đây KHÔNG phải danh sách "cho phép sai" —
+#: đây là các sắc chuẩn (Tailwind amber-700 / red-700 / red-300) mà D08 không
+#: quy định cho light-mode nhưng lại **trùng vặt** với SOC. Không thể phân biệt
+#: "chép từ SOC" với "cùng là sắc chuẩn" chỉ bằng giá trị màu — nên check này
+#: là CẢNH BÁO, không chặn. Chặn ở đây sẽ dạy cả nhóm bỏ qua gate.
+SOC_LEAK_ALLOWLIST = {
+    "#b45309",  # amber-700 — light-mode `--vn-warning`
+    "#b91c1c",  # red-700   — light-mode `--vn-danger` / `--vn-loss`
+    "#fca5a5",  # red-300   — `--vn-badge-danger-fg` (đã qua kiểm tương phản)
+}
+
+
+def check_no_soc_leakage(css: str) -> list[str]:
+    """Cảnh báo khi token `--vn-*` dùng màu chỉ có trong `soc.tokens.css`.
+
+    O5 ghi nhận **hai design system cùng sống**: `soc.tokens.css` (vỏ SPA) và
+    D08 (Django admin). Hai bảng màu khác nhau là chấp nhận được — **chép màu
+    của nhau vào token** thì không: sửa `soc.tokens.css` sẽ không cập nhật
+    admin và hai màn hình lệch màu mà không ai biết.
+
+    ⚠ Chỉ soi **giá trị của token** (`--vn-…: #hex`), không soi mọi mã màu
+    trong file: bảng D08 và bảng SOC có phần giao nhau (`#ef4444`, `#f59e0b`…)
+    — thấy trùng ở đâu đó không phải lỗi.
+
+    ⚠ **Cảnh báo, không chặn.** Vì sao: `#b45309`/`#b91c1c`/`#fca5a5` vừa là sắc
+    chuẩn dùng cho light-mode vừa có mặt trong SOC. Giá trị màu **không phân
+    biệt được** "chép từ SOC" với "cùng là sắc chuẩn" — gate chặn ở đây sẽ bị
+    vượt qua bằng `SOC_LEAK_ALLOWLIST` rồi mất hết tác dụng. Để cảnh báo thì
+    vẫn giữ được thông tin mà không tạo áp lực bypass.
+    """
+    soc_path = REPO / "packages" / "web" / "src" / "components" / "soc" / "soc.tokens.css"
+    if not soc_path.exists():
+        return []  # không có file SOC ⇒ không có gì để lọt
+
+    soc = soc_path.read_text(encoding="utf-8")
+    palette, _ = load_d08_palette()
+    d08_colours = set(palette.values())
+    soc_only = {
+        c.lower()
+        for c in re.findall(r"#[0-9a-fA-F]{6}\b", soc)
+        if c.lower() not in d08_colours
+    } - {"#ffffff", "#000000"} - SOC_LEAK_ALLOWLIST
+
+    declared = re.findall(r"--vn-[a-z0-9-]+\s*:\s*(#[0-9a-fA-F]{3,8})\s*;", css)
+    leaked = sorted({c.lower() for c in declared} & soc_only)
+    if leaked:
+        return [
+            "token --vn-* dang dung mau chi co trong soc.tokens.css: "
+            + ", ".join(leaked)
+            + " — admin nen dung bang mau D08 (nguon: docs/saas_design_pack/D08_UI_UX_DESIGN_20261002.md §12.1)"
+        ]
+    return []
 
 
 def check_contrast() -> list[str]:
@@ -339,6 +478,7 @@ def check_unregistered_models() -> list[str]:
 BLOCKING_CHECKS = (
     ("duong dan", None),
     ("token mau D08", check_tokens),
+    ("gain/loss = success/danger (L-F08)", check_token_aliases),
     ("tuong phan WCAG", check_contrast),
     ("chuyen dong (L-F05)", check_transitions),
     ("a11y CSS", check_a11y_css),
@@ -347,9 +487,17 @@ BLOCKING_CHECKS = (
     ("encoding UTF-8", check_encoding),
 )
 
+def check_soc_leakage_advisory() -> list[str]:
+    """Bọc `check_no_soc_leakage` cho `WARNING_CHECKS` (vốn gọi không tham số)."""
+    if not CSS_PATH.exists():
+        return []
+    return check_no_soc_leakage(strip_css_comments(CSS_PATH.read_text(encoding="utf-8")))
+
+
 WARNING_CHECKS = (
     ("nhan tieng Viet", check_vietnamese_labels),
     ("model chua khai bao admin", check_unregistered_models),
+    ("mau soc.tokens.css loot vao admin (O5)", check_soc_leakage_advisory),
 )
 
 
@@ -362,7 +510,12 @@ def run_blocking() -> tuple[list[str], list[str]]:
         return lines, failures
 
     css = strip_css_comments(CSS_PATH.read_text(encoding="utf-8"))
-    payload = {"token mau D08": css, "chuyen dong (L-F05)": css, "a11y CSS": css}
+    payload = {
+        "token mau D08": css,
+        "gain/loss = success/danger (L-F08)": css,
+        "chuyen dong (L-F05)": css,
+        "a11y CSS": css,
+    }
     for name, check in BLOCKING_CHECKS:
         if check is None:
             lines.append(f"  SKIP {name}")
@@ -425,11 +578,37 @@ SELF_TEST_CASES = [
      lambda: _forced_missing_path()),
     ("T13 khong chet khi stdout la cp1252",
      lambda: _forced_cp1252_stdout()),
+    # ── Wave 17 / O5: hop dong design token ──────────────────────────────
+    ("T14 D08 §12.1 la nguon su that — doi token trong CSS bi bat",
+     lambda: check_tokens("body.vnadmin { --vn-bg: #081734; }")),
+    ("T15 token dung theo D08 KHONG bi bat",
+     lambda: _forced_correct_tokens()),
+    ("T16 gain lech success bi bat (L-F08)",
+     lambda: check_token_aliases(
+         ":root { --vn-success: #22c55e; --vn-danger: #ef4444; "
+         "--vn-gain: #00ff88; --vn-loss: #ef4444; }")),
+    ("T17 loss lech danger bi bat (L-F08)",
+     lambda: check_token_aliases(
+         ":root { --vn-success: #22c55e; --vn-danger: #ef4444; "
+         "--vn-gain: #22c55e; --vn-loss: #ff0055; }")),
+    ("T18 gain/loss bang nhau KHONG bi bat (L-F08)",
+     lambda: check_token_aliases(
+         ":root { --vn-success: #22c55e; --vn-danger: #ef4444; "
+         "--vn-gain: #22c55e; --vn-loss: #ef4444; }")),
+    ("T19 mau SOC lo vao token bi canh bao (O5)",
+     lambda: check_no_soc_leakage(":root { --vn-primary: #22d3ee; }")),
+    ("T20 mau D08 trung voi SOC KHONG bi canh bao (O5)",
+     lambda: check_no_soc_leakage(":root { --vn-danger: #ef4444; --vn-primary: #3b82f6; }")),
+    ("T21 mau SOC trong allowlist (sắc chuẩn) KHONG bi canh bao",
+     lambda: check_no_soc_leakage(":root { --vn-warning: #b45309; }")),
 ]
 
 #: Case nào **phải** phát hiện lỗi. So khớp bằng `name[:3]` — `str.startswith("T1")`
 #: khớp CẢ "T10"/"T11", từng làm self-test báo sai 3 case.
-SELF_TEST_EXPECT_ERROR = frozenset({"T01", "T02", "T03", "T04", "T07", "T09", "T12"})
+SELF_TEST_EXPECT_ERROR = frozenset(
+    {"T01", "T02", "T03", "T04", "T07", "T09", "T12",
+     "T14", "T16", "T17", "T19"}
+)
 
 
 def _forced_low_contrast():
@@ -473,6 +652,20 @@ def _forced_missing_path():
         return run_blocking()[1]
     finally:
         CSS_PATH = original
+
+
+def _forced_correct_tokens() -> list[str]:
+    """Chứng minh: CSS khớp **đúng** bảng màu đọc từ D08 §12.1 ⇒ không lỗi.
+
+    Sinh CSS từ chính `load_d08_palette()` thay vì chép tay, nên case này
+    **tự** kiểm chứng việc đọc doc đúng — nếu parser hỏng, case này FAIL chứ
+    không PASS mù.
+    """
+    palette, load_errors = load_d08_palette()
+    if load_errors:
+        return load_errors
+    body = " ".join(f"{token}: {colour};" for token, colour in sorted(palette.items()))
+    return check_tokens(f":root {{ {body} }}")
 
 
 def _forced_cp1252_stdout():

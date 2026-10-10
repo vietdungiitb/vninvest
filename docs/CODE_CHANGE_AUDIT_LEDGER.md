@@ -1,3 +1,49 @@
+## Entry 268: O5 — D08 §12.1 lam nguon su that cho design token Django admin (2026-10-10)
+
+- **Nhanh**: `feat/admin-design-token-contract` -> `dev`
+- **Claim**: `adminui-w17` (Mode B — self-supervised solo)
+- **Tiep sau**: PR #102 da merge vao `dev` (`61091219e`) — wave 15 + 16 vao chinh.
+
+### Vay O5 là gi?
+
+Wave 15 ghi nhận "2 design system cùng sống": D08 §12.1 (`#0F1117`/`#3B82F6`) cho Django
+admin vs `soc.tokens.css` (`#081734`/`#22d3ee`) cho vỏ SPA. Owner chốt **chọn D08 cho admin**.
+Nhưng lựa chọn đó mới chỉ nằm trong đầu — **không có gì bắt phải giữ được**.
+
+Tệ hơn: bảng màu D08 bị **chép hai lần** — một lần trong dict `D08_COLOR_TOKENS` của gate,
+một lần trong `vnadmin.css`. Hai bản chép đó trôi dạt theo thời gian và **không cái nào báo ai**.
+
+### Da lam
+
+1. **Bỏ dict chép — parse thẳng từ doc.** `load_d08_palette()` đọc bảng `| Vai trò | #hex |` trong
+   `### 12.1` của D08. Sửa bảng màu trong doc ⇒ gate báo đỏ ngay lập tức.
+2. **`check_token_aliases`** (chặn): `--vn-gain` phải **bằng** `--vn-success`, `--vn-loss` bằng
+   `--vn-danger` — chuẩn Bloomberg L-F08. Trước đó đây chỉ là quy ước trong comment CSS.
+3. **`check_no_soc_leakage`** (cảnh báo): token `--vn-*` không được dùng màu chỉ có ở SOC.
+4. Ghi chú "nguồn sự thật" ngay trong D08 §12.1 + Entry này.
+
+### Bang chung chay that
+
+| Phép thao tac | Ket qua |
+|---|---|
+| Gate khi CSS dung D08 | **PASS — 0 loi chan, 0 canh bao** |
+| **Fail-before**: doi `#0F1117` -> `#010203` trong D08 §12.1 | **FAIL (exit 1)** — `token --vn-bg phai la #010203 (nguon D08 §12.1), hien tai la #0f1117` |
+| `--self-test` | **21/21** (them T14–T21) |
+
+Cái fail-before thu hai mới la bang chung O5 co gia tri: no chung minh **doc la nguon su that**,
+khong phai gate chi "dung dac" mot danh sach so sanh.
+
+### Mot quyet dinh thong minh (va no te hon)
+
+`check_no_soc_leakage` **canh bao, khong chan** — vi gia tri mau **khong phan biet duoc**
+"chep tu SOC" voi "cung la sac chuan". That thuc: `#b45309` / `#b91c1c` / `#fca5a5` vua la sac
+Tailwind chuan cho light-mode, vua co trong soc.tokens. Ban "chat" se bat 3 mau nay ngay, nguoi
+ta se them vao allowlist roi gate het tac dung. Nen no **chay o muc canh bao** + allowlist co ten.
+
+Tuong tu, kiem theo *"moi mau trung giua hai bang mau"* se bao dong gia: `#ef4444` va `#f59e0b`
+thuoc ca D08 lan SOC. Gate chi soi **gia tri cua token**, khong soi moi ma mau trong file.
+
+---
 ## Entry 267: Mo toan bo 49 model Django admin con lai + sua xung dot routing /admin/ (2026-10-10)
 
 - **Nhanh**: `feat/django-admin-uiux-pm` -> `dev`
@@ -8438,3 +8484,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 265 | 2026-10-10 | **He thong LESSONS co cong machine** - port quy trinh tu vnbroker + widget. `docs/LESSONS/` co **31 lesson nhung khong co gi kiem**; 3 quy tac C1/C2/C3 chi nam tren van ban | `feat/lessons-machine-gate` -> `dev` (PR #95, `b1f4bd8ff`) | lesson **31 -> 37 / 6 -> 8 file** · `check-lessons --self-test` **12/12** · `check-lessons` that **9 file 37/40 sach** · wiring harness 2 chieu (sach->`ok`, hong->`bad`) · `node --check` 0 · `check-multi-agent` PASS · `scan-secrets` **3633 file OK** · verify lai tren `dev` sau merge: 12/12 + 37/40 exit 0 | **Bang chung "van ban khong chan duoc gi"**: gate bat ngay `frontend.md` **128 dong** (vuot C1) va INDEX khai **17 lesson** khi thuc te **31** (sai 14 o 4/6 file). **Skill chuyen `skills/` -> `.opencode/skills/`** - opencode chi auto-load `.opencode/skills/`, nen skill da ton tai **khong bao gio duoc load**. **Loi thu hai cua chinh gate**: `if (declared && ...)` lam DRIFT **im lang** khi INDEX khong khai tong ⇒ doi thanh bat buoc (C3) + self-test. **Khac biet co chu dich vs ban Python**: regex `L-[A-Z]\\d+` **bo sot 8/31 lesson** vi ID khong dong nhat (`L-001` vs `L-F01`) - ban nay nhan ca hai. **6 lesson moi** tu wave 11. **⚠ Toi pham L-T01 hai lan trong chinh phien nay** (Edit tool tu doi LF->CRLF ⇒ `392/378`), ca hai bi `git diff --numstat` bat ⇒ cau hoi dung la "**file LUU dang gi?**". **CHUA LAM**: van ban bi HO trong `css-soc.md` · chuan hoa lesson ID · noi skill vao `AGENTS.md` |
 | 266 | 2026-10-10 | **Refactor Django admin UI/UX** - Mode B (solo, vai PM/Tech Lead). Admin mac dinh cua Django -> design system theo D08 §12/§13, dashboard van hanh (4 KPI + canh bao du lieu gia cu + hoat dong gan day), menu **9 nhom nghieu vu** thay nhom theo app, chuan hoa **65** ModelAdmin (badge co chu, `list_select_related` chong N+1, `date_hierarchy`, dinh dang VN `1.240.000 dd/mm/YYYY`), khai bao admin cho **5 app tu 0** (`service_ops` 15 · `support` 5 · `data_ingest` 2 · `ai_agents` 1 · `ai_analytics` 2). Registry **34 -> 65**; model chua quan tri **73 -> 49** | `feat/django-admin-uiux-pm` -> `dev` | `check` 0 · `makemigrations --check` 0 · `collectstatic` 0 · `check_admin_ux` 0 (49 canh bao) · `--self-test` **12/12** · `test_admin_ui` **45/45** · `pre-push-gate` **19/0/0** · FE `lint` 0 error · `build` 0 · `test:components` **127 file/914 test** · BE `Ran 2946 tests`, `failures=12, errors=15, skipped=6` | **BLOCKER F-D**: comment `{# #}` **nhieu dong** trong template Django **khong hoat dong** - `tag_re` khong co `DOTALL` nen Django coi la text va **parse moi `{% %}` ben trong** => `/admin/` tra 500. Do bang `COMMENTmatch=0`. **App_dirs khong du** de override `admin/base.html` (loader quet `INSTALLED_APPS`, `django.contrib.admin` dung dau) => phai them `TEMPLATES['DIRS']`. **Registry khoa bang LOP MODEL** tu Django 5.1. `nav_sidebar.js` loc bang `th[scope=row] a` ⇒ hop loc **luon hong** ⇒ viet script rieng. 4 bug them: KPI khong kiem quyen (3/4 link 403) · `money_vi` dat ky hieu truoc so · `percent_vi` mat dau am · `label_for` tra trut do lech hoa/thuong khoa. **HOI QUY = 0**: 27 loi BE chung minh co san tren base `2ea2948b8` bang **worktree** (failures 12/12 · errors 14/14, ten giong het). **Con so "43 truy van" cua toi la BIA** - do that: ca hai duong deu **0 truy van**, khac biet that la `has_perm` 194 vs 130. Dem lai bang script: model 112→**107** · block 17→**28** · support 9→**5**. **L-T01 x2** (Edit tool + script Node doi LF→CRLF). **6 phat hien ngoai pham vi can Owner**: `nginx.conf:140` **nuot admin app `advertising`** · gate `check-admin-spa-routes` chi quet 1 chieu · `entrypoint.sh` `collectstatic \|\| true` · `ADMIN_UI_IMPLEMENTATION_STEPS.md` STALE · 2 design system · 49 model chua co admin. Nhat ky: `docs/audit-uiux/SESSION_LOG_WAVE15_ADMIN_20261010.md` |
 | 267 | 2026-10-10 | **Wave 16 - mo toan bo 49 model Django admin** - Registry **65 -> 114**, model chua co admin **49 -> 0**, nhan tieng Viet **49 -> 0**. Sua xung dot routing /admin/advertising (^~ -> =) co chung bang **nginx that 28/28**, fail-before **6 FAIL**. Gate hai chieu check:admin-spa-routes + --self-test 4/4 **va moi noi vao pre-push**. Bo || true khoi collectstatic. Gate: admin-ux 0 loi/0 canh bao · self-test 13/13 · test 45/45 · pre-push 21 PASS/0 FAIL. |
+| 268 | 2026-10-10 | **O5 - D08 §12.1 làm nguồn sự thật cho design token admin** - Bỏ dict chép, `check_admin_ux.py` **parse thẳng bảng màu từ doc**; thêm gate chặn `--vn-gain`/`--vn-loss` phải **bằng** success/danger (L-F08); cảnh báo màu `soc.tokens.css` lọt vào token admin. **Fail-before thật**: sửa `#0F1117`→`#010203` trong D08 §12.1 ⇒ gate FAIL exit 1. Self-test **21/21**. |
