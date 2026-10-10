@@ -106,3 +106,22 @@
   - [ ] Nếu buộc phải commit vào `dev` → có ghi lý do vào body commit không?
   - [ ] Đã chạy `pwsh -File scripts/agent-pr.ps1` để tạo PR đúng quy trình?
 - **Proof:** `AGENTS.md` "Không được: **Không commit thẳng vào `dev`** - tạo `feat/<slice>-<agent>` rồi PR... đã sinh migration trùng số (2026-09-26)"; `docs/AGENT_PROTOCOL.md` §10.0.
+
+## L-A01: `git checkout -- <file>` de hoi quy thi lap - PHA HUY CA VIEC CHUA COMMIT
+
+- **Nguyen nhan:** Dung `git checkout -- <file>` de "undo mot thu nghiem" (doi
+  file tam roi khoi phuc). Lenh nay phuc hoi ve **HEAD**, khong phai ve ban sao
+  luu truoc do.
+- **Hau qua that:** Xoa mat **toan bo** phan dang lam cua agent, khong chi phan
+  thu nghiem. Da gap **hai lan trong mot session** (skill `agent-lessons` hazard 11),
+  va wave 10 cua repo nay cung nem `git checkout --` vao CLAIMS.md lam phinh diff.
+- **Khi nao gap:** `tags: [git, checkout, revert, undo, experiment, worktree, hazard-11]`
+- **QUY TAC:** Muon hoi quy mot thu nghiem thi dung:
+  `git show HEAD:<file> > <file>` (doc ban HEAD roi ghi de) **hoac** copy file ra
+  ngoai truoc `cp <file> /tmp/keep.ts`, **hoac** `git stash push -- <file>` roi `pop`.
+  `git stash` + `pop` sau khi sua them se conflict, nen **copy ra ngoai truoc**.
+- **CHECKLIST:**
+  - [ ] Da **copy file ra ngoai** truoc khi doi file de thu nghiem chua?
+  - [ ] `git status --short` co hien thay muc tieu cua lenh hoi quy khong?
+  - [ ] Co `git diff --stat` de xac nhan khong con thay doi ngoai y muon khong?
+- **Proof:** skill `multi-agent-workflow` hazard 11; `docs/audit-uiux/SESSION_LOG_WAVE10_20261010.md` §3.2.
