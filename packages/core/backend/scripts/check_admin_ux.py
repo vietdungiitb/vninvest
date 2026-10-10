@@ -323,6 +323,26 @@ def check_a11y_css(css: str) -> list[str]:
         badge_block = css[css.index(".vn-badge"):css.index(".vn-badge") + 600]
         if "content:" in badge_block:
             errors.append(".vn-badge dung content de hien thi => thong tin chi qua mau (D08 §13)")
+    # ── Wave 18 (2026-10-10) ────────────────────────────────────────────────
+    # Ba loi phat hien bang ANH CHUP THAT + do computed style tren stack that.
+    # Chi giu lop hien thi; khong dung nham loi nghiep vu.
+    if "--vn-on-primary" not in css:
+        errors.append(
+            "thieu --vn-on-primary (chu tren nen primary): chu #ffffff tren "
+            "--vn-primary (#3b82f6) chi dat 3.68:1 < 4.5:1 WCAG AA "
+            "=> nut 'Dang nhap' khong doc duoc o nen toi"
+        )
+    if ".vnadmin.login" not in css:
+        errors.append(
+            "thieu style `.vnadmin.login` — login.html cua Django khong ke thua "
+            "base.html cua ta => trang dang nhap khong duoc style hoa; do la nguon "
+            "goc tuong phan nhan 1.04:1 (do, khong phai doan)"
+        )
+    if re.search(r"#changelist\s+\.results\s*\{[^}]*overflow-x:\s*hidden", css):
+        errors.append(
+            "#changelist .results dung overflow-x: hidden => cot ben phai bi cat "
+            "va khong co thanh cuon; phai la 'auto'"
+        )
     return errors
 
 
@@ -548,6 +568,23 @@ def run_warnings() -> tuple[list[str], list[str]]:
 # Self-test — chung minh gate THAT SỰ bat loi
 # ---------------------------------------------------------------------------
 
+#: CSS a11y **day du** — dung lam nen cho case kiem lop trinh bay (wave 18).
+#: Giu dung cac rule ma `check_a11y_css` yeu cau, de moi case tap trung vao
+#: **mot** thieu sot thay v nhieu thieu sot mot luc.
+_A11Y_OK = (
+    ":root { --vn-tap: 24px; --vn-focus-ring: 0 0 0 2px; --vn-on-primary: #0f1117; } "
+    "@media (prefers-reduced-motion: reduce) { a { transition: none; } } "
+    ".vn-badge { padding: 2px; } "
+    "body.vnadmin.login #container { color: var(--vn-text); } "
+    "body.vnadmin #changelist .results { overflow-x: auto; }"
+)
+#: Khong co token chu tren nen primary.
+_A11Y_NO_ONPRIMARY = _A11Y_OK.replace(" --vn-on-primary: #0f1117;", "")
+#: Khong co style trang dang nhap.
+_A11Y_NO_LOGIN = _A11Y_OK.replace("body.vnadmin.login #container { color: var(--vn-text); }", "")
+#: Changelist cat cot.
+_A11Y_HIDDEN = _A11Y_OK.replace("overflow-x: auto", "overflow-x: hidden")
+
 SELF_TEST_CASES = [
     ("T01 token sai gia tri bi bat",
      lambda: check_tokens("body.vnadmin { --vn-bg: #ffffff; }")),
@@ -564,10 +601,7 @@ SELF_TEST_CASES = [
     ("T07 vung cham < 24px bi bat",
      lambda: check_a11y_css(":root { --vn-tap: 16px; } prefers-reduced-motion x --vn-focus-ring x .vn-badge")),
     ("T08 a11y CSS day du KHONG bi bat",
-     lambda: check_a11y_css(
-         ":root { --vn-tap: 24px; --vn-focus-ring: 0 0 0 2px; } "
-         "@media (prefers-reduced-motion: reduce) { a { transition: none; } } "
-         ".vn-badge { padding: 2px; }")),
+     lambda: check_a11y_css(_A11Y_OK)),
     ("T09 encoding U+FFFD bi bat",
      lambda: _forced_fffd()),
     ("T10 base.html hop le KHONG bi bat",
@@ -601,13 +635,22 @@ SELF_TEST_CASES = [
      lambda: check_no_soc_leakage(":root { --vn-danger: #ef4444; --vn-primary: #3b82f6; }")),
     ("T21 mau SOC trong allowlist (sắc chuẩn) KHONG bi canh bao",
      lambda: check_no_soc_leakage(":root { --vn-warning: #b45309; }")),
+    # ── Wave 18: lớp trình bày chung ──────────────────────────────────────
+    ("T22 thieu --vn-on-primary (nút bấm không đọc được) bi bắt",
+     lambda: check_a11y_css(_A11Y_NO_ONPRIMARY)),
+    ("T23 thieu style trang đăng nhập bi bắt",
+     lambda: check_a11y_css(_A11Y_NO_LOGIN)),
+    ("T24 changelist cắt cột (overflow-x:hidden) bi bắt",
+     lambda: check_a11y_css(_A11Y_HIDDEN)),
+    ("T25 a11y đầy đủ KHÔNG bi bắt",
+     lambda: check_a11y_css(_A11Y_OK)),
 ]
 
 #: Case nào **phải** phát hiện lỗi. So khớp bằng `name[:3]` — `str.startswith("T1")`
 #: khớp CẢ "T10"/"T11", từng làm self-test báo sai 3 case.
 SELF_TEST_EXPECT_ERROR = frozenset(
     {"T01", "T02", "T03", "T04", "T07", "T09", "T12",
-     "T14", "T16", "T17", "T19"}
+     "T14", "T16", "T17", "T19", "T22", "T23", "T24"}
 )
 
 
