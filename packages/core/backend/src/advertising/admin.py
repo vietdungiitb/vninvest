@@ -21,7 +21,7 @@ class AdCampaignAdmin(VNAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(AdDailySummary)
-class AdDailySummaryAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class AdDailySummaryAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('campaign', 'tenant', 'symbol', 'date', 'impressions_count', 'clicks_count', 'ctr_display')
     list_filter = ('date', 'symbol', 'tenant')
     search_fields = ('campaign__name', 'symbol')
@@ -39,7 +39,7 @@ class AdDailySummaryAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(AdImpressionLog)
-class AdImpressionLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class AdImpressionLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('campaign', 'tenant', 'symbol', 'ip_address', 'created_at')
     list_filter = ('created_at', 'campaign')
     search_fields = ('campaign__name', 'ip_address', 'symbol')
@@ -50,7 +50,7 @@ class AdImpressionLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(AdClickLog)
-class AdClickLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class AdClickLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('campaign', 'tenant', 'symbol', 'ip_address', 'created_at')
     list_filter = ('created_at', 'campaign')
     search_fields = ('campaign__name', 'ip_address', 'symbol')
@@ -58,3 +58,38 @@ class AdClickLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
     list_select_related = ('campaign', 'tenant')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
+
+# --- Import cho khoi WAVE 16 -------------------------------------
+from .models import (
+    TrademarkConfig,
+)
+from vninvest_core.admin_ui import (
+    badge_for,
+    VNAdminMixin,
+    VNReadOnlyMixin,
+)
+from django.contrib import messages
+
+
+def _ws_badge(value, mapping=None):
+    """Badge có chữ theo bảng màu riêng của nhóm.
+
+    Tách riêng thay vì dùng thẳng `badge_for(..., color=...)` để chỗ gọi
+    được đọc là "trạng thái này tô màu này" thay vì lặp lại chuỗi màu.
+    """
+    if value in (None, ""):
+        return "—"
+    return badge_for(value, color=(mapping or {}).get(str(value), "blue"))
+
+@admin.register(TrademarkConfig)
+class TrademarkConfigAdmin(VNAdminMixin, admin.ModelAdmin):
+    """Cấu hình bật/tắt watermark nhãn hiệu — bảng 1 dòng, sửa tay được."""
+
+    list_display = ('enabled', 'version', 'activation_ts', 'updated_at')
+    list_filter = ('enabled',)
+    readonly_fields = ('updated_at',)
+    ordering = ('-updated_at',)
+
+def has_add_permission(self, request):
+        # Bang singleton: them dong thu hai chi tao roi du lieu.
+        return not TrademarkConfig.objects.exists()

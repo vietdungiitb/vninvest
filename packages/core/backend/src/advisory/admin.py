@@ -67,3 +67,48 @@ class UserAICredentialAdmin(VNAdminMixin, admin.ModelAdmin):
     @admin.display(description='Đã dùng hạn mức dự phòng')
     def fallback_quota_display(self, obj):
         return decimal_vi(obj.fallback_quota_used_today, decimals=0)
+
+# --- Import cho khoi WAVE 16 -------------------------------------
+from .models import (
+    AdvisoryComponent,
+    AIAuditLog,
+)
+from vninvest_core.admin_ui import (
+    badge_for,
+    VNAdminMixin,
+    VNReadOnlyMixin,
+)
+from django.contrib import messages
+
+
+def _ws_badge(value, mapping=None):
+    """Badge có chữ theo bảng màu riêng của nhóm.
+
+    Tách riêng thay vì dùng thẳng `badge_for(..., color=...)` để chỗ gọi
+    được đọc là "trạng thái này tô màu này" thay vì lặp lại chuỗi màu.
+    """
+    if value in (None, ""):
+        return "—"
+    return badge_for(value, color=(mapping or {}).get(str(value), "blue"))
+
+@admin.register(AdvisoryComponent)
+class AdvisoryComponentAdmin(VNReadOnlyMixin, admin.ModelAdmin):
+    """Thành phần câu trả lời của buổi tư vấn AI — chỉ đọc."""
+
+    list_display = ('created_at', 'session', 'component_type', 'order')
+    list_filter = ('component_type', 'created_at')
+    search_fields = ('content', 'session__user__username')
+    autocomplete_fields = ('session',)
+    ordering = ('session', 'order')
+
+
+@admin.register(AIAuditLog)
+class AIAuditLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
+    """Nhật ký thay đổi/thử kết nối của trung tâm điều hành AI — chỉ đọc."""
+
+    list_display = ('created_at', 'action', 'actor', 'diff_summary')
+    list_filter = ('action', 'created_at')
+    search_fields = ('actor', 'reason', 'diff_summary')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+    list_per_page = 100

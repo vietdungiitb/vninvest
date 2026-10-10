@@ -98,7 +98,7 @@ class SupportTicketAdmin(VNAdminMixin, admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 
 @admin.register(TicketMessage)
-class TicketMessageAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class TicketMessageAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('ticket', 'sender', 'sender_role', 'created_at')
     list_filter = ('sender_role',)
     search_fields = ('ticket__ticket_code', 'ticket__subject', 'sender__username', 'body')
@@ -108,7 +108,7 @@ class TicketMessageAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(TicketAttachment)
-class TicketAttachmentAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class TicketAttachmentAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('message', 'original_name', 'mime_type', 'size_display', 'is_safe', 'created_at')
     list_filter = ('is_safe', 'mime_type')
     search_fields = ('original_name', 'sha256', 'message__ticket__ticket_code')
@@ -122,7 +122,7 @@ class TicketAttachmentAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(TicketAuditLog)
-class TicketAuditLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class TicketAuditLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('created_at', 'ticket', 'action', 'actor')
     list_filter = ('action',)
     search_fields = ('ticket__ticket_code', 'action', 'actor__username')
@@ -132,7 +132,7 @@ class TicketAuditLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(SupportTicketCounter)
-class SupportTicketCounterAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class SupportTicketCounterAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('date', 'last_number')
     search_fields = ('date',)
     date_hierarchy = 'date'

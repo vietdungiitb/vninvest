@@ -27,7 +27,7 @@ from .models import AIUsageRecord, AIUsageSummary
 
 
 @admin.register(AIUsageRecord)
-class AIUsageRecordAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class AIUsageRecordAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('created_at', 'user', 'action_badge', 'provider', 'model',
                     'tokens_in', 'tokens_out', 'cost_display', 'latency_ms')
     list_filter = ('action', 'provider', 'status')
@@ -52,7 +52,7 @@ class AIUsageRecordAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(AIUsageSummary)
-class AIUsageSummaryAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class AIUsageSummaryAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('date', 'user', 'action_badge', 'total_requests',
                     'total_tokens_in', 'total_tokens_out', 'total_cost_display')
     list_filter = ('action', 'date')

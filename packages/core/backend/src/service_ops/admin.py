@@ -125,7 +125,7 @@ class OwnershipRecordAdmin(VNAdminMixin, admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 
 @admin.register(ServiceHealth)
-class ServiceHealthAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ServiceHealthAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('service', 'status_badge', 'last_check_at', 'consecutive_failures',
                     'avg_response_ms', 'uptime_30d_pct')
     list_filter = ('status',)
@@ -144,7 +144,7 @@ class ServiceHealthAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(ServiceHealthCheckLog)
-class ServiceHealthCheckLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ServiceHealthCheckLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('service', 'status_badge', 'response_ms', 'checked_at')
     list_filter = ('status',)
     search_fields = ('service__service_key', 'service__name')
@@ -158,7 +158,7 @@ class ServiceHealthCheckLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin
 
 
 @admin.register(ServiceRunLog)
-class ServiceRunLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ServiceRunLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('service', 'status_badge', 'started_at', 'finished_at', 'duration_seconds')
     list_filter = ('status',)
     search_fields = ('service__service_key', 'celery_task_id', 'error_detail')
@@ -172,7 +172,7 @@ class ServiceRunLogAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(ConfigChangeAudit)
-class ConfigChangeAuditAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ConfigChangeAuditAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('timestamp', 'service', 'action_badge', 'actor', 'actor_ip')
     list_filter = ('action',)
     search_fields = ('service__service_key', 'actor', 'actor_ip', 'change_summary', 'request_id')
@@ -186,7 +186,7 @@ class ConfigChangeAuditAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(MarketDataParitySnapshot)
-class MarketDataParitySnapshotAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class MarketDataParitySnapshotAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('captured_at', 'service', 'window_hours', 'strict_fresh_parity_pct',
                     'strict_met_badge', 'sample_size')
     list_filter = ('strict_met', 'relaxed_met')
@@ -222,7 +222,7 @@ class ScrapeMatrixCellInline(admin.TabularInline):
 
 
 @admin.register(ScrapeMatrix)
-class ScrapeMatrixAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ScrapeMatrixAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('cycle_id', 'status_badge', 'started_at', 'completed_at',
                     'total_rows', 'done_rows', 'failed_rows')
     list_filter = ('status',)
@@ -237,7 +237,7 @@ class ScrapeMatrixAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(ScrapeMatrixCell)
-class ScrapeMatrixCellAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class ScrapeMatrixCellAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('matrix', 'provider', 'status_badge', 'symbols_processed',
                     'claimed_at', 'done_at')
     list_filter = ('status', 'provider')
@@ -270,7 +270,7 @@ class BackfillExecutionBatchInline(admin.TabularInline):
 
 
 @admin.register(BackfillExecutionRun)
-class BackfillExecutionRunAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class BackfillExecutionRunAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('run_id', 'job_key', 'status_badge', 'mode', 'started_at',
                     'completed_symbols_count', 'planned_symbols_count')
     list_filter = ('status', 'mode', 'trigger')
@@ -285,7 +285,7 @@ class BackfillExecutionRunAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin)
 
 
 @admin.register(BackfillExecutionBatch)
-class BackfillExecutionBatchAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class BackfillExecutionBatchAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('run', 'provider', 'state_badge', 'symbols_count',
                     'completed_symbols_count', 'latency_p95_ms')
     list_filter = ('state', 'provider')
@@ -297,3 +297,37 @@ class BackfillExecutionBatchAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmi
     @admin.display(description='Trạng thái', ordering='state')
     def state_badge(self, obj):
         return badge_for(obj.state)
+
+# --- Import cho khoi WAVE 16 -------------------------------------
+from .models import (
+    CachedSymbolGroupMember,
+)
+from vninvest_core.admin_ui import (
+    badge_for,
+    VNAdminMixin,
+    VNReadOnlyMixin,
+)
+from django.contrib import messages
+
+
+def _ws_badge(value, mapping=None):
+    """Badge có chữ theo bảng màu riêng của nhóm.
+
+    Tách riêng thay vì dùng thẳng `badge_for(..., color=...)` để chỗ gọi
+    được đọc là "trạng thái này tô màu này" thay vì lặp lại chuỗi màu.
+    """
+    if value in (None, ""):
+        return "—"
+    return badge_for(value, color=(mapping or {}).get(str(value), "blue"))
+
+@admin.register(CachedSymbolGroupMember)
+class CachedSymbolGroupMemberAdmin(VNAdminMixin, admin.ModelAdmin):
+    # Bang anh xa thuan (group -> symbol), KHONG co cot thoi gian nao nen bo
+    # loc theo thoi gian vo nghia. Co ten de gate/test ton trong, khong phai
+    # loi bi bo qua.
+
+    vn_no_time_filter = True
+    list_filter = ('group',)
+    search_fields = ('symbol', 'group__name')
+    autocomplete_fields = ('group',)
+    ordering = ('group', 'display_order', 'symbol')

@@ -69,3 +69,81 @@ class InvoiceAdmin(VNAdminMixin, admin.ModelAdmin):
         # AC S3-AC4: `199.000 ₫` — ký hiệu TRƯỚC, dấu chấm phân tách hàng nghìn.
         # Số dương ẩn phần dư cho VND (đơn vị không có phần thập phân).
         return money_vi(obj.amount_due, obj.currency or 'VND')
+
+# --- Import cho khoi WAVE 16 -------------------------------------
+from .models import (
+    PaymentTransaction,
+    VNPayIPNLog,
+    QuotaHistory,
+)
+from vninvest_core.admin_ui import (
+    badge_for,
+    VNAdminMixin,
+    VNReadOnlyMixin,
+)
+from django.contrib import messages
+
+
+def _ws_badge(value, mapping=None):
+    """Badge có chữ theo bảng màu riêng của nhóm.
+
+    Tách riêng thay vì dùng thẳng `badge_for(..., color=...)` để chỗ gọi
+    được đọc là "trạng thái này tô màu này" thay vì lặp lại chuỗi màu.
+    """
+    if value in (None, ""):
+        return "—"
+    return badge_for(value, color=(mapping or {}).get(str(value), "blue"))
+
+# --- Thanh toán & hạn mức ---------------------------------------------------
+@admin.register(PaymentTransaction)
+class PaymentTransactionAdmin(VNReadOnlyMixin, admin.ModelAdmin):
+    """Giao dịch thanh toán VNPay — chỉ đọc.
+
+    Không cho sửa tay: số tiền và trạng thái thanh toán phải khớp với
+    bên VNPay. Mọi điều chỉnh đi qua quy trình hoàn tiền.
+    """
+
+    list_display = ('created_at', 'txn_ref', 'tenant', 'invoice', 'amount', 'plan', 'status', 'vnp_transaction_no')
+    list_filter = ('status', 'plan', 'created_at', 'tenant')
+    search_fields = ('txn_ref', 'vnp_transaction_no', 'error_code')
+    autocomplete_fields = ('invoice', 'tenant')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+    list_per_page = 100
+
+    @admin.display(description='Trạng thái', ordering='status')
+    def status(self, obj):
+        return _ws_badge(obj.status, {
+            'pending': 'yellow', 'success': 'green', 'failed': 'red', 'refunded': 'blue',
+        })
+
+
+@admin.register(VNPayIPNLog)
+class VNPayIPNLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
+    """Log IPN VNPay — bằng chứng đối soát, chỉ đọc."""
+
+    list_display = ('created_at', 'txn_ref', 'is_valid_signature', 'processed', 'error_message')
+    list_filter = ('is_valid_signature', 'processed', 'created_at')
+    search_fields = ('txn_ref', 'error_message', 'raw_query')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+    list_per_page = 100
+
+
+@admin.register(QuotaHistory)
+class QuotaHistoryAdmin(VNReadOnlyMixin, admin.ModelAdmin):
+    """Ảnh chụp hạn mức tiêu thụ theo ngày — chỉ đọc."""
+
+    list_display = ('date', 'tenant', 'meter_code', 'consumed_amount', 'entitled_amount', 'remaining_amount', 'risk_state', 'hard_stop')
+    list_filter = ('date', 'meter_code', 'risk_state', 'hard_stop', 'tenant')
+    search_fields = ('meter_code', 'meter_name', 'tenant__tenant_code')
+    autocomplete_fields = ('tenant',)
+    ordering = ('-date', 'meter_code')
+    date_hierarchy = 'date'
+    list_per_page = 100
+
+    @admin.display(description='Rủi ro', ordering='risk_state')
+    def risk_state(self, obj):
+        return _ws_badge(obj.risk_state, {
+            'normal': 'green', 'warning': 'yellow', 'critical': 'red',
+        })

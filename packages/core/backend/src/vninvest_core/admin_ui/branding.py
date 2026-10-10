@@ -56,6 +56,13 @@ MENU_GROUPS: tuple[dict, ...] = (
             "service_ops.CachedSymbolGroupMember",
             "service_ops.BackfillExecutionRun",
             "service_ops.BackfillExecutionBatch",
+            # Du lieu thoi gian va bang dieu khien nap du lieu (wave 16)
+            "market_data.IntradayBar",
+            "market_data.IntradayTick",
+            "market_data.GlobalSymbolRegistry",
+            "market_data.GlobalSymbolDemandSource",
+            "market_data.GlobalSymbolCoverage",
+            "market_serving.SessionFactsBucket",
         ),
     },
     {
@@ -66,6 +73,11 @@ MENU_GROUPS: tuple[dict, ...] = (
             "signal_intelligence.UnifiedAlert",
             "signal_intelligence.WhaleAlertCanonical",
             "signal_intelligence.OrderFlowEvent",
+            # Su kien va thong bao (wave 16)
+            "signal_intelligence.MarketAnomalyEvent",
+            "signal_intelligence.AdvisorySignalEvent",
+            "signal_intelligence.UserAlertDelivery",
+            "signal_intelligence.UserAlertPreference",
         ),
     },
     {
@@ -86,6 +98,18 @@ MENU_GROUPS: tuple[dict, ...] = (
             "commercial.QuotaRecord",
             "commercial.Invoice",
             "tenant_lifecycle.TenantLifecycleEvent",
+            # Tenant, webhook va bao cao (wave 16)
+            "identity_access.TenantCustomRole",
+            "identity_access.UsageAlertConfig",
+            "identity_access.TenantSSOConfig",
+            "identity_access.TenantWebhookConfig",
+            "identity_access.ScheduledReport",
+            "identity_access.SystemBrokerCredential",
+            "identity_access.UserDNSECredential",
+            "user_workspace.DNSECredential",
+            "user_workspace.UserBrokerConfig",
+            "commercial.PaymentTransaction",
+            "commercial.QuotaHistory",
         ),
     },
     {
@@ -97,6 +121,19 @@ MENU_GROUPS: tuple[dict, ...] = (
             "user_workspace.Transaction",
             "user_workspace.Watchlist",
             "user_workspace.WatchlistItem",
+            # Danh muc, ledger va screener (wave 16)
+            "user_workspace.TrackedSymbol",
+            "user_workspace.PriceAlert",
+            "user_workspace.SubAccount",
+            "user_workspace.AccountSnapshot",
+            "user_workspace.ScreenerRule",
+            "user_workspace.ScreenerRunHistory",
+            "user_workspace.ScreenerSchedule",
+            "user_workspace.LedgerEntry",
+            "user_workspace.CashFlow",
+            "user_workspace.PositionSnapshot",
+            "user_workspace.ValuationSnapshot",
+            "user_workspace.QuarantinedRecord",
         ),
     },
     {
@@ -107,11 +144,13 @@ MENU_GROUPS: tuple[dict, ...] = (
             "advisory.SystemAISettings",
             "advisory.AdvisorySession",
             "advisory.AdvisoryRecord",
-            "advisory.AdvisoryComponent",
             "advisory.UserAICredential",
             "ai_agents.AgentRegistry",
             "ai_analytics.AIUsageRecord",
             "ai_analytics.AIUsageSummary",
+            # Nhat ky va giao dich (wave 16)
+            "advisory.AIAuditLog",
+            "advisory.AdvisoryComponent",
         ),
     },
     {
@@ -139,6 +178,8 @@ MENU_GROUPS: tuple[dict, ...] = (
             "advertising.AdDailySummary",
             "advertising.AdImpressionLog",
             "advertising.AdClickLog",
+            # Nhan hieu (wave 16)
+            "advertising.TrademarkConfig",
         ),
     },
     {
@@ -165,6 +206,18 @@ MENU_GROUPS: tuple[dict, ...] = (
             "ops_audit.RequestTrace",
             "auth.User",
             "auth.Group",
+            # Nhat ky van hanh va ha tang (wave 16)
+            "identity_access.PATAuditLog",
+            "identity_access.LoginAttempt",
+            "identity_access.OutboxEvent",
+            "identity_access.ProcessedEvent",
+            "identity_access.ReportDeliveryLog",
+            "identity_access.WebhookDelivery",
+            "identity_access.PasswordResetToken",
+            "identity_access.EmailVerificationToken",
+            "commercial.VNPayIPNLog",
+            "ops_audit.ApiCallRollup",
+            "user_workspace.IdempotencyRecord",
         ),
     },
 )

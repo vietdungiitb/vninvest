@@ -184,11 +184,31 @@ def tone_for(value: str | None) -> str:
     return "neutral"
 
 
-def badge_for(value, label: str | None = None) -> SafeString:
+#: Tên màu quen thuộc → tone của design system. Cho phép `admin.py` ghi
+#: `color='green'` (trực quan khi đọc code) mà vẫn sinh đúng class D08
+#: (`vn-badge--success`). Tên lạ ⇒ `neutral`, không đoán màu.
+COLOR_TO_TONE = {
+    "green": "success",
+    "red": "danger",
+    "yellow": "warning",
+    "orange": "warning",
+    "blue": "primary",
+    "purple": "primary",
+    "gray": "neutral",
+    "grey": "neutral",
+}
+
+
+def badge_for(value, label: str | None = None, *, color: str | None = None) -> SafeString:
     """Badge suy ra tone tự động từ giá trị trạng thái.
 
     `label` cho phép hiển thị nhãn tiếng Việt thay cho giá trị kỹ thuật
     (xem `labels.STATUS_LABELS`).
+
+    `color` (tùy chọn, chỉ khoá) ép một tone cụ thể khi admin cần phân biệt
+    hai trạng thái **cùng nghĩa** nhưng khác mức độ (ví dụ `hot` vs `warm` —
+    cả hai đều không nằm trong bảng tone mặc định). Không có `color` thì hàm
+    suy tone từ chính giá trị như trước, nên lời gọi cũ không đổi.
     """
     if value is None or value == "":
         return empty_dash()
@@ -196,4 +216,6 @@ def badge_for(value, label: str | None = None) -> SafeString:
         text = "Có" if value else "Không"
         return badge(text, TONE_SUCCESS if value else TONE_DANGER)
     text = label if label is not None else str(value)
+    if color is not None:
+        return badge(text, COLOR_TO_TONE.get(str(color).lower(), "neutral"))
     return badge(text, tone_for(value))
