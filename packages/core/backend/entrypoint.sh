@@ -18,7 +18,11 @@ if [ "${ROLE}" = "api" ]; then
     python src/manage.py migrate --noinput
 
     echo "[entrypoint] Collecting static files..."
-    python src/manage.py collectstatic --noinput --clear || true
+    # KHÔNG dùng `|| true`: lỗi collectstatic khiến admin giao diện mất CSS/JS
+    # và container vẫn báo healthy — admin lúc đó giao diện vỡ mà không ai biết.
+    # `collectstatic` là bước bắt buộc để phục vụ `/static/`, nên thất bại thì
+    # phải dừng khởi động. (`migrate` ở trên cũng vậy.)
+    python src/manage.py collectstatic --noinput --clear
 
     echo "[entrypoint] Repairing beat schedule (re-enable 4 critical jobs)..."
     python src/manage.py repair_beat_schedule || echo "[entrypoint] WARN: repair_beat_schedule failed, continuing"

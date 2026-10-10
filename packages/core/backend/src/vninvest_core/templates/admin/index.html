@@ -1,0 +1,208 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% comment %}
+  Trang chủ vận hành.
+
+  KHÔNG dùng `admin.site.get_app_list()` (mà `index.html` gốc của Django dùng).
+  ⚠ ĐÃ ĐO, và con số từng viết sai: **cả hai đều 0 truy vấn DB**. Đo thật
+  2026-10-10 (superuser mới, cache quyền rỗng):
+    admin.site.get_app_list(req)  → queries = 0, has_perm × 194
+    build_groups(req)             → queries = 0, has_perm × 130
+  Khác biệt thật là **64 lần kiểm tra quyền** (−33%), không phải truy vấn.
+  Bản gốc ghi "một truy vấn cho mỗi ModelAdmin" là **suy đoán chưa kiểm** —
+  đúng loại lỗi mà `docs/AGENT_PROTOCOL.md` cấm. Số ở trên kèm lệnh đo.
+  {% endcomment %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}vn-dashboard{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="vn-dash">
+
+  {% comment %}
+    `app_index.html` của Django mở rộng template này.
+    KHÔNG dùng `app_list` để phân biệt: CẢ HAI view đều truyền `app_list` vào
+    context — `AdminSite.index()` tại `django/contrib/admin/sites.py:568` và
+    `AdminSite.app_index()` tại `:586`. Dùng `app_list` thì nhánh này luôn rẽ
+    sang app_index và **trang chủ không hiện KPI** (đã đo: probe in ra
+    `vn-kpi: False`). Biệt hiệu đúng là `app_label`: `app_index()` đặt,
+    `index()` không đặt (đọc `sites.py:576-590`).
+  {% endcomment %}
+  {% if app_label %}
+    {% for app in app_list %}
+      <section aria-labelledby="vn-app-{{ app.app_label }}">
+        <h2 id="vn-app-{{ app.app_label }}" class="vn-section-title">{{ app.name }}</h2>
+        <div class="module vn-group">
+          <table class="vn-group__table">
+            <caption class="visually-hidden">Model trong nhóm {{ app.name }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Chức năng</th>
+                <th scope="col">Nhóm nghiệp vụ</th>
+                <th scope="col" class="vn-col-actions">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for group in vn_groups %}
+                {% for model in group.models %}
+                  {% if model.app_label == app.app_label %}
+                    <tr>
+                      <th scope="row">
+                        {% if model.admin_url %}
+                          <a href="{{ model.admin_url }}">{{ model.label }}</a>
+                        {% else %}{{ model.label }}{% endif %}
+                      </th>
+                      <td>{{ group.label }}</td>
+                      <td class="vn-col-actions">
+                        {% if model.admin_url %}
+                          <a class="vn-action-link" href="{{ model.admin_url }}">Mở danh sách</a>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endif %}
+                {% endfor %}
+              {% empty %}
+                <tr><td colspan="3" class="vn-empty">Không có model nào được cấp quyền.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endfor %}
+  {% else %}
+
+  {# ── Số liệu tổng quan (AC S2-AC1, S2-AC2) ───────────────────────────── #}
+  <section aria-labelledby="vn-kpi-heading">
+    <h2 id="vn-kpi-heading" class="vn-section-title">Tổng quan hệ thống</h2>
+    <div class="vn-kpi-grid">
+      {% for kpi in vn_kpis %}
+        <article class="vn-kpi" aria-labelledby="vn-kpi-{{ kpi.key }}">
+          <h3 id="vn-kpi-{{ kpi.key }}" class="vn-kpi__label">{{ kpi.label }}</h3>
+          {% if kpi.ok %}
+            <p class="vn-kpi__value">
+              {% comment %}
+                Chỉ gắn link khi người dùng CÓ quyền xem bảng đó — `kpis()` đã
+                lọc. Không lọc thì thẻ trỏ tới trang 403 (đo được 2026-10-10).
+              {% endcomment %}
+              {% if kpi.url %}<a href="{{ kpi.url }}">{{ kpi.value|default:0 }}</a>
+              {% else %}{{ kpi.value|default:0 }}{% endif %}
+            </p>
+          {% else %}
+            {# AC S2-AC4: lỗi ở một số liệu KHÔNG được làm hỏng trang #}
+            <p class="vn-kpi__value vn-kpi__value--error" title="{{ kpi.error }}">&mdash;</p>
+          {% endif %}
+          <p class="vn-kpi__hint">{{ kpi.hint }}</p>
+        </article>
+      {% empty %}
+        <p class="vn-empty">Chưa có số liệu nào để hiển thị.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ── Cảnh báo vận hành (AC S2-AC3) ────────────────────────────────────── #}
+  {% if vn_alerts %}
+    <section aria-labelledby="vn-alert-heading">
+      <h2 id="vn-alert-heading" class="vn-section-title">Cảnh báo vận hành</h2>
+      <ul class="vn-alert-list">
+        {% for alert in vn_alerts %}
+          <li class="vn-alert vn-alert--{{ alert.tone }}">
+            <strong class="vn-alert__title">{{ alert.title }}</strong>
+            <span class="vn-alert__detail">{{ alert.detail }}</span>
+            {% if alert.url %}
+              <a class="vn-alert__link" href="{{ alert.url }}">Mở bảng dữ liệu</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {# ── Sơ đồ chức năng, nhóm theo nghiệp vụ (AC S4-AC1) ──────────────────── #}
+  <section aria-labelledby="vn-map-heading">
+    <h2 id="vn-map-heading" class="vn-section-title">Sơ đồ chức năng</h2>
+    {% for group in vn_groups %}
+      <div class="module vn-group">
+        <h3 class="vn-group__title">
+          <span class="vn-group__icon" aria-hidden="true">{{ group.icon }}</span>
+          {{ group.label }}
+          <span class="vn-group__count">{{ group.models|length }}</span>
+        </h3>
+        <table class="vn-group__table">
+          <caption class="visually-hidden">{{ group.label }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Tên</th>
+              <th scope="col">Mã kỹ thuật</th>
+              <th scope="col" class="vn-col-actions">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for model in group.models %}
+              <tr>
+                <th scope="row">
+                  {% if model.admin_url %}
+                    <a href="{{ model.admin_url }}">{{ model.label }}</a>
+                  {% else %}
+                    {{ model.label }}
+                  {% endif %}
+                  {% if model.view_only %}
+                    <span class="vn-badge vn-badge--neutral">Chỉ xem</span>
+                  {% endif %}
+                </th>
+                <td class="vn-mono">{{ model.name }}</td>
+                <td class="vn-col-actions">
+                  {% comment %} AC: menu tổng quan KHÔNG hiện nút Add/Change.
+                     `docs/ADMIN_UI_IMPLEMENTATION_STEPS.md:109-110` yêu cầu rõ:
+                     thao tác thực hiện bên trong trang model, không ở menu. {% endcomment %}
+                  {% if model.admin_url %}
+                    <a class="vn-action-link" href="{{ model.admin_url }}">Mở danh sách</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="vn-empty">Tài khoản này chưa được cấp quyền xem mục nào.</p>
+    {% endfor %}
+  </section>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+{% if not app_label %}
+<div id="content-related">
+  <div class="module" id="vn-activity-module">
+    <h2>Hoạt động gần đây</h2>
+    {% if vn_activity %}
+      {% if vn_activity.0.error %}
+        <p class="vn-empty">{{ vn_activity.0.hint }}</p>
+      {% else %}
+        <ul class="actionlist">
+          {% for entry in vn_activity %}
+            <li class="{% if entry.action == 'Thêm' %}addlink{% elif entry.action == 'Xoá' %}deletelink{% else %}changelink{% endif %}">
+              <span class="vn-badge vn-badge--neutral">{{ entry.action }}</span>
+              {% if entry.url %}<a href="{{ entry.url }}">{{ entry.object }}</a>
+              {% else %}{{ entry.object }}{% endif %}
+              <br>
+              <span class="mini quiet">{{ entry.user }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <p class="vn-empty">Chưa có thao tác nào.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
