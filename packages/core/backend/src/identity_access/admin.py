@@ -3,6 +3,13 @@ import uuid
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+
+from vninvest_core.admin_ui import (
+    VNAdminMixin,
+    badge_for,
+    datetime_vi,
+    decimal_vi,
+)
 from django.core import signing
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
@@ -65,70 +72,108 @@ class CorePATCredentialInline(admin.TabularInline):
 # ---------------------------------------------------------------------------
 
 @admin.register(CoreTenant)
-class CoreTenantAdmin(admin.ModelAdmin):
-    list_display = ('display_name', 'tenant_code', 'plan', 'status', 'owner_user', 'created_at')
+class CoreTenantAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('display_name', 'tenant_code', 'plan', 'status_badge', 'owner_user', 'created_at')
     list_filter = ('plan', 'status')
     search_fields = ('display_name', 'tenant_code', 'public_id', 'owner_user__username', 'owner_user__email')
     readonly_fields = ('public_id', 'created_at', 'updated_at')
+    list_select_related = ('owner_user',)
     ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
     inlines = [CoreServiceAccountInline]
+
+    @admin.display(description='Trạng thái', ordering='status')
+    def status_badge(self, obj):
+        return badge_for(obj.status)
 
     class Meta:
         verbose_name = 'Tenant'
 
 
 @admin.register(CoreServiceAccount)
-class CoreServiceAccountAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tenant', 'status', 'created_at')
+class CoreServiceAccountAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('name', 'tenant', 'status_badge', 'created_at')
     list_filter = ('status',)
     search_fields = ('name', 'public_id', 'tenant__display_name', 'tenant__tenant_code')
     readonly_fields = ('public_id', 'created_at', 'updated_at')
+    list_select_related = ('tenant',)
     ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
     inlines = [CorePATCredentialInline]
+
+    @admin.display(description='Trạng thái', ordering='status')
+    def status_badge(self, obj):
+        return badge_for(obj.status)
 
 
 @admin.register(CorePATCredential)
-class CorePATCredentialAdmin(admin.ModelAdmin):
-    list_display = ('label', 'token_prefix', 'service_account', 'status', 'created_at')
+class CorePATCredentialAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('label', 'token_prefix', 'service_account', 'status_badge', 'created_at')
     list_filter = ('status',)
     search_fields = ('label', 'token_prefix', 'public_id', 'service_account__name')
     readonly_fields = ('public_id', 'token_prefix', 'token_secret_hash', 'created_at', 'updated_at')
+    list_select_related = ('service_account',)
     ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+
+    @admin.display(description='Trạng thái', ordering='status')
+    def status_badge(self, obj):
+        return badge_for(obj.status)
 
 
 @admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'language', 'theme', 'whale_alert_threshold', 'updated_at')
+class UserProfileAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('user', 'language', 'theme', 'whale_alert_threshold_display', 'updated_at')
     list_filter = ('language', 'theme')
     search_fields = ('user__username', 'user__email', 'display_name')
     readonly_fields = ('created_at', 'updated_at')
+    list_select_related = ('user',)
     ordering = ('-updated_at',)
+    date_hierarchy = 'created_at'
+
+    @admin.display(description='Ngưỡng cảnh báo cá voi')
+    def whale_alert_threshold_display(self, obj):
+        return decimal_vi(obj.whale_alert_threshold, decimals=0)
 
 
 @admin.register(TenantMember)
-class TenantMemberAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'user', 'role', 'invited_by', 'joined_at')
+class TenantMemberAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('tenant', 'user', 'role', 'invited_by', 'joined_at_display')
     list_filter = ('role', 'tenant')
     search_fields = ('tenant__display_name', 'tenant__tenant_code', 'user__username', 'user__email')
     readonly_fields = ('public_id', 'joined_at', 'updated_at')
+    list_select_related = ('tenant', 'user', 'invited_by')
     ordering = ('-joined_at',)
+    date_hierarchy = 'updated_at'
+
+    @admin.display(description='Tham gia', ordering='joined_at')
+    def joined_at_display(self, obj):
+        return datetime_vi(obj.joined_at)
 
 
 @admin.register(TenantInvite)
-class TenantInviteAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'invited_email', 'role', 'status', 'inviter', 'expires_at', 'created_at')
+class TenantInviteAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('tenant', 'invited_email', 'role', 'status_badge', 'inviter', 'expires_at', 'created_at')
     list_filter = ('status', 'role', 'tenant')
     search_fields = ('tenant__display_name', 'tenant__tenant_code', 'invited_email', 'token')
     readonly_fields = ('public_id', 'token', 'accepted_at', 'created_at', 'updated_at')
+    list_select_related = ('tenant', 'inviter')
     ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+
+    @admin.display(description='Trạng thái', ordering='status')
+    def status_badge(self, obj):
+        return badge_for(obj.status)
 
 
 @admin.register(TenantSettings)
-class TenantSettingsAdmin(admin.ModelAdmin):
+class TenantSettingsAdmin(VNAdminMixin, admin.ModelAdmin):
     list_display = ('tenant', 'timezone', 'locale', 'theme', 'custom_domain', 'updated_at')
     list_filter = ('theme', 'locale')
+    list_select_related = ('tenant',)
     search_fields = ('tenant__display_name', 'tenant__tenant_code', 'custom_domain')
     readonly_fields = ('created_at', 'updated_at')
+    date_hierarchy = 'created_at'
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +247,7 @@ class SystemMailConfigAdminForm(forms.ModelForm):
 
 
 @admin.register(SystemMailConfig)
-class SystemMailConfigAdmin(admin.ModelAdmin):
+class SystemMailConfigAdmin(VNAdminMixin, admin.ModelAdmin):
     form = SystemMailConfigAdminForm
     list_display = (
         'name',
@@ -217,6 +262,7 @@ class SystemMailConfigAdmin(admin.ModelAdmin):
     list_filter = ('provider', 'is_active', 'last_test_status')
     search_fields = ('name', 'from_email', 'from_name', 'google_account_email', 'google_client_id', 'smtp_username')
     ordering = ('-updated_at',)
+    date_hierarchy = 'created_at'
     actions = ('mark_as_default', 'send_test_email_to_selected_accounts')
     readonly_fields = (
         'smtp_password_status',

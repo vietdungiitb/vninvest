@@ -312,6 +312,31 @@ if (existsSync(lessonsGate)) {
   else ok("lessons", (r.out.match(/check-lessons:.*/) || ["PASS"])[0].trim());
 } else skip("lessons", "khong co scripts/check-lessons.mjs");
 
+// --------------------------------------------------------- admin UX gate (BE)
+// Lop trinh bay Django admin (`vninvest_core/admin_ui`). Gate nay chan nhung
+// loi da **thuc su xay ra** trong wave 15 va lot qua `manage.py check`:
+//   - comment `{# #}` nhieu dong lam `/admin/` tra 500
+//   - token mau lech D08 §12.1, tuong phan WCAG duoi nguong
+//   - `transition:` mat thoi luong (L-F05)
+//   - byte U+FFFD trong ma nguon (hazard 5)
+// Gate co `--self-test` 12/12 chung minh no THAT SỰ bat loi, va mot phep
+// pha vong that da chay: doi `--vn-bg` + bo `<time>` cua transition => exit 1.
+const adminUxGate = join(
+  REPO, "packages", "core", "backend", "scripts", "check_admin_ux.py",
+);
+if (existsSync(adminUxGate)) {
+  const backendPy = join(REPO, "packages", "core", "backend", ".venv", "Scripts", "python.exe");
+  const backendPyPosix = join(REPO, "packages", "core", "backend", ".venv", "bin", "python");
+  const adminPy = existsSync(backendPy)
+    ? backendPy
+    : existsSync(backendPyPosix)
+      ? backendPyPosix
+      : "python";
+  const r = run(adminPy, [adminUxGate]);
+  if (r.code !== 0) bad("admin-ux", r.out);
+  else ok("admin-ux", (r.out.match(/check_admin_ux:.*/) || ["PASS"])[0].trim());
+} else skip("admin-ux", "khong co packages/core/backend/scripts/check_admin_ux.py");
+
 // ------------------------------------------------- envelope contract gate
 // Resolve a Python. The checker is a .py script, so unlike every other gate in
 // this file it is not node.

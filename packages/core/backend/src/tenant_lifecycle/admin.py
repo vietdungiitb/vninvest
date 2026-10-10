@@ -1,10 +1,12 @@
 from django.contrib import admin
 
+from vninvest_core.admin_ui import VNAdminMixin, VNReadOnlyMixin
+
 from tenant_lifecycle.models import TenantLifecycleEvent
 
 
 @admin.register(TenantLifecycleEvent)
-class TenantLifecycleEventAdmin(admin.ModelAdmin):
+class TenantLifecycleEventAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('tenant', 'event_type', 'actor_type', 'actor_user', 'created_at')
     list_filter = ('event_type', 'actor_type', 'created_at')
     search_fields = ('tenant__display_name', 'tenant__tenant_code')
@@ -19,13 +21,6 @@ class TenantLifecycleEventAdmin(admin.ModelAdmin):
         'metadata',
         'created_at',
     )
+    list_select_related = ('tenant', 'actor_user')
+    date_hierarchy = 'created_at'
     ordering = ('-created_at',)
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False

@@ -30,6 +30,7 @@ from .display import (
     empty_dash,
     money_vi,
     percent_vi,
+    tone_for,
 )
 from .labels import MODEL_LABELS, label_for, status_label
 from .mixins import VNAdminMixin, VNReadOnlyMixin
@@ -53,4 +54,5 @@ __all__ = [
     "money_vi",
     "percent_vi",
     "status_label",
+    "tone_for",
 ]

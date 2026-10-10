@@ -41,7 +41,7 @@ from .branding import (
     MENU_GROUPS,
     group_key,
 )
-from .labels import MODEL_LABELS
+from .labels import label_for
 
 #: `app_label.model_name -> group key`, dựng 1 lần lúc import (tuple hằng).
 _MODEL_INDEX: dict[str, str] = {}
@@ -109,8 +109,8 @@ def build_groups(request) -> list[dict]:
                     "app_label": app_label,
                     "model_name": model_name,
                     "name": model._meta.verbose_name,
-                    "label": MODEL_LABELS.get(raw_key)
-                    or MODEL_LABELS.get(key, model._meta.verbose_name),
+                    "label": label_for(raw_key) or label_for(key)
+                    or model._meta.verbose_name,
                     "admin_url": admin_url,
                     "add_url": _safe_url(request, f"admin:{app_label}_{model_name}_add"),
                     "is_current": _is_current(request, admin_url),
