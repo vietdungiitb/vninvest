@@ -25,6 +25,9 @@ Registry claim: `docs/CLAIMS.md`. Gate: `node packages/web/scripts/check-multi-a
 - **Không `--no-verify` để lách hook** trừ khi ghi lý do vào commit body.
 
 ### Bắt buộc
+0. **Nạp lesson TRƯỚC khi lập kế hoạch, TRƯỚC khi khai claim, TRƯỚC khi sửa dòng đầu tiên.** Nạp skill [`project-lessons`](.opencode/skills/project-lessons/SKILL.md) với `taskDescription` + `filePaths` + `actions` → trả `LESSONS APPLICABLE` + `MANDATORY CHECKLIST`. Plan phải ghi **`Lessons áp dụng: [L-...]`** hoặc **`NONE – <lý do>`**, và tick checklist trước khi coi slice xong. Chỉ đọc **1–2 file** lesson theo tag — **KHÔNG** đọc cả `docs/LESSONS/` (context bloat). Skill tự chọn fallback `multi-agent.md` khi task có `claim`/`shared`/`migration`/`worktree`/`rebase`/`gate`/`agent`. Chi tiết: `docs/AGENT_PROTOCOL.md` §11.
+   - ⚠ **Tự kiểm skill có thật sự được nạp không:** xem danh sách skill của session có `project-lessons` không. Không thấy ⇒ sai đường dẫn (opencode **chỉ** auto-load `.opencode/skills/`).
+   - ⚠ **Phần cơ máy:** `node scripts/check-lessons.mjs` kiểm C1 (file ≤ 120 dòng) · C2 (tổng ≤ 40 lesson) · C3 (`INDEX.md` khai đúng tổng). Đã nối vào `scripts/pre-push-gate.mjs` ⇒ **sửa `docs/LESSONS/` mà vi phạm thì push bị chặn**. Văn bản không chặn được gì — đo 2026-10-10: 31 lesson tồn tại mà **0** lệnh nào canh, `frontend.md` dài 128 dòng và `INDEX.md` lệch 14 lesson vẫn không ai bị chặn.
 1. **Mở phiên:** `sh scripts/agent-install-hooks.sh` → `pwsh -File scripts/agent-sync.ps1` → `git -C <main tree> status --short`
 2. **Khai claim** vào cuối `docs/CLAIMS.md`, commit riêng, **trước khi sửa dòng đầu tiên**
 3. **Đóng phiên:** `pwsh -File scripts/agent-sync.ps1` (rebase → check migration → gate) → claim `done` → push → `pwsh -File scripts/agent-pr.ps1`
