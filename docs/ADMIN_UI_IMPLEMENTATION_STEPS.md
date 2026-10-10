@@ -571,3 +571,23 @@ allowlist rồi gate chết. Nên: cảnh báo + allowlist có tên + giải th�
 
 Tương tự, gate **không** báo "màu trùng giữa hai bảng màu" — `#ef4444`/`#f59e0b` thuộc cả
 D08 lẫn SOC. Gate chỉ soi **giá trị của token** (`--vn-…: #hex`).
+---
+
+## Wave 17 (2026-10-10) — `entrypoint.sh` **đã chạy thật**, O3 có bằng chứng đo được
+
+Mục "CHƯA CHẠY" của O3 đã đóng (ledger `## Entry 269`). Container thật từ image
+`vninvest-dev-core-runtime`, nối Postgres dev, `daphne` thay bằng stub để thấy trọn
+chuỗi lệnh mà không mở cổng thật.
+
+| Phép thao tac | Ket qua |
+|---|---|
+| `ROLE=api` bình thường | migrate → **collectstatic 166 file / 478 post-processed** → repair_beat_schedule → daphne, **exit 0** |
+| `--tmpfs /app/src/staticfiles:ro` + **bản mới** | `OSError: [Errno 30] Read-only file system` → **exit 1**, daphne **không** khởi động |
+| `--tmpfs /app/src/staticfiles:ro` + **bản cũ** (`\|\| true`) | `OSError` in ra → **vẫn chạy tiếp** repair → `Starting daphne` |
+
+Hàng cuối mới là bằng chứng. Bỏ `|| true` trước đây là **suy luận đúng**; giờ đã **đo**:
+
+> `collectstatic` thất bại, sản phẩm vẫn "khỏe" (healthcheck 200) và **không dùng được** —
+> admin mất CSS/JS mà không ai biết. Đó đúng là thứ O3 muốn bỏ.
+
+Còn **CHƯA CHẠY**: `ruff` (không cài trong `.venv`) · Playwright / browser QA · đối chiếu trực quan light/dark bằng trình duyệt.

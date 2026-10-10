@@ -1,3 +1,37 @@
+## Entry 269: Chay THAT entrypoint.sh trong container — O3 "bo || true" co bang chung do duoc (2026-10-10)
+
+- **Nhanh**: `docs/admin-verify-entrypoint` -> `dev`
+- **Claim**: `adminui-w17` (tiep tuc)
+- **Tien do**: PR #103 (O5) da **MERGE** vao `dev` (`52dcc980a`). PR #102 da merge truoc do (`61091219e`).
+
+### Canh bao CHUA CHAY da duoc chay
+
+Wave 16/17 ghi "`entrypoint.sh` CHUA CHAY trong container that". Nay da chay.
+
+**Cach chay**: containerthat tu image `vninvest-dev-core-runtime`, noi `vninvest-dev_vninvest_network`,
+tro toi Postgres dev; `daphne` thay bang stub de thay trong chuoi lenh ma khong mo cong that.
+
+| Phép thao tac | Ket qua |
+|---|---|
+| Entrypoint binh thuong (`ROLE=api`) | migrate → **collectstatic 166 file / 478 post-processed** → repair_beat_schedule → daphne, **exit 0** |
+| **`--tmpfs /app/src/staticfiles:ro`** + ban MOI | `OSError: [Errno 30] Read-only file system` → **EXIT_CODE=1**, daphne **KHONG** khoi dong |
+| **`--tmpfs /app/src/staticfiles:ro`** + ban CU (`|| true`) | `OSError` in ra → **VAN chay tiep** repair_beat_schedule → `Starting daphne` |
+
+### Tai sao bang chung thu hai moi la quan trong
+
+Bai "bo `|| true`" cua O3 la **suy luan dung**: "`|| true` che loi, container van healthy
+nen admin hong CSS ma khong ai biet". Bai nay **do** chinh dieu do:
+
+> Ban CU in ra `OSError: [Errno 30] Read-only file system: '/app/src/staticfiles/admin'`
+> roi **tiep tuc** chay repair + bat daphne. `collectstatic` that bai, san pham rat
+> "co" nhung **khong dung**. Healthcheck HTTP van 200. Day chinh la cai O3 muon bo.
+
+### Con CHUA CHAY (khong bao PASS cho thu chua chay)
+
+`ruff` (khong cai trong `.venv` — can Owner duyet `pip install`) ·
+Playwright / browser QA · doi chieu truc quan light/dark bang trinh duyet.
+
+---
 ## Entry 268: O5 — D08 §12.1 lam nguon su that cho design token Django admin (2026-10-10)
 
 - **Nhanh**: `feat/admin-design-token-contract` -> `dev`
@@ -8485,3 +8519,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 266 | 2026-10-10 | **Refactor Django admin UI/UX** - Mode B (solo, vai PM/Tech Lead). Admin mac dinh cua Django -> design system theo D08 §12/§13, dashboard van hanh (4 KPI + canh bao du lieu gia cu + hoat dong gan day), menu **9 nhom nghieu vu** thay nhom theo app, chuan hoa **65** ModelAdmin (badge co chu, `list_select_related` chong N+1, `date_hierarchy`, dinh dang VN `1.240.000 dd/mm/YYYY`), khai bao admin cho **5 app tu 0** (`service_ops` 15 · `support` 5 · `data_ingest` 2 · `ai_agents` 1 · `ai_analytics` 2). Registry **34 -> 65**; model chua quan tri **73 -> 49** | `feat/django-admin-uiux-pm` -> `dev` | `check` 0 · `makemigrations --check` 0 · `collectstatic` 0 · `check_admin_ux` 0 (49 canh bao) · `--self-test` **12/12** · `test_admin_ui` **45/45** · `pre-push-gate` **19/0/0** · FE `lint` 0 error · `build` 0 · `test:components` **127 file/914 test** · BE `Ran 2946 tests`, `failures=12, errors=15, skipped=6` | **BLOCKER F-D**: comment `{# #}` **nhieu dong** trong template Django **khong hoat dong** - `tag_re` khong co `DOTALL` nen Django coi la text va **parse moi `{% %}` ben trong** => `/admin/` tra 500. Do bang `COMMENTmatch=0`. **App_dirs khong du** de override `admin/base.html` (loader quet `INSTALLED_APPS`, `django.contrib.admin` dung dau) => phai them `TEMPLATES['DIRS']`. **Registry khoa bang LOP MODEL** tu Django 5.1. `nav_sidebar.js` loc bang `th[scope=row] a` ⇒ hop loc **luon hong** ⇒ viet script rieng. 4 bug them: KPI khong kiem quyen (3/4 link 403) · `money_vi` dat ky hieu truoc so · `percent_vi` mat dau am · `label_for` tra trut do lech hoa/thuong khoa. **HOI QUY = 0**: 27 loi BE chung minh co san tren base `2ea2948b8` bang **worktree** (failures 12/12 · errors 14/14, ten giong het). **Con so "43 truy van" cua toi la BIA** - do that: ca hai duong deu **0 truy van**, khac biet that la `has_perm` 194 vs 130. Dem lai bang script: model 112→**107** · block 17→**28** · support 9→**5**. **L-T01 x2** (Edit tool + script Node doi LF→CRLF). **6 phat hien ngoai pham vi can Owner**: `nginx.conf:140` **nuot admin app `advertising`** · gate `check-admin-spa-routes` chi quet 1 chieu · `entrypoint.sh` `collectstatic \|\| true` · `ADMIN_UI_IMPLEMENTATION_STEPS.md` STALE · 2 design system · 49 model chua co admin. Nhat ky: `docs/audit-uiux/SESSION_LOG_WAVE15_ADMIN_20261010.md` |
 | 267 | 2026-10-10 | **Wave 16 - mo toan bo 49 model Django admin** - Registry **65 -> 114**, model chua co admin **49 -> 0**, nhan tieng Viet **49 -> 0**. Sua xung dot routing /admin/advertising (^~ -> =) co chung bang **nginx that 28/28**, fail-before **6 FAIL**. Gate hai chieu check:admin-spa-routes + --self-test 4/4 **va moi noi vao pre-push**. Bo || true khoi collectstatic. Gate: admin-ux 0 loi/0 canh bao · self-test 13/13 · test 45/45 · pre-push 21 PASS/0 FAIL. |
 | 268 | 2026-10-10 | **O5 - D08 §12.1 làm nguồn sự thật cho design token admin** - Bỏ dict chép, `check_admin_ux.py` **parse thẳng bảng màu từ doc**; thêm gate chặn `--vn-gain`/`--vn-loss` phải **bằng** success/danger (L-F08); cảnh báo màu `soc.tokens.css` lọt vào token admin. **Fail-before thật**: sửa `#0F1117`→`#010203` trong D08 §12.1 ⇒ gate FAIL exit 1. Self-test **21/21**. |
+| 269 | 2026-10-10 | **Chạy thật `entrypoint.sh` trong container** - Đóng mục "CHƯA CHẠY" của O3. Bình thường: migrate → collectstatic **166 file** → repair → daphne, **exit 0**. Fail-before (`--tmpfs staticfiles:ro`): bản mới **exit 1, daphne không khởi động**; bản cũ in `OSError` rồi **vẫn chạy tiếp** `repair_beat_schedule` → `Starting daphne` ⇒ chứng minh bằng đo rằng `|| true` làm server "healthy" với static hỏng. |
