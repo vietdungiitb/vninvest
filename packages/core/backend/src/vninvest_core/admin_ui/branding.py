@@ -126,7 +126,7 @@ MENU_GROUPS: tuple[dict, ...] = (
             "support.TicketCategory",
             "support.TicketPriority",
             "support.TicketStatus",
-            "support.TicketCounter",
+            "support.SupportTicketCounter",
             "support.SenderRole",
         ),
     },

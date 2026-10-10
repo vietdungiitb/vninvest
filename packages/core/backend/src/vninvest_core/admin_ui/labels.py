@@ -98,6 +98,7 @@ MODEL_LABELS: dict[str, str] = {
     "support.TicketStatus": "Trạng thái yêu cầu",
     "support.TicketCounter": "Bộ đếm mã yêu cầu",
     "support.SenderRole": "Vai trò người gửi",
+    "support.SupportTicketCounter": "Bộ đếm mã yêu cầu",
     # ── Quảng cáo ──────────────────────────────────────────────────────────
     "advertising.AdCampaign": "Chiến dịch quảng cáo",
     "advertising.AdDailySummary": "Tổng hợp quảng cáo ngày",
@@ -167,13 +168,30 @@ STATUS_LABELS: dict[str, str] = {
 }
 
 
-def label_for(app_label: str, model_name: str) -> str:
-    """Nhãn tiếng Việt của model; fallback sang `verbose_name` của Django.
+#: Chỉ mục tra cứu **chữ thường**, dựng 1 lần lúc import.
+#:
+#: `MODEL_LABELS` khai báo bằng tên lớp Python cho dễ đọc
+#: (`identity_access.CoreTenant`), còn `Model._meta.model_name` của Django là
+#: chữ thường (`coretenant`). Tra thẳng dict gốc ⇒ **luôn trượt** — đã xảy ra,
+#: bắt được bởi `test_S4_AC5_model_label_is_vietnamese_with_diacritics`
+#: (nhận `''` thay vì `'Tổ chức'`). Thêm khoá hạ chữ thường khi dựng.
+_LABEL_INDEX: dict[str, str] = {key.lower(): value for key, value in MODEL_LABELS.items()}
 
-    Trả `""` khi không có nhãn — caller (template) tự fallback về hành vi mặc
-    định của Django, để model mới chưa khai báo vẫn hiện bình thường.
+
+def label_for(app_label: str, model_name: str = "") -> str:
+    """Nhãn tiếng Việt của model; trả `""` khi không có nhãn.
+
+    Trả `""` khi không có nhãn — caller tự fallback về hành vi mặc định của
+    Django, để model mới chưa khai báo vẫn hiện bình thường.
     """
-    return MODEL_LABELS.get(f"{app_label}.{model_name}", "")
+    return _LABEL_INDEX.get(_label_key(app_label, model_name), "")
+
+
+def _label_key(app_label: str, model_name: str = "") -> str:
+    """Chuẩn hoá khoá tra cứu, nhận cả `"app.Model"` lẫn `("app", "model")`."""
+    if isinstance(app_label, str) and "." in app_label and not model_name:
+        app_label, _, model_name = app_label.partition(".")
+    return f"{app_label}.{model_name}".lower()
 
 
 def status_label(value: str | None) -> str | None:

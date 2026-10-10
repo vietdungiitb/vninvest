@@ -65,7 +65,12 @@ def decimal_vi(value, decimals: int = 2) -> SafeString:
 
 
 def money_vi(value, currency: str = "VND", decimals: int | None = None) -> SafeString:
-    """Định dạng tiền theo chuẩn Việt: `1.240.000 ₫` (ký hiệu trước, D08 §14.2).
+    """Định dạng tiền theo chuẩn Việt: `1.240.000 ₫`.
+
+    D08 §14.2 ghi rõ: đúng là `199.000 ₫`, **sai** là `₫199.000` — tức số đứng
+    trước, ký hiệu đứng sau. (Cụm "ký hiệu trước" trong bảng tiếng Việt dễ đọc
+    nhầm là "ký hiệu đặt trước số"; ví dụ mẫu mới là chuẩn. Test
+    `test_S3_AC4_money_vi_...` khoá lại hành vi này.)
 
     `decimals=None` ⇒ mặc định 0 với VND (đơn vị không có phần thập phân) và 2
     với các loại tiền tệ khác.
@@ -81,20 +86,24 @@ def money_vi(value, currency: str = "VND", decimals: int | None = None) -> SafeS
     whole, _, fraction = f"{quantized:f}".partition(".")
     grouped = f"{int(whole):,}".replace(",", ".")
     text = f"{grouped},{fraction}" if decimals > 0 else grouped
-    return format_html("{}{}{}", "-" if negative else "", symbol, text)
+    return format_html("{}{} {}", "-" if negative else "", text, symbol)
 
 
 def percent_vi(value, decimals: int = 2) -> SafeString:
-    """Định dạng phần trăm theo chuẩn Việt: `+1,25%`.
+    """Định dạng phần trăm theo chuẩn Việt, **giữ dấu**: `+1,25%` / `-1,25%`.
 
-    Dấu `+` được giữ **cho số khác 0** vì đây là cột tài chính: đọc `1,25%`
-    mà không biết tăng hay giảm là đọc thiếu (D08 §13 "không chỉ dựa vào màu"
-    — ở đây áp dụng cho ký hiệu chữ).
+    Dấu là thông tin, không phải trang trí: cột phần trăm mà không dấu thì đọc
+    không biết tăng hay giảm — cùng nguyên tắc "không chỉ dựa vào màu"
+    (D08 §13) áp dụng cho **ký hiệu chữ**.
+
+    ⚠ Lỗi đã sửa: bản đầu `abs()` rồi chỉ thêm `+` khi dương ⇒ **mất dấu âm**
+    và biến `-1,25%` thành `1,25%`. Bắt được bởi test
+    `test_percent_vi_keeps_sign`.
     """
     number = _to_decimal(value)
     if number is None:
         return empty_dash()
-    sign = "+" if number > 0 else ""
+    sign = "+" if number > 0 else ("-" if number < 0 else "")
     body = f"{decimal_vi(abs(number), decimals)}"
     return format_html("{}{}%", sign, body)
 

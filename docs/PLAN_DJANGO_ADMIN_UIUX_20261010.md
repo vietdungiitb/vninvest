@@ -14,7 +14,7 @@
 | # | Phát hiện | Bằng chứng (lệnh tái tạo) | Mức |
 |---|---|---|---|
 | **F1** | **`/admin/advertising` của Django bị nginx nuot** | `packages/web/docker/nginx.conf:140` là `location ^~ /admin/advertising` — prefix ⇒ khớp cả `/admin/advertising/adcampaign/` | **blocker** |
-| **F2** | **78/112 model (70%) không quản trị được** | đếm bằng script §2.1 | **major** |
+| **F2** | **73/107 model (68%) không quản trị được** | đếm bằng script §2.1 (107 model, không phải 112) | **major** |
 | **F3** | **0 template admin, 0 CSS admin** | `Get-ChildItem -Recurse -Filter index.html` trong `*/templates/admin/` ⇒ 0 kết quả | **major** |
 | **F4** | **`docs/ADMIN_UI_IMPLEMENTATION_STEPS.md` STALE** | tham chiếu `backend/portfolio/` — không tồn tại (nguyên tắc 3 `AGENTS.md`) | minor |
 
@@ -48,19 +48,25 @@
 
 ### 2.1 Bảng coverage model ↔ admin
 
-Lệnh tái tạo (PowerShell, chạy từ repo root):
+**Đã sửa số liệu sau khi đo lại (2026-10-10).** Bản đầu đếm `class X(` bằng regex
+thô nên nuốt cả **enum** — `support` có 9 class nhưng chỉ **5** là model thật
+(4 class kia là `models.TextChoices`, xem `support/admin.py` module docstring).
+Tổng thật là **107**, không phải 112. Đây chính là `L-G04`: đếm bằng script khớp
+**điều kiện** (`models.Model`), không đếm bằng regex thô.
+
+Lệnh tái tạo (chạy từ repo root, `BASE` = commit cần đo):
 
 ```powershell
-$apps = @("identity_access","market_serving","signal_intelligence","commercial",
+$base = "2ea2948b8c3484a9ae1358b93499b12d29a8417d"
+$APPS = @("identity_access","market_serving","signal_intelligence","commercial",
           "tenant_lifecycle","ops_audit","data_ingest","advisory","user_workspace",
           "market_data","service_ops","support","advertising","ai_agents","ai_analytics")
-foreach ($a in $apps) {
-  $m = (Select-String -Path "packages/core/backend/src/$a/models.py" -Encoding utf8 `
-        -Pattern '^class\s+(\w+)\(').Count
-  $r = if (Test-Path "packages/core/backend/src/$a/admin.py") {
-        (Select-String -Path "packages/core/backend/src/$a/admin.py" -Encoding utf8 `
-         -Pattern '@admin\.register\(').Count } else { 0 }
-  "{0,-20} models={1,-3} admin={2,-3} thiếu={3}" -f $a,$m,$r,($m-$r)
+foreach ($a in $APPS) {
+  $txt = (git show "$base`:packages/core/backend/src/$a/models.py") -join "`n"
+  $real = ([regex]::Matches($txt, "(?m)^class\s+\w+\([^)]*models\.Model[^)]*\)")).Count
+  $ap   = (git show "$base`:packages/core/backend/src/$a/admin.py") -join "`n"
+  $r    = ([regex]::Matches($ap, "@admin\.register\(")).Count
+  "{0,-22} models={1,-4} admin={2,-4} thieu={3}" -f $a, $real, $r, ($real - $r)
 }
 ```
 
@@ -74,16 +80,18 @@ foreach ($a in $apps) {
 | ops_audit | 3 | 2 | 1 |
 | data_ingest | 2 | 0 | **2** |
 | advisory | 6 | 4 | 2 |
-| user_workspace | 20 | 4 | 16 |
+| user_workspace | 19 | 4 | 15 |
 | market_data | 8 | 3 | 5 |
 | service_ops | 15 | 0 | **15** |
-| support | 9 | 0 | **9** |
+| support | **5** (4 class kia là `TextChoices`) | 0 | **5** |
 | advertising | 5 | 4 | 1 |
 | ai_agents | 1 | 0 | **1** |
 | ai_analytics | 2 | 0 | **2** |
-| **TỔNG** | **112** | **34** | **78** |
+| **TỔNG** | **107** | **34** | **73 (68%)** |
 
-> 5 app có `admin.py = 0` nhưng có model thật và **quan trọng vận hành**: `service_ops` (ScrapeMatrix, BackfillExecutionRun, ConfigChangeAudit, ServiceHealth), `support` (SupportTicket, TicketMessage, TicketAttachment).
+> 5 app có `admin.py = 0` nhưng có model thật và **quan trọng vận hành**:
+> `service_ops` (15: ScrapeMatrix, BackfillExecutionRun, ConfigChangeAudit, ServiceHealth),
+> `support` (5: SupportTicket, TicketMessage, TicketAttachment).
 
 ### 2.2 Kiểm kê giao diện
 
