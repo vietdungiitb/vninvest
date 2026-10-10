@@ -94,45 +94,17 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      const lane = sp.get("lane");
-      if (lane === "main" || lane === "ai") filters.setLane(lane);
-      const symbol = (sp.get("symbol") || "").trim().toUpperCase();
-      if (symbol) {
-        filters.setSymbolDraft(symbol);
-        filters.setAppliedSymbol(symbol);
-      }
-      const sev = (sp.get("severity") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-      for (const s of sev) filters.toggleSeverity(s);
-      const fam = (sp.get("family") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-      for (const f of fam) filters.toggleFamily(f);
-      const tf = sp.get("timeframe");
-      if (tf === "5m" || tf === "15m" || tf === "1h" || tf === "session" || tf === "5d") filters.setTimeframe(tf);
-      const sd = sp.get("session_date");
-      if (sd && /^\d{4}-\d{2}-\d{2}$/.test(sd)) filters.setSessionDate(sd);
-    } catch {
-      // ignore malformed share URLs
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams();
-      if (filters.lane) sp.set("lane", filters.lane);
-      if (filters.appliedSymbol) sp.set("symbol", filters.appliedSymbol);
-      if (filters.severityFilter.length) sp.set("severity", filters.severityFilter.join(","));
-      if (filters.familyFilter.length) sp.set("family", filters.familyFilter.join(","));
-      if (filters.timeframe) sp.set("timeframe", filters.timeframe);
-      if (filters.sessionDate) sp.set("session_date", filters.sessionDate);
-      const qs = sp.toString();
-      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
-    } catch {
-      // ignore history errors (non-browser env)
-    }
-  }, [filters.lane, filters.appliedSymbol, filters.severityFilter, filters.familyFilter, filters.timeframe, filters.sessionDate]);
+  // WAVE 11 / NAV-1 — XOÁ 2 effect duoi day. Chúng la **chu so huu URL thu hai**:
+  //   effect mount  doc `window.location.search` roi day vao hook;
+  //   effect ghi    dung `URLSearchParams` moi + `window.history.replaceState`.
+  // `replaceState` **bypass React Router** ⇒ `useSearchParams` (ma `useUrlState`
+  // dung de doc) KHONG bao gio thay thay doi cua chinh no ⇒ vong lap khi hook va
+  // effect tranh nhau. No cung **xoa sach** moi tham so khong nam trong danh sach
+  // cua no.
+  // Bay gio URL do `useAlertCenterFilters` so huu mot minh (`useUrlState`).
+  // Cac vong `for` goi `toggleSeverity`/`toggleFamily` o effect mount cung bien
+  // mat luon: 2 lan `setParams` trong mot tick KHONG compose
+  // (`useUrlState.ts:161-165`, do lai 2026-10-10) ⇒ chi giu lai gia tri cuoi.
 
   const {
     error, payload, summary, symbolStats, refetch,
