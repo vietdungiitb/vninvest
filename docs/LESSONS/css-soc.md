@@ -2,9 +2,6 @@
 
 > Tach tu `frontend.md` (2026-10-10) de **C1**: 1 file <= 120 dong.
 > `tags: [css, soc, tokens, a11y, focus, color, shorthand, scss]`
-> ⚠ **Van ban cu trong file nay CON BI HO** (ky tu bi nuot: `transition` -> `ransition`).
-> Do lenh `Set-Content`/`.Replace` tren Windows. Chua sua de giữ diff doc duoc.
-> Xem muc §1.6 cua `docs/LESSONS/INDEX.md`.
 
 ## L-F03: KHÔNG thêm token/class vào soc.module.css
 
@@ -19,17 +16,17 @@
   - [ ] Đã grep **toàn repo** (`.css`, `.module.css`, config, i18n) để không bỏ sót chỗ đang dùng class cũ?
 - **Proof:** `AGENTS.md` Constraints - "⚠ **KHÔNG dùng `soc.module.css`** - file đó chỉ là barrel 3 dòng re-export, **0 token, 0 class** (`packages/web/src/components/soc/soc.module.css:1-3`). Thêm token/class vào đó là chỉ dẫn không thi hành được."
 
-## L-F05: Script viet lai khai bao CSS shorthand se LAM MAT duration/asing
+## L-F05: Script viet lai khai bao CSS shorthand se LAM MAT duration/easing
 
-- **Nguyen nhan:** 	ransition: all 0.18s cubic-bezier(0.16,1,0.3,1) duoc viet
-  lai thanh 	ransition: color, background; — bo mat phan thoi gian.
-- **Hau qua that:** CSS mac dinh 	ransition-duration: 0s ⇒ **49 rule hover
+- **Nguyen nhan:** transition: all 0.18s cubic-bezier(0.16,1,0.3,1) duoc viet
+  lai thanh transition: color, background; — bo mat phan thoi gian.
+- **Hau qua that:** CSS mac dinh transition-duration: 0s ⇒ **49 rule hover
   CHOP TUC THAY**, mat toan bo chuyen dong ma van "trong" ve mat.
-- **Khi nao gap:** bat ky script nao sua 	ransition / nimation / ox-shadow /
-  ont... dang gop nhieu thuoc tinh. Rat pho bien khi "don dep CSS".
+- **Khi nao gap:** bat ky script nao sua transition / animation / box-shadow /
+  font... dang gop nhieu thuoc tinh. Rat pho bien khi "don dep CSS".
 - **QUY TAC:** script chi duoc lay **danh sach thuoc tinh**, **giu nguyen
   <time> <easing>**. Sau khi chay, **dem lai cac khai bao thieu thoi gian**:
-  `ash
+  `bash
   node -e "/* dem moi khai bao transition trong src/**/*.css; thieu thoi gian => FAIL */"
   `
   Neu nhieu rule goc co **gia tri khac nhau** (0.15s / 0.18s / 0.3s), phai doc
@@ -37,25 +34,25 @@
   cam giac UI so voi thiet bi da chon truoc day.
 - **CHECKLIST:**
   - [ ] Script co giu phan thoi gian/easing khong?
-  - [ ] Da dem lai 	ransition/nimation **thieu thoi gian** = 0?
+  - [ ] Da dem lai transition/animation **thieu thoi gian** = 0?
   - [ ] Da so sanh gia tri goc voi dev (chay git show dev:<file>)?
-- **Proof:** audit Stage 5 dem truc tiep "	ransition: all da duoc bo het, nhung
+- **Proof:** audit Stage 5 dem truc tiep "transition: all da duoc bo het, nhung
   **49 khai bao khong con so thoi gian nao**". Chi co 
 one !important la duoc.
 
 ## L-F06: Quet bang cua so +-N dong tao FALSE POSITIVE - phai kiem chung tay truoc khi "sua"
 
-- **Nguyen nhan:** quet tinh khop outline-none roi kiem tra ocus: **trong
+- **Nguyen nhan:** quet tinh khop outline-none roi kiem tra focus: **trong
   +-8 dong**. Rule .input:focus nam sau 20 dong ⇒ bo qua ⇒ **bao loi o khi
   file da co focus ring that**.
 - **Hau qua that:** A11Y-8 bao 6 loi; kiem chung tay: **3/6 file CSS da co**
-  :focus + ox-shadow ring (iSettings.module.css:455,
+  :focus + box-shadow ring (aiSettings.module.css:455,
   VninvestInput.module.css:60, UserSettingsPage.css:106).
   Vong lap thu 2 (khop theo ten don le cua selector) van sai vi selector nhieu
   phan tu (.dnse-panel__field input).
 - **Khi nao gap:** moi quet "rule X co ban khong?" bang heuristic cua so dong.
 - **QUY TAC:** heuristic theo **cua so dong** chi dung de **nhiều candidate**,
-  khong phai ket luan. Truoc khi sua: **(a)** doc ile:line that cua tung
+  khong phai ket luan. Truoc khi sua: **(a)** doc file:line that cua tung
   candidate, **(b)** neu chi sua gate chu khong sua code, sua matcher de kiem
   o **muc file**. Ghi ro rule nao **co nguyang false-positive** thay vi "het loi".
 - **CHECKLIST:**
