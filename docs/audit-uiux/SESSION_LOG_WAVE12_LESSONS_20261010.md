@@ -103,13 +103,63 @@ Cả hai lần đều **bị bắt bởi `git diff --numstat`** — tức là b�
 ⚠ **Thu phạm mới: KHÔNG CHỈ PowerShell.** Câu hỏi "có dùng lệnh Windows không?" **không đủ**;
 phải hỏi **"file này LƯU dạng gì?"** bằng `git ls-files --eol` / `git cat-file blob`.
 
-## 6. Còn treo
+## 6. ✅ Còn treo — đã đóng trong wave 13 (PR #97 + #98)
 
-1. **§1.6 — văn bản còn hỏng trong `css-soc.md`.** `transition` → `ransition` (7 lần),
-   `font` → `<TAB>ont`. Do `Set-Content`/`.Replace`. **Cố ý chưa sửa** để giữ diff đọc được;
-   sửa bằng script Node, kiểm `--numstat` sau khi sửa.
-2. **Chuẩn hoá lesson ID** `L-001` → `L-0X1`. **Chỉ khi đó** mới thu hẹp regex — thu hẹp
-   trước sẽ âm thầm bỏ sót 8 lesson.
-3. **Chưa nối skill vào `AGENTS.md`** như mục bắt buộc (vnbroker có ở `CLAUDE.md:4-13`).
-4. `pre-push-gate` **chưa chạy trọn** trong phiên này (mất ~10 phút) — đã chứng minh riêng
-   phần `lessons` bằng harness. 16 gate kia đã xanh ở wave 11.
+| # | Việc | Kết quả |
+|---|---|---|
+| 1 | ~~Văn bản hỏng trong `css-soc.md`~~ | **ĐÃ SỬA** — xem mục 7 |
+| 2 | ~~Chuẩn hoá lesson ID `L-001`→`L-0X1`~~ | **CỐ Ý KHÔNG LÀM** — xem mục 8 |
+| 3 | ~~Nối skill vào `AGENTS.md`~~ | **KHÔNG SỬA ĐƯỢC** — xem mục 9 |
+| 4 | ~~`pre-push-gate` chưa chạy trọn~~ | **ĐÃ CHẠY**: `18 PASS / 0 SKIP / 0 FAIL` |
+
+⚠ Riêng mục 4: sau khi merge, các push tiếp theo đi qua **hook thật** mà **không cần**
+`--no-verify` — đó là bằng chứng mạnh hơn harness: wiring hoạt động trên đúng đường
+chạy thật.
+
+## 7. Văn bản hỏng — quy tắc đã chứng minh trên **9/9** vị trí
+
+Ký tự điều khiển trong `css-soc.md` / `tooling-traps.md`. Khi ghi file văn bản, **chữ cái
+dùng làm ký tự escape bị ăn**:
+
+| `\a` | `\b` | `\t` | `\f` | `\e` |
+|---|---|---|---|---|
+| U+0007 → mất `a` | U+0008 → mất `b` | U+0009 → mất `t` | U+000C → mất `f` | U+001B → mất `e` |
+
+⇒ **1 ký tự điều khiển = đúng 1 chữ cái đã mất.**
+
+Kiểm chứng **trước** khi sửa: `f75ef6a86` là **commit thật** (`git cat-file -t` còn
+`75ef6a86` thì không tồn tại) · `aiSettings.module.css` **tồn tại** trong `packages/web/src`.
+
+⚠ **Không dùng regex đại trên `\`**: nó phá `\\d+` trong `INDEX.md` và `"\n"` trong
+`tooling-traps.md` — cả hai là nội dung **đúng**. Dry-run bắt được **trước khi** sửa.
+
+## 8. Vì sao KHÔNG chuẩn hoá lesson ID
+
+`L-001..L-008` được **5 tài liệu có ngày** tham chiếu nguyên văn
+(`KE_HOACH_SO_TAY_...:60` · `KE_HOACH_XU_LY_TON_DONG_CLAIMS_...:62-64` ·
+`PLAN_QUYET_DINH_4_VIEC_...:270` · `AUDIT_CLAIMS_HANDOFFS_...:233`).
+Sửa ID trong đó là **bịa lại lịch sử** ⇒ giữ regex khoan dung + ghi lý do ở `INDEX.md` §1.4.
+
+## 9. Vì sao KHÔNG sửa `AGENTS.md`
+
+`.githooks/pre-commit:21` chặn **vô điều kiện**, không có ngoại lệ coordinator (khác với
+mô tả trong protocol). Tự thêm ngoại lệ cho chính mình là anti-pattern *"gate tự trúc"*
+(lesson 12 của `agent-lessons`). Đã dùng `docs/AGENT_PROTOCOL.md` — file mà skill
+`multi-agent-workflow` §0 xác định **thắng** `AGENTS.md` khi xung đột.
+
+> **Cần Owner**: thêm 1 dòng trỏ `project-lessons` vào `AGENTS.md` nếu muốn ràng buộc từ đó.
+
+## 10. ⚠ Tôi phạm L-T01 **lần thứ 3** — và lần này làm **tệ hơn**
+
+| Lần | Nội dung | Kết quả |
+|---|---|---|
+| 1 | Append lesson theo CRLF | `137/115` |
+| 2 | Edit tool đổi LF→CRLF (`pre-push-gate.mjs`) | `392/378` |
+| 3 | Edit tool đổi LF→CRLF (`AGENT_PROTOCOL.md`) | `432/405` |
+| **4** | **Script tách `frontend.md` đọc ĐĨA (mixed) rồi ghi lại** | **`i/lf` → `i/mixed`** |
+
+Lần 4 đáng chú ý nhất: nó **không** phá diff ngay, `git status` sạch, `git diff` im lặng —
+mà **lưu hỏng vào git**. Chỉ `git ls-files --eol` mới thấy. Đã chuẩn hoá về LF (PR #98).
+
+⇒ Bài học thật: khi script **di chuyển** nội dung giữa các file, phải đọc từ **blob**
+(`git cat-file`) chứ không đọc từ đĩa — đĩa có thể khác blob.
