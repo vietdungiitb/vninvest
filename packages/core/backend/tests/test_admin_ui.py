@@ -324,6 +324,46 @@ class ModelAdminContractTests(TestCase):
 # S2 + S4 — dashboard và menu
 # ---------------------------------------------------------------------------
 
+class KpiPermissionTests(TestCase):
+    """Thẻ KPI không được trỏ tới bảng người dùng KHÔNG có quyền.
+
+    ⚠ Đây là lỗi **đã xảy ra và đã sửa**: `kpis()` ban đầu luôn gắn link
+    changelist. Đo 2026-10-10 với staff chỉ có `identity_access.view_dailyprice`:
+    cả 4 thẻ đều có link, trong đó `/admin/identity_access/coretenant/`,
+    `/admin/auth/user/`, `/admin/user_workspace/transaction/` đều trả **403**.
+    Sidebar đã lọc đúng từ trước — chỉ dashboard sai.
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import Group, Permission
+
+        self.limited = User.objects.create_user(
+            "kpi_limited", "kpi@example.com", "x", is_staff=True
+        )
+        group, _ = Group.objects.get_or_create(name="VN_KPI_LIMITED")
+        group.permissions.set(Permission.objects.filter(codename="view_dailyprice"))
+        self.limited.groups.add(group)
+        self.client.force_login(self.limited)
+
+    def test_kpi_links_only_for_permitted_models(self):
+        self.assertFalse(self.limited.has_perm("identity_access.view_coretenant"))
+        html = self.client.get(reverse("admin:index")).content.decode("utf-8")
+        self.assertNotIn("/admin/identity_access/coretenant/", html)
+        self.assertNotIn("/admin/auth/user/", html)
+        self.assertNotIn("/admin/user_workspace/transaction/", html)
+        self.assertNotIn("/admin/commercial/quotarecord/", html)
+
+    def test_permitted_model_still_linked_in_sidebar(self):
+        html = self.client.get(reverse("admin:index")).content.decode("utf-8")
+        self.assertIn("/admin/market_data/dailyprice/", html)
+
+    def test_kpi_values_still_render_without_links(self):
+        """Bỏ link KHÔNG được bỏ luôn số liệu — thẻ vẫn phải hiện giá trị."""
+        html = self.client.get(reverse("admin:index")).content.decode("utf-8")
+        self.assertIn("vn-kpi__value", html)
+        self.assertIn("Tổ chức", html)
+
+
 class DashboardTests(TestCase):
     """S2-AC1/AC2/AC4: trang chủ vận hành."""
 

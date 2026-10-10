@@ -4,11 +4,14 @@
 {% comment %}
   Trang chủ vận hành.
 
-  KHÔNG dùng `admin.site.each_context()` (mà `index.html` gốc của Django dùng):
-  hàm đó gọi `get_app_list()` ⇒ **một truy vấn cho mỗi ModelAdmin**. Với 41
-  ModelAdmin đang đăng ký, đó là 41 truy vấn chỉ để dựng menu.
-  Ở đây menu lấy từ `vn_groups` (context processor, đọc registry trong bộ nhớ)
-  và số liệu lấy từ `AdminDashboard` (mỗi số liệu đúng 1 truy vấn tổng hợp).
+  KHÔNG dùng `admin.site.get_app_list()` (mà `index.html` gốc của Django dùng).
+  ⚠ ĐÃ ĐO, và con số từng viết sai: **cả hai đều 0 truy vấn DB**. Đo thật
+  2026-10-10 (superuser mới, cache quyền rỗng):
+    admin.site.get_app_list(req)  → queries = 0, has_perm × 194
+    build_groups(req)             → queries = 0, has_perm × 130
+  Khác biệt thật là **64 lần kiểm tra quyền** (−33%), không phải truy vấn.
+  Bản gốc ghi "một truy vấn cho mỗi ModelAdmin" là **suy đoán chưa kiểm** —
+  đúng loại lỗi mà `docs/AGENT_PROTOCOL.md` cấm. Số ở trên kèm lệnh đo.
   {% endcomment %}
 
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
@@ -83,6 +86,10 @@
           <h3 id="vn-kpi-{{ kpi.key }}" class="vn-kpi__label">{{ kpi.label }}</h3>
           {% if kpi.ok %}
             <p class="vn-kpi__value">
+              {% comment %}
+                Chỉ gắn link khi người dùng CÓ quyền xem bảng đó — `kpis()` đã
+                lọc. Không lọc thì thẻ trỏ tới trang 403 (đo được 2026-10-10).
+              {% endcomment %}
               {% if kpi.url %}<a href="{{ kpi.url }}">{{ kpi.value|default:0 }}</a>
               {% else %}{{ kpi.value|default:0 }}{% endif %}
             </p>

@@ -222,7 +222,7 @@ Lệnh chính xác như plan sẽ chạy, và exit code **tại thời điểm l
 | **S2-AC2** | Given DB rỗng, When render dashboard, Then 4 thẻ hiện `0`, **không** `None`, **không** `VariableDoesNotExist` |
 | **S2-AC3** | Given dữ liệu mới nhất của `DailyPrice` > 24h, When render, Then xuất hiện cảnh báo "dữ liệu giá đã cũ" kèm mốc thời gian |
 | **S2-AC4** | Given bất kỳ truy vấn dashboard nào lỗi, When render, Then dashboard **vẫn render** và thẻ đó hiện `—` kèm ghi chú, **không** trả 500 |
-| **S2-AC5** | Given truy vấn dashboard, When đo thời gian, Then < 800ms với 10k tenant + 100k transaction |
+| **S2-AC5** | Given dữ liệu lớn, When đo thời gian dựng dashboard, Then < 800ms. **CHƯA CHẠY** với 10k tenant + 100k transaction (cần dữ liệu lớn thật) — xem docs/TEST_REPORT_DJANGO_ADMIN_UIUX_20261010.md |
 
 **File:** `admin_ui/dashboard.py`, `templates/admin/index.html`, `templates/admin/includes/*.html`
 **Rollback:** `git revert <commit S2>`; `admin/index.html` xoá ⇒ Django rơi về index mặc định.

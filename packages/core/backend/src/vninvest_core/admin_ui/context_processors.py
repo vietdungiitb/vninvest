@@ -23,12 +23,17 @@ thì mất tiêu đề tiếng Việt trên **mọi** trang changelist.
 Cách đã chọn: để `_meta` nguyên vẹn, đổi tên ở **tầng trình bày**. Không có
 trạng thái toàn cục nào bị ghi, nên không có "nguồn sự thật thứ hai".
 
-Chi phí
--------
-`admin.site._registry` là dict **trong bộ nhớ** — dựng danh sách nhóm không tốn
-truy vấn DB. Ngược lại `AdminSite.each_context()` (mà `index.html` của Django
-dùng) gọi `get_app_list()` ⇒ **một truy vấn cho mỗi ModelAdmin**. Với ~41
-ModelAdmin đang đăng ký, đó là 41 truy vấn chỉ để dựng menu.
+Chi phí — đo thật 2026-10-10 (superuser mới, cache quyền rỗng)
+----------------------------------------------------------
+::
+
+    admin.site.get_app_list(req)  →  queries = 0, has_perm × 194
+    build_groups(req)             →  queries = 0, has_perm × 130
+
+⚠ Bản docstring gốc của module này ghi "`get_app_list()` tốn **một truy vấn cho
+mỗi ModelAdmin**" — đó là **suy đoán chưa kiểm**, và **sai**: cả hai đều 0
+truy vấn. Cái thật sự giảm là **64 lần kiểm tra quyền** (−33%). Giữ con số đã
+đo, kèm lệnh, thay vì con số nghe hợp lý.
 """
 
 from __future__ import annotations
@@ -235,5 +240,5 @@ def admin_ui(request) -> dict:
     if _is_admin_index(request):
         from .dashboard import dashboard_context
 
-        context.update(dashboard_context())
+        context.update(dashboard_context(request))
     return context
