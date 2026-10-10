@@ -298,6 +298,20 @@ if (existsSync(maGate)) {
   else ok("check-multi-agent", (r.out.match(/PASS.*/) || ["PASS"])[0]);
 } else skip("check-multi-agent", "khong co packages/web/scripts/check-multi-agent.mjs");
 
+// ------------------------------------------------------------- lessons gate
+// ⚠ VÌ SAO GATE NÀY TỒN TẠI (2026-10-10): `docs/LESSONS/` đã có 31 lesson từ lâu
+// nhưng **không có gì kiểm**. Ba quy tắc C1/C2/C3 chỉ nằm trong văn bản — và văn bản
+// không chặn được gì: `frontend.md` dài 128 dòng (vượt C1) và `INDEX.md` khai
+// 17 lesson khi thực tế 31, **không ai bị chặn**. Đây là bài học lớn nhất của
+// skill `agent-lessons`: "Procedure beats prose" — chỉ một lệnh exit khác 0 mới
+// bảo vệ được quy tắc.
+const lessonsGate = join(REPO, "scripts", "check-lessons.mjs");
+if (existsSync(lessonsGate)) {
+  const r = run(process.execPath, [lessonsGate]);
+  if (r.code !== 0) bad("lessons", r.out);
+  else ok("lessons", (r.out.match(/check-lessons:.*/) || ["PASS"])[0].trim());
+} else skip("lessons", "khong co scripts/check-lessons.mjs");
+
 // ------------------------------------------------- envelope contract gate
 // Resolve a Python. The checker is a .py script, so unlike every other gate in
 // this file it is not node.

@@ -113,3 +113,24 @@
   - [ ] Co nhieu route dung chung 1 component khong? (khi do chi 1 lan sua)
 - **Proof:** muc 4 cua `docs/audit-uiux/HANDOFF_UIUX_REMAINING_20261008.md`.
 
+## L-G08: Gate DO o worktree nhung XANH o main tree - phai thi nghiem DOI CHUNG, dung doan
+
+- **Nguyen nhan:** Gate doc/so sanh duong dan **tuong doi** hoac phu thuoc
+  `core.autocrlf`/thu muc lam viec, nen ket qua **khac nhau giua main tree va worktree**.
+- **Hau qua that:** `pre-push-gate` FAIL `global-config-drift` khi push tu worktree.
+  Do la chi gate do trong 17 gate. Bang chung kiem chung: lenh do **PASS tren `dev` sach**
+  (exit 0) va **FAIL y het tren worktree khac khong do toi file nao**. Co tie su: PR #46,
+  PR #47 da phai push `--no-verify` vi ly do giong het.
+- **Khi nao gap:** `tags: [gate, worktree, drift, exit-code, no-verify, billing, ci]`
+- **QUY TAC:** **KHONG** doan gate do hong vi thay doi cua minh. Thi **thu nghiem doi
+  chung**: chay cung lenh tren (a) `dev` sach o main tree, (b) mot worktree **khong sua
+  gi**. Cung FAIL ⇒ loi moi truong, khong phai loi code ban. Ghi ly do vao **commit body**
+  khi `--no-verify`. Tuong tu: CI fail vi **billing** thi chay lai cac buoc cua workflow
+  **bang tay** thay vi merge tren gate chua kiem.
+- **CHECKLIST:**
+  - [ ] Gate do co doc duong dan tuong doi / `core.autocrlf` khong?
+  - [ ] Da chay tren `dev` sach de doi chung chua?
+  - [ ] Da chay tren worktree khong sua gi de loi moi truong chua?
+  - [ ] Ly do `--no-verify` da ghi trong **commit body** chua?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 264` §3 (drift) va
+  `docs/TEST_REPORT_UIUX_WAVE11.md` §5 (billing).

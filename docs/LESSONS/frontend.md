@@ -29,117 +29,40 @@
   - [ ] Widget lazy-load đã tách đúng thành async chunk?
 - **Proof:** `AGENTS.md` mục AI Advisory §B3 - "**Nguyên nhân gốc**: `__vitePreload` của Vite bị Rollup đặt nhầm vào chunk `dashboard`, mà app shell lại dùng nó ⇒ **mọi route** đều tải chunk dashboard. Đo bằng `packages/web/scripts/measure-route-graph.mjs` (BFS cạnh import **tĩnh**)."
 
-## L-F03: KHÔNG thêm token/class vào soc.module.css
+## L-F09: 2 `setSearchParams` trong MOT tick KHONG compose - setter phai ghi TOAN BO state
 
-- **Nguyên nhân:** Thêm token hoặc class mới vào `soc.module.css` theo thói quen.
-- **Hậu quả thật:** `soc.module.css` chỉ là **barrel 3 dòng re-export**, **0 token, 0 class** ⇒ chỉ dẫn không thi hành được, token/class mới không tồn tại thật.
-- **Khi nào gặp:** `tags: [fe, frontend, css, soc, tokens, soc-components]`
-- **QUY TẮC:** "Token → `soc.tokens.css`. Class → `soc.components.css`. **KHÔNG** dùng `soc.module.css`."
+- **Nguyên nhân:** `setSearchParams(fn)` nhận updater đọc `prev`. Gọi **hai** lần
+  trong cùng một tick thì lần hai đọc `prev` **cũ** và ghi đè kết quả lần một.
+- **Hậu quả thật:** Đo 2026-10-10 trên `react-router-dom@6.30.3`: `setParams(a=1)`
+  rồi `setParams(b=2)` ⇒ kết quả `?b=2`, `a` **mất sạch**. Handler gọi 3 setter
+  liên tiếp (`setLane` + `resetStatsPage` + `setSessionDate`) ⇒ **2/3 thay đổi
+  biến mất**, filter nhảy về mặc định mà không có lỗi nào hiện ra.
+- **Khi nào gặp:** `tags: [react, hook, url, searchParams, router, filter, useCallback]`
+- **QUY TẮC:** Khi một handler gọi **nhiều** setter cùng lúc, mỗi setter phải ghi
+  **TOÀN BỘ** trạng thái (optimistic `ref` cập nhật ngay trong setter), để lần gọi
+  sau mang theo thay đổi của lần trước. **Đo lại bằng probe** thay vì tin comment.
 - **CHECKLIST:**
-  - [ ] Token mới thêm vào `soc.tokens.css` (biến), không phải `soc.module.css`?
-  - [ ] Class mới thêm vào `soc.components.css`, không phải `soc.module.css`?
-  - [ ] Đã xác nhận `soc.module.css` chỉ là barrel re-export (3 dòng, 0 token/class)?
-  - [ ] Đã grep **toàn repo** (`.css`, `.module.css`, config, i18n) để không bỏ sót chỗ đang dùng class cũ?
-- **Proof:** `AGENTS.md` Constraints - "⚠ **KHÔNG dùng `soc.module.css`** - file đó chỉ là barrel 3 dòng re-export, **0 token, 0 class** (`packages/web/src/components/soc/soc.module.css:1-3`). Thêm token/class vào đó là chỉ dẫn không thi hành được."
-## L-F04: KHONG dung Get-Content | Set-Content de sua file nhieu dong - no GHEP file thanh 1 dong
+  - [ ] Handler nào gọi >1 setter URL trong 1 tick không? Đã gộp thành 1 patch chưa?
+  - [ ] Ràng buộc "không compose" đã **tự probe** trên đúng version `react-router-dom` chưa?
+  - [ ] `replaceKeys` còn tác dụng khi patch ghi full-state không? (nếu không → cần override)
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 264` §2 - probe in ra `"b=2"`.
 
-- **Nguyên nhân:** $lines = Get-Content f tra ve **mang chuoi**, nhung
-  $lines[i] = ... phai la **mang dong**. Noi Set-Content -Value  -NoNewline
-  se ghi cac phan tu lien tiep khong phan biet ⇒ **mat toan bo newline**.
-- **Hậu quả thật:** soc.components.css **3.482 dong → 1 dong**. Commit ghi
-  "6 files changed, 175 insertions(+), 3944 deletions(-)".
-- **Khi nào gặp:** moi lan can sua hang chuc dong mot file van ban lon bang vong lap
-  PowerShell. Rat pho bien tren Windows.
-- **QUY TẮC:** Dung **Edit tool** cho sua tung cho, hoac **script Node**
-  voi lines.join("\n"). KHONG bao gio dung Get-Content | Set-Content
-  de sua file nhieu dong.
+## L-F10: Truyen OBJECT LITERAL cho option cua hook → memo vo hinh → vong lap render vo han
+
+- **Nguyên nhân:** Truyền option/constant dạng object literal **ngay trong lời gọi
+  hook**. Identity đổi mỗi render ⇒ `useCallback`/`useMemo` phụ thuộc nó **không
+  bao giờ ổn định** ⇒ object/mảng mới mỗi render ⇒ effect có dep là mảng đó chạy
+  vô hạn.
+- **Hậu quả thật:** Truyền `keyMap` literal cho `useUrlState` ⇒ `severityFilter`
+  là **mảng mới** mỗi render ⇒ effect `[filters.severityFilter]` chạy vô hạn ⇒
+  **test suite treo >600s**, không có lỗi nào in ra để đoán.
+- **Khi nào gặp:** `tags: [react, hook, memo, identity, literal, options, infinite]`
+- **QUY TẮC:** `spec` / `defaults` / `options` / `keyMap` của hook: **khai ở CẤP
+  MODULE**, kèm comment giải thích. Không bao giờ tạo object mới trong render.
 - **CHECKLIST:**
-  - [ ] git diff --stat co deletions **bat thuong** (vuot so dong sua) khong?
-  - [ ] So dong cua file **co giam so voi HEAD** khong? (Measure-Object -Line)
-  - [ ] Da doc lai file bang Read tool (doc dung encoding) truoc khi commit?
-- **Proof:** commit 75ef6a86 — khoi phuc bang git show HEAD~1:<file>,
-  chay lai toan bo fix (ke ca phan da sua trong commit hong).
-
-## L-F05: Script viet lai khai bao CSS shorthand se LAM MAT duration/asing
-
-- **Nguyen nhan:** 	ransition: all 0.18s cubic-bezier(0.16,1,0.3,1) duoc viet
-  lai thanh 	ransition: color, background; — bo mat phan thoi gian.
-- **Hau qua that:** CSS mac dinh 	ransition-duration: 0s ⇒ **49 rule hover
-  CHOP TUC THAY**, mat toan bo chuyen dong ma van "trong" ve mat.
-- **Khi nao gap:** bat ky script nao sua 	ransition / nimation / ox-shadow /
-  ont... dang gop nhieu thuoc tinh. Rat pho bien khi "don dep CSS".
-- **QUY TAC:** script chi duoc lay **danh sach thuoc tinh**, **giu nguyen
-  <time> <easing>**. Sau khi chay, **dem lai cac khai bao thieu thoi gian**:
-  `ash
-  node -e "/* dem moi khai bao transition trong src/**/*.css; thieu thoi gian => FAIL */"
-  `
-  Neu nhieu rule goc co **gia tri khac nhau** (0.15s / 0.18s / 0.3s), phai doc
-  ban dev va **khoi phuc dung gia tri goc** — gan het mot gia tri la doi
-  cam giac UI so voi thiet bi da chon truoc day.
-- **CHECKLIST:**
-  - [ ] Script co giu phan thoi gian/easing khong?
-  - [ ] Da dem lai 	ransition/nimation **thieu thoi gian** = 0?
-  - [ ] Da so sanh gia tri goc voi dev (chay git show dev:<file>)?
-- **Proof:** audit Stage 5 dem truc tiep "	ransition: all da duoc bo het, nhung
-  **49 khai bao khong con so thoi gian nao**". Chi co 
-one !important la duoc.
-
-## L-F06: Quet bang cua so +-N dong tao FALSE POSITIVE - phai kiem chung tay truoc khi "sua"
-
-- **Nguyen nhan:** quet tinh khop outline-none roi kiem tra ocus: **trong
-  +-8 dong**. Rule .input:focus nam sau 20 dong ⇒ bo qua ⇒ **bao loi o khi
-  file da co focus ring that**.
-- **Hau qua that:** A11Y-8 bao 6 loi; kiem chung tay: **3/6 file CSS da co**
-  :focus + ox-shadow ring (iSettings.module.css:455,
-  VninvestInput.module.css:60, UserSettingsPage.css:106).
-  Vong lap thu 2 (khop theo ten don le cua selector) van sai vi selector nhieu
-  phan tu (.dnse-panel__field input).
-- **Khi nao gap:** moi quet "rule X co ban khong?" bang heuristic cua so dong.
-- **QUY TAC:** heuristic theo **cua so dong** chi dung de **nhiều candidate**,
-  khong phai ket luan. Truoc khi sua: **(a)** doc ile:line that cua tung
-  candidate, **(b)** neu chi sua gate chu khong sua code, sua matcher de kiem
-  o **muc file**. Ghi ro rule nao **co nguyang false-positive** thay vi "het loi".
-- **CHECKLIST:**
-  - [ ] Da doc tay it nhat 3 candidate truoc khi sua?
-  - [ ] Co candidate nao la convention chuan (vd shadcn content panel khong
-    focusable) khong?
-  - [ ] Da ghi "co nguyang false positive" vao bao cao chua?
-- **Proof:** docs/audit-uiux/scripts/scan-ui-guidelines.mjs - ham A11Y-8.
-
-## L-F07: Doc $LASTEXITCODE SAU khi pipeline = doc sai nhat (lam gate PASS khi FAIL)
-
-- **Nguyen nhan:** $LASTEXITCODE lay cua **lenh cuoi cung** trong pipeline.
-  
-pm run lint | Select-String "..." ⇒ $LASTEXITCODE cua Select-String,
-  khong phai cua 
-pm.
-- **Hau qua that:** bao "lint exit 1" trong khi 
-pm run lint thuc te exit 0
-  (0 errors). Neu dao chieu, bao nham cho bao cao that.
-- **Khi nao gap:** moi khi can ca exit code **VA** muon hien thi output cung luc.
-- **QUY TAC:** tach 2 buoc:
-  `powershell
-   = npm run lint 2>&1;  = ;  | Select-Object -Last 3
-  `
-  Tuong tu: dung script Node de chay va doc status, khong dua vao pipeline.
-- **CHECKLIST:**
-  - [ ] Co can ca exit code khong? -> tach khoi pipeline.
-  - [ ] Bao cao nao co "exit" thi do bang lenh THAT chay, khong phai lenh doc output.
-
-## L-F08: MÀU TĂNG/GIẢM - thị trường Việt DUNG chuẩn Bloomberg (xanh = tăng, đỏ = giảm)
-
-- **Sai lầm:** tôi khẳng định "thi truong Viet dung chuan NGHICH (do = tang)".
-  **SAI.** Owner chot lai 2026-10-07: **Việt Nam dung GIONG Bloomberg —
-  xanh = tăng, đỏ = giảm.**
-- **Tai sao nham:** to hop "chuan Chau/A" (Trung Quoc, Nhat: do = tang) voi
-  "chuan phuong Tay" (Bloomberg, Wall Street) ma khong kiem chung.
-- **Hau qua:** neu suy ra nhanh, se doi nguoc mau cua ca he thong tai chinh.
-- **QUY TAC:** token hien tai **dung chuan Bloomberg, giu nguyen**:
-  --pf-gain (xanh) / --pf-loss (do).
-  Spec PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225 ghi
-  "Bloomberg green (up)" — **spec DUNG**, khong sua.
-  Khi tai chinh o mo phong toi thieu truong khac: **hỏi Owner**, tu do lai doc.
-- **CHECKLIST:**
-  - [ ] Khi sua mau tang/giam, da **hoi Owner** chua?
-  - [ ] Da doc spec chua (tai day spec la chuan Bloomberg)?
-- **Proof:** Owner chot 2026-10-07. Entry 250/251 cua ledger da sua lai.
+  - [ ] Mọi object/array truyền vào `useMemo`/`useCallback`/`useUrlState` đã ở
+        cấp module, hoặc đã `useMemo` hoá chứ?
+  - [ ] Effect có dep là **mảng/đối tượng** không? Array đó có identity ổn định không?
+  - [ ] Test có **timeout** không, để treo nhìn ra là treo chứ không phải chậm?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 264` §3 - lần chạy đầu
+  timeout 600s; sau khi đưa `keyMap` lên cấp module còn **15s**.
