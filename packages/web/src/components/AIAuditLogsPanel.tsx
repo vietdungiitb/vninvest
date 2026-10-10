@@ -1,10 +1,53 @@
-import { useState, useEffect, createElement, useCallback } from "react";
+import { useState, useEffect, createElement, useCallback, useRef } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec, type UrlStateOptions } from "../hooks/useUrlState";
 
 const e = createElement;
 
 const AUDIT_PAGE_SIZE = 10;
+
+type AuditUrlState = {
+  action: string; actor: string; dateFrom: string; dateTo: string; page: number;
+};
+
+/**
+ * Trang 1 la MAC DINH ⇒ `serialize` tra `undefined` cho 1 ⇒ `?page=1` KHONG duoc
+ * ghi ra URL (link copy ra khong dinh tham so thua).
+ *
+ * ⚠ `parse` cung phai tra `undefined` cho 1, khong tra 1 — cung nguyen tac voi
+ * `boolCodec` (`useUrlState.ts:80-90`): `parse` tra gia tri ≠ `undefined` thi
+ * hook dung gia tri do THAY cho `fallback`.
+ *
+ * Vì sao khong dung `intCodec` thang: `intCodec.serialize(1)` = `"1"` ⇒ bam
+ * "Xoa bo loc" se de lai `?page=1` trong khi filter da sach.
+ */
+const pageCodec: UrlStateCodec<number> = {
+  parse: (raw) => {
+    const n = intCodec.parse(raw);
+    return n === undefined || n < 1 ? undefined : n;
+  },
+  serialize: (v) => (v === 1 ? undefined : intCodec.serialize(v)),
+};
+
+// WAVE 10 / NAV-1 — `spec` + `defaults` khai o CAP MODULE de identity on dinh
+// giua cac lan render. Truoc day truyen object literal trong render lam
+// `useMemo([params, spec, defaults])` (useUrlState.ts:150) luon tinh lai.
+const AUDIT_URL_SPEC: { [K in keyof AuditUrlState]: UrlStateCodec<AuditUrlState[K]> } = {
+  action: stringCodec,
+  actor: stringCodec,
+  dateFrom: stringCodec,
+  dateTo: stringCodec,
+  page: pageCodec,
+};
+const AUDIT_URL_DEFAULTS: AuditUrlState = {
+  action: '', actor: '', dateFrom: '', dateTo: '', page: 1,
+};
+// ⚠ `options` cung phai o CAP MODULE. `useUrlState` memo hoa `setValue` theo
+// `replaceKeys` (`useUrlState.ts:187`) ⇒ object literal trong render tao mang
+// moi moi lan ⇒ `setValue` doi identity ⇒ moi `useCallback` booc no lai doi
+// identity ⇒ `useEffect([..., setPage])` chay LAI moi lan render ⇒ loop.
+const AUDIT_URL_OPTIONS: UrlStateOptions = { replaceKeys: ["actor"] };
 
 interface AuditLogEntry {
   id: number;
@@ -28,12 +71,24 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [filterAction, setFilterAction] = useState('');
-  const [filterActor, setFilterActor] = useState('');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
-
-  const [page, setPage] = useState(1);
+  // WAVE 10 / NAV-1: 4 bo loc + phan trang nam trong RAM nen gui link cho
+  // nguoi khac thi ho thay man hinh CHUA loc. `useUrlState` (patch) thay 5
+  // `useState` de MOT lan bam chi tao MOT history entry.
+  //
+  // Major 2: `actor` la O NHAP VAN BAN gan thang `onChange` (L~155) ⇒ `push`
+  // se tao 1 history entry cho MOI KY TU. Key do `replace`. Cac key con lai
+  // (page/action/dateFrom/dateTo) giu `push` de nut Back van quay lai duoc
+  // bo loc truoc do.
+  const [{ action, actor, dateFrom, dateTo, page }, setUrlState] = useUrlState(
+    AUDIT_URL_SPEC,
+    AUDIT_URL_DEFAULTS,
+    AUDIT_URL_OPTIONS,
+  );
+  const setFilterAction = useCallback((v: string) => setUrlState({ action: v, page: 1 }), [setUrlState]);
+  const setFilterActor = useCallback((v: string) => setUrlState({ actor: v, page: 1 }), [setUrlState]);
+  const setFilterDateFrom = useCallback((v: string) => setUrlState({ dateFrom: v, page: 1 }), [setUrlState]);
+  const setFilterDateTo = useCallback((v: string) => setUrlState({ dateTo: v, page: 1 }), [setUrlState]);
+  const setPage = useCallback((v: number) => setUrlState({ page: v }), [setUrlState]);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const loadLogs = useCallback(async () => {
@@ -44,10 +99,10 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
         limit: AUDIT_PAGE_SIZE,
         offset: (page - 1) * AUDIT_PAGE_SIZE,
       };
-      if (filterAction) params.action = filterAction;
-      if (filterActor) params.actor = filterActor;
-      if (filterDateFrom) params.date_from = filterDateFrom;
-      if (filterDateTo) params.date_to = filterDateTo;
+      if (action) params.action = action;
+      if (actor) params.actor = actor;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       if (refreshKey) params._r = refreshKey;
 
       const data = await (coreApiAdapter as any).getAIAuditLogs(params);
@@ -58,24 +113,35 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [page, filterAction, filterActor, filterDateFrom, filterDateTo, refreshKey, t]);
+  }, [page, action, actor, dateFrom, dateTo, refreshKey, t]);
 
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
 
+  // WAVE 10 / NAV-1: bo loc doi da ve trang 1 TRONG CUNG mot patch voi gia tri
+  // bo loc (xem `setFilterAction`…), nen effect nay chi con 1 viec: ve trang 1
+  // khi cha doi `refreshKey`.
+  //
+  // ⚡ Phai khoa bang `ref` chu khong chi `if (refreshKey)`: effect chay 1 lan
+  // luc MOUNT, ma `refreshKey` co the da > 0 ⇒ se ghi `?page=1` thua vao URL
+  // ngay khi user chua cham gi (pham AC-A). So voi `refreshKey` truoc do moi
+  // la doi chu thay, va do la thoi diem reset duy nhat con lai.
+  const prevRefreshKey = useRef(refreshKey);
   useEffect(() => {
-    setPage(1);
-  }, [filterAction, filterActor, filterDateFrom, filterDateTo, refreshKey]);
+    if (refreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = refreshKey;
+      setPage(1);
+    }
+  }, [refreshKey, setPage]);
 
   const applyFilters = () => { setPage(1); loadLogs(); };
 
   const resetFilters = () => {
-    setFilterAction('');
-    setFilterActor('');
-    setFilterDateFrom('');
-    setFilterDateTo('');
-    setPage(1);
+    // MOT patch cho ca 5 key: `setUrlState` chi ghi key duoc NAM trong patch
+    // (`useUrlState.ts:177-181`). Neu goi 5 lan, tham so cu se CON LAI tren URL
+    // ⇒ link da "xoa bo loc" van chua loc.
+    setUrlState({ action: '', actor: '', dateFrom: '', dateTo: '', page: 1 });
   };
 
   const toggleExpand = (id: number) => {
@@ -120,7 +186,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
       e("div", { key: "filter-action" },
         e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.action")),
         e("select", {
-          value: filterAction,
+          value: action,
           onChange: (ev: any) => setFilterAction(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
         }, actionOptions.map(opt =>
@@ -132,7 +198,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
         e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.actor")),
         e("input", {
           type: "text",
-          value: filterActor,
+          value: actor,
           onChange: (ev: any) => setFilterActor(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500",
           placeholder: t("aiCommandCenter.actorPlaceholder")
@@ -143,7 +209,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
         e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.fromDate")),
         e("input", {
           type: "date",
-          value: filterDateFrom,
+          value: dateFrom,
           onChange: (ev: any) => setFilterDateFrom(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
         })
@@ -153,7 +219,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
         e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.toDate")),
         e("input", {
           type: "date",
-          value: filterDateTo,
+          value: dateTo,
           onChange: (ev: any) => setFilterDateTo(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
         })
@@ -256,13 +322,15 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
           e("div", { className: "flex gap-2" },
             e("button", {
               type: "button",
-              onClick: () => setPage(p => Math.max(1, p - 1)),
+              // WAVE 10 / NAV-1: setter cua `useUrlState` nhan **gia tri**, khong
+              // phai updater lambda ⇒ doc `page` tu state thay vi `p`.
+              onClick: () => setPage(Math.max(1, page - 1)),
               disabled: page <= 1,
               className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
             }, t("aiCommandCenter.previous")),
             e("button", {
               type: "button",
-              onClick: () => setPage(p => Math.min(totalPages, p + 1)),
+              onClick: () => setPage(Math.min(totalPages, page + 1)),
               disabled: page >= totalPages,
               className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
             }, t("aiCommandCenter.next"))
