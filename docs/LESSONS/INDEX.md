@@ -87,23 +87,32 @@ nhưng **cần coordinator phê duyệt** trước khi thêm vào `LESSONS/`.
 - **Proof:** `file:line` | `docs/CODE_CHANGE_AUDIT_LEDGER.md#Entry-N` | commit hash
 ```
 
-⚠ **ID không đồng nhất theo lịch sử**: `multi-agent.md` dùng `L-001`, các file khác
-dùng `L-F01`. Gate `check-lessons.mjs` **cố ý nhận cả hai** (`L-(?:[A-Z]+)?\d+`) —
-bản Python của `vnbroker` chỉ nhận `L-[A-Z]\d+` và **bỏ sót 8/31 lesson** mà không
-báo gì. Đừng thu hẹp regex trước khi chuẩn hoá ID trong file.
+⚠ **ID không đồng nhất theo lịch sử**: `multi-agent.md` dùng `L-001`, các file
+khác dùng `L-F01`. Gate `check-lessons.mjs` **cố ý nhận cả hai**
+(`L-(?:[A-Z]+)?\d+`) — bản Python của `vnbroker` chỉ nhận `L-[A-Z]\d+` và **bỏ sót
+8/31 lesson** mà không báo gì.
+
+**Vì sao KHÔNG đổi lại ID cho đồng nhất** (đã cân nhắc 2026-10-10 và **giữ nguyên**):
+`L-001..L-008` được **5 tài liệu có ngày** tham chiếu nguyên văn —
+`docs/KE_HOACH_SO_TAY_KINH_NGHIEM_SKILL_20261007.md:60`,
+`docs/KE_HOACH_XU_LY_TON_DONG_CLAIMS_20261007.md:62-64`,
+`docs/PLAN_QUYET_DINH_4_VIEC_20261007.md:270`,
+`docs/AUDIT_CLAIMS_HANDOFFS_20261007.md:233`. Sửa ID trong đó là **bịa lại lịch sử**.
+Cách rẻ hơn nhiều: giữ regex khoan dung + ghi rõ ở đây. **Nếu sau này vẫn muốn thu hẹp
+regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 
 ## 1.5. Trạng thái
 
-| File | Số lesson |
-|---|---|
-| [`multi-agent.md`](./multi-agent.md) | 9 |
-| [`build-gates.md`](./build-gates.md) | 8 |
-| [`css-soc.md`](./css-soc.md) | 4 |
-| [`frontend.md`](./frontend.md) | 4 |
-| [`migrations.md`](./migrations.md) | 3 |
-| [`backend.md`](./backend.md) | 3 |
-| [`security.md`](./security.md) | 2 |
-| [`tooling-traps.md`](./tooling-traps.md) | 4 |
+| File | Số lesson | ID |
+|---|---|---|
+| [`multi-agent.md`](./multi-agent.md) | 9 | `L-001`…`L-008`, `L-A01` |
+| [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
+| [`css-soc.md`](./css-soc.md) | 4 | `L-F03`, `L-F05`, `L-F06`, `L-F08` |
+| [`frontend.md`](./frontend.md) | 4 | `L-F01`, `L-F02`, `L-F09`, `L-F10` |
+| [`migrations.md`](./migrations.md) | 3 | `L-M01`…`L-M03` |
+| [`backend.md`](./backend.md) | 3 | `L-B01`…`L-B03` |
+| [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
+| [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
 
 **Tổng: 37 lesson / 8 file**
 
@@ -112,13 +121,33 @@ báo gì. Đừng thu hẹp regex trước khi chuẩn hoá ID trong file.
 - **Đổi cấu trúc 2026-10-10:** `frontend.md` tách thành `frontend.md` (bundle + React hook)
   và `css-soc.md` + `tooling-traps.md`, để chờ C1. ID cũ **giữ nguyên**, không renumber.
 
-## 1.6. ⚠ Văn bản trong `css-soc.md` còn bị hỏng — chưa sửa
+## 1.6. ✅ Đã sửa — văn bản bị hỏng do **escape sequence** (2026-10-10)
 
-`docs/LESSONS/` hiện có **ký tự bị nuốt** do `Set-Content`/`.Replace` trên Windows:
-`transition` → `ransition`, `font` → `<TAB>ont`, `focus` → mất `f`.
-Đo 2026-10-10: chuỗi `transition` nguyên vẹn xuất hiện **1** lần, `ransition` **7** lần.
+`docs/LESSONS/` từng có **ký tự bị nuốt**, làm câu ở `css-soc.md` và `tooling-traps.md`
+thành vô nghĩa (`transition` → `ransition`). **Đã sửa xong.**
 
-Đây chính là "PowerShell `.Replace` trên file UTF-8 **no-op âm thầm**" — companion của
-lesson 15 trong skill `agent-lessons`. **Chưa sửa** trong wave 11 để giữ diff đọc được;
-là ticket riêng. Sửa bằng script Node, **không** dùng PowerShell, và kiểm
-`git diff --numstat` sau khi sửa (xem `L-T01`).
+### Quy tắc đã chứng minh (9/9 vị trí)
+
+Khi ghi file văn bản, chữ cái dùng làm ký tự escape bị **ăn**:
+
+| Chuỗi ghi | Ký tự điều khiển | Chữ bị mất |
+|---|---|---|
+| `\a` | U+0007 (BEL) | `a` |
+| `\b` | U+0008 (BS) | `b` |
+| `\t` | U+0009 (TAB) | `t` |
+| `\f` | U+000C (FF) | `f` |
+| `\e` | U+001B (ESC) | `e` |
+
+⇒ **MỘT ký tự điều khiển = ĐÚNG MỘT chữ cái đã mất.** Sửa = thay ký tự điều khiển bằng
+chính chữ cái đó. Kiểm chứng trên: `animation` ×2 · `box-shadow` ×2 · `easing` ·
+`bash` · `focus` · `font` · `aiSettings.module.css` · `file:line` · `f75ef6a86`
+(commit thật, `git cat-file -t` xác nhận).
+
+⚠ **Không dùng regex đại trên `\`**: nó sẽ phá `\\d+` trong chính file này và `"\n"`
+trong `tooling-traps.md` — cả hai là nội dung **đúng**. Dry-run đã bắt được điều này
+trước khi sửa.
+
+⚠ Khi sửa file nhiều dòng trên Windows: dùng **script Node**, không dùng PowerShell
+`.Replace`/`Set-Content` (xem `L-T01`). Và kiểm `git diff --numstat` sau khi sửa.
+
+**Bài học đã vào sổ:** `L-T01` (line-ending), `L-T02` (citation sai file).
