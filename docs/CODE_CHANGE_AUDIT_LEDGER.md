@@ -1,3 +1,52 @@
+## Entry 270: E2E/Playwright — CHAY DUOC, tim ra nguyen nhan goc, Owner quyet dinh de lai (2026-10-10)
+
+- **Nhanh**: `docs/record-e2e-blocker` -> `dev`
+- **Claim**: `adminui-w17c`
+- **Quyet dinh cua Owner**: chon phuong an **(2) bo E2E** — ghi lai day du, khong sua code.
+
+### Da chay gi (khong phai "khong co moi truong")
+
+| Buoc | Ket qua |
+|---|---|
+| `npx playwright test tests/visual/advertising-admin.spec.ts` | **15 fail / 1 pass** — nhung fail o **buoc login**, khong phai o trang `/admin/advertising` |
+| `--project=chromium` | **3 fail / 1 pass**; firefox + webkit fail vi **chua tai browser** (`Executable doesn't exist`) |
+| `tests/visual/login.spec.ts --project=chromium` | **1 fail / 1 skipped / 3 pass** — `hasToken` = `false`, login khong luu token |
+| Backend Docker | **DANG CHAY, khoe**: `/api/health/` 200, `/admin/login/` 200, host port `8001` |
+| Superuser | da nang `testuser` len staff+superuser, password khop spec |
+
+⇒ Nghien cuu cua "thieu backend / thieu tai khoan" **SAI**. Backend co that, tai khoan co that.
+
+### Nguyen nhan goc — tim ra duoc
+
+`packages/web/vite.config.ts` khai bao `proxy` **chi trong `server`** (dong 27-39), **khong co
+trong `preview`**. `playwright.config.ts:71` lai chay `webServer: 'npm run preview'`.
+
+⇒ E2E chay preview ⇒ **khong co gi proxy `/api`** ⇒ `/login` khong bao gio co the
+goi API ⇒ token khong bao gio duoc luu ⇒ **moi test admin chet truoc khi toi trang can kiem**.
+
+Day la **cau hinh thieu**, khong phai code sai cua wave 15/16/17. Sua duoc bang mot khoi
+`preview: { proxy: ... }` mirror `server.proxy`.
+
+### Vì sao van de lai `CHUA CHAY`
+
+- `preview.proxy` **chua sua** (Owner chon de E2E lai).
+- firefox + webkit **chua tai browser** — can `npx playwright install`.
+- **`advertising-admin.spec.ts` co bug thu nghiem rieng**: comment ghi "skips gracefully when
+  no session can be established", nhung `test.skip()` goi **SAU** `passwordInput.fill()` —
+  `fill()` nem loi truoc ⇒ **skip khong bao gio chay**. Bai fail dung khi spec tu noi se bo qua.
+  **Khong sua** (khong thuộc pham vi).
+
+⇒ **BA lenh tren KHONG duoc bao la PASS.** Ghi `CHUA CHAY` va day la ly do.
+
+### Ghi chu ve hanh vi (cua chinh toi)
+
+Lan dau toi thay login fail thi **doan la thieu credential** va bat dau tu dua server `vite dev`
+len port khac roi chi Playwright vao. Sai hai cho:
+1. `playwright.config.ts` **da co `webServer` tu quan ly** (`npm run preview`) — khong can tay.
+2. Giu process nen song la cach lam thoi gian bi dot.
+⇒ Phai doc config cu truoc khi "fix" (L-G02: khong bao PASS cho thu chua chay).
+
+---
 ## Entry 269: Chay THAT entrypoint.sh trong container — O3 "bo || true" co bang chung do duoc (2026-10-10)
 
 - **Nhanh**: `docs/admin-verify-entrypoint` -> `dev`
@@ -8520,3 +8569,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 267 | 2026-10-10 | **Wave 16 - mo toan bo 49 model Django admin** - Registry **65 -> 114**, model chua co admin **49 -> 0**, nhan tieng Viet **49 -> 0**. Sua xung dot routing /admin/advertising (^~ -> =) co chung bang **nginx that 28/28**, fail-before **6 FAIL**. Gate hai chieu check:admin-spa-routes + --self-test 4/4 **va moi noi vao pre-push**. Bo || true khoi collectstatic. Gate: admin-ux 0 loi/0 canh bao · self-test 13/13 · test 45/45 · pre-push 21 PASS/0 FAIL. |
 | 268 | 2026-10-10 | **O5 - D08 §12.1 làm nguồn sự thật cho design token admin** - Bỏ dict chép, `check_admin_ux.py` **parse thẳng bảng màu từ doc**; thêm gate chặn `--vn-gain`/`--vn-loss` phải **bằng** success/danger (L-F08); cảnh báo màu `soc.tokens.css` lọt vào token admin. **Fail-before thật**: sửa `#0F1117`→`#010203` trong D08 §12.1 ⇒ gate FAIL exit 1. Self-test **21/21**. |
 | 269 | 2026-10-10 | **Chạy thật `entrypoint.sh` trong container** - Đóng mục "CHƯA CHẠY" của O3. Bình thường: migrate → collectstatic **166 file** → repair → daphne, **exit 0**. Fail-before (`--tmpfs staticfiles:ro`): bản mới **exit 1, daphne không khởi động**; bản cũ in `OSError` rồi **vẫn chạy tiếp** `repair_beat_schedule` → `Starting daphne` ⇒ chứng minh bằng đo rằng `|| true` làm server "healthy" với static hỏng. |
+| 270 | 2026-10-10 | **E2E/Playwright — chạy được, tìm ra nguyên nhân gốc** — 15 fail/1 pass, fail ở **bước login**. Backend Docker **đang chạy** (`:8001`, `/api/health/` 200); superuser đã dựng. ⇒ Không phải thiếu môi trường. Gốc rễ: `vite.config.ts` khai `proxy` **chỉ trong `server`, không có trong `preview`**, mà `playwright.config.ts:71` chạy `npm run preview` ⇒ E2E **không bao giờ proxy `/api`** ⇒ login không lưu token. Sửa được bằng `preview: { proxy }` mirror `server.proxy`. Owner chọn **để lại** ⇒ vẫn `CHƯA CHẠY` (ghi rõ lý do, không báo PASS). Thêm: `advertising-admin.spec.ts` có bug — `test.skip()` gọi **sau** `fill()` nên skip không bao giờ chạy. |

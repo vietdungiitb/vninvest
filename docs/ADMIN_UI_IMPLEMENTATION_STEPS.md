@@ -591,3 +591,34 @@ Hàng cuối mới là bằng chứng. Bỏ `|| true` trước đây là **suy l
 > admin mất CSS/JS mà không ai biết. Đó đúng là thứ O3 muốn bỏ.
 
 Còn **CHƯA CHẠY**: `ruff` (không cài trong `.venv`) · Playwright / browser QA · đối chiếu trực quan light/dark bằng trình duyệt.
+---
+
+## Wave 17 (2026-10-10) — E2E: **đã chạy**, tìm ra nguyên nhân gốc, Owner chọn để lại
+
+Trước đây mục này ghi "Playwright/browser QA **CHƯA CHẠY**" — nghe như thiếu môi trường.
+Đã chạy thật và **giả định đó sai**.
+
+| Bước | Kết quả |
+|---|---|
+| `advertising-admin.spec.ts` | **15 fail / 1 pass** — fail ở **bước login**, không phải ở trang `/admin/advertising` |
+| `--project=chromium` | **3 fail / 1 pass**; firefox + webkit fail vì **chưa tải browser** |
+| `login.spec.ts --project=chromium` | **1 fail / 1 skipped / 3 pass** — `hasToken = false` |
+| Backend Docker | **đang chạy, khỏe**: `/api/health/` 200, `/admin/login/` 200, host `:8001` |
+| Superuser | đã nâng `testuser` lên staff + superuser |
+
+**Nguyên nhân gốc:** `vite.config.ts` khai báo `proxy` **chỉ trong `server`**, **không có trong `preview`** — mà `playwright.config.ts:71` chạy `npm run preview`.
+
+```
+preview không proxy /api  →  /login không gọi được API  →  token không lưu  →  mọi test admin chết
+```
+
+Đây là **cấu hình thiếu**, không phải code sai của wave 15/16/17. Sửa bằng một khối
+`preview: { proxy: … }` mirror `server.proxy`.
+
+**Owner chọn phương án (2): để lại, không sửa.** Vì vậy mục này **vẫn `CHƯA CHẠY`** và ghi rõ lý do:
+
+- `preview.proxy` chưa sửa.
+- firefox + webkit chưa tải browser (cần `npx playwright install`).
+- `advertising-admin.spec.ts` có bug riêng: `test.skip()` gọi **sau** `passwordInput.fill()`, mà `fill()` ném lỗi trước ⇒ **skip không bao giờ chạy** dù comment ghi "skips gracefully".
+
+Chi tiết: ledger `## Entry 270`.
