@@ -1,5 +1,9 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { createElement } from "react";
+// WAVE 11 / NAV-1 — `AIUsageDashboard` doc `useUrlState` → `useSearchParams` →
+// `useLocation()` **throw** ngoai `<Router>`. `main.tsx:125` bo `BrowserRouter`
+// quanh ca app nen day la moi truong san co, thieu trong test thoi.
+import { MemoryRouter } from "react-router-dom";
 import { AIUsageDashboard } from "./AIUsageDashboard";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
@@ -77,7 +81,7 @@ afterEach(() => {
 describe("AIUsageDashboard", () => {
   it("renders title and summary cards after load (Slice 3)", async () => {
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByText("aiUsageAnalytics.title")).toBeTruthy();
@@ -89,7 +93,7 @@ describe("AIUsageDashboard", () => {
   it("renders the table with no rows when there are no records (Slice 3)", async () => {
     coreApiAdapter.getAIUsageRecords.mockResolvedValue({ results: [], total: 0 });
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByText("aiUsageAnalytics.showing")).toBeTruthy();
@@ -99,7 +103,7 @@ describe("AIUsageDashboard", () => {
 
   it("exports CSV via a full fetch when the export button is clicked (Slice 3)", async () => {
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByText("aiUsageAnalytics.title")).toBeTruthy();
@@ -117,7 +121,7 @@ describe("AIUsageDashboard", () => {
 
   it("passes model/status filter params to records API (F2)", async () => {
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByTestId("filter-model")).toBeTruthy();
@@ -135,7 +139,7 @@ describe("AIUsageDashboard", () => {
 
   it("renders usage chart from summary API (F1)", async () => {
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByTestId("usage-chart")).toBeTruthy();

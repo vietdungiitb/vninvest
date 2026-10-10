@@ -142,49 +142,82 @@ export function useUrlState<T extends Record<string, unknown>>(
   spec: { [K in keyof T]: UrlStateCodec<T[K]> },
   defaults: T,
   options: UrlStateOptions = {},
-): [T, (patch: Partial<T>) => void] {
+  /**
+   * WAVE 11 — đổi tên tham số cho từng field. Mặc định tên key trong `spec`
+   * **chính là** tên tham số URL.
+   *
+   * ⚠ Cần khi field ghi/nhận từ lâu đã dùng tên khác. Ví dụ
+   * `useAlertCenterFilters` có field `sessionDate` nhưng mọi link đã chia sẻ từ
+   * trước đều là `?session_date=2026-09-18` (do effect cũ của `AlertCenterPage`
+   * ghi tay). Không có `keyMap` thì phải đổi tên tham số ⇒ **link cũ chết**.
+   *
+   * Chỉ `useUrlState` hỗ trợ. `useUrlRecord` đã có `prefix` cho trường hợp
+   * đó; `useUrlValue` nhận tên tham số làm tham số đầu tiên nên không cần.
+   */
+  keyMap?: Partial<Record<keyof T, string>>,
+): [T, (patch: Partial<T>, override?: { replace?: boolean }) => void] {
   const [params, setParams] = useSearchParams();
   const replaceAll = options.replace ?? false;
   const replaceKeys = options.replaceKeys;
+  // `paramName` phai la **stable** giua cac render, neu khong `useMemo` ben duoi
+  // tinh lai moi lan render (chi ton mot cach, nhung mat y nghia cache).
+  const paramName = useCallback(
+    (k: keyof T) => (keyMap ? (keyMap[k] ?? String(k)) : String(k)),
+    [keyMap],
+  );
 
   const value = useMemo(() => {
     const out = { ...defaults };
     for (const k of Object.keys(spec) as Array<keyof T>) {
-      const parsed = spec[k].parse(params.get(String(k)));
+      const parsed = spec[k].parse(params.get(paramName(k)));
       if (parsed !== undefined) out[k] = parsed;
     }
     return out;
-  }, [params, spec, defaults]);
+  }, [params, spec, defaults, paramName]);
 
   const setValue = useCallback(
-    (patch: Partial<T>) => {
+    (patch: Partial<T>, override?: { replace?: boolean }) => {
       // ⚠ **MOT** `setParams` duy nhat cho ca patch.
       // Đo được 2026-10-09: gọi `setParams` **hai** lần trong cùng một tick KHÔNG
       // compose — lần hai đọc `prev` cũ và ghi đè kết quả lần một. Bản đầu tiên
       // của hàm này chia 2 nhóm (replace / push) và vì vậy **mất** nhóm đứng
       // trước; test "patch nhieu key" đỏ và lộ ra đúng lỗi này.
       //
+      // ⚠ **WAVE 11 — tái lập lại 2026-10-10, không dựa vào comment cũ.**
+      // Probe `react-router-dom@6.30.3`: 2 `setParams` liên tiếp trong một
+      // tick với `a=1` rồi `b=2` cho KẾT QUẢ `?b=2` — `a` mất sạch. Ràng buộc
+      // trên là thật, không phải ghi chú cũ đã lỗi thời.
+      //
       // ⇒ Quy tắc: `replace` khi và CHỈ khi patch này **chỉ** chạm key được
       // liệt kê trong `replaceKeys`. Patch có lẫn key `push` (ví dụ đổi trang
       // kèm sửa ô tìm kiếm) thì `push` — hướng an toàn: giữ được nút Back.
+      //
+      // ⚠ **`override.replace`** (WAVE 11): hook ghi TOÀN BỘ trạng thái mỗi
+      // lần bấm (xem `useAlertCenterFilters` — ref + full-state write để các
+      // setter gọi liên tiếp trong một tick vẫn compose). Patch khi đó **luôn
+      // chứa mọi key** ⇒ `every(...replaceKeys)` **luôn false** ⇒ ô nhập văn
+      // bản sẽ đẩy 1 history entry **cho mỗi ký tự**. `override` cho phép
+      // caller ép `replace` cho đúng lần ghi đó. Không có nó thì AC "ô tìm
+      // kiếm không làm nghẽn nút Back" (ghi ở `useUrlState.ts:27-36`) hỏng.
       const keys = Object.keys(patch);
-      const allReplace = keys.length > 0 && keys.every(
+      const allReplace = override?.replace ?? (keys.length > 0 && keys.every(
         (k) => replaceAll || Boolean(replaceKeys?.includes(k)),
-      );
+      ));
       setParams(
         (prev) => {
           const p = new URLSearchParams(prev);
           for (const k of keys as Array<keyof T>) {
             const raw = spec[k].serialize(patch[k] as T[typeof k]);
-            if (raw === undefined) p.delete(String(k));
-            else p.set(String(k), raw);
+            const pk = paramName(k);
+            if (raw === undefined) p.delete(pk);
+            else p.set(pk, raw);
           }
           return p;
         },
         { replace: allReplace },
       );
     },
-    [setParams, spec, replaceAll, replaceKeys],
+    [setParams, spec, replaceAll, replaceKeys, paramName],
   );
 
   return [value, setValue];
