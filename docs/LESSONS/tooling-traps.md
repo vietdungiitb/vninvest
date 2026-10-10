@@ -1,9 +1,6 @@
 # Tooling - Lessons (dong lenh, bang chung, git)
 
 > `tags: [powershell, shell, numstat, git, line-ending, citation, evidence, diff]`
-> ⚠ **Van ban cu trong file nay CON BI HO** (ky tu bi nuot: `transition` -> `ransition`).
-> Do lenh `Set-Content`/`.Replace` tren Windows. Chua sua de giữ diff doc duoc.
-> Xem muc §1.6 cua `docs/LESSONS/INDEX.md`.
 
 ## L-F04: KHONG dung Get-Content | Set-Content de sua file nhieu dong - no GHEP file thanh 1 dong
 
@@ -21,7 +18,7 @@
   - [ ] git diff --stat co deletions **bat thuong** (vuot so dong sua) khong?
   - [ ] So dong cua file **co giam so voi HEAD** khong? (Measure-Object -Line)
   - [ ] Da doc lai file bang Read tool (doc dung encoding) truoc khi commit?
-- **Proof:** commit 75ef6a86 — khoi phuc bang git show HEAD~1:<file>,
+- **Proof:** commit f75ef6a86 — khoi phuc bang git show HEAD~1:<file>,
   chay lai toan bo fix (ke ca phan da sua trong commit hong).
 
 ## L-F07: Doc $LASTEXITCODE SAU khi pipeline = doc sai nhat (lam gate PASS khi FAIL)
