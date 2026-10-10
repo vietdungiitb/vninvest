@@ -145,8 +145,27 @@ dùng `Get-Content -Tail`.
 3. **§4.2** — đọc kỹ trước khi sửa `useUrlState.ts` (đã có tiền lệ cả 2 chiều).
 4. Gate chưa từng chạy: `scan-ui-guidelines` toàn cây · `check-h1-graph` · Playwright mobile.
 
-> **Worktree còn lại**: `w11-acurl` (branch này, đã push) · `w10b-nav1` (**2 commit cũ đã
-> được cherry-pick hết — có thể xoá** sau khi PR merge) · `w10a-gate` · `w10c-e2e`.
+> **Worktree**: phiên này tạo `w11-acurl`, đã **xoá sau khi merge** (PR #91).
+> `w10b-nav1` cũng đã **xoá** — trước khi xoá đã lưu `docs/SUMMARY_uiux-w10b-nav1.md`
+> (191 dòng, chưa từng vào `dev`) qua **PR #93**, và xác minh
+> `git diff feat/w10b-nav1-migrate origin/dev` **không còn `AIUsageDashboard.tsx`**
+> ⇒ 3/3 commit đã nằm trong `dev`.
+> ⚠ `w10a-gate` + `w10c-e2e` **đã bị xoá từ phiên trước**, không phải việc của phiên này.
+> **Không còn worktree nào.** `node_modules` chính: 690 entry, nguyên vẹn.
+
+### 6.1 PR đã merge
+
+| PR | Nội dung | Merge commit |
+|---|---|---|
+| **#91** | Gỡ blocker AlertCenter URL (code + tài liệu) | `81012119f` |
+| **#92** | Đóng claim `uiux-w11-alerturl`, release `uiux-w10b-nav1` | `0ba246b64` |
+| **#93** | Lưu `SUMMARY_uiux-w10b-nav1.md` trước khi xoá worktree | `3716eac41` |
+
+`dev` cuối phiên = **`3716eac41`**, tree sạch, **0 commit chưa push**.
+
+Gate chạy lại **trên `dev` sau merge** (không tái dùng số liệu của branch):
+`vitest` **127 file / 914 test PASS** · `tsc` 0 · `nav1-report` **34 hit** ·
+`check-multi-agent` PASS · `scan-secrets` **3632 file OK** + self-test **52/52**.
 
 ## 7. TÀI LIỆU LIÊN QUAN
 
