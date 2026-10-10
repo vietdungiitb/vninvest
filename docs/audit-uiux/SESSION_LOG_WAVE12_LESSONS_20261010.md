@@ -109,7 +109,7 @@ phải hỏi **"file này LƯU dạng gì?"** bằng `git ls-files --eol` / `git
 |---|---|---|
 | 1 | ~~Văn bản hỏng trong `css-soc.md`~~ | **ĐÃ SỬA** — xem mục 7 |
 | 2 | ~~Chuẩn hoá lesson ID `L-001`→`L-0X1`~~ | **CỐ Ý KHÔNG LÀM** — xem mục 8 |
-| 3 | ~~Nối skill vào `AGENTS.md`~~ | **KHÔNG SỬA ĐƯỢC** — xem mục 9 |
+| 3 | ~~Nối skill vào `AGENTS.md`~~ | **ĐÃ LÀM** (Owner duyệt, PR #100) — xem mục 9 |
 | 4 | ~~`pre-push-gate` chưa chạy trọn~~ | **ĐÃ CHẠY**: `18 PASS / 0 SKIP / 0 FAIL` |
 
 ⚠ Riêng mục 4: sau khi merge, các push tiếp theo đi qua **hook thật** mà **không cần**
@@ -140,14 +140,27 @@ Kiểm chứng **trước** khi sửa: `f75ef6a86` là **commit thật** (`git c
 `PLAN_QUYET_DINH_4_VIEC_...:270` · `AUDIT_CLAIMS_HANDOFFS_...:233`).
 Sửa ID trong đó là **bịa lại lịch sử** ⇒ giữ regex khoan dung + ghi lý do ở `INDEX.md` §1.4.
 
-## 9. Vì sao KHÔNG sửa `AGENTS.md`
+## 9. `AGENTS.md` — ✅ Owner đã duyệt và đã làm (PR #100)
 
-`.githooks/pre-commit:21` chặn **vô điều kiện**, không có ngoại lệ coordinator (khác với
-mô tả trong protocol). Tự thêm ngoại lệ cho chính mình là anti-pattern *"gate tự trúc"*
-(lesson 12 của `agent-lessons`). Đã dùng `docs/AGENT_PROTOCOL.md` — file mà skill
-`multi-agent-workflow` §0 xác định **thắng** `AGENTS.md` khi xung đột.
+`.githooks/pre-commit:21` chặn **vô điều kiện**, không có ngoại lệ coordinator. Tôi
+**không** tự nới lỏng hook (tự thêm ngoại lệ cho chính mình là anti-pattern *"gate tự
+trúc"*, lesson 12 của `agent-lessons`), và đã dùng `docs/AGENT_PROTOCOL.md` — file mà
+skill `multi-agent-workflow` §0 xác định **thắng** `AGENTS.md` khi xung đột.
 
-> **Cần Owner**: thêm 1 dòng trỏ `project-lessons` vào `AGENTS.md` nếu muốn ràng buộc từ đó.
+**Sau đó Owner duyệt trực tiếp trong session** ⇒ đã thêm mục **0** vào `AGENTS.md` →
+`### Bắt buộc` (PR #100, `4c5c3c955`), gồm 3 phần:
+
+1. Nạp skill `project-lessons` trước khi lập kế hoạch / khai claim / sửa dòng đầu tiên;
+   plan phải ghi `Lessons áp dụng: [...]` hoặc `NONE – <lý do>`.
+2. ⚠ **Tự kiểm**: danh sách skill của session có `project-lessons` không? Không thấy ⇒
+   sai đường dẫn.
+3. Phần **cơ máy**: `scripts/check-lessons.mjs` + nối vào `pre-push-gate`.
+
+Cách commit deny-list file: **đúng đường thoát chính hook chỉ định**
+(`.githooks/pre-commit:51`) — `--no-verify` **+ lý do trong commit body**, kèm trailer
+`Claim-Deny-List:` do Owner duyệt (trailer có negative test ở
+`verify-hook-mode.mjs:121-126`). **Hook KHÔNG bị nới**: `git diff` xác nhận
+`.githooks/` không đổi, `DENY` vẫn nguyên.
 
 ## 10. ⚠ Tôi phạm L-T01 **lần thứ 3** — và lần này làm **tệ hơn**
 
