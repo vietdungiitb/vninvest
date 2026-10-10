@@ -75,7 +75,7 @@
       ┌───────────┬───────────┬───┴────┬───────────┬────────────┐
       ▼           ▼           ▼        ▼           ▼            ▼
   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  ┌────────┐
-  │Sản phẩm│ │Hạ t���c  │ │Thành   │ │Thanh   │ │Nhật ký │  │Kích    │
+  │Sản phẩm│ │Hạ tốc  │ │Thành   │ │Thanh   │ │Nhật ký │  │Kích    │
   │và gói  │ │độ dùng │ │viên    │ │toán    │ │kiểm toán│ │hoạt máy│
   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘  └────────┘
       │                              │            │
@@ -514,6 +514,23 @@ Trạng thái rỗng phải **nêu hành động**, không chỉ nêu trạng th
 | Cảnh báo | `#F59E0B` | Sắp hết hạn |
 | Nguy hiểm | `#EF4444` | Lỗi, vượt hạn |
 
+
+> **Nguồn sự thật (O5, wave 17 — 2026-10-10).** Bảng màu §12.1 này là nguồn
+> duy nhất cho giao diện **Django admin**. `check_admin_ux.py` **parse trực
+> tiếp bảng dưới đây** rồi so với `vnadmin.css` — sửa một giá trị ở đây thì
+> gate báo đỏ ngay (`token --vn-bg phai la … nguon D08 §12.1`). Trước đó bảng
+> màu bị chép **hai lần** (một lần trong gate, một lần trong CSS) nên hai bản
+> có thể trôi dạt mà không ai biết.
+>
+> Ba điểm D08 **không** quy định, vì vậy gate chỉ kiểm bằng quy tắc riêng có tên:
+> - `--vn-surface-2` (`#1e2130`): sắc +1 bậc so với `--vn-surface`, dùng cho header/sidebar.
+> - `--vn-gain` / `--vn-loss`: **bắt buộc bằng** `--vn-success` / `--vn-danger`
+>   (chuẩn Bloomberg tăng/giảm, L-F08). Gate chặn nếu lệch.
+>
+> Phạm vi: D08 cho Django admin; `packages/web/src/components/soc/soc.tokens.css`
+> là bảng màu riêng của vỏ SPA. Hai bảng cùng sống là chấp nhận được, **chép màu
+> của nhau vào token** thì không — gate có cảnh báo `mau soc.tokens.css loot vao
+> admin (O5)`.
 **Tỷ lệ tương phản:** chữ chính trên nền chính đạt ≥ 12:1. Chữ phụ ≥ 4.5:1.
 
 ### 12.2 Giãn cách
