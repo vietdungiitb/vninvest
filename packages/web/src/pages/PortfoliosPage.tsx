@@ -146,6 +146,8 @@ export function PortfoliosPage({ className = "" }: PortfoliosPageProps) {
           e("td", null, formatVnd(p.opening_balance)),
           e("td", null, p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"),
           e("td", null,
+            e("a", { href: `/portfolios/${p.id}/overview`, className: "core-link" }, "Chi tiết"),
+            " ",
             e("a", { href: "/transactions", className: "core-link" }, "Giao dịch"),
             " ",
             e("button", { className: "core-btn-danger", onClick: () => handleDelete(p.id) }, "Xóa")

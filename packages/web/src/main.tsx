@@ -140,7 +140,11 @@ function App() {
         createElement(Route, { path: 'watchlist', element: createElement(resolvePageComponent('watchlist')) }),
         createElement(Route, { path: 'screener', element: createElement(resolvePageComponent('screener')) }),
         createElement(Route, { path: 'transactions', element: createElement(resolvePageComponent('transactions')) }),
-        createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
+        // /portfolios la entry workspace: neu URL khong co id, trang tu chon
+        // danh muc dau tien (PortfolioWorkspacePage). Trang quan ly CRUD chuyen
+        // sang /portfolios/manage de khong con la "man hinh chet".
+        createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolio-workspace')) }),
+        createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios')) }),
         // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + F5 giu dung
         // tab. Cung tro toi MOT entry `portfolio-workspace`; tab lay tu path.
         createElement(Route, { path: 'portfolios/:portfolioId/overview', element: createElement(resolvePageComponent('portfolio-overview')) }),
