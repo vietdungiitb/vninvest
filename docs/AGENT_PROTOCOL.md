@@ -375,10 +375,18 @@ cmd /c mklink /J ..\core-team\packages\web\node_modules packages\web\node_module
 
 ### 11.2 Cách thực hiện
 
-Gọi skill [`project-lessons`](../skills/project-lessons/SKILL.md) với:
+Gọi skill [`project-lessons`](../.opencode/skills/project-lessons/SKILL.md) với:
 - `taskDescription` — mô tả task/slice (bắt buộc)
 - `filePaths` — file dự kiến sửa (khuyến nghị)
 - `actions` — `migrate` / `edit` / `claim` / `rebase` / `gate` / `build` / `test` / `db` / `shared` (khuyến nghị)
+
+> ⚠ **2026-10-10 — đường dẫn đã đổi, nếu không sửa skill sẽ KHÔNG được nạp.**
+> Skill từng nằm ở `skills/project-lessons/`. opencode **chỉ auto-load** thư mục
+> `.opencode/skills/`, nên ở vị trí cũ skill **không xuất hiện** trong danh sách
+> skill của session — tức là §11 này đã không thi hành được mà không ai biết.
+> Đã chuyển sang `.opencode/skills/project-lessons/`.
+> **Cách tự kiểm**: skill có thật sự được nạp không? Xem danh sách skill của
+> session có `project-lessons` không. Không thấy ⇒ sai đường dẫn.
 
 Skill sẽ chọn lọc theo tag, chỉ đọc lesson liên quan từ `docs/LESSONS/`, trả về
 `LESSONS APPLICABLE` + `MANDATORY CHECKLIST` (tối đa ~20 dòng).
@@ -403,3 +411,22 @@ Và **tick các mục trong `MANDATORY CHECKLIST`** trước khi coi slice là x
 
 Cả **agent chính tự lập kế hoạch** lẫn **planner subagent**. Khi tách task cho subagent,
 phải truyền kèm danh sách lessons đã trích.
+
+### 11.6 Phần cơ máy đi kèm (2026-10-10)
+
+§11.1–11.5 là **văn bản**. Đo 2026-10-10: `docs/LESSONS/` có **31 lesson** mà **không có
+gì kiểm** — quy tắc C1/C2/C3 nằm trong `INDEX.md` nhưng `frontend.md` dài **128 dòng**
+(vượt C1) và `INDEX.md` khai **17 lesson** khi thực tế **31**, **không ai bị chặn**.
+
+Nay đã có lệnh:
+
+| Lệnh | Kiểm |
+|---|---|
+| `node scripts/check-lessons.mjs` | **C1** file ≤ 120 dòng · **C2** tổng ≤ 40 lesson · **C3** `INDEX.md` khai đúng tổng + liệt kê mọi file |
+| `node scripts/check-lessons.mjs --self-test` | chứng minh gate **thật sự bắt** (12 case âm) |
+| `scripts/pre-push-gate.mjs` | đã nối mục `lessons` ⇒ **push sẽ bị chặn** nếu vi phạm |
+
+Exit `2` = **không verify được** — tuyệt đối không đọc là PASS.
+
+⇒ Sửa `docs/LESSONS/` mà không chạy lệnh này thì push bị chặn. Đó là điểm khác với
+§11.1–11.5: những mục đó chỉ có tác dụng nếu người đọc làm theo.
