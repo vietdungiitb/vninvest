@@ -1,3 +1,153 @@
+## Entry 263: UI/UX wave 10 - sua bug GATE NAV-1 + 2/2 file e2e §5.1 + migrate 1/3 file (2026-10-10)
+
+- **Nhanh**: `feat/w10-integration` -> `dev`
+- **Claim**: `uiux-w10a-gate` + `uiux-w10b-nav1` (1/3 commit) + `uiux-w10c-e2e`
+- **Tien cua**: `docs/audit-uiux/SESSION_LOG_WAVE7_20261010.md` §5.1 + §5.4
+- **So Entry**: doc bang `check-ledger-entry.mjs --next-entry` = **263** (KHONG tu dat)
+
+### 1. Bug GATE that: escape hook khong nhan generic type
+
+`nav1-rule.mjs` co 3 regex escape, **chi 1** cho phep generic `<…>` giua ten hook va `(`.
+Wave 4 da sua `useUrlRecord` va **ghi ro canh bao** (`nav1-rule.mjs:104-108`), nhung **bo sot 2 hook con lai**.
+
+| Call site | Regex co generic? | Ket qua |
+|---|---|---|
+| `useUrlRecord<JobFilters>(…)` | co | SKIP (dung) |
+| `useUrlValue("k", …)` | khong can | SKIP (dung) |
+| **`useUrlValue<Tab>("k", …)`** | **khong** | **HIT — false positive** |
+
+**False positive that tren `dev`**: `TenantUsageSummaryPage.tsx:48`
+`const [tab, setTab] = useUrlValue<UsageTab>("tab", usageTabCodec, DEFAULT_TAB);`
+→ `nav1-report --why` bao `HIT :48 tab — khong dong bo URL` cho mot bien **DA** sync URL.
+
+**Chi 1 false positive, dung 1** — khong phai 10. Buoc do la `nav1-report.mjs --why` (khong phai so dem tay).
+
+⚠ **Cach do sai lam ket luan sai**: `urlSyncedVars(lines)` tra `Map` khoa theo **TEN bien** tren
+tat ca dong duoc truyen. Trong 1 lan go, dong nao khop truoc se lam dong sau **nhin co vẻ dung
+vi ly do khac**. Phai go **tung case rieng** voi mang 1 phan tu moi. Tôi mắc lỗi này ở lần
+đo đầu và suýt kết luận `useUrlState<T>` cũng lỗi giống.
+
+⚠ `useUrlState<T>` sua **KHONG** sua 1 false positive nao — no **latent**: dang ky dang co
+destructured ban ghi `const [{…}, setS] =` nen `NAME_RE` khong khop ⇒ `nav1Candidate` tra null
+vi **ly do khac hang**. Sua de bo "escape may manh nham loi nguyen nhan that" (cung loai bug
+voi comment T5 trong file). **Do lao 1 dong regex**, khong phai so hit.
+
+### 2. Fail-before / pass-after (co chay lai doc lap, khong tin bao cao agent)
+
+`scan-ui-guidelines.mjs` self-test **11 → 13** case (them **T12** + **T13**).
+
+| Trang thai | Self-test | Exit |
+|---|---|---|
+| Ban goc (11 case) | 11/11 PASS | 0 |
+| **T12+T13 them, regex GOC** | **11/13 — T12 + T13 FAIL** | **1** |
+| Da sua | **13/13 PASS** | 0 |
+
+T12 khoa 1 chieu (co generic phai escape **VA** rule khong yeu: `filterStatus` van bi bat).
+T13 khoa chieu **khac**: assert `synced` **co key** chu khong assert "khong co hit" — vi
+"khong co hit" o do la tautology (dung comment T5: gate PASS ca khi cam y lam hong).
+
+⚠ **`scan-ui-guidelines.mjs` go sai thu tu se crash**: `node … --self-test` (khong co root)
+→ `ENOENT: scandir '--self-test'` exit 1. Phai `node … packages/web/src --self-test`.
+Dung `process.argv[2]` la ROOT, `--self-test` chi co o `argv.includes`. Loi nao la **gate
+hong chay**, khong phai gate do.
+
+### 3. Hai loi cua chinh toi trong phiên này
+
+1. **Commit thang vao `dev`** (sau khi da doc §2 "Cam bang commit thang dev"). Kiem `git branch -r
+   --contains` ⇒ **chua push** ⇒ `git reset --hard d18cb95c0` khoi phuc nguyen trang, lam lai tren
+   branch. Kiem **push truoc khi reset** la kiem soat duy nhat phan bi hoi.
+2. **`.map(l => l + "\n")` + `.join("\n")** khi append `CLAIMS.md` ⇒ **dong trong giua moi row**
+   (1153 → 1159 thay vì +4). Bat bang dem dong truoc khi commit. Da `git checkout --` khoi phuc
+   roi viet lai script.
+
+⚠ **`CLAIMS.md` phai append o MUC BYTE**: 1120 LF + 32 CRLF hon tap, va **khong co LF cuoi**
+(last byte = 124). `ReadAllLines`+`WriteAllLines` se chuan hoa toan file ⇒ diff phinh
+(bay 6.1 cua SESSION_LOG_WAVE7). Append xong **kiem `git diff --numstat` = 4/1**.
+
+### 4. Slice B: 1/3 file merge duoc, 2/3 BLOCKED — va ly do BLOCKER khong phai "het Router"
+
+Migrate 3 file (15 hit). Chi `AIAuditLogsPanel` (5 hit) **va duoc merge**.
+
+`AIUsageDashboard` + `useAlertCenterFilters` **lam hong 24 test** o 3 file **ngoai pham vi**:
+
+| File test | So test hong |
+|---|---|
+| `src/pages/AlertCenterPage.component.test.tsx` | 18/18 |
+| `src/components/AIUsageDashboard.component.test.js` | 5/5 |
+| `src/components/AISliceE.i18n.component.test.js` | 1/3 |
+
+Tat ca cung 1 loi: `useLocation() may be used only in the context of a <Router>`.
+
+**Ly do that (da doc code, khong doan)**: `AlertCenterPage.tsx:121-135` **tu lai lai chu URL thu hai** —
+dung `new URLSearchParams()` rong roi `window.history.replaceState(...)` ⇒ **xoay het tham so** ma
+hook vua ghi, va **bypass React Router**. Effect mount `:107-108` cung **tat filter severity**
+khi doc `?severity=high`.
+
+⇒ **Boc `MemoryRouter` vao 3 file test se lam suite XANH trong khi TINH NANG VAN HONG tren
+trang that** (hazard 8: proxy observable). Nen 2 commit do **khong merge** — de lai
+`feat/w10b-nav1` (3 commit, **khong push**).
+
+⚠ **Brief cua toi do** "useAlertCenterFilters co 0 file test ⇒ de test nhat" va "AIUsageDashboard
+co 4 file test". Do o **ca 2**: hook khong co test file nao import truc tiep nhung `AlertCenterPage`
+render no; va `page-heading-fu02c.component.test.tsx` **da co** MemoryRouter nen chi con 3 file.
+**Do bang lenh, khong tin mo ta.**
+
+### 5. Slice C: dong 2/2 file con lai cua §5.1
+
+`WhaleBubbleChart` (5 test) + `Header.tsx` (6 test). **Khong sua runtime source** (git diff
+trong `src/` chi co 2 file test moi).
+
+**Sai so cua toi**: brief doan "Header can mock shadcn + lucide-react" ⇒ **thuc te chi can 4/9
+import** (`PortfolioContext`, `LangContext`, `useCoreQuery`, `coreApiAdapter`). 5 import
+shadcn/lucide/router **giai nguyen** — mock chung se **che mat dung input dang test**.
+
+**Baseline 877 do agent B va toi deu ghi sai**: do lai tren `dev` sach ⇒ **877 tong, 876 pass +
+1 fail** (`tenant-storage-ssot` AC1). Chay rieng **3/3 lan 5/5 PASS** ⇒ **flake tai, co san**,
+da ghi trong `AGENTS.md`. Khong phai do slice C.
+
+**Agent C tu phat hien 1 test do viet sai**: khoa `location.key` de chung minh `replace:true` ⇒
+do la mau hong. `@remix-run/router` cap `key` moi **ca** khi replace (`getNextLocation`:
+`key: state?.key ?? createKey()`) ⇒ observable dung la `useNavigationType()`.
+**Chon observable bang cam nhan va doc thu vien = test khong bao gio pass, hoac worse, duoc "sua" thanh always-green.**
+
+**Hai bug that phat hien, KHONG sua** (ngoai pham vi, da bao loi):
+- `WhaleBubbleChart.jsx:829-831` reset `hoveredPanel` khi `symbol`/`timeframe`/`totalOrders` doi,
+  nhung `:1596` chi render tab bar khi `!hoveredPanel` ⇒ deep-link `?wb_tab=signals` roi hover
+  + doi timeframe ⇒ **panel nhay ve `overview` trong khi URL van `signals`** — dung thu NAV-01 cam.
+- `hasAnyChartData` doc `summary.total_orders`, nhung normaliser lay tu `whale_order_count` (`:319`)
+  ⇒ data co bubble nhung khong co `whale_order_count` ⇒ **tab bar khong bao gio hien du**.
+
+### 6. Gate (chay tren `feat/w10-integration`, TAT CA co lenh tai day)
+
+| Gate | Lenh | Exit |
+|---|---|---|
+| test suite | `npx vitest run` | **0 — 125 file / 894 test PASS** (877 → 894, +17) |
+| type-check | `npx tsc --noEmit` | **0** |
+| build | `npm run build` | **0** (43.62s) |
+| lint | `npm run lint` | **0 error** / 3779 warning |
+| scanner self-test | `node …/scan-ui-guidelines.mjs packages/web/src --self-test` | **0 — 13/13** |
+| NAV-1 | `node …/nav1-report.mjs` | **0 — 50 → 44 hit** (34 file) |
+| uiux budget | `node …/check-uiux-budget.mjs` | **0** ("da giam 45") |
+| multi-agent | `node …/check-multi-agent.mjs` | **0** |
+
+**CHUA CHAY**: BE test (khong sua backend) · Playwright · `scan-ui-guidelines` toan bo cay (3-5 phut) ·
+`check-h1-graph` · `i18n:scan:strict` · `npm run check:shell`.
+
+**VAN CON 44 hit** trong 34 file — **`useAlertCenterFilters` (6) va `AIUsageDashboard` (4) van nam
+do**, dang BLOCKER §4. Khong con lai la false positive.
+
+### 7. Trang thai branch sau phiên
+
+| Branch | Trang thai |
+|---|---|
+| `feat/w10-integration` | **push + PR** (A + C + 1/3 B) |
+| `docs/wave10-claim` | push + PR (khai claim) |
+| `feat/w10a-nav1-generic-gate` | **KHONG push** — da cherry-pick |
+| `feat/w10c-e2e-tests` | **KHONG push** — da cherry-pick |
+| `feat/w10b-nav1` | **KHONG push** — 3 commit, 2 BLOCKED §4 |
+
+Worktree `w10a-gate` · `w10b-nav1` · `w10c-e2e` con nguyen **cho den khi PR merge** (khong xoa
+som — job hien duoc luu o do).
 ## Entry 262: UI/UX wave 9 - dong 20 claim stale + escape 4 false positive NAV-1 (2026-10-10)
 
 - **Nhanh**: `chore/close-stale-claims` -> `dev`
