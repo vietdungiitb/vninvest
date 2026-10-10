@@ -59,7 +59,7 @@ class IngestRunInline(admin.TabularInline):
 
 
 @admin.register(IngestRun)
-class IngestRunAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class IngestRunAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('job', 'state_badge', 'started_at', 'finished_at',
                     'rows_upserted', 'rows_skipped')
     list_filter = ('state',)

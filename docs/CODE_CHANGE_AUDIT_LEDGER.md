@@ -1,3 +1,81 @@
+## Entry 267: Mo toan bo 49 model Django admin con lai + sua xung dot routing /admin/ (2026-10-10)
+
+- **Nhanh**: `feat/django-admin-uiux-pm` -> `dev`
+- **Claim**: `adminui-w15-wave16` (Mode B — self-supervised solo)
+- **Ly do**: Owner uy quyen "mo va lam toan bo tinh nang, day la du an opensource khong block tinh nang nao".
+
+### Ket qua do duoc
+
+| Chi so | Truoc | Sau |
+|---|---|---|
+| Model co ModelAdmin | 65 | **114** |
+| Model app ta chua co admin | 49 | **0** |
+| Model thieu nhan tieng Viet | 0 | **0** |
+
+### O1 — `/admin/advertising` chong trung `app_label` Django
+
+`/admin/advertising` vua la route SPA (`routeCatalog.js:482`, `sidebaritems.ts:63`) vua la
+`app_label` cua Django. `location ^~ /admin/advertising` la **prefix** ⇒ ngot moi
+`/admin/advertising/<model>/…` ⇒ **6 URL admin chet**. Doi thanh `location =` (exact match).
+
+**Bang chung chay that** (nginx 1.31.6 that, `packages/web/scripts/verify-admin-nginx-routing.mjs`):
+- ban sua: **28/28 PASS**
+- tam khoi phuc `^~`: **22/28 — 6 FAIL**, dung 6 URL bi ngot
+
+> Chi ti quan trong khi viet verifier: `packages/web/docker/nginx.conf` la **snippet `conf.d`**,
+> khong phai main config — chinh no tu ghi ro dong 15-18 ("do NOT wrap it in http{}"). Mount no
+> vao `/etc/nginx/nginx.conf` se bao sai `limit_req_zone`. Phai ghep y như production: snippet vao
+> `/etc/nginx/conf.d/default.conf`, kem main config toi gian.
+
+### O2 — Gate hai chieu (truoc day chi mot chieu)
+
+`check-admin-spa-routes.mjs` chi kiem `routeCatalog -> nginx`; **chieu nguoc lai (nginx -> Django)
+bi bo qua**, dung chinh lo O1. Da them `app_label` lay tu `packages/core/backend/src/*/apps.py`
+(khong hardcode). `--self-test` 4/4 chung minh gate THAT SU bat loi.
+
+> Phat hien them: gate nay co san trong `packages/web/package.json` nhung **chua bao gio duoc noi
+> vao `pre-push-gate.mjs`** ⇒ khong chan duoc gi. Comment trong `nginx.conf` lai ghi no da co trong
+> gate — **sai**. Da noi vao gate va sua comment.
+
+### O3 — `entrypoint.sh` bo `|| true`
+
+`collectstatic` that bai co `|| true` ⇒ that bai khong dung `container` van healthy, admin mat
+CSS/JS ma khong ai biet. Da bo (khac voi `repair_beat_schedule`, buoc khong chan, giu `|| echo`).
+
+### O6 — 49 model chua co admin
+
+Khong mo chung mot kieu. Ba chinh sach:
+1. **Nhat ky / tong hop** → `VNReadOnlyMixin`. `LedgerEntry` sai 1 dong ⇒ lech vinh vienh phan von.
+2. **Bi mat** (`*_cipher`) → xem + xoa duoc, **khong sua tay** (ciphertext).
+3. **Cau hinh van hanh** → sua day du.
+
+Mot ngoai le **co ten**: `CachedSymbolGroupMember` la bang anh xa thuan, khong co cot thoi gian →
+co `vn_no_time_filter = True`; gate va test ton trong co.
+
+### Sua 3 loi nen ne bo trien khai moi
+
+1. **`badge_for` khong co `color=`** (`display.py:187`) — 49 admin moi viet `badge_for(x, color='green')`
+   ⇒ `TypeError` luc render cot (khong loi luc import, nen `manage.py check` khong bat). Da them
+   kwarg `color=` (backward compatible) + `COLOR_TO_TONE`.
+2. **`VNReadOnlyMixin` khong ke thua `VNAdminMixin`** ⇒ 22 bang chi doc thieu `empty_value_display`,
+   `date_hierarchy`, `list_per_page`. Da cho ke thua + sua 22 khai bao MRO `(VNAdminMixin, VNReadOnlyMixin, …)`
+   thanh `(VNReadOnlyMixin, …)` (MRO khong nhat quan neu khong).
+3. **`CoreTenant` khong co field `name`** — 14 cho sap `tenant__name` trong `ordering`/`search_fields`
+   ⇒ `FieldError` + search **am tham tra 0 ket qua**. Doi thanh `tenant__tenant_code`.
+
+### Gate chay that
+
+- `check_admin_ux.py` — PASS, **0 loi chan, 0 canh bao**
+- `check_admin_ux.py --self-test` — **13/13**
+- `check-admin-spa-routes.mjs` — PASS; `--self-test` — **4/4**
+- `verify-admin-nginx-routing.mjs` (nginx that) — **28/28**
+- `manage.py test tests.test_admin_ui` — **45/45 OK**
+- `scripts/pre-push-gate.mjs` — **21 PASS / 0 SKIP / 0 FAIL**
+
+> `entrypoint.sh` **CHUA CHAY** trong container that (may khong dung ban build hien tai).
+> `ruff` khong chay (`No module named ruff`). Playwright/browser QA **CHUA CHAY**.
+
+---
 ## Entry 266: Refactor Django admin UI/UX dat cap phan mem thuong mai (2026-10-10)
 
 - **Nhanh**: `feat/django-admin-uiux-pm` -> `dev`
@@ -8359,3 +8437,4 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 264 | 2026-10-10 | **UI/UX wave 11** - Mode B (solo). Tiep nhan 2 commit chua push cua wave 10 va **giai blocker 4.1**. Phat hien chung **THIEU 4 truong URL** (`lane`/`appliedSymbol`/`sessionDate`/`timeframe` van la `useState` + doc URL bang effect tay) - xoa 2 effect ma khong chuyen chung se **MAT deep-link**. Sua: hook so huu 11 truong URL, **XOA 2 effect chu so huu URL thu hai** (`replaceState` bypass React Router nen `useSearchParams` khong thay thay doi cua chinh no; effect mount con TAT filter severity khi doc `?severity=high`) | `feat/w11-alert-center-url` -> `dev` | **NAV-1 44 -> 34** · `vitest` **127 file / 914 test PASS** (dev 125/894) · `tsc` 0 · `lint` **0 error** · `build` 0 · scanner self-test **13/13** · `check-uiux-budget` 0 · `check-multi-agent` 0 · `pre-push-gate` **16/1** (xem Entry 264 5) | **Tai lap rang buoc "2 `setParams` trong 1 tick KHONG compose"** tren `react-router-dom@6.30.3`: `a=1` roi `b=2` => `?b=2` => moi setter phai ghi **TOAN BO** trang thai qua optimistic `stateRef`. `useUrlState.ts` +`keyMap` (giu `?session_date`) +`{replace}` override. **Sai 2**: `keyMap` truyen literal => identity doi moi render => effect `[filters.severityFilter]` chay vo han, **treo >600s** - phai cap module. **Bai hoc lon nhat: 2 "bug that" cua 4.3 (WhaleBubbleChart) CA HAI SAI** - `setActiveTab` chi goi tu 2 nut tab (khong co duong reset), va `whaleAnalyticsSnapshotAdapter.js:319` da map dung `whale_order_count` -> `total_orders` (test hien co fixture chi co field nay van mo duoc tab bar). Handoff ghi **sai file** cho dong 319. Sua chung se la regression. Nhat ky: `docs/audit-uiux/SESSION_LOG_WAVE11_20261010.md` |
 | 265 | 2026-10-10 | **He thong LESSONS co cong machine** - port quy trinh tu vnbroker + widget. `docs/LESSONS/` co **31 lesson nhung khong co gi kiem**; 3 quy tac C1/C2/C3 chi nam tren van ban | `feat/lessons-machine-gate` -> `dev` (PR #95, `b1f4bd8ff`) | lesson **31 -> 37 / 6 -> 8 file** · `check-lessons --self-test` **12/12** · `check-lessons` that **9 file 37/40 sach** · wiring harness 2 chieu (sach->`ok`, hong->`bad`) · `node --check` 0 · `check-multi-agent` PASS · `scan-secrets` **3633 file OK** · verify lai tren `dev` sau merge: 12/12 + 37/40 exit 0 | **Bang chung "van ban khong chan duoc gi"**: gate bat ngay `frontend.md` **128 dong** (vuot C1) va INDEX khai **17 lesson** khi thuc te **31** (sai 14 o 4/6 file). **Skill chuyen `skills/` -> `.opencode/skills/`** - opencode chi auto-load `.opencode/skills/`, nen skill da ton tai **khong bao gio duoc load**. **Loi thu hai cua chinh gate**: `if (declared && ...)` lam DRIFT **im lang** khi INDEX khong khai tong ⇒ doi thanh bat buoc (C3) + self-test. **Khac biet co chu dich vs ban Python**: regex `L-[A-Z]\\d+` **bo sot 8/31 lesson** vi ID khong dong nhat (`L-001` vs `L-F01`) - ban nay nhan ca hai. **6 lesson moi** tu wave 11. **⚠ Toi pham L-T01 hai lan trong chinh phien nay** (Edit tool tu doi LF->CRLF ⇒ `392/378`), ca hai bi `git diff --numstat` bat ⇒ cau hoi dung la "**file LUU dang gi?**". **CHUA LAM**: van ban bi HO trong `css-soc.md` · chuan hoa lesson ID · noi skill vao `AGENTS.md` |
 | 266 | 2026-10-10 | **Refactor Django admin UI/UX** - Mode B (solo, vai PM/Tech Lead). Admin mac dinh cua Django -> design system theo D08 §12/§13, dashboard van hanh (4 KPI + canh bao du lieu gia cu + hoat dong gan day), menu **9 nhom nghieu vu** thay nhom theo app, chuan hoa **65** ModelAdmin (badge co chu, `list_select_related` chong N+1, `date_hierarchy`, dinh dang VN `1.240.000 dd/mm/YYYY`), khai bao admin cho **5 app tu 0** (`service_ops` 15 · `support` 5 · `data_ingest` 2 · `ai_agents` 1 · `ai_analytics` 2). Registry **34 -> 65**; model chua quan tri **73 -> 49** | `feat/django-admin-uiux-pm` -> `dev` | `check` 0 · `makemigrations --check` 0 · `collectstatic` 0 · `check_admin_ux` 0 (49 canh bao) · `--self-test` **12/12** · `test_admin_ui` **45/45** · `pre-push-gate` **19/0/0** · FE `lint` 0 error · `build` 0 · `test:components` **127 file/914 test** · BE `Ran 2946 tests`, `failures=12, errors=15, skipped=6` | **BLOCKER F-D**: comment `{# #}` **nhieu dong** trong template Django **khong hoat dong** - `tag_re` khong co `DOTALL` nen Django coi la text va **parse moi `{% %}` ben trong** => `/admin/` tra 500. Do bang `COMMENTmatch=0`. **App_dirs khong du** de override `admin/base.html` (loader quet `INSTALLED_APPS`, `django.contrib.admin` dung dau) => phai them `TEMPLATES['DIRS']`. **Registry khoa bang LOP MODEL** tu Django 5.1. `nav_sidebar.js` loc bang `th[scope=row] a` ⇒ hop loc **luon hong** ⇒ viet script rieng. 4 bug them: KPI khong kiem quyen (3/4 link 403) · `money_vi` dat ky hieu truoc so · `percent_vi` mat dau am · `label_for` tra trut do lech hoa/thuong khoa. **HOI QUY = 0**: 27 loi BE chung minh co san tren base `2ea2948b8` bang **worktree** (failures 12/12 · errors 14/14, ten giong het). **Con so "43 truy van" cua toi la BIA** - do that: ca hai duong deu **0 truy van**, khac biet that la `has_perm` 194 vs 130. Dem lai bang script: model 112→**107** · block 17→**28** · support 9→**5**. **L-T01 x2** (Edit tool + script Node doi LF→CRLF). **6 phat hien ngoai pham vi can Owner**: `nginx.conf:140` **nuot admin app `advertising`** · gate `check-admin-spa-routes` chi quet 1 chieu · `entrypoint.sh` `collectstatic \|\| true` · `ADMIN_UI_IMPLEMENTATION_STEPS.md` STALE · 2 design system · 49 model chua co admin. Nhat ky: `docs/audit-uiux/SESSION_LOG_WAVE15_ADMIN_20261010.md` |
+| 267 | 2026-10-10 | **Wave 16 - mo toan bo 49 model Django admin** - Registry **65 -> 114**, model chua co admin **49 -> 0**, nhan tieng Viet **49 -> 0**. Sua xung dot routing /admin/advertising (^~ -> =) co chung bang **nginx that 28/28**, fail-before **6 FAIL**. Gate hai chieu check:admin-spa-routes + --self-test 4/4 **va moi noi vao pre-push**. Bo || true khoi collectstatic. Gate: admin-ux 0 loi/0 canh bao · self-test 13/13 · test 45/45 · pre-push 21 PASS/0 FAIL. |

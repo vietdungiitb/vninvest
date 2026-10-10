@@ -6,7 +6,7 @@ from tenant_lifecycle.models import TenantLifecycleEvent
 
 
 @admin.register(TenantLifecycleEvent)
-class TenantLifecycleEventAdmin(VNAdminMixin, VNReadOnlyMixin, admin.ModelAdmin):
+class TenantLifecycleEventAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     list_display = ('tenant', 'event_type', 'actor_type', 'actor_user', 'created_at')
     list_filter = ('event_type', 'actor_type', 'created_at')
     search_fields = ('tenant__display_name', 'tenant__tenant_code')

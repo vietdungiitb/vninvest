@@ -113,6 +113,65 @@ MODEL_LABELS: dict[str, str] = {
     "django_celery_beat.CrontabSchedule": "Lịch cron",
     "django_celery_beat.SolarSchedule": "Lịch theo sự kiện thiên văn",
     "django_celery_beat.IntervalSchedule": "Lịch theo khoảng thời gian",
+    # ── WAVE 16: 46 model mở admin (xem `docs/PLAN_DJANGO_ADMIN_UIUX_20261010.md`
+    #    O6). Trước wave này 46 model này KHÔNG có admin nên cũng không có nhãn.
+    # ── Danh tính & truy cập ──────────────────────────────────────────────
+    "identity_access.TenantCustomRole": "Vai trò tuỳ biến",
+    "identity_access.UsageAlertConfig": "Cấu hình cảnh báo hạn mức",
+    "identity_access.TenantSSOConfig": "Cấu hình SSO của tenant",
+    "identity_access.TenantWebhookConfig": "Cấu hình webhook của tenant",
+    "identity_access.WebhookDelivery": "Lần gửi webhook",
+    # ── Bí mật ─────────────────────────────────────────────────────────────
+    "identity_access.SystemBrokerCredential": "Khoá API broker hệ thống",
+    "identity_access.UserDNSECredential": "Khoá API DNSE của người dùng",
+    "user_workspace.DNSECredential": "Khoá API DNSE của tài khoản",
+    "user_workspace.UserBrokerConfig": "Cấu hình broker của người dùng",
+    # ── Token & đăng nhập ──────────────────────────────────────────────────
+    "identity_access.PasswordResetToken": "Token đặt lại mật khẩu",
+    "identity_access.EmailVerificationToken": "Token xác minh email",
+    "identity_access.LoginAttempt": "Lần thử đăng nhập",
+    # ── Nhật ký & hàng đợi sự kiện ─────────────────────────────────────────
+    "identity_access.PATAuditLog": "Nhật ký gọi API bằng PAT",
+    "identity_access.OutboxEvent": "Sự kiện hàng đợi",
+    "identity_access.ProcessedEvent": "Sự kiện đã xử lý",
+    "identity_access.ReportDeliveryLog": "Lần gửi báo cáo",
+    "identity_access.ScheduledReport": "Báo cáo định kỳ",
+    "advisory.AIAuditLog": "Nhật ký trung tâm điều hành AI",
+    "commercial.VNPayIPNLog": "Nhật ký IPN VNPay",
+    "ops_audit.ApiCallRollup": "Tổng hợp lượt gọi API",
+    # ── Thanh toán & hạn mức ───────────────────────────────────────────────
+    "commercial.PaymentTransaction": "Giao dịch thanh toán",
+    "commercial.QuotaHistory": "Lịch sử hạn mức",
+    # ── Dữ liệu thị trường nội bộ ──────────────────────────────────────────
+    "market_data.IntradayBar": "Nến trong ngày",
+    "market_data.IntradayTick": "Tick giao dịch trong ngày",
+    "market_data.GlobalSymbolRegistry": "Danh bạ mã toàn cục",
+    "market_data.GlobalSymbolDemandSource": "Nguồn nhu cầu mã",
+    "market_data.GlobalSymbolCoverage": "Độ phủ dữ liệu của mã",
+    "market_serving.SessionFactsBucket": "Bucket số liệu phiên",
+    # ── Tín hiệu & thông báo ───────────────────────────────────────────────
+    "signal_intelligence.MarketAnomalyEvent": "Sự kiện bất thường thị trường",
+    "signal_intelligence.AdvisorySignalEvent": "Tín hiệu khuyến nghị",
+    "signal_intelligence.UserAlertDelivery": "Thông báo đã gửi",
+    "signal_intelligence.UserAlertPreference": "Tuỳ chọn thông báo",
+    # ── Danh mục & tài khoản ───────────────────────────────────────────────
+    "user_workspace.TrackedSymbol": "Mã đang theo dõi",
+    "user_workspace.PriceAlert": "Cảnh báo giá",
+    "user_workspace.SubAccount": "Tài khoản con",
+    "user_workspace.AccountSnapshot": "Ảnh chụp tài khoản",
+    # ── Sổ cái & dòng tiền ────────────────────────────────────────────────
+    "user_workspace.LedgerEntry": "Bút toán sổ cái",
+    "user_workspace.CashFlow": "Dòng tiền",
+    "user_workspace.PositionSnapshot": "Ảnh chụp vị thế",
+    "user_workspace.ValuationSnapshot": "Ảnh chụp giá trị danh mục",
+    # ── Bộ lọc & hạ tầng vận hành ─────────────────────────────────────────
+    "user_workspace.ScreenerRule": "Quy tắc lọc cổ phiếu",
+    "user_workspace.ScreenerRunHistory": "Lịch sử chạy bộ lọc",
+    "user_workspace.ScreenerSchedule": "Lịch chạy bộ lọc",
+    "user_workspace.IdempotencyRecord": "Bản ghi chống xử lý trùng",
+    "user_workspace.QuarantinedRecord": "Bản ghi bị cách ly",
+    # ── Nhãn hiệu ──────────────────────────────────────────────────────────
+    "advertising.TrademarkConfig": "Cấu hình watermark nhãn hiệu",
 }
 
 # ---------------------------------------------------------------------------

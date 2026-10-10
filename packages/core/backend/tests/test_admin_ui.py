@@ -280,6 +280,11 @@ class ModelAdminContractTests(TestCase):
         nhân viên vận hành không tìm được bản ghi của hôm."""
         missing = []
         for name, model_admin in self._own_admins().items():
+            # Ngoại lệ có tên: bảng ánh xạ thuần không có cột thời gian nào
+            # (hiện chỉ `CachedSymbolGroupMember`). Bỏ qua có tên ≠ bỏ qua
+            # im lặng — gate `check_admin_ux.py` in ra danh sách ngoại lệ.
+            if getattr(model_admin, "vn_no_time_filter", False):
+                continue
             has_hierarchy = bool(getattr(model_admin, "date_hierarchy", None))
             has_date_filter = any(
                 getattr(f, "name", "").startswith((

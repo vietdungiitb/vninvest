@@ -319,7 +319,7 @@ if (existsSync(lessonsGate)) {
 //   - token mau lech D08 §12.1, tuong phan WCAG duoi nguong
 //   - `transition:` mat thoi luong (L-F05)
 //   - byte U+FFFD trong ma nguon (hazard 5)
-// Gate co `--self-test` 12/12 chung minh no THAT SỰ bat loi, va mot phep
+// Gate co `--self-test` 13/13 chung minh no THAT SỰ bat loi, va mot phep
 // pha vong that da chay: doi `--vn-bg` + bo `<time>` cua transition => exit 1.
 const adminUxGate = join(
   REPO, "packages", "core", "backend", "scripts", "check_admin_ux.py",
@@ -336,6 +336,25 @@ if (existsSync(adminUxGate)) {
   if (r.code !== 0) bad("admin-ux", r.out);
   else ok("admin-ux", (r.out.match(/check_admin_ux:.*/) || ["PASS"])[0].trim());
 } else skip("admin-ux", "khong co packages/core/backend/scripts/check_admin_ux.py");
+
+// ------------------------------------------- admin routing hai chiều (FE)
+// Chiều 1 (routeCatalog -> nginx) da chạy qua `npm run check:admin-spa-routes`
+// nhung **chua bao gio duoc noi vao day** ⇒ tu sai 2026-10-10. Chiều 2
+// (nginx -> Django app_label) moi them, chan dung loi O1: `location ^~ /admin/X`
+// nuot toan bo `/admin/X/<model>/`. Self-test 4/4 chung minh ca hai chieu THAT
+// SỰ bat loi (T2 doi `=` -> `^~`).
+const spaRoutesGate = join(
+  REPO, "packages", "web", "scripts", "check-admin-spa-routes.mjs",
+);
+if (existsSync(spaRoutesGate)) {
+  const real = run(process.execPath, [spaRoutesGate]);
+  if (real.code !== 0) bad("admin-routes", real.out);
+  else ok("admin-routes", (real.out.match(/check:admin-spa-routes.*/) || ["PASS"])[0].trim());
+
+  const st = run(process.execPath, [spaRoutesGate, "--self-test"]);
+  if (st.code !== 0) bad("admin-routes-selftest", st.out);
+  else ok("admin-routes-selftest", (st.out.match(/--self-test:.*/) || ["PASS"])[0].trim());
+} else skip("admin-routes", "khong co packages/web/scripts/check-admin-spa-routes.mjs");
 
 // ------------------------------------------------- envelope contract gate
 // Resolve a Python. The checker is a .py script, so unlike every other gate in
