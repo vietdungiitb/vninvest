@@ -1,0 +1,38 @@
+{% load i18n %}
+{% comment %}
+  Sidebar admin — nhóm theo **nghiệp vụ** thay vì theo app kỹ thuật.
+
+  Giữ nguyên ba thứ Django cần để hoạt động:
+    - `button.toggle-nav-sidebar` + `nav_sidebar.js` (đóng/mở sidebar)
+    - `input#nav-filter` + `data-filterable` (lọc nhanh)
+    - cấu trúc `<nav id="nav-sidebar">` mà `base.css` của Django tạo kiểu
+  Bỏ đi cấu trúc app/model cũ để `nav_sidebar.js` không tìm thấy node cũ.
+  {% endcomment %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Bật/tắt thanh điều hướng"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="Điều hướng quản trị">
+  <input type="search" id="nav-filter"
+         placeholder="Gõ để lọc chức năng…"
+         aria-label="Lọc chức năng quản trị">
+  <div class="vn-nav-groups">
+    {% for group in vn_groups %}
+      <div class="vn-nav-group">
+        <h3 class="vn-nav-group__title">{{ group.label }}</h3>
+        <ul class="vn-nav-group__list">
+          {% for model in group.models %}
+            <li class="vn-nav-item{% if model.is_current %} vn-nav-item--current{% endif %}"
+                data-filterable-text="{{ model.label }} {{ model.name }}">
+              {% if model.admin_url %}
+                <a href="{{ model.admin_url }}"
+                   {% if model.is_current %}aria-current="page"{% endif %}>{{ model.label }}</a>
+              {% else %}
+                <span>{{ model.label }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% empty %}
+      <p class="vn-empty vn-nav-empty">Chưa có quyền truy cập mục nào.</p>
+    {% endfor %}
+  </div>
+</nav>

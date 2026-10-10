@@ -29,11 +29,15 @@ from .models import (
 )
 
 # ---------------------------------------------------------------------------
-# Admin site branding (set once, in the identity_access app — the root domain)
+# Branding KHÔNG set ở đây nữa.
+#
+# Trước đây 3 dòng dưới nằm ở đây. `identity_access` đứng **sau** `vninvest_core`
+# trong `INSTALLED_APPS` (`settings.py:115-116`) ⇒ module admin của app này được
+# autodiscover **sau**, ghi đè mọi branding đặt trước đó. Kết quả: branding có
+# 2 chủ sở hữu, thắng thua theo thứ tự import — không ai đọc code là thấy.
+#
+# Nay nguồn sự thật duy nhất là `vninvest_core/admin.py` → `admin_ui.branding`.
 # ---------------------------------------------------------------------------
-admin.site.site_header = 'VNInvest - Trang quản trị hệ thống'
-admin.site.site_title = 'VNInvest Admin'
-admin.site.index_title = 'Sơ đồ chức năng hệ thống'
 
 
 # ---------------------------------------------------------------------------

@@ -27,7 +27,7 @@
 - Design system + skin cho **Django admin** (`/admin/`) — server-rendered, không build step.
 - Dashboard vận hành (quick stats, KPI, cảnh báo dữ liệu stale).
 - Chuẩn hoá 34 `ModelAdmin` hiện có + khai báo admin cho model còn thiếu.
-- Menu nhóm chức n��ng + nhãn tiếng Việt.
+- Menu nhóm chức năng + nhãn tiếng Việt.
 - A11y WCAG 2.2 AA theo D08 §13.
 - Gate máy cho chính lớp admin (chống tái thoái).
 
