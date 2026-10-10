@@ -40,16 +40,25 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 
 | Từ khóa / Path | Tags | File cần đọc |
 |---|---|---|
-| `claim`, `claims`, `shared`, `deny`, `worktree`, `rebase`, `hook`, `pre-commit`, `multi-agent`, `agent`, `branch`, `merge`, `pr` | `multi-agent` | `docs/LESSONS/multi-agent.md` |
+| `claim`, `claims`, `shared`, `deny`, `worktree`, `rebase`, `hook`, `pre-commit`, `multi-agent`, `agent`, `branch`, `merge`, `pr`, `checkout --` | `multi-agent` | `docs/LESSONS/multi-agent.md` |
 | `migrat`, `migration`, `makemigrations`, `leaf`, `leaf-node`, `leaf_node`, `*/migrations/*` | `migrations` | `docs/LESSONS/migrations.md` |
-| `gate`, `gates`, `tsc`, `typecheck`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY` | `build-gates` | `docs/LESSONS/build-gates.md` |
+| `gate`, `gates`, `tsc`, `typecheck`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY`, `exit`, `no-verify`, `billing`, `ci` | `build-gates` | `docs/LESSONS/build-gates.md` |
 | `db`, `database`, `postgres`, `sqlite`, `backend`, `be-test`, `CORE_DATABASE_URL`, `migrate` | `backend` | `docs/LESSONS/backend.md` |
-| `fe`, `frontend`, `bundle`, `vite`, `i18n`, `css`, `tokens`, `soc`, `*.module.css`, `chunk`, `preload` | `frontend` | `docs/LESSONS/frontend.md` |
+| `fe`, `frontend`, `bundle`, `vite`, `chunk`, `preload`, `react`, `hook`, `memo`, `useCallback`, `useMemo`, `searchParams`, `setSearchParams`, `router`, `useState` | `frontend` | `docs/LESSONS/frontend.md` |
+| `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc` | `docs/LESSONS/css-soc.md` |
+| `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append`, `proof` | `tooling-traps` | `docs/LESSONS/tooling-traps.md` |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `rotate`, `revoke`, `token`, `fernet`, `history` | `security` | `docs/LESSONS/security.md` |
 
 **Quy tắc an toàn (fallback) — ưu tiên bỏ sót:**
 Nếu task có **bất kỳ** từ khóa nào sau: `claim`, `shared`, `migration`, `worktree`,
 `rebase`, `gate`, `agent` → **mặc định đọc `multi-agent.md`** bất kể tag suy ra được.
+
+**Fallback thứ hai — chạm vào git hoặc báo cáo bằng chứng:** nếu task sẽ `commit`,
+`append` vào file docs, hoặc viết `Proof:` / citation `file:line` → **đọc thêm
+`tooling-traps.md`**. Đây là nhóm lỗi đã gây ra diff phình và báo cáo sai lệch.
+
+**Fallback thứ ba — sửa React hook:** nếu task sửa/thêm `use*` hook, `useEffect` deps,
+hoặc state đồng bộ URL → **đọc `frontend.md`**.
 
 ## Step 2 — Đọc file lesson tương ứng
 
@@ -112,4 +121,6 @@ Và **phải tick các mục trong `MANDATORY CHECKLIST`** trước khi coi slic
 
 - Quy tắc nguồn: `docs/AGENT_PROTOCOL.md` §11 (Planning Gate)
 - Danh sách lesson: `docs/LESSONS/INDEX.md`
+- **Gate máy kiểm C1/C2/C3**: `node scripts/check-lessons.mjs` (+ `--self-test`) — chạy
+  trong `scripts/pre-push-gate.mjs`. Sửa `docs/LESSONS/` mà quên chạy ⇒ push sẽ bị chặn.
 - Bằng chứng gốc: `docs/CODE_CHANGE_AUDIT_LEDGER.md`
