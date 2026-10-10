@@ -1,5 +1,8 @@
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { createElement } from "react";
+// WAVE 11 / NAV-1 — xem `AIUsageDashboard.component.test.js`: `useUrlState` ->
+// `useSearchParams` -> `useLocation()` throw ngoai `<Router>`.
+import { MemoryRouter } from "react-router-dom";
 import { AIUsageDashboard } from "./AIUsageDashboard";
 import { AIAgentFederationPanel } from "./AIAgentFederationPanel";
 import { AIAdvisoryPromptConfigDrawer } from "./AIAdvisoryPromptConfigDrawer.js";
@@ -194,7 +197,7 @@ afterEach(() => {
 describe("Slice E — EN locale i18n (E-AC1/E-AC2/E-AC3)", () => {
   it("E-AC1: Usage table renders English headers, periods, pagination — no VI hardcode", async () => {
     await act(async () => {
-      render(createElement(AIUsageDashboard, {}));
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
     });
     await waitFor(() => {
       expect(screen.getByText("AI Usage Analytics")).toBeTruthy();

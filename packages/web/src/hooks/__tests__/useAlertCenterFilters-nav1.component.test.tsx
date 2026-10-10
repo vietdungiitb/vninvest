@@ -188,8 +188,67 @@ describe("WAVE 10 / NAV-1 — useAlertCenterFilters dong bo URL", () => {
     await run(result.current, () => result.current.applySymbol({ preventDefault() {} } as never));
     expect(result.current.appliedSymbol).toBe("HPG");
     expect(result.current.pageStats).toBe(1);
-    // `appliedSymbol` van la state local (AlertCenterPage tu ghi `?symbol=`),
-    // nhung viec Apply PHAI ve trang 1 va khong ghi tham so thua.
-    expect(currentSearch()).toBe("");
+    // ⚠ WAVE 11: assertion cu la `expect(currentSearch()).toBe("")` — khi do
+    // `appliedSymbol` con la `useState` local va `AlertCenterPage` TU GHI
+    // `?symbol=`. Bai nay chuyen `appliedSymbol` vao `useUrlState` (xem
+    // `useAlertCenterFilters.ts`) nen Apply **phai** ghi URL — neu khong, xoa
+    // 2 effect cu cua `AlertCenterPage` se lam mat deep-link `?symbol=VIC`.
+    // Day la doi spec CO Y, khong phai test "cho xanh".
+    expect(currentSearch()).toBe("symbol=HPG");
+  });
+
+  // WAVE 11 — deep-link 4 truong URL cu: `lane` · `symbol` · `timeframe` ·
+  // `session_date`. Chúng duoc 2 effect cu cua `AlertCenterPage` doc/ghi bang
+  // tay; bo 2 effect do thi hook phai so huu chung.
+  it("WAVE 11 — deep-link lane/symbol/timeframe/session_date", () => {
+    const { result } = renderFilters("?lane=ai&symbol=vic&timeframe=1h&session_date=2026-09-18");
+
+    expect(result.current.lane).toBe("ai");
+    expect(result.current.appliedSymbol).toBe("VIC");
+    expect(result.current.timeframe).toBe("1h");
+    expect(result.current.sessionDate).toBe("2026-09-18");
+    // O nhap phai HIEN thi symbol tu deep-link (khong de nguoi dung thay minh
+    // co loc ma khong thay dau gi).
+    expect(result.current.symbolDraft).toBe("VIC");
+  });
+
+  // WAVE 11 — 2 setter lien tiep trong MOT handler phai compose.
+  // Do 2026-10-10: 2 `setParams` trong cung tick KHONG compose (`?b=2` mat `a`).
+  it("WAVE 11 — setLane + setSessionDate + resetStatsPage trong 1 tick: ca 3 deu con", async () => {
+    const { result } = renderFilters("?lane=main&session_date=2026-09-18&pageStats=7");
+
+    await run(result.current, () => {
+      result.current.setLane("ai");
+      result.current.resetStatsPage();
+      result.current.setSessionDate("");
+    });
+
+    expect(result.current.lane).toBe("ai");
+    expect(result.current.sessionDate).toBe("");
+    expect(result.current.pageStats).toBe(1);
+    // `session_date` rong + `pageStats=1` la mac dinh ⇒ ca hai phai bi XOA.
+    expect(currentSearch()).toBe("lane=ai");
+  });
+
+  // WAVE 11 — toggle 2 gia trong cung mot tick (vong `for` cu cua AlertCenterPage).
+  it("WAVE 11 — toggleSeverity x2 trong 1 tick: giu ca 2 gia tri", async () => {
+    const { result } = renderFilters("");
+
+    await run(result.current, () => {
+      result.current.toggleSeverity("high");
+      result.current.toggleSeverity("critical");
+    });
+
+    expect(result.current.severityFilter).toEqual(["high", "critical"]);
+    expect(currentSearch()).toContain("severity=high%2Ccritical");
+  });
+
+  // WAVE 11 — URL do nguoi sua tay khong duoc bien thanh gia tri sai.
+  it("WAVE 11 — URL sai gia tri bi bo qua, khong render ban sai", () => {
+    const { result } = renderFilters("?lane=hack&timeframe=99y&session_date=abc");
+
+    expect(result.current.lane).toBe("main");
+    expect(result.current.timeframe).toBe("session");
+    expect(result.current.sessionDate).toBe("");
   });
 });

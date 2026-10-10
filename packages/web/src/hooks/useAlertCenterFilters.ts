@@ -1,28 +1,47 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  useUrlState, intCodec, stringCodec, boolCodec,
-  type UrlStateCodec, type UrlStateOptions,
+  useUrlState, intCodec, boolCodec,
+  type UrlStateCodec,
 } from "./useUrlState";
 
 type AlertSorting = "latest" | "largestValue";
 type StatsSortKey = "count" | "value" | "time";
 type StatsSortDir = "asc" | "desc";
+type Lane = "main" | "ai";
+type Timeframe = "5m" | "15m" | "1h" | "session" | "5d";
 
 /**
- * WAVE 10 / NAV-1 — 6 bo loc/sap xep/phan trang cua trang Alert Center nam trong
- * RAM nen link gui cho nguoi khoc thi ho thay man hinh CHUA loc, va F5 la mat
- * toan bo. Chuyen sang `useUrlState` (patch) de MOT lan bam = MOT history entry.
+ * WAVE 10 / NAV-1 — bộ lọc + sắp xếp + phân trang của trang Alert Center nằm
+ * trong RAM nên link gửi cho người khác thì họ thấy màn hình CHƯA lọc, và F5 là
+ * mất toàn bộ. Chuyển sang `useUrlState` (patch) để MỘT lần bấm = MỘT history
+ * entry.
+ *
+ * ⚠ **WAVE 11 — bổ sung 4 trường URL còn nằm local.** Bản wave 10 chỉ chuyển
+ * `severity/family/sorting/searchTermStats/pageStats/statsSort*`, còn
+ * `lane/appliedSymbol/sessionDate/timeframe` vẫn `useState` và được **đọc URL
+ * bằng tay** ở `AlertCenterPage.tsx` (effect mount `new URLSearchParams(window.
+ * location.search)` + effect ghi `window.history.replaceState`).
+ *
+ * Hai effect đó là **chủ sở hữu URL thứ hai**: nó bypass React Router nên
+ * `useSearchParams` không bao giờ thấy thay đổi của chính nó. Xoá chúng (đúng
+ * NAV-1) mà không chuyển 4 trường này sang đây ⇒ **mất deep-link** `?lane=ai
+ * &symbol=VIC`. Vì vậy 4 trường nằm chung một `useUrlState`.
  *
  * ⚠ **`symbolDraft` van giu o local** (AC-4): no la O DANG SOAN, dong bo no se
  * day 1 history entry cho MOI KY TU va gay `useEffect` loop. Chi `appliedSymbol`
  * (sau `applySymbol`) moi la trang thai da ap dung.
  *
- * ⚠ **`severity` / `family` dung TEN TRUNG voi `AlertCenterPage.tsx:126-127`**
- * de deep-link cu `?severity=high` giong het sau khi sua trang do.
+ * ⚠ **Ten tham so URL giong het** `AlertCenterPage.tsx` cu (effect da xoa):
+ * `lane` · `symbol` · `severity` · `family` · `timeframe` · `session_date`.
+ * Deep-link cu gan nhat mot moi giong het truoc.
  */
 type AlertUrlState = {
+  lane: Lane;
+  symbol: string;
   severity: string[];
   family: string[];
+  timeframe: Timeframe;
+  sessionDate: string;
   sorting: AlertSorting;
   searchTermStats: string;
   pageStats: number;
@@ -31,6 +50,15 @@ type AlertUrlState = {
 };
 
 const DEFAULT_SORT: { key: StatsSortKey; dir: StatsSortDir } = { key: "count", dir: "desc" };
+
+/**
+ * ⚠ **`session_date` — KHOA URL PHAI giữ nguyen ten `session_date`, KHONG doi
+ * thanh `sessionDate`.** `FilterBar` + effect cu ghi `session_date`; doi ten thi
+ * link da chia se cu khong con doc duoc.
+ */
+type AlertUrlSpec = { [K in keyof AlertUrlState]: UrlStateCodec<AlertUrlState[K]> };
+
+const SESSION_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Danh sach phan tach bang dau phay. Mang rong ⇒ `undefined` ⇒ xoa khoi URL. */
 const listCodec: UrlStateCodec<string[]> = {
@@ -53,10 +81,7 @@ const pageStatsCodec: UrlStateCodec<number> = {
   serialize: (v) => (v === 1 ? undefined : intCodec.serialize(v)),
 };
 
-const STATS_SORT_KEYS: readonly StatsSortKey[] = ["count", "value", "time"];
-const STATS_SORT_DIRS: readonly StatsSortDir[] = ["asc", "desc"];
-
-/** Union 2/3 gia tri: `?statsSortKey=xyz` bi bo qua, khong render ban sai. */
+/** Union 2/3 gia tri: `?lane=xyz` bi bo qua, khong render ban sai. */
 function unionCodec<T extends string>(all: readonly T[], def: T): UrlStateCodec<T> {
   return {
     parse: (raw) => (all as readonly string[]).includes(raw ?? "") ? (raw as T) : undefined,
@@ -64,19 +89,54 @@ function unionCodec<T extends string>(all: readonly T[], def: T): UrlStateCodec<
   };
 }
 
-const ALERT_URL_SPEC: { [K in keyof AlertUrlState]: UrlStateCodec<AlertUrlState[K]> } = {
+/**
+ * Ma o chieu chuan hoa. `normalizeSymbol` cua `AlertCenterPage.tsx:86-88` la
+ * `String(v||"").trim().toUpperCase()` ⇒ giu dung quy tac do, va CHAN rong
+ * (chuoi rong ⇒ `undefined` ⇒ xoa tham so).
+ */
+const symbolCodec: UrlStateCodec<string> = {
+  parse: (raw) => {
+    const v = (raw || "").trim().toUpperCase();
+    return v === "" ? undefined : v;
+  },
+  serialize: (v) => {
+    const s = (v || "").trim().toUpperCase();
+    return s === "" ? undefined : s;
+  },
+};
+
+/** `?session_date=abc` (nguoi sua tay) ⇒ bo qua, khong gui len BE. */
+const sessionDateCodec: UrlStateCodec<string> = {
+  parse: (raw) => (raw && SESSION_DATE_RE.test(raw) ? raw : undefined),
+  serialize: (v) => (v && SESSION_DATE_RE.test(v) ? v : undefined),
+};
+
+const LANES = ["main", "ai"] as const satisfies readonly Lane[];
+const TIMEFRAMES = ["5m", "15m", "1h", "session", "5d"] as const satisfies readonly Timeframe[];
+const STATS_SORT_KEYS: readonly StatsSortKey[] = ["count", "value", "time"];
+const STATS_SORT_DIRS: readonly StatsSortDir[] = ["asc", "desc"];
+
+const ALERT_URL_SPEC: AlertUrlSpec = {
+  lane: unionCodec<Lane>(LANES, "main"),
+  symbol: symbolCodec,
   severity: listCodec,
   family: listCodec,
+  timeframe: unionCodec<Timeframe>(TIMEFRAMES, "session"),
+  sessionDate: sessionDateCodec,
   sorting: boolCodec<AlertSorting>("latest", "largestValue"),
-  searchTermStats: stringCodec,
+  searchTermStats: { parse: (raw) => (raw == null || raw === "" ? undefined : raw), serialize: (v) => (v === "" ? undefined : v) },
   pageStats: pageStatsCodec,
   statsSortKey: unionCodec(STATS_SORT_KEYS, DEFAULT_SORT.key),
   statsSortDir: unionCodec(STATS_SORT_DIRS, DEFAULT_SORT.dir),
 };
 
 const ALERT_URL_DEFAULTS: AlertUrlState = {
+  lane: "main",
+  symbol: "",
   severity: [],
   family: [],
+  timeframe: "session",
+  sessionDate: "",
   sorting: "latest",
   searchTermStats: "",
   pageStats: 1,
@@ -84,94 +144,164 @@ const ALERT_URL_DEFAULTS: AlertUrlState = {
   statsSortDir: DEFAULT_SORT.dir,
 };
 
-// ⚠ `options` o CAP MODULE. `useUrlState` memo hoa `setValue` theo `replaceKeys`
-// (`useUrlState.ts:187`) ⇒ literal trong render ⇒ moi `useCallback` booc no doi
-// identity moi render. `searchTermStats` la o nhap van ban (AlertCenterPage:750)
-// ⇒ `replace`, neu khong moi ky tu la 1 history entry.
-const ALERT_URL_OPTIONS: UrlStateOptions = { replaceKeys: ["searchTermStats"] };
+/**
+ * ⚠⚠ **BAT BUOC o CAP MODULE — khong duoc truyen object literal trong render.**
+ *
+ * `keyMap` duoc `useUrlState` bo vao `useCallback([keyMap])` de tinh ten tham so.
+ * Truyen literal ⇒ moi render lai doi identity ⇒ `useMemo` tinh `value` lai ⇒
+ * `severityFilter` / `familyFilter` la **MANG MOI** moi render ⇒ effect
+ * `[...filters.severityFilter, filters.familyFilter]` cua `AlertCenterPage.tsx`
+ * chay lai vo han ⇒ **treo test**. Da gap that 2026-10-10 (treo >600s).
+ * Cung ly do voi `ALERT_URL_SPEC`/`ALERT_URL_DEFAULTS` o tren.
+ */
+const ALERT_URL_KEYMAP = { sessionDate: "session_date" } as const;
 
 export function useAlertCenterFilters() {
   // VAN O LOCAL (AC-4): o dang soan, khong bao gio vao URL.
-  const [lane, setLane] = useState("main");
   const [symbolDraft, setSymbolDraft] = useState("");
-  const [appliedSymbol, setAppliedSymbol] = useState("");
-  const [sessionDate, setSessionDate] = useState("");
-  const [timeframe, setTimeframe] = useState("session");
 
-  const [{ severity, family, sorting, searchTermStats, pageStats, statsSortKey, statsSortDir }, setUrlFilters] =
-    useUrlState(ALERT_URL_SPEC, ALERT_URL_DEFAULTS, ALERT_URL_OPTIONS);
+  const [url, setUrlFilters] = useUrlState<AlertUrlState>(
+    ALERT_URL_SPEC,
+    ALERT_URL_DEFAULTS,
+    {},
+    // ⚠ `sessionDate` (camelCase) ↔ `?session_date` (snake_case): giữ nguyên tên
+    // tham số cũ để link đã chia sẻ không chết. Xem `useUrlState.ts` (`keyMap`).
+    ALERT_URL_KEYMAP,
+  );
+
+  /**
+   * ⚠⚠ **WAVE 11 — bat buoc: MOI thay doi ghi TOAN BO trang thai.**
+   *
+   * Do 2026-10-10 tren `react-router-dom@6.30.3`: 2 `setParams` trong cung mot
+   * tick KHONG compose — `setParams(a=1)` roi `setParams(b=2)` cho `?b=2`.
+   *
+   * `AlertCenterPage.tsx` goi nhieu setter lien tiep trong mot handler (vi du
+   * `:574` `setLane` + `resetStatsPage` + `setSessionDate`, `:582` `setSession-
+   * Date` + `setTimeframe` + `resetStatsPage`). Neu moi setter chi ghi key cua
+   * no, 2 trong 3 len goi se bi ghi de.
+   *
+   * ⇒ `stateRef` lai trang thai URL **va cap nhat ngay trong setter** (optimistic
+   * ref). `write` ghep patch vao `stateRef` roi gui **toan bo** trang thai, nen
+   * lan goi sau van mang ca thay doi cua lan truoc trong cung tick. Moi render
+   * lai `stateRef.current = url` ⇒ nut Back / deep-link van la nguon su that.
+   */
+  const stateRef = useRef<AlertUrlState>(ALERT_URL_DEFAULTS);
+  stateRef.current = url;
+
+  const write = useCallback((patch: Partial<AlertUrlState>, replace = false) => {
+    const next = { ...stateRef.current, ...patch };
+    stateRef.current = next;
+    setUrlFilters(next, { replace });
+  }, [setUrlFilters]);
 
   // Giu TEN field cu cho `AlertCenterPage` (khong doi API public cua hook).
-  const severityFilter = severity;
-  const familyFilter = family;
+  const {
+    lane, symbol: appliedSymbol, severity: severityFilter, family: familyFilter,
+    timeframe, sessionDate, sorting, searchTermStats, pageStats,
+    statsSortKey, statsSortDir,
+  } = url;
+  const symbolDraftValue = symbolDraft;
+
+  /**
+   * ⚠ **WAVE 11 — `symbolDraft` van phai HIEN thi gia tri deep-link.**
+   *
+   * Effect mount cu cua `AlertCenterPage` set ca `symbolDraft` **va**
+   * `appliedSymbol` tu `?symbol=VIC`. Bo effect do thi `appliedSymbol=VIC` (bo
+   * loc co that) nhung o nhap lai TRONG — nguoi dung thay minh co loc ma khong
+   * thay dau gi.
+   *
+   * AC-4 van dung: chi COPY `URL -> o`, khong bao gio ghi nguoc. Va chi chay khi
+   * `appliedSymbol` **doi** ⇒ goo tay vao o khong bi ghi de (dep `[appliedSymbol]`
+   * ⇒ go "HPG" khong doi `appliedSymbol` ⇒ effect khong chay).
+   */
+  useEffect(() => {
+    setSymbolDraft(appliedSymbol);
+  }, [appliedSymbol]);
   const statsSort = useMemo(
     () => ({ key: statsSortKey, dir: statsSortDir }),
     [statsSortKey, statsSortDir],
   );
 
-  // ⚠ MOT patch cho MOI thay doi ghep "gia tri" + "ve trang 1". Goi 2 lan
-  // `setUrlFilters` trong cung mot tick KHONG compose — lan hai doc `prev` cu va
-  // ghi de ket qua lan mot (`useUrlState.ts:161-165`). `AlertCenterPage.tsx:494`
-  // va `:504-508` dang goi `setSeverityFilter(...)` roi `resetStatsPage()` —
-  // ghep vao day thi ca hai van dung ke ca khi caller chua doi.
-  const setSeverityFilter = useCallback(
-    (next: string[]) => setUrlFilters({ severity: next, pageStats: 1 }),
-    [setUrlFilters],
-  );
-  const setFamilyFilter = useCallback(
-    (next: string[]) => setUrlFilters({ family: next, pageStats: 1 }),
-    [setUrlFilters],
-  );
-  const setSorting = useCallback(
-    (next: AlertSorting) => setUrlFilters({ sorting: next }),
-    [setUrlFilters],
-  );
-  const setSearchTermStats = useCallback(
-    (v: string) => setUrlFilters({ searchTermStats: v }),
-    [setUrlFilters],
-  );
-  const setPageStats = useCallback(
-    (v: number) => setUrlFilters({ pageStats: v }),
-    [setUrlFilters],
-  );
+  const setLane = useCallback((val: string) => {
+    write({ lane: (LANES as readonly string[]).includes(val) ? (val as Lane) : "main" });
+  }, [write]);
 
-  const resetStatsPage = useCallback(() => setUrlFilters({ pageStats: 1 }), [setUrlFilters]);
+  const setAppliedSymbol = useCallback((val: string) => {
+    write({ symbol: val });
+  }, [write]);
+
+  const setTimeframe = useCallback((val: string) => {
+    write({ timeframe: (TIMEFRAMES as readonly string[]).includes(val) ? (val as Timeframe) : "session" });
+  }, [write]);
+
+  const setSessionDate = useCallback((val: string) => {
+    write({ sessionDate: val });
+  }, [write]);
+
+  const setSeverityFilter = useCallback((next: string[]) => {
+    write({ severity: next, pageStats: 1 });
+  }, [write]);
+
+  const setFamilyFilter = useCallback((next: string[]) => {
+    write({ family: next, pageStats: 1 });
+  }, [write]);
+
+  const setSorting = useCallback((next: AlertSorting) => {
+    write({ sorting: next });
+  }, [write]);
+
+  /**
+   * O tim kiem bat `onChange` truc tiep (`AlertCenterPage.tsx:750`) ⇒ `replace`.
+   * Neu `push`, moi ky tu tao 1 history entry ⇒ nguoi dung phai bam Back hang
+   * chuc lan moi ra khoi trang (`useUrlState.ts:27-36`).
+   */
+  const setSearchTermStats = useCallback((v: string) => {
+    write({ searchTermStats: v }, true);
+  }, [write]);
+
+  const setPageStats = useCallback((v: number) => {
+    write({ pageStats: v });
+  }, [write]);
+
+  const resetStatsPage = useCallback(() => write({ pageStats: 1 }), [write]);
 
   const cycleStatsSort = useCallback((key: StatsSortKey) => {
-    const dir: StatsSortDir = statsSortKey === key ? (statsSortDir === "desc" ? "asc" : "desc") : "desc";
-    setUrlFilters({ statsSortKey: key, statsSortDir: dir, pageStats: 1 });
-  }, [setUrlFilters, statsSortKey, statsSortDir]);
+    const cur = stateRef.current;
+    const dir: StatsSortDir = cur.statsSortKey === key
+      ? (cur.statsSortDir === "desc" ? "asc" : "desc")
+      : "desc";
+    write({ statsSortKey: key, statsSortDir: dir, pageStats: 1 });
+  }, [write]);
 
-  // ⚠ Tinh `next` tu `severityFilter` hien tai, KHONG dung updater lambda cua
-  // `useState`. Hai lan go trong CUNG mot tick se doc cung gia tri cu ⇒ lan hai
-  // ghi de lan mot. `AlertCenterPage.tsx:108` goi `toggleSeverity` trong vong
-  // `for` ⇒ `?severity=a,b` se ra `[b]` thay vi `[a,b]` — sua o trang do.
+  // Doc `stateRef.current` (KHONG doc `severityFilter` tu closure): 2 toggle
+  // trong cung mot tick phai thay tren cung gia tri da cap nhat.
   const toggleSeverity = useCallback((val: string) => {
-    const next = severityFilter.includes(val)
-      ? severityFilter.filter((v) => v !== val)
-      : [...severityFilter, val];
-    setUrlFilters({ severity: next, pageStats: 1 });
-  }, [setUrlFilters, severityFilter]);
+    const cur = stateRef.current.severity;
+    write({
+      severity: cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val],
+      pageStats: 1,
+    });
+  }, [write]);
 
   const toggleFamily = useCallback((val: string) => {
-    const next = familyFilter.includes(val)
-      ? familyFilter.filter((v) => v !== val)
-      : [...familyFilter, val];
-    setUrlFilters({ family: next, pageStats: 1 });
-  }, [setUrlFilters, familyFilter]);
+    const cur = stateRef.current.family;
+    write({
+      family: cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val],
+      pageStats: 1,
+    });
+  }, [write]);
 
   const clearFilters = useCallback(() => {
-    setUrlFilters({ severity: [], family: [], pageStats: 1 });
-  }, [setUrlFilters]);
+    write({ severity: [], family: [], pageStats: 1 });
+  }, [write]);
 
   const applySymbol = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    setAppliedSymbol(symbolDraft.trim().toUpperCase());
-    setUrlFilters({ pageStats: 1 });
-  }, [symbolDraft, setUrlFilters]);
+    write({ symbol: symbolDraftValue, pageStats: 1 });
+  }, [symbolDraftValue, write]);
 
   return {
-    lane, setLane, symbolDraft, setSymbolDraft, appliedSymbol,
+    lane, setLane, symbolDraft: symbolDraftValue, setSymbolDraft, appliedSymbol,
     sessionDate, timeframe, setTimeframe,
     severityFilter, setSeverityFilter, familyFilter, setFamilyFilter,
     sorting, setSorting,

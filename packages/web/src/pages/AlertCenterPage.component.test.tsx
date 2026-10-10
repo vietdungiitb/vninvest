@@ -1,6 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+// WAVE 11 / NAV-1 — `AlertCenterPage` doc `useAlertCenterFilters` → `useUrlState`
+// → `useSearchParams` → `useLocation()` **throw** ngoài `<Router>`. `main.tsx:125`
+// bọc `BrowserRouter` quanh cả app, nên đây chỉ là bùi thiếu trong test.
+import { MemoryRouter } from "react-router-dom";
 import { AlertCenterPage } from "./AlertCenterPage.js";
+
+/**
+ * WAVE 11 — deep-link nay phai vao qua `initialEntries` của Router, KHONG
+ * dùng `window.history.replaceState`.
+ *
+ * ⚠ Ly do (không phải sở thích): `MemoryRouter` giữ history **riêng trong bộ
+ * nhớ**, nó KHÔNG đọc `window.location`. Test 13/14 cũ set up URL bằng
+ * `window.history.replaceState(null, "", "/?severity=high")` — đó là cách làm
+ * đúng cho code cũ (tự đọc `window.location.search`), nhưng **vô hiệu** với kiến
+ * trúc mới: state giờ đến từ `useSearchParams` của React Router.
+ */
+function renderPage(search = "") {
+  return render(
+    <MemoryRouter initialEntries={[`/${search}`]}>
+      <AlertCenterPage />
+    </MemoryRouter>,
+  );
+}
 
 const dataState = vi.hoisted(() => ({ current: null as any }));
 const streamState = vi.hoisted(() => ({ items: [] as any[], status: "open", onItem: null as any }));
@@ -97,7 +119,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
 
   it("1. loading → skeleton, khong empty", () => {
     dataState.current = () => baseData({ isInitialLoading: true });
-    const { container } = render(<AlertCenterPage />);
+    const { container } = renderPage();
     expect(screen.queryByText("alertCenter.emptyNoScope")).toBeNull();
     expect(screen.queryByText("alertCenter.emptyNoMatch")).toBeNull();
     expect(container.querySelector('[style*="shellShimmer"]')).toBeTruthy();
@@ -106,7 +128,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
   it("2. error → banner + nut refresh goi refetch", async () => {
     const refetch = vi.fn();
     dataState.current = () => baseData({ error: "boom", refetch });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByRole("alert").textContent).toContain("boom");
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.refresh" }));
     expect(refetch).toHaveBeenCalledTimes(1);
@@ -114,7 +136,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
 
   it("3. empty → text alertCenter.emptyNoScope (S2, khong loc)", () => {
     dataState.current = () => baseData({});
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("alertCenter.emptyNoScope")).toBeTruthy();
   });
 
@@ -131,7 +153,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     const html = document.body.innerHTML;
     expect(html.indexOf("CCC")).toBeGreaterThan(-1);
     expect(html.indexOf("CCC")).toBeLessThan(html.indexOf("BBB"));
@@ -148,7 +170,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           pagination: { page: 1, page_size: 200, total_pages: 1, total_symbols: 24 },
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("A00")).toBeTruthy();
     expect(screen.queryByText("A08")).toBeNull();
     // header hien tong scope, khong phai do dai trang
@@ -171,7 +193,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     const future = new Date(Date.now() + 3600_000).toISOString();
     await act(async () => {
       streamState.onItem({
@@ -211,7 +233,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.queryByText("EXTRA")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.loadMore" }));
     await waitFor(() => expect(adapterMocks.getAlertCenterFeed).toHaveBeenCalled());
@@ -232,7 +254,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    const { container } = render(<AlertCenterPage />);
+    const { container } = renderPage();
     expect(screen.getByText("Title AAA")).toBeTruthy();
     expect(container.querySelector('[style*="shellShimmer"]')).toBeNull();
   });
@@ -241,7 +263,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     const refetch = vi.fn().mockResolvedValue([]);
     dataState.current = () =>
       baseData({ isInitialLoading: false, feedError: "feed boom", refetch });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("feed boom")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.retry" }));
     await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
@@ -258,34 +280,31 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("Title AAA")).toBeTruthy();
     expect(screen.getByText("feed boom")).toBeTruthy();
   });
 
   it("11. S2 NO_SCOPE khi tong 0 + khong loc", () => {
     dataState.current = () => baseData({});
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("alertCenter.emptyNoScope")).toBeTruthy();
   });
 
   it("12. S7 SSE badge live theo stream status", () => {
     streamState.status = "connecting";
     dataState.current = () => baseData({});
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("alertCenter.livePolling")).toBeTruthy();
   });
 
   it("13. S2 NO_MATCH khi co loc tren URL", () => {
-    window.history.replaceState(null, "", "/?severity=high");
     dataState.current = () => baseData({});
-    render(<AlertCenterPage />);
+    renderPage("?severity=high");
     expect(screen.getByText("alertCenter.emptyNoMatch")).toBeTruthy();
-    window.history.replaceState(null, "", "/");
   });
 
   it("14. S3 ack hien ca lane ai", () => {
-    window.history.replaceState(null, "", "/?lane=ai");
     dataState.current = () =>
       baseData({
         payload: {
@@ -294,9 +313,8 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage("?lane=ai");
     expect(screen.getByRole("button", { name: "alertCenter.btnAck" })).toBeTruthy();
-    window.history.replaceState(null, "", "/");
   });
 
   it("15. S3 mute modal gui duration + reason", async () => {
@@ -308,7 +326,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.btnMute" }));
     expect(screen.getByText(/alertCenter.muteTitle/)).toBeTruthy();
     const reason = document.querySelector('input[maxlength="200"]') as HTMLInputElement;
@@ -335,7 +353,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.markAllRead" }));
     await waitFor(() => expect(adapterMocks.acknowledgeAlertCenterEvent).toHaveBeenCalledTimes(2));
     expect(adapterMocks.acknowledgeAlertCenterEvent).toHaveBeenCalledWith(
@@ -350,7 +368,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
       baseData({
         payload: { results: [alertFixture("AAA", old)], next: null, previous: null },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     expect(screen.getByText("alertCenter.staleBanner")).toBeTruthy();
   });
 
@@ -363,7 +381,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
           previous: null,
         },
       });
-    render(<AlertCenterPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "alertCenter.btnMute" }));
     expect(screen.getByText(/alertCenter.muteTitle/)).toBeTruthy();
     const reason = document.querySelector('input[maxlength="200"]') as HTMLInputElement;
