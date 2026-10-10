@@ -13,6 +13,7 @@ import styles from "./aiSettings.module.css";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { useRetryableAsync } from "../hooks/useRetryableAsync.js";
+import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../hooks/useUrlState";
 
 const e = createElement;
 
@@ -53,6 +54,55 @@ interface AIUsageDashboardProps {
 }
 
 const PAGE_SIZES = [20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20;
+
+type UsageUrlState = {
+  page: number; pageSize: number; modelFilter: string; statusFilter: string;
+};
+
+/**
+ * Gia tri mac dinh ⇒ `serialize` tra `undefined` ⇒ `?page=1` / `?pageSize=20`
+ * KHONG duoc ghi (link copy ra khong dinh tham so thua).
+ *
+ * ⚠ `parse` cung phai tra `undefined` cho gia tri mac dinh, khong tra chinh no —
+ * cung nguyen tac voi `boolCodec` (`useUrlState.ts:80-90`): `parse` tra gia tri
+ * ≠ `undefined` thi hook dung gia tri do THAY cho `fallback`.
+ *
+ * Vì sao khong dung `intCodec` thang: `intCodec.serialize(1)` = `"1"` ⇒ doi
+ * filter se de lai `?page=1` ben canh gia tri filter.
+ */
+const pageCodec: UrlStateCodec<number> = {
+  parse: (raw) => {
+    const n = intCodec.parse(raw);
+    return n === undefined || n < 1 ? undefined : n;
+  },
+  serialize: (v) => (v === 1 ? undefined : intCodec.serialize(v)),
+};
+
+/**
+ * `pageSize` chi chap nhan gia tri co that trong `PAGE_SIZES` — URL do nguoi
+ * sua tay (`?pageSize=9999`) khong duoc bien thanh `limit=9999` gui len BE.
+ */
+const pageSizeCodec: UrlStateCodec<number> = {
+  parse: (raw) => {
+    const n = intCodec.parse(raw);
+    return n !== undefined && (PAGE_SIZES as number[]).includes(n) ? n : undefined;
+  },
+  serialize: (v) => (v === DEFAULT_PAGE_SIZE ? undefined : intCodec.serialize(v)),
+};
+
+// WAVE 10 / NAV-1 — `spec` + `defaults` khai o CAP MODULE de identity on dinh
+// giua cac lan render. Truoc day truyen object literal trong render lam
+// `useMemo([params, spec, defaults])` (useUrlState.ts:150) luon tinh lai.
+const USAGE_URL_SPEC: { [K in keyof UsageUrlState]: UrlStateCodec<UsageUrlState[K]> } = {
+  page: pageCodec,
+  pageSize: pageSizeCodec,
+  modelFilter: stringCodec,
+  statusFilter: stringCodec,
+};
+const USAGE_URL_DEFAULTS: UsageUrlState = {
+  page: 1, pageSize: DEFAULT_PAGE_SIZE, modelFilter: '', statusFilter: '',
+};
 
 const CSV_HEADER_KEYS = [
   "aiUsageAnalytics.createdAt", "aiUsageAnalytics.action", "aiUsageAnalytics.provider", "aiUsageAnalytics.model",
@@ -108,10 +158,14 @@ function buildChartData(summary: UsageSummaryRow[] | null): Array<{ date: string
 export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
   const { t, localeTag } = useI18n();
   const [days, setDays] = useState("7");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [modelFilter, setModelFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // WAVE 10 / NAV-1: phan trang + kich thuoc trang + 2 bo loc nam trong RAM nen
+  // gui link cho nguoi khac thi ho thay man hinh CHUA loc. `useUrlState` (patch)
+  // de MOT lan doi bo loc + ve trang 1 chi tao MOT history entry.
+  const [{ page, pageSize, modelFilter, statusFilter }, setUrlState] = useUrlState(
+    USAGE_URL_SPEC,
+    USAGE_URL_DEFAULTS,
+  );
+  const setPage = useCallback((v: number) => setUrlState({ page: v }), [setUrlState]);
   const [exporting, setExporting] = useState(false);
 
   const usageClient = coreApiAdapter as unknown as {
@@ -149,19 +203,19 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
     setPage(1);
   };
 
+  // ⚠ 3 handler duoi day ghep "doi gia tri" + "ve trang 1" vao MOT patch.
+  // Goi 2 lan `setUrlState` trong cung mot tick KHONG compose — lan hai doc
+  // `prev` cu va ghi de ket qua lan mot (`useUrlState.ts:161-165`).
   const handlePageSizeChange = (value: number) => {
-    setPageSize(value);
-    setPage(1);
+    setUrlState({ pageSize: value, page: 1 });
   };
 
   const handleModelFilterChange = (value: string) => {
-    setModelFilter(value);
-    setPage(1);
+    setUrlState({ modelFilter: value, page: 1 });
   };
 
   const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
-    setPage(1);
+    setUrlState({ statusFilter: value, page: 1 });
   };
 
   const handleExport = useCallback(async () => {
@@ -355,14 +409,16 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
           e("button", {
             key: "prev",
             className: `${styles.btn} ${styles.btnSm}`,
-            onClick: () => setPage((p) => Math.max(1, p - 1)),
+            // WAVE 10 / NAV-1: setter cua `useUrlState` nhan **gia tri**, khong
+            // phai updater lambda ⇒ doc `page` tu state thay vi `p`.
+            onClick: () => setPage(Math.max(1, page - 1)),
             disabled: page <= 1,
           }, t("aiUsageAnalytics.prev")),
           e("span", null, t("aiUsageAnalytics.pageOf").replace("{page}", String(page)).replace("{total}", String(totalPages))),
           e("button", {
             key: "next",
             className: `${styles.btn} ${styles.btnSm}`,
-            onClick: () => setPage((p) => Math.min(totalPages, p + 1)),
+            onClick: () => setPage(Math.min(totalPages, page + 1)),
             disabled: page >= totalPages,
           }, t("aiUsageAnalytics.next")),
         ),
