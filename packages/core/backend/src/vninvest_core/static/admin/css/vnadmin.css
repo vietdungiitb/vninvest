@@ -1,1210 +1,3378 @@
-/*
- * VNInvest Admin — design tokens
- * -----------------------------------------------------------------------------
- * Nguon su that: docs/saas_design_pack/D08_UI_UX_DESIGN_20261002.md §12 (He thong
- * thiet ke) + §13 (WCAG 2.2 AA). Do DO, khong doan.
- *
- * ⚠ CONTRADICTION GHI NHAN (khong tu sua o scope nay):
- *   D08 §12.1 dung palette `#0F1117` / `#3B82F6`.
- *   `packages/web/src/components/soc/soc.tokens.css:7,14` dung `#081734` / `#22d3ee`.
- *   Hai design system cung song. Admin dung D08 vi no la system-design pack chinh
- *   thuc + moi hon + co bang tuong phan dinh luong de gate kiem duoc.
- *   Dong bo 2 palette la wave rieng (xem PLAN §6 Q2).
- *
- * ⚠ MAU TANG/GIAM — doc L-F8 truoc khi dung:
- *   Viet Nam dung chuan GANH BLOOMBERG: XANH = tang, DO = giam.
- *   Owner chot 2026-10-07. Token duoi day giu nguyen huong do.
- *
- * ⚠ KHONG dung `transition:`/shorthand khong giu <time> (L-F05).
- *   Moi khai bao transition duoi day deu co <time> <easing> day du.
- */
-
-:root {
-  /* ── 12 token mau ─────────────────────────────────────────────────────────
-   * 10 gia tri lay nguyen verbatim tu D08 §12.1; 3 token danh xung/duyet sinh
-   * deu ghi ro ly do. Gate `scripts/check_admin_ux.py` khoa 12 dong nay.
-   */
-  --vn-bg: #0f1117;          /* D08 §12.1 "Nen chinh"                              */
-  --vn-surface: #161922;     /* D08 §12.1 "Nen nang cao" (the)                     */
-  --vn-surface-2: #1e2130;   /* danh xung: +1 bac so voi --vn-surface (header/sidebar) */
-  --vn-border: #242838;      /* D08 §12.1 "Duong vien"                              */
-  --vn-text: #e8eaf0;        /* D08 §12.1 "Chu chinh" — 15.69:1 tren --vn-bg       */
-  --vn-text-muted: #9aa0ae;  /* D08 §12.1 "Chu phu"   — 7.20:1 tren --vn-bg       */
-  --vn-primary: #3b82f6;     /* D08 §12.1 "Nhan chinh"                              */
-  --vn-success: #22c55e;     /* D08 §12.1 "Thanh cong"                              */
-  --vn-warning: #f59e0b;     /* D08 §12.1 "Canh bao"                                */
-  --vn-danger: #ef4444;      /* D08 §12.1 "Nguy hiem"                               */
-  --vn-gain: #22c55e;        /* L-F08 Bloomberg tang — CUNG gia tri --vn-success     */
-  --vn-loss: #ef4444;        /* L-F08 Bloomberg giam — CUNG gia tri --vn-danger      */
-
-  /* ── Badge: nen mem + chu sang, do bang mau tron 16% (khong doan) ─────────
-   * Tuong phan da tinh bang script: tat ca >= 7.8:1 (xem AUDIT §Tuong phan).
-   * KHONG dung chu trang tren nen mau: `#FFFFFF` tren `#EF4444` chi 3.76:1
-   * (chi dat AA-large) => mau chu toi hon.
-   */
-  --vn-badge-success-bg: #122e22;
-  --vn-badge-success-fg: #86efac;
-  --vn-badge-warning-bg: #342815;
-  --vn-badge-warning-fg: #fcd34d;
-  --vn-badge-danger-bg: #33191e;
-  --vn-badge-danger-fg: #fca5a5;
-  --vn-badge-primary-bg: #16233b;
-  --vn-badge-primary-fg: #93c5fd;
-  --vn-badge-neutral-bg: #25282f;
-  --vn-badge-neutral-fg: #d5d9e2;
-
-  /* ── Gia nhanh / khoang cach (D08 §12.2) ───────────────────────────────── */
-  --vn-sp-1: 4px;
-  --vn-sp-2: 8px;
-  --vn-sp-3: 16px;
-  --vn-sp-4: 24px;
-  --vn-sp-5: 40px;
-
-  /* ── Bo goc / do bong (D08 §12.4) ──────────────────────────────────────── */
-  --vn-r-btn: 6px;
-  --vn-r-card: 10px;
-  --vn-r-dialog: 12px;
-  --vn-r-notice: 8px;
-
-  /* ── Chu (D08 §12.3) ──────────────────────────────────────────────────── */
-  --vn-font: ui-sans-system, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --vn-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --vn-fs-h1: 28px;
-  --vn-fs-h2: 20px;
-  --vn-fs-h3: 16px;
-  --vn-fs-body: 14px;
-  --vn-fs-muted: 13px;
-
-  /* ── Chuyen dong ───────────────────────────────────────────────────────── */
-  --vn-dur-fast: 120ms;
-  --vn-dur: 180ms;
-  --vn-ease: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* ── Vung cham toi thieu (D08 §13: 24x24) ──────────────────────────────── */
-  --vn-tap: 24px;
-
-  /* ── Vong focus: PHAI nhin thay tren ca nen sang va nen toi (D08 §13.1) ─── */
-  --vn-focus-ring: 0 0 0 2px var(--vn-bg), 0 0 0 4px var(--vn-primary);
-}
-
-/* ── Chon nen sang ──────────────────────────────────────────────────────────
- *
- * Django 5.2 giu lua chon cua nguoi dung bang class tren `<html>`:
- * `light-mode` / `dark-mode` (xem `theme.js`). Do do phai sua token theo
- * CUNG co che, khong duoc tu dinh nghia.
- *
- * ⚠ LOI DA PHA GOC — cua chay 2026-10-10 (wave 18):
- * truoc day la `html:not(.light-mode) { nen sang }`. Selector nay **khong bao
- * gio** dung nhu y nghia:
- *   - `<html class="dark-mode">` (user CHON sang) → van khớp `:not(.light-mode)`
- *     ⇒ nhan **nen sang** ⇒ khu vuc do Django toi nhung phan cua t ta sang.
- *   - mac dinh cua trang la **TOI** (D08 §12.1) ⇒ khi user CHUA chon, admin
- *     hien sang trong khi `login.css` cua Django theo `prefers-color-scheme`
- *     ⇒ **nen toi + chu toi**: nhan "Username"/"Password" tuong phan **1.04:1**.
- *
- * Vay thu tu dung la:
- *   1. `html.light-mode`          → nen sang (user chon sang)
- *   2. `html.dark-mode`           → nen toi  (user chon toi)
- *   3. `prefers-color-scheme: light` + chua chon → nen sang (theo he)
- *   4. con lai                    → nen toi  (mac dinh D08, nhanh van hanh)
- */
-html.light-mode {
-  --vn-bg: #f6f7fa;
-  --vn-surface: #ffffff;
-  --vn-surface-2: #eef0f5;
-  --vn-border: #d7dae3;
-  --vn-text: #14161d;
-  --vn-text-muted: #545a68;
-  --vn-primary: #1d4ed8;
-  --vn-success: #15803d;
-  --vn-warning: #b45309;
-  --vn-danger: #b91c1c;
-  --vn-gain: #15803d;
-  --vn-loss: #b91c1c;
-  --vn-badge-success-bg: #dcf5e6;
-  --vn-badge-success-fg: #14532d;
-  --vn-badge-warning-bg: #fdf0d5;
-  --vn-badge-warning-fg: #78350f;
-  --vn-badge-danger-bg: #fde4e4;
-  --vn-badge-danger-fg: #7f1d1d;
-  --vn-badge-primary-bg: #dde8fd;
-  --vn-badge-primary-fg: #1e3a8a;
-  --vn-badge-neutral-bg: #e9ebf0;
-  --vn-badge-neutral-fg: #3a4050;
-  --vn-focus-ring: 0 0 0 2px var(--vn-surface), 0 0 0 4px var(--vn-primary);
-  /* Chu tren nen primary. Bat buoc tach rieng: nen primary o nen TOI (#3b82f6)
-   * voi chu TRANG chi dat **3.68:1** — khong dat WCAG AA 4.5:1. Nen TOI
-   * dung chu TOI, nen SANG dung chu TRANG. Day la mau nen nen doi chu la
-   * dung chon chu, khong phai doi mau nen. */
-  --vn-on-primary: #0f1117;
-}
-
-/* User CHUA chon nen → theo `prefers-color-scheme`. Phai loai `.light-mode`/
- * `.dark-mode` ra khoi dieu kien, neu khong se **thang** quy tac 1 va 2. */
-@media (prefers-color-scheme: light) {
-  html:not(.light-mode):not(.dark-mode) {
-    --vn-bg: #f6f7fa;
-    --vn-surface: #ffffff;
-    --vn-surface-2: #eef0f5;
-    --vn-border: #d7dae3;
-    --vn-text: #14161d;
-    --vn-text-muted: #545a68;
-    --vn-primary: #1d4ed8;
-    --vn-success: #15803d;
-    --vn-warning: #b45309;
-    --vn-danger: #b91c1c;
-    --vn-gain: #15803d;
-    --vn-loss: #b91c1c;
-    --vn-badge-success-bg: #dcf5e6;
-    --vn-badge-success-fg: #14532d;
-    --vn-badge-warning-bg: #fdf0d5;
-    --vn-badge-warning-fg: #78350f;
-    --vn-badge-danger-bg: #fde4e4;
-    --vn-badge-danger-fg: #7f1d1d;
-    --vn-badge-primary-bg: #dde8fd;
-    --vn-badge-primary-fg: #1e3a8a;
-    --vn-badge-neutral-bg: #e9ebf0;
-    --vn-badge-neutral-fg: #3a4050;
-    --vn-focus-ring: 0 0 0 2px var(--vn-surface), 0 0 0 4px var(--vn-primary);
-  --vn-on-primary: #ffffff;
-  }
-}
-
-/* ============================================================================
-   LAYER GIAO DIEN — override tren `admin/css/base.css` cua Django.
-   Khong dung `!important` tren mau nen; chi dung khi Django gan truc tiep
-   `!important` vao mau nen (truong hop do duoc ghi chu canh bao).
-   ========================================================================== */
-
-body.vnadmin {
-  background: var(--vn-bg);
-  color: var(--vn-text);
-  font-family: var(--vn-font);
-  font-size: var(--vn-fs-body);
-  line-height: 20px; /* D08 §12.3 "Noi dung: 14px / 400 / 20px" */
-  -webkit-font-smoothing: antialiased;
-}
-
-body.vnadmin a {
-  color: var(--vn-primary);
-  text-decoration: none;
-  transition: color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin a:hover {
-  color: var(--vn-text);
-  text-decoration: underline;
-}
-
-/* ── Skip link (D08 §13: dieu huong ban phim) ───────────────────────────── */
-body.vnadmin .skip-to-content-link {
-  position: absolute;
-  top: -100px;
-  left: var(--vn-sp-2);
-  z-index: 100;
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  background: var(--vn-primary);
-  color: var(--vn-bg);
-  border-radius: var(--vn-r-btn);
-  transition: top var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin .skip-to-content-link:focus {
-  top: var(--vn-sp-2);
-}
-
-/* ── Header ──────────────────────────────────────────────────────────────── */
-body.vnadmin #header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--vn-sp-2);
-  padding: 0 var(--vn-sp-3);
-  background: var(--vn-surface-2);
-  border-bottom: 1px solid var(--vn-border);
-  color: var(--vn-text);
-}
-
-body.vnadmin #branding h1 {
-  margin: 0;
-  padding: var(--vn-sp-3) 0;
-  font-size: var(--vn-fs-h3);
-  font-weight: 600;
-  line-height: 24px;
-}
-
-body.vnadmin #branding h1 a {
-  color: var(--vn-text);
-}
-
-body.vnadmin #user-tools {
-  display: flex;
-  align-items: center;
-  gap: var(--vn-sp-2);
-  padding: 0;
-  font-size: var(--vn-fs-muted);
-  line-height: 18px;
-  color: var(--vn-text-muted);
-  text-align: right;
-}
-
-body.vnadmin #user-tools a {
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin #user-tools strong {
-  color: var(--vn-text);
-  font-weight: 600;
-}
-
-body.vnadmin #logout-form {
-  display: inline;
-}
-
-/* Vung cham >= 24px cho MOI nut/link (D08 §13: "Vung cham toi thieu 2.2"). */
-body.vnadmin #user-tools a,
-body.vnadmin #user-tools button,
-body.vnadmin #user-tools select {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--vn-tap);
-  min-width: var(--vn-tap);
-  padding: 0 var(--vn-sp-2);
-  border-radius: var(--vn-r-btn);
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin #user-tools a:hover,
-body.vnadmin #user-tools button:hover {
-  background: var(--vn-badge-neutral-bg);
-  text-decoration: none;
-}
-
-/* ── Breadcrumbs ─────────────────────────────────────────────────────────── */
-body.vnadmin .breadcrumbs {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  font-size: var(--vn-fs-muted);
-  color: var(--vn-text-muted);
-  border-bottom: 1px solid var(--vn-border);
-}
-
-/* ── Container / layout ──────────────────────────────────────────────────── */
-body.vnadmin .main {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--vn-sp-3);
-  padding: 0;
-}
-
-body.vnadmin .content {
-  flex: 1 1 auto;
-  min-width: 0; /* cho phep bang cuon ngang thay vi lam tran layout */
-  padding: var(--vn-sp-3) var(--vn-sp-4) var(--vn-sp-5);
-}
-
-body.vnadmin #content {
-  background: transparent;
-}
-
-/* ── Changelist: KHONG duoc cat cot ──────────────────────────────────────────
- *
- * `django/contrib/admin/static/admin/css/changelists.css:50` dat
- * `.results { overflow: hidden }` ⇒ bang rong hon khung se bi **cat**, va vi
- * `hidden` (khong phai `auto`) nen **khong co thanh cuon** ⇒ cot ben phai —
- * `STARTED…`, `TÊN CÔNG TY` trong anh chup — **khong bao gio lay duoc**.
- *
- * Sua: cho `auto`. Giu nguyen phan con lai cua Django.
- */
-body.vnadmin #changelist .results {
-  overflow-x: auto;
-  overflow-y: visible;
-}
-
-/* #changelist la display:flex cua Django: ben trai bang, ben phai filter.
- * Khi man hinh hep, filter ep bang lai → can cho bang chiem phan con lai va
- * cuon ngang thay vi bi chen doc. */
-body.vnadmin #changelist {
-  align-items: flex-start;
-  gap: var(--vn-sp-3);
-  overflow-x: auto;
-}
-
-body.vnadmin #changelist .changelist-form-container {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-/* Tieu de trang: 28px tren dong chu thuoc. Dung lai `h1` lon o noi khong
- * phai tieu de trang la lam thay do chi quan trang danh sach. */
-body.vnadmin #content h1 {
-  text-wrap: balance;
-  overflow-wrap: anywhere;
-}
-
-/* Bang: chu dung bo, khong cat giua chu. */
-body.vnadmin #result_list th,
-body.vnadmin #result_list td {
-  white-space: nowrap;
-}
-
-body.vnadmin #result_list td.field-name {
-  white-space: normal;
-  min-width: 220px;
-}
-/* ── Trang dang nhap ────────────────────────────────────────────────────────
- *
- * KHONG duoc bo qua: `login.html` la template RIENG cua Django, khong ke
- * thua `base.html` cua ta ⇒ truoc wave 18 file nay **khong co mot quy tac
- * nao** cho trang dang nhap. Nhan dung container toi (do `login.css` +
- * `dark_mode.css` cua Django tu doi) nhung nhan cua ta van la `--vn-text`
- * (den) ⇒ tuong phan **1.04:1**, nhan "Username"/"Password" bay hoan toan
- * khong thay, khong dang nhap duoc.
- *
- * Vì sao khong sua `login.html`: nhieu nhan khac cua Django (`Username`,
- * `Password`, `Log in`, thong bao loi) nam o day. Sua CSS giu nguyen
- * chu dich san cua Django va chi sua lop trinh bay.
- */
-body.vnadmin.login {
-  background: var(--vn-bg);
-  color: var(--vn-text);
-}
-
-body.vnadmin.login #container {
-  background: var(--vn-surface);
-  color: var(--vn-text);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-card);
-  box-shadow: none;
-  padding: var(--vn-sp-4) var(--vn-sp-4) var(--vn-sp-4);
-  width: min(420px, calc(100vw - 2 * var(--vn-sp-4)));
-}
-
-/* Nhan: phai LUON dung token theo nen hien tai. Khong hard-code `#14161d` —
- * chinh la hard-code do ta lam nen ban toi khong doc duoc. */
-body.vnadmin.login #container form label {
-  display: block;
-  margin-bottom: var(--vn-sp-1);
-  color: var(--vn-text);
-  font-size: var(--vn-fs-body);
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-body.vnadmin.login #container form input[type="text"],
-body.vnadmin.login #container form input[type="password"] {
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: var(--vn-sp-3);
-  padding: 10px 12px;
-  min-height: 40px;
-  background: var(--vn-bg);
-  color: var(--vn-text);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-btn);
-  font-size: var(--vn-fs-body);
-}
-
-body.vnadmin.login #container form input::placeholder {
-  color: var(--vn-text-muted);
-  opacity: 1;
-}
-
-body.vnadmin.login #container form input:focus {
-  background: var(--vn-bg);
-  color: var(--vn-text);
-  outline: 2px solid transparent;
-  outline-offset: 0;
-  border-color: var(--vn-primary);
-  box-shadow: var(--vn-focus-ring);
-}
-
-body.vnadmin.login #container form .submit-row {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-
-body.vnadmin.login #container form .submit-row input[type="submit"] {
-  min-height: 40px;
-  padding: 0 var(--vn-sp-4);
-  background: var(--vn-primary);
-  color: var(--vn-on-primary);
-  border: 1px solid transparent;
-  border-radius: var(--vn-r-btn);
-  font-size: var(--vn-fs-body);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-body.vnadmin.login #container form .submit-row input[type="submit"]:hover {
-  filter: brightness(1.08);
-}
-
-/* Thong bao loi: phai doc duoc tren ca nen sang lan nen toi. */
-body.vnadmin.login #container .errornote {
-  display: block;
-  margin-bottom: var(--vn-sp-3);
-  padding: 10px 12px;
-  background: var(--vn-badge-danger-bg);
-  color: var(--vn-badge-danger-fg);
-  border: 1px solid var(--vn-danger);
-  border-radius: var(--vn-r-btn);
-  font-size: var(--vn-fs-muted);
-}
-
-body.vnadmin.login #container .errornote ul {
-  margin: var(--vn-sp-1) 0 0;
-  padding-left: var(--vn-sp-3);
-}
-
-body.vnadmin.login #container .help,
-body.vnadmin.login #container p {
-  color: var(--vn-text-muted);
-}
-
-/* Logo/ten san pham tren trang dang nhap */
-body.vnadmin.login #branding h1 {
-  padding: var(--vn-sp-3) 0 0;
-  font-size: var(--vn-fs-h2);
-  font-weight: 600;
-  color: var(--vn-text);
-}
-/* ── Tieu de ─────────────────────────────────────────────────────────────── */
-body.vnadmin #content h1 {
-  margin: 0 0 var(--vn-sp-3);
-  font-size: var(--vn-fs-h1);
-  font-weight: 600;
-  line-height: 36px;
-  color: var(--vn-text);
-}
-
-body.vnadmin #content h2 {
-  font-size: var(--vn-fs-h2);
-  font-weight: 600;
-  line-height: 28px;
-  color: var(--vn-text);
-}
-
-/* ── The / module (card) ─────────────────────────────────────────────────── */
-body.vnadmin .module {
-  margin-bottom: var(--vn-sp-3);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-card);
-  background: var(--vn-surface);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-  overflow: hidden;
-}
-
-body.vnadmin .module caption,
-body.vnadmin .module h2,
-body.vnadmin .module caption {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  font-size: var(--vn-fs-h3);
-  font-weight: 600;
-  line-height: 24px;
-  text-align: left;
-  color: var(--vn-text);
-  background: var(--vn-surface-2);
-  border-bottom: 1px solid var(--vn-border);
-}
-
-/* ── Bang du lieu ────────────────────────────────────────────────────────── */
-body.vnadmin table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--vn-surface);
-}
-
-body.vnadmin thead th,
-body.vnadmin #result_list th {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  font-size: var(--vn-fs-muted);
-  font-weight: 600;
-  text-align: left;
-  color: var(--vn-text-muted);
-  background: var(--vn-surface-2);
-  border-bottom: 1px solid var(--vn-border);
-  white-space: nowrap;
-}
-
-body.vnadmin tbody td,
-body.vnadmin #result_list td {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  border-bottom: 1px solid var(--vn-border);
-  vertical-align: middle;
-}
-
-body.vnadmin tbody tr:hover td {
-  background: var(--vn-surface-2);
-}
-
-body.vnadmin .row-header th,
-body.vnadmin thead th.row-header {
-  width: 1%;
-  white-space: nowrap;
-}
-
-/* ── Nut ─────────────────────────────────────────────────────────────────── */
-body.vnadmin .button,
-body.vnadmin input[type="submit"],
-body.vnadmin .object-tools a,
-body.vnadmin .submit-row input {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--vn-sp-1);
-  min-height: var(--vn-tap);
-  min-width: var(--vn-tap);
-  padding: var(--vn-sp-1) var(--vn-sp-3);
-  font-family: var(--vn-font);
-  font-size: var(--vn-fs-body);
-  font-weight: 600;
-  line-height: 20px;
-  text-align: center;
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-btn);
-  background: var(--vn-surface-2);
-  color: var(--vn-text);
-  cursor: pointer;
-  transition: background-color var(--vn-dur-fast) var(--vn-ease),
-    border-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin .button:hover,
-body.vnadmin input[type="submit"]:hover,
-body.vnadmin .object-tools a:hover {
-  background: var(--vn-badge-neutral-bg);
-  color: var(--vn-text);
-  text-decoration: none;
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-/* Nut phu (primary) — dung nen xac nhan, khong nen trang: `#fff` tren `#3B82F6`
- * chi 3.9:1 o che do sang nen toi => doi mau chu sang nen toi de dat AA. */
-body.vnadmin .button.default,
-body.vnadmin .button.primary,
-body.vnadmin .object-tools a.addlink,
-body.vnadmin input[type="submit"].default,
-body.vnadmin .submit-row input.default {
-  background: var(--vn-primary);
-  border-color: var(--vn-primary);
-  color: var(--vn-bg);
-}
-
-body.vnadmin .button.default:hover,
-body.vnadmin .button.primary:hover,
-body.vnadmin .object-tools a.addlink:hover,
-body.vnadmin input[type="submit"].default:hover {
-  background: var(--vn-primary);
-  filter: brightness(1.12);
-  color: var(--vn-bg);
-  transition: filter var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin .button.deletelink,
-body.vnadmin a.deletelink {
-  color: var(--vn-danger);
-  background: transparent;
-  border-color: var(--vn-badge-danger-bg);
-}
-
-body.vnadmin .button.deletelink:hover,
-body.vnadmin a.deletelink:hover {
-  background: var(--vn-badge-danger-bg);
-  color: var(--vn-danger);
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-/* ── Truong nhap ─────────────────────────────────────────────────────────── */
-body.vnadmin input[type="text"],
-body.vnadmin input[type="password"],
-body.vnadmin input[type="email"],
-body.vnadmin input[type="url"],
-body.vnadmin input[type="number"],
-body.vnadmin input[type="date"],
-body.vnadmin input[type="datetime-local"],
-body.vnadmin textarea,
-body.vnadmin select {
-  padding: var(--vn-sp-1) var(--vn-sp-2);
-  min-height: var(--vn-tap);
-  font-family: var(--vn-font);
-  font-size: var(--vn-fs-body);
-  color: var(--vn-text);
-  background: var(--vn-bg);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-btn);
-  transition: border-color var(--vn-dur-fast) var(--vn-ease),
-    box-shadow var(--vn-dur-fast) var(--vn-ease);
-}
-
-/* Vong focus PHAI nhin thay tren ca nen sang va nen toi (D08 §13.1).
- * `outline: none` KHONG duoc dung — phai cho `box-shadow` that cho focus. */
-body.vnadmin input:focus,
-body.vnadmin textarea:focus,
-body.vnadmin select:focus {
-  outline: 2px solid transparent; /* fallback trinh duyet cu */
-  outline-offset: 2px;
-  border-color: var(--vn-primary);
-  box-shadow: var(--vn-focus-ring);
-}
-
-/* ── Checkbox / radio: vung cham >= 24px ─────────────────────────────────── */
-body.vnadmin input[type="checkbox"],
-body.vnadmin input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--vn-primary);
-}
-
-/* ── Label / help / loi ──────────────────────────────────────────────────── */
-body.vnadmin label {
-  color: var(--vn-text);
-  font-weight: 600;
-}
-
-body.vnadmin .help,
-body.vnadmin p.help {
-  margin: var(--vn-sp-1) 0 0;
-  font-size: var(--vn-fs-muted);
-  line-height: 18px;
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .errorlist {
-  margin: 0 0 var(--vn-sp-1);
-  padding: 0;
-  list-style: none;
-}
-
-body.vnadmin .errorlist li {
-  display: block;
-  margin-bottom: var(--vn-sp-1);
-  padding: var(--vn-sp-1) var(--vn-sp-2);
-  font-size: var(--vn-fs-muted);
-  color: var(--vn-badge-danger-fg);
-  background: var(--vn-badge-danger-bg);
-  border: 1px solid var(--vn-danger);
-  border-radius: var(--vn-r-notice);
-}
-
-/* ── Fieldset (form them/sua) ────────────────────────────────────────────── */
-body.vnadmin fieldset.module {
-  padding: var(--vn-sp-3);
-}
-
-body.vnadmin fieldset.module legend,
-body.vnadmin .form-row legend {
-  font-size: var(--vn-fs-h3);
-  font-weight: 600;
-  color: var(--vn-text);
-}
-
-body.vnadmin .form-row {
-  padding: var(--vn-sp-2) 0;
-  border-bottom: 1px solid var(--vn-border);
-}
-
-body.vnadmin .form-row:last-child {
-  border-bottom: 0;
-}
-
-/* ── Thong bao ───────────────────────────────────────────────────────────── */
-body.vnadmin .messagelist {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vn-sp-1);
-  margin: 0 0 var(--vn-sp-3);
-  padding: 0;
-  list-style: none;
-}
-
-body.vnadmin .messagelist li {
-  margin: 0;
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  border-radius: var(--vn-r-notice);
-  border: 1px solid var(--vn-border);
-  background: var(--vn-badge-primary-bg);
-  color: var(--vn-badge-primary-fg);
-  font-size: var(--vn-fs-body);
-}
-
-body.vnadmin .messagelist li.success {
-  background: var(--vn-badge-success-bg);
-  color: var(--vn-badge-success-fg);
-  border-color: var(--vn-success);
-}
-
-body.vnadmin .messagelist li.warning {
-  background: var(--vn-badge-warning-bg);
-  color: var(--vn-badge-warning-fg);
-  border-color: var(--vn-warning);
-}
-
-body.vnadmin .messagelist li.error {
-  background: var(--vn-badge-danger-bg);
-  color: var(--vn-badge-danger-fg);
-  border-color: var(--vn-danger);
-}
-
-/* ── Paginator ───────────────────────────────────────────────────────────── */
-body.vnadmin .paginator {
-  display: flex;
-  align-items: center;
-  gap: var(--vn-sp-2);
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  font-size: var(--vn-fs-muted);
-  color: var(--vn-text-muted);
-  border-top: 1px solid var(--vn-border);
-}
-
-/* ── Badge trang thai ────────────────────────────────────────────────────── */
-/* D08 §13: "Khong chi dua vao mau" — badge LUON co chu, khong bao gio chi la
- * mot cham mau. Do do chuc nang doc khong phu thuoc nhin mau. */
-body.vnadmin .vn-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--vn-sp-1);
-  padding: 2px var(--vn-sp-2);
-  font-size: var(--vn-fs-muted);
-  font-weight: 600;
-  line-height: 18px;
-  white-space: nowrap;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-body.vnadmin .vn-badge--success {
-  background: var(--vn-badge-success-bg);
-  color: var(--vn-badge-success-fg);
-  border-color: var(--vn-success);
-}
-
-body.vnadmin .vn-badge--warning {
-  background: var(--vn-badge-warning-bg);
-  color: var(--vn-badge-warning-fg);
-  border-color: var(--vn-warning);
-}
-
-body.vnadmin .vn-badge--danger {
-  background: var(--vn-badge-danger-bg);
-  color: var(--vn-badge-danger-fg);
-  border-color: var(--vn-danger);
-}
-
-body.vnadmin .vn-badge--primary {
-  background: var(--vn-badge-primary-bg);
-  color: var(--vn-badge-primary-fg);
-  border-color: var(--vn-primary);
-}
-
-body.vnadmin .vn-badge--neutral {
-  background: var(--vn-badge-neutral-bg);
-  color: var(--vn-badge-neutral-fg);
-  border-color: var(--vn-border);
-}
-
-body.vnadmin .vn-badge--gain {
-  background: var(--vn-badge-success-bg);
-  color: var(--vn-badge-success-fg);
-  border-color: var(--vn-gain);
-}
-
-body.vnadmin .vn-badge--loss {
-  background: var(--vn-badge-danger-bg);
-  color: var(--vn-badge-danger-fg);
-  border-color: var(--vn-loss);
-}
-
-/* ── Gia tri rong ────────────────────────────────────────────────────────── */
-body.vnadmin .vn-empty {
-  color: var(--vn-text-muted);
-}
-
-/* ── Ma / khoa ───────────────────────────────────────────────────────────── */
-body.vnadmin .vn-mono {
-  font-family: var(--vn-font-mono);
-  font-size: var(--vn-fs-muted);
-}
-
-/* ── Sidebar loc (Django >=5.x nav_sidebar) ──────────────────────────────── */
-body.vnadmin #nav-sidebar {
-  background: var(--vn-surface-2);
-  border-right: 1px solid var(--vn-border);
-}
-
-body.vnadmin #nav-sidebar .nav-sidebar-item {
-  border-bottom: 1px solid var(--vn-border);
-}
-
-body.vnadmin #nav-sidebar a {
-  color: var(--vn-text);
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin #nav-sidebar a:hover {
-  background: var(--vn-badge-neutral-bg);
-}
-
-body.vnadmin #nav-sidebar .current > a {
-  background: var(--vn-badge-primary-bg);
-  color: var(--vn-badge-primary-fg);
-  font-weight: 600;
-}
-
-/* ── Inline ──────────────────────────────────────────────────────────────── */
-body.vnadmin .inline-group {
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-card);
-  background: var(--vn-surface);
-  overflow: hidden;
-}
-
-body.vnadmin .inline-related {
-  border-top: 1px solid var(--vn-border);
-  background: var(--vn-surface);
-}
-
-body.vnadmin .inline-related h3 {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  font-size: var(--vn-fs-h3);
-  color: var(--vn-text);
-  background: var(--vn-surface-2);
-}
-
-/* ── Footer ──────────────────────────────────────────────────────────────── */
-body.vnadmin #footer {
-  padding: var(--vn-sp-3) var(--vn-sp-4);
-  font-size: var(--vn-fs-muted);
-  color: var(--vn-text-muted);
-  border-top: 1px solid var(--vn-border);
-}
-
-/* ── Nut them tren dau trang doi voi tieu de ─────────────────────────────── */
-body.vnadmin .object-tools {
-  margin: 0 0 var(--vn-sp-3);
-  padding: 0;
-  list-style: none;
-  text-align: right;
-}
-
-body.vnadmin .object-tools li {
-  display: inline-block;
-  margin: 0 0 0 var(--vn-sp-2);
-}
-
-/* ============================================================================
-   GIAO DIEN DANH SACH CHAY DUOC (co the cuon ngang) — D08 §15.
-   Admin la bo cuc desktop-first: thay vi bien thanh the (nhac ky cua cac
-   trang khach), ta GIU bang va them dau hieu chu ngang ro rang.
-   ========================================================================== */
-body.vnadmin .vn-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-body.vnadmin .vn-scroll-hint {
-  display: none;
-  margin: 0 0 var(--vn-sp-2);
-  padding: var(--vn-sp-1) var(--vn-sp-2);
-  font-size: var(--vn-fs-muted);
-  color: var(--vn-text-muted);
-  background: var(--vn-badge-warning-bg);
-  border: 1px solid var(--vn-warning);
-  border-radius: var(--vn-r-notice);
-}
-
-@media (max-width: 900px) {
-  body.vnadmin .vn-scroll-hint {
-    display: block;
-  }
-
-  body.vnadmin .main {
-    flex-direction: column;
-  }
-
-  body.vnadmin .content {
-    padding: var(--vn-sp-3);
-  }
-}
-
-/* ============================================================================
-   GIAM CHUYEN DONG — D08 §13 (WCAG 2.3.3 Reduced Motion, muc AA).
-   Tat MOI transition/animation tren lop vnadmin.
-   ========================================================================== */
-@media (prefers-reduced-motion: reduce) {
-  body.vnadmin *,
-  body.vnadmin *::before,
-  body.vnadmin *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ============================================================================
-   DASHBOARD VAN HANH — `/admin/`
-   ========================================================================== */
-
-body.vnadmin .vn-dash {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vn-sp-4);
-}
-
-body.vnadmin .vn-section-title {
-  margin: 0 0 var(--vn-sp-2);
-  font-size: var(--vn-fs-h2);
-  font-weight: 600;
-  line-height: 28px;
-  color: var(--vn-text);
-}
-
-/* ── The KPI: luoi 4 cot, xuong 2 roi xuong 1 (D08 §5.2 "The noi dung 3-4 cot") ── */
-body.vnadmin .vn-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--vn-sp-3);
-}
-
-@media (max-width: 1200px) {
-  body.vnadmin .vn-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  body.vnadmin .vn-kpi-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-body.vnadmin .vn-kpi {
-  padding: var(--vn-sp-3);
-  background: var(--vn-surface);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-card);
-}
-
-body.vnadmin .vn-kpi__label {
-  margin: 0 0 var(--vn-sp-1);
-  font-size: var(--vn-fs-muted);
-  font-weight: 600;
-  line-height: 18px;
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-kpi__value {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 600;
-  line-height: 40px;
-  color: var(--vn-text);
-  font-variant-numeric: tabular-nums;
-}
-
-body.vnadmin .vn-kpi__value a {
-  color: var(--vn-text);
-}
-
-body.vnadmin .vn-kpi__value a:hover {
-  color: var(--vn-primary);
-  text-decoration: none;
-}
-
-body.vnadmin .vn-kpi__value--error {
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-kpi__hint {
-  margin: var(--vn-sp-1) 0 0;
-  font-size: var(--vn-fs-muted);
-  line-height: 18px;
-  color: var(--vn-text-muted);
-}
-
-/* ── Canh bao ──────────────────────────────────────────────────────────── */
-body.vnadmin .vn-alert-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vn-sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-body.vnadmin .vn-alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--vn-sp-2);
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-notice);
-}
-
-body.vnadmin .vn-alert--warning {
-  background: var(--vn-badge-warning-bg);
-  border-color: var(--vn-warning);
-  color: var(--vn-badge-warning-fg);
-}
-
-body.vnadmin .vn-alert--danger {
-  background: var(--vn-badge-danger-bg);
-  border-color: var(--vn-danger);
-  color: var(--vn-badge-danger-fg);
-}
-
-body.vnadmin .vn-alert--neutral {
-  background: var(--vn-badge-neutral-bg);
-  border-color: var(--vn-border);
-  color: var(--vn-badge-neutral-fg);
-}
-
-body.vnadmin .vn-alert__title {
-  font-weight: 600;
-}
-
-body.vnadmin .vn-alert__detail {
-  color: inherit;
-  opacity: 0.9;
-}
-
-body.vnadmin .vn-alert__link {
-  margin-left: auto;
-  color: inherit;
-  font-weight: 600;
-}
-
-/* ── Nhom chức năng ────────────────────────────────────────────────────── */
-body.vnadmin .vn-group__title {
-  display: flex;
-  align-items: center;
-  gap: var(--vn-sp-2);
-}
-
-body.vnadmin .vn-group__icon {
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-group__count {
-  margin-left: auto;
-  padding: 0 var(--vn-sp-2);
-  font-size: var(--vn-fs-muted);
-  font-weight: 600;
-  color: var(--vn-text-muted);
-  background: var(--vn-badge-neutral-bg);
-  border-radius: 999px;
-}
-
-body.vnadmin .vn-group__table th[scope="row"] {
-  text-align: left;
-  font-weight: 400;
-}
-
-body.vnadmin .vn-col-actions {
-  width: 1%;
-  white-space: nowrap;
-  text-align: right;
-}
-
-body.vnadmin .vn-action-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--vn-tap);
-  min-width: var(--vn-tap);
-  padding: 0 var(--vn-sp-2);
-  border-radius: var(--vn-r-btn);
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin .vn-action-link:hover {
-  background: var(--vn-badge-primary-bg);
-  text-decoration: none;
-}
-
-/* ── Sidebar nhom chức năng ────────────────────────────────────────────── */
-body.vnadmin .vn-nav-groups {
-  padding-bottom: var(--vn-sp-4);
-}
-
-body.vnadmin .vn-nav-group {
-  border-bottom: 1px solid var(--vn-border);
-}
-
-body.vnadmin .vn-nav-group__title {
-  margin: 0;
-  padding: var(--vn-sp-2) var(--vn-sp-3) var(--vn-sp-1);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-nav-group__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-body.vnadmin .vn-nav-item a,
-body.vnadmin .vn-nav-item span {
-  display: flex;
-  align-items: center;
-  min-height: var(--vn-tap);
-  padding: var(--vn-sp-1) var(--vn-sp-3);
-  color: var(--vn-text);
-  transition: background-color var(--vn-dur-fast) var(--vn-ease);
-}
-
-body.vnadmin .vn-nav-item a:hover {
-  background: var(--vn-badge-neutral-bg);
-  text-decoration: none;
-}
-
-body.vnadmin .vn-nav-item--current > a {
-  background: var(--vn-badge-primary-bg);
-  color: var(--vn-badge-primary-fg);
-  font-weight: 600;
-}
-
-body.vnadmin .vn-nav-empty {
-  padding: var(--vn-sp-2) var(--vn-sp-3);
-}
-
-/* `#nav-filter` cua Django co `position: sticky` va nen trong suot; bo nen suot
- * de khop voi phan con lai cua sidebar (nen mat). */
-body.vnadmin #nav-filter {
-  background: var(--vn-surface-2);
-  color: var(--vn-text);
-  border: 1px solid var(--vn-border);
-  border-radius: var(--vn-r-btn);
-}
-
-body.vnadmin #nav-filter.no-results {
-  border-color: var(--vn-danger);
-}
-
-/* ============================================================================
-   IN — khong in nen toi, khong in khung the.
-   ========================================================================== */
-@media print {
-  body.vnadmin #header,
-  body.vnadmin #nav-sidebar,
-  body.vnadmin .object-tools,
-  body.vnadmin #footer,
-  body.vnadmin .paginator {
-    display: none !important;
-  }
-
-  body.vnadmin {
-    background: #fff !important;
-    color: #000 !important;
-  }
-}
-
+/*
+ * VNInvest Admin — design tokens
+ * -----------------------------------------------------------------------------
+ * Nguon su that: docs/saas_design_pack/D08_UI_UX_DESIGN_20261002.md §12 (He thong
+ * thiet ke) + §13 (WCAG 2.2 AA). Do DO, khong doan.
+ *
+ * ⚠ CONTRADICTION GHI NHAN (khong tu sua o scope nay):
+ *   D08 §12.1 dung palette `#0F1117` / `#3B82F6`.
+ *   `packages/web/src/components/soc/soc.tokens.css:7,14` dung `#081734` / `#22d3ee`.
+ *   Hai design system cung song. Admin dung D08 vi no la system-design pack chinh
+ *   thuc + moi hon + co bang tuong phan dinh luong de gate kiem duoc.
+ *   Dong bo 2 palette la wave rieng (xem PLAN §6 Q2).
+ *
+ * ⚠ MAU TANG/GIAM — doc L-F8 truoc khi dung:
+ *   Viet Nam dung chuan GANH BLOOMBERG: XANH = tang, DO = giam.
+ *   Owner chot 2026-10-07. Token duoi day giu nguyen huong do.
+ *
+ * ⚠ KHONG dung `transition:`/shorthand khong giu <time> (L-F05).
+ *   Moi khai bao transition duoi day deu co <time> <easing> day du.
+ */
+
+:root {
+  /* ── 12 token mau ─────────────────────────────────────────────────────────
+   * 10 gia tri lay nguyen verbatim tu D08 §12.1; 3 token danh xung/duyet sinh
+   * deu ghi ro ly do. Gate `scripts/check_admin_ux.py` khoa 12 dong nay.
+   */
+  --vn-bg: #0f1117;          /* D08 §12.1 "Nen chinh"                              */
+  --vn-surface: #161922;     /* D08 §12.1 "Nen nang cao" (the)                     */
+  --vn-surface-2: #1e2130;   /* danh xung: +1 bac so voi --vn-surface (header/sidebar) */
+  --vn-border: #242838;      /* D08 §12.1 "Duong vien"                              */
+  --vn-text: #e8eaf0;        /* D08 §12.1 "Chu chinh" — 15.69:1 tren --vn-bg       */
+  --vn-text-muted: #9aa0ae;  /* D08 §12.1 "Chu phu"   — 7.20:1 tren --vn-bg       */
+  --vn-primary: #3b82f6;     /* D08 §12.1 "Nhan chinh"                              */
+  --vn-success: #22c55e;     /* D08 §12.1 "Thanh cong"                              */
+  --vn-warning: #f59e0b;     /* D08 §12.1 "Canh bao"                                */
+  --vn-danger: #ef4444;      /* D08 §12.1 "Nguy hiem"                               */
+  --vn-gain: #22c55e;        /* L-F08 Bloomberg tang — CUNG gia tri --vn-success     */
+  --vn-loss: #ef4444;        /* L-F08 Bloomberg giam — CUNG gia tri --vn-danger      */
+
+  /* ── Badge: nen mem + chu sang, do bang mau tron 16% (khong doan) ─────────
+   * Tuong phan da tinh bang script: tat ca >= 7.8:1 (xem AUDIT §Tuong phan).
+   * KHONG dung chu trang tren nen mau: `#FFFFFF` tren `#EF4444` chi 3.76:1
+   * (chi dat AA-large) => mau chu toi hon.
+   */
+  --vn-badge-success-bg: #122e22;
+  --vn-badge-success-fg: #86efac;
+  --vn-badge-warning-bg: #342815;
+  --vn-badge-warning-fg: #fcd34d;
+  --vn-badge-danger-bg: #33191e;
+  --vn-badge-danger-fg: #fca5a5;
+  --vn-badge-primary-bg: #16233b;
+  --vn-badge-primary-fg: #93c5fd;
+  --vn-badge-neutral-bg: #25282f;
+  --vn-badge-neutral-fg: #d5d9e2;
+
+  /* ── Gia nhanh / khoang cach (D08 §12.2) ───────────────────────────────── */
+  --vn-sp-1: 4px;
+  --vn-sp-2: 8px;
+  --vn-sp-3: 16px;
+  --vn-sp-4: 24px;
+  --vn-sp-5: 40px;
+
+  /* ── Bo goc / do bong (D08 §12.4) ──────────────────────────────────────── */
+  --vn-r-btn: 6px;
+  --vn-r-card: 10px;
+  --vn-r-dialog: 12px;
+  --vn-r-notice: 8px;
+
+  /* ── Chu (D08 §12.3) ──────────────────────────────────────────────────── */
+  --vn-font: ui-sans-system, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --vn-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --vn-fs-h1: 28px;
+  --vn-fs-h2: 20px;
+  --vn-fs-h3: 16px;
+  --vn-fs-body: 14px;
+  --vn-fs-muted: 13px;
+
+  /* ── Chuyen dong ───────────────────────────────────────────────────────── */
+  --vn-dur-fast: 120ms;
+  --vn-dur: 180ms;
+  --vn-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Vung cham toi thieu (D08 §13: 24x24) ──────────────────────────────── */
+  --vn-tap: 24px;
+
+  /* ── Vong focus: PHAI nhin thay tren ca nen sang va nen toi (D08 §13.1) ─── */
+  --vn-focus-ring: 0 0 0 2px var(--vn-bg), 0 0 0 4px var(--vn-primary);
+}
+
+/* ── Chon nen sang ──────────────────────────────────────────────────────────
+ *
+ * Django 5.2 giu lua chon cua nguoi dung bang class tren `<html>`:
+ * `light-mode` / `dark-mode` (xem `theme.js`). Do do phai sua token theo
+ * CUNG co che, khong duoc tu dinh nghia.
+ *
+ * ⚠ LOI DA PHA GOC — cua chay 2026-10-10 (wave 18):
+ * truoc day la `html:not(.light-mode) { nen sang }`. Selector nay **khong bao
+ * gio** dung nhu y nghia:
+ *   - `<html class="dark-mode">` (user CHON sang) → van khớp `:not(.light-mode)`
+ *     ⇒ nhan **nen sang** ⇒ khu vuc do Django toi nhung phan cua t ta sang.
+ *   - mac dinh cua trang la **TOI** (D08 §12.1) ⇒ khi user CHUA chon, admin
+ *     hien sang trong khi `login.css` cua Django theo `prefers-color-scheme`
+ *     ⇒ **nen toi + chu toi**: nhan "Username"/"Password" tuong phan **1.04:1**.
+ *
+ * Vay thu tu dung la:
+ *   1. `html.light-mode`          → nen sang (user chon sang)
+ *   2. `html.dark-mode`           → nen toi  (user chon toi)
+ *   3. `prefers-color-scheme: light` + chua chon → nen sang (theo he)
+ *   4. con lai                    → nen toi  (mac dinh D08, nhanh van hanh)
+ */
+html.light-mode {
+  --vn-bg: #f6f7fa;
+  --vn-surface: #ffffff;
+  --vn-surface-2: #eef0f5;
+  --vn-border: #d7dae3;
+  --vn-text: #14161d;
+  --vn-text-muted: #545a68;
+  --vn-primary: #1d4ed8;
+  --vn-success: #15803d;
+  --vn-warning: #b45309;
+  --vn-danger: #b91c1c;
+  --vn-gain: #15803d;
+  --vn-loss: #b91c1c;
+  --vn-badge-success-bg: #dcf5e6;
+  --vn-badge-success-fg: #14532d;
+  --vn-badge-warning-bg: #fdf0d5;
+  --vn-badge-warning-fg: #78350f;
+  --vn-badge-danger-bg: #fde4e4;
+  --vn-badge-danger-fg: #7f1d1d;
+  --vn-badge-primary-bg: #dde8fd;
+  --vn-badge-primary-fg: #1e3a8a;
+  --vn-badge-neutral-bg: #e9ebf0;
+  --vn-badge-neutral-fg: #3a4050;
+  --vn-focus-ring: 0 0 0 2px var(--vn-surface), 0 0 0 4px var(--vn-primary);
+  /* Chu tren nen primary. Bat buoc tach rieng: nen primary o nen TOI (#3b82f6)
+   * voi chu TRANG chi dat **3.68:1** — khong dat WCAG AA 4.5:1. Nen TOI
+   * dung chu TOI, nen SANG dung chu TRANG. Day la mau nen nen doi chu la
+   * dung chon chu, khong phai doi mau nen. */
+  --vn-on-primary: #0f1117;
+}
+
+/* User CHUA chon nen → theo `prefers-color-scheme`. Phai loai `.light-mode`/
+ * `.dark-mode` ra khoi dieu kien, neu khong se **thang** quy tac 1 va 2. */
+@media (prefers-color-scheme: light) {
+  html:not(.light-mode):not(.dark-mode) {
+    --vn-bg: #f6f7fa;
+    --vn-surface: #ffffff;
+    --vn-surface-2: #eef0f5;
+    --vn-border: #d7dae3;
+    --vn-text: #14161d;
+    --vn-text-muted: #545a68;
+    --vn-primary: #1d4ed8;
+    --vn-success: #15803d;
+    --vn-warning: #b45309;
+    --vn-danger: #b91c1c;
+    --vn-gain: #15803d;
+    --vn-loss: #b91c1c;
+    --vn-badge-success-bg: #dcf5e6;
+    --vn-badge-success-fg: #14532d;
+    --vn-badge-warning-bg: #fdf0d5;
+    --vn-badge-warning-fg: #78350f;
+    --vn-badge-danger-bg: #fde4e4;
+    --vn-badge-danger-fg: #7f1d1d;
+    --vn-badge-primary-bg: #dde8fd;
+    --vn-badge-primary-fg: #1e3a8a;
+    --vn-badge-neutral-bg: #e9ebf0;
+    --vn-badge-neutral-fg: #3a4050;
+    --vn-focus-ring: 0 0 0 2px var(--vn-surface), 0 0 0 4px var(--vn-primary);
+  --vn-on-primary: #ffffff;
+  }
+}
+
+/* ============================================================================
+   LAYER GIAO DIEN — override tren `admin/css/base.css` cua Django.
+   Khong dung `!important` tren mau nen; chi dung khi Django gan truc tiep
+   `!important` vao mau nen (truong hop do duoc ghi chu canh bao).
+   ========================================================================== */
+
+body.vnadmin {
+  background: var(--vn-bg);
+  color: var(--vn-text);
+  font-family: var(--vn-font);
+  font-size: var(--vn-fs-body);
+  line-height: 20px; /* D08 §12.3 "Noi dung: 14px / 400 / 20px" */
+  -webkit-font-smoothing: antialiased;
+}
+
+body.vnadmin a {
+  color: var(--vn-primary);
+  text-decoration: none;
+  transition: color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin a:hover {
+  color: var(--vn-text);
+  text-decoration: underline;
+}
+
+/* ── Skip link (D08 §13: dieu huong ban phim) ───────────────────────────── */
+body.vnadmin .skip-to-content-link {
+  position: absolute;
+  top: -100px;
+  left: var(--vn-sp-2);
+  z-index: 100;
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  background: var(--vn-primary);
+  color: var(--vn-bg);
+  border-radius: var(--vn-r-btn);
+  transition: top var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .skip-to-content-link:focus {
+  top: var(--vn-sp-2);
+}
+
+/* ── Header chuẩn GitHub Console ────────────────────────────────────────── */
+body.vnadmin #header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-sp-2);
+  min-height: 56px;
+  padding: 0 var(--vn-sp-4);
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+  color: var(--vn-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Triệt tiêu hoàn toàn màu vàng #ffc mặc định của Django base.css */
+body.vnadmin #header a,
+body.vnadmin #header a:link,
+body.vnadmin #header a:visited {
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin #branding h1 {
+  margin: 0;
+  padding: 0;
+  font-size: var(--vn-fs-h3);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+/* Branding Logo & Badge */
+body.vnadmin .vn-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-header-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-right: 2px;
+  border-radius: var(--vn-r-btn);
+  background: transparent;
+  color: var(--vn-text-muted);
+  border: 1px solid var(--vn-border);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-header-sidebar-toggle:hover {
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-header-logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-primary);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+}
+
+body.vnadmin .vn-header-brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-header-brand-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+  border: 1px solid var(--vn-border);
+}
+
+/* User tools & links */
+body.vnadmin #user-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-3);
+  padding: 0;
+  font-size: var(--vn-fs-muted);
+  line-height: 18px;
+  color: var(--vn-text-muted);
+  text-align: right;
+}
+
+body.vnadmin .vn-user-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vn-primary);
+  color: var(--vn-on-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.vnadmin .vn-user-name strong {
+  color: var(--vn-text);
+  font-weight: 600;
+}
+
+body.vnadmin .vn-user-nav-links {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-1);
+}
+
+body.vnadmin .vn-user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--vn-tap);
+  padding: 4px var(--vn-sp-2);
+  border-radius: var(--vn-r-btn);
+  color: var(--vn-text-muted);
+  font-size: var(--vn-fs-muted);
+  font-weight: 500;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-user-link:hover {
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-user-link--logout {
+  color: var(--vn-danger);
+}
+
+body.vnadmin .vn-user-link--logout:hover {
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-badge-danger-fg);
+}
+
+body.vnadmin #logout-form {
+  display: inline;
+}
+
+body.vnadmin .vn-theme-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--vn-sp-1);
+}
+
+/* ── Breadcrumbs chuẩn phẳng ─────────────────────────────────────────────── */
+body.vnadmin .vn-breadcrumbs-nav {
+  background: transparent;
+}
+
+body.vnadmin .breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-1);
+  padding: var(--vn-sp-2) var(--vn-sp-4);
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+  background: transparent;
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .breadcrumbs a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--vn-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .breadcrumbs a:hover {
+  color: var(--vn-primary);
+  text-decoration: underline;
+}
+
+body.vnadmin .vn-breadcrumb-sep {
+  color: var(--vn-border);
+  font-size: 12px;
+  user-select: none;
+}
+
+body.vnadmin .vn-breadcrumb-current {
+  color: var(--vn-text);
+  font-weight: 600;
+}
+
+/* ── Container / Layout chính ───────────────────────────────────────────── */
+body.vnadmin .main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 0;
+}
+
+body.vnadmin .content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+}
+
+body.vnadmin #content {
+  background: transparent;
+}
+
+/* ── Page Header Bar (Title + CTA Button) ────────────────────────────────── */
+body.vnadmin .vn-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-sp-2);
+  margin-bottom: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-page-header__title-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-page-header__title,
+body.vnadmin #content h1 {
+  margin: 0;
+  font-size: var(--vn-fs-h1);
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: -0.015em;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-page-header__count {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+  border: 1px solid var(--vn-border);
+}
+
+/* ── Unified Toolbar: Search + Horizontal Filter Bar ────────────────────── */
+body.vnadmin .vn-toolbar-card {
+  margin-bottom: var(--vn-sp-3);
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 10px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+body.vnadmin .vn-toolbar-search-tier,
+body.vnadmin .vn-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--vn-sp-3);
+  width: 100%;
+}
+
+body.vnadmin .vn-toolbar-filter-tier {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-toolbar-filter-tier:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+body.vnadmin .vn-toolbar-search {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Triệt tiêu style mặc định của Django cho #toolbar */
+body.vnadmin #toolbar,
+body.vnadmin .vn-search-toolbar {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Search Form */
+body.vnadmin .vn-search-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+body.vnadmin .vn-search-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.vnadmin .vn-search-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 320px;
+}
+
+body.vnadmin .vn-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--vn-text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+body.vnadmin .vn-search-input,
+body.vnadmin #searchbar {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 12px 6px 36px !important;
+  font-size: var(--vn-fs-body);
+  background: var(--vn-bg);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  outline: none;
+  height: 32px;
+  line-height: 20px;
+  transition: border-color var(--vn-dur-fast) var(--vn-ease),
+    box-shadow var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-search-input:focus,
+body.vnadmin #searchbar:focus {
+  border-color: var(--vn-primary);
+  box-shadow: var(--vn-focus-ring);
+}
+
+body.vnadmin .vn-search-submit-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  background: var(--vn-surface-2);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-search-submit-btn:hover {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-search-reset-btn {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+body.vnadmin .vn-search-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-search-count-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vn-badge-neutral-bg);
+  border: 1px solid var(--vn-border);
+  color: var(--vn-text);
+  white-space: nowrap;
+}
+
+body.vnadmin .vn-show-all-link {
+  color: var(--vn-primary);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-show-all-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Horizontal Filter Bar (Tầng 2: tự động bẻ dòng, không bao giờ tràn khung) ─ */
+body.vnadmin #changelist-filter,
+body.vnadmin #changelist-filter.vn-horizontal-filters {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  order: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+}
+
+body.vnadmin .vn-filter-pills-wrap {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 1 1 100% !important;
+  width: 100% !important;
+}
+
+body.vnadmin .vn-filter-icon {
+  color: var(--vn-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+}
+
+/* Triệt tiêu hoàn toàn mũi tên Unicode '→' và '↓' mặc định từ changelists.css của Django */
+body.vnadmin #changelist-filter details > summary::before,
+body.vnadmin #changelist-filter details[open] > summary::before,
+body.vnadmin .vn-filter-pill summary::before,
+body.vnadmin .vn-filter-pill[open] summary::before {
+  content: none !important;
+  display: none !important;
+}
+
+body.vnadmin #changelist-filter details > summary::-webkit-details-marker,
+body.vnadmin .vn-filter-pill summary::-webkit-details-marker {
+  display: none !important;
+}
+
+/* Filter Pill Dropdown Component */
+body.vnadmin .vn-filter-pill {
+  position: relative !important;
+  display: inline-flex !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+
+body.vnadmin .vn-filter-pill__trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: var(--vn-fs-muted);
+  font-weight: 500;
+  color: var(--vn-text);
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  height: 30px;
+  box-sizing: border-box;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-filter-pill__trigger:hover {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-filter-pill[open] .vn-filter-pill__trigger {
+  border-color: var(--vn-primary);
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-badge-primary-fg);
+}
+
+body.vnadmin .vn-filter-pill__title {
+  color: var(--vn-text-muted);
+  font-weight: 600;
+}
+
+body.vnadmin .vn-filter-pill__current {
+  font-weight: 600;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-filter-pill__chevron {
+  font-size: 10px;
+  color: var(--vn-text-muted);
+  margin-left: 2px;
+}
+
+/* Filter Popover Menu */
+body.vnadmin .vn-filter-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: var(--vn-sp-1) 0;
+}
+
+body.vnadmin .vn-filter-popover__header {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vn-text-muted);
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-filter-popover__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .vn-filter-popover__item a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: var(--vn-fs-body);
+  color: var(--vn-text);
+  text-decoration: none;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-filter-popover__item a:hover {
+  background: var(--vn-badge-neutral-bg);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-filter-popover__item.is-selected a {
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-badge-primary-fg);
+  font-weight: 600;
+}
+
+body.vnadmin .vn-filter-popover__check {
+  display: inline-block;
+  width: 14px;
+  font-weight: 700;
+  color: var(--vn-primary);
+}
+
+body.vnadmin .vn-clear-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vn-danger);
+  border-radius: var(--vn-r-btn);
+  text-decoration: none;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-clear-filter-btn:hover {
+  background: var(--vn-badge-danger-bg);
+  text-decoration: none;
+}
+
+/* Date Hierarchy Bar */
+body.vnadmin .vn-date-hierarchy-wrap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vn-border);
+  width: 100%;
+}
+
+body.vnadmin .vn-date-hierarchy-wrap:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+body.vnadmin .vn-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--vn-text-muted);
+  flex-wrap: wrap;
+}
+
+body.vnadmin .vn-date-choices {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+body.vnadmin .vn-date-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+  color: var(--vn-text);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  height: 28px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-date-link:hover {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-primary);
+  color: var(--vn-primary);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-date-current {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-badge-primary-bg);
+  border: 1px solid var(--vn-primary);
+  color: var(--vn-badge-primary-fg);
+  font-size: 12px;
+  font-weight: 600;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+/* ── Bảng Dữ Liệu Chiếm 100% Full-Width ──────────────────────────────────── */
+body.vnadmin #changelist {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  overflow: visible;
+}
+
+body.vnadmin #changelist .changelist-form-container,
+body.vnadmin .vn-table-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100%;
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.vnadmin .vn-table-scroll-wrap,
+body.vnadmin #changelist .results {
+  overflow-x: auto !important;
+  overflow-y: visible;
+  width: 100%;
+}
+
+/* Bảng dữ liệu kiểu GitHub */
+body.vnadmin #result_list {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--vn-surface);
+  margin: 0;
+}
+
+body.vnadmin #result_list thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--vn-text-muted);
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+  white-space: nowrap;
+}
+
+body.vnadmin #result_list tbody tr {
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin #result_list tbody tr:hover td,
+body.vnadmin #result_list tbody tr:hover th {
+  background: var(--vn-surface-2);
+}
+
+body.vnadmin #result_list tbody tr.selected td,
+body.vnadmin #result_list tbody tr.selected th {
+  background: var(--vn-badge-primary-bg);
+}
+
+body.vnadmin #result_list td,
+body.vnadmin #result_list th {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--vn-border);
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+body.vnadmin #result_list td.field-schedule_seconds,
+body.vnadmin #result_list th.column-schedule_seconds,
+body.vnadmin #result_list td.field-rows_upserted_display,
+body.vnadmin #result_list th.column-rows_upserted_display,
+body.vnadmin #result_list td.field-rows_skipped_display,
+body.vnadmin #result_list th.column-rows_skipped_display {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+body.vnadmin #result_list td.field-name_display,
+body.vnadmin #result_list td.field-job_display,
+body.vnadmin #result_list th[scope="row"] a {
+  color: var(--vn-text);
+  font-weight: 600;
+}
+
+body.vnadmin #result_list th[scope="row"] a:hover {
+  color: var(--vn-primary);
+  text-decoration: underline;
+}
+
+body.vnadmin #result_list td .vn-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--vn-text-muted);
+}
+
+/* ── Bulk Actions Bar ────────────────────────────────────────────────────── */
+body.vnadmin .vn-bulk-actions-wrapper {
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.vnadmin .vn-bulk-actions-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-bulk-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--vn-sp-2);
+  padding: 6px 12px;
+  font-size: var(--vn-fs-muted);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.vnadmin .vn-actions-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  flex-shrink: 0;
+}
+
+body.vnadmin .vn-actions-counter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-badge-neutral-bg);
+  border: 1px solid var(--vn-border);
+  font-weight: 600;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-counter-icon {
+  color: var(--vn-success);
+  font-weight: 700;
+}
+
+body.vnadmin .vn-select-all-btn,
+body.vnadmin .vn-clear-selection-btn {
+  color: var(--vn-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+body.vnadmin .vn-select-all-btn:hover,
+body.vnadmin .vn-clear-selection-btn:hover {
+  text-decoration: underline;
+}
+
+body.vnadmin .vn-actions-right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  flex-shrink: 0;
+}
+
+body.vnadmin .vn-action-select-label {
+  font-weight: 600;
+  color: var(--vn-text-muted);
+  white-space: nowrap;
+}
+
+body.vnadmin .vn-action-execute-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 5px 14px;
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  background: var(--vn-surface);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-action-execute-btn:hover {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-primary);
+}
+
+/* ── Topbar User Links & Logout ──────────────────────────────────────────── */
+body.vnadmin .vn-user-link {
+  background: transparent;
+  border: none;
+  color: var(--vn-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--vn-r-btn);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color var(--vn-dur-fast) var(--vn-ease),
+    background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-user-link:hover {
+  background: var(--vn-surface-2);
+  color: var(--vn-primary);
+}
+
+body.vnadmin .vn-user-link--logout {
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--vn-surface-2);
+}
+
+body.vnadmin .vn-user-link--logout:hover {
+  color: var(--vn-danger);
+  border-color: var(--vn-danger);
+  background: var(--vn-badge-danger-bg);
+}
+
+/* ── Trang dang nhap ────────────────────────────────────────────────────────
+ *
+ * KHONG duoc bo qua: `login.html` la template RIENG cua Django, khong ke
+ * thua `base.html` cua ta ⇒ truoc wave 18 file nay **khong co mot quy tac
+ * nao** cho trang dang nhap. Nhan dung container toi (do `login.css` +
+ * `dark_mode.css` cua Django tu doi) nhung nhan cua ta van la `--vn-text`
+ * (den) ⇒ tuong phan **1.04:1**, nhan "Username"/"Password" bay hoan toan
+ * khong thay, khong dang nhap duoc.
+ *
+ * Vì sao khong sua `login.html`: nhieu nhan khac cua Django (`Username`,
+ * `Password`, `Log in`, thong bao loi) nam o day. Sua CSS giu nguyen
+ * chu dich san cua Django va chi sua lop trinh bay.
+ */
+body.vnadmin.login {
+  background: var(--vn-bg);
+  color: var(--vn-text);
+}
+
+body.vnadmin.login #container {
+  background: var(--vn-surface);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  box-shadow: none;
+  padding: var(--vn-sp-4) var(--vn-sp-4) var(--vn-sp-4);
+  width: min(420px, calc(100vw - 2 * var(--vn-sp-4)));
+}
+
+/* Nhan: phai LUON dung token theo nen hien tai. Khong hard-code `#14161d` —
+ * chinh la hard-code do ta lam nen ban toi khong doc duoc. */
+body.vnadmin.login #container form label {
+  display: block;
+  margin-bottom: var(--vn-sp-1);
+  color: var(--vn-text);
+  font-size: var(--vn-fs-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+body.vnadmin.login #container form input[type="text"],
+body.vnadmin.login #container form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--vn-sp-3);
+  padding: 10px 12px;
+  min-height: 40px;
+  background: var(--vn-bg);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  font-size: var(--vn-fs-body);
+}
+
+body.vnadmin.login #container form input::placeholder {
+  color: var(--vn-text-muted);
+  opacity: 1;
+}
+
+body.vnadmin.login #container form input:focus {
+  background: var(--vn-bg);
+  color: var(--vn-text);
+  outline: 2px solid transparent;
+  outline-offset: 0;
+  border-color: var(--vn-primary);
+  box-shadow: var(--vn-focus-ring);
+}
+
+body.vnadmin.login #container form .submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+body.vnadmin.login #container form .submit-row input[type="submit"] {
+  min-height: 40px;
+  padding: 0 var(--vn-sp-4);
+  background: var(--vn-primary);
+  color: var(--vn-on-primary);
+  border: 1px solid transparent;
+  border-radius: var(--vn-r-btn);
+  font-size: var(--vn-fs-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body.vnadmin.login #container form .submit-row input[type="submit"]:hover {
+  filter: brightness(1.08);
+}
+
+/* Thong bao loi: phai doc duoc tren ca nen sang lan nen toi. */
+body.vnadmin.login #container .errornote {
+  display: block;
+  margin-bottom: var(--vn-sp-3);
+  padding: 10px 12px;
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-badge-danger-fg);
+  border: 1px solid var(--vn-danger);
+  border-radius: var(--vn-r-btn);
+  font-size: var(--vn-fs-muted);
+}
+
+body.vnadmin.login #container .errornote ul {
+  margin: var(--vn-sp-1) 0 0;
+  padding-left: var(--vn-sp-3);
+}
+
+body.vnadmin.login #container .help,
+body.vnadmin.login #container p {
+  color: var(--vn-text-muted);
+}
+
+/* Logo/ten san pham tren trang dang nhap */
+body.vnadmin.login #branding h1 {
+  padding: var(--vn-sp-3) 0 0;
+  font-size: var(--vn-fs-h2);
+  font-weight: 600;
+  color: var(--vn-text);
+}
+/* ── Tieu de ─────────────────────────────────────────────────────────────── */
+body.vnadmin #content h1 {
+  margin: 0 0 var(--vn-sp-3);
+  font-size: var(--vn-fs-h1);
+  font-weight: 600;
+  line-height: 36px;
+  color: var(--vn-text);
+}
+
+body.vnadmin #content h2 {
+  font-size: var(--vn-fs-h2);
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--vn-text);
+}
+
+/* ── The / module (card) ─────────────────────────────────────────────────── */
+body.vnadmin .module {
+  margin-bottom: var(--vn-sp-3);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  background: var(--vn-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+}
+
+body.vnadmin .module caption,
+body.vnadmin .module h2,
+body.vnadmin .module caption {
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  font-size: var(--vn-fs-h3);
+  font-weight: 600;
+  line-height: 24px;
+  text-align: left;
+  color: var(--vn-text);
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+}
+
+/* ── Bang du lieu ────────────────────────────────────────────────────────── */
+body.vnadmin table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--vn-surface);
+}
+
+body.vnadmin thead th,
+body.vnadmin #result_list th {
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  text-align: left;
+  color: var(--vn-text-muted);
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+  white-space: nowrap;
+}
+
+body.vnadmin tbody td,
+body.vnadmin #result_list td {
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  border-bottom: 1px solid var(--vn-border);
+  vertical-align: middle;
+}
+
+body.vnadmin tbody tr:hover td {
+  background: var(--vn-surface-2);
+}
+
+body.vnadmin .row-header th,
+body.vnadmin thead th.row-header {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* ── Nút chuẩn GitHub Console ────────────────────────────────────────────── */
+body.vnadmin .button,
+body.vnadmin input[type="submit"],
+body.vnadmin .object-tools a,
+body.vnadmin .submit-row input {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vn-sp-1);
+  min-height: var(--vn-tap);
+  padding: 5px 12px;
+  font-family: var(--vn-font);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface-2);
+  color: var(--vn-text);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .button:hover,
+body.vnadmin input[type="submit"]:hover,
+body.vnadmin .object-tools a:hover {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-text-muted);
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+/* Nút thêm mới (Primary Call-to-Action) kiểu GitHub Green */
+body.vnadmin .object-tools a.addlink,
+body.vnadmin .button.default,
+body.vnadmin .button.primary,
+body.vnadmin .vn-btn-primary,
+body.vnadmin input[type="submit"].default,
+body.vnadmin .submit-row input.default {
+  background: #1f883d !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  padding: 6px 14px !important;
+  border-radius: var(--vn-r-btn) !important;
+  box-shadow: 0 1px 0 rgba(27, 31, 36, 0.1);
+}
+
+body.vnadmin .object-tools a.addlink:hover,
+body.vnadmin .button.default:hover,
+body.vnadmin .button.primary:hover,
+body.vnadmin .vn-btn-primary:hover,
+body.vnadmin input[type="submit"].default:hover,
+body.vnadmin .submit-row input.default:hover {
+  background: #1a7f37 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  filter: none !important;
+}
+
+body.vnadmin .object-tools a.addlink::before {
+  content: "+ ";
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Nút phụ / Secondary Button */
+body.vnadmin .vn-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface-2);
+  color: var(--vn-text);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-btn-secondary:hover {
+  background: var(--vn-badge-neutral-bg);
+  text-decoration: none;
+}
+
+body.vnadmin .button.deletelink,
+body.vnadmin a.deletelink {
+  color: var(--vn-danger);
+  background: transparent;
+  border-color: var(--vn-badge-danger-bg);
+}
+
+body.vnadmin .button.deletelink:hover,
+body.vnadmin a.deletelink:hover {
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-danger);
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+/* ── Truong nhap ─────────────────────────────────────────────────────────── */
+body.vnadmin input[type="text"],
+body.vnadmin input[type="password"],
+body.vnadmin input[type="email"],
+body.vnadmin input[type="url"],
+body.vnadmin input[type="number"],
+body.vnadmin input[type="date"],
+body.vnadmin input[type="datetime-local"],
+body.vnadmin textarea,
+body.vnadmin select {
+  padding: var(--vn-sp-1) var(--vn-sp-2);
+  min-height: var(--vn-tap);
+  font-family: var(--vn-font);
+  font-size: var(--vn-fs-body);
+  color: var(--vn-text);
+  background: var(--vn-bg);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  transition: border-color var(--vn-dur-fast) var(--vn-ease),
+    box-shadow var(--vn-dur-fast) var(--vn-ease);
+}
+
+/* Vong focus PHAI nhin thay tren ca nen sang va nen toi (D08 §13.1).
+ * `outline: none` KHONG duoc dung — phai cho `box-shadow` that cho focus. */
+body.vnadmin input:focus,
+body.vnadmin textarea:focus,
+body.vnadmin select:focus {
+  outline: 2px solid transparent; /* fallback trinh duyet cu */
+  outline-offset: 2px;
+  border-color: var(--vn-primary);
+  box-shadow: var(--vn-focus-ring);
+}
+
+/* ── Checkbox / radio: vung cham >= 24px ─────────────────────────────────── */
+body.vnadmin input[type="checkbox"],
+body.vnadmin input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--vn-primary);
+}
+
+/* ── Label / help / loi ──────────────────────────────────────────────────── */
+body.vnadmin label {
+  color: var(--vn-text);
+  font-weight: 600;
+}
+
+body.vnadmin .help,
+body.vnadmin p.help {
+  margin: var(--vn-sp-1) 0 0;
+  font-size: var(--vn-fs-muted);
+  line-height: 18px;
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .errorlist {
+  margin: 0 0 var(--vn-sp-1);
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .errorlist li {
+  display: block;
+  margin-bottom: var(--vn-sp-1);
+  padding: var(--vn-sp-1) var(--vn-sp-2);
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-badge-danger-fg);
+  background: var(--vn-badge-danger-bg);
+  border: 1px solid var(--vn-danger);
+  border-radius: var(--vn-r-notice);
+}
+
+/* ── Fieldset (form them/sua) ────────────────────────────────────────────── */
+body.vnadmin fieldset.module {
+  padding: var(--vn-sp-3);
+}
+
+body.vnadmin fieldset.module legend,
+body.vnadmin .form-row legend {
+  font-size: var(--vn-fs-h3);
+  font-weight: 600;
+  color: var(--vn-text);
+}
+
+body.vnadmin .form-row {
+  padding: var(--vn-sp-2) 0;
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .form-row:last-child {
+  border-bottom: 0;
+}
+
+/* ── Thong bao ───────────────────────────────────────────────────────────── */
+body.vnadmin .messagelist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-1);
+  margin: 0 0 var(--vn-sp-3);
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .messagelist li {
+  margin: 0;
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  border-radius: var(--vn-r-notice);
+  border: 1px solid var(--vn-border);
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-badge-primary-fg);
+  font-size: var(--vn-fs-body);
+}
+
+body.vnadmin .messagelist li.success {
+  background: var(--vn-badge-success-bg);
+  color: var(--vn-badge-success-fg);
+  border-color: var(--vn-success);
+}
+
+body.vnadmin .messagelist li.warning {
+  background: var(--vn-badge-warning-bg);
+  color: var(--vn-badge-warning-fg);
+  border-color: var(--vn-warning);
+}
+
+body.vnadmin .messagelist li.error {
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-badge-danger-fg);
+  border-color: var(--vn-danger);
+}
+
+/* ── Paginator ───────────────────────────────────────────────────────────── */
+body.vnadmin .paginator {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+  border-top: 1px solid var(--vn-border);
+}
+
+/* ── Badge trang thai ────────────────────────────────────────────────────── */
+/* D08 §13: "Khong chi dua vao mau" — badge LUON co chu, khong bao gio chi la
+ * mot cham mau. Do do chuc nang doc khong phu thuoc nhin mau. */
+body.vnadmin .vn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-1);
+  padding: 2px var(--vn-sp-2);
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+body.vnadmin .vn-badge--success {
+  background: var(--vn-badge-success-bg);
+  color: var(--vn-badge-success-fg);
+  border-color: var(--vn-success);
+}
+
+body.vnadmin .vn-badge--warning {
+  background: var(--vn-badge-warning-bg);
+  color: var(--vn-badge-warning-fg);
+  border-color: var(--vn-warning);
+}
+
+body.vnadmin .vn-badge--danger {
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-badge-danger-fg);
+  border-color: var(--vn-danger);
+}
+
+body.vnadmin .vn-badge--primary {
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-badge-primary-fg);
+  border-color: var(--vn-primary);
+}
+
+body.vnadmin .vn-badge--neutral {
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-badge-neutral-fg);
+  border-color: var(--vn-border);
+}
+
+body.vnadmin .vn-badge--gain {
+  background: var(--vn-badge-success-bg);
+  color: var(--vn-badge-success-fg);
+  border-color: var(--vn-gain);
+}
+
+body.vnadmin .vn-badge--loss {
+  background: var(--vn-badge-danger-bg);
+  color: var(--vn-badge-danger-fg);
+  border-color: var(--vn-loss);
+}
+
+/* ── Gia tri rong ────────────────────────────────────────────────────────── */
+body.vnadmin .vn-empty {
+  color: var(--vn-text-muted);
+}
+
+/* ── Ma / khoa ───────────────────────────────────────────────────────────── */
+body.vnadmin .vn-mono {
+  font-family: var(--vn-font-mono);
+  font-size: var(--vn-fs-muted);
+}
+
+/* ── Sidebar loc (Django >=5.x nav_sidebar) ──────────────────────────────── */
+body.vnadmin #nav-sidebar {
+  background: var(--vn-surface-2);
+  border-right: 1px solid var(--vn-border);
+}
+
+body.vnadmin #nav-sidebar .nav-sidebar-item {
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin #nav-sidebar a {
+  color: var(--vn-text);
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin #nav-sidebar a:hover {
+  background: var(--vn-badge-neutral-bg);
+}
+
+body.vnadmin #nav-sidebar .current > a {
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-badge-primary-fg);
+  font-weight: 600;
+}
+
+/* ── Inline ──────────────────────────────────────────────────────────────── */
+body.vnadmin .inline-group {
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  background: var(--vn-surface);
+  overflow: hidden;
+}
+
+body.vnadmin .inline-related {
+  border-top: 1px solid var(--vn-border);
+  background: var(--vn-surface);
+}
+
+body.vnadmin .inline-related h3 {
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  font-size: var(--vn-fs-h3);
+  color: var(--vn-text);
+  background: var(--vn-surface-2);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+body.vnadmin #footer {
+  padding: var(--vn-sp-3) var(--vn-sp-4);
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+  border-top: 1px solid var(--vn-border);
+}
+
+/* ── Nut them tren dau trang doi voi tieu de ─────────────────────────────── */
+body.vnadmin .object-tools {
+  margin: 0 0 var(--vn-sp-3);
+  padding: 0;
+  list-style: none;
+  text-align: right;
+}
+
+body.vnadmin .object-tools li {
+  display: inline-block;
+  margin: 0 0 0 var(--vn-sp-2);
+}
+
+/* ============================================================================
+   GIAO DIEN DANH SACH CHAY DUOC (co the cuon ngang) — D08 §15.
+   Admin la bo cuc desktop-first: thay vi bien thanh the (nhac ky cua cac
+   trang khach), ta GIU bang va them dau hieu chu ngang ro rang.
+   ========================================================================== */
+body.vnadmin .vn-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.vnadmin .vn-scroll-hint {
+  display: none;
+  margin: 0 0 var(--vn-sp-2);
+  padding: var(--vn-sp-1) var(--vn-sp-2);
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+  background: var(--vn-badge-warning-bg);
+  border: 1px solid var(--vn-warning);
+  border-radius: var(--vn-r-notice);
+}
+
+@media (max-width: 900px) {
+  body.vnadmin .vn-scroll-hint {
+    display: block;
+  }
+
+  body.vnadmin .main {
+    flex-direction: column;
+  }
+
+  body.vnadmin .content {
+    padding: var(--vn-sp-3);
+  }
+}
+
+/* ============================================================================
+   GIAM CHUYEN DONG — D08 §13 (WCAG 2.3.3 Reduced Motion, muc AA).
+   Tat MOI transition/animation tren lop vnadmin.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  body.vnadmin *,
+  body.vnadmin *::before,
+  body.vnadmin *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   DASHBOARD VAN HANH — `/admin/`
+   ========================================================================== */
+
+body.vnadmin .vn-dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-4);
+}
+
+body.vnadmin .vn-section-title {
+  margin: 0 0 var(--vn-sp-2);
+  font-size: var(--vn-fs-h2);
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--vn-text);
+}
+
+/* ── The KPI: luoi 4 cot, xuong 2 roi xuong 1 (D08 §5.2 "The noi dung 3-4 cot") ── */
+body.vnadmin .vn-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--vn-sp-3);
+}
+
+@media (max-width: 1200px) {
+  body.vnadmin .vn-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  body.vnadmin .vn-kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+body.vnadmin .vn-kpi {
+  padding: var(--vn-sp-3);
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+}
+
+body.vnadmin .vn-kpi__label {
+  margin: 0 0 var(--vn-sp-1);
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-kpi__value {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 40px;
+  color: var(--vn-text);
+  font-variant-numeric: tabular-nums;
+}
+
+body.vnadmin .vn-kpi__value a {
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-kpi__value a:hover {
+  color: var(--vn-primary);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-kpi__value--error {
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-kpi__hint {
+  margin: var(--vn-sp-1) 0 0;
+  font-size: var(--vn-fs-muted);
+  line-height: 18px;
+  color: var(--vn-text-muted);
+}
+
+/* ── Canh bao ──────────────────────────────────────────────────────────── */
+body.vnadmin .vn-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .vn-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vn-sp-2);
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-notice);
+}
+
+body.vnadmin .vn-alert--warning {
+  background: var(--vn-badge-warning-bg);
+  border-color: var(--vn-warning);
+  color: var(--vn-badge-warning-fg);
+}
+
+body.vnadmin .vn-alert--danger {
+  background: var(--vn-badge-danger-bg);
+  border-color: var(--vn-danger);
+  color: var(--vn-badge-danger-fg);
+}
+
+body.vnadmin .vn-alert--neutral {
+  background: var(--vn-badge-neutral-bg);
+  border-color: var(--vn-border);
+  color: var(--vn-badge-neutral-fg);
+}
+
+body.vnadmin .vn-alert__title {
+  font-weight: 600;
+}
+
+body.vnadmin .vn-alert__detail {
+  color: inherit;
+  opacity: 0.9;
+}
+
+body.vnadmin .vn-alert__link {
+  margin-left: auto;
+  color: inherit;
+  font-weight: 600;
+}
+
+/* ── Nhom chức năng ────────────────────────────────────────────────────── */
+body.vnadmin .vn-group__title {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-group__icon {
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-group__count {
+  margin-left: auto;
+  padding: 0 var(--vn-sp-2);
+  font-size: var(--vn-fs-muted);
+  font-weight: 600;
+  color: var(--vn-text-muted);
+  background: var(--vn-badge-neutral-bg);
+  border-radius: 999px;
+}
+
+body.vnadmin .vn-group__table th[scope="row"] {
+  text-align: left;
+  font-weight: 400;
+}
+
+body.vnadmin .vn-col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+body.vnadmin .vn-action-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--vn-tap);
+  min-width: var(--vn-tap);
+  padding: 0 var(--vn-sp-2);
+  border-radius: var(--vn-r-btn);
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-action-link:hover {
+  background: var(--vn-badge-primary-bg);
+  text-decoration: none;
+}
+
+/* ── Header Branding & Sidebar Toggles (GitHub Console) ───────────────────── */
+body.vnadmin .vn-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+body.vnadmin .vn-header-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  color: var(--vn-text-muted);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-header-sidebar-toggle:hover {
+  background: var(--vn-surface-2);
+  color: var(--vn-text);
+  border-color: var(--vn-primary);
+}
+
+body.vnadmin .vn-header-sidebar-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--vn-focus-ring);
+}
+
+body.vnadmin .vn-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-brand-link:hover {
+  text-decoration: none;
+  color: var(--vn-primary);
+}
+
+body.vnadmin .vn-header-logo-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--vn-primary);
+}
+
+body.vnadmin .vn-header-brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-header-brand-sep {
+  color: var(--vn-text-muted);
+  font-weight: 300;
+}
+
+body.vnadmin .vn-header-brand-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vn-text-muted);
+}
+
+/* Floating Restore Button when Sidebar is collapsed */
+body.vnadmin #vn-sidebar-floating-toggle {
+  display: none !important;
+}
+
+body.vnadmin .main:not(.shifted) #vn-sidebar-floating-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  position: fixed;
+  left: 0;
+  top: 72px;
+  z-index: 999;
+  padding: 6px 12px 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--vn-font);
+  color: var(--vn-text);
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-left: none;
+  border-radius: 0 var(--vn-r-btn) var(--vn-r-btn) 0;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease),
+    transform var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .main:not(.shifted) #vn-sidebar-floating-toggle:hover {
+  background: var(--vn-surface-2);
+  color: var(--vn-primary);
+  border-color: var(--vn-primary);
+  transform: translateX(2px);
+}
+
+body.vnadmin .main:not(.shifted) #vn-sidebar-floating-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--vn-focus-ring);
+}
+
+/* Triệt tiêu hoàn toàn rãnh cột dọc 23px của toggle-nav-sidebar cũ */
+body.vnadmin .toggle-nav-sidebar,
+body.vnadmin button.toggle-nav-sidebar {
+  display: none !important;
+  width: 0 !important;
+  flex: 0 0 0 !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+body.vnadmin .main > #nav-sidebar + .content,
+body.vnadmin .main:not(.shifted) > #nav-sidebar + .content,
+body.vnadmin .main:not(.shifted) .content {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+body.vnadmin .main:not(.shifted) #content {
+  padding-left: 84px !important;
+}
+
+body.vnadmin .main.shifted > #nav-sidebar + .content,
+body.vnadmin .main.shifted .content {
+  max-width: calc(100% - 280px) !important;
+  width: calc(100% - 280px) !important;
+}
+
+body.vnadmin .main:not(.shifted) > #nav-sidebar {
+  margin-left: -285px !important;
+  visibility: hidden !important;
+}
+
+/* ── Sidebar Accordion Nav chuẩn GitHub Console ─────────────────────────── */
+body.vnadmin #nav-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--vn-surface-2);
+  border-right: 1px solid var(--vn-border);
+  box-sizing: border-box;
+}
+
+body.vnadmin .vn-nav-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-sidebar-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--vn-r-btn);
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  color: var(--vn-text-muted);
+  cursor: pointer;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-sidebar-collapse-btn:hover {
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-nav-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+body.vnadmin .vn-nav-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--vn-text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+body.vnadmin #nav-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 26px 6px 28px;
+  font-size: 12px;
+  background: var(--vn-bg);
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  outline: none;
+  transition: border-color var(--vn-dur-fast) var(--vn-ease),
+    box-shadow var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin #nav-filter:focus {
+  border-color: var(--vn-primary);
+  box-shadow: var(--vn-focus-ring);
+}
+
+body.vnadmin #nav-filter.no-results {
+  border-color: var(--vn-danger);
+}
+
+body.vnadmin .vn-nav-kbd {
+  position: absolute;
+  right: 8px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: var(--vn-font-mono);
+  color: var(--vn-text-muted);
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+body.vnadmin .vn-nav-groups {
+  padding-bottom: var(--vn-sp-4);
+}
+
+body.vnadmin .vn-nav-group {
+  border-bottom: 1px solid var(--vn-border);
+}
+
+/* Accordion Header Button */
+body.vnadmin .vn-nav-group__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--vn-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-nav-group__header:hover {
+  background: var(--vn-badge-neutral-bg);
+}
+
+body.vnadmin .vn-nav-group__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vn-text-muted);
+  transition: transform var(--vn-dur-fast) var(--vn-ease);
+  transform: rotate(90deg);
+}
+
+body.vnadmin .vn-nav-group.is-collapsed .vn-nav-group__chevron {
+  transform: rotate(0deg);
+}
+
+body.vnadmin .vn-nav-group__icon {
+  font-size: 13px;
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-nav-group__title-text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.vnadmin .vn-nav-group__count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+}
+
+/* Group Model List */
+body.vnadmin .vn-nav-group__list {
+  margin: 0;
+  padding: 2px 0 6px;
+  list-style: none;
+  transition: max-height var(--vn-dur) var(--vn-ease);
+}
+
+body.vnadmin .vn-nav-group.is-collapsed .vn-nav-group__list {
+  display: none;
+}
+
+body.vnadmin .vn-nav-item a,
+body.vnadmin .vn-nav-item .vn-nav-item__disabled {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 12px 4px 28px;
+  font-size: 13px;
+  color: var(--vn-text-muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease),
+    color var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-nav-item a:hover {
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-nav-item--current > a {
+  background: var(--vn-badge-primary-bg);
+  color: var(--vn-primary);
+  font-weight: 600;
+  border-left-color: var(--vn-primary);
+}
+
+body.vnadmin .vn-nav-item__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+body.vnadmin .vn-nav-item--current .vn-nav-item__dot {
+  opacity: 1;
+}
+
+body.vnadmin .vn-nav-item__tag {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+  margin-left: auto;
+}
+
+body.vnadmin .vn-nav-empty {
+  padding: var(--vn-sp-2) var(--vn-sp-3);
+}
+
+/* ============================================================================
+   COMMAND CENTER OPERATIONAL DASHBOARD — `/admin/`
+   ========================================================================== */
+/* Triệt tiêu hoàn toàn giới hạn width 600px mặc định của Django dashboard.css */
+body.vnadmin.dashboard #content,
+body.vnadmin.vn-dashboard-page #content,
+body.vnadmin #content {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  float: none !important;
+}
+
+body.vnadmin.dashboard #content-main,
+body.vnadmin.vn-dashboard-page #content-main,
+body.vnadmin #content-main,
+body.vnadmin .vn-dash {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  float: none !important;
+}
+
+body.vnadmin .content {
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+body.vnadmin .vn-dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-4);
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body.vnadmin .vn-dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-section-title {
+  margin: 0;
+  font-size: var(--vn-fs-h2);
+  font-weight: 700;
+  line-height: 28px;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-section-subtitle {
+  font-size: var(--vn-fs-muted);
+  color: var(--vn-text-muted);
+}
+
+/* ── 1. KPI Cards Grid ───────────────────────────────────────────────────── */
+body.vnadmin .vn-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--vn-sp-3);
+}
+
+@media (max-width: 1100px) {
+  body.vnadmin .vn-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  body.vnadmin .vn-kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+body.vnadmin .vn-kpi-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform var(--vn-dur-fast) var(--vn-ease),
+    border-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-kpi-card:hover {
+  border-color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-kpi-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--vn-sp-1);
+}
+
+body.vnadmin .vn-kpi-card__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+body.vnadmin .vn-kpi-card__icon {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+body.vnadmin .vn-kpi-card__body {
+  margin-bottom: var(--vn-sp-1);
+}
+
+body.vnadmin .vn-kpi-card__value {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  color: var(--vn-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+body.vnadmin .vn-kpi-card__value a {
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-kpi-card__value a:hover {
+  color: var(--vn-primary);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-kpi-card__value--error {
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-kpi-card__footer {
+  margin-top: auto;
+}
+
+body.vnadmin .vn-kpi-card__hint {
+  font-size: 12px;
+  color: var(--vn-text-muted);
+}
+
+/* ── 2. GitHub Flash Callout Banner ──────────────────────────────────────── */
+body.vnadmin .vn-alert-callout-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-callout {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-3);
+  padding: 12px 16px;
+  border-radius: var(--vn-r-notice);
+  border: 1px solid var(--vn-border);
+  background: var(--vn-surface);
+}
+
+body.vnadmin .vn-callout--warning {
+  background: var(--vn-badge-warning-bg);
+  border-color: var(--vn-warning);
+  color: var(--vn-badge-warning-fg);
+}
+
+body.vnadmin .vn-callout--danger {
+  background: var(--vn-badge-danger-bg);
+  border-color: var(--vn-danger);
+  color: var(--vn-badge-danger-fg);
+}
+
+body.vnadmin .vn-callout__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+body.vnadmin .vn-callout__content {
+  flex: 1 1 auto;
+}
+
+body.vnadmin .vn-callout__title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+body.vnadmin .vn-callout__detail {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+body.vnadmin .vn-callout__action {
+  flex-shrink: 0;
+}
+
+/* ── 3. Function Matrix Cards ────────────────────────────────────────────── */
+body.vnadmin .vn-groups-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--vn-sp-3);
+  width: 100%;
+}
+
+@media (min-width: 1680px) {
+  body.vnadmin .vn-groups-matrix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  body.vnadmin .vn-groups-matrix {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+body.vnadmin .vn-module-card {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.vnadmin .vn-module-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  padding: 10px 16px;
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-module-card__icon {
+  font-size: 14px;
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-module-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vn-text);
+  flex: 1 1 auto;
+}
+
+body.vnadmin .vn-module-card__count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vn-badge-neutral-bg);
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-module-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .vn-module-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vn-sp-2);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vn-border);
+  transition: background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-module-item:last-child {
+  border-bottom: none;
+}
+
+body.vnadmin .vn-module-item:hover {
+  background: var(--vn-surface-2);
+}
+
+body.vnadmin .vn-module-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+body.vnadmin .vn-module-item__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-module-item__link:hover {
+  color: var(--vn-primary);
+  text-decoration: underline;
+}
+
+body.vnadmin .vn-module-item__code {
+  font-size: 11px;
+  font-family: var(--vn-font-mono);
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-module-item__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-module-item__btn {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vn-primary);
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: var(--vn-r-btn);
+  border: 1px solid transparent;
+  transition: border-color var(--vn-dur-fast) var(--vn-ease),
+    background-color var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-module-item__btn:hover {
+  background: var(--vn-badge-primary-bg);
+  border-color: var(--vn-primary);
+}
+
+/* ── 4. Recent Activity Stream ───────────────────────────────────────────── */
+body.vnadmin .vn-activity-card {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.vnadmin .vn-activity-stream {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.vnadmin .vn-activity-item {
+  display: flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--vn-border);
+  font-size: 13px;
+}
+
+body.vnadmin .vn-activity-item:last-child {
+  border-bottom: none;
+}
+
+body.vnadmin .vn-activity-item__desc {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vn-sp-2);
+  flex-wrap: wrap;
+}
+
+body.vnadmin .vn-activity-item__target {
+  font-weight: 600;
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+body.vnadmin .vn-activity-item__target:hover {
+  color: var(--vn-primary);
+  text-decoration: underline;
+}
+
+body.vnadmin .vn-activity-item__user {
+  color: var(--vn-text-muted);
+  font-size: 12px;
+}
+
+/* ============================================================================
+   CHANGEFORM — 2-COLUMN RESPONSIVE LAYOUT & CARDS (SLICE 3)
+   ========================================================================== */
+body.vnadmin .vn-changeform-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-4);
+  max-width: 1440px;
+}
+
+body.vnadmin .vn-changeform-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vn-sp-3);
+  margin-bottom: var(--vn-sp-2);
+}
+
+body.vnadmin .vn-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  body.vnadmin .vn-form-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+body.vnadmin .vn-form-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+body.vnadmin .vn-form-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  position: sticky;
+  top: 60px;
+}
+
+/* Fieldset Cards */
+body.vnadmin .vn-fieldset-card {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 16px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body.vnadmin .vn-fieldset-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--vn-text);
+  border-bottom: 1px solid var(--vn-border);
+  padding-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+body.vnadmin .vn-fieldset-desc {
+  font-size: 13px;
+  color: var(--vn-text-muted);
+  margin-bottom: 14px;
+}
+
+body.vnadmin .vn-form-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--vn-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+body.vnadmin .vn-form-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+body.vnadmin .vn-field-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  body.vnadmin .vn-field-wrap {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+body.vnadmin .vn-field-wrap label {
+  width: 180px;
+  min-width: 180px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vn-text);
+  padding-top: 6px;
+  user-select: none;
+}
+
+body.vnadmin .vn-field-wrap.checkbox-row {
+  align-items: center;
+}
+
+body.vnadmin .vn-field-wrap.checkbox-row label {
+  width: auto;
+  min-width: auto;
+  padding-top: 0;
+}
+
+body.vnadmin .vn-readonly-value {
+  font-size: 13px;
+  color: var(--vn-text);
+  padding: 6px 0;
+}
+
+body.vnadmin .vn-field-help {
+  font-size: 12px;
+  color: var(--vn-text-muted);
+  margin-left: 196px;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  body.vnadmin .vn-field-help {
+    margin-left: 0;
+  }
+}
+
+/* Form Inputs Styling */
+body.vnadmin input[type="text"],
+body.vnadmin input[type="password"],
+body.vnadmin input[type="email"],
+body.vnadmin input[type="url"],
+body.vnadmin input[type="number"],
+body.vnadmin input[type="tel"],
+body.vnadmin textarea,
+body.vnadmin select {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--vn-text);
+  background: var(--vn-bg);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-btn);
+  padding: 6px 12px;
+  box-sizing: border-box;
+  transition: border-color var(--vn-dur-fast) var(--vn-ease),
+    box-shadow var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin input[type="text"]:focus,
+body.vnadmin input[type="password"]:focus,
+body.vnadmin input[type="email"]:focus,
+body.vnadmin input[type="url"]:focus,
+body.vnadmin input[type="number"]:focus,
+body.vnadmin input[type="tel"]:focus,
+body.vnadmin textarea:focus,
+body.vnadmin select:focus {
+  outline: none;
+  border-color: var(--vn-primary);
+  box-shadow: var(--vn-focus-ring);
+}
+
+body.vnadmin .errors input,
+body.vnadmin .errors select,
+body.vnadmin .errors textarea {
+  border-color: var(--vn-danger) !important;
+  box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.15) !important;
+}
+
+/* Sidebar Metadata Cards */
+body.vnadmin .vn-meta-card {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+body.vnadmin .vn-meta-card-header {
+  padding: 10px 16px;
+  background: var(--vn-surface-2);
+  border-bottom: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-meta-card-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vn-text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+body.vnadmin .vn-meta-card-body {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.vnadmin .vn-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+body.vnadmin .vn-meta-label {
+  color: var(--vn-text-muted);
+  font-weight: 500;
+}
+
+body.vnadmin .vn-meta-value {
+  color: var(--vn-text);
+  font-weight: 600;
+  text-align: right;
+}
+
+body.vnadmin .vn-meta-card-footer {
+  padding: 10px 16px;
+  background: var(--vn-surface-2);
+  border-top: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-meta-delete-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vn-danger);
+  text-decoration: none;
+  transition: opacity var(--vn-dur-fast) var(--vn-ease);
+}
+
+body.vnadmin .vn-meta-delete-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+body.vnadmin .vn-meta-tips-card .vn-meta-tips-content {
+  font-size: 12px;
+  color: var(--vn-text-muted);
+  line-height: 1.6;
+}
+
+body.vnadmin .vn-meta-tips-card .vn-meta-tips-content p {
+  margin: 0 0 6px 0;
+}
+
+body.vnadmin .vn-meta-tips-card .vn-meta-tips-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Inlines Styling */
+body.vnadmin .vn-inline-wrap {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.vnadmin .vn-inline-wrap .inline-group h2 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--vn-text);
+  border-bottom: 1px solid var(--vn-border);
+  padding-bottom: 8px;
+}
+
+/* Sticky Submit Bar */
+body.vnadmin .vn-submit-bar {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 24px !important;
+  margin-top: 24px !important;
+  background: var(--vn-surface) !important;
+  border: 1px solid var(--vn-border) !important;
+  border-radius: var(--vn-r-card) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.vnadmin .vn-submit-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+body.vnadmin .vn-submit-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+body.vnadmin .vn-btn-primary {
+  background: var(--vn-gain) !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: var(--vn-r-btn) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  cursor: pointer !important;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease) !important;
+}
+
+body.vnadmin .vn-btn-primary:hover {
+  filter: brightness(0.95);
+}
+
+body.vnadmin .vn-btn-secondary {
+  background: var(--vn-surface-2) !important;
+  color: var(--vn-text) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  border-radius: var(--vn-r-btn) !important;
+  border: 1px solid var(--vn-border) !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease) !important;
+}
+
+body.vnadmin .vn-btn-secondary:hover {
+  background: var(--vn-badge-neutral-bg) !important;
+}
+
+body.vnadmin .vn-btn-danger-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vn-danger) !important;
+  background: transparent !important;
+  border: 1px solid rgba(207, 34, 46, 0.3) !important;
+  padding: 7px 14px !important;
+  border-radius: var(--vn-r-btn) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease) !important;
+}
+
+body.vnadmin .vn-btn-danger-outline:hover {
+  background: var(--vn-badge-danger-bg) !important;
+}
+
+body.vnadmin .vn-btn-subtle {
+  font-size: 13px;
+  color: var(--vn-text-muted);
+  text-decoration: none;
+  padding: 7px 12px;
+}
+
+body.vnadmin .vn-btn-subtle:hover {
+  color: var(--vn-text);
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   DELETE CONFIRMATION & CALLOUTS (SLICE 4)
+   ========================================================================== */
+body.vnadmin .vn-delete-confirmation-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+body.vnadmin .vn-callout-box {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.vnadmin .vn-callout-box.vn-callout-danger {
+  border-left: 5px solid var(--vn-danger);
+}
+
+body.vnadmin .vn-callout-box.vn-callout-warning {
+  border-left: 5px solid var(--vn-warning);
+}
+
+body.vnadmin .vn-callout-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+body.vnadmin .vn-callout-icon {
+  font-size: 24px;
+}
+
+body.vnadmin .vn-callout-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vn-danger);
+}
+
+body.vnadmin .vn-callout-desc {
+  font-size: 14px;
+  color: var(--vn-text);
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+body.vnadmin .vn-impact-card {
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+body.vnadmin .vn-impact-card-header h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-impact-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--vn-text);
+  line-height: 1.7;
+}
+
+body.vnadmin .vn-delete-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+body.vnadmin .vn-btn-danger-solid {
+  background: var(--vn-loss) !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 9px 24px !important;
+  border-radius: var(--vn-r-btn) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+  letter-spacing: 0.02em !important;
+  transition: background-color var(--vn-dur-fast) var(--vn-ease) !important;
+}
+
+body.vnadmin .vn-btn-danger-solid:hover {
+  filter: brightness(0.9);
+}
+
+/* ============================================================================
+   OBJECT HISTORY VERTICAL TIMELINE (SLICE 4)
+   ========================================================================== */
+body.vnadmin .vn-history-wrap {
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vn-sp-4);
+}
+
+body.vnadmin .vn-history-card {
+  background: var(--vn-surface);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.vnadmin .vn-timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: 24px;
+}
+
+body.vnadmin .vn-timeline::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 7px;
+  width: 2px;
+  background: var(--vn-border);
+}
+
+body.vnadmin .vn-timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding-bottom: 24px;
+}
+
+body.vnadmin .vn-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+body.vnadmin .vn-timeline-marker {
+  position: absolute;
+  left: -24px;
+  top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.vnadmin .vn-timeline-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vn-surface);
+  border: 3px solid var(--vn-primary);
+  box-sizing: border-box;
+}
+
+body.vnadmin .vn-timeline-card {
+  width: 100%;
+  background: var(--vn-surface-2);
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-r-card);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.vnadmin .vn-timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+body.vnadmin .vn-timeline-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+body.vnadmin .vn-avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vn-primary);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+body.vnadmin .vn-username {
+  font-weight: 600;
+  color: var(--vn-text);
+}
+
+body.vnadmin .vn-fullname {
+  color: var(--vn-text-muted);
+}
+
+body.vnadmin .vn-time-badge {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vn-text-muted);
+  background: var(--vn-surface);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vn-border);
+}
+
+body.vnadmin .vn-action-desc {
+  font-size: 13px;
+  color: var(--vn-text);
+  line-height: 1.5;
+}
+
+body.vnadmin .vn-history-paginator {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--vn-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+body.vnadmin .vn-total-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--vn-text-muted);
+}
+
+/* ============================================================================
+   IN — khong in nen toi, khong in khung the.
+   ========================================================================== */
+@media print {
+  body.vnadmin #header,
+  body.vnadmin #nav-sidebar,
+  body.vnadmin .object-tools,
+  body.vnadmin #footer,
+  body.vnadmin .paginator,
+  body.vnadmin .vn-toolbar-card {
+    display: none !important;
+  }
+
+  body.vnadmin {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+

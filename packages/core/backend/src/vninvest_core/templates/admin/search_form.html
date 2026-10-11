@@ -1,0 +1,48 @@
+{% load i18n static %}
+{% if cl.search_fields %}
+<div id="toolbar" class="vn-search-toolbar">
+  <form id="changelist-search" method="get" role="search" class="vn-search-form">
+    <div class="vn-search-box">
+      <div class="vn-search-input-wrap">
+        <span class="vn-search-icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path>
+          </svg>
+        </span>
+        <input type="text" size="40" name="{{ search_var }}" value="{{ cl.query }}" id="searchbar"
+               placeholder="Tìm kiếm theo mã, tên, từ khoá…"
+               class="vn-search-input"{% if cl.search_help_text %} aria-describedby="searchbar_helptext"{% endif %}>
+        {% if cl.query %}
+          <a href="?" class="vn-search-reset-btn" title="Xóa tìm kiếm">✕</a>
+        {% endif %}
+      </div>
+      <button type="submit" class="vn-search-submit-btn">Tìm kiếm</button>
+    </div>
+
+    {% if show_result_count %}
+      <div class="vn-search-stats">
+        <span class="vn-search-count-badge">
+          {% blocktranslate count counter=cl.result_count %}{{ counter }} kết quả{% plural %}{{ counter }} kết quả{% endblocktranslate %}
+        </span>
+        {% if cl.full_result_count is not None and cl.result_count != cl.full_result_count %}
+          <a href="?{% if cl.is_popup %}{{ is_popup_var }}=1{% if cl.add_facets %}&{% endif %}{% endif %}{% if cl.add_facets %}{{ is_facets_var }}{% endif %}" class="vn-show-all-link">
+            (Xem tất cả {{ cl.full_result_count }})
+          </a>
+        {% elif cl.is_filtered %}
+          <a href="?{% if cl.is_popup %}{{ is_popup_var }}=1{% if cl.add_facets %}&{% endif %}{% endif %}{% if cl.add_facets %}{{ is_facets_var }}{% endif %}" class="vn-show-all-link">
+            (Xem tất cả)
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% for pair in cl.params.items %}
+      {% if pair.0 != search_var %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
+    {% endfor %}
+
+    {% if cl.search_help_text %}
+      <div class="help vn-search-help" id="searchbar_helptext">{{ cl.search_help_text }}</div>
+    {% endif %}
+  </form>
+</div>
+{% endif %}

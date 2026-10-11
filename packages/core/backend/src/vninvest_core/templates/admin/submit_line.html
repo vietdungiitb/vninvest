@@ -1,0 +1,34 @@
+{% load i18n admin_urls %}
+<div class="submit-row vn-submit-bar">
+{% block submit-row %}
+  <div class="vn-submit-left">
+    {% if show_delete_link and original %}
+      {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+      <a href="{% add_preserved_filters delete_url %}" class="deletelink vn-btn-danger-outline">
+        <span>🗑</span> Xóa bản ghi
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="vn-submit-right">
+    {% if show_close %}
+      {% url opts|admin_urlname:'changelist' as changelist_url %}
+      <a href="{% add_preserved_filters changelist_url %}" class="closelink vn-btn-subtle">
+        Đóng / Quay lại
+      </a>
+    {% endif %}
+    {% if show_save_as_new %}
+      <input type="submit" value="Lưu thành bản ghi mới" name="_saveasnew" class="vn-btn-secondary">
+    {% endif %}
+    {% if show_save_and_add_another %}
+      <input type="submit" value="Lưu và thêm bản ghi khác" name="_addanother" class="vn-btn-secondary">
+    {% endif %}
+    {% if show_save_and_continue %}
+      <input type="submit" value="{% if can_change %}Lưu và tiếp tục sửa{% else %}Lưu và xem{% endif %}" name="_continue" class="vn-btn-secondary">
+    {% endif %}
+    {% if show_save %}
+      <input type="submit" value="LƯU THAY ĐỔI" class="default vn-btn-primary" name="_save">
+    {% endif %}
+  </div>
+{% endblock %}
+</div>

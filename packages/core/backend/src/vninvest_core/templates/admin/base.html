@@ -1,75 +1,48 @@
 {% load i18n static %}<!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
 {% comment %}
-  VNInvest Admin — override của `django/contrib/admin/templates/admin/base.html`.
-
-  ⚠ BẮT BUỘC: template này phải giữ **đúng 28 block** mà Django khai báo, vì
-  `base_site.html`, `index.html`, `app_list.html`, `change_list.html`,
-  `change_form.html`… đều `{% extends %}` từ đây và gọi `{{ block.super }}`.
-  Thiếu block ⇒ `TemplateSyntaxError` **lúc render**, không phải lúc
-  `manage.py check` ⇒ phải có test render, không được chỉ dựa vào `check`.
-
-  Danh sách 28 block đã được ĐẾM BẰNG SCRIPT trên chính file gốc của Django 5.2
-  (regex `{% block <name>`), không đếm bằng mắt. Xem
-  `docs/PLAN_DJANGO_ADMIN_UIUX_20261010.md` §3.2.
-  {% endcomment %}
+  VNInvest Admin — GitHub-style Commercial Console Base Template.
+  BẮT BUỘC GIỮ ĐỦ 28 BLOCK CỦA DJANGO 5.2 (L-B01 / L-B02):
+    title, stylesheet, dark-mode-vars, nav-sidebar, extrastyle, stylesheet_rtl,
+    extrahead, responsive, blockbots, bodyclass, header, branding, usertools,
+    welcome-msg, userlinks, nav-global, nav-breadcrumbs, breadcrumbs, nav-sidebar,
+    messages, coltype, pretitle, content_title, content_subtitle, content,
+    object-tools, sidebar, footer, extrabody.
+{% endcomment %}
 <html lang="{{ LANGUAGE_CODE|default:"en-us" }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
 <head>
 <title>{% block title %}{% endblock %}</title>
 <link rel="stylesheet" href="{% block stylesheet %}{% static "admin/css/base.css" %}{% endblock %}">
-{% comment %}
-  GIỮ NGUYÊN khối dark-mode của Django 5.2. Đây là cơ chế sáng/tối **của Django**;
-  tự viết lại sẽ phá `color_theme_toggle.html` đang được include ở `userlinks`.
-  `vnadmin.css` chỉ **bổ sung** token, không cạnh tranh quyền bật/tắt.
-  {% endcomment %}
+
 {% block dark-mode-vars %}
   <link rel="stylesheet" href="{% static "admin/css/dark_mode.css" %}">
   <script src="{% static "admin/js/theme.js" %}"></script>
 {% endblock %}
+
 {% if not is_popup and is_nav_sidebar_enabled %}
   <link rel="stylesheet" href="{% static "admin/css/nav_sidebar.css" %}">
-  {% comment %}
-    THAY `admin/js/nav_sidebar.js` của Django. Lý do đo được: hàm
-    `initSidebarQuickFilter()` trong file đó lọc bằng `th[scope=row] a`, còn
-    sidebar mới dùng `<li data-filterable-text>` ⇒ không có node nào khớp ⇒ bộ
-    lọc **luôn báo không có kết quả**. Chi tiết ở đầu `vnadmin-nav.js`.
-      {% endcomment %}
   <script src="{% static 'admin/js/vnadmin-nav.js' %}" defer></script>
 {% endif %}
-{% comment %}
-  Design system của admin. KHÔNG đặt ở `{% block extrastyle %}` vì change_list /
-  change_form cũng gọi `{{ block.super }}` — đặt thẳng ở đây đảm bảo **mọi**
-  trang đều có, kể cả trang con không khai báo extrastyle.
 
-  ⚠ Thứ tự nạp (sửa wave 18 — 2026-10-10): `login.html` của Django tự thêm
-  `login.css` vào `{% block extrastyle %}`. Vì ta đặt `vnadmin.css` **trước**
-  block đó nên `login.css` nạp **sau** và thắng khi độ ưu tiên bằng ⇒ style
-  trang đăng nhập của ta bị ghi đè, nút "Đăng nhập" lại lấy màu chữ của Django.
-
-  Cách sửa: nạp `vnadmin.css` **sau** `{% block extrastyle %}` để thắng đúng
-  bằng thứ tự, không phải bằng `!important` (L-F: đừng leo thang `!important`).
-  {% endcomment %}
 {% block extrastyle %}{% endblock %}
 <link rel="stylesheet" href="{% static 'admin/css/vnadmin.css' %}">
 {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}">{% endif %}
+
 {% block extrahead %}{% endblock %}
+
 {% block responsive %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static "admin/css/responsive.css" %}">
     {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% static "admin/css/responsive_rtl.css" %}">{% endif %}
 {% endblock %}
+
 {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
 </head>
 
-{% comment %}
-  `vnadmin` là hook để CSS giới hạn phạm vi: mọi rule đều viết
-  `body.vnadmin ...`. Nhờ vậy `base.css` của Django không bị ảnh hưởng ngoài
-  admin, và test có thể assert chính xác "giao diện mới đã áp dụng"
-  thay vì "file CSS tồn tại" (hazard 8 — proxy observable).
-  {% endcomment %}
 <body class="{% if is_popup %}popup {% endif %}vnadmin{% block bodyclass %}{% endblock %}"
   data-admin-utc-offset="{% now "Z" %}">
 <a href="#content-start" class="skip-to-content-link">Bỏ qua tới nội dung chính</a>
+
 <!-- Container -->
 <div id="container">
 
@@ -78,33 +51,67 @@
     {% block header %}
       <header id="header">
         <div id="branding">
-        {% block branding %}{% endblock %}
+        {% block branding %}
+          <div class="vn-header-brand">
+            <button type="button" class="vn-header-sidebar-toggle" id="vn-header-sidebar-toggle"
+                    aria-label="Bật/tắt thanh điều hướng"
+                    title="Mở rộng / Thu gọn thanh điều hướng (Phím tắt: [ )">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12h12.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Z"></path>
+              </svg>
+            </button>
+            <a href="{% url 'admin:index' %}" class="vn-brand-link">
+              <span class="vn-header-logo-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                  <polyline points="16 7 22 7 22 13"></polyline>
+                </svg>
+              </span>
+              <span class="vn-header-brand-title">VNInvest</span>
+              <span class="vn-header-brand-sep">—</span>
+              <span class="vn-header-brand-subtitle">Trung tâm điều hành</span>
+            </a>
+          </div>
+        {% endblock %}
         </div>
         {% block usertools %}
         {% if has_permission %}
         <div id="user-tools">
             {% block welcome-msg %}
-                Xin chào,
-                <strong>{% firstof user.get_short_name user.get_username %}</strong>
+              <div class="vn-user-profile">
+                <span class="vn-user-avatar" aria-hidden="true">
+                  {{ user.get_username|make_list|first|upper|default:"A" }}
+                </span>
+                <span class="vn-user-name">
+                  <strong>{% firstof user.get_short_name user.get_username %}</strong>
+                </span>
+              </div>
             {% endblock %}
             {% block userlinks %}
-                {% if site_url %}
-                    <a href="{{ site_url }}">Xem trang</a> /
-                {% endif %}
-                {% if user.is_active and user.is_staff %}
-                    {% url 'django-admindocs-docroot' as docsroot %}
-                    {% if docsroot %}
-                        <a href="{{ docsroot }}">Tài liệu</a> /
-                    {% endif %}
-                {% endif %}
-                {% if user.has_usable_password %}
-                    <a href="{% url 'admin:password_change' %}">Đổi mật khẩu</a> /
-                {% endif %}
-                <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
-                    {% csrf_token %}
-                    <button type="submit">Đăng xuất</button>
-                </form>
-                {% include "admin/color_theme_toggle.html" %}
+                <div class="vn-user-nav-links">
+                  {% if site_url %}
+                      <a class="vn-user-link" href="{{ site_url }}" title="Mở trang chủ người dùng">
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25Zm-.08 9.45a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 1-2.83-2.83l2.5-2.5a2 2 0 0 1 2.83 0 .75.75 0 0 0 1.06-1.06 3.5 3.5 0 0 0-4.95 0l-2.5 2.5a3.5 3.5 0 0 0 4.95 4.95l1.25-1.25Z"></path></svg>
+                        Xem trang
+                      </a>
+                  {% endif %}
+                  {% if user.is_active and user.is_staff %}
+                      {% url 'django-admindocs-docroot' as docsroot %}
+                      {% if docsroot %}
+                          <a class="vn-user-link" href="{{ docsroot }}">Tài liệu</a>
+                      {% endif %}
+                  {% endif %}
+                  {% if user.has_usable_password %}
+                      <a class="vn-user-link" href="{% url 'admin:password_change' %}">Đổi mật khẩu</a>
+                  {% endif %}
+                  <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+                      {% csrf_token %}
+                      <button type="submit" class="vn-user-link vn-user-link--logout">Đăng xuất</button>
+                  </form>
+                  <div class="vn-theme-toggle-wrap">
+                    {% include "admin/color_theme_toggle.html" %}
+                  </div>
+                </div>
             {% endblock %}
         </div>
         {% endif %}
@@ -113,12 +120,16 @@
       </header>
     {% endblock %}
     <!-- END Header -->
+
     {% block nav-breadcrumbs %}
-      <nav aria-label="Đường dẫn">
+      <nav aria-label="Đường dẫn" class="vn-breadcrumbs-nav">
         {% block breadcrumbs %}
           <div class="breadcrumbs">
-            <a href="{% url 'admin:index' %}">Trang chủ</a>
-            {% if title %} &rsaquo; {{ title }}{% endif %}
+            <a href="{% url 'admin:index' %}">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="vertical-align: -1px; margin-right: 4px;"><path d="M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z"></path></svg>
+              Trang chủ
+            </a>
+            {% if title %} <span class="vn-breadcrumb-sep" aria-hidden="true">/</span> <span class="vn-breadcrumb-current">{{ title }}</span>{% endif %}
           </div>
         {% endblock %}
       </nav>
@@ -127,6 +138,15 @@
 
     <div class="main" id="main">
       {% if not is_popup and is_nav_sidebar_enabled %}
+        <!-- Floating Restore Button when Sidebar is Collapsed -->
+        <button type="button" class="vn-sidebar-floating-toggle" id="vn-sidebar-floating-toggle"
+                aria-label="Mở thanh điều hướng"
+                title="Mở rộng thanh điều hướng (Phím tắt: [ )">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path>
+          </svg>
+          <span>Menu</span>
+        </button>
         {% block nav-sidebar %}
           {% include "admin/nav_sidebar.html" %}
         {% endblock %}
@@ -142,12 +162,6 @@
         <!-- Content -->
         <div id="content" class="{% block coltype %}colM{% endblock %}">
           {% block pretitle %}{% endblock %}
-          {% comment %}
-            Tieu de changelist: Django mac dinh la "Select <model> to change" —
-            CHUA dich va con "Select" tieng Anh (screenshot: "Select Ho so co phieu
-            to change"). Do `cl` (changelist context) khong ton tai o trang khac,
-            uu tien no truoc; con lai dung `title` cua Django.
-          {% endcomment %}
           {% block content_title %}
             {% if cl %}
               <h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>
@@ -170,8 +184,7 @@
 </div>
 <!-- END Container -->
 
-<!-- SVGs (giữ nguyên: `admin/color_theme_toggle.html` và các template khác
-     tham chiếu `icon-auto` / `icon-moon` / `icon-sun` từ đây) -->
+<!-- SVGs -->
 <svg xmlns="http://www.w3.org/2000/svg" class="base-svgs">
   <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-auto"><path d="M0 0h24v24H0z" fill="currentColor"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2V4a8 8 0 1 0 0 16z"/></symbol>
   <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-moon"><path d="M0 0h24v24H0z" fill="currentColor"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol>

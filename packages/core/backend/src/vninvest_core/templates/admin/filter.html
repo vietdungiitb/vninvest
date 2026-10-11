@@ -1,0 +1,38 @@
+{% load i18n %}
+{% with clean_title=title|cut:"→"|cut:"->"|cut:"Theo"|cut:"theo"|cut:":" %}
+<details class="vn-filter-pill" data-filter-title="{{ clean_title }}">
+  <summary class="vn-filter-pill__trigger">
+    <span class="vn-filter-pill__title">{% if "source" in clean_title|lower or "nguồn" in clean_title|lower %}Nguồn dữ liệu{% elif "status" in clean_title|lower or "state" in clean_title|lower or "trạng thái" in clean_title|lower %}Trạng thái{% elif "exchange" in clean_title|lower or "sàn" in clean_title|lower %}Sàn giao dịch{% elif "tier" in clean_title|lower or "phân hạng" in clean_title|lower %}Phân hạng{% elif "job" in clean_title|lower or "lệnh" in clean_title|lower %}Lệnh thu thập{% else %}{{ clean_title|capfirst }}{% endif %}:</span>
+    <span class="vn-filter-pill__current">
+      {% for choice in choices %}
+        {% if choice.selected %}
+          {% if choice.display == "All" or choice.display == "Tất cả" %}Tất cả{% else %}{{ choice.display }}{% endif %}
+        {% endif %}
+      {% endfor %}
+    </span>
+    <span class="vn-filter-pill__chevron" aria-hidden="true">▾</span>
+  </summary>
+  <div class="vn-filter-popover">
+    <div class="vn-filter-popover__header">
+      <span class="vn-filter-popover__title">
+        {% if "source" in clean_title|lower or "nguồn" in clean_title|lower %}Lọc theo Nguồn dữ liệu
+        {% elif "status" in clean_title|lower or "state" in clean_title|lower or "trạng thái" in clean_title|lower %}Lọc theo Trạng thái
+        {% elif "exchange" in clean_title|lower or "sàn" in clean_title|lower %}Lọc theo Sàn giao dịch
+        {% elif "job" in clean_title|lower or "lệnh" in clean_title|lower %}Lọc theo Lệnh thu thập
+        {% else %}Lọc theo {{ clean_title }}
+        {% endif %}
+      </span>
+    </div>
+    <ul class="vn-filter-popover__list">
+    {% for choice in choices %}
+      <li class="vn-filter-popover__item{% if choice.selected %} is-selected{% endif %}">
+        <a href="{{ choice.query_string|iriencode }}">
+          <span class="vn-filter-popover__check">{% if choice.selected %}✓{% endif %}</span>
+          <span class="vn-filter-popover__label">{% if choice.display == "All" %}Tất cả{% else %}{{ choice.display }}{% endif %}</span>
+        </a>
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</details>
+{% endwith %}
