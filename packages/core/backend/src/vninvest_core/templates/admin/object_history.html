@@ -1,0 +1,83 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Trang chủ</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ module_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{{ object|truncatewords:"18" }}</a>
+  &rsaquo; Lịch sử thay đổi
+</div>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+{% block content_subtitle %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="vn-history-wrap">
+  <div class="vn-page-header">
+    <div class="vn-page-header-left">
+      <h1 class="vn-page-title">Nhật ký thay đổi: {{ object|truncatewords:"12" }}</h1>
+      <span class="vn-model-badge">{{ opts.app_label }}.{{ opts.model_name }}</span>
+    </div>
+    <div class="vn-object-tools">
+      <a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}" class="vn-tool-btn">
+        <span>←</span> Quay lại chỉnh sửa
+      </a>
+    </div>
+  </div>
+
+  <div id="change-history" class="vn-history-card">
+    {% if action_list %}
+      <div class="vn-timeline">
+        {% for action in action_list %}
+          <div class="vn-timeline-item">
+            <div class="vn-timeline-marker">
+              <span class="vn-timeline-dot"></span>
+            </div>
+            <div class="vn-timeline-card">
+              <div class="vn-timeline-header">
+                <div class="vn-timeline-user">
+                  <span class="vn-avatar-mini">{{ action.user.get_username|slice:":2"|upper }}</span>
+                  <span class="vn-username">{{ action.user.get_username }}</span>
+                  {% if action.user.get_full_name %}<span class="vn-fullname">({{ action.user.get_full_name }})</span>{% endif %}
+                </div>
+                <div class="vn-timeline-time">
+                  <span class="vn-time-badge">{{ action.action_time|date:"d/m/Y H:i:s" }}</span>
+                </div>
+              </div>
+              <div class="vn-timeline-body">
+                <div class="vn-action-desc">
+                  {{ action.get_change_message|default:"Không có thông điệp thay đổi chi tiết" }}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if pagination_required %}
+        <div class="paginator vn-history-paginator">
+          {% for i in page_range %}
+            {% if i == action_list.paginator.ELLIPSIS %}
+              {{ action_list.paginator.ELLIPSIS }}
+            {% elif i == action_list.number %}
+              <span class="this-page">{{ i }}</span>
+            {% else %}
+              <a href="?{{ page_var }}={{ i }}" {% if i == action_list.paginator.num_pages %} class="end" {% endif %}>{{ i }}</a>
+            {% endif %}
+          {% endfor %}
+          <span class="vn-total-count">Tổng cộng {{ action_list.paginator.count }} bản ghi lịch sử</span>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="vn-empty-state">
+        <div class="vn-empty-icon">📜</div>
+        <h3>Chưa có lịch sử thay đổi</h3>
+        <p>Bản ghi này chưa có thông tin kiểm toán được ghi nhận qua giao diện quản trị.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

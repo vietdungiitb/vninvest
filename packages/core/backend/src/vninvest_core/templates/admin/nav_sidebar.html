@@ -1,31 +1,70 @@
 {% load i18n %}
 {% comment %}
-  Sidebar admin — nhóm theo **nghiệp vụ** thay vì theo app kỹ thuật.
-
-  Giữ nguyên ba thứ Django cần để hoạt động:
-    - `button.toggle-nav-sidebar` + `nav_sidebar.js` (đóng/mở sidebar)
-    - `input#nav-filter` + `data-filterable` (lọc nhanh)
-    - cấu trúc `<nav id="nav-sidebar">` mà `base.css` của Django tạo kiểu
-  Bỏ đi cấu trúc app/model cũ để `nav_sidebar.js` không tìm thấy node cũ.
-  {% endcomment %}
-<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Bật/tắt thanh điều hướng"></button>
+  Sidebar admin — nhóm theo nghiệp vụ chuẩn GitHub Console (Collapsible Accordion).
+  Giữ nguyên các hook Django cần:
+    - button.toggle-nav-sidebar + id="toggle-nav-sidebar" (đóng/mở toàn bộ sidebar)
+    - input#nav-filter (hộp lọc nhanh chức năng)
+    - nav#nav-sidebar (container chính của sidebar)
+    - data-filterable-text (lọc item)
+{% endcomment %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Bật/tắt thanh điều hướng" title="Thu gọn / Mở rộng thanh điều hướng (Phím tắt: [ )" style="display:none !important;"></button>
 <nav class="sticky" id="nav-sidebar" aria-label="Điều hướng quản trị">
-  <input type="search" id="nav-filter"
-         placeholder="Gõ để lọc chức năng…"
-         aria-label="Lọc chức năng quản trị">
-  <div class="vn-nav-groups">
+  <div class="vn-nav-header">
+    <div class="vn-nav-search-wrap">
+      <span class="vn-nav-search-icon" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path>
+        </svg>
+      </span>
+      <input type="search" id="nav-filter"
+             placeholder="Tìm nhanh chức năng… (Nhấn /)"
+             aria-label="Lọc chức năng quản trị"
+             autocomplete="off">
+      <kbd class="vn-nav-kbd">/</kbd>
+    </div>
+    <button type="button" class="vn-sidebar-collapse-btn" id="vn-sidebar-collapse-btn"
+            aria-label="Thu gọn thanh điều hướng"
+            title="Thu gọn thanh điều hướng (Phím tắt: [ )">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7.25H13.25a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div class="vn-nav-groups" id="vn-nav-groups-container">
     {% for group in vn_groups %}
-      <div class="vn-nav-group">
-        <h3 class="vn-nav-group__title">{{ group.label }}</h3>
-        <ul class="vn-nav-group__list">
+      <div class="vn-nav-group" data-group-key="{{ group.key }}">
+        <button type="button" class="vn-nav-group__header"
+                aria-expanded="true"
+                aria-controls="vn-group-list-{{ group.key }}"
+                data-group-toggle="{{ group.key }}">
+          <span class="vn-nav-group__chevron" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path>
+            </svg>
+          </span>
+          <span class="vn-nav-group__icon" aria-hidden="true">{{ group.icon }}</span>
+          <span class="vn-nav-group__title-text">{{ group.label }}</span>
+          <span class="vn-nav-group__count">{{ group.models|length }}</span>
+        </button>
+        <ul class="vn-nav-group__list" id="vn-group-list-{{ group.key }}">
           {% for model in group.models %}
             <li class="vn-nav-item{% if model.is_current %} vn-nav-item--current{% endif %}"
-                data-filterable-text="{{ model.label }} {{ model.name }}">
+                data-filterable-text="{{ model.label }} {{ model.name }} {{ group.label }}">
               {% if model.admin_url %}
                 <a href="{{ model.admin_url }}"
-                   {% if model.is_current %}aria-current="page"{% endif %}>{{ model.label }}</a>
+                   {% if model.is_current %}aria-current="page"{% endif %}>
+                  <span class="vn-nav-item__dot" aria-hidden="true"></span>
+                  <span class="vn-nav-item__label">{{ model.label }}</span>
+                  {% if model.view_only %}
+                    <span class="vn-nav-item__tag">Xem</span>
+                  {% endif %}
+                </a>
               {% else %}
-                <span>{{ model.label }}</span>
+                <span class="vn-nav-item__disabled">
+                  <span class="vn-nav-item__dot" aria-hidden="true"></span>
+                  <span class="vn-nav-item__label">{{ model.label }}</span>
+                </span>
               {% endif %}
             </li>
           {% endfor %}

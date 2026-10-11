@@ -365,7 +365,7 @@ class KpiPermissionTests(TestCase):
     def test_kpi_values_still_render_without_links(self):
         """Bỏ link KHÔNG được bỏ luôn số liệu — thẻ vẫn phải hiện giá trị."""
         html = self.client.get(reverse("admin:index")).content.decode("utf-8")
-        self.assertIn("vn-kpi__value", html)
+        self.assertIn("vn-kpi-card__value", html)
         self.assertIn("Tổ chức", html)
 
 
@@ -423,9 +423,9 @@ class DashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("vn-kpi__value--error", html)
+        self.assertIn("vn-kpi-card__value--error", html)
         # 3 thẻ còn lại vẫn có số.
-        self.assertNotEqual(html.count("vn-kpi__value--error"), 4)
+        self.assertNotEqual(html.count("vn-kpi-card__value--error"), 4)
 
 
 class MenuTests(TestCase):

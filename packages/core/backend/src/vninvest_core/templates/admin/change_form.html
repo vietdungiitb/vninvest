@@ -1,0 +1,176 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{% if errors %}{% translate "Error:" %} {% endif %}{{ block.super }}{% endblock %}
+
+{% block extrahead %}{{ block.super }}
+<script src="{% url 'admin:jsi18n' %}"></script>
+{{ media }}
+{% endblock %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/forms.css" %}">{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-form vn-change-form-body{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Trang chủ</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; {% if has_view_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
+  &rsaquo; {% if add %}Thêm {{ opts.verbose_name }}{% else %}{{ original|truncatewords:"18" }}{% endif %}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block pretitle %}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block content_subtitle %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="vn-changeform-wrap">
+  <!-- Page Header & Object Tools -->
+  <div class="vn-page-header vn-changeform-header">
+    <div class="vn-page-header-left">
+      <h1 class="vn-page-title">
+        {% if add %}Thêm mới {{ opts.verbose_name }}{% else %}Chi tiết & Chỉnh sửa: {{ original|truncatewords:"12" }}{% endif %}
+      </h1>
+      <span class="vn-model-badge">{{ opts.app_label }}.{{ opts.model_name }}</span>
+    </div>
+    {% block object-tools %}
+    {% if change and not is_popup %}
+      <div class="vn-object-tools">
+        {% block object-tools-items %}
+          {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+          <a href="{% add_preserved_filters history_url %}" class="vn-tool-btn historylink">
+            <span>⏱</span> Lịch sử thay đổi
+          </a>
+          {% if has_absolute_url %}
+            <a href="{{ absolute_url }}" class="vn-tool-btn viewsitelink" target="_blank" rel="noopener">
+              <span>↗</span> Xem trên web
+            </a>
+          {% endif %}
+        {% endblock %}
+      </div>
+    {% endif %}
+    {% endblock %}
+  </div>
+
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}{% if form_url %}action="{{ form_url }}" {% endif %}method="post" id="{{ opts.model_name }}_form" novalidate>
+    {% csrf_token %}
+    {% block form_top %}{% endblock %}
+
+    {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+    {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+
+    {% if errors %}
+      <div class="vn-alert-danger errornote" role="alert">
+        <div class="vn-alert-icon">⚠</div>
+        <div class="vn-alert-body">
+          <strong>Vui lòng kiểm tra và sửa các lỗi bên dưới:</strong>
+          {{ adminform.form.non_field_errors }}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- 2-Column Responsive Layout -->
+    <div class="vn-form-layout">
+      <!-- Cột chính: Dữ liệu chính & Inlines -->
+      <div class="vn-form-primary">
+        {% block field_sets %}
+        {% for fieldset in adminform %}
+          {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
+        {% endfor %}
+        {% endblock %}
+
+        {% block after_field_sets %}{% endblock %}
+
+        {% block inline_field_sets %}
+        {% for inline_admin_formset in inline_admin_formsets %}
+          <div class="vn-inline-wrap">
+            {% include inline_admin_formset.opts.template %}
+          </div>
+        {% endfor %}
+        {% endblock %}
+
+        {% block after_related_objects %}{% endblock %}
+      </div>
+
+      <!-- Cột phụ: Metadata, Trạng thái & Thao tác nhanh -->
+      <div class="vn-form-sidebar">
+        <div class="vn-meta-card">
+          <div class="vn-meta-card-header">
+            <h3>Thông tin bản ghi</h3>
+          </div>
+          <div class="vn-meta-card-body">
+            <div class="vn-meta-row">
+              <span class="vn-meta-label">Mô hình:</span>
+              <span class="vn-meta-value font-mono">{{ opts.verbose_name }}</span>
+            </div>
+            {% if original.pk %}
+            <div class="vn-meta-row">
+              <span class="vn-meta-label">Mã ID:</span>
+              <span class="vn-meta-value font-mono">#{{ original.pk }}</span>
+            </div>
+            {% endif %}
+            {% if original.created_at %}
+            <div class="vn-meta-row">
+              <span class="vn-meta-label">Ngày tạo:</span>
+              <span class="vn-meta-value">{{ original.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% endif %}
+            {% if original.updated_at %}
+            <div class="vn-meta-row">
+              <span class="vn-meta-label">Cập nhật lúc:</span>
+              <span class="vn-meta-value">{{ original.updated_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% endif %}
+            <div class="vn-meta-row">
+              <span class="vn-meta-label">Quyền thao tác:</span>
+              <span class="vn-meta-value">
+                {% if has_change_permission %}<span class="vn-badge-subtle-success">Được phép sửa</span>{% else %}<span class="vn-badge-subtle-neutral">Chỉ xem</span>{% endif %}
+              </span>
+            </div>
+          </div>
+          {% if change and not is_popup and show_delete_link and original %}
+            <div class="vn-meta-card-footer">
+              {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+              <a href="{% add_preserved_filters delete_url %}" class="vn-meta-delete-link">
+                <span>🗑</span> Xóa bản ghi này
+              </a>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="vn-meta-card vn-meta-tips-card">
+          <div class="vn-meta-card-header">
+            <h3>Quy tắc vận hành</h3>
+          </div>
+          <div class="vn-meta-card-body vn-meta-tips-content">
+            <p>• Dữ liệu cập nhật sẽ được lưu ngay vào hệ thống dữ liệu vận hành.</p>
+            <p>• Sử dụng phím tắt <code>Ctrl + S</code> hoặc thanh thao tác cố định bên dưới để lưu nhanh.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky Bottom Submit Bar -->
+    {% block submit_buttons_bottom %}{% submit_row %}{% endblock %}
+
+    {% block admin_change_form_document_ready %}
+      <script id="django-admin-form-add-constants"
+              src="{% static 'admin/js/change_form.js' %}"
+              {% if adminform and add %}
+                  data-model-name="{{ opts.model_name }}"
+              {% endif %}
+              async>
+      </script>
+    {% endblock %}
+
+    {# JavaScript for prepopulated fields #}
+    {% prepopulated_fields_js %}
+  </form>
+</div>
+{% endblock %}

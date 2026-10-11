@@ -1,0 +1,89 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {{ media }}
+    <script src="{% static 'admin/js/cancel.js' %}" async></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} delete-confirmation vn-delete-page{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Trang chủ</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{{ object|truncatewords:"18" }}</a>
+  &rsaquo; Xác nhận xóa
+</div>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+{% block content_subtitle %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="vn-delete-confirmation-wrap">
+{% if perms_lacking %}
+  <div class="vn-callout-box vn-callout-danger">
+    <div class="vn-callout-header">
+      <span class="vn-callout-icon">⛔</span>
+      <h2>Không đủ quyền thực hiện thao tác</h2>
+    </div>
+    <p>Việc xóa {{ object_name }} "<strong>{{ object }}</strong>" sẽ kéo theo việc xóa các đối tượng liên đới, nhưng tài khoản của bạn không có quyền xóa các loại dữ liệu sau:</p>
+    <ul id="deleted-objects" class="vn-impact-list">{{ perms_lacking|unordered_list }}</ul>
+    <div class="vn-action-row">
+      <a href="{% url opts|admin_urlname:'changelist' %}" class="button vn-btn-secondary">Quay lại danh sách</a>
+    </div>
+  </div>
+{% elif protected %}
+  <div class="vn-callout-box vn-callout-warning">
+    <div class="vn-callout-header">
+      <span class="vn-callout-icon">🛡</span>
+      <h2>Dữ liệu đang được bảo vệ chống xóa</h2>
+    </div>
+    <p>Không thể xóa {{ object_name }} "<strong>{{ object }}</strong>" vì tồn tại các đối tượng phụ thuộc đang được bảo vệ ràng buộc toàn vẹn:</p>
+    <ul id="deleted-objects" class="vn-impact-list">{{ protected|unordered_list }}</ul>
+    <div class="vn-action-row">
+      <a href="{% url opts|admin_urlname:'changelist' %}" class="button vn-btn-secondary">Quay lại danh sách</a>
+    </div>
+  </div>
+{% else %}
+  <!-- Danger Banner -->
+  <div class="vn-callout-box vn-callout-danger">
+    <div class="vn-callout-header">
+      <span class="vn-callout-icon">⚠</span>
+      <h2>Cảnh báo: Hành động xóa không thể hoàn tác!</h2>
+    </div>
+    <p class="vn-callout-desc">
+      Bạn có chắc chắn muốn xóa vĩnh viễn {{ object_name }} <strong>"{{ object }}"</strong>? Tất cả các dữ liệu và liên kết phụ thuộc sau đây sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu:
+    </p>
+
+    <!-- Impact Tree / Summary -->
+    <div class="vn-impact-card">
+      <div class="vn-impact-card-header">
+        <h3>Danh sách các đối tượng và liên kết sẽ bị xóa (Cascade Impact):</h3>
+      </div>
+      <div class="vn-impact-card-body">
+        <ul id="deleted-objects" class="vn-impact-list">{{ deleted_objects|unordered_list }}</ul>
+      </div>
+    </div>
+
+    <!-- Confirm Form -->
+    <form method="post" class="vn-delete-form">{% csrf_token %}
+      <div>
+        <input type="hidden" name="post" value="yes">
+        {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+        {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
+        <div class="vn-delete-actions">
+          <input type="submit" value="XÁC NHẬN XÓA VĨNH VIỄN" class="vn-btn-danger-solid">
+          <a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}" class="button cancel-link vn-btn-secondary">
+            Hủy bỏ và quay lại
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endif %}
+</div>
+{% endblock content %}

@@ -1,0 +1,24 @@
+{% if show %}
+<nav class="toplinks vn-date-nav" aria-label="Phân cấp theo thời gian">
+{% block date-hierarchy-toplinks %}
+  <span class="vn-date-nav-icon" aria-hidden="true">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.75 0a.75.75 0 0 1 .75.75V2h5V.75a.75.75 0 0 1 1.5 0V2h1.25c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 13.25 16H2.75A1.75 1.75 0 0 1 1 14.25V3.75C1 2.784 1.784 2 2.75 2H4V.75A.75.75 0 0 1 4.75 0ZM2.5 7.5v6.75c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25V7.5Zm10.75-2a.25.25 0 0 0-.25-.25H2.75a.25.25 0 0 0-.25.25V6h10.5Z"></path></svg>
+  </span>
+  <span class="vn-date-nav-label">Thời gian:</span>
+{% block date-hierarchy-back %}
+  {% if back %}<a href="{{ back.link }}" class="date-back vn-date-link vn-date-back">&lsaquo; {{ back.title }}</a>{% endif %}
+{% endblock %}
+{% block date-hierarchy-choices %}
+  <div class="vn-date-choices">
+    {% for choice in choices %}
+      {% if choice.link %}
+        <a href="{{ choice.link }}" class="vn-date-link">{{ choice.title }}</a>
+      {% else %}
+        <span class="vn-date-current">{{ choice.title }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endblock %}
+{% endblock %}
+</nav>
+{% endif %}
