@@ -20,20 +20,32 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# vnbroker is a PRIVATE GitHub dep (requires VNBROKER_GITHUB_TOKEN).
+# All `import vnbroker` in src/ are lazy + degrade gracefully, so local
+# runtime testing works WITHOUT the token: the private line is skipped and
+# only DB-backed APIs are verified (live market fetch / broker trading need
+# the real token). With token: full install, behaviour unchanged.
 RUN --mount=type=secret,id=vnbroker_github_token \
     set -eu; \
     token_file='/run/secrets/vnbroker_github_token'; \
-    test -f "$token_file"; \
-    token="$(cat "$token_file")"; \
-    test -n "$token"; \
-    export GIT_CONFIG_COUNT=1; \
-    export GIT_CONFIG_KEY_0=url."https://x-access-token:${token}@github.com/".insteadOf; \
-    export GIT_CONFIG_VALUE_0=https://github.com/; \
-    sed 's#x-access-token:[^@]*@github.com#github.com#' requirements.txt > requirements.build.txt; \
+    token=''; \
+    if [ -f "$token_file" ]; then token="$(cat "$token_file")"; fi; \
+    cp requirements.txt requirements.build.txt; \
+    if [ -n "$token" ]; then \
+      echo '[build] vnbroker token present - installing full requirements'; \
+      export GIT_CONFIG_COUNT=1; \
+      export GIT_CONFIG_KEY_0=url."https://x-access-token:${token}@github.com/".insteadOf; \
+      export GIT_CONFIG_VALUE_0=https://github.com/; \
+      sed 's#x-access-token:[^@]*@github.com#github.com#' requirements.build.txt > requirements.build.tmp && mv requirements.build.tmp requirements.build.txt; \
+    else \
+      echo '[build] WARNING: no vnbroker token - skipping private vnbroker dep (live market/broker disabled, DB-backed APIs unaffected)'; \
+      grep -v 'vnbroker @ git+' requirements.build.txt > requirements.build.tmp || true; \
+      mv requirements.build.tmp requirements.build.txt; \
+    fi; \
     pip install --upgrade pip; \
     mkdir -p /install; \
     pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt; \
-    rm -f requirements.build.txt
+    rm -f requirements.build.txt requirements.build.tmp
 
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
