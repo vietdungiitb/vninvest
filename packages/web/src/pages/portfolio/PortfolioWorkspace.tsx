@@ -16,6 +16,8 @@
 
 import { Link } from "react-router-dom";
 import { useI18n } from "../../context/LangContext";
+import "../../components/soc/soc.tokens.css";
+import "./PortfolioWorkspace.css";
 
 export type WorkspaceTabId = "overview" | "holdings" | "allocation" | "analytics" | "activity";
 
