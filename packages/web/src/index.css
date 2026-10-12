@@ -388,6 +388,58 @@
     border-color: #cbd5e1;
   }
 
+  /* --- Light mode cho DASHBOARD (đo được 2026-10-12, Entry 272) --------------
+     Bề mặt lane đã light-aware sẵn vì `--bg-panel-soft` / `--border-default`
+     được định nghĩa lại ở `theme/tokens.css:70-71`. Nhưng **nội dung bên
+     trong** dùng Tailwind hardcode cho dark mode: `bg-slate-900/30` trên alert
+     card, `text-slate-100/400` ở tiêu đề/meta, `bg-slate-800/50` ở nút — các
+     class này KHÔNG được remap token nên không đổi theo theme.
+
+     Đo trên `:8080` với `data-theme="light"`: alert card vẫn nền tối
+     (`oklab(0.279 … / 0.25)`) trong khi chữ vẫn gần trắng (`#f1f5f9`), tức
+     **chữ sáng trên nền sáng**. Đây là gap có sẵn từ trước (HEAD dùng
+     `bg-slate-900/30` còn tối hơn và `text-slate-500` còn tối hơn), KHÔNG do
+     đợt sửa layout — nhưng các class đó nằm đúng trong 5 file đã đụng nên
+     để nguyên là bàn giao nửa vời.
+
+     Dùng đúng pattern của khối `.advisory-page` ngay trên: override theo nhóm
+     utility, không liệt kê class lẻ, để class thêm sau này cũng được phủ. */
+  [data-theme="light"] .core-dashboard-page .bg-slate-900,
+  [data-theme="light"] .core-dashboard-page .bg-slate-900\/30,
+  [data-theme="light"] .core-dashboard-page .bg-slate-900\/40,
+  [data-theme="light"] .core-dashboard-page .bg-slate-900\/50,
+  [data-theme="light"] .core-dashboard-page .bg-slate-900\/60,
+  [data-theme="light"] .core-dashboard-page .bg-slate-950,
+  [data-theme="light"] .core-dashboard-page .bg-slate-950\/35,
+  [data-theme="light"] .core-dashboard-page .bg-slate-800,
+  [data-theme="light"] .core-dashboard-page .bg-slate-800\/15,
+  [data-theme="light"] .core-dashboard-page .bg-slate-800\/25,
+  [data-theme="light"] .core-dashboard-page .bg-slate-800\/40,
+  [data-theme="light"] .core-dashboard-page .bg-slate-800\/50 {
+    background-color: rgba(241, 245, 249, 0.92);
+  }
+
+  [data-theme="light"] .core-dashboard-page .text-slate-100,
+  [data-theme="light"] .core-dashboard-page .text-slate-200,
+  [data-theme="light"] .core-dashboard-page .text-slate-300,
+  [data-theme="light"] .core-dashboard-page .text-slate-400,
+  [data-theme="light"] .core-dashboard-page .text-slate-500,
+  [data-theme="light"] .core-dashboard-page .text-slate-600,
+  [data-theme="light"] .core-dashboard-page .text-white {
+    color: #334155;
+  }
+
+  [data-theme="light"] .core-dashboard-page .border-slate-800,
+  [data-theme="light"] .core-dashboard-page .border-slate-800\/70,
+  [data-theme="light"] .core-dashboard-page .border-slate-800\/50,
+  [data-theme="light"] .core-dashboard-page .border-slate-800\/40,
+  [data-theme="light"] .core-dashboard-page .border-slate-800\/30,
+  [data-theme="light"] .core-dashboard-page .border-slate-700,
+  [data-theme="light"] .core-dashboard-page .border-slate-700\/50,
+  [data-theme="light"] .core-dashboard-page .border-slate-700\/60 {
+    border-color: #cbd5e1;
+  }
+
   /* ==========================================================================
       BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
       ========================================================================== */
@@ -436,10 +488,13 @@
     grid-template-columns: 1fr 1.5fr 1fr;
     gap: 1rem; /* 16px */
     min-width: 0;
-    /* Let each lane keep its own content height. Default `stretch` forced the
-       short lanes (heatmap, AI) to match the tallest one, which re-created the
-       empty space the content-sized height was meant to remove. */
-    align-items: start;
+    /* `stretch` (không phải `start`): lane cao nhất định chiều cao hàng, các
+       lane còn lại bám theo. `start` trước đây làm cột "Cảnh báo" (5 card)
+       cao hơn hẳn "Bản đồ danh mục", tạo một khoảng trống tối lớn ở góc
+       phải. Phần trống bên trong lane ngắn giờ được dùng có chủ đích: chart
+       treemap `flex:1` giãn ra, AI panel `flex:1` canh giữa — thay vì trống
+       trơn. Overflow vẫn do `.panel-body` đảm nhiệm (flex:1 + min-height:0). */
+    align-items: stretch;
   }
 
   /* Keep min-width:0 every lane (S4.1) */
@@ -596,12 +651,13 @@
     margin-bottom: 1rem; /* mb-4 */
   }
 
-  /* Heatmap slot — tighter padding on purpose so the treemap gets the width.
-     NOTE: this is 1.25rem top vs 1rem on the side lanes, i.e. the three lanes
-     are NOT top-aligned. The previous comment claimed "header alignment";
-     it did not hold. */
+  /* Heatmap slot — chỉ thu hẹp padding NGANG để treemap lấy thêm bề rộng.
+     Trước đây đặt `1.25rem 0.5rem 0.5rem 0.5rem`: lệch 0.25rem ở trên so với
+     lane khác (1rem) làm tiêu đề "Bản đồ danh mục" trôi thấp hơn "Cảnh báo" —
+     comment cũ gọi đây là "header alignment" nhưng nó đúng là phá alignment.
+     Giữ `padding-top: 1rem` đồng nhất, phần trống dưới bớt vì legend nằm sát đáy. */
   div.core-dashboard-slot--heatmap {
-    padding: 1.25rem 0.5rem 0.5rem 0.5rem;
+    padding: 1rem 0.625rem 0.625rem;
   }
 
   /* ECharts Tooltip Dark Mode Override */
