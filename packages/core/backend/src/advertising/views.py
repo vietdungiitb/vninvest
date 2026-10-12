@@ -115,7 +115,7 @@ class ContentDisplayView(APIView):
                 end_date__gte=now
             )
             if tenant:
-                db_query = db_query.filter(models.Q(tenant=tenant) | models.Q(tenant__isnull=True))
+                db_query = db_query.filter(Q(tenant=tenant) | Q(tenant__isnull=True))
             else:
                 db_query = db_query.filter(tenant__isnull=True)
                 

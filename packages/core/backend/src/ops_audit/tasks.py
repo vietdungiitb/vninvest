@@ -7,6 +7,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import gzip
 from datetime import datetime, timedelta
 
 from celery import shared_task

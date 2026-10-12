@@ -129,7 +129,8 @@ def shadow_run_parity_check_task(
         )
         
         logger.info(
-            f"Parity check complete: {x_request_id} score={parity_score:.2%} status={parity_log.parity_status}"
+            f"Parity check complete: {x_request_id} "
+            f"score={comparison_result['parity_score']:.2%} status={parity_log.parity_status}"
         )
         
         return {

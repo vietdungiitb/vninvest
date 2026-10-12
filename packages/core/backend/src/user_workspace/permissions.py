@@ -5,8 +5,11 @@ TenantScopePermission ensures request.user has active tenant and attaches
 request.tenant for use in views.
 """
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from rest_framework.permissions import BasePermission
+
+if TYPE_CHECKING:  # chi cho type checker — tránh import vong khi module load
+    from identity_access.models import CoreTenant
 
 from identity_access.utils.resolve_tenant import (
     RESOLVABLE_TENANT_STATUSES,
