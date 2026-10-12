@@ -1,7 +1,38 @@
 # Handoff — sau phiên cứu uncommitted work (2026-10-12)
 
 > **Đọc file này TRƯỚC khi nhận session mới trong `vninvest`.**
-> Phiên trước đã tạo **PR #110** (MERGEABLE). Việc còn dở nằm ở §3.
+> **PR #110 ĐÃ MERGED** (2026-10-12 00:38 UTC, merge commit `4d2ced70f`).
+> Việc còn dở nằm ở §3.
+
+---
+
+## 0. Trạng thái `dev` sau merge (đã verify, không phải suy đoán)
+
+```
+origin/dev = 4d2ced70f  Merge pull request #110 from feat/rescue-admin-uncommitted
+local dev  = 4d2ced70f   (fast-forward, worktree sạch)
+```
+
+Gate chạy lại **trên `dev` sau khi merge** (không dùng lại số liệu trước merge):
+
+| Gate | Kết quả |
+|---|---|
+| `manage.py check` | 0 issues |
+| `makemigrations --check --dry-run` | No changes detected |
+| `scripts/check_admin_ux.py` | PASS — 0 lỗi, 0 cảnh báo |
+| `tests.test_admin_ui` | **OK 45/45** |
+| **pre-push-gate** | **21 PASS / 0 SKIP / 0 FAIL** |
+
+Trước khi merge (trên HEAD của branch): BE **724 OK**, FE **918/918 PASS**, pre-push **21/21**, CI `scan` pass.
+
+**Branch đã merge nên xoá xong:** `feat/rescue-admin-uncommitted`, `chore/vnbroker-pypi-372`, `fix/admin-uiux-audit` (local + remote).
+
+> ⚠ **Còn ~30 branch cũ trên remote** (`chore/cleanup-*`, `docs/*`, `cleanup/code-health`…) — phần lớn đã merge từ lâu.
+> **CHƯA xoá hàng loạt**: việc đó cần Owner xác nhận, vì nếu branch còn chứa commit chưa từng vào `dev` thì xoá là mất việc.
+> Cách kiểm an toàn trước khi xoá từng branch:
+> ```bash
+> git merge-base --is-ancestor origin/<branch> origin/dev   # 0 = đã vào dev
+> ```
 
 ---
 
@@ -152,7 +183,21 @@ Rollback: `git revert` từng commit — không commit nào chạm file shared n
 
 ## 8. Việc đầu tiên session sau nên làm
 
-1. **Kiểm PR #110 đã merge chưa** → nếu rồi: `pwsh -File scripts/agent-cleanup.ps1 -Branch feat/rescue-admin-uncommitted -Execute`
-2. **Đọc `AGENTS.md` mục Progress** — nơi duy nhất còn sống.
-3. **Xử lý §3.1 (P0-SEC-01)** — cần Owner quyết định, không tự purge history.
-4. Nạp skill `project-lessons` **trước** khi lập kế hoạch (AGENTS.md mục 0).
+1. **PR #110 đã merge** → codebase sạch. Không cần cleanup worktree (đã xoá khi merge).
+2. **Xử lý §3.1 (P0-SEC-01)** — cần Owner quyết định, **không tự purge history**.
+3. **Xem danh sách branch cũ còn lại** ở §0 — hỏi Owner trước khi dọn.
+4. Đọc `AGENTS.md` mục Progress — nơi duy nhất còn sống.
+5. Nạp skill `project-lessons` **trước** khi lập kế hoạch (AGENTS.md mục 0).
+
+### Quy trình đúng khi làm việc mới (đã chứng minh hoạt động phiên này)
+
+```bash
+git status --short                      # 1. xem việc chưa commit của agent khác
+grep in-progress docs/CLAIMS.md         # 2. ai đang giữ file gì
+# 3. khai claim -> commit riêng -> TẠO BRANCH -> code -> gate -> PR
+pwsh -File scripts/agent-sync.ps1       # rebase -> check migration -> gate
+```
+
+Lưu ý: nhánh cũ đang ở `dev` còn dữ **file uncommitted của người khác**. Đừng bao giờ chạy
+`git checkout -- <file>` để "dọn" — nó xoá luôn việc chưa commit (L-A01).
+Nếu cần dọn, dùng `git stash push -- <file>` hoặc commit WIP trước.

@@ -8752,3 +8752,20 @@ dung that; `git ls-files --eol` la lenh **hoi** dang file that.
 **Registry claim KHONG phai bang chong commit.** 6 dong `done` khong co 1 commit
 nao. De claim registry khong lap lai loi nay, can gate: claim `done` phai kem
 commit hash — hoac it nhat branch con ton tai.
+
+### 8. TRANG THAI SAU MERGE (bo sung 2026-10-12)
+
+- **PR #110 MERGED** 2026-10-12 00:38 UTC · merge commit **`4d2ced70f`** (merge commit, KHONG squash
+  => tung lat cat revert doc lap duoc, dung `AGENTS.md`).
+- `dev` = `4d2ced70f`. Local `dev` fast-forward len giong, worktree sach.
+- **Gate chay lai tren `dev` SAU merge** (khong dung lai so lieu truoc merge):
+  `manage.py check` 0 issues · `makemigrations --check` No changes detected ·
+  `check_admin_ux.py` PASS 0 loi 0 canh bao · `tests.test_admin_ui` **OK 45/45** ·
+  **pre-push-gate 21 PASS / 0 SKIP / 0 FAIL**.
+- Truoc merge tren HEAD branch: BE **724 OK** · FE **918/918** · pre-push **21/21** · CI `scan` pass.
+- Branch da xoa (local + remote): `feat/rescue-admin-uncommitted`, `chore/vnbroker-pypi-372`,
+  `fix/admin-uiux-audit`.
+- **CHUA XOA ~30 branch cu tren remote** (`chore/cleanup-*`, `docs/*`, `cleanup/code-health`...) —
+  da merge phan lon nhung can Owner xac nhan truoc, vi branch co the con commit chua vao `dev`.
+  Kiem an toan: `git merge-base --is-ancestor origin/<branch> origin/dev` (0 = da vao dev).
+- **P0-SEC-01 van mo** — xem §5. Can Owner chon purge history hay chi rotate.
