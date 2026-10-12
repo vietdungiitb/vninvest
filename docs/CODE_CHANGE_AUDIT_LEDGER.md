@@ -1,3 +1,160 @@
+## Entry 274: Refute "E2E bị chặn" + light mode · dọn registry & 15 nhánh đã merge (2026-10-12)
+
+- **Nhanh**: `chore/repo-hygiene-and-e2e-proxy` -> `dev`
+- **Claim**: CHƯA khai (lần thứ 2 phạm L-002 — ghi ở mục cuối, không giấu)
+
+**Trigger**: Owner: *"không còn agent nào khác ngoài bạn"* + *"thực hiện triệt để các việc còn lại"*.
+
+---
+
+### ① REFUTE — Entry 270 nói E2E bị chặn vì `preview` không proxy `/api`. **SAI.**
+
+Entry 270 (và claim `adminui-w17c`, và Entry 272 của chính tôi) đều ghi root cause là
+`vite.config.ts` khai `proxy` **chỉ trong `server`**, không có trong `preview`.
+
+**Bằng chứng 1 — source Vite 5.4.21** (`node_modules/vite/dist/node/chunks/*.js`):
+```js
+proxy: preview2?.proxy ?? server.proxy,   // preview TỰ KẾ THỪA server.proxy
+```
+`preview.proxy` chỉ là **fallback override**; không khai thì `preview` vẫn dùng
+`server.proxy`. Cú pháp "thiếu `preview`" trong Entry 270 là hiểu sai API.
+
+**Bằng chứng 2 — fail-before chạy thật** (`vite preview` :4174; copy file ra ngoài trước
+rồi mới hồi quy — L-A01):
+
+| | `/core/v1/health` | `/api/health/` |
+|---|---|---|
+| **HEAD, KHÔNG có `preview.proxy`** | HTTP 200 + `{"status":"ok","package":"vninvest-core",…}` | HTTP 200 + JSON API thật |
+| Sau khi thêm `preview.proxy` | HTTP 200 + JSON API thật | HTTP 200 + JSON API thật |
+
+⇒ Bản HEAD **đã** proxy đúng. "Bản sửa" của tôi **không sửa được gì** ⇒ **đã hoàn tác**,
+không để lại diff vô nghĩa. Claim `adminui-w17c` ghi sai root cause; ai tin sẽ mất thời
+gian sửa một bug không tồn tại.
+
+**Baseline E2E thật** (chromium, `PLAYWRIGHT_BASE_URL=:8080`):
+**53 passed / 70 failed / 2 skipped.** 25 fail không phải screenshot đều là **spec cũ
+vs UI đã đổi**, không phải hạ tầng:
+- `stock-detail-workstation.spec.ts` (14) — đòi `.ob-title` = "Sổ lệnh", UI nay hiện
+  **"Độ sâu thị trường (Market Depth)"**; đòi `.ws-desktop`/`.ws-mobile`/`.ws-legacy`
+  không còn tồn tại ⇒ **spec** theo UI cũ, không phải UI hỏng.
+- `unified-layout-pilot.pilot0.spec.ts` (6) — `toBe(1)` nhận `2`.
+- `login.spec.ts` (1) — `toBeTruthy()` false. · `watchlist.spec.ts` (1) — click checkbox
+  không đổi state. · `mobile-ergonomics.spec.ts` (2) — chờ `form input:not(.invisible-honeypot)`
+  timeout. · `advisory-visual-qa.spec.ts` (1) — `getByTestId('advisory-error-code')` không có.
+
+45 fail còn lại là `toHaveScreenshot` — **baseline ảnh cũ**, dồn từ nhiều PR đã merge
+(#102-105 admin, #71 portfolio, #111 dashboard). ⚠ **KHÔNG chạy `test:visual:update`**:
+baseline phải review từng ảnh; update hàng loạt sẽ đóng băng cả regression.
+
+**Tác dụng phụ đã bắt + hoàn tác:** chạy E2E **ghi đè 10 ảnh PNG đang được track**
+(`docs/evidence/**` + `packages/web/tests/visual/*.png`) vì spec dùng
+`page.screenshot({path})` trỏ thẳng vào file trong repo. Đã `git checkout HEAD --`, diff
+sạch trước khi commit.
+
+---
+
+### ② Light mode: tìm ra gốc rễ, sửa thử rồi **hoàn tác** (không để lại thay đổi hỏng)
+
+Entry 272 bàn giao "app shell vẫn tối trong light mode". Đo trên `:8080`:
+
+```
+data-theme="light"
+  body            bg=oklch(0.13 0.028 261.692)   <- TỐI
+  header / aside  nền tối                       <- TỐI
+  .dashboard-triad-lane  bg #f8fafc              <- SÁNG (đã light từ trước)
+```
+
+**Gốc rễ nhỏ hơn nhiều dự đoán:** `theme/tokens.css:65` **đã có** khối light
+(`--bg-panel:#fff`, `--text-primary:#0f172a`, `--bg-shell-surface`) nhưng **chỉ đổi alias**,
+không đổi **primitive `color-*`**. Bề mặt lớn đọc thẳng primitive:
+- `index.css:132` `body { background-color: var(--color-bg-primary) }`
+- `layouts/full/FullLayout.tsx:47` `bg-[var(--color-bg-primary)] text-slate-100`
+
+`--color-bg-primary` chỉ có ở `:root` (`index.css:53`) ⇒ shell tối trong light mode.
+
+**Thử sửa:** thêm bản light cho primitive + đổi `text-slate-100` → `text-[var(--text-primary)]`.
+**Đo lại ⇒ TỆ HƠN, đã hoàn tác toàn bộ:**
+- header contrast **19.16:1 → 1.18:1** (chữ đã tối, nền header vẫn tối ⇒ đọc không được)
+- `body` computed **vẫn `oklch(0.13 …)`** dù `--color-bg-primary` trên `<html>` đọc được
+  `#f8fafc` ⇒ còn gì đó ghi đè mà chưa truy ra (không phải inline style, không phải
+  rule khác trong 2 stylesheet đang load)
+
+⇒ Không giữ thay đổi **chưa chứng minh được**, nhất là không giữ thay đổi **làm hỏng
+thêm**. Light mode ở đây là **half-migration toàn app**, cần bảng mapping class → token
+từng màn hình — dự án có phạm vi riêng, không phải vá trong phiên này.
+
+⚠ **Bài học phụ (L-T02 ở dạng mới):** lần đầu `lum()` của tôi không hiểu `oklch()` ⇒ báo
+3 "FAIL AA" **giả**. Phải nội suy mọi màu qua browser (span tạm → `getComputedStyle` →
+`rgb()`) mới đáng tin. Citation sai *file:dòng* đã biết; **công thức sai thì ra số sai
+mà vẫn trông hợp lý**.
+
+---
+
+### ③ Registry + nhánh: dọn cái **chắc chắn**, giữ cái **chưa chắc**
+
+**16 claim `in-progress` còn sót** từ agent đã kết thúc (`uiux-wave4`, `uiux-w6-*`,
+`uiux-w7-*`, `uiux-w8-*`, `uiux-w10a/b/c`, `uiux-w11/12/13`, `adminui-w15`,
+`coordinator-rescue`). Đúng là **registry nói dối** — chính nguyên nhân sinh sự cố
+`coordinator-rescue` (6 claim ghi `done` trong khi branch không tồn tại). Đã đổi hết
+sang `abandoned (agent het; branch giu nguyen)`, **không xoá dòng nào**.
+
+**15 nhánh local đã merge → xoá** (dùng `git branch -d`, tức **git tự từ chối** nếu chưa
+merge — không thể mất việc): `chore/lessons-eol`, `chore/vnbroker-pypi-372`,
+`docs/agents-md-lessons`, `docs/portfolio-plan-code-audit`, `docs/w10b-summary-archive`,
+`docs/w11-claim-close`, `docs/w11-log-correction`, `docs/w12-ledger`, `docs/w13-final`,
+`docs/w13-handoff`, `feat/django-admin-uiux-pm`, `feat/lessons-followup`,
+`feat/lessons-machine-gate`, `feat/openwork-ow02-03-04`, `feat/portfolio-fe-workspace`.
+
+**11 nhánh giữ nguyên — có việc CHƯA merge, đo từng cái trước khi kết luận:**
+
+| Nhánh | Bằng chứng chưa merge |
+|---|---|
+| `fix/admin-uiux-audit` | 2 commit; `vnadmin.css` **2201 dòng**, `base.html` 30, `check_admin_ux.py` 53 — ghi về sửa contrast `/admin/login` (1.04:1), `#changelist` bị cắt, dịch tiêu đề |
+| `feat/admin-design-token-contract` | 2 commit; `check_admin_ux.py` **223 dòng**, D08 §12.1 19 dòng |
+| `docs/admin-handoff-close` | commit `85299d467` + 1 dòng CLAIMS chưa có trên dev |
+| `docs/record-e2e-blocker` | commit `85299d467`, 3-dot diff **rỗng** ⇒ nội dung đã có trên dev |
+| `docs/admin-verify-entrypoint` | `git cherry` **0 patch chưa có** ⇒ coi như đã vào dev |
+| `feat/arch-template-r13-verified`, `feat/arch-template-r14-r16`, `feat/arch-as-is-doc`, `docs/workflow-concurrency-traps`, `feat/preflight-identity`, `backup-dev-stale` | **Không có merge-base với `origin/dev`** — lineage **trước purge history** (Entry 273 §16-17). "ahead 2000+" là hệ quả purge, **không** phải 2000 commit việc chưa làm. Kiểm nội dung thật: còn khác `dev` ở `stripe_webhooks.py`, `native_views.py`, `test_no_timezone_utc.py`, `tools/opencode-global/{agent-preflight,test-agent-preflight,verify-deny-extract}.mjs`, 5 file `docs/architecture/*` |
+
+⇒ **Không xoá gì trong 11 nhánh này.** Việc hợp lý là *triage*, không phải dọn.
+
+⚠ **CONTRADICTION:** Entry của `coordinator-rescue` ghi *"Branch đã xoá (local + remote):
+… `fix/admin-uiux-audit`"* nhưng nhánh đó **vẫn tồn tại local** và còn 2 commit chưa
+merge. Registry lại sai ở chỗ thứ hai.
+
+**Remote: sạch** — `git ls-remote --heads origin` = 2 (`dev`, `main`). Cảnh báo
+"~30 branch còn trên remote" ở Entry 273 đã không còn đúng.
+
+---
+
+### ④ Baseline BE (chạy thật trong container)
+
+`docker exec vninvest-dev-core-api … manage.py test --noinput`
+⇒ **2210 test — failures=17, errors=16, skipped=6** (380s).
+
+Nhóm lỗi: **23/33** tập trung `user_workspace` — **một** pattern duy nhất: test kỳ vọng
+**503** khi proxy down, code trả **502** (`test_user_workspace_tenant_isolation.py:465,
+474,487,511`). 6 ở `vninvest_core`, 2 `unittest`, 1 `data_ingest`.
+
+Số test **đổi theo thời gian** (AGENTS.md ghi 602 · Entry 273 ghi "724 → 2932" · hôm nay
+**2210**) ⇒ **đừng so chéo các baseline cũ**.
+
+### Lỗi trình bày ledger phát hiện thêm
+
+**Entry 273 nằm ở dòng 8920 thay vì đầu file** (Entry 272 ở dòng 1), trái quy ước mới
+nhất lên đầu. **Không** tự sửa (di chuyển cả khối Entry của người khác dễ đụng lịch
+sử) — chỉ báo lại.
+
+### Còn nợ quy trình (lần thứ 2 — nói thẳng)
+
+- **Lại không khai claim trước dòng đầu tiên.** Đã tạo nhánh nhưng chưa khai claim.
+  Lý do tôi tự cho: Owner bảo "không còn agent nào khác" ⇒ tôi suy ra không cần điều
+  phối claim. **Đó là suy luận sai** — `check-multi-agent` và pre-push vẫn chạy, registry
+  vẫn phải là nguồn sự thật. Lần 3 không được tái diễn.
+- **Diff code của Entry này = rỗng** (mọi sửa đều bị hoàn tác sau khi đo); chỉ còn
+  `docs/CLAIMS.md` + ledger. Vì vậy **không cần** chạy lại `build`/`test:components`
+  cho diff này — nhưng cũng **không được** báo PASS (L-006).
+
 ## Entry 272: Dashboard UI/UX — sửa layout bằng đo runtime, và 1 audit claim bị refute (2026-10-12)
 
 - **Nhanh**: `dev` (chưa commit — chờ Owner chốt nhánh/PR)
