@@ -14,7 +14,6 @@ import json
 import os
 import unittest.mock as mock
 
-import pytest
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 
