@@ -1,0 +1,43 @@
+{% load i18n %}
+<div class="actions vn-bulk-actions-bar">
+  {% block actions %}
+    <div class="vn-actions-left">
+      {% block actions-counter %}
+        {% if actions_selection_counter %}
+          <div class="vn-actions-counter-pill">
+            <span class="vn-counter-icon" aria-hidden="true">✓</span>
+            <span class="action-counter" data-actions-icnt="{{ cl.result_list|length }}">{{ selection_note }}</span>
+          </div>
+          {% if cl.result_count != cl.result_list|length %}
+            <span class="all hidden vn-actions-select-all">{{ selection_note_all }}</span>
+            <span class="question hidden vn-actions-question">
+              <a role="button" href="#" class="vn-select-all-btn" title="Chọn toàn bộ bản ghi trên tất cả các trang">
+                {% blocktranslate with cl.result_count as total_count %}Chọn toàn bộ {{ total_count }} {{ module_name }}{% endblocktranslate %}
+              </a>
+            </span>
+            <span class="clear hidden vn-actions-clear">
+              <a role="button" href="#" class="vn-clear-selection-btn">Bỏ chọn tất cả</a>
+            </span>
+          {% endif %}
+        {% endif %}
+      {% endblock %}
+    </div>
+
+    <div class="vn-actions-right">
+      {% block actions-form %}
+        <span class="vn-action-select-label">Thao tác:</span>
+        {% for field in action_form %}
+          <div class="vn-action-field-wrap">
+            {{ field }}
+          </div>
+        {% endfor %}
+      {% endblock %}
+
+      {% block actions-submit %}
+        <button type="submit" class="button vn-action-execute-btn" title="Thực hiện thao tác đã chọn" name="index" value="{{ action_index|default:0 }}">
+          Áp dụng
+        </button>
+      {% endblock %}
+    </div>
+  {% endblock %}
+</div>

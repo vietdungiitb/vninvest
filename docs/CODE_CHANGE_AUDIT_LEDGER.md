@@ -8632,3 +8632,123 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 269 | 2026-10-10 | **Chạy thật `entrypoint.sh` trong container** - Đóng mục "CHƯA CHẠY" của O3. Bình thường: migrate → collectstatic **166 file** → repair → daphne, **exit 0**. Fail-before (`--tmpfs staticfiles:ro`): bản mới **exit 1, daphne không khởi động**; bản cũ in `OSError` rồi **vẫn chạy tiếp** `repair_beat_schedule` → `Starting daphne` ⇒ chứng minh bằng đo rằng `|| true` làm server "healthy" với static hỏng. |
 | 270 | 2026-10-10 | **E2E/Playwright — chạy được, tìm ra nguyên nhân gốc** — 15 fail/1 pass, fail ở **bước login**. Backend Docker **đang chạy** (`:8001`, `/api/health/` 200); superuser đã dựng. ⇒ Không phải thiếu môi trường. Gốc rễ: `vite.config.ts` khai `proxy` **chỉ trong `server`, không có trong `preview`**, mà `playwright.config.ts:71` chạy `npm run preview` ⇒ E2E **không bao giờ proxy `/api`** ⇒ login không lưu token. Sửa được bằng `preview: { proxy }` mirror `server.proxy`. Owner chọn **để lại** ⇒ vẫn `CHƯA CHẠY` (ghi rõ lý do, không báo PASS). Thêm: `advertising-admin.spec.ts` có bug — `test.skip()` gọi **sau** `fill()` nên skip không bao giờ chạy. |
 | 271 | 2026-10-11 | **Portfolio entry** - `/portfolios` mo Portfolio workspace, trang quan ly CRUD chuyen sang `/portfolios/manage` (phuong an A do Owner chot) | `feat/portfolio-entry` -> `dev` | `tsc` 0 · `lint` 0 error · `check:shell` 0 · `check:ts-imports` PASS · `vitest src/pages/portfolio` 43/43 · `route-catalog-contract`+`main-menu-contract` 10/10 · `build` 0 · `check-multi-agent` 0 | Root cause `main.tsx:29` remap `portfolios` -> `core-portfolios` khien 5 man hinh Portfolio moi khong toi duoc. Lift `usePortfolioWorkspace` len page, khung thanh presentational; dong bug co san `selectedId` khong dieu khien 5 tab con. Sua BRK-06 trong 2 doc portfolio tro `/portfolios/manage`. **CHUA CHAY**: BE test, Playwright, full FE suite. L-T01 tai pham (Edit tool doi LF->CRLF, da chuan hoa lai). |
+## Entry 272: Cuu 28 file uncommitted — 6 claim admin "done" nhung CHUA co commit nao (2026-10-12)
+
+- **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
+- **Claim**: `coordinator-rescue`
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-A01, L-G01, L-G02,
+  L-G03, L-G05, L-T01, L-T02, L-B01, L-B02, L-B03
+
+### 1. Phat hien goc re — registry claims "done" cho viec CHUA ton tai
+
+`docs/CLAIMS.md` ghi 6 claim `done` (2026-10-11):
+
+| claim | branch trong CLAIMS.md | `git branch --list` | `--remotes` |
+|---|---|---|---|
+| `adminui-gh-console` | `feat/admin-github-console` | **khong** | **khong** |
+| `adminui-data-ingest-refine` | `feat/admin-data-ingest-refine` | **khong** | **khong** |
+| `adminui-subpages-master-design` | `feat/admin-subpages-master-design` | **khong** | **khong** |
+| `adminui-subpages-full-impl` | `feat/admin-subpages-full-impl` | **khong** | **khong** |
+| `adminui-sidebar-restore-and-dash-layout` | `feat/admin-sidebar-restore-and-dash-layout` | **khong** | **khong** |
+| `adminui-shared-toolbar-horizontal-filters` | `feat/admin-shared-toolbar-horizontal-filters` | **khong** | **khong** |
+
+`git ls-tree HEAD -- templates/admin/` xac nhan **0/12** template da duoc track.
+~4800 dong chi nam tren dia. Mot lenh `git checkout --` = mat vinh vien (L-A01).
+
+**Day la hazard 4 o dang nang nhat**: registry khong chi bao PASS cho gate
+chua chay — no bao "done" cho cong viec **chua ton tai o commit bat ky**.
+
+Biện minh dac biet (L-G04 — khong dung mo ta cua claim):
+- `git branch --list <6 ten>` + `git branch -r --list origin/<6 ten>` → 0/6
+- `git ls-tree -r HEAD --name-only | Select-String templates/admin/` → 0 kết quả
+
+### 2. EOL noise — do bang lenh, khong doan
+
+| file | `git diff --numstat` (raw) | `--ignore-cr-at-eol` | `git ls-files --eol` |
+|---|---|---|---|
+| `docker-compose.dev.yml` | **574/574** | **11/11** | `i/lf w/crlf` |
+| `packages/core/backend/Dockerfile` | **78/66** | **20/8** | `i/lf w/crlf` |
+| `.../static/admin/css/vnadmin.css` | 3378/1210 | 3378/1210 | `i/crlf` — **CRLF-native** |
+
+574 dong chi doi LF→CRLF; that chi 11 dong `VNBROKER_GITHUB_TOKEN`.
+`vnadmin.css` la CRLF-native ⇒ KHONG chuan hoa (L-T01: chuan hoa theo dang
+file do, khong chuan hoa ca thu muc).
+
+### 3. 2 regression — do code chua commit, KHONG phai loi co san
+
+`tests/test_admin_ui.py:368,426,428` assert `vn-kpi__value` / `vn-kpi__value--error`.
+Template moi doi sang BEM 3 thanh `vn-kpi-card__value` / `vn-kpi-card__value--error`
+(`index.html:86,94`; CSS moi co day du rule tai `vnadmin.css:4887-4993`).
+
+**Bang chung A/B tren worktree sach** (`git worktree add <tmp> origin/dev --detach`):
+
+| | `origin/dev` (95fe4b13b) | branch cuu |
+|---|---|---|
+| truoc `collectstatic` | 15 errors (thieu staticfiles manifest) | — |
+| **sau `collectstatic`** | **OK 45/45** | **2 failures** |
+
+⇒ 2 fail do code chua commit gay ra, **khong phai** loi co san. Sua test theo
+**y nghia giu nguyen** (gia tri van hien khi mat link; loi van danh dau; chi
+1 the loi) — khong noi long assertion.
+
+**Fail-before chung minh** (L-T01 companion / hazard 15, `try/finally` + byte-identical):
+bo `vn-kpi-card__value--error` khoi `index.html` ⇒ AC4 **FAIL**; khoi phuc
+`byte-identical: True`. Test van can.
+
+### 4. GATE CHAY THAT (khong bao PASS cho thu chua chay)
+
+| Gate | Command | Exit |
+|---|---|---|
+| Django system check | `manage.py check` | **0** |
+| migration leaf | `manage.py makemigrations --check --dry-run` | **0** (No changes detected) |
+| gate admin | `scripts/check_admin_ux.py` | **0** (0 loi, 0 canh bao) |
+| gate admin self-test | `check_admin_ux.py --self-test` | **25/25** |
+| admin slice | `manage.py test tests.test_admin_ui` | **OK 45/45** |
+| **full BE suite** | `manage.py test` | **724 test, OK, exit 0** |
+| type-check | `npx tsc --noEmit` | **0** |
+| lint | `npm run lint` | **0 error** (3786 warnings co san) |
+| build | `npm run build` | **0** |
+| **full FE suite** | `npm run test:components` | **128 file / 918 test PASS** |
+| **pre-push gate** | `node scripts/pre-push-gate.mjs` | **21 PASS / 0 SKIP / 0 FAIL** |
+| compose | `docker compose config --quiet` | **0** (canh bao "not set. Defaulting to blank" = bien da optional) |
+| Dockerfile shell | `bash -n` + 2 nhanh dry-run | **0**, giu nguyen `vnbroker==3.7.2` |
+
+### 5. P0-SEC-01 — MOI PHAT SINH, do Owner thong bao 2026-10-12
+
+`gh repo view --json isPrivate` → **`isPrivate: false`, `visibility: PUBLIC`**.
+
+`AGENTS.md` (2026-10-07) chap quyet dinh "khong rotate luc nay" **voi dieu kien
+repo PRIVATE**. Dieu kien da doi ⇒ **khong con gia han duoc**.
+
+- `pre-push-gate` `secret-scan` quet **3806 tracked file → 0 loi**: working tree
+  hien tai **sach**.
+- **NHUNG history van co**: commit `2db35ed85` ("fix(security): untrack
+  compose.dev.env") xoa file chua **`DNSE_CREDENTIAL_FERNET_KEY`** (44 ky tu,
+  dung dang Fernet hop le) khoi tracking — blob cu van con trong history, va
+  repo bay gio public.
+- Ghi nhan o `AGENTS.md`: `CORE_PAT_PEPPER` tiep tuc la khoa **dang dung**.
+- **CHUA chay**: `git filter-repo`/BFG (phai Owner chon), rotate secret.
+
+⇒ **Ticket P0 mo, can Owner quyet dinh**, khong phai viec ky thuat nguoi duyet
+co the tu dong dong.
+
+### 6. CHUA CHAY (ghi trung thuc, khong suy ra "chac la duoc")
+
+- `ruff` — khong cai trong `.venv` (khong du phep cai them dependency)
+- Playwright/E2E — can `npm run preview` + proxy `/api` (da ghi o Entry 270)
+- `LiveBrokerContractTests` — can `VNBROKER_RUN_LIVE_CONTRACT=1` + JWT that
+- Kiem bang trinh duyet light/dark, focus ring, vung cham 24px
+- CI GitHub Actions — **billing** (khong rieng repo nay)
+
+### 7. Bai hoc (Stage 8)
+
+**L-T01 pham lan thu 5 — va la lan nguy hiem nhat**, vi no khong xuat hien
+trong commit cua agent sau: agent viet file bang `Set-Content`/`WriteAllText`
+tren Windows ⇒ CRLF, `git diff --numstat` ra 574/574 cho 11 dong that.
+Neu commit nguyen trang, hunk **khong tach duoc** (L-001) va reviewer doc
+574 dong thay vi 11. `git diff --ignore-cr-at-eol` la lenh **chi ra** noi
+dung that; `git ls-files --eol` la lenh **hoi** dang file that.
+
+**Registry claim KHONG phai bang chong commit.** 6 dong `done` khong co 1 commit
+nao. De claim registry khong lap lai loi nay, can gate: claim `done` phai kem
+commit hash — hoac it nhat branch con ton tai.

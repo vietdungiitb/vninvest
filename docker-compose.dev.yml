@@ -75,7 +75,7 @@ services:
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
       CORS_API_DYNAMIC_ALLOW: "true"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
@@ -126,7 +126,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,manual_on_demand,analytics_heavy}
@@ -210,7 +210,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_prefetch
@@ -252,7 +252,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_scheduler
@@ -295,7 +295,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: analytics_heavy
@@ -326,7 +326,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_stream
@@ -355,7 +355,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: enrichment_offhours
@@ -395,7 +395,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: enrichment_eod
@@ -427,7 +427,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: manual_on_demand
@@ -469,7 +469,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: screener
@@ -505,7 +505,7 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
-      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:-}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core

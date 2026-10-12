@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:'VNInvest Admin' }}{% endblock %}
+
+{% block branding %}
+  <div class="vn-header-brand">
+    <button type="button" class="vn-header-sidebar-toggle" id="vn-header-sidebar-toggle"
+            aria-label="Bật/tắt thanh điều hướng"
+            title="Mở rộng / Thu gọn thanh điều hướng (Phím tắt: [ )">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12h12.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Z"></path>
+      </svg>
+    </button>
+    <a href="{% url 'admin:index' %}" class="vn-brand-link">
+      <span class="vn-header-logo-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </span>
+      <span class="vn-header-brand-title">VNInvest</span>
+      <span class="vn-header-brand-sep">—</span>
+      <span class="vn-header-brand-subtitle">Trung tâm điều hành</span>
+    </a>
+  </div>
+{% endblock %}
