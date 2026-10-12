@@ -197,7 +197,11 @@ class UserWorkspaceTenantIsolationTests(TestCase):
     def test_T05_transaction_cross_tenant_access_returns_404(self):
         """Transaction isolation: user cannot access transaction in cross-tenant portfolio."""
         client = APIClient()
-        client.force_authenticate(user=self.user1)
+        # PATCH là method GHI: user1 ('viewer') bị WorkspacePermission chặn 403
+        # TRƯỚC khi tới kiểm tra tenant ⇒ mất đúng ý nghĩa test (404 = không
+        # thấy, chứ không phải 403 = không đủ quyền). owner_a thuộc tenant_a và có
+        # quyền ghi, nên vẫn phải trả **404** cho transaction của tenant_b.
+        client.force_authenticate(user=self.owner_a)
 
         # user1 tries to access tenant_b transaction
         response = client.patch(f'/core/v1/workspace/transactions/{self.txn_b2.id}/', data={'note': 'hacked'})
@@ -350,7 +354,8 @@ class UserWorkspaceTenantIsolationTests(TestCase):
     def test_T15_400_field_errors_in_envelope(self):
         """Error handling: 400 Bad Request includes field errors."""
         client = APIClient()
-        client.force_authenticate(user=self.user1)
+        # Xem T16: user1 là 'viewer' nên bị 403 trước khi tới validate 400.
+        client.force_authenticate(user=self.owner_a)
 
         # Invalid portfolio creation (empty name)
         response = client.post('/core/v1/workspace/portfolios/', data={'name': ''})
@@ -365,26 +370,37 @@ class UserWorkspaceTenantIsolationTests(TestCase):
     def test_T16_create_portfolio_sets_tenant(self):
         """Write operations: new portfolio gets tenant set automatically."""
         client = APIClient()
-        client.force_authenticate(user=self.user1)
+        # user1 có TenantMember role='viewer' (L57) ⇒ KHÔNG có `portfolio_write`
+        # (map sang `sa:write`, chỉ owner/admin có). Dùng owner_a — owner_user là
+        # thành viên ngầm định của tenant_a nên đủ quyền ghi.
+        client.force_authenticate(user=self.owner_a)
 
         response = client.post('/core/v1/workspace/portfolios/', 
                               data={'name': 'New Portfolio'})
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Verify portfolio has tenant
-        new_portfolio = Portfolio.objects.get(user=self.user1, name='New Portfolio')
+        new_portfolio = Portfolio.objects.get(user=self.owner_a, name='New Portfolio')
         # If request.tenant is set by TenantScopePermission, it should be tenant_a
-        # (first active TenantMember for user1)
         self.assertIsNotNone(new_portfolio.tenant,
                             msg='New portfolio should have tenant set')
 
     def test_T17_create_transaction_inherits_portfolio_tenant(self):
         """Write operations: new transaction inherits tenant from portfolio."""
         client = APIClient()
-        client.force_authenticate(user=self.user1)
+        client.force_authenticate(user=self.owner_a)
+
+        # `portfolio_a1` thuộc user1 ⇒ owner_a không có quyền thấy nó (404 đúng,
+        # nhưng không phải điều test này muốn kiểm). Tạo portfolio của chính
+        # owner_a trong tenant_a để thao tác ghi đúng ngữ nghĩa.
+        owner_portfolio = Portfolio.objects.create(
+            user=self.owner_a,
+            tenant=self.tenant_a,
+            name='Portfolio owner A',
+        )
 
         response = client.post(
-            f'/core/v1/workspace/portfolios/{self.portfolio_a1.id}/transactions/',
+        f'/core/v1/workspace/portfolios/{owner_portfolio.id}/transactions/',
             data={
                 'symbol': 'VCB',
                 'transaction_type': 'BUY',
@@ -396,7 +412,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Verify transaction has tenant from portfolio
-        new_txn = Transaction.objects.get(symbol='VCB', portfolio=self.portfolio_a1)
+        new_txn = Transaction.objects.get(symbol='VCB', portfolio=owner_portfolio)
         self.assertEqual(new_txn.tenant_id, self.portfolio_a1.tenant_id,
                         msg='Transaction should inherit portfolio tenant')
 
