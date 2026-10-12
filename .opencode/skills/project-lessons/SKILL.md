@@ -48,17 +48,22 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc` | `docs/LESSONS/css-soc.md` |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append`, `proof` | `tooling-traps` | `docs/LESSONS/tooling-traps.md` |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `rotate`, `revoke`, `token`, `fernet`, `history` | `security` | `docs/LESSONS/security.md` |
+| `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate`, `claim cua nguoi khac` | `verification` | `docs/LESSONS/verification.md` |
 
 **Quy tắc an toàn (fallback) — ưu tiên bỏ sót:**
-Nếu task có **bất kỳ** từ khóa nào sau: `claim`, `shared`, `migration`, `worktree`,
-`rebase`, `gate`, `agent` → **mặc định đọc `multi-agent.md`** bất kể tag suy ra được.
 
-**Fallback thứ hai — chạm vào git hoặc báo cáo bằng chứng:** nếu task sẽ `commit`,
-`append` vào file docs, hoặc viết `Proof:` / citation `file:line` → **đọc thêm
-`tooling-traps.md`**. Đây là nhóm lỗi đã gây ra diff phình và báo cáo sai lệch.
-
-**Fallback thứ ba — sửa React hook:** nếu task sửa/thêm `use*` hook, `useEffect` deps,
-hoặc state đồng bộ URL → **đọc `frontend.md`**.
+1. Nếu task có **bất kỳ** từ khóa nào sau: `claim`, `shared`, `migration`, `worktree`,
+   `rebase`, `gate`, `agent` → **mặc định đọc `multi-agent.md`** bất kể tag suy ra được.
+2. Nếu task **đo, kiểm chứng, hoặc điều tra** — `đo`, `đo được`, `verify`, `kiểm chứng`,
+   `audit`, `screenshot`, `ảnh chụp`, `contrast`, `fail-before`, `root cause`, `gốc rễ`,
+   `claim của người khác`, `script đo`, `probe`, `computed style` → **mặc định đọc
+   `verification.md`**. Nhóm này gồm những lỗi **không báo lỗi** (sai âm thầm): script
+   đo sai vẫn ra số hợp lý, và gốc rễ kế thừa từ ledger/claim/audit có thể sai hoàn toàn.
+3. **Fallback thứ hai — chạm vào git hoặc báo cáo bằng chứng:** nếu task sẽ `commit`,
+   `append` vào file docs, hoặc viết `Proof:` / citation `file:line` → **đọc thêm
+   `tooling-traps.md`**. Đây là nhóm lỗi đã gây ra diff phình và báo cáo sai lệch.
+4. **Fallback thứ ba — sửa React hook:** nếu task sửa/thêm `use*` hook, `useEffect` deps,
+   hoặc state đồng bộ URL → **đọc `frontend.md`**.
 
 ## Step 2 — Đọc file lesson tương ứng
 

@@ -80,3 +80,36 @@ pm run lint thuc te exit 0
   - [ ] Claim suất ra từ người khác đã được **kiểm lại** trước khi hành động chưa?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 264` §4 - 2/2 claim
   "bug thật" của wave 10 §4.3 hoá ra **sai**.
+
+---
+
+## 1.6. ✅ Đã sửa — văn bản bị hỏng do **escape sequence** (2026-10-10)
+
+`docs/LESSONS/` từng có **ký tự bị nuốt**, làm câu ở `css-soc.md` và `tooling-traps.md`
+thành vô nghĩa (`transition` → `ransition`). **Đã sửa xong.**
+
+### Quy tắc đã chứng minh (9/9 vị trí)
+
+Khi ghi file văn bản, chữ cái dùng làm ký tự escape bị **ăn**:
+
+| Chuỗi ghi | Ký tự điều khiển | Chữ bị mất |
+|---|---|---|
+| `\a` | U+0007 (BEL) | `a` |
+| `\b` | U+0008 (BS) | `b` |
+| `\t` | U+0009 (TAB) | `t` |
+| `\f` | U+000C (FF) | `f` |
+| `\e` | U+001B (ESC) | `e` |
+
+⇒ **MỘT ký tự điều khiển = ĐÚNG MỘT chữ cái đã mất.** Sửa = thay ký tự điều khiển bằng
+chính chữ cái đó. Kiểm chứng trên: `animation` ×2 · `box-shadow` ×2 · `easing` ·
+`bash` · `focus` · `font` · `aiSettings.module.css` · `file:line` · `f75ef6a86`
+(commit thật, `git cat-file -t` xác nhận).
+
+⚠ **Không dùng regex đại trên `\`**: nó sẽ phá `\\d+` trong chính file này và `"\n"`
+trong `tooling-traps.md` — cả hai là nội dung **đúng**. Dry-run đã bắt được điều này
+trước khi sửa.
+
+⚠ Khi sửa file nhiều dòng trên Windows: dùng **script Node**, không dùng PowerShell
+`.Replace`/`Set-Content` (xem `L-T01`). Và kiểm `git diff --numstat` sau khi sửa.
+
+**Bài học đã vào sổ:** `L-T01` (line-ending), `L-T02` (citation sai file).

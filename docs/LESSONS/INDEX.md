@@ -19,6 +19,7 @@
 | `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand` | [`css-soc.md`](./css-soc.md) | CSS/SOC tokens, `soc.module.css` chỉ là barrel, script ghi đè CSS shorthand làm mất duration, quét cửa sổ ±N dòng tạo false positive, màu tăng/giảm chuẩn Bloomberg. |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append` | [`tooling-traps.md`](./tooling-traps.md) | `Get-Content|Set-Content` gộp file, `$LASTEXITCODE` sau pipeline sai, **ghi file = đổi line-ending**, **citation đúng dòng nhưng sai file**. |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `fernet` | [`security.md`](./security.md) | Bảo mật, secret trong repo, ignore, quy trình revoke/rotate/purge history. |
+| `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate` | [`verification.md`](./verification.md) | **Sai lầm không báo lỗi**: script đo sai vẫn ra số hợp lý, kiểm tra tồn tại bằng stdout, verify nhầm artifact, gốc rễ kế thừa phải có phản chứng, chạy test làm bẩn working tree. |
 
 ## 1.2. Hướng dẫn dùng (Tag-based selection)
 
@@ -113,41 +114,19 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`backend.md`](./backend.md) | 3 | `L-B01`…`L-B03` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
+| [`verification.md`](./verification.md) | 3 | `L-V01`, `L-V02`, `L-V03` |
 
-**Tổng: 37 lesson / 8 file**
+**Tổng: 40 lesson / 9 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
-  + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md`
+  + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)
 - **Đổi cấu trúc 2026-10-10:** `frontend.md` tách thành `frontend.md` (bundle + React hook)
   và `css-soc.md` + `tooling-traps.md`, để chờ C1. ID cũ **giữ nguyên**, không renumber.
+  **Thêm 2026-10-12:** `verification.md` (nhóm bài học **không báo lỗi**) — đã dùng hết
+  chỗ C2 (40/40), muốn thêm phải **gộp** lesson trùng lặp.
 
-## 1.6. ✅ Đã sửa — văn bản bị hỏng do **escape sequence** (2026-10-10)
+## 1.6. Lịch sử sự cố escape sequence
 
-`docs/LESSONS/` từng có **ký tự bị nuốt**, làm câu ở `css-soc.md` và `tooling-traps.md`
-thành vô nghĩa (`transition` → `ransition`). **Đã sửa xong.**
-
-### Quy tắc đã chứng minh (9/9 vị trí)
-
-Khi ghi file văn bản, chữ cái dùng làm ký tự escape bị **ăn**:
-
-| Chuỗi ghi | Ký tự điều khiển | Chữ bị mất |
-|---|---|---|
-| `\a` | U+0007 (BEL) | `a` |
-| `\b` | U+0008 (BS) | `b` |
-| `\t` | U+0009 (TAB) | `t` |
-| `\f` | U+000C (FF) | `f` |
-| `\e` | U+001B (ESC) | `e` |
-
-⇒ **MỘT ký tự điều khiển = ĐÚNG MỘT chữ cái đã mất.** Sửa = thay ký tự điều khiển bằng
-chính chữ cái đó. Kiểm chứng trên: `animation` ×2 · `box-shadow` ×2 · `easing` ·
-`bash` · `focus` · `font` · `aiSettings.module.css` · `file:line` · `f75ef6a86`
-(commit thật, `git cat-file -t` xác nhận).
-
-⚠ **Không dùng regex đại trên `\`**: nó sẽ phá `\\d+` trong chính file này và `"\n"`
-trong `tooling-traps.md` — cả hai là nội dung **đúng**. Dry-run đã bắt được điều này
-trước khi sửa.
-
-⚠ Khi sửa file nhiều dòng trên Windows: dùng **script Node**, không dùng PowerShell
-`.Replace`/`Set-Content` (xem `L-T01`). Và kiểm `git diff --numstat` sau khi sửa.
-
-**Bài học đã vào sổ:** `L-T01` (line-ending), `L-T02` (citation sai file).
+Chi tiết (bảng ký tự bị nuốt, vị trí đã sửa, dry-run) đã chuyển sang
+[`tooling-traps.md`](./tooling-traps.md) §Ghi chú lịch sử — vì đó là **lịch sử một lần
+sửa**, không phải luật phòng ngừa; giữ ở đây làm INDEX vượt C1.

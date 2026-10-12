@@ -1,0 +1,71 @@
+# Verification - Lessons (đo, kiểm chứng, fail-before, side effect)
+
+> `tags: [measure, measurement, verify, probe, computed, contrast, parser, fail-before,
+> root-cause, audit, screenshot, evidence, artifact, mutate]`
+
+Nhóm bài học này đều có chung một đặc điểm: **sai lầm không báo lỗi**. Không có
+exception nào, output vẫn in ra con số trông chuyên nghiệp — nên phải có cơ chế riêng
+mới phát hiện được.
+
+## L-V01: Phép đo sai vẫn trông hợp lý — mọi script đo phải có đối chứng
+
+- **Nguyên nhân:** Script tự viết parse dữ liệu mà **không tự kiểm chứng chính nó**.
+  `getComputedStyle` trả về `oklch()`/`oklab()`/`color-mix()` tùy trình duyệt; parser
+  `lum()` chỉ biết `rgb()` nên `regex [\d.]+` lấy nhầm số, vẫn ra một tỉ lệ "hợp lý".
+- **Hậu quả thật (Entry 274, 2026-10-12):**
+  ① 3 dòng báo `FAIL WCAG AA` hoàn toàn **giả**; tin chúng thì sửa CSS theo lỗi không
+  tồn tại. ② Cùng phiên, `git cat-file -e` được kiểm bằng **stdout** — lệnh này in rỗng
+  cả khi thành công lẫn thất bại ⇒ báo "thiếu trên `dev`" cho cả `docs/CLAIMS.md` ⇒ kết
+  luận sai cho cả 6 nhánh ngay trước đó.
+- **QUY TẮC:** Không dùng số của script tự viết để kết luận **trước khi** chạy một
+  **control** có đáp án biết trước. Control hỏng ⇒ mọi dòng khác cùng lô vô giá trị.
+- **CHECKLIST:**
+  - [ ] Script đo của tôi đã chạy qua **≥1 control biết đáp án** chưa? (control phải
+        ra `true`; không thì dừng, không đọc kết quả)
+  - [ ] Màu `getComputedStyle` trả về là `rgb()` hay `oklch()`/`oklab()`? Nếu không phải
+        `rgb()` → nội suy qua browser (span tạm → computed → `rgb()`), đừng parse chuỗi.
+  - [ ] Lệnh kiểm tra tồn tại (`cat-file -e`, `rev-parse`, `ls-files`) đang đọc **exit
+        code** hay **stdout**?
+  - [ ] Tôi đang kiểm chứng **artifact nào**? `packages/web/dist` trên host **không
+        phải** output của docker build (`RUN npm run build` chạy trong image) — kiểm tra
+        bằng `docker cp` từ `/usr/share/nginx/html/assets/`, hoặc `docker exec`.
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 274 §② (parser `oklch`) và §③
+  (`git cat-file -e`); Entry 272 §"dist/ trên host KHÔNG phải artifact docker build".
+
+## L-V02: Gốc rễ do người khác ghi phải có phản chứng trước khi hành động
+
+- **Nguyên nhân:** Tiếp nhận "root cause" từ ledger / claim / audit report như sự thật
+  đã kiểm chứng. Môi trường repo càng có nhiều người viết tài liệu thì claim sai càng
+  lây nhanh.
+- **Hậu quả thật (Entry 274):** Entry 270 khẳng định *"E2E bị chặn vì `vite.config.ts`
+  khai `proxy` chỉ trong `server`, `preview` không có"*. Tôi sửa theo đó rồi chạy
+  **fail-before**: bản HEAD **không có** `preview.proxy` vẫn trả HTTP 200 + JSON API
+  thật. Source Vite 5.4.21: `proxy: preview2?.proxy ?? server.proxy` ⇒ `preview` **tự
+  kế thừa**. Root cause sai, "fix" vô tác dụng. Lần tương tự: audit UI/UX yêu cầu "ép
+  chữ treemap thành trắng" trong khi `textOnHeat()` đã chọn màu theo luminance.
+- **QUY TẮC:** Mọi "gốc rễ" kế thừa phải có **phản chứng** trước khi sửa: fail-before
+  chạy thật, hoặc đọc source của thư viện. Không tái hiện được lỗi ⇒ **CHƯA XÁC MINH**.
+- **CHECKLIST:**
+  - [ ] Tôi đã tái hiện lỗi trên code **chưa sửa** chưa? Không tái hiện được thì chưa biết
+        root cause kế thừa có đúng không.
+  - [ ] Tính khả thi của lý thuyết đã được kiểm bằng **source** (không đoán API từ tên)?
+  - [ ] Fix của tôi đã **đo trước/sau** chưa? Fix làm tệ hơn ⇒ **revert**, đừng giữ cho có.
+  - [ ] Root cause kế thừa không tái hiện được ⇒ ghi `CHƯA XÁC MINH` + hỏi, đừng sửa theo.
+- **Proof:** ledger Entry 274 §① (refute Entry 270, có bảng fail-before); Entry 272
+  §"Audit claim bị REFUTE"; Entry 264 §4 (2/2 claim "bug thật" của wave 10 hoá ra sai).
+
+## L-V03: Chạy test/gate/script có thể GHI ĐÈ file đang được track
+
+- **Nguyên nhân:** Bỏ qua side effect của lệnh. Spec Playwright dùng
+  `page.screenshot({path})` trỏ thẳng vào file trong repo (`docs/evidence/**`,
+  `tests/visual/*.png`), nên **chạy E2E = mutate working tree**.
+- **Hậu quả thật (Entry 274):** 10 file PNG bị ghi đè trong lúc chạy suite để điều tra.
+  Commit thẳng sẽ đưa 10 ảnh rác vào PR **và** làm hỏng baseline hợp lệ của repo.
+- **QUY TẮC:** Sau **mỗi** lần chạy lệnh có khả năng ghi file (test, screenshot, codegen,
+  migration, capture), phải `git status --short` trước khi commit. Mọi thay đổi phát
+  sinh là **sản phẩm phụ cần review**, không phải việc bạn định làm.
+- **CHECKLIST:**
+  - [ ] Lệnh vừa chạy có ghi file vào repo không? (test · screenshot · baseline · codegen)
+  - [ ] `git status --short` có **đúng** các file tôi cố ý sửa không?
+  - [ ] File phát sinh: **revert** hay review rồi mới giữ? Không bao giờ commit mặc định.
+- **Proof:** ledger Entry 274 §① ("Tác dụng phụ đã bắt + hoàn tác: 10 ảnh PNG").
