@@ -43,7 +43,7 @@
  *   node scripts/check-lessons.mjs --dir docs/LESSONS
  *   node scripts/check-lessons.mjs --self-test
  */
-import { readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -80,6 +80,21 @@ function readUtf8(path) {
   // `readFileSync(p, "utf8")` KHÔNG tự bỏ BOM cho `startsWith` kiểm tra ở
   // countNonBlankLines — hàm đó đã tự lstrip. Ném lỗi nếu không decode được.
   return readFileSync(path, "utf8");
+}
+
+const SKILL_REL = join(".opencode", "skills", "project-lessons", "SKILL.md");
+
+/** Dò ngược từ thư mục lesson để tìm SKILL.md. Trả null nếu không có. */
+function findSkillUp(dir) {
+  let cur = resolve(dir);
+  for (let i = 0; i < 6; i += 1) {
+    const p = join(cur, SKILL_REL);
+    if (existsSync(p)) return p;
+    const up = dirname(cur);
+    if (up === cur) break;
+    cur = up;
+  }
+  return null;
 }
 
 export function check(directory) {
@@ -166,6 +181,31 @@ export function check(directory) {
     for (const cited of new Set(idx.match(/\bL-(?:[A-Z]+)?\d+\b/g) || [])) {
       if (!realIds.has(cited)) {
         problems.push(`DRIFT    ${INDEX} tro toi ${cited} - khong ton tai trong bat ky lesson file`);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------- C4
+  // C1/C2/C3 can "lesson co trong repo". Khong cai gi dam bao lesson **duoc
+  // NAP** — skill `project-lessons` la co che nap, va no NAM BAN SAO bang tag
+  // table trong INDEX.md. Hai ban sao do lech nhau thi moi lesson moi ghi se
+  // im lang khong bao gio duoc doc: dung trong cau "van ban khong chan duoc gi".
+  //
+  // Do duoc 2026-10-12: `docs/LESSONS/verification.md` duoc them + INDEX da khai
+  // dung, nhung gate nao cung xanh — vi khong ai kiem tra SKILL.md. Sau do moi
+  // noi tag vao SKILL.md **va them C4 de dong file lai**.
+  const skillPath = findSkillUp(directory);
+  if (skillPath) {
+    const skill = readUtf8(skillPath);
+    for (const name of files) {
+      if (name === INDEX) continue;
+      // Chi can xuat hien ten file trong SKILL.md (bang duong dan day du hay
+      // ten file rut gon) — dung regex `L-` o day se qua loa lesson ID.
+      if (!skill.includes(name)) {
+        problems.push(
+          `C4       ${name} co trong ${INDEX} nhung SKILL.md khong tro toi - ` +
+            `phi ban khong bao gio duoc nap`,
+        );
       }
     }
   }
@@ -286,6 +326,36 @@ export function selfTest() {
     "DRIFT",
   );
   probe("MISSING: thieu INDEX.md", { "a.md": GOOD_A }, "MISSING");
+
+  // --- C4: SKILL.md phai tro toi MOI lesson file ---
+  // Fixture co that `.opencode/skills/project-lessons/SKILL.md` de findSkillUp
+  // tim thay. Khong co case nay thi C4 co the chet ma gate van xanh.
+  const probeC4 = (name, skill, expect) => {
+    totalCases += 1;
+    const root = mkdtempSync(join(tmpdir(), "check-lessons-c4-"));
+    const dir = join(root, "docs", "LESSONS");
+    mkdirSync(dir, { recursive: true });
+    mkdirSync(join(root, ".opencode", "skills", "project-lessons"), { recursive: true });
+    writeFileSync(join(root, ".opencode", "skills", "project-lessons", "SKILL.md"), skill, "utf8");
+    writeFileSync(join(dir, INDEX), GOOD_INDEX, "utf8");
+    writeFileSync(join(dir, "a.md"), GOOD_A, "utf8");
+    const { code, out } = runSelf(["--dir", dir]);
+    rmSync(root, { recursive: true, force: true });
+    const ok = expect == null ? code === 0 : code !== 0 && out.includes(expect);
+    if (ok) console.log(`  ok   ${name}  exit=${code}`);
+    else {
+      failures += 1;
+      const want = expect == null ? "exit 0" : `exit != 0 chua '${expect}'`;
+      console.log(`  FAIL  ${name}\n        mong doi ${want}, nhan exit=${code}\n${out.trim()}`);
+    }
+  };
+
+  probeC4("C4 CONTROL: SKILL.md tro toi het", "| `docs/LESSONS/a.md` | a |\n", null);
+  probeC4(
+    "C4: lesson file co trong INDEX nhung SKILL.md khong tro toi",
+    "| `docs/LESSONS/zzz.md` | z |\n",
+    "C4",
+  );
 
   // ⚠ Case nay chung minh fix "DRIFT im lang": INDEX khong khai tong ⇒ gate BAO
   // loi. Neu quay lai thanh `if (declared)` thi case nay FAIL ⇒ gate bi mo lai.

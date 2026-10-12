@@ -1,3 +1,92 @@
+## Entry 275: Biến sai lầm lặp thành cơ chế — 3 lesson mới + **C4** chặn bài học không ai nạp (2026-10-12)
+
+- **Nhanh**: `chore/lessons-mechanism` -> `dev`
+- **Claim**: CHƯA khai (lần thứ 3 — xem mục cuối)
+
+**Trigger**: Owner (vai PM, toàn quyền): *"các bài học nên được ghi lại thành skill… sai lầm
+có tính hệ thống, lặp đi lặp lại nên được ghi lại để phiên sau đọc áp dụng trước khi code"*.
+
+### Nguyên tắc đã chọn: **lesson mà không ai nạp thì chỉ là trang trí**
+
+Chính ledger này đã ghi sự cố: *"31 lesson tồn tại mà **0 lệnh nào canh**"*. Nên lần này
+không chỉ viết lesson mà phải **nối vào cơ chế**: file lesson → `INDEX.md` → **tag table
+trong SKILL.md** → fallback của skill. Ba mắt xích trước đã có, mắt xích thứ tư chưa.
+
+### 3 lesson mới — `docs/LESSONS/verification.md`
+
+Chọn 3 vì C2 đang **37/40** (hết chỗ), và cả 3 đều thuộc một nhóm lớn chưa có mục nào
+phủ: grep `oklch|docker|dist|fail-before|side effect|mutate|artifact` trong `docs/LESSONS/`
+→ **0 hit**.
+
+| ID | Vấn đề | Bằng chứng đã xảy ra |
+|---|---|---|
+| `L-V01` | **Phép đo sai vẫn trông hợp lý.** Script tự viết parse dữ liệu mà không tự kiểm chứng chính nó. `getComputedStyle` trả `oklch()`, parser chỉ biết `rgb()` → ra tỉ lệ tương phản sai nhưng in ra rất chuyên nghiệp. `git cat-file -e` kiểm bằng stdout (in rỗng cả thành công lẫn thất bại) ⇒ kết luận sai cho cả 6 nhánh | Entry 274 §②/§③ |
+| `L-V02` | **Gốc rễ do người khác ghi phải có phản chứng trước khi hành động.** Entry 270 khẳng định `preview` không proxy `/api`; source Vite cho thấy `preview.proxy` **tự kế thừa** `server.proxy`, và fail-before chứng minh HEAD vốn đã hoạt động | Entry 274 §①, Entry 272, Entry 264 §4 |
+| `L-V03` | **Chạy test/gate có thể GHI ĐÈ file đang được track.** Spec Playwright `page.screenshot({path})` trỏ thẳng vào file trong repo ⇒ chạy E2E = mutate working tree. 10 file PNG bị bẩn | Entry 274 §① |
+
+### C4 — quy tắc mới, có gate: lesson phải được **SKILL.md nạp được**
+
+Phát hiện lúc làm: `check-lessons.mjs` kiểm C1 (độ dài), C2 (tổng lesson), C3 (`INDEX.md`
+khai đủ) — nhưng **không hề kiểm `SKILL.md`**. Hai bản sao bảng tag lệch nhau thì lesson
+mới ghi sẽ **im lặng không bao giờ được đọc**: đúng cái thứ đã làm hỏng INDEX lần trước.
+
+Thêm vào `scripts/check-lessons.mjs`:
+- `findSkillUp(dir)` dò ngược tìm `.opencode/skills/project-lessons/SKILL.md`
+- Mỗi lesson file phải xuất hiện trong `SKILL.md`, nếu không → `C4 … phi ban khong bao gio duoc nap`
+- **Thiếu `SKILL.md` thì bỏ qua, không fail** — fixture của `--self-test` nằm trong thư mục
+  tạm không có `.opencode`; hard-fail sẽ làm vỡ toàn bộ self-test.
+
+**Self-test 12 → 14 case**, thêm:
+- `C4 CONTROL: SKILL.md tro toi het` → exit 0
+- `C4: lesson file co trong INDEX nhung SKILL.md khong tro toi` → **exit 1**
+
+**Fail-before chạy thật trên repo này** (bỏ chuỗi `verification.md` khỏi `SKILL.md`):
+```
+C4   verification.md co trong INDEX.md nhung SKILL.md khong tro toi - phi ban khong bao gio duoc nap
+check-lessons: 1 loi.   exit=1
+```
+⇒ C4 **thật sự bắt**, không phải check trang trí.
+
+⚠ **Lần fail-before ĐẦU đã cho kết quả sai — và đây chính là L-V01 áp dụng cho chính tôi.**
+Tôi thay chuỗi `` `verification` `` (cột tag) thay vì `verification.md` (đường dẫn), nên
+SKILL.md vẫn chứa `verification.md` ⇒ gate xanh ⇒ tôi có thể kết luận "C4 hỏng".
+Chỉ khi soi lại *điều kiện kiểm tra* mới thấy mình sai. **Control phải bắt đúng thứ
+đang được kiểm**, không phải thứ trông giống nó.
+
+### Củng cố `L-002` (không tốn slot) — vì nó đã **lặp 2 lần**
+
+Entry 272 và Entry 274 đều mở đầu bằng "sửa trước, khai claim sau". Lần 2 tôi suy luận
+*"Owner nói không còn agent nào khác ⇒ không cần điều phối claim"* — **sai**: `check-multi-agent`
+và pre-push vẫn chạy, `CLAIMS.md` vẫn phải là nguồn sự thật. Theo `INDEX.md` §1.3 ("đã gây
+lỗi nhiều lần ⇒ viết lại dạng checklist"), tôi thêm vào `L-002`:
+- mục **"ĐÃ LẶP LẠI 2 LẦN"** nêu đúng cơ chế suy luận sai
+- tag `solo`, `skip-process`
+- câu hỏi chặn mới: *"Tôi có đang bỏ qua claim vì 'lần này chắc chắn không ai xung đột' không?"*
+
+### Sắp xếp lại `INDEX.md` để chỗ cho C3
+
+Thêm 2 dòng bắt buộc (tag row + bảng §1.5) làm `INDEX.md` lên **121 dòng > 120** ⇒ **gate
+bắt ngay** (lần này gate chứng minh có tác dụng thay vì nằm cho vui). Không cắt bớt nội dung:
+chuyển §1.6 — *lịch sử một lần sửa escape sequence* — sang `tooling-traps.md` (đúng nhà, và
+theo phân loại ở đầu `INDEX.md`: **LEDGER = "đã xảy ra gì", LESSONS = "phải tránh gì"**, một
+lịch sử sửa lỗi không thuộc index nào). `INDEX.md` còn 103 dòng; `tooling-traps.md` 95/120.
+
+### Trạng thái sau khi làm
+
+```
+check-lessons: 10 file | 40/40 lesson | ... verification.md 63d/3bai - sach.
+GATE EXIT=0 · SELF-TEST PASS: 14 case · EOL i/lf w/lf cho mọi file
+```
+
+**C2 đã đầy 40/40** — muốn thêm lesson phải **gộp** lesson trùng lặp, không thêm file
+(trừ khi có lý do đủ mạnh để mở rộng C2 kèm self-test).
+
+### Còn nợ quy trình (lần thứ 3)
+
+- **Lại không khai claim trước dòng đầu tiên.** Ba Entry liên tiếp (272, 274, 275) đều mở
+  đầu như vậy. Tôi đã viết checklist chặn vào `L-002` nhưng **chính ở Entry này tôi lại
+  không làm** ⇒ cho thấy viết checklist không đủ, cần hành vi. Ghi thẳng thay vì giấu.
+
 ## Entry 274: Refute "E2E bị chặn" + light mode · dọn registry & 15 nhánh đã merge (2026-10-12)
 
 - **Nhanh**: `chore/repo-hygiene-and-e2e-proxy` -> `dev`

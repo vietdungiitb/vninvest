@@ -20,14 +20,24 @@
 
 - **Nguyên nhân:** Bỏ qua bước khai claim, bắt tay sửa code ngay sau khi đọc trạng thái.
 - **Hậu quả thật:** Che mất file đang bị giữ bởi agent khác → đụng độ song song, mất dấu ownership tại thời điểm claim.
-- **Khi nào gặp:** `tags: [multi-agent, claim, claims]`
+- **ĐÃ LẶP LẠI 2 LẦN (2026-10-12, cùng một tác giả):** Entry 272 lẫn Entry 274 đều mở
+  đầu bằng "sửa trước, khai claim sau". Lần 2 suy luận: *"Owner nói không còn agent nào
+  khác nên không cần điều phối claim"* — **sai**, vì `check-multi-agent` và `pre-push`
+  vẫn chạy và `docs/CLAIMS.md` vẫn phải là nguồn sự thật. Bài học nằm ở chỗ **suy luận
+  từ ngữ cảnh để bỏ qua quy trình**, không phải ở chỗ quên.
+- **Khi nào gặp:** `tags: [multi-agent, claim, claims, solo, skip-process]`
 - **QUY TẮC:** "Khai claim vào cuối `docs/CLAIMS.md`, commit riêng, **trước khi sửa dòng đầu tiên**."
+  **Không có ngoại lệ theo ngữ cảnh** — kể cả khi chắc chắn là đang làm một mình.
 - **CHECKLIST:**
   - [ ] Đã chạy `git -C <main tree> status --short` để thấy thay đổi chưa commit của agent khác?
   - [ ] Đã **commit riêng** claim vào `docs/CLAIMS.md` **TRƯỚC** khi sửa dòng code đầu tiên?
   - [ ] Claim ghi rõ: phạm vi file + branch/agent + trạng thái `in-progress`?
   - [ ] Đã đọc `docs/CLAIMS.md` xem có agent khác `in-progress` cùng file không?
-- **Proof:** `AGENTS.md` bảng "Cạm bẫy đã gặp thật 2026-09-26" dòng "Khai claim khi chưa `git status`"; `docs/AGENT_PROTOCOL.md` §3.
+  - [ ] **Tôi có đang bỏ qua claim vì "lần này chắc chắn không ai xung đột" không?**
+        Nếu có → dừng lại: đó chính là lỗi đã lặp 2 lần. Khai claim trước đã.
+- **Proof:** `AGENTS.md` bảng "Cạm bẫy đã gặp thật 2026-09-26" dòng "Khai claim khi chưa
+  `git status`"; `docs/AGENT_PROTOCOL.md` §3; `docs/CODE_CHANGE_AUDIT_LEDGER.md`
+  Entry 272 §"Còn nợ quy trình" + Entry 274 §"Còn nợ quy trình (lần thứ 2)".
 
 ## L-003: Chạy gate TRƯỚC khi rebase - sai thứ tự
 
