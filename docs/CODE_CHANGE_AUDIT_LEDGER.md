@@ -8769,3 +8769,104 @@ commit hash — hoac it nhat branch con ton tai.
   da merge phan lon nhung can Owner xac nhan truoc, vi branch co the con commit chua vao `dev`.
   Kiem an toan: `git merge-base --is-ancestor origin/<branch> origin/dev` (0 = da vao dev).
 - **P0-SEC-01 van mo** — xem §5. Can Owner chon purge history hay chi rotate.
+## Entry 273: Rotate P0-SEC-01 · don 43 branch · 2 bug vnbroker · 8 loi F821 · PHAT HIEN P0 "147 file test khong chay" (2026-10-12)
+
+- **Nhanh**: `dev` truc tiep (4 commit: `5979cefaa` `57022e823` `30966a2f7` `211c0b5d5`)
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-A01, L-G01, L-G02,
+  L-G03, L-G04, L-G05, L-T01, L-T02, L-S01, L-S02, L-B01, L-B02, L-B03
+- **Tai lieu**: `docs/REPORT_FINAL_20261012.md` · `docs/WORKLOG.md`
+
+### 1. P0-SEC-01 — rotate (Owner chot "rotate ca 2, chap nhan mat 1 token")
+
+Do trucoc tieu `manage.py shell` (khong suy doan):
+`UserDNSECredential` = **0** · `CorePATCredential` = 252, 210 chua revoke,
+**209 da het han => 0 token con hieu luc**. Thiet hai thuc te = **0**, tot hon du kien.
+Backup `pg_dump` truoc khi rotate. Gia tri moi chi ghi `compose.dev.env` (LOCAL).
+
+**Chan tai dien (L-S01 buoc 5) — 2 lop, co bang chung may**:
+`.githooks/pre-commit` deny-list **THIEU** `compose*.env` => agent khac
+`git add compose.dev.env` lai se khong bi chan. Da them 3 file.
+Repo that: `ok.txt` rc=0 · `compose.dev.env` rc=1 CHAN · `.env` rc=1 CHAN ·
+`compose.prod.env` rc=1 CHAN.
+
+### 2. Don branch: 43 -> remote chi con `main` + `dev`
+
+- 16 branch da merge (`merge-base --is-ancestor` = 0).
+- 27 branch CHUA merge: **24 co diff RONG** voi `dev` (da vao qua squash-merge),
+  **3 chi la doc** da hop nhat vao ledger Entry 265-270.
+- **SAI LAM CUA TOI**: tao tag "an toan" **SAU** khi xoa, va tag tro toi commit
+  tren `dev` => **khong bao ve** commit cua branch da xoa. Phat hien bang lenh
+  `git merge-base --is-ancestor <tag> origin/<branch>` = KHONG. Da verify noi
+  dung con nguyen trong `dev` (Entry 265-270) => khong mat du lieu.
+- **Bai hoc**: tag phai tao **TRUOC** khi xoa va tro toi **commit cua branch**.
+
+### 3. Bug vnbroker — CLAIM PHIEN TRUOC SAI, da bac bo bang thuc nghiem (L-T02)
+
+Claim cu: *"KBS can >= 2 ngay nen start=end=today bi ValueError"*. **SAI**.
+
+Chung minh voi `vnbroker==3.7.2` that:
+- `TickerModel` **khong co validator nao** (doc source) — cau 1 ngay hop le.
+- 1 ngay **va** 2 ngay: **CUNG** `ValueError: Du lieu trong` (khac noi dung loi).
+- 5 ngay -> 3 rows · 30 -> 20 · 120 -> 82 · VND/HNG/ACB 10 ngay -> 6 rows.
+- 1 ngay theo tung ngay: T-0/T-1/T-2 **fail** · T-3/T-4/T-5 **OK rows=1**.
+
+=> Nguyen nhan THAT: KBS **chua co bar cho ngay do** (cuoi tuan / phien chua
+cap nhat) — KHONG phai gioi han cua so >= 2 ngay. Sua: noi cua so danh
+`(0, 3, 7, 30)` ngay. CHUNG MINH: `None` -> `close=225500.0`.
+
+**Bug 2 — timestamp lech 7 gio**: `vnbroker/explorer/dnse/quote.py:238-243`
+chuyen Unix ts -> `Asia/Ho_Chi_Minh` roi `tz_localize(None)` => `time` la
+**gio VN naive**. Comment adapter "treat as UTC" SAI. Assert chung minh lech
+**dung 7.0 gio**.
+
+### 4. 8 loi `F821 NameError` (Owner cho phep cai ruff vao `.venv`)
+
+`advertising/views.py:118` goi `models.Q(...)` trong khi chi import `Q` →
+`NameError` chay trong `if tenant:`. + `badge` x5, `gzip` x1, `parity_score` x1,
+`CoreTenant` x1. F821 **8 -> 0**.
+
+### 5. P0 MOI — 147 file test CHUA BAO GIO CHAY
+
+`manage.py test` bao **724 OK** trong moi bao cao. Do bang `build_suite`:
+`TOPLEVEL {'tests': 724}` · `HAS_market_data_tests False` ·
+`USER_WORKSPACE_TESTS 2` (app co **21** file test).
+
+=> **12 app / 147 file / 1 501 test** trong `src/<app>/tests/` **khong** duoc
+Django discover. Chay 12 app do: **1 501 test, 218 errors**.
+
+| Nhom loi | So | Danh gia |
+|---|---|---|
+| `psycopg2.OperationalError` | 209 | **MOI TRUONG** — client bi OOM |
+| `ModuleNotFoundError: pytest` | 1 | **LOI THAT** — `test_secret_store.py` |
+
+Bang chung moi truong: host 13.7 GB, `vmmemWSL` 4.4 GB, free 1.4 GB;
+`manage.py migrate` bi giet giua chung; Postgres log
+`unexpected EOF on client connection` (may ben client, khong phai DB).
+**Con so 218 la UPPER BOUND, chua phai so loi code that** — can >=4 GB RAM de do lai.
+
+### 6. GATE CHAY THAT
+
+`manage.py check` 0 · `makemigrations --check` No changes ·
+`check_admin_ux.py` 0 loi + `--self-test` **25/25** · `tests.test_admin_ui`
+**OK 45/45** · `manage.py test market_data` **OK 167/167** ·
+**full BE `manage.py test` 724 OK** · `ruff --select F821` **All checks passed** ·
+`tsc` 0 · `lint` 0 error · `build` 0 · FE **918/918** ·
+`pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL** (2 lan) · CI `scan` pass.
+
+**CHUA CHAY**: so loi that cua 1 501 test (RAM) · ruff muc cau hinh ·
+Playwright · `LiveBrokerContractTests` · CI billing.
+
+### 7. L-T01 PHAM 9 LAN TRONG 1 PHIEN
+
+`Edit` tool tren Windows doi LF->CRLF **lan 9**. Lay `git diff --numstat`:
+| Truoc chuan hoa | Sau chuan hoa | That su |
+|---|---|---|
+| `docker-compose.dev.yml` 574/574 | **11/11** | 11 dong `VNBROKER_GITHUB_TOKEN` |
+| `vnbroker_adapter.py` 1506/1484 | **28/6** | 22 dong them |
+| `.githooks/pre-commit` 82/79 | **4/1** | 3 dong DENY |
+| `.gitignore` 107/104 | **4/1** | 4 dong comment |
+| `advertising/views.py` 473/473 | **1/1** | 1 dong |
+
+LUU Y: `vnadmin.css` **KHONG** chuan hoa — `HEAD` blob giu dang `\r\r\n`
+(CR=6756 LF=3378). Write file bang CRLF thuan se phinh 6685/3378. Chot bang
+script doc blob tu `git show` + assert "khong selector nao khac bi lo".
