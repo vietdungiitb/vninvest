@@ -8943,3 +8943,69 @@ Dung `Write` (khong phai `Edit`) cho file moi ⇒ LF thuan ngay tu dau.
 
 23 loi ruff con lai cua `settings.py` **CO SAN** — verify bang `git stash push
 -- <file>` + `git stash pop` (KHONG dung `git checkout --`, L-A01).
+### 13. GIAI 6/22 LOI DA LO RA — `56755ba21`, `2db7efcf9`
+
+Full suite chay lai sau moi fix (do bang lenh, khong uoc luong):
+
+| | Luc moi bat discovery | Hien tai | Giam |
+|---|---|---|---|
+| So test | 2932 | **2959** | +27 (nhac toi fix `pytest`) |
+| FAIL | 13 | **8** | **−5** |
+| ERROR | 38 | **14** | **−24** |
+
+#### 1. 4 FAIL `test_user_workspace_tenant_isolation` (`56755ba21`)
+
+File nay **fail ngay khi chay rieng** (26 test → 4 FAIL) ⇒ loi co san, bi giu vi
+no nam o `src/vninvest_core/tests/`.
+
+Chan doan bang log:
+```
+WARNING user_workspace.permissions: WorkspacePermission: thieu permission
+        portfolio_write cho user=3
+AssertionError: 403 != 201
+```
+Doc `permissions.py:112-116` + `_declared_permissions`: `portfolio_write` map sang
+`sa:write`, `viewer` **khong co**. `SAFE_METHODS` (GET/HEAD/OPTIONS) moi qua
+⇒ **HANH VI CODE SAI DUNG; TEST SAI**. `setUpTestData:54-58` tao
+`TenantMember(user1, tenant_a, role='viewer')` roi T15/T16/T17 lai POST/PATCH
+bang `user1`.
+
+Sua dung `owner_a` (owner_user la thanh vien ngam dinh, co `*`). **T05 giu
+kiem 404** — day la test bao ve multi-tenant, KHONG duoc ha cap thanh 403
+(user2 cung 403 thi test pass nham = fail-open).
+⇒ `Ran 26 tests` → **OK 26/26**.
+
+#### 2. 1 ERROR `test_secret_store` — `import pytest` thua (`2db7efcf9`)
+
+`import pytest` (L17) nhung `Select-String "pytest\."` → **0 hit** ⇒ thua hoan toan.
+⇒ `ModuleNotFoundError` làm **28 test ERROR**. Xoa import thua → **OK 28/28**.
+
+KHONG cai `pytest` vao requirements va KHONG dung `pytest.skip` de xoa symptom.
+
+#### 3. SUA CUA TOI BI HOAN NGUYEN — ghi lai de khong lap
+
+Thu 2 cau doi voi `test_ledger_migration_backfill.py`:
+1. them `_discard_test_transactions()` vao `setUp`
+2. cho `_discard_test_transactions()` xoa ca `LedgerEntry` + `CashFlow`
+
+Ca hai deu **khong giam loi**: 10 ERROR truoc → 10 ERROR sau (do bang lenh tren
+4 lan chay). Theo "thay doi toi thieu" da `git checkout -- <file>` (hop le o day:
+la thay doi **cua chinh toi trong phien nay, chua commit**) va **khong** giu vao
+commit. Bai hoc: sua test khong giam loi thi thay doi do khong co gia tri.
+
+### 14. 14 ERROR + 8 FAIL CON LAI — tach ticket
+
+| Nhom | So | File | Nguyên nhân (da do, chua sua) |
+|---|---|---|---|
+| migration backfill | 13 | `test_ledger_migration_backfill.py` | `TransactionTestCase` + `MigrationExecutor`: `tearDown` migrate ve `BEFORE`, `_fixture_teardown` flush **sau** do ⇒ du lieu test truoc con lai; lai them backfill tao trung `uniq_ledger_entry_tenant_external_id` `(tenant, 'B-1')`. Chay **1 test don le** van loi ⇒ **loi co san**, khong phai thu tu. |
+| seed verification | 1 | `test_seed_verification.py` | cung nhom voi migration |
+| cash_cross_check false-positive | 6 FAIL | `test_review_findings_wave2` | `cash_from_ledger` vs `cash_from_cash_flow` lech 10tr — can Owner chot `sign_convention` |
+| abort / stop-mode | 2 FAIL | `test_seed_verification` + `test_review_findings_wave2` | |
+
+**Khong sua tiep trong phien nay** — can thiet ke lai cach `TransactionTestCase`
+quan ly migration, khong phai patch 1 dong. Tach ticket rieng.
+
+### 15. GATE
+
+`manage.py check` 0 · `makemigrations --check` No changes · `check_admin_ux.py` PASS ·
+`pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL** · 21 container chay lai.
