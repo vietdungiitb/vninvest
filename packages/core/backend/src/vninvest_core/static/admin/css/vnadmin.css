@@ -1837,42 +1837,6 @@ body.vnadmin .vn-kpi {
   border-radius: var(--vn-r-card);
 }
 
-body.vnadmin .vn-kpi__label {
-  margin: 0 0 var(--vn-sp-1);
-  font-size: var(--vn-fs-muted);
-  font-weight: 600;
-  line-height: 18px;
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-kpi__value {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 600;
-  line-height: 40px;
-  color: var(--vn-text);
-  font-variant-numeric: tabular-nums;
-}
-
-body.vnadmin .vn-kpi__value a {
-  color: var(--vn-text);
-}
-
-body.vnadmin .vn-kpi__value a:hover {
-  color: var(--vn-primary);
-  text-decoration: none;
-}
-
-body.vnadmin .vn-kpi__value--error {
-  color: var(--vn-text-muted);
-}
-
-body.vnadmin .vn-kpi__hint {
-  margin: var(--vn-sp-1) 0 0;
-  font-size: var(--vn-fs-muted);
-  line-height: 18px;
-  color: var(--vn-text-muted);
-}
 
 /* ── Canh bao ──────────────────────────────────────────────────────────── */
 body.vnadmin .vn-alert-list {
