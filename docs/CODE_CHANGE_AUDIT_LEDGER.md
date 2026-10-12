@@ -9009,3 +9009,62 @@ quan ly migration, khong phai patch 1 dong. Tach ticket rieng.
 
 `manage.py check` 0 · `makemigrations --check` No changes · `check_admin_ux.py` PASS ·
 `pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL** · 21 container chay lai.
+### 16. PURGE HISTORY — XONG (Owner chot 2026-12, thuc thi 2026-10-12)
+
+**Tinh huong thuan loi do bang lenh**: `gh api repos/...` →
+`forks=0 watchers=0 stars=0` ⇒ **chua ai clone** ⇒ purge khong lam ai mat gi.
+
+#### Backup truoc khi purge (khong the hoan tac)
+
+`git bundle create full-history.bundle --all` → **140.6 MB / 2510 commit**
+vao `%TEMP%/vninvest-prepurge-20261012-192420/`.
+
+#### Purge
+
+```
+git filter-repo --path compose.dev.env --invert-paths --force
+→ Parsed 2510 commits · New history written in 6.42 seconds
+→ HEAD aa72fa38c
+```
+
+Chi gos **`compose.dev.env`** — file duy nhat chua gia tri THAT.
+`compose.dev.env.example` giu nguyen (chi `<REQUIRED...>` placeholder,
+da kiem bang lenh).
+
+#### Xac minh SAU purge (khong tin thong bao cua cong cu)
+
+| Kiem | Ket qua |
+|---|---|
+| `git log --all -- compose.dev.env` | **0 commit** |
+| 9 hit con lai cua `DNSE_CREDENTIAL_FERNET_KEY=` | tat ca `len=8..11` = **ten bien / placeholder**, doc tung file de kiem |
+| `git ls-tree -r origin/dev` | chi con `compose.*.env.example` |
+| `git ls-remote --tags origin` | **0 tag** (xoa them `heatmap-mockup-alignment-20260417` — tro toi commit CO `compose.dev.env`) |
+| remote branches | chi `dev` + `main` |
+
+#### Force-push
+
+`git push --force origin dev` → `+ 4eb522533...aa72fa38c (forced update)` exit 0.
+`gh api` xac nhan: branches = `dev`,`main`; tags = rong.
+
+#### 2 SU LO CUA TOI TRONG PHAI LAM — ghi lai
+
+1. `filter-repo` **xoá luon remote `origin`** ⇒ `fatal: 'origin' does not appear to be
+   a git repository`. Phai `git remote add origin <url>` lai truoc khi push.
+2. Cho phep xoa tag cong don ⇒ phai xoa **tung tag** va kiem tung tag
+   (`heatmap-mockup-alignment-20260417` van con va **tro toi commit co secret**).
+
+#### GATE
+
+`pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL** tren HEAD sau purge
+(noi dung HEAD khong doi — chi SHA lich su doi).
+
+### 17. VIEC CHUA LAM DUOC — can moi truong
+
+`docker` mat container `vninvest-dev-core-db` va **ca 21 container `vninvest-dev`**
+trong luc chay gate nang (RAM host chi con 0.4 GB do `Code` 2 GB +
+`Antigravity IDE` 1.5 GB). Phai khoi dong lai bang
+`docker compose -f docker-compose.dev.yml up -d` hoac `start_dev.ps1`.
+
+**Chua do lai duoc** vi thieu DB:
+- so loi that cua 13 ERROR `test_ledger_migration_backfill` + 1 `test_seed_verification`
+- 8 FAIL con lai (6 `cash_cross_check` + 2 abort/stop-mode)
