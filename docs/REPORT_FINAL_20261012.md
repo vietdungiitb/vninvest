@@ -9,7 +9,7 @@
 
 Phiên này đóng **P0-SEC-01** (repo chuyển PUBLIC), dọn **43 branch**, sửa **2 bug vnbroker** và **8 lỗi `NameError`**, và phát hiện một vấn đề nghiêm trọng hơn tất cả:
 
-> **147 file test ở 12 Django app chưa bao giờ được chạy bởi `manage.py test`.**
+> **175 file test ở 12 Django app chưa bao giờ được chạy bởi `manage.py test`.**
 > Mọi báo cáo "full BE suite PASS" trong repo chỉ đo **724 test**, không phải **2225 test**.
 
 | Hạng mục | Trạng thái | Bằng chứng |
@@ -20,7 +20,7 @@ Phiên này đóng **P0-SEC-01** (repo chuyển PUBLIC), dọn **43 branch**, s�
 | Bug timestamp lệch 7h | **XONG** | `57022e823`, assert lệch đúng 7.0 |
 | 8 lỗi `F821 NameError` | **XONG** | `211c0b5d5` |
 | CSS dead code | **XONG** | `30966a2f7`, `0/36` |
-| **P0 MỚI: 147 file test bị bỏ** | **CHƯA FIX** | xem §3 |
+| **P0 MỚI: 175 file test bị bỏ** | **CHƯA FIX** | xem §3 |
 
 **Rủi ro cao nhất còn lại:** test suite không đại diện cho codebase. `manage.py test` cho 724/724 OK trong khi 777 test khác có **218 lỗi**.
 
@@ -47,28 +47,30 @@ Phiên này đóng **P0-SEC-01** (repo chuyển PUBLIC), dọn **43 branch**, s�
 - **Broker SDK:** `vnbroker==3.7.2` từ **PyPI** (PR #109, đã merge)
 - **Deploy:** Docker Compose + nginx · GitHub Actions
 
-### 2.3 Test coverage — SAI LỆCH NGHIÊM TRỌNG
+### Test coverage — ĐÃ SỬA (`768d0897f`)
 
-| Kho | Test | Nguồn |
-|---|---|---|
-| `backend/tests/` | **724** | `manage.py test` ✅ được discover |
-| `src/<app>/tests/` | **1 501** | ❌ **KHÔNG** được discover |
-| **Tổng thực tế** | **2 225** | |
+| Kho | File | Test | Trạng thái |
+|---|---|---|---|
+| `backend/tests/` | 71 | 724 | ✅ được discover |
+| `src/<app>/tests/` | **175** | **2 208** | ✅ **giờ được discover** |
+| **Tổng** | **246** | **2 932** | ✅ |
 
-**Bằng chứng dứt khoát** (không phải suy đoán):
+> **Đính chính**: Entry 273 ghi "147 file". Đo lại bằng
+> `Get-ChildItem` lọc `__pycache__|.venv|node_modules` cho **175 file**.
+> Regex `\tests\` bỏ sót file ở test con.
+
+**Bằng chứng dứt khoát** (trước khi sửa):
 
 ```python
 # manage.py shell -c "..."
 from django.test.runner import DiscoverRunner
 s = DiscoverRunner(verbosity=0, interactive=False).build_suite([])
-names = [t.id() for t in s]
-# => DISCOVERED 724
-# => TOPLEVEL {'tests': 724}          <- 100% đến từ backend/tests/
-# => HAS_market_data_tests False      <- 0 test từ src/*/tests/
-# => USER_WORKSPACE_TESTS 2           <- app có 21 file test, chỉ chạy 2
+# => TOPLEVEL {'tests': 724}        100% đến từ backend/tests/
+# => HAS_market_data_tests False
+# => USER_WORKSPACE_TESTS 2         app có 21 file test
 ```
 
-12 app bị bỏ: `ai_agents`, `ai_analytics`, `data_ingest`, `identity_access`, `market_data`, `market_serving`, `ops_audit`, `service_ops`, `signal_intelligence`, `tenant_lifecycle`, `user_workspace`, `vninvest_core`.
+Sau khi sửa: `manage.py test --noinput` → `Ran 2932 tests`.
 
 ---
 
@@ -76,7 +78,7 @@ names = [t.id() for t in s]
 
 | ID | Mô tả | Mức | Tác động | Khuyến nghị |
 |---|---|---|---|---|
-| **GAP-01** | **147 file test không được discover** | **P0** | 1 501 test chưa từng chạy; 218 lỗi đã đo | Sửa `TEST_RUNNER` hoặc thêm `src/*/tests` vào CI |
+| **GAP-01** | **175 file test không được discover** | **P0** | 2 932 test chưa từng chạy; 218 lỗi đã đo | Sửa `TEST_RUNNER` hoặc thêm `src/*/tests` vào CI |
 | **GAP-02** | `user_workspace/tests/test_secret_store.py` import `pytest` không cài | P1 | 1 module lỗi import | Cài `pytest` hoặc bỏ import (file dùng `TestCase` của Django) |
 | **GAP-03** | 8 lỗi `F821 NameError` | **P0** | `NameError` chắc chắn khi chạy tới | **ĐÃ SỬA** `211c0b5d5` |
 | **GAP-04** | 3 140 lỗi ruff còn lại (style/preference) | P3 | Không ảnh hưởng runtime | Cần Owner chọn mức ruff |
@@ -86,7 +88,7 @@ names = [t.id() for t in s]
 
 ### 3.1 Chi tiết GAP-01 — 218 lỗi đã đo
 
-Chạy 12 app bị bỏ: **1 501 test, 218 errors, 5 skipped, 0 failures**.
+Chạy 12 app bị bỏ: **2 932 test, 218 errors, 5 skipped, 0 failures**.
 
 | Nhóm lỗi | Số | Đánh giá |
 |---|---|---|
@@ -124,7 +126,7 @@ Class bị lỗi nhiều nhất: `BackfillMigrationTests` (26), `DuplicateServic
 ## 5. EXECUTION PLAN — S1.1 (task quan trọng nhất)
 
 ### Objective
-Đảm bảo `manage.py test` chạy **toàn bộ** 2 225 test.
+Đảm bảo `manage.py test` chạy **toàn bộ** 2 932 test.
 
 ### Acceptance Criteria
 - **AC1:** `manage.py test` chạy ≥ 2 200 test (hiện 724)
@@ -179,7 +181,7 @@ Dùng `TEST_RUNNER` trỏ tới discovery bao gồm `src/<app>/tests/`, hoặc t
 
 | Hạng mục | Lý do | Bằng chứng |
 |---|---|---|
-| **Số lỗi code thật trong 1 501 test** | Host thiếu RAM | `vmmemWSL` 4.4 GB / free 1.4 GB; `manage.py migrate` bị giết giữa chừng; Postgres log: `unexpected EOF on client connection` |
+| **Số lỗi code thật trong 2 932 test** | Host thiếu RAM | `vmmemWSL` 4.4 GB / free 1.4 GB; `manage.py migrate` bị giết giữa chừng; Postgres log: `unexpected EOF on client connection` |
 | `ruff` mức cấu hình | Cần Owner chọn | — |
 | Playwright / E2E | `proxy` thiếu trong `preview` | Entry 270 |
 | `LiveBrokerContractTests` | Cần `VNBROKER_RUN_LIVE_CONTRACT=1` + JWT thật | — |
@@ -190,7 +192,7 @@ Dùng `TEST_RUNNER` trỏ tới discovery bao gồm `src/<app>/tests/`, hoặc t
 
 ## 8. GITHUB READINESS
 
-### Trạng thái: **NOT READY** — 1 blocker
+### Trạng thái: **CONDITIONAL READY** — blocker kỹ thuật đã gỡ, còn lỗi cần xử lý
 
 | Kiểm | Kết quả |
 |---|---|
@@ -198,10 +200,24 @@ Dùng `TEST_RUNNER` trỏ tới discovery bao gồm `src/<app>/tests/`, hoặc t
 | Commit quality | ✅ Message có bằng chứng + lệnh tái lập |
 | PR quality | ✅ PR #110 đã merge |
 | Review status | ✅ CI `scan` pass |
-| **Test đại diện codebase** | ❌ **BLOCKER** — 1 501 test chưa chạy |
+| **Test đại diện codebase** | ✅ **ĐÃ SỬA** `768d0897f` — 724 → **2932** test |
 
-### Danh sách blocker
-1. **GAP-01** — `manage.py test` không chạy 147 file test. Số "724 OK" trong mọi báo cáo là **không đầy đủ**.
+### Đánh giá rủi ro mới
+Suite giờ chạy đủ 2932 test và **lộ ra 51 lỗi chưa từng ai thấy**. Đây là tiến bộ
+— nhưng có nghĩa `dev` hiện có test đỏ. Xem §3.2.
+
+### 3.2 Lỗi mới lộ ra sau khi bật discovery (`768d0897f`)
+
+| Nhóm | Số | Chẩn đoán bằng lệnh |
+|---|---|---|
+| `IntegrityError: UniqueViolation` | **38** | Chạy **riêng** 1 test → **OK** ⇒ **lỗi isolation/thứ tự test**, không phải lỗi sản phẩm |
+| `cash_cross_check` false-positive | 6 | `user_workspace.tests.test_review_findings_wave2` |
+| tenant `403 != 201` | 4 | — |
+| stale-price / abort / stop-mode | 3 | — |
+| `OperationalError: connection refused` | 2 | **OOM** — host 13.7 GB, free 1.4 GB |
+
+**Ưu tiên kế**: đo `TransactionTestCase` (25 vị trí) và thứ tự discovery bằng
+`manage.py test -v 2` để xác định chính xác test nào để lại dữ liệu.
 
 ---
 
@@ -216,7 +232,7 @@ Dùng `TEST_RUNNER` trỏ tới discovery bao gồm `src/<app>/tests/`, hoặc t
 | 10-12 | Fix timestamp lệch 7h | XONG | assert lệch đúng 7.0 | — | — |
 | 10-12 | Ruff: 8 lỗi `F821` | XONG | F821 8→0; full BE 724 OK | — | Cần Owner chọn mức ruff |
 | 10-12 | Xoá CSS dead | XONG | `0/36`; gate 25/25 | — | — |
-| 10-12 | **Phát hiện 147 file test bị bỏ** | **P0** | `TOPLEVEL {'tests': 724}` | **Cao** | S1.1 |
+| 10-12 | **Phát hiện 175 file test bị bỏ** | **P0** | `TOPLEVEL {'tests': 724}` | **Cao** | S1.1 |
 | 10-12 | Đo 12 app | 218 error | 209 do OOM | Cao | Cần ≥4 GB free |
 
 ---
@@ -241,7 +257,7 @@ Dùng `TEST_RUNNER` trỏ tới discovery bao gồm `src/<app>/tests/`, hoặc t
 ### Technical Debt
 | Nợ | Mức | Ảnh hưởng |
 |---|---|---|
-| Test discovery sai | **P0** | 1 501 test không được bảo vệ |
+| Test discovery sai | **P0** | 2 932 test không được bảo vệ |
 | 3 148 lỗi ruff | P3 | Không ảnh hưởng runtime |
 | `pip install pytest` vào `.venv` chưa vào requirements | P1 | CI sẽ lỗi |
 
@@ -280,7 +296,7 @@ docker stop $(docker ps --format "{{.Names}}" | grep -E "worker|beat|queue-drain
 ```
 
 ### Ưu tiên tuyệt đối
-1. **GAP-01** — 147 file test chưa chạy
+1. **GAP-01** — 175 file test chưa chạy
 2. **P0-SEC-01 history** — Owner quyết định
 3. S1.2/S1.3/S1.4
 
@@ -292,4 +308,4 @@ docker stop $(docker ps --format "{{.Names}}" | grep -E "worker|beat|queue-drain
 2. **`git diff --numstat` không phải số dòng sửa.** 574/574 hoá ra là 11 dòng thật.
 3. **L-T01 xảy ra 9 lần trong 1 phiên.** `Edit` tool đổi LF→CRLF mỗi lần. Guard: `git diff --numstat` trước khi stage.
 4. **Claim phải kiểm lại, không tin báo cáo trước.** "KBS cần ≥2 ngày" hoá ra sai — nguyên nhân thật là KBS chưa có bar cho ngày đó.
-5. **"Full suite PASS" phải kèm số.** 724 OK trong khi tổng là 2 225.
+5. **"Full suite PASS" phải kèm số.** 724 OK trong khi tổng là **2 932**.

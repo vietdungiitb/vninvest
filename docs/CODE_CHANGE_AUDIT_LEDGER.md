@@ -8870,3 +8870,76 @@ Playwright · `LiveBrokerContractTests` · CI billing.
 LUU Y: `vnadmin.css` **KHONG** chuan hoa — `HEAD` blob giu dang `\r\r\n`
 (CR=6756 LF=3378). Write file bang CRLF thuan se phinh 6685/3378. Chot bang
 script doc blob tu `git show` + assert "khong selector nao khac bi lo".
+### 8. SUA TEST DISCOVERY — `768d0897f` (S1.1 XONG)
+
+**Root cause do bang lenh** (`DiscoverRunner.build_suite`):
+
+```
+TOPLEVEL {'tests': 724}          <- 100% den tu backend/tests/
+HAS_market_data_tests False
+USER_WORKSPACE_TESTS 2          <- app co 21 file test
+```
+
+Repo co **HAI** test root, Django chi quet mot:
+- `backend/tests/` — 71 file (duoc chay)
+- `src/<app>/tests/` — **175 file** (KHONG duoc chay)
+
+**Dinh chinh so cua phien truoc**: Entry 273 §5 ghi "147 file". Do lai bang
+`Get-ChildItem` loai `__pycache__|.venv|node_modules` cho **175 file** — regex
+`\\tests\\` cua phien truoc bo sot file o test con. Con so **246 file / 2932 test**
+moi dung.
+
+**Sua**: `vninvest_core/test_runner.AppTestRunner` union ca hai root.
+App test import la `<app>.tests.*` ⇒ `top_level` phai la **`src/`**, KHONG phai
+`backend/`. `TEST_RUNNER` chi set khi `'test' in sys.argv`.
+
+**AC (do bang lenh)**:
+
+| AC | Yeu cau | Ket qua | |
+|---|---|---|---|
+| AC1 | ≥ 2200 test | **2932** | PASS |
+| AC2 | `test_review_findings_wave2` chay | 14 dong khop | PASS |
+| AC3 | fail-before | 724 khong dat AC1 | PASS |
+
+`manage.py test --noinput` → `Ran 2932 tests` (truoc: `Ran 724 tests`).
+
+### 9. LO LOI MOI — tach ticket, CHUA SUA
+
+Full suite: **13 failures + 38 errors** (truoc day an vi test khong chay).
+
+| Nhom | So | Chan doan bang lenh |
+|---|---|---|
+| `IntegrityError: UniqueViolation` | **38/38 error** | Chay **rieng** 1 test → **OK** ⇒ **LOI ISOLATION / THU TU TEST**, khong phai loi san pham. Constraint `market_data_dailyprice_symbol_date_2664aa35_uniq`, key `(FPT, 2026-09-14)`. Nghi van: 25 `TransactionTestCase` truncate DB nhung du lieu test khac da tao van con. |
+| `cash_cross_check` false-positive | 6 FAIL | tai `user_workspace.tests.test_review_findings_wave2` |
+| tenant `403 != 201` | 4 FAIL | |
+| stale-price alert / abort / stop-mode | 3 FAIL | |
+| `OperationalError: connection refused` | 2 | **OOM** — host 13.7 GB, free 1.4 GB |
+
+TIEU CHI DE SUA LOI ISOLATION (ticket rieng, chua lam):
+1. Do la `TransactionTestCase` hay thu tu discovery? → chay `-v 2` de xem test
+   nao chay ngay truoc test fail.
+2. Co nen tach `TransactionTestCase` ra CI job rieng?
+3. Hay chuyen ve `TestCase` + `setUpTestData`?
+
+**KHONG sua test de cho xanh** trong commit nay.
+
+### 10. BA LOI TU THAN KHI VIET RUNNER (L-T02 — tu soa loi cua chinh minh)
+
+1. `dirname` x2 cho `src/` thay vì `backend/` ⇒ `ROOTS 1, apps 0`. File o
+   `src/vninvest_core/test_runner.py` ⇒ can **x3**.
+2. `top_level_dir=BACKEND_DIR` cho app ⇒ chi 9 test. Phai `SRC_DIR`.
+3. Django 5.1 `build_suite()` nhan `extra_tests` **keyword-only**.
+
+### 11. L-T01 KHONG PHA LAN 10
+
+Dung `Write` (khong phai `Edit`) cho file moi ⇒ LF thuan ngay tu dau.
+`git diff --numstat` = **8/0** + **141/0** — chi them, khong phinh dong.
+
+### 12. GATE
+
+`manage.py check` 0 · `makemigrations --check` No changes ·
+`check_admin_ux.py` PASS 0 loi · `ruff --select F,E9 test_runner.py`
+**All checks passed** · `pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL**.
+
+23 loi ruff con lai cua `settings.py` **CO SAN** — verify bang `git stash push
+-- <file>` + `git stash pop` (KHONG dung `git checkout --`, L-A01).

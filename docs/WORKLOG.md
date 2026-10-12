@@ -53,3 +53,27 @@
 | S1.3 fix `pytest` | Chưa làm (P1) |
 | S1.4 cấu hình ruff | Cần Owner chọn mức |
 | Purge git history | Cần Owner quyết (không thể hoàn tác) |
+
+## 2026-10-12 (S1.1) — Sửa test discovery: 724 → 2932 test
+
+| # | Task | Kết quả | Bằng chứng | Next |
+|---|---|---|---|---|
+| 21 | Viết `AppTestRunner` union 2 test root | PASS | `manage.py test` → `Ran 2932 tests` | — |
+| 22 | AC1 (≥2200 test) | **PASS** | 2932 (+2208) | — |
+| 23 | AC2 (`test_review_findings_wave2` chạy) | **PASS** | 14 dòng khớp trong log | — |
+| 24 | AC3 fail-before | PASS | 724 không đạt AC1 | — |
+| 25 | Đo lại số file test (đính chính 147→175) | PASS | `Get-ChildItem` lọc `__pycache__\|.venv\|node_modules` | — |
+| 26 | Phân loại 51 lỗi mới lộ ra | PASS | 38 UniqueViolation · 13 FAIL · 2 OOM | Ticket riêng |
+| 27 | Xác minh 23 lỗi ruff của `settings.py` là có sẵn | PASS | `git stash push/pop` (không `git checkout --`) | — |
+| 28 | Khôi phục 10 container worker | PASS | 19 container đang chạy | — |
+
+**Sửa sai của chính tôi**: Entry 273 ghi "147 file test bị bỏ" — sai. Đo lại
+bằng công cụ cho **175 file / 246 file tổng**. Regex `\tests\` bỏ sót file ở
+test con. Con số cũ đã được đính chính ngay trong ledger.
+
+**Ba lỗi tự thân khi viết runner** (đều bị bắt bằng lệnh, không đoán):
+`dirname` x2 thay vì x3 · `top_level` phải là `src/` không phải `backend/` ·
+`extra_tests` keyword-only trên Django 5.1.
+
+**CHƯA CHẠY**: sửa 38 lỗi `UniqueViolation` (cần xác định `TransactionTestCase`
+hay thứ tự discovery) · 13 FAIL cụ thể · ruff mức cấu hình · purge git history.
