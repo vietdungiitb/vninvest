@@ -174,13 +174,19 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       e(RotateCw, { className: "h-5 w-5 animate-spin mr-2 text-cyan-400" }),
       t("aiAdvisor.panel.initialLoading")
     ),
-    // Empty state — gọn (≤240px) + lý do + mốc quét + CTA (S5.2: icon 32px + title + desc lastScan + 2 CTA)
+    // `min-h` thay cho `max-h` cũ: `max-h-[240px]` + `justify-center` khiến hàng
+    // CTA bị cắt mất trên lane cao. Icon bọc trong vòng tròn + `flex-1` để
+    // empty state canh giữa thật sự trong lane đã cân bằng chiều cao.
     !loading && alerts.length === 0 && !error && e(
       "div",
-      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6 max-h-[240px]" },
-      e(Activity, { className: "h-8 w-8 text-slate-700/50 mb-2", "aria-hidden": true }),
+      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6 min-h-[240px]" },
+      e(
+        "div",
+        { className: "flex h-14 w-14 items-center justify-center rounded-full border border-slate-700/50 bg-slate-800/40 mb-3", "aria-hidden": true },
+        e(Activity, { className: "h-7 w-7 text-cyan-400/70" })
+      ),
       e("p", { className: "text-sm font-semibold text-slate-300" }, t("aiAdvisor.panel.emptyTitle")),
-      e("p", { className: "mt-1 text-xs text-slate-500 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }), count: alerts.length }) : t("aiAdvisor.panel.noScan")),
+      e("p", { className: "mt-1 text-xs text-slate-400 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }), count: alerts.length }) : t("aiAdvisor.panel.noScan")),
       e(
         "div",
         { className: "mt-3 flex items-center gap-2" },

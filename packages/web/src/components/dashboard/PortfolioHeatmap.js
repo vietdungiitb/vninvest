@@ -457,10 +457,14 @@ export function PortfolioHeatmap({
     { ref: containerRef, className: "core-heatmap h-full flex flex-col relative " + className },
     e(
       "div",
-      { className: "panel-head core-heatmap-header flex items-center justify-between mb-1" },
+      // `gap-3` + `flex-1` trên khối tiêu đề: trước đây tiêu đề và cụm nút
+      // tranh nhau chỗ và các nút bị bóp, "Tỷ trọng"/"Vốn hóa"/"Mở rộng" gãy
+      // xuống 2 dòng. Nay tiêu đề truncate trước, cụm nút `shrink-0` giữ
+      // nguyên 1 dòng.
+      { className: "panel-head core-heatmap-header flex items-center justify-between gap-3 mb-1" },
       e(
         "div",
-        { className: "min-w-0" },
+        { className: "min-w-0 flex-1" },
         e("h3", { className: "panel-title text-base font-semibold text-slate-100" }, t("heatmap.title")),
         e("p", { className: "mt-0.5 truncate text-[12px] font-medium text-slate-500 tabular-nums" },
           t("heatmap.scopeLine", { count: scopeCount, time: scopeUpdatedAt ? formatUpdateTime(scopeUpdatedAt) : "—" }) +
@@ -468,16 +472,16 @@ export function PortfolioHeatmap({
       ),
       e(
         "div",
-        { className: "flex items-center gap-3" },
+        { className: "flex items-center gap-2 shrink-0" },
         // Size Mode Toggle (Vốn hóa / Tỷ trọng)
         e(
           "div",
-          { className: "flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-slate-800" },
+          { className: "flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-slate-800 shrink-0" },
           e(
             "button",
             {
               onClick: () => setSizeMode("weight"),
-              className: `px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+              className: `px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap ${
                 sizeMode === "weight"
                   ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
@@ -489,7 +493,7 @@ export function PortfolioHeatmap({
             "button",
             {
               onClick: () => setSizeMode("marketCap"),
-              className: `px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+              className: `px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap ${
                 sizeMode === "marketCap"
                   ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
@@ -501,29 +505,29 @@ export function PortfolioHeatmap({
         // View Mode Toggle (Treemap / Sunburst)
         e(
           "div",
-          { className: "flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-slate-800" },
+          { className: "flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-slate-800 shrink-0" },
           e(
             "button",
             {
               onClick: () => setViewMode("treemap"),
-              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all whitespace-nowrap ${
                 viewMode === "treemap" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200"
               }`,
               "aria-label": t("heatmap.treemap"),
             },
-            e(Maximize2, { className: "h-3.5 w-3.5" }),
+            e(Maximize2, { className: "h-3.5 w-3.5 shrink-0" }),
             e("span", { className: "hidden sm:inline" }, t("heatmap.treemap"))
           ),
           e(
             "button",
             {
               onClick: () => setViewMode("sunburst"),
-              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all whitespace-nowrap ${
                 viewMode === "sunburst" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200"
               }`,
               "aria-label": t("heatmap.sunburst"),
             },
-            e(Minimize2, { className: "h-3.5 w-3.5" }),
+            e(Minimize2, { className: "h-3.5 w-3.5 shrink-0" }),
             e("span", { className: "hidden sm:inline" }, t("heatmap.sunburst"))
           )
         ),
@@ -533,7 +537,7 @@ export function PortfolioHeatmap({
             "button",
             {
               onClick: () => setShowAllTiles((v) => !v),
-              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all border ${
+              className: `flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-all border whitespace-nowrap shrink-0 ${
                 showAllTiles ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" : "text-slate-400 hover:text-slate-200 border-slate-800"
               }`,
               title: t("heatmap.scopeGrouped", { grouped: displayData.groupedCount }),

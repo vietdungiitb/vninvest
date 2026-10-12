@@ -43,21 +43,24 @@ function freshnessLabel(state, t) {
 }
 
 function severityCardStyles(severity, isRead) {
-  // S5.4 — severity chỉ ở viền trái, nền trung tính (bỏ bg màu riêng trừ left border)
+  // S5.4 — severity chỉ ở viền trái, nền trung tính (bỏ bg màu riêng trừ left border).
+  // S9 — Bỏ viền 4 cạnh: lane đã là một card, card con có viền đủ tạo cảm giác
+  // "hộp trong hộp" và làm lane nặng. Nay chỉ còn severity rail 4px bên trái
+  // + nền rất nhạt; ranh giới giữa các dòng do `space-y-2` đảm nhiệm.
   if (isRead) {
-    return "border-slate-800/80 bg-slate-900/30 border-l-2 border-l-slate-700 opacity-60 hover:opacity-100";
+    return "bg-slate-800/15 border-l-2 border-l-slate-600 opacity-60 hover:opacity-100 hover:bg-slate-800/25";
   }
   switch (severity) {
     case "critical":
-      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-red-500 hover:bg-slate-800/40";
+      return "bg-slate-800/25 border-l-4 border-l-red-500 hover:bg-slate-800/40";
     case "high":
-      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-orange-500 hover:bg-slate-800/40";
+      return "bg-slate-800/25 border-l-4 border-l-orange-500 hover:bg-slate-800/40";
     case "medium":
-      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-yellow-600 hover:bg-slate-800/40";
+      return "bg-slate-800/25 border-l-4 border-l-yellow-600 hover:bg-slate-800/40";
     case "low":
-      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-emerald-600 hover:bg-slate-800/40";
+      return "bg-slate-800/25 border-l-4 border-l-emerald-600 hover:bg-slate-800/40";
     default:
-      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-slate-500 hover:bg-slate-800/40";
+      return "bg-slate-800/25 border-l-4 border-l-slate-500 hover:bg-slate-800/40";
   }
 }
 
@@ -264,7 +267,7 @@ export function UnifiedAlertCenter({
     // Counter Hiển thị X/Y — khóa bất biến counts===cards khi filter=all
     e(
       "div",
-      { className: "px-1 pb-1 text-[11px] text-slate-500 tabular-nums" },
+      { className: "px-1 pb-1 text-[11px] text-slate-400 tabular-nums" },
       t("alert.showing", { shown: visibleAlerts.length, total: safeAlerts.length })
     ),
     // Alert list — không bao giờ trắng trơn: loading / lỗi / bị lọc hết / rỗng thật
@@ -312,11 +315,16 @@ export function UnifiedAlertCenter({
               )
         : visibleAlerts.map((alert) => {
             const alertId = alert.alert_id || alert.id;
-            // Without read state every card was implicitly "unread", which
-            // happened to give the full-opacity severity border — the right
-            // look, but for the wrong reason. Make it explicit so the styling
-            // does not depend on an empty Set.
-            const isUnread = hasReadState && !readAlertIds.has(alertId);
+            // Read state — 3 trạng thái thật, phân biệt rõ:
+//  - `hasReadState === false` → KHÔNG có dữ liệu đã đọc (Dashboard không truyền
+//    `readAlertIds`/`unreadCount`). Trước đây biểu thức `hasReadState && !read`
+//    gộp "chưa biết" vào "đã đọc", nên mọi card trên Dashboard rơi vào nhánh
+//    read: mất trắng severity + `opacity-60`. Hậu quả đo được trên bản build:
+//    5/5 card có viền trái xám và cả lane nhạt đi, không phân biệt được
+//    "Nghiêm trọng" với "Thấp". Không có dữ liệu thì không được kết luận là
+//    "đã đọc".
+//  - có dữ liệu → `isRead` = Set đã chứa alertId.
+const isRead = hasReadState && readAlertIds.has(alertId);
 
             // The card used to render FOUR bordered chips below the body
             // (direction, value, confidence, session). Two repeated data already
@@ -350,7 +358,9 @@ export function UnifiedAlertCenter({
 
             // Construct action buttons
             const actionButtons = [];
-            if (isUnread && markAlertAsRead) {
+            // Nút "đánh dấu đã đọc" chỉ hiện khi thật sự có read state và item chưa đọc
+            // — giữ nguyên hành vi cũ, không mở rộng phạm vi thay đổi này.
+            if (hasReadState && !isRead && markAlertAsRead) {
               actionButtons.push(
                 e(
                   "button",
@@ -394,8 +404,9 @@ export function UnifiedAlertCenter({
                   if (alert.symbol) onSelectSymbol?.(alert.symbol);
                   if (alertId && markAlertAsRead) markAlertAsRead(alertId);
                 },
-                className: `alert-card p-3 rounded-xl border cursor-pointer transition-all ${
-                  severityCardStyles(alert.severity, !isUnread)
+                // Không `border` 4 cạnh: chỉ severity rail (xem severityCardStyles).
+                className: `alert-card p-3 rounded-xl cursor-pointer transition-all ${
+                  severityCardStyles(alert.severity, isRead)
                 }`,
               },
               e(
@@ -428,7 +439,7 @@ export function UnifiedAlertCenter({
                       { className: "desc text-[11px] font-bold text-slate-200 tabular-nums", title: formatFullVND(alert.value) },
                       formatVNDCompact(alert.value)
                     ),
-                  e("span", { className: "time text-[10px] text-slate-500 tabular-nums whitespace-nowrap" },
+                  e("span", { className: "time text-[10px] text-slate-400 tabular-nums whitespace-nowrap" },
                     alert.executed_at
                       ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
                       : timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
@@ -436,7 +447,11 @@ export function UnifiedAlertCenter({
                 )
               ),
               bodyText && e("p", { className: "desc text-[11px] text-slate-300 leading-snug truncate mb-1", title: bodyText }, bodyText),
-              metaParts.length > 0 && e("div", { className: "text-[10px] text-slate-500 tabular-nums truncate" }, metaParts.join(" · ")),
+              // Dòng metadata (ngày · tin cậy · Mới) nâng lên slate-400: ở 10px,
+              // slate-500 trên nền lane đạt ~4.0:1 — dưới ngưỡng WCAG AA 4.5:1
+              // cho chữ nhỏ. Đây là dòng người dùng hay bỏ qua nhất nên cần
+              // nổi hơn, không phải mờ hơn.
+              metaParts.length > 0 && e("div", { className: "text-[10px] text-slate-400 tabular-nums truncate" }, metaParts.join(" · ")),
               // Actions strip
               actionsRow
             );

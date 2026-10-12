@@ -112,21 +112,24 @@ export function SmartStatsHeader({
         e(
           "div",
           { className: "flex flex-col" },
-          e("span", { className: "text-[10px] text-slate-500 uppercase tracking-widest leading-none mb-1" }, t("smartStats.marketValue")),
+          e("span", { className: "text-[10px] text-slate-400 uppercase tracking-widest leading-none mb-1" }, t("smartStats.marketValue")),
           e(
             "span",
             { className: "text-sm font-black text-slate-100 leading-none" },
             // Chưa biết thì hiện "—" chứ không phải "0 đ". Xem `marketValueKnown`.
             loading ? "--" : (marketValueKnown ? marketValue.toLocaleString("vi-VN") : "—"),
-            !loading && marketValueKnown
-              ? e("span", { className: "text-[10px] font-normal text-slate-600 ml-1" }, "đ")
-              : null
+// "đ" trước đây là slate-600 → SmartStatsHeader.css map sang
+              // --color-slate-600 (#475569) ≈ 2.5:1 trên nền header: FAIL AA.
+              // Đơn vị tiền là thông tin cần đọc, không phải chi tiết trang trí.
+              !loading && marketValueKnown
+                ? e("span", { className: "text-[10px] font-normal text-slate-400 ml-1" }, "đ")
+                : null
           )
         ),
         e(
           "div",
           { className: "flex flex-col" },
-          e("span", { className: "text-[10px] text-slate-500 uppercase tracking-widest leading-none mb-1" }, t("smartStats.unrealizedPL")),
+          e("span", { className: "text-[10px] text-slate-400 uppercase tracking-widest leading-none mb-1" }, t("smartStats.unrealizedPL")),
           e(
             "div",
             { className: `flex items-center gap-1.5 leading-none ${plSign > 0 ? "text-emerald-400" : plSign < 0 ? "text-rose-400" : "text-slate-400"}` },
@@ -141,13 +144,17 @@ export function SmartStatsHeader({
             )
           )
         ),
-        e(
-          "div",
-          { className: "hidden min-w-0 flex-1 lg:block" },
+        // Vùng giữa: có đường phân cách bên trái để top bar đọc thành 3 vùng rõ
+          // ràng (KPI · hành động/số phái · thị trường) thay vì các cụm chữ
+          // trôi lơ lửng. `max-w` chặn việc khối này giãn quá rộng trên màn
+          // hình lớn. Ở <lg vẫn ẩn như cũ — top bar hẹp không chỗ cho nó.
+          e(
+            "div",
+            { className: "hidden min-w-0 max-w-[760px] flex-1 lg:block lg:border-l lg:border-slate-800/70 lg:pl-6" },
           isEmptyPortfolio
             ? e(
               "div",
-              { className: "flex items-center gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-4 py-2 text-xs text-slate-400" },
+              { className: "flex items-center justify-center gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-4 py-2 text-xs text-slate-300" },
               e("span", null, t("smartStats.emptyCta")),
               e(
                 "button",
@@ -173,7 +180,7 @@ export function SmartStatsHeader({
                 e(
                   "div",
                   { key: metric.key, className: "min-w-0" },
-                  e("div", { className: "truncate text-[12px] font-medium text-slate-500" }, metric.label),
+                  e("div", { className: "truncate text-[12px] font-medium text-slate-400" }, metric.label),
                   e("div", { className: `mt-1 truncate text-xs font-black tabular-nums ${metric.color}` }, loading || metric.value === null || metric.value === undefined ? "--" : metric.format(metric.value))
                 )
               )
@@ -186,7 +193,7 @@ export function SmartStatsHeader({
         e(
           "div",
           { className: "flex flex-col items-end" },
-          e("span", { className: "text-[10px] text-slate-500 uppercase tracking-wider leading-none mb-1" }, t("smartStats.breadthLabel")),
+          e("span", { className: "text-[10px] text-slate-400 uppercase tracking-wider leading-none mb-1" }, t("smartStats.breadthLabel")),
           e(
             "div",
             { className: "flex items-center gap-1" },
@@ -205,7 +212,7 @@ export function SmartStatsHeader({
           ),
           e(
             "div",
-            { className: "mt-1 flex items-center justify-end gap-2 text-[10px] text-slate-500" },
+            { className: "mt-1 flex items-center justify-end gap-2 text-[10px] text-slate-400" },
             e("span", { className: "tabular-nums", title: `${t("smartStats.updatedAt")}: ${absoluteTime}` }, updatedLabel),
             isStale && e(
               "span",
