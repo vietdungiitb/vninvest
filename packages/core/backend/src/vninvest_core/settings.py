@@ -340,6 +340,14 @@ TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = False
 USE_TZ = True
 
+# Test discovery: repo co HAI test root — `backend/tests/` va
+# `src/<app>/tests/`. DiscoverRunner mac dinh chi thay 24%-ben dau nen
+# `manage.py test` chi chay 724/2 225 test (147 file tu 12 app bi bo qua
+# trong suot bao cao truoc day). Runner nay gop ca hai.
+# Chi dat khi dang chay lenh `test` — runtime khong dung den.
+if 'test' in sys.argv:
+    TEST_RUNNER = 'vninvest_core.test_runner.AppTestRunner'
+
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STORAGES = {
