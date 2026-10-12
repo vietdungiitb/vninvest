@@ -3,10 +3,13 @@ import time
 import random
 import json
 from datetime import date as dt_date
-from datetime import timedelta
+from datetime import timedelta as dt_timedelta
 from datetime import timezone as _dt_timezone
 from importlib import import_module
 from typing import Any, Optional
+
+# Asia/Ho_Chi_Minh = UTC+7, kh��ng đổi (VN không dùng DST).
+_VN_TZ = _dt_timezone(dt_timedelta(hours=7))
 
 import pandas as pd
 import httpx
@@ -449,17 +452,36 @@ def _pick_latest_bar(frame: pd.DataFrame):
 
 
 def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote_class) -> dict[str, Any] | None:
-    from datetime import date as dt_date
-
     today = dt_date.today()
     quote_client = quote_class(symbol=symbol_upper)
-    frame = quote_client.history(
-        start=today.isoformat(),
-        end=today.isoformat(),
-        interval='1D',
-        show_log=False,
-    )
+    frame = None
+    last_error: Exception | None = None
+    # Cửa sổ 1 ngày trả rỗng khi KBS chưa có bar cho ngày đó (cuối tuần,
+    # ngày lễ, phiên chưa cập nhật) -> nới dần thay vì trả None. Đo thật
+    # 2026-10-12: 1 ngày fail ở T-0/T-1/T-2 nhưng OK ở T-3; 5 ngày -> 3 rows.
+    for lookback_days in (0, 3, 7, 30):
+        start = today - dt_timedelta(days=lookback_days)
+        try:
+            frame = quote_client.history(
+                start=start.isoformat(),
+                end=today.isoformat(),
+                interval='1D',
+                show_log=False,
+            )
+        except Exception as exc:  # noqa: BLE001 — thử lookback rộng hơn
+            last_error = exc
+            frame = None
+            continue
+        if frame is not None and not frame.empty:
+            break
     if frame is None or frame.empty:
+        if last_error is not None:
+            logger.warning(
+                'realtime price empty for %s via %s after lookback: %s',
+                symbol_upper,
+                source,
+                last_error,
+            )
         return None
 
     # VCI trả ascending (iloc[0] = cũ nhất), KBS trả descending — không đoán thứ tự,
@@ -635,7 +657,7 @@ def fetch_daily_history(
 
     normalized_end_date = end_date or timezone.now().date()
     normalized_days = max(int(days or 1), 1)
-    normalized_start_date = start_date or (normalized_end_date - timedelta(days=normalized_days))
+    normalized_start_date = start_date or (normalized_end_date - dt_timedelta(days=normalized_days))
     if normalized_start_date > normalized_end_date:
         logger.warning(
             'fetch_daily_history ignored for %s due to invalid date range (%s > %s).',
@@ -990,12 +1012,18 @@ def fetch_intraday_tape_history(
             if ts_raw is None or pd.isna(ts_raw):
                 continue
 
-            # _parse_trades converts Unix timestamps → naive UTC datetime (tz stripped).
-            # For string timestamps from DNSE, they may be VN local naive; treat as UTC
-            # since VN production data consistently uses Unix seconds (UTC).
+            # vnbroker `_parse_trades` (explorer/dnse/quote.py:238-243) đã
+            # chuyển Unix ts -> Asia/Ho_Chi_Minh rồi `tz_localize(None)`, nên
+            # `time` là **giờ VN naive**. Gán tzinfo=utc như trước đây ⇒ lệch
+            # đúng 7 giờ. Sửa: neo theo giờ VN rồi mới chuyển sang UTC.
+            # Timestamp số (Unix) không đi qua nhánh này — đã là UTC sẵn.
             ts = pd.Timestamp(ts_raw)
             if ts.tzinfo is None:
-                utc_ts = ts.to_pydatetime().replace(tzinfo=_dt_timezone.utc)
+                utc_ts = (
+                    ts.to_pydatetime()
+                    .replace(tzinfo=_VN_TZ)
+                    .astimezone(_dt_timezone.utc)
+                )
             else:
                 utc_ts = ts.to_pydatetime().astimezone(_dt_timezone.utc)
 
