@@ -27,7 +27,10 @@ docker-compose.yml
 docker-compose.dev.yml
 docker-compose.prod.yml
 .env
-.env.example'
+.env.example
+compose.dev.env
+compose.prod.env
+compose.saas-prod.env'
 
 for f in $staged; do
   for d in $DENY; do
