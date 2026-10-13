@@ -9,14 +9,45 @@
  * Tất cả calls qua coreApiAdapter — KHÔNG dùng legacy apiClient.
  *
  * Không dùng JSX — tuân theo convention packages/web (createElement).
+ *
+ * ── i18n (2026-10-13, claim `pf-manage-rebuild`) ──────────────────────────
+ * Trước đây file này **không import `LangContext`** ⇒ ~28 chuỗi tiếng Việt
+ * hardcode, đổi ngôn ngữ là vô hiệu với toàn bộ panel. Nay mọi chuỗi đi qua
+ * `t()`. Hai điểm cần chú ý:
+ *
+ * 1. `t` PHẢI nằm trong deps của mọi `useCallback` sinh thông điệp. `t` được
+ *    `useMemo` hoá theo `locale` (`LangContext.js:70`) nên identity ổn định
+ *    trong một phiên — thêm vào deps không gây render lặp (L-F10).
+ * 2. Thông điệp lỗi KHÔNG dùng thẳng `err.message`: `CoreApiRequestError`
+ *    (`transport.js:305`) có dạng
+ *    `"Core API request error 404 Not Found - /broker/...: <detail>"` ⇒ lộ
+ *    đường dẫn nội bộ cho người dùng cuối. `readApiError` bóc `payload.detail`
+ *    trước, chỉ fallback sang `message` khi không có detail.
  */
-import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useI18n } from "../context/LangContext.js";
 import "./DNSEConnectionPanel.css";
 
 const e = createElement;
 
-function useDNSEStatus() {
+/**
+ * Bóc thông điệp lỗi cho người dùng.
+ *
+ * Ưu tiên `payload.detail` (tiếng Việt từ BE) vì `err.message` của
+ * `CoreApiRequestError` là chuỗi kỹ thuật có đường dẫn endpoint.
+ */
+function readApiError(err, fallback) {
+  const detail = err && typeof err === "object" ? err.payload?.detail : null;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  const msg = err && typeof err === "object" ? err.message : null;
+  if (typeof msg === "string" && msg.trim() && !msg.startsWith("Core API request error")) {
+    return msg;
+  }
+  return fallback;
+}
+
+function useDNSEStatus(t) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,11 +62,13 @@ function useDNSEStatus() {
       setStatus(res);
     } catch (err) {
       if (!mountedRef.current) return;
-      setError(err?.message || "Không thể tải trạng thái kết nối DNSE.");
+      setError(
+        readApiError(err, t("dnsePanel.errors.loadStatus", { defaultValue: "Không thể tải trạng thái kết nối DNSE." })),
+      );
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -56,7 +89,8 @@ function useDNSEStatus() {
  *   className?: string
  */
 export function DNSEConnectionPanel({ onConnected, className = "" }) {
-  const { status, loading, error, reload } = useDNSEStatus();
+  const { t, formatDateTime } = useI18n();
+  const { status, loading, error, reload } = useDNSEStatus(t);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
@@ -71,6 +105,10 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
   const [syncedAccounts, setSyncedAccounts] = useState([]);
   const [passcode, setPasscode] = useState("");
   const [tradingToken, setTradingToken] = useState("");
+  // Token giao dịch là BÍ MẬT. Mặc định `type="password"`; người dùng chủ động
+  // bật hiển thị khi cần copy. Trước đây `type="text"` ⇒ secret hiện ngang
+  // trên màn hình (và vào video họp / ảnh chụp màn hình).
+  const [showToken, setShowToken] = useState(false);
   const [orderAccountNo, setOrderAccountNo] = useState("");
   const [orderSymbol, setOrderSymbol] = useState("");
   const [orderSide, setOrderSide] = useState("BUY");
@@ -86,7 +124,9 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
   const handleSave = useCallback(async (evt) => {
     evt.preventDefault();
     if (!clientId.trim() || !clientSecret.trim()) {
-      setSaveError("Vui lòng nhập đầy đủ Client ID và Client Secret.");
+      setSaveError(t("dnsePanel.errors.needCredentials", {
+        defaultValue: "Vui lòng nhập đầy đủ Client ID và Client Secret.",
+      }));
       return;
     }
     setSaving(true);
@@ -103,11 +143,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       setClientSecret("");
       await reload();
     } catch (err) {
-      setSaveError(err?.message || "Lưu credential thất bại.");
+      setSaveError(readApiError(err, t("dnsePanel.errors.saveCredential", {
+        defaultValue: "Lưu credential thất bại.",
+      })));
     } finally {
       setSaving(false);
     }
-  }, [clientId, clientSecret, reload]);
+  }, [clientId, clientSecret, reload, t]);
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -121,11 +163,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       }
       await reload();
     } catch (err) {
-      setSyncResult({ ok: false, error: err?.message || "Đồng bộ tiểu khoản thất bại." });
+      setSyncResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.syncAccounts", {
+        defaultValue: "Đồng bộ tiểu khoản thất bại.",
+      })) });
     } finally {
       setSyncing(false);
     }
-  }, [onConnected, reload]);
+  }, [onConnected, reload, t]);
 
   const handleSyncBalances = useCallback(async () => {
     setSyncingBalances(true);
@@ -134,11 +178,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       const res = await coreApiAdapter.syncDNSEBalances();
       setBalanceResult({ ok: true, count: res?.synced_count ?? 0, date: res?.date || null });
     } catch (err) {
-      setBalanceResult({ ok: false, error: err?.message || "Đồng bộ số dư thất bại." });
+      setBalanceResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.syncBalances", {
+        defaultValue: "Đồng bộ số dư thất bại.",
+      })) });
     } finally {
       setSyncingBalances(false);
     }
-  }, []);
+  }, [t]);
 
   const handleReconcileTransactions = useCallback(async () => {
     setSyncingTransactions(true);
@@ -147,28 +193,37 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       const res = await coreApiAdapter.reconcileDNSETransactions({ days_back: 30 });
       setTxResult({ ok: true, count: res?.synced_count ?? 0 });
     } catch (err) {
-      setTxResult({ ok: false, error: err?.message || "Đối soát giao dịch thất bại." });
+      setTxResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.reconcile", {
+        defaultValue: "Đối soát giao dịch thất bại.",
+      })) });
     } finally {
       setSyncingTransactions(false);
     }
-  }, []);
+  }, [t]);
 
   const handleSendOtp = useCallback(async () => {
     setSendingOtp(true);
     setOtpResult(null);
     try {
       const res = await coreApiAdapter.sendDNSEEmailOtp({ mode: "paper" });
-      setOtpResult({ ok: true, message: res?.message || "Đã gửi OTP qua email DNSE." });
+      setOtpResult({
+        ok: true,
+        message: res?.message || t("dnsePanel.status.otpSent", { defaultValue: "Đã gửi OTP qua email DNSE." }),
+      });
     } catch (err) {
-      setOtpResult({ ok: false, error: err?.message || "Gửi OTP DNSE thất bại." });
+      setOtpResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.sendOtp", {
+        defaultValue: "Gửi OTP DNSE thất bại.",
+      })) });
     } finally {
       setSendingOtp(false);
     }
-  }, []);
+  }, [t]);
 
   const handleCreateTradingToken = useCallback(async () => {
     if (!passcode.trim()) {
-      setTokenResult({ ok: false, error: "Vui lòng nhập passcode OTP từ email DNSE." });
+      setTokenResult({ ok: false, error: t("dnsePanel.errors.needPasscode", {
+        defaultValue: "Vui lòng nhập passcode OTP từ email DNSE.",
+      }) });
       return;
     }
     setCreatingToken(true);
@@ -181,11 +236,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       }
       setTokenResult({ ok: true, hasToken: Boolean(token) });
     } catch (err) {
-      setTokenResult({ ok: false, error: err?.message || "Tạo trading token thất bại." });
+      setTokenResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.createToken", {
+        defaultValue: "Tạo trading token thất bại.",
+      })) });
     } finally {
       setCreatingToken(false);
     }
-  }, [passcode]);
+  }, [passcode, t]);
 
   const handlePlaceOrder = useCallback(async () => {
     const normalizedSymbol = orderSymbol.trim().toUpperCase();
@@ -193,11 +250,15 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     const quantity = Number(orderQuantity);
 
     if (!orderAccountNo.trim() || !normalizedSymbol || !tradingToken.trim()) {
-      setOrderResult({ ok: false, error: "Thiếu account number, symbol hoặc trading token." });
+      setOrderResult({ ok: false, error: t("dnsePanel.errors.missingOrderFields", {
+        defaultValue: "Thiếu account number, symbol hoặc trading token.",
+      }) });
       return;
     }
     if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
-      setOrderResult({ ok: false, error: "Giá và khối lượng phải lớn hơn 0." });
+      setOrderResult({ ok: false, error: t("dnsePanel.errors.badPriceQty", {
+        defaultValue: "Giá và khối lượng phải lớn hơn 0.",
+      }) });
       return;
     }
 
@@ -236,14 +297,25 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
         dryRun: res?.dry_run ?? true,
       });
     } catch (err) {
-      setOrderResult({ ok: false, error: err?.message || "Đặt lệnh DNSE thất bại." });
+      setOrderResult({ ok: false, error: readApiError(err, t("dnsePanel.errors.placeOrder", {
+        defaultValue: "Đặt lệnh DNSE thất bại.",
+      })) });
     } finally {
       setPlacingOrder(false);
     }
-  }, [orderAccountNo, orderPrice, orderQuantity, orderSide, orderSymbol, tradingToken]);
+  }, [orderAccountNo, orderPrice, orderQuantity, orderSide, orderSymbol, tradingToken, t]);
+
+  /** Ngày giờ đồng bộ: format theo locale thay vì in chuỗi thô của API. */
+  const lastVerifiedLabel = useMemo(() => {
+    const raw = status?.last_verified_at;
+    if (!raw) return null;
+    const formatted = formatDateTime ? formatDateTime(raw) : null;
+    return formatted && formatted !== raw ? formatted : String(raw);
+  }, [status?.last_verified_at, formatDateTime]);
 
   if (loading) {
-    return e("div", { className: `dnse-panel ${className}` }, "Đang tải trạng thái DNSE...");
+    return e("div", { className: `dnse-panel ${className}` },
+      t("dnsePanel.loading", { defaultValue: "Đang tải trạng thái DNSE..." }));
   }
 
   const isConfigured = status?.is_configured === true;
@@ -252,14 +324,16 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     "div",
     { className: `dnse-panel ${className}` },
 
-    e("h3", { className: "dnse-panel__title" }, "Kết nối DNSE LightSpeed API"),
+    e("h3", { className: "dnse-panel__title" },
+      t("dnsePanel.title", { defaultValue: "Kết nối DNSE LightSpeed API" })),
 
     e(
       "p",
       { className: "dnse-panel__hint" },
-      "Nhập Client ID và Client Secret từ trang quản lý ",
-      e("a", { href: "https://entradex.dnse.com.vn/thong-tin-ca-nhan/light-speed", target: "_blank", rel: "noreferrer" }, "EntradeX → LightSpeed API"),
-      ". Không nhập username/mật khẩu tài khoản DNSE."
+      t("dnsePanel.hint.before", { defaultValue: "Nhập Client ID và Client Secret từ trang quản lý " }),
+      e("a", { href: "https://entradex.dnse.com.vn/thong-tin-ca-nhan/light-speed", target: "_blank", rel: "noreferrer" },
+        t("dnsePanel.hint.link", { defaultValue: "EntradeX → LightSpeed API" })),
+      t("dnsePanel.hint.after", { defaultValue: ". Không nhập username/mật khẩu tài khoản DNSE." })
     ),
 
     // Trạng thái hiện tại
@@ -268,16 +342,23 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
           "div",
           { className: "dnse-panel__status dnse-panel__status--connected" },
           e("span", { className: "dnse-panel__status-dot" }),
-          `Đã kết nối — Client ID: ${status?.preview?.client_id ?? "****"}`,
-          status?.last_verified_at
-            ? e("span", { className: "dnse-panel__sync-time" }, ` | Đồng bộ lần cuối: ${status.last_verified_at}`)
+          t("dnsePanel.status.connected", {
+            defaultValue: "Đã kết nối — Client ID: {clientId}",
+            clientId: status?.preview?.client_id ?? "****",
+          }),
+          lastVerifiedLabel
+            ? e("span", { className: "dnse-panel__sync-time" },
+                t("dnsePanel.status.lastSync", {
+                  defaultValue: " | Đồng bộ lần cuối: {when}",
+                  when: lastVerifiedLabel,
+                }))
             : null
         )
       : e(
           "div",
           { className: "dnse-panel__status dnse-panel__status--disconnected" },
           e("span", { className: "dnse-panel__status-dot" }),
-          "Chưa kết nối"
+          t("dnsePanel.status.disconnected", { defaultValue: "Chưa kết nối" })
         ),
 
     // Form nhập credential
@@ -287,13 +368,16 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       e(
         "div",
         { className: "dnse-panel__field" },
-        e("label", { htmlFor: "dnse-client-id" }, "Client ID"),
+        e("label", { htmlFor: "dnse-client-id" },
+          t("dnsePanel.field.clientId", { defaultValue: "Client ID" })),
         e("input", {
           id: "dnse-client-id",
           type: "text",
           value: clientId,
           onChange: (ev) => setClientId(ev.target.value),
-          placeholder: "Nhập Client ID từ LightSpeed API",
+          placeholder: t("dnsePanel.field.clientIdPlaceholder", {
+            defaultValue: "Nhập Client ID từ LightSpeed API",
+          }),
           autoComplete: "off",
           disabled: saving,
           className: "dnse-panel__input",
@@ -302,24 +386,30 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       e(
         "div",
         { className: "dnse-panel__field" },
-        e("label", { htmlFor: "dnse-client-secret" }, "Client Secret"),
+        e("label", { htmlFor: "dnse-client-secret" },
+          t("dnsePanel.field.clientSecret", { defaultValue: "Client Secret" })),
         e("input", {
           id: "dnse-client-secret",
           type: "password",
           value: clientSecret,
           onChange: (ev) => setClientSecret(ev.target.value),
-          placeholder: "Nhập Client Secret từ LightSpeed API",
+          placeholder: t("dnsePanel.field.clientSecretPlaceholder", {
+            defaultValue: "Nhập Client Secret từ LightSpeed API",
+          }),
           autoComplete: "new-password",
           disabled: saving,
           className: "dnse-panel__input",
         })
       ),
       saveError ? e("p", { className: "dnse-panel__error" }, saveError) : null,
-      saveSuccess ? e("p", { className: "dnse-panel__success" }, "Đã lưu credential thành công.") : null,
+      saveSuccess ? e("p", { className: "dnse-panel__success" },
+        t("dnsePanel.status.credentialSaved", { defaultValue: "Đã lưu credential thành công." })) : null,
       e(
         "button",
         { type: "submit", disabled: saving, className: "dnse-panel__btn dnse-panel__btn--primary" },
-        saving ? "Đang lưu..." : "Lưu credential"
+        saving
+          ? t("dnsePanel.action.saving", { defaultValue: "Đang lưu..." })
+          : t("dnsePanel.action.saveCredential", { defaultValue: "Lưu credential" })
       )
     ),
 
@@ -337,7 +427,9 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 onClick: handleSync,
                 className: "dnse-panel__btn dnse-panel__btn--secondary",
               },
-              syncing ? "Đang đồng bộ..." : "Đồng bộ tiểu khoản"
+              syncing
+                ? t("dnsePanel.action.syncing", { defaultValue: "Đang đồng bộ..." })
+                : t("dnsePanel.action.syncAccounts", { defaultValue: "Đồng bộ tiểu khoản" })
             ),
             e(
               "button",
@@ -347,7 +439,9 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 onClick: handleSyncBalances,
                 className: "dnse-panel__btn dnse-panel__btn--secondary",
               },
-              syncingBalances ? "Đang đồng bộ số dư..." : "Đồng bộ số dư"
+              syncingBalances
+                ? t("dnsePanel.action.syncingBalances", { defaultValue: "Đang đồng bộ số dư..." })
+                : t("dnsePanel.action.syncBalances", { defaultValue: "Đồng bộ số dư" })
             ),
             e(
               "button",
@@ -357,36 +451,59 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 onClick: handleReconcileTransactions,
                 className: "dnse-panel__btn dnse-panel__btn--secondary",
               },
-              syncingTransactions ? "Đang đối soát..." : "Đối soát giao dịch"
+              syncingTransactions
+                ? t("dnsePanel.action.reconciling", { defaultValue: "Đang đối soát..." })
+                : t("dnsePanel.action.reconcile", { defaultValue: "Đối soát giao dịch" })
             )
           ),
           syncResult?.ok === true
-            ? e("p", { className: "dnse-panel__success" }, `Đồng bộ thành công: ${syncResult.count} tiểu khoản.`)
+            ? e("p", { className: "dnse-panel__success" },
+                t("dnsePanel.status.syncOk", {
+                  defaultValue: "Đồng bộ thành công: {count} tiểu khoản.",
+                  count: syncResult.count,
+                }))
             : null,
           syncResult?.ok === false
             ? e("p", { className: "dnse-panel__error" }, syncResult.error)
             : null,
           balanceResult?.ok === true
-            ? e("p", { className: "dnse-panel__info" }, `Đồng bộ số dư thành công: ${balanceResult.count} tiểu khoản${balanceResult.date ? ` (ngày ${balanceResult.date})` : ""}.`)
+            ? e("p", { className: "dnse-panel__info" },
+                balanceResult.date
+                  ? t("dnsePanel.status.balanceOkDated", {
+                      defaultValue: "Đồng bộ số dư thành công: {count} tiểu khoản (ngày {date}).",
+                      count: balanceResult.count,
+                      date: balanceResult.date,
+                    })
+                  : t("dnsePanel.status.balanceOk", {
+                      defaultValue: "Đồng bộ số dư thành công: {count} tiểu khoản.",
+                      count: balanceResult.count,
+                    }))
             : null,
           balanceResult?.ok === false
             ? e("p", { className: "dnse-panel__error" }, balanceResult.error)
             : null,
           txResult?.ok === true
-            ? e("p", { className: "dnse-panel__info" }, `Đối soát giao dịch thành công: ${txResult.count} giao dịch.`)
+            ? e("p", { className: "dnse-panel__info" },
+                t("dnsePanel.status.reconcileOk", {
+                  defaultValue: "Đối soát giao dịch thành công: {count} giao dịch.",
+                  count: txResult.count,
+                }))
             : null,
           txResult?.ok === false
             ? e("p", { className: "dnse-panel__error" }, txResult.error)
             : null,
           syncedAccounts.length > 0
             ? e("div", { className: "dnse-panel__accounts" },
-              e("p", { className: "dnse-panel__accounts-title" }, "Tiểu khoản đã liên kết"),
+              e("p", { className: "dnse-panel__accounts-title" },
+                t("dnsePanel.accounts.title", { defaultValue: "Tiểu khoản đã liên kết" })),
               e("table", { className: "dnse-panel__accounts-table" },
                 e("thead", null,
                   e("tr", null,
-                    e("th", null, "Số tài khoản"),
-                    e("th", null, "Loại"),
-                    e("th", null, "Tên hiển thị")
+                    e("th", { scope: "col" },
+                      t("dnsePanel.accounts.number", { defaultValue: "Số tài khoản" })),
+                    e("th", { scope: "col" }, t("dnsePanel.accounts.type", { defaultValue: "Loại" })),
+                    e("th", { scope: "col" },
+                      t("dnsePanel.accounts.displayName", { defaultValue: "Tên hiển thị" }))
                   )
                 ),
                 e("tbody", null,
@@ -403,28 +520,48 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
             : null,
 
           e("div", { className: "dnse-panel__order" },
-            e("p", { className: "dnse-panel__accounts-title" }, "Giao dịch DNSE (thử nghiệm)"),
+            e("p", { className: "dnse-panel__accounts-title" },
+              t("dnsePanel.order.title", { defaultValue: "Giao dịch DNSE (thử nghiệm)" })),
             e("div", { className: "dnse-panel__order-grid" },
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-passcode" }, "Passcode OTP"),
+                e("label", { htmlFor: "dnse-passcode" },
+                  t("dnsePanel.field.passcode", { defaultValue: "Passcode OTP" })),
                 e("input", {
                   id: "dnse-passcode",
                   type: "text",
                   value: passcode,
                   onChange: (ev) => setPasscode(ev.target.value),
-                  placeholder: "Nhập OTP từ email DNSE",
+                  placeholder: t("dnsePanel.field.passcodePlaceholder", {
+                    defaultValue: "Nhập OTP từ email DNSE",
+                  }),
                   disabled: sendingOtp || creatingToken,
                 })
               ),
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-trading-token" }, "Trading token"),
-                e("input", {
-                  id: "dnse-trading-token",
-                  type: "text",
-                  value: tradingToken,
-                  onChange: (ev) => setTradingToken(ev.target.value),
-                  placeholder: "Token tạo sau khi xác thực OTP",
-                })
+                e("label", { htmlFor: "dnse-trading-token" },
+                  t("dnsePanel.field.tradingToken", { defaultValue: "Trading token" })),
+                e("div", { className: "dnse-panel__token-row" },
+                  e("input", {
+                    id: "dnse-trading-token",
+                    // BÍ MẬT — mặc định che. Trước đây `type="text"` hiện token
+                    // ngang trên màn hình (lộ vào ảnh chụp / chia sẻ màn hình).
+                    type: showToken ? "text" : "password",
+                    value: tradingToken,
+                    onChange: (ev) => setTradingToken(ev.target.value),
+                    placeholder: t("dnsePanel.field.tokenPlaceholder", {
+                      defaultValue: "Token tạo sau khi xác thực OTP",
+                    }),
+                    autoComplete: "off",
+                  }),
+                  e("button", {
+                    type: "button",
+                    className: "dnse-panel__btn dnse-panel__btn--ghost",
+                    "aria-pressed": showToken,
+                    onClick: () => setShowToken((v) => !v),
+                  }, showToken
+                    ? t("dnsePanel.action.hideToken", { defaultValue: "Ẩn" })
+                    : t("dnsePanel.action.showToken", { defaultValue: "Hiện" }))
+                )
               )
             ),
             e("div", { className: "dnse-panel__sync-actions" },
@@ -433,57 +570,69 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 disabled: sendingOtp,
                 onClick: handleSendOtp,
                 className: "dnse-panel__btn dnse-panel__btn--secondary",
-              }, sendingOtp ? "Đang gửi OTP..." : "Gửi OTP email"),
+              }, sendingOtp
+                ? t("dnsePanel.action.sendingOtp", { defaultValue: "Đang gửi OTP..." })
+                : t("dnsePanel.action.sendOtp", { defaultValue: "Gửi OTP email" })),
               e("button", {
                 type: "button",
                 disabled: creatingToken,
                 onClick: handleCreateTradingToken,
                 className: "dnse-panel__btn dnse-panel__btn--secondary",
-              }, creatingToken ? "Đang tạo token..." : "Tạo trading token")
+              }, creatingToken
+                ? t("dnsePanel.action.creatingToken", { defaultValue: "Đang tạo token..." })
+                : t("dnsePanel.action.createToken", { defaultValue: "Tạo trading token" }))
             ),
             otpResult?.ok === true ? e("p", { className: "dnse-panel__info" }, otpResult.message) : null,
             otpResult?.ok === false ? e("p", { className: "dnse-panel__error" }, otpResult.error) : null,
             tokenResult?.ok === true
-              ? e("p", { className: "dnse-panel__success" }, tokenResult.hasToken ? "Đã tạo trading token thành công." : "Đã gọi tạo token, nhưng chưa nhận token từ phản hồi.")
+              ? e("p", { className: "dnse-panel__success" }, tokenResult.hasToken
+                  ? t("dnsePanel.status.tokenOk", { defaultValue: "Đã tạo trading token thành công." })
+                  : t("dnsePanel.status.tokenMissing", {
+                      defaultValue: "Đã gọi tạo token, nhưng chưa nhận token từ phản hồi.",
+                    }))
               : null,
             tokenResult?.ok === false ? e("p", { className: "dnse-panel__error" }, tokenResult.error) : null,
 
             e("div", { className: "dnse-panel__order-grid" },
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-order-account" }, "Số tài khoản"),
+                e("label", { htmlFor: "dnse-order-account" },
+                  t("dnsePanel.field.accountNo", { defaultValue: "Số tài khoản" })),
                 e("input", {
                   id: "dnse-order-account",
                   type: "text",
                   value: orderAccountNo,
                   onChange: (ev) => setOrderAccountNo(ev.target.value),
-                  placeholder: "Ví dụ: 0003724720",
+                  placeholder: t("dnsePanel.field.accountNoPlaceholder", { defaultValue: "Ví dụ: 0003724720" }),
                   disabled: placingOrder,
                 })
               ),
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-order-symbol" }, "Mã cổ phiếu"),
+                e("label", { htmlFor: "dnse-order-symbol" },
+                  t("dnsePanel.field.symbol", { defaultValue: "Mã cổ phiếu" })),
                 e("input", {
                   id: "dnse-order-symbol",
                   type: "text",
                   value: orderSymbol,
                   onChange: (ev) => setOrderSymbol(ev.target.value),
-                  placeholder: "Ví dụ: FPT",
+                  placeholder: t("dnsePanel.field.symbolPlaceholder", { defaultValue: "Ví dụ: FPT" }),
                   disabled: placingOrder,
                 })
               ),
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-order-side" }, "Chiều lệnh"),
+                e("label", { htmlFor: "dnse-order-side" },
+                  t("dnsePanel.field.side", { defaultValue: "Chiều lệnh" })),
                 e("input", {
                   id: "dnse-order-side",
                   type: "text",
                   value: orderSide,
                   onChange: (ev) => setOrderSide(ev.target.value.trim().toUpperCase() || "BUY"),
-                  placeholder: "BUY hoặc SELL",
+                  placeholder: t("dnsePanel.field.sidePlaceholder", { defaultValue: "BUY hoặc SELL" }),
                   disabled: placingOrder,
                 })
               ),
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-order-price" }, "Giá"),
+                e("label", { htmlFor: "dnse-order-price" },
+                  t("dnsePanel.field.price", { defaultValue: "Giá" })),
                 e("input", {
                   id: "dnse-order-price",
                   type: "number",
@@ -491,12 +640,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                   step: "0.01",
                   value: orderPrice,
                   onChange: (ev) => setOrderPrice(ev.target.value),
-                  placeholder: "Ví dụ: 121.5",
+                  placeholder: t("dnsePanel.field.pricePlaceholder", { defaultValue: "Ví dụ: 121.5" }),
                   disabled: placingOrder,
                 })
               ),
               e("div", { className: "dnse-panel__field" },
-                e("label", { htmlFor: "dnse-order-quantity" }, "Khối lượng"),
+                e("label", { htmlFor: "dnse-order-quantity" },
+                  t("dnsePanel.field.quantity", { defaultValue: "Khối lượng" })),
                 e("input", {
                   id: "dnse-order-quantity",
                   type: "number",
@@ -504,7 +654,7 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                   step: "1",
                   value: orderQuantity,
                   onChange: (ev) => setOrderQuantity(ev.target.value),
-                  placeholder: "Ví dụ: 100",
+                  placeholder: t("dnsePanel.field.quantityPlaceholder", { defaultValue: "Ví dụ: 100" }),
                   disabled: placingOrder,
                 })
               )
@@ -515,7 +665,9 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 disabled: placingOrder,
                 onClick: handlePlaceOrder,
                 className: "dnse-panel__btn dnse-panel__btn--primary",
-              }, placingOrder ? "Đang đặt lệnh..." : "Đặt lệnh thử nghiệm")
+              }, placingOrder
+                ? t("dnsePanel.action.placingOrder", { defaultValue: "Đang đặt lệnh..." })
+                : t("dnsePanel.action.placeOrder", { defaultValue: "Đặt lệnh thử nghiệm" }))
             ),
             orderResult?.ok === true
               ? e("p", { className: "dnse-panel__success" },
@@ -525,7 +677,8 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                   className: `dnse-panel__badge dnse-panel__badge--${orderResult.mode === "live" ? "live" : "paper"}`,
                   "data-testid": "dnse-order-mode-badge",
                 }, orderResult.mode === "live" ? "LIVE" : "PAPER"),
-                " Đặt lệnh DNSE thành công.")
+                " ",
+                t("dnsePanel.status.orderOk", { defaultValue: "Đặt lệnh DNSE thành công." }))
               : null,
             orderResult?.ok === false ? e("p", { className: "dnse-panel__error" }, orderResult.error) : null
           )

@@ -32,10 +32,22 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
   return {
     /**
      * List portfolios for the authenticated user.
-     * @returns {Promise<{results: object[]}>}
+     *
+     * Backend dùng `CoreCursorPagination` (`vninvest_core/pagination.py:35-39`,
+     * `page_size=50`, `ordering='-created_at'`) nên response có `next`/`previous`
+     * kèm `cursor` trong query. Trước đây hàm không nhận tham số nên trang
+     * `/portfolios/manage` chỉ đọc `results` và **âm thầm cắt danh sách ở 50
+     * dòng đầu** — có 50 danh mục là user không thấy danh mục 51 trở đi, không
+     * có báo lỗi nào. Truyền `{cursor}` để điều hướng trang.
+     *
+     * @param {{cursor?: string, page_size?: number}} [params]
+     * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
      */
-    getPortfolios() {
-      return coreGet("/workspace/portfolios/");
+    getPortfolios(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/workspace/portfolios/${query ? `?${query}` : ""}`);
     },
 
     /**

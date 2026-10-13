@@ -36,6 +36,452 @@
   (6 tenant-admin + AdminAnalytics + AIUsageDashboard + OrderFlowRadarPanel) — can slice
   rieng (migrate sang echarts + bo dep, cham `package.json` deny-list).
 
+## Entry 285: `/portfolios/manage` phần 3 — **P0 staging: 3 celery worker crash-loop 0 task** + làm rõ cái tôi ghi sai (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` (PR #121) · claim `pf-manage-rebuild`
+- **Lessons áp dụng**: L-V01, L-V02, L-V03, L-T01, L-T02
+
+Owner hỏi: *"vps 24 gb ram mà không đủ là sao"*. Câu hỏi đúng — Entry 283 §7
+ghi *"bị OOM exit=137, staging đang chạy cả stack nên không đủ RAM"*. **Kết luận
+đó sai ở phần giải thích.** Điều tra lại từ đầu.
+
+### 1. Host KHÔNG hết RAM
+
+```
+Mem: total 24073  used 6263  free 390  buff/cache 18020  available 17809   (MiB)
+```
+
+`available` **17.8 GB**. Host không thiếu RAM. Nhận định "cả stack chiếm hết"
+trong Entry 283 là **sai**.
+
+### 2. Nguồn gốc thật: `mem_limit` của **container**, không phải host
+
+Đo `docker inspect` cho từng container:
+
+| Container | `mem_limit` | Dùng thật |
+|---|---|---|
+| **`vninvest-core-api`** | **256 MiB** | 181 MiB |
+| **`core-worker`**, **`core-beat`**, **`-realtime-prefetch`**, **`-realtime-stream`** | **128 MiB** | 127.6 MiB (**99.66%**) |
+| `core-db` / `frontend` / `grafana` | 1 GiB / 750 MiB / 256 MiB | bình thường |
+| `vnsaas-staging-*`, `erp-*`, `charts_test_app` | **không giới hạn** | thấp |
+
+`docker-compose.prod.yml:167,252,290,325` đặt
+`mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}` và `${CORE_BEAT_MEM_LIMIT:-128m}`;
+`:129` đặt `${CORE_API_MEM_LIMIT:-256m}`.
+
+**Vì sao mặc định lại là 128m**: `compose.staging.env.example:102` có sẵn
+`CORE_WORKER_MEM_LIMIT=256m` — nhưng **bị comment**, nên default của prod compose
+(128m) được dùng. Cùng kiểu với `CORE_BEAT_MEM_LIMIT` và `compose.staging.env`
+trên VPS (dòng 95, cũng comment).
+
+### 3. BẰNG CHỨNG: python test BỊ OOM thật (lần này có đủ bằng chứng)
+
+Entry 283 ghi "OOM" nhưng lúc đó **chưa có bằng chứng** — `dmesg` chỉ có 40 lần
+OOM và **tất cả đều là `celery`**, không có dòng nào ứng với `python manage.py
+test`. Điều tra lại đủ bằng chứng:
+
+```
+dmesg: Killed process 1156141 (python) total-vm:2517796kB, anon-rss:192212kB, file-rss:55732kB
+dmesg: Killed process 1099614 (python) total-vm:2511824kB, anon-rss:185228kB, file-rss:55520kB
+
+/sys/fs/cgroup/memory.peak  = 568496128   (542 MiB)
+/sys/fs/cgroup/memory.max   = 268435456   (256 MiB)   <- docker-compose.prod.yml:129
+/sys/fs/cgroup/memory.events: oom 37 · oom_kill 3
+
+dem so lan OOM theo ten process:  34 celery · 3 python
+```
+
+⇒ Full BE suite cần đỉnh **542 MiB**, container chỉ có 256 MiB ⇒ bị kernel OOM-kill
+⇒ `docker exec` trả **137**. **Kết luận "OOM" của Entry 283 ĐÚNG**; chỉ có phần
+giải thích ("không đủ RAM") là sai.
+
+### 4. Ba lần `exit=137` có **ba nguyên nhân khác nhau** — không phải lúc nào cũng OOM
+
+| Lần | Cách chạy | Nguyên nhân thật |
+|---|---|---|
+| 1 | foreground qua SSH | **SSH session reset → SIGHUP** giết `docker exec` |
+| 2 | `setsid nohup` detached | **tôi tự chạy `docker compose up --force-recreate`** cho worker trong lúc nó chạy ⇒ compose chạm `core-api` ⇒ container recreate ⇒ `docker exec` chết |
+| 3 | detached, 8 GiB | chạy xong ⇒ **2211 test, `FAILED (failures=10, errors=2)`** |
+| 4 | detached, đúng 256 MiB, không đụng VPS | **OOM thật** (xem §3) |
+
+Lần 2 nguy hiểm nhất: nếu không kiểm `memory.events` mà tin `exit=137 ⇒ OOM`
+thì sẽ kết luận sai **ngay lần thứ hai**.
+
+### 5. P0 PHÁT HIỆN: 3 celery worker crash-loop, **0 task** được xử lý
+
+Trong lúc điều tra RAM tôi thấy dmesg có **34 lần OOM `celery`**. Truy ra:
+
+```
+vninvest-core-worker                    RestartCount=78  mem=128 MiB
+vninvest-core-worker-realtime-prefetch  RestartCount=78  mem=128 MiB
+vninvest-core-worker-realtime-stream    RestartCount=78  mem=128 MiB
+```
+
+`StartedAt` cách nhau **5-15 giây** ⇒ **crash-restart loop vĩnh viễn**. Celery bị
+OOM ở `anon-rss ≈ 67-72 MiB` + `file-rss ≈ 40 MiB` ⇒ **cần > 128 MiB**.
+
+`docker logs vninvest-core-worker | grep -c "received\|succeeded"` = **0**
+⇒ worker chưa từng nhận nhiệm vụ nào. Trên staging, **toàn bộ job nền đã chết**:
+`signal_detection`, `sync_dnse_*`, `screener_*`, `tenant_lifecycle_*`,
+`warm_intraday_universe`, `materialize_session_facts`.
+
+**Vì sao `deploy-staging.sh` không bắt được**: `verify()` chỉ kiểm
+`ps --format {{.State}}` = `running`. Container vừa restart 5 giây trước thì
+`running` ⇒ gate xanh. Cùng kiểu với ghi chú đã có sẵn trong `verify()`:
+*"5 service KHÔNG có healthcheck — worker chết là KHÔNG ai báo"*. Nhưng ở đây
+nó **không chỉ không ai báo, mà luôn ở trạng thái `running`** ⇒ im lặng tuyệt đối.
+
+### 6. Sửa và kiểm chứng
+
+Sửa ở `compose.staging.env` trên VPS — file **runtime, KHÔNG track git** nên
+không chạm file deny-list (`docker-compose*.yml`, `.env*`):
+
+```bash
+CORE_WORKER_MEM_LIMIT=1g
+CORE_BEAT_MEM_LIMIT=512m
+```
+
+Đặt `docker compose up -d --force-recreate` cho 4 container, rồi **đo lại 5 phút**:
+
+```
+phut 1..5  core-worker=36.8%  prefetch=54.2%  stream=44.4%  beat=31.0%  | restart=0
+OOM truoc=37  OOM sau=37  (chenh = 0)
+```
+
+**Bằng chứng đạt**: `RestartCount=0` suốt 5 phút (trước 78+), **không có OOM mới**,
+và worker **bắt đầu nhận task thật**:
+
+```
+materialize_session_facts: symbols_total=115 upserted=115 errors=0
+warm_intraday_universe (native): warmed 21/30 symbols, updated=13
+schedule_realtime_prefetch_shards: skipped_offhours / outside_trading_session
+```
+
+Trước khi sửa: `0 task`. Sau khi sửa: **24 task trong 5 phút**.
+
+**Vì sao `1g` chứ không phải `512m`**: lần đầu đặt `512m` thì
+`prefetch` bám **99.32%** (`memory.current=533245952 / max=536870912`) và
+`materialize_session_facts` một lần mất **108 s** cho 115 mã — 512 MiB quá chật.
+Nâng `1g` thì prefetch rơi về ~50%.
+
+⚠ **Fix này chỉ nằm trên VPS**, không có trong git ⇒ `bootstrap-staging.sh` chạy
+lại sẽ mất. Cần Owner quyết có đưa vào `compose.staging.env.example` hay không
+(file đó được track nhưng không nằm trong deny-list máy).
+
+### 7. 12 lỗi full BE suite: CHỨNG MINH có sẵn, không phải do thay đổi của tôi
+
+Đầy đủ 12 lỗi:
+
+- **5 FAIL** `service_ops.tests.test_soc_tasks` — `create_global_planner_run`
+  "Called 0 times", `dispatched_runs` 0 != 1.
+- **5 FAIL** `vninvest_core.tests.test_rate_limiting` + `test_exception_handling_a6`
+  — endpoint `register` trả **400** thay vì 201/409/429.
+- **2 ERROR** loader — `test_openapi_schema_contract`, `test_api_envelope_schema`.
+
+Không lỗi nào chạm `user_workspace`. Thay đổi BE của tôi chỉ nằm ở
+`PortfolioDetailView.delete` (`views.py:227-248`) — đổi một chuỗi `detail` 409
+và thêm khoá `suggested_action`.
+
+**Chứng minh bằng A/B, không bằng lập luận**: chạy 65 test của 3 module đó
+hai lần — lần 1 với thay đổi của tôi, lần 2 thay file bằng bản `origin/dev`:
+
+```
+LAN 1 (co thay doi):      Ran 65 tests — FAILED (failures=10)
+LAN 2 (origin/dev):      Ran 65 tests — FAILED (failures=10)
+```
+
+⚠ **Bẫy lần đầu**: lần chạy đầu tôi dùng `git checkout -- views.py` và tưởng
+đó là baseline — nhưng file **đã được commit trên nhánh**, nên `git checkout --`
+trả về bản **có** thay đổi của tôi (`grep -c suggested_action` = 1). Phải dùng
+`git show origin/dev:<path>` mới được baseline thật.
+
+### 8. Việc còn để lại — **KHÔNG** sửa ở PR này
+
+10 FAIL + 2 ERROR là **baseline đỏ có sẵn trên `dev`**, ngoài phạm vi
+`/portfolios/manage`. Đáng mở ticket riêng:
+- `service_ops.test_soc_tasks` (5) — scheduler không dispatch.
+- `vninvest_core.test_rate_limiting` (5) — `register` trả 400.
+- 2 loader error — test module không import được.
+
+Ngoài ra: full suite chạy được là nhờ nâng `mem_limit` **tạm thời lên 8 GiB**;
+giá trị trong `compose.prod.yml` vẫn là 256 MiB. Muốn gate BE chạy được trên
+staging thì cần nâng `CORE_API_MEM_LIMIT` **vĩnh viễn** trong `compose.staging.env`.
+
+## Entry 284: Phần 2 của `/portfolios/manage` — i18n panel broker, sửa 2 lỗi chỉ lộ ra khi đo thật, và gate EOL (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` (cùng PR #121 với Entry 282)
+- **Lessons áp dụng**: L-F03, L-F08, L-F10, L-V01, L-V02, L-V03, L-T01, L-T02
+
+Entry 282 §8 liệt kê 4 mục **CHƯA CHẠY**. Đây là phần đóng 3,5/4 — mục còn lại
+(full BE suite) ghi rõ ở §6 dưới và **không** tính là PASS.
+
+### 1. Seed dữ liệu CÓ VỊ THẾ THẬT ⇒ chứng minh cột tiền hiển thị số thật
+
+Entry 282 ghi "chưa chứng minh hiển thị giá khi có `LedgerEntry` thật" — vì
+`testuser` có **0 danh mục**. Đã tạo trên staging (idempotent, qua đúng model +
+signal `post_save` ⇒ `sync_transaction_to_ledger`, **không** ghi `LedgerEntry`
+trực tiếp):
+
+- Tạo portfolio cho `testuser` + **6 Transaction** (5 BUY + 1 SELL) trên mã có
+  `SymbolSnapshot` hôm nay và có `StockProfile` (VRE, GAS, FPT, GEX, AAA).
+- Signal tự sinh **6 LedgerEntry** ⇒ đúng đường ứng dụng thật.
+- Giá mua đặt sát giá thị trường (×0.975…×1.012) để ảnh nhìn đáng tin, có cả
+  mã lẫn mã lỗ.
+
+**Kết quả đo trên trình duyệt thật** — KPI tải xong sau ~2-3 s:
+`176.180.000` (giá trị) · `176.601.490` (giá vốn) · `−421.490 (−0,24%)` (lãi/lỗ) ·
+NAV `499.369.110` · tiền mặt `−176.810.890` · **5 dòng vị thế** có tên công ty,
+ngành, tỷ trọng, trạng thái giá. **0 console error.**
+
+### 2. ① LIGHT MODE — lỗi nghiêm trọng nhất, chỉ lộ ra khi đo trên nền thật
+
+`check-portfolio-contrast` báo **12/12 PASS** vì nó đọc token trong
+`soc.tokens.css` — nó **không** biết trang đặt chữ lên nền nào. Đo thật bằng
+`getComputedStyle` (Chromium, staging):
+
+| Selector | Trước | Sau | Nguyên nhân |
+|---|---|---|---|
+| `.pfm-table tbody td` | **1.13:1** | 17.85:1 | chữ token đổi sang tối, nền vẫn tối |
+| `.pfm-toolbar__count` | **1.95:1** | 10.35:1 | không có nền riêng |
+| `.pfm-table__num.pfm-tone-loss` | **3.12:1** | 6.47:1 | `--pf-loss` trên nền shell |
+
+**Nguyên nhân**: wrapper app shell là `bg-[var(--color-bg-primary)]` =
+`rgb(2, 6, 23)` và **KHÔNG đổi** khi bật `data-theme="light"` — light mode là
+theme thật, người dùng chọn được (`main.tsx:226-230` đọc
+`localStorage['vninvest-theme']`). Đây là **lỗi có sẵn của app shell** (Entry 272
+§6 cũng ghi lỗi light mode), nhưng trang mới không được phép thừa hưởng nó.
+
+**Control trước khi tin số đo** (L-V01): đen/trang phải ra `21:1`, trắng/trắng
+`1:1` — cả hai đúng ⇒ phép đo đúng.
+
+**Sửa**: `.pfm-page` + `.pfm-table-wrap` tự vẽ `background: var(--bg-panel)`
+(light = `#ffffff` đục). Sau khi sửa: **7 cặp đo trên nền thật, tất cả ≥ 4.5:1
+ở cả 2 theme.**
+
+### 3. ② Panel broker: 0 i18n → 87 key × 2 locale + 2 lỗi bảo mật/UX
+
+`DNSEConnectionPanel.js` **không import `LangContext`** ⇒ đổi ngôn ngữ vô hiệu
+với cả panel. Nay mọi chuỗi qua `t()`.
+
+Kèm 2 lỗi phát hiện khi đọc lại file:
+
+1. **`tradingToken` để `type="text"`** ⇒ secret hiện ngang trên màn hình, lọt
+   vào ảnh chụp / chia sẻ màn hình. Đổi `type="password"` + nút **Hiện/Ẩn**
+   (`aria-pressed`).
+2. **Lỗi API lộ đường dẫn nội bộ**: `err.message` của `CoreApiRequestError`
+   (`transport.js:305`) có dạng
+   `"Core API request error 404 Not Found - /broker/dnse/config/: …"`.
+   `readApiError()` bóc `payload.detail` trước, chỉ fallback khi không có.
+
+CSS: thêm rule cho `.dnse-panel__btn--secondary` / `--ghost` / `--token-row` —
+trước đó chỉ có `--primary` (`:168-175`) nên các nút phụ rơi về style gốc, không
+phân biệt được với nút chính.
+
+### 4. ③ Gốc rẻ THẬT khi i18n hoá panel: `useI18n()` fallback tạo object mỗi render
+
+Sau khi thêm `t` vào deps của `useCallback`, panel **kẹt vĩnh viễn** ở *"Đang tải
+trạng thái DNSE..."* và `dnse-order-mode-badge.component.test.js` **đỏ 3/3**.
+
+`LangContext.js:92-115` tạo object literal **trong thân hook** ở nhánh fallback ⇒
+`t` đổi identity mỗi render ⇒ `reload` đổi identity ⇒ `useEffect(..., [reload])`
+gọi `getDNSEConfig()` lặp. Panel cũ không dính vì **không dùng `t` ở đâu cả**.
+
+**Kiểm chứng gốc rẽ 2 bước trước khi sửa** (L-V02):
+1. Đo lại thi giả "vòng lặp vô hạn" ⇒ chỉ **+1 lần gọi API / 2 s** ⇒ **KHÔNG**
+   phải nguyên nhân. Nếu tin giả này thì sẽ sửa sai.
+2. Chụp DOM của panel ⇒ thấy nó kẹt ở trạng thái loading. Mới đọc lại
+   `LangContext.js` và thấy fallback tạo object trong render.
+
+**Sửa**: `I18N_FALLBACK` thành hằng số ở cấp module. App thật luôn có
+`LangProvider` (`main.tsx:241`) nên nhánh này không xảy ra — nhưng đây là bẫy cho
+mọi test và mọi component mới.
+
+**Test khoá hành vi** `src/context/__tests__/lang-context-fallback-identity.component.test.tsx`
+— 4 case, khoá **identity** chứ không khoá giá trị. **Fail-before**: đổi fallback
+về `{ ...I18N_FALLBACK }` ⇒ **1/4 FAIL** (`Object.is equality`); trả về hằng số ⇒ 4/4.
+
+### 5. ④ 409 của BE hướng người dùng tới tính năng không tồn tại
+
+`views.py:229-234` bảo *"Hãy ẩn danh mục"* nhưng model `Portfolio`
+(`user_workspace/models.py`) **không có** field archive. Entry 282 đã ghi
+mâu thuẫn nhưng chưa sửa vì sợ cần migration.
+
+**Sửa được KHÔNG cần migration** — chỉ sửa văn bản:
+- `detail`: đổi khuyến nghị sang hành động có thật (**đổi tên** qua
+  `PortfolioDetailView.patch`, `:186`) — hợp lý vì sau rebuild trang đã có nút
+  **Sửa**.
+- thêm `suggested_action: 'rename'` — **khoá máy** để client không phải parse
+  `detail` tiếng Việt mới biết nên đề xuất hành động nào.
+
+Việc thêm `is_archived` thật sự **cần migration ⇒ ngoài phạm vi**, ghi ở §7.
+
+### 6. GATE CHẠY THẬT
+
+| Gate | Kết quả |
+|---|---|
+| `tsc --noEmit` | **0** |
+| `npm run lint` | **0 error** (3936 warning có sẵn) |
+| `npm run test:components` | **130 file / 932 test PASS** (918 → 932) |
+| `npm run build` | **0** (25 s) |
+| `check-portfolio-contrast` | 12/12 PASS (token) |
+| `check:tokens` | 0 vi phạm |
+| `check-multi-agent` | 0 lỗi |
+| `check-lessons` | 40/40 |
+| `pre-push-gate` | **21 PASS / 0 SKIP / 0 FAIL** |
+| **BE `user_workspace`** (staging, Postgres thật) | **Ran 681 tests — OK (skipped=7)** |
+| **Playwright `portfolios-manage.spec.ts`** (staging) | **8/8 PASS** |
+
+### 7. CHƯA CHẠY (không tính là PASS)
+
+- **Full BE suite** — chạy trên VPS staging thì bị **OOM**: `exit=137` (SIGKILL).
+  ⚠ **Entry 284 §1-3 đã điều tra lại và SỬA phần giải thích của dòng này**: host
+  **KHÔNG** thiếu RAM (`available` 17.8 GB / 24 GB); nguyên nhân là
+  `mem_limit` **256 MiB** của container `core-api` trong khi full suite cần đỉnh
+  **542 MiB** (`memory.peak` đo được). App đã sửa (`user_workspace`) **chạy OK
+  681 test**; full suite với limit nâng lên 8 GiB ⇒ **2211 test, 10 FAIL + 2 ERROR
+  — đã chứng minh A/B là baseline đỏ có sẵn trên `dev`** (Entry 284 §7).
+- **Migrations mới** — không có. `is_archived` cho Portfolio vẫn là đề xuất mở.
+- **`nav_reason_text` tiếng Việt hardcode trong BE** (`ledger/valuation.py:39-45`)
+  đã được **vòng qua** ở FE (tra mã máy `nav_reason` → key i18n), nhưng **BE
+  vẫn trả tiếng Việt** cho client khác. Sửa đúng ở BE cần cơ chế i18n chung — chưa làm.
+- **Light mode / mobile** — **đã** đo thật (7 cặp ≥ 4.5:1 ở 2 theme; mobile 390px
+  không tràn ngang, bảng cuộn trong wrapper). **Chưa** chụp ảnh đối chiếu pixel.
+
+### 8. L-V02: một fail-before của chính tôi **không có tác dụng** — và cách phát hiện
+
+Muốn chứng minh spec E2E bắt được lỗi light mode, tôi dùng PowerShell
+`.Replace()` để bỏ `background` khỏi `.pfm-table-wrap`. **Lệnh không khớp chuỗi
+nên không đổi gì cả** — nhưng tôi vẫn deploy và đọc kết quả `"2 passed"`, tưởng
+là bằng chứng. Chỉ phát hiện khi `git show HEAD:<file>` cho thấy `background`
+vẫn còn nguyên.
+
+Làm lại bằng `edit` tool thật ⇒ `Expected >= 4.5, Received 1.18` ⇒ FAIL như
+dự kiến. Trả nền ⇒ 8/8 PASS.
+
+**Quy tắc rút ra**: bằng chứng "trước/sau" chỉ có giá trị nếu **xác nhận trạng
+thái đã đổi thật** — `git show`/`git diff` đọc lại blob, không tin lệnh sửa file
+báo thành công.
+
+**Tai nạn kéo theo**: `git revert` commit fail-before xoá luôn 3 thứ khác bị gộp
+nhầm vào cùng commit (spec E2E, fix `auth.setup.ts`, fix `views.py`). Đã khôi
+phục bằng `git checkout <sha> -- <path>` ở commit kế tiếp. **Bài học**: commit
+fail-before phải **chỉ** chứa thay đổi cần đo.
+
+### 9. ⑤ L-T01 lần 14 + script chặn + sửa 1 lỗi chặn E2E cả repo
+
+**Gate EOL mới** — `scripts/normalize-eol.mjs` + `.githooks/pre-commit` bước 3:
+
+- Repo **hỗn tạp** (file này lưu LF, file kia lưu CRLF) và `core.autocrlf=false`
+  ⇒ git so sánh **byte-for-byte** ⇒ `Edit` tool chép LF→CRLF làm **toàn bộ file**
+  hiện trong diff. Đã dính 14 lần/2 phiên.
+- Script đọc **dang EOL của blob trong HEAD** — KHÔNG phải cột `i/` của
+  `git ls-files --eol` **sau khi stage** (cột đó đã bị chính blob mới đẩy vào;
+  chính tôi đã bị dắm vào đúng chỗ này và chuẩn hoá **ngược** một file gốc
+  CRLF thành LF).
+- **Fail-before của chính gate**: đưa `format.ts` (blob LF) về CRLF ⇒
+  `git diff --numstat` ra **183/183**, `git commit` **bị BLOCKED**; `--fix` ⇒ 0/0,
+  commit pass.
+
+**Lỗi chặn E2E cả repo** — `tests/visual/auth.setup.ts`:
+`page.waitForURL('**/dashboard', { timeout: 15000 })` mặc định chờ **`load`**,
+mà app giữ WebSocket/pollng nên **sự kiện `load` không bao giờ fire**. Log lỗi tự
+mâu thuẫn: *"navigated to `https://docker.edusuccess.vn/dashboard`"* — **đã điều
+hướng rồi** — rồi vẫn timeout. Hệ quả: `storageState` không bao giờ được ghi ⇒
+**mọi** spec E2E trong repo fail ở bước đăng nhập với **lý do sai** (tưởng app
+hỏng). Sửa: `waitUntil: 'domcontentloaded'`, timeout 30 s.
+
+## Entry 283: Xây lại `/portfolios/manage` — trang không hiển thị một đồng tiền nào trong khi BE đã tính sẵn (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` → `dev` (claim `pf-manage-rebuild`)
+- **Owner chốt scope 2026-10-13**: Full rebuild CRUD + KPI + Holdings · tách DNSE panel sang `/portfolios/manage/broker` · Holdings lấy từ BE thật
+- **Lessons áp dụng**: L-F01, L-F03, L-F08, L-F09, L-F10, L-V01, L-V02, L-V03, L-T01, L-T02, L-F04
+
+**Trigger**: Owner báo `/portfolios/manage` "quá thô sơ" và yêu cầu rà lại bộ tài liệu
+thiết kế system-design, tham khảo phần mềm thương mại, rồi refactor.
+
+### 1. Nguyên nhân gốc: không phải "thiếu tính năng" mà là **UI không đọc API đã có sẵn**
+
+| Bên | Bằng chứng |
+|---|---|
+| BE **đã** tính giá trị / giá vốn / lãi-lỗ / tiền mặt / NAV | `portfolio_analytics_views.py:366-407` |
+| Adapter **đã** có `getPortfolioSummary` | `workspace.js:183` (bản cũ) |
+| Trang cũ **0 lần** gọi hàm đó | `PortfoliosPage.tsx:58-60` chỉ đọc `res.results` |
+| Bảng hiện ra | `PortfoliosPage.tsx:140` — 4 cột: `Tên / Số dư mở đầu / Ngày tạo / Thao tác` |
+
+⇒ Người dùng thấy danh mục tồn tại nhưng **không biết danh mục đó đang ăn bao nhiêu tiền**.
+Đây là lỗi thiết kế, không phải lỗi style.
+
+### 2. 11 finding đã đọc code thật (không suy từ tài liệu)
+
+1. **Không sửa được danh mục.** BE có `PortfolioDetailView.patch` (`views.py:186`), adapter có `updatePortfolio` (`workspace.js:56`) — trang cũ chỉ create/delete.
+2. **Panel broker 540 dòng nằm TRÊN CÙNG** (`PortfoliosPage.tsx:121-123`), gồm cả **đặt lệnh** — đẩy chức năng lõi xuống dưới màn hình và trộn "xem" với "giao dịch". Vi phạm D-36 (`PORTFOLIO_EXEC_PLAN_MASTER_20260927.md:83`) chốt "Broker Hub tách riêng".
+3. **0 i18n.** Cả `PortfoliosPage.tsx` lẫn `DNSEConnectionPanel.js` đều **không import `LangContext`** ⇒ ~63 chuỗi hardcode, đổi ngôn ngữ là vô hiệu.
+4. **CSS rò toàn app**: `PortfoliosPage.css:172,185,191` khai selector `button` **không có tiền tố class**.
+5. **CSS trùng lặp**: `.dnse-panel*` định nghĩa 2 lần với giá trị khác nhau — `PortfoliosPage.css:51-170` vs `DNSEConnectionPanel.css:22-291`.
+6. **Phân trang bị bỏ**: BE dùng `CoreCursorPagination` (`views.py:120`, page_size 50) trả `next`; FE chỉ đọc `results` ⇒ **âm thầm cắt danh sách ở 50 dòng**, không báo lỗi.
+7. **409 hiện chuỗi thô**: `views.py:227-238` trả 409 + `code: portfolio_has_financial_history`; `PortfoliosPage.tsx:115` ném thẳng `Error.message` của `CoreApiRequestError` (`transport.js:305`) vào toast.
+8. **Route không có entry `routeCatalog`** ⇒ mất `titleKey` + `requiredCapabilities`; contract test chỉ kiểm chiều catalog → `main.tsx` nên không bắt được.
+9. **0 test render trang.** `grep PortfoliosPage` trong `packages/web` chỉ ra 1 dòng *comment* trong `field-contract.test.js`.
+10. **Trùng lặp kiến trúc**: `/portfolios` đã có workspace 5 tab, `/portfolios/manage` là CRUD song song không kế thừa gì.
+11. **Link "Giao dịch" trỏ sai**: `PortfoliosPage.tsx:151` trỏ `/transactions` **không truyền `portfolioId`** ⇒ màn hình chết (`TransactionsPage` luôn báo "Vui lòng chọn danh mục").
+
+### 3. MÂU THUẪN phát hiện: BE khuyên "hãy ẩn danh mục" nhưng **không có tính năng ẩn**
+
+`views.py:229-234` trả 409 với lời nhắc *"Hãy ẩn danh mục thay vì xoá"*. Đọc `user_workspace/models.py` `class Portfolio`: có `user/tenant/name/description/is_default/opening_balance/opening_balance_source/legacy_portfolio_id` — **không có** field archive. ⇒ Lời nhắc hướng người dùng tới một tính năng không tồn tại.
+
+**Xử lý**: FE **không** hứa tính năng không có; thông điệp 409 do trang phát ra là *"đã đổi tên để đánh dấu không dùng nữa, hoặc liên hệ quản trị viên"* — vì sau rebuild trang đã có thao tác **Sửa/đổi tên**. Không sửa BE (ngoài phạm vi, cần migration).
+
+### 4. MÂU THUẪN tài liệu đã kiểm chứng (không tin báo cáo cũ)
+
+`docs/archive/.../PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md` khẳng định widget có `Line`/`Area`/`Bar` để vẽ chart danh mục. Kiểm bằng **export surface** của `dist/index.js`: **29 export, không có tên nào trong 3 tên đó**. Tài liệu đó (a) đã archive theo `docs/archive/README.md:14` và (b) sai về mặt kỹ thuật. Nguồn FE đúng là `docs/KE_HOACH_THIET_KE_FRONTEND_PORTFOLIO_20261007.md` + `docs/evidence/portfolio-fe/TEST_REPORT.md`.
+
+### 5. Đã sửa
+
+- **Tiền thật**: lưới KPI (tổng giá trị / giá vốn / lãi-lỗ) + bảng 8 cột có **giá trị thị trường, lãi-lỗ (+%), số mã đang giữ, ngày cập nhật dữ liệu**. `getPortfolioSummary` gọi song song bằng `Promise.allSettled` — một danh mục lỗi **không làm mất danh mục khỏi bảng**.
+- **CRUD đủ**: thêm Sửa (PATCH); form dùng chung create/edit.
+- **Fail-closed**: ô thiếu số liệu hiện `—` + lý do từ `price_missing_reason`/`market_value_reason`, **không** hiện `0` (nguyên tắc NO ZERO DISPLAY, `PORTFOLIO_COMMERCIAL_UPGRADE_PROPOSAL_20260927.md:87-108`). Mã chưa có giá **vẫn hiện dòng** — ẩn đi sẽ làm méo tổng tỷ trọng.
+- **KPI tổng** gắn nhãn "Tạm tính" + nêu lý do khi còn danh mục chưa có giá trị thị trường.
+- **Broker tách route** `/portfolios/manage/broker`. Khai **TRƯỚC** `portfolios/manage` trong `main.tsx` — khai sau sẽ bị React Router gán `manage/broker` vào param `portfolios/:portfolioId/...` và mở sai trang.
+- **Phân trang cursor**: `getPortfolios(params)` nhận `cursor`; giữ stack để "Trang trước" không cần biết cursor lùi.
+- **i18n**: namespace `portfoliosManage` **116 key × 2 locale**.
+- **Xoá** `PortfoliosPage.css` (341 dòng) với selector global + CSS trùng.
+- **DI**: `usePortfolioManage(client)` + prop `adapter` — cùng cách 5 trang workspace làm, nhờ đó trang **test được** không cần `vi.mock` module.
+
+### 6. 2 lỗi CHỈ lộ ra khi chạy Playwright trên staging thật — test component không bắt được
+
+| Lỗi | Vì sao test không bắt | Bằng chứng |
+|---|---|---|
+| Nhãn phân trang luôn sai | `t(key, {defaultValue: cond ? A : B})` — `createTranslator` (`i18n/index.js:38`) **chỉ đọc `defaultValue` khi KEY KHÔNG có** trong dictionary; key đã có nên nhánh điều kiện không bao giờ chạy | staging hiện *"Đang xem trang sau…"* ở trang đầu tiên |
+| Ghi chú kỹ thuật của BE lộ vào UI | `cash_note` là câu 2 dòng *"cash = tổng dòng tiền gom từ Transaction (mua - bán + cổ tức - phí - thuế)…"* | đọc trong drawer khi probe staging |
+
+Cả hai đã sửa (`pager.onLaterPage/onFirstPage`; `cash_note` → câu ngắn + `title`). Bonus: `nav_reason_text` là **tiếng Việt hardcode trong BE** (`ledger/valuation.py:39-45`) nên đổi sang EN vẫn ra tiếng Việt ⇒ chuyển sang tra **mã máy** `nav_reason` (`no_opening_balance`/`no_positions`) sang key i18n.
+
+### 7. BẰNG CHỨNG CHẠY THẬT (không báo PASS cho thứ chưa chạy)
+
+**Gate cục bộ** — `tsc --noEmit` **0** · `lint` **0 error** (3930 warning có sẵn) · `test:components` **129 file / 928 test PASS** (baseline `dev` 918 + **10 test mới**) · `build` **0** · `check:tokens` **0 vi phạm** · `check-portfolio-contrast` **12 cặp × 2 theme ≥ 4.5:1** · `check:shell` **exit 0** · `i18n:scan` **exit 0** · `check-multi-agent` **0 lỗi** · `check-lessons` **40/40** · `pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL**.
+
+**Fail-before chứng minh test có tác dụng** — sửa `format.ts` `opening_balance: balance === "" ? null : balance` → `? "0" : balance` ⇒ test **FAIL** `expected '0' to be null` (1/10 fail); khôi phục ⇒ **10/10**.
+
+**Artifact trong container, không phải `dist/` trên host** (L-V01) — `docker exec vninvest-frontend grep -rl 'pfm-kpi__value' /usr/share/nginx/html/assets/` → `PortfoliosPage-BlN5j0Rt.css` + `PortfoliosPage-DEVoZxPc.js`; `grep -rl 'core-portfolios-table'` → **không còn** ⇒ selector `button` toàn cục đã thật sự biến mất khỏi bản deploy.
+
+**E2E thật trên `docker.edusuccess.vn`** (Playwright, đăng nhập `testuser`): tạo danh mục → bảng hiện đủ 8 cột → NAV tính được **50.000.000** từ số dư mở đầu → Sửa (pre-fill đúng tên + `50000000.00`) → Chi tiết (drawer vị thế + NAV + tiền mặt) → Xoá (còn 0 dòng) · **0 console error**. Dữ liệu test đã dọn sạch staging sau khi chạy.
+
+### 8. CHƯA CHẠY (ghi rõ, không tính là PASS)
+
+- **BE test** — không chạy: không sửa backend, nhưng cũng **không** xác nhận được là baseline BE còn xanh sau khi đổi `workspace.js`.
+- **Playwright có sẵn trong repo** (`tests/visual/*.spec.ts`) — không thêm spec nào vào repo; probe viết ở thư mục tạm và xoá sau (L-V03: lần đầu probe ghi 4 file PNG vào `packages/web/`, đã revert).
+- **Chưa seed dữ liệu có vị thế thật** ⇒ cột tiền chỉ được kiểm ở mức "0 là đúng vì danh mục rỗng". Chưa chứng minh hiển thị giá khi có `LedgerEntry` thật.
+- **Light mode / mobile** — có CSS + `prefers-reduced-motion` nhưng **chưa** chụp ảnh đối chiếu.
+- `DNSEConnectionPanel` **không sửa 1 dòng**; ~28 chuỗi hardcode của nó **chưa** i18n (slice riêng, để diff dễ đọc).
+
+### 9. L-T01 bắt lần thứ 12: `Edit` tool đổi LF → CRLF **hai file**
+
+`git diff --numstat` ra `workspace.js` **+762/−750** và `routeCatalog.js` **+681/−658** cho thay đổi thật lần lượt ~10 và ~23 dòng. HEAD lưu **LF** (`git ls-files --eol` báo `i/crlf` cho cả hai trạng thái nên **không** phát hiện được). Chuẩn hoá byte về LF ⇒ **`+15/−3`** và **`+23/−0`** khớp đúng nội dung sửa.
+
+**Còn lần 13 ngay trong Entry này**: dùng `[System.IO.File]::WriteAllLines` để chèn 1 dòng index vào chính file ledger này — hàm đó ghi **CRLF** (theo `Environment.NewLine`) nên **9 753 dòng biến mất khỏi diff**. Khôi phục bằng `git checkout --` rồi làm lại bằng `edit` tool.
+
+**Bài học**: `git diff --numstat` là cảm biến **duy nhất** bắt được chuyện này, và phải chạy **trước khi stage**. Không dùng `WriteAllLines`/`WriteAllText` cho file append-only trong repo.
+
 ## Entry 281: Vá P0 pgbouncer trong `docker-compose.prod.yml` + chuyển DB `vninvest_core` local → VPS staging (2026-10-13)
 
 - **Nhánh**: `fix/prod-pgbouncer-db-migrate` → `dev` (claim `ops-vps`, commit `0b766903d`)
@@ -9529,6 +9975,8 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 271 | 2026-10-11 | **Portfolio entry** - `/portfolios` mo Portfolio workspace, trang quan ly CRUD chuyen sang `/portfolios/manage` (phuong an A do Owner chot) | `feat/portfolio-entry` -> `dev` | `tsc` 0 · `lint` 0 error · `check:shell` 0 · `check:ts-imports` PASS · `vitest src/pages/portfolio` 43/43 · `route-catalog-contract`+`main-menu-contract` 10/10 · `build` 0 · `check-multi-agent` 0 | Root cause `main.tsx:29` remap `portfolios` -> `core-portfolios` khien 5 man hinh Portfolio moi khong toi duoc. Lift `usePortfolioWorkspace` len page, khung thanh presentational; dong bug co san `selectedId` khong dieu khien 5 tab con. Sua BRK-06 trong 2 doc portfolio tro `/portfolios/manage`. **CHUA CHAY**: BE test, Playwright, full FE suite. L-T01 tai pham (Edit tool doi LF->CRLF, da chuan hoa lai). |
 | 272 | 2026-10-12 | **Dashboard UI/UX — sửa theo đo runtime, 1 claim audit bị refute, đóng thêm lỗi light mode** - 5 file. `align-items: start`→`stretch` (hết khoảng trống 380px vs 654px, treemap `flex:1` giãn ra); bỏ `padding-top:1.25rem` phá alignment tiêu đề; cụm nút heatmap `shrink-0`+`whitespace-nowrap` (hết gãy 2 dòng); **BUG THẬT** `UnifiedAlertCenter` gộp "chưa biết" vào "đã đọc" ⇒ 100% card mất màu severity + `opacity-60`; bỏ viền lồng 4 cạnh chỉ giữ severity rail; `text-slate-600` (2.5:1, FAIL AA) → `slate-400`; **khối light mode** `[data-theme="light"] .core-dashboard-page` | `feat/dashboard-uiux-ui` -> `dev` (claim `364da5a08`) | `tsc` 0 · **`test:components` full 128 file / 918 test PASS** · `npm run build` (tsc && vite build) 0 · `eslint src` **0 error** (3786 warn có sẵn, 12 trong 5 file này đều `no-unused-vars` có sẵn) · `check:tokens` PASS · `check:contrast` PASS · `check:ts-imports` PASS · `check:shell` **exit 0** · `check-multi-agent` 0 lỗi · `start_dev.ps1 -FrontendOnly` smoke **API OK / FE OK** | **Đo thật trên `:8080`** (Playwright + `page.route` mock, mẫu từ `dashboard-ui-fixes.spec.ts`): 1237px → 2 lane **587x654 bằng nhau**, `padTop` 16px cả 3, tiêu đề lệch 1px, nút 27px (1 dòng), card border `0\|0\|0\|4px`; 1600px → 3 lane 654px; `pageerror: none`. **Claim audit "ép chữ treemap thành trắng" SAI** — `textOnHeat()` đã chọn màu theo luminance và bảng màu cố ý toàn stop tối (`#14532d`) ⇒ chữ **đã trắng sẵn**; ép trắng xoá lớp bảo vệ, có test `heatmap-scale.component.test.ts` khoá. Hex `#090D16`/`#111827` cũng bị bỏ vì phá `check:tokens` + light mode. **Lỗi #6 light mode có sẵn** (chữ sáng trên nền sáng ≈1.2:1): HEAD đã dùng `bg-slate-900/30` tối hơn, và **mọi** rule `[data-theme="light"]` cũ đều scope trong `.advisory-page`; sau khi phủ → `9.45:1` / `9.9:1`. **`dist/` trên host KHÔNG phải artifact docker build** (build chạy trong image) — verify đầu báo "NOT FOUND" giả, phải `docker cp` từ container. **L-F07**: lần đầu báo "check:shell exit 0" lấy `$LASTEXITCODE` **sau** pipeline `\| Select-String` ⇒ đo nhầm (đó là exit của `Select-String`); đã tách 2 bước, mọi gate trên đều **EXIT=0 thật**. **CHƯA CHẠY**: BE test (thay đổi không chạm BE ⇒ không phải PASS cũng không phải FAIL) · Playwright trong repo (blocker Entry 270: `vite.config.ts` khai `proxy` chỉ trong `server`) · **app shell vẫn tối trong light mode** (ngoài phạm vi 5 file, đã đo để bàn giao) |
 ## Entry 272: Cuu 28 file uncommitted — 6 claim admin "done" nhung CHUA co commit nao (2026-10-12)
+
+| 282 | 2026-10-13 | **Xây lại `/portfolios/manage`** — trang cũ **không hiển thị một đồng tiền nào** dù BE đã tính sẵn (`portfolio_analytics_views.py:366-407`) và adapter đã có `getPortfolioSummary` (**0 lần gọi**). 11 finding đọc code thật · broker tách sang `/portfolios/manage/broker` · 8 cột tiền + KPI + drawer vị thế · sửa danh mục (PATCH) · 409 có thông điệp tiếng Việt · phân trang cursor (trước âm thầm cắt ở 50 dòng) · i18n 116 key × 2 · xoá `PortfoliosPage.css` (selector `button` toàn cục). **2 lỗi chỉ lộ khi probe staging thật**: nhãn phân trang luôn sai vì `defaultValue` bị bỏ qua khi key đã có trong dictionary; `cash_note` kỹ thuật lộ thẳng vào UI. Gate **21 PASS / 0 FAIL** · **928 test** · E2E staging **0 console error**. **L-T01 lần 13**: `File.WriteAllLines` chèn 1 dòng index làm **9 753 dòng** biến mất khỏi diff. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

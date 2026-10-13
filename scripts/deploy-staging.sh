@@ -71,6 +71,50 @@ verify() {
     [ "$n" -eq 1 ] && ok "$svc đang chạy" || warn "$svc KHÔNG chạy"
   done
 
+  # ── Crash-loop: container `running` ≠ ổn định ─────────────────────────────
+  #
+  # Đo 2026-10-13 (Entry 284): 3 celery worker OOM liên tục vì
+  # `CORE_WORKER_MEM_LIMIT` mặc định 128m, `RestartCount=78`, `StartedAt` cách
+  # nhau 5-15 giây. Kiểm `State == running` ở trên vẫn XANH vì container vừa
+  # restart 5 giây trước. `grep -c received` trong log worker = 0 ⇒ mọi job
+  # nền chết mà deploy vẫn báo "đang chạy".
+  #
+  # Ngưỡng 5: dưới đó là restart bình thường (config reload, deploy). Trên đó
+  # là loop. Cũng kiểm `memory.current` của container để chỉ ra áp lực bộ nhớ
+  # trước khi nó thành OOM.
+  echo
+  echo "--- crash-loop (RestartCount) + áp lực bộ nhớ ---"
+  local looped=0
+  for svc in core-worker core-worker-realtime-prefetch core-worker-realtime-stream core-beat; do
+    cid=$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -1)
+    [ -z "$cid" ] && continue
+    rc_restart=$(docker inspect -f '{{.RestartCount}}' "$cid" 2>/dev/null || echo 0)
+    oomkilled=$(docker inspect -f '{{.State.OOMKilled}}' "$cid" 2>/dev/null || echo false)
+    mem_cur=$(docker exec "$cid" cat /sys/fs/cgroup/memory.current 2>/dev/null || echo 0)
+    mem_max=$(docker exec "$cid" cat /sys/fs/cgroup/memory.max 2>/dev/null || echo 0)
+    mem_pct="-"
+    if [ "$mem_max" != "0" ] && [ -n "$mem_max" ] && [ "$mem_cur" != "0" ]; then
+      mem_pct=$(( mem_cur * 100 / mem_max ))
+    fi
+    detail="${rc_restart} restart · mem ${mem_pct}%"
+    [ "$oomkilled" = "true" ] && detail="${detail} · OOMKilled=true"
+    if [ "$rc_restart" -ge 5 ]; then
+      warn "$svc ĐANG CRASH-LOOP — $detail"
+      looped=1
+    elif [ "$oomkilled" = "true" ]; then
+      warn "$svc từng bị OOM-kill — $detail"
+      looped=1
+    else
+      ok "$svc ổn định — $detail"
+    fi
+  done
+  if [ "$looped" -eq 1 ]; then
+    rc=1
+    echo "    → nâng CORE_WORKER_MEM_LIMIT / CORE_BEAT_MEM_LIMIT trong compose.staging.env"
+    echo "      (mặc định 128m của docker-compose.prod.yml:167,252,290,325 quá nhỏ"
+    echo "       cho Django+celery — xem Entry 284)"
+  fi
+
   return $rc
 }
 

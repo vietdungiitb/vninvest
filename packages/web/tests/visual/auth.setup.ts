@@ -19,7 +19,17 @@ setup('authenticate testuser', async ({ page }) => {
   await page.locator('input[type="password"]').fill('TestPass123!');
   await page.locator('button[type="submit"]').click();
 
-  await page.waitForURL('**/dashboard', { timeout: 15000 });
+  // `waitUntil: 'domcontentloaded'` — KHÔNG bỏ được.
+  //
+  // Sửa 2026-10-13 (claim `pf-manage-rebuild`). Mặc định của `waitForURL` là
+  // `waitUntil: 'load'`, mà app mở kết nối realtime/WebSocket/pollng nên
+  // **sự kiện `load` không bao giờ fire**. Log lỗi cũ tự mâu thuẫn:
+  //   "navigated to 'https://docker.edusuccess.vn/dashboard'"  ← ĐÃ điều hướng
+  //   rồi vẫn "Timeout 15000ms exceeded".
+  // Hệ quả: `storageState` không bao giờ được ghi ⇒ **mọi** spec E2E trong
+  // repo fail ở bước đăng nhập với lý do sai (tưởng app hỏng, thực ra là
+  // chờ sai sự kiện).
+  await page.waitForURL('**/dashboard', { timeout: 30000, waitUntil: 'domcontentloaded' });
 
   // W1 guard: bootstrap (PortfolioContext) must release the auth gate.
   // Previously a hanging syncAuthState/fetchPortfolios left the

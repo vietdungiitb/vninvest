@@ -291,4 +291,44 @@
   .dnse-panel__order-grid {
     grid-template-columns: 1fr;
   }
+
+  .dnse-panel__token-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Token giao dịch: ô nhập + nút Hiện/Ẩn ─────────────────────────────
+ *
+ * Thêm 2026-10-13 (claim `pf-manage-rebuild`): token là BÍ MẬT, mặc định
+ * `type="password"`. Người dùng bấm "Hiện" mới thấy — cần thiết khi họ phải
+ * copy token sang chỗ khác.
+ *
+ * `.dnse-panel__btn--secondary` và `--ghost` chưa có rule nào trong file này
+ * (chỉ có `--primary` ở :168-175) ⇒ trước đây các nút đó rơi về style gốc
+ * `.dnse-panel__btn`. Nay định nghĩa rõ để trạng thái phụ không nhìn như
+ * nút chính.
+ */
+
+.dnse-panel__token-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.dnse-panel__btn--secondary {
+  color: var(--text-primary);
+  background: var(--bg-panel-soft);
+  border: 1px solid var(--border-default);
+}
+
+.dnse-panel__btn--ghost {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+}
+
+.dnse-panel__btn--secondary:hover:not(:disabled),
+.dnse-panel__btn--ghost:hover:not(:disabled) {
+  border-color: var(--border-strong);
 }
