@@ -46,6 +46,11 @@ BACKFILL_MARKER = '0022_backfill_transaction_to_ledger'
 #: xảy ra thì thông báo lỗi của `backwards`/`forwards` có tên.
 MANUAL_REF_PREFIX = 'manual:tx:'
 
+#: Dau phan cach phien ban - **phai trung** `ledger/transaction_sync.py`
+#: (`VERSION_SEPARATOR`). Ref co phien ban la `ref:v<n>`, sinh ra khi du lieu
+#: nguon doi va ban cu bi dao bang `ADJUSTMENT`.
+VERSION_SEPARATOR = ':v'
+
 
 def _money(value):
     return Decimal(str(value if value is not None else 0)).quantize(Decimal('0.01'))
@@ -53,6 +58,37 @@ def _money(value):
 
 def _normalise_symbol(symbol):
     return str(symbol or '').strip().upper()
+
+
+def _existing_refs(entries):
+    """Tap `(tenant_id, ref)` da co trong so cai.
+
+    **Vi sao migration nay can buoc nay.** `ledger/transaction_sync.py`
+    (`sync_transaction_to_ledger`, them o `d7226a591` P0-2) ghi `LedgerEntry`
+    **moi lan `Transaction` duoc luu**. Nen mot giao dich duoc tao *sau khi
+    ung dung da chay* thi da co dong so cai roi. Ban `forwards()` dau tien
+    `bulk_create` ma khong hoi => ghi 2 lan => dung
+    `uniq_ledger_entry_tenant_external_id` => **ca migration abort**.
+
+    Day khong phai rui ro hoc thuyet: no lam hong 10 test trong
+    `tests/test_ledger_migration_backfill.py` (`roll back -> 0021 -> tao du lieu
+    -> chay lai 0022`), va bat ky lan rollback-thiet-lap-lai nao tren DB that.
+
+    Nap **mot lan** thay vi query moi dong - `bulk_create` phia sau van la 1
+    lenh, khong muon them N round-trip chi de hoi "da co chua".
+
+    Phien ban `ref:v<n>` duoc quy ve `ref` vi chung la cung mot giao dich
+    (xem `active_entry_for` trong `transaction_sync.py`).
+    """
+    refs = set()
+    rows = entries.exclude(external_id='').values_list(
+        'tenant_id', 'external_id')
+    for tenant_id, external_id in rows:
+        refs.add((tenant_id, external_id))
+        head, sep, _tail = external_id.rpartition(VERSION_SEPARATOR)
+        if sep and head:
+            refs.add((tenant_id, head))
+    return refs
 
 
 def forwards(apps, schema_editor):
@@ -69,6 +105,15 @@ def forwards(apps, schema_editor):
     flows = []
     unmapped = []
     entries_by_tx = {}
+    already_synced = []
+
+    # Giao dich nao da co dong so cai thi KHONG ghi lan nua - xem `_existing_refs`.
+    existing_refs = _existing_refs(LedgerEntry.objects)
+    if existing_refs:
+        logger.info(
+            'LED-05 backfill: %s ref da ton tai trong so cai (sync P0-2 se co '
+            'san), se bo qua de tranh ghi trung', len(existing_refs),
+        )
 
     for tx in queryset.iterator(chunk_size=500):
         symbol = _normalise_symbol(tx.symbol)
@@ -103,6 +148,12 @@ def forwards(apps, schema_editor):
         # và việc gộp chúng sẽ âm thầm nuốt một dòng sổ cái. Chuẩn hoá case
         # chỉ áp cho `symbol`.
         source_ref = str(tx.external_id or '').strip() or f'{MANUAL_REF_PREFIX}{tx.pk}'
+
+        # Da co san dong so cai cho giao dich nay (xem `_existing_refs`).
+        # Ghi de la sai - va con lam ABORT ca migration, khong chi sai so lieu.
+        if (tx.tenant_id, source_ref) in existing_refs:
+            already_synced.append(tx.pk)
+            continue
 
         entry = LedgerEntry(
             tenant_id=tx.tenant_id,
@@ -165,9 +216,13 @@ def forwards(apps, schema_editor):
     flow_count = CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).count()
     logger.info(
         'LED-05 backfill: xong. transaction=%s ledger_entry=%s cash_flow=%s '
-        'unmapped=%s', total, entry_count, flow_count, len(unmapped),
+        'unmapped=%s da_co_san=%s', total, entry_count, flow_count, len(unmapped),
+        len(already_synced),
     )
 
+    # Chi so voi phan migration nay **tu ghi**. Dong `already_synced` khong co
+    # marker nen nam ngoai `entry_count` - neu so voi `total` thi backfill
+    # dung 100% cung bi coi la FAIL.
     if entry_count != len(entries):
         raise RuntimeError(
             f'LED-05 verify FAIL: ghi {len(entries)} LedgerEntry nhung doc lai '

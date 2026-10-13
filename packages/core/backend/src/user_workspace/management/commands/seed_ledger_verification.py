@@ -157,7 +157,8 @@ class Command(BaseCommand):
                     else 100 * rng.randint(1, 20)
                 fee = (price * quantity * fee_rate).quantize(Decimal('0.01'))
                 tax = (price * quantity * tax_rate).quantize(Decimal('0.01'))
-                Transaction.objects.create(
+                # **`bulk_create`, không `create`** — xem ghi chú ngay dưới.
+                Transaction.objects.bulk_create([Transaction(
                     portfolio=portfolio,
                     tenant=portfolio.tenant,
                     symbol=symbol,
@@ -168,9 +169,26 @@ class Command(BaseCommand):
                     fee=fee,
                     tax=tax,
                     external_id=f'{SEED_TAG}-{portfolio.pk}-{seq}',
-                )
+                )])
                 created += 1
         return created, len(Transaction.objects.all())
+
+    # ── Vì sao dòng dữ liệu sạch phải `bulk_create` ────────────────────────
+    #
+    # Lệnh này tồn tại để **kiểm chứng backfill `0022`**: nó sinh giao dịch
+    # thô, chạy `0022.forwards()`, rồi so số `LedgerEntry` mang marker với số
+    # `Transaction`. Cả vòng kiểm chứng đó chỉ có nghĩa nếu **backfill là thứ
+    # duy nhất ghi sổ cái**.
+    #
+    # Tín hiệu `post_save` trên `Transaction` (`user_workspace/signals.py:113`
+    # -> `ledger/transaction_sync.py:253`, P0-2 `d7226a591` ngày 2026-10-06) ghi
+    # `LedgerEntry` **mọi lần giao dịch được lưu**. Dùng `create()` ở đây thì
+    # sổ cái đã đầy trước khi backfill kịp chạy, `0022` bỏ qua (đúng — không
+    # ghi trùng), và lệnh kết luận **"Dem khong khop: LedgerEntry=0,
+    # Transaction=5"** — tức báo đỏ trên chính dữ liệu nó tự tạo.
+    #
+    # `bulk_create` không bắn `post_save` ⇒ dữ liệu thô đúng nghĩa, và `0022`
+    # thật sự là người ghi — đó mới là thứ lệnh này cần chứng minh.
 
     def _make_broken_transactions(self, portfolios, rng):
         """Các hình dạng khiến `0022` phải DỪNG — mỗi cái một lý do khác nhau."""
@@ -226,34 +244,70 @@ class Command(BaseCommand):
 
     # ── báo cáo ────────────────────────────────────────────────────────
 
+    def _count_already_synced(self, Transaction, marker):
+        """Số giao dịch đã có dòng sổ cái **trước** khi backfill chạy.
+
+        Đo bằng chính `_existing_refs` của `0022` (loại trừ dòng mang marker,
+        vì đó là thứ backfill vừa ghi), nên kỳ vọng của lệnh và hành vi thật
+        của migration **không thể trôi lệch nhau**.
+        """
+        import importlib
+
+        module = importlib.import_module(
+            'user_workspace.migrations.0022_backfill_transaction_to_ledger')
+        from user_workspace.ledger.transaction_sync import source_ref_for
+        from user_workspace.models import LedgerEntry
+
+        refs = module._existing_refs(
+            LedgerEntry.objects.exclude(backfilled_by=marker))
+        return sum(
+            1 for tx in Transaction.objects.all()
+            if (tx.tenant_id, source_ref_for(tx)) in refs
+        )
+
     def _report(self, result, tx_total_before, clean_count, broken,
                 Transaction, LedgerEntry, CashFlow):
         marker = '0022_backfill_transaction_to_ledger'
         entries = LedgerEntry.objects.filter(backfilled_by=marker).count()
         flows = CashFlow.objects.filter(entry__backfilled_by=marker).count()
 
+        # Giao dịch **đã có** sổ cái từ trước (tín hiệu P0-2 đồng bộ lúc ghi
+        # nguồn) thì `0022` cố tình bỏ qua — nó sẽ ghi trùng và đụng
+        # `uniq_ledger_entry_tenant_external_id`. Nên chúng **không** nằm trong
+        # kỳ vọng của backfill. Trước khi có hiệu ứng này, lệnh báo đỏ trên
+        # chính dữ liệu sạn của nó: "Dem khong khop: LedgerEntry=5,
+        # CashFlow=5, Transaction=6".
+        #
+        # Dùng **chính** `_existing_refs` của migration để đo, thay vì viết lại
+        # luật ở đây — hai bên không thể trôi lệch nhau.
+        already_synced = self._count_already_synced(Transaction, marker)
+
         if result['stopped']:
             self.stdout.write(self.style.WARNING('BACKFILL DUNG (nhu ky vong)'))
             self.stdout.write(f'  {result["message"][:400]}')
         else:
             self.stdout.write(self.style.SUCCESS('BACKFILL HOAN TAT'))
-            # Kỳ vọng là **mọi giao dịch trong DB**, không phải số lệnh vừa sinh.
+            # Kỳ vọng là **mọi giao dịch trong DB chưa có sổ cái**, không phải
+            # số lệnh vừa sinh.
             #
             # Bản đầu so với `clean_count` (số dòng lệnh tự sinh) — nên khi
             # database đã có dữ liệu sẵn thì báo "KHONG KHOP" dù backfill đúng.
             # Lệnh này được dùng để kiểm chứng trên DB có dữ liệu, nên phải tính
-            # cả những dòng không phải của nó.
-            expected = tx_total_before
+            # cả những dòng không phải của nó — trừ phần đã được đồng bộ sẵn.
+            expected = tx_total_before - already_synced
             ok = entries == expected and flows == expected
             self.stdout.write(
                 f'  LedgerEntry={entries} / CashFlow={flows} / '
-                f'Transaction={tx_total_before} (mong doi {expected})')
+                f'Transaction={tx_total_before} '
+                f'(da co so cai san={already_synced}, mong doi {expected})')
             self.stdout.write(f'  Giao dich sinh boi lenh nay: {clean_count}')
             self.stdout.write('  KET: ' + ('KHOP' if ok else 'KHONG KHOP'))
             if not ok:
                 raise CommandError(
                     f'Dem khong khop: LedgerEntry={entries}, CashFlow={flows}, '
-                    f'Transaction={tx_total_before}. Backfill co van de.')
+                    f'Transaction={tx_total_before} '
+                    f'(da co so cai san={already_synced}, mong doi {expected}). '
+                    f'Backfill co van de.')
         self.stdout.write(
             f'  Giao dich hong co chu dich: {len(broken)} '
             f'(chi sinh o che do --expect-stop)')

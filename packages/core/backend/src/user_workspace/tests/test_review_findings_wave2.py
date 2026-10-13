@@ -79,6 +79,31 @@ def _flow(tenant, portfolio, symbol, flow_type, amount, trade_date=date(2026, 1,
         entry=entry, tenant=tenant, flow_type=flow_type, amount=amount)
 
 
+# ── Vì sao fixture `Transaction` ở file này dùng `bulk_create` ────────────
+#
+# File test này viết ngày 2026-10-03. Ngày 2026-10-06, P0-2 (`d7226a591`) thêm
+# tín hiệu `post_save` trên `Transaction` (`signals.py:113` ->
+# `ledger/transaction_sync.py:253`) ghi `LedgerEntry` + `CashFlow` **mỗi lần
+# giao dịch được lưu**. Trước `768d0897f` (2026-10-12) file này chưa từng được
+# `manage.py test` chạy tới, nên xung đột nằm im cho tới nay.
+#
+# Hậu quả nếu để `create()`: mỗi test dựng `LedgerEntry` + `CashFlow` **thủ công**
+# để kiểm soát chính xác trạng thái sổ cái, nhưng `Transaction` lại tự sinh thêm
+# một bộ nữa ⇒ tiền mặt bị **nhân đôi** ⇒ cảnh báo `cash_cross_check` bật giả,
+# hoặc NAV ra số thay vì bị chặn. Test đo sai thứ nó định đo.
+#
+# `bulk_create` **không** bắn `post_save` ⇒ trạng thái sổ cái đúng bằng những
+# gì test dựng, và khớp với thời điểm dữ liệu này được viết.
+def _tx_raw(portfolio, tenant, **kwargs):
+    payload = {
+        'portfolio': portfolio, 'tenant': tenant, 'symbol': 'VNM',
+        'transaction_type': 'BUY', 'date': date(2026, 1, 5),
+        'price': Decimal('70000'), 'quantity': 1000,
+    }
+    payload.update(kwargs)
+    return Transaction.objects.bulk_create([Transaction(**payload)])[0]
+
+
 # ══════════════════════════════════════════════════════════════════
 # 1 + 2 — append-only thật sự append-only
 # ══════════════════════════════════════════════════════════════════
@@ -254,14 +279,9 @@ class CashCrossCheckTests(TestCase):
         CashFlow.objects.create(
             entry=self.sell, tenant=self.tenant, flow_type='SELL',
             amount=Decimal('160000000'))
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
-            quantity=1000)
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='SELL', date=date(2026, 2, 10), price=Decimal('80000'),
-            quantity=2000)
+        _tx_raw(self.portfolio, self.tenant)
+        _tx_raw(self.portfolio, self.tenant, transaction_type='SELL',
+                date=date(2026, 2, 10), price=Decimal('80000'), quantity=2000)
 
     def test_divergence_is_reported_not_hidden(self):
         from user_workspace.ledger.services import get_cached_ledger
@@ -299,14 +319,9 @@ class CashCrossCheckTests(TestCase):
                     price=Decimal('80000'), external_id='C-2')
         CashFlow.objects.create(entry=e2, tenant=clean_tenant, flow_type='SELL',
                                 amount=Decimal('80000000'))
-        Transaction.objects.create(
-            portfolio=clean, tenant=clean_tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
-            quantity=1000)
-        Transaction.objects.create(
-            portfolio=clean, tenant=clean_tenant, symbol='VNM',
-            transaction_type='SELL', date=date(2026, 2, 10),
-            price=Decimal('80000'), quantity=1000)
+        _tx_raw(clean, clean_tenant)
+        _tx_raw(clean, clean_tenant, transaction_type='SELL',
+                date=date(2026, 2, 10), price=Decimal('80000'), quantity=1000)
 
         ledger = get_cached_ledger(clean.pk, clean_tenant, use_cache=False)
         result = portfolio_valuation(clean, ledger=ledger)
@@ -376,10 +391,7 @@ class NoFabricatedNavTests(TestCase):
 
         Hai lỗi tài chính cùng lúc, từ một dòng guard quá hẹp.
         """
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5),
-            price=Decimal('70000'), quantity=1000)
+        _tx_raw(self.portfolio, self.tenant)
 
         from user_workspace.ledger.services import get_cached_ledger
 
@@ -404,14 +416,9 @@ class NoFabricatedNavTests(TestCase):
                     price=Decimal('70000'), external_id='Z-2')
         CashFlow.objects.create(entry=e2, tenant=self.tenant, flow_type='SELL',
                                 amount=Decimal('7000000'))
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
-            quantity=1000)
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='SELL', date=date(2026, 2, 10),
-            price=Decimal('70000'), quantity=1000)
+        _tx_raw(self.portfolio, self.tenant)
+        _tx_raw(self.portfolio, self.tenant, transaction_type='SELL',
+                date=date(2026, 2, 10), price=Decimal('70000'), quantity=1000)
 
         from user_workspace.ledger.services import get_cached_ledger
 
@@ -713,10 +720,7 @@ class CashCrossCheckFalsePositiveTests(TestCase):
         e1 = _entry(tenant, portfolio, external_id='X-1')
         CashFlow.objects.create(entry=e1, tenant=tenant, flow_type='BUY',
                                 amount=Decimal('-70000000'))
-        Transaction.objects.create(
-            portfolio=portfolio, tenant=tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
-            quantity=1000)
+        _tx_raw(portfolio, tenant)
         if close_position:
             # Bán. `oversell=True` bán NHIỀU hơn số đang giữ.
             qty = 2000 if oversell else 1000
@@ -725,10 +729,8 @@ class CashCrossCheckFalsePositiveTests(TestCase):
                         price=Decimal('80000'), external_id='X-2')
             CashFlow.objects.create(entry=e2, tenant=tenant, flow_type='SELL',
                                     amount=Decimal('80000') * qty)
-            Transaction.objects.create(
-                portfolio=portfolio, tenant=tenant, symbol='VNM',
-                transaction_type='SELL', date=date(2026, 2, 10),
-                price=Decimal('80000'), quantity=qty)
+            _tx_raw(portfolio, tenant, transaction_type='SELL',
+                    date=date(2026, 2, 10), price=Decimal('80000'), quantity=qty)
 
         ledger = get_cached_ledger(portfolio.pk, tenant, use_cache=False)
         return portfolio_valuation(
@@ -848,10 +850,7 @@ class BackfillAbortBeforeWriteTests(TransactionTestCase):
         module.forwards(django_apps, _SchemaEditor())
 
     def test_abort_leaves_no_ledger_rows(self):
-        Transaction.objects.create(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
-            quantity=1000, external_id='OK-1')
+        _tx_raw(self.portfolio, self.tenant, external_id='OK-1')
         Transaction.objects.bulk_create([Transaction(
             portfolio=self.portfolio, tenant=self.tenant, symbol='',
             transaction_type='BUY', date=date(2026, 1, 6), price=Decimal('70000'),

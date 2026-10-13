@@ -9462,3 +9462,128 @@ trong luc chay gate nang (RAM host chi con 0.4 GB do `Code` 2 GB +
 **Chua do lai duoc** vi thieu DB:
 - so loi that cua 13 ERROR `test_ledger_migration_backfill` + 1 `test_seed_verification`
 - 8 FAIL con lai (6 `cash_cross_check` + 2 abort/stop-mode)
+
+## Entry 276: 2959 test → 2960 test **OK** — dong P0 "test suite khong chay duoc" (2026-10-13)
+
+- **Nhanh**: `fix/ledger-backfill-idempotency` -> `dev` (3 commit: `5ce4d9c63` claim · `aa54a7f8a` fix migration · `da39c33f2` fix 3 file)
+- **Lessons ap dung**: L-001, L-002, L-006, L-G01, L-G02, L-G03, L-G05, L-G06, L-T01, L-T02, L-F04, L-M01, L-M02
+- **Tai lieu**: `docs/REPORT_FINAL_20261013.md` · `docs/HANDOFF_20261013.md` · `docs/WORKLOG.md`
+
+### 1. Baseline do that tren `dev` sach (khong tai dung so lieu cua branch khac)
+
+| Gate | Ket qua |
+|---|---|
+| `pre-push-gate` | **21 PASS / 0 SKIP / 0 FAIL** |
+| full BE `manage.py test --noinput` | **Ran 2959 · failures=9 · errors=14 · skipped=6** (1565s) |
+
+**Dinh chinh mot hieu lam:** bao cao truoc ghi "full BE 724 OK". Con so do
+dung **truoc** khi `768d0897f` sua test discovery (2026-10-12). Tu do den nay
+`dev` co 2959 test va **23 loi** — ma khong ai do lai.
+
+### 2. Nguon goc CHUNG cua 14 error + 8 FAIL — chung minh bang lenh, khong doan
+
+Tin hieu `post_save` tren `Transaction`
+(`user_workspace/signals.py:113` → `ledger/transaction_sync.py:253`
+`sync_transaction_to_ledger`) **ghi `LedgerEntry` + `CashFlow` moi lan giao
+dich duoc luu**.
+
+Bang chung:
+
+```
+probe tren test DB:
+  LedgerEntry.objects.count() == 1        # TRUOC khi goi forwards()
+  forwards() -> IntegrityError: duplicate key ... Key (tenant_id=1, external_id='B-1') already exists
+```
+
+| Hanh vi | Ngay | Commit |
+|---|---|---|
+| 3 file test viet (dung fixture nay) | 2026-10-03 | `c804a9422` |
+| Tin hieu P0-2 them | 2026-10-06 | `d7226a591` |
+| Test **chua bao gio duoc chay** | 2026-10-12 | `768d0897f` |
+
+⇒ **Xung dot ngam**, khong phai hoi quy cua phien nay. Bai report nao tu
+2026-10-12 tro di deu dung so lieu cua thoii diem truoc khi no lat ra.
+
+### 3. Bug san pham THAT: migration `0022` khong idempotent
+
+`0022.forwards()` `bulk_create` ma khong hoi "da co dong nay chua". Rui ro khong
+chi thuoc ve test: **bat ky lan rollback roi thiet lap lai tren DB that deu di
+vao dung ngo cut nay** va lam ABORT ca migration.
+
+Sua: `_existing_refs()` nap mot lan `(tenant_id, ref)` da co (ref phien ban
+`ref:v<n>` quy ve `ref`, khop `active_entry_for`); `forwards()` bo qua dong da
+co san, dem vao `already_synced` de ghi log. Verify step **khong doi** doi chieu
+(`len(entries)` — phan migration tu ghi), kem ghi chu vi sao khong so voi `total`.
+
+**Fail-before chung minh bang vong that:** go guard → test moi **ERROR**,
+`IntegrityError duplicate key ... Key (tenant_id=1, external_id='B-1')`.
+Co guard → **OK**.
+
+### 4. `seed_ledger_verification.py` — LAYNH THAT, khong phai loi test
+
+Lenh ton tai de **kiem chung backfill**: sinh giao dich tho → chay
+`0022.forwards()` → so `LedgerEntry` mang marker voi so `Transaction`. Do
+`create()` thi tin hieu da day so cai truoc, `0022` bo qua (dung), va lenh ket
+luan **"Dem khong khop: LedgerEntry=5, CashFlow=5, Transaction=6"** — bao do
+tren chinh du lieu san cua no.
+
+- Sinh du lieu sach: `create()` → `bulk_create`.
+- `expected` tru dem ca giao dich **da co so cai san**. Do bang **chinh**
+  `_existing_refs` cua migration (loai dong mang marker) + `source_ref_for` cua
+  runtime ⇒ hai ben **khong the troi lech nhau**.
+- `_existing_refs` doi tham so tu model sang queryset cho phep lay
+  `exclude(backfilled_by=marker)` ma khong viet lai logic loc.
+
+### 5. KHONG noi lo assertion nao
+
+`test_review_findings_wave2.py` + `test_seed_verification.py`: bo sung
+`_tx_raw()` (= `bulk_create`) va chi doi **dung cho test dang FAIL**. Cac test
+dang xanh giu nguyen nguyen ban. Khong dung `git checkout --` de hoi quy
+(L-A01) — dung `git cat-file` / `git show HEAD:<file>`.
+
+### 6. KET QUA
+
+| | Truoc | Sau |
+|---|---|---|
+| full BE | 2959 · **failures=9, errors=14** | 2960 · **OK (skipped=6)** |
+| `test_review_findings_wave2` | 8 FAIL | **40 OK** |
+| `test_seed_verification` | 1 FAIL + 4 error | **8 OK** |
+| `test_ledger_migration_backfill` | 10 error | **14 OK** (them 1 test moi) |
+
+`data_ingest...test_warm_intraday_universe...` chay rieng 1/1 OK va **tu xanh
+trong full suite** ⇒ no cung la victim cua thu tu test, **khac** nguyen nhan
+P0-2. Khong gan cong cho fix nay.
+
+### 7. GATE CHAY THAT (sau rebase, `dev` khong doi — rebase sach)
+
+`manage.py check` 0 · `makemigrations --check` **No changes detected** ·
+`ruff --select F821` **All checks passed** · `check_admin_ux.py` **0 loi / 0
+canh bao** · `--self-test` **25/25** · `tests.test_admin_ui` **45/45** ·
+`tsc --noEmit` 0 · `npm run lint` **0 error** (3786 warning co san) ·
+`npm run build` 0 · full FE `test:components` **918/918** ·
+**`pre-push-gate` 21 PASS / 0 SKIP / 0 FAIL**.
+
+### 8. GHI TRUC TRUONG ve FE flake (khong lam xanh)
+
+Full FE **run 1** = `2 failed | 916 passed`; **run 2** va **run 3** =
+**918/918**. `tenantreg-auth-pages.component.test.tsx` chay rieng **29/29**.
+Thay doi cua phien nay **chi la Python** ⇒ FE khong the bi anh huong, nhung
+**ten file fail o run 1 khong ghi lai** (loc cua run do khong match) ⇒ khong
+dien giai la "dung file do" ma khong co bang chung. Ghi nguyên trạng: 3 run,
+1 run đỏ, 2 run xanh.
+
+### 9. L-T01 — lan thu 10 va 11 trong 1 phien
+
+`Edit` tool tren Windows doi LF → CRLF **hai lan**:
+`0022_...py` `numstat` ra **`307/252`** cho file chi sua ~56 dong;
+`test_review_findings_wave2.py` ra **`867/868`** cho file chi sua ~40 dong.
+Chuan hoa byte-level (latin1 round-trip) → **`56/1`** va **`39/40`**,
+khop dung `--ignore-cr-at-eol`. Bat bang `git diff --numstat` **truoc** khi
+stage, dung 2 lan.
+
+**Bai hoc moi cua phien nay:** `Edit` tool khong chi doi LF→CRLF, no còn **tu
+doi noi dung** khi `oldString` chi khop mot **tie de** cua method — no lam
+`test_empty_database_is_a_no_op` mat assertion `CashFlow.objects.count() == 0`
+(bi nhan vao test moi) va test do FAIL o file khac. Phat hien nhờ doc lai
+`git diff` sau khi test xanh mot cach khang-dinh. **Luon doc `git diff` cuoi
+cùng truoc khi commit** — "test xanh" khong phai giấy phép bo qua soi file.
