@@ -1,4 +1,184 @@
 
+## Entry 284: Phần 2 của `/portfolios/manage` — i18n panel broker, sửa 2 lỗi chỉ lộ ra khi đo thật, và gate EOL (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` (cùng PR #121 với Entry 282)
+- **Lessons áp dụng**: L-F03, L-F08, L-F10, L-V01, L-V02, L-V03, L-T01, L-T02
+
+Entry 282 §8 liệt kê 4 mục **CHƯA CHẠY**. Đây là phần đóng 3,5/4 — mục còn lại
+(full BE suite) ghi rõ ở §6 dưới và **không** tính là PASS.
+
+### 1. Seed dữ liệu CÓ VỊ THẾ THẬT ⇒ chứng minh cột tiền hiển thị số thật
+
+Entry 282 ghi "chưa chứng minh hiển thị giá khi có `LedgerEntry` thật" — vì
+`testuser` có **0 danh mục**. Đã tạo trên staging (idempotent, qua đúng model +
+signal `post_save` ⇒ `sync_transaction_to_ledger`, **không** ghi `LedgerEntry`
+trực tiếp):
+
+- Tạo portfolio cho `testuser` + **6 Transaction** (5 BUY + 1 SELL) trên mã có
+  `SymbolSnapshot` hôm nay và có `StockProfile` (VRE, GAS, FPT, GEX, AAA).
+- Signal tự sinh **6 LedgerEntry** ⇒ đúng đường ứng dụng thật.
+- Giá mua đặt sát giá thị trường (×0.975…×1.012) để ảnh nhìn đáng tin, có cả
+  mã lẫn mã lỗ.
+
+**Kết quả đo trên trình duyệt thật** — KPI tải xong sau ~2-3 s:
+`176.180.000` (giá trị) · `176.601.490` (giá vốn) · `−421.490 (−0,24%)` (lãi/lỗ) ·
+NAV `499.369.110` · tiền mặt `−176.810.890` · **5 dòng vị thế** có tên công ty,
+ngành, tỷ trọng, trạng thái giá. **0 console error.**
+
+### 2. ① LIGHT MODE — lỗi nghiêm trọng nhất, chỉ lộ ra khi đo trên nền thật
+
+`check-portfolio-contrast` báo **12/12 PASS** vì nó đọc token trong
+`soc.tokens.css` — nó **không** biết trang đặt chữ lên nền nào. Đo thật bằng
+`getComputedStyle` (Chromium, staging):
+
+| Selector | Trước | Sau | Nguyên nhân |
+|---|---|---|---|
+| `.pfm-table tbody td` | **1.13:1** | 17.85:1 | chữ token đổi sang tối, nền vẫn tối |
+| `.pfm-toolbar__count` | **1.95:1** | 10.35:1 | không có nền riêng |
+| `.pfm-table__num.pfm-tone-loss` | **3.12:1** | 6.47:1 | `--pf-loss` trên nền shell |
+
+**Nguyên nhân**: wrapper app shell là `bg-[var(--color-bg-primary)]` =
+`rgb(2, 6, 23)` và **KHÔNG đổi** khi bật `data-theme="light"` — light mode là
+theme thật, người dùng chọn được (`main.tsx:226-230` đọc
+`localStorage['vninvest-theme']`). Đây là **lỗi có sẵn của app shell** (Entry 272
+§6 cũng ghi lỗi light mode), nhưng trang mới không được phép thừa hưởng nó.
+
+**Control trước khi tin số đo** (L-V01): đen/trang phải ra `21:1`, trắng/trắng
+`1:1` — cả hai đúng ⇒ phép đo đúng.
+
+**Sửa**: `.pfm-page` + `.pfm-table-wrap` tự vẽ `background: var(--bg-panel)`
+(light = `#ffffff` đục). Sau khi sửa: **7 cặp đo trên nền thật, tất cả ≥ 4.5:1
+ở cả 2 theme.**
+
+### 3. ② Panel broker: 0 i18n → 87 key × 2 locale + 2 lỗi bảo mật/UX
+
+`DNSEConnectionPanel.js` **không import `LangContext`** ⇒ đổi ngôn ngữ vô hiệu
+với cả panel. Nay mọi chuỗi qua `t()`.
+
+Kèm 2 lỗi phát hiện khi đọc lại file:
+
+1. **`tradingToken` để `type="text"`** ⇒ secret hiện ngang trên màn hình, lọt
+   vào ảnh chụp / chia sẻ màn hình. Đổi `type="password"` + nút **Hiện/Ẩn**
+   (`aria-pressed`).
+2. **Lỗi API lộ đường dẫn nội bộ**: `err.message` của `CoreApiRequestError`
+   (`transport.js:305`) có dạng
+   `"Core API request error 404 Not Found - /broker/dnse/config/: …"`.
+   `readApiError()` bóc `payload.detail` trước, chỉ fallback khi không có.
+
+CSS: thêm rule cho `.dnse-panel__btn--secondary` / `--ghost` / `--token-row` —
+trước đó chỉ có `--primary` (`:168-175`) nên các nút phụ rơi về style gốc, không
+phân biệt được với nút chính.
+
+### 4. ③ Gốc rẻ THẬT khi i18n hoá panel: `useI18n()` fallback tạo object mỗi render
+
+Sau khi thêm `t` vào deps của `useCallback`, panel **kẹt vĩnh viễn** ở *"Đang tải
+trạng thái DNSE..."* và `dnse-order-mode-badge.component.test.js` **đỏ 3/3**.
+
+`LangContext.js:92-115` tạo object literal **trong thân hook** ở nhánh fallback ⇒
+`t` đổi identity mỗi render ⇒ `reload` đổi identity ⇒ `useEffect(..., [reload])`
+gọi `getDNSEConfig()` lặp. Panel cũ không dính vì **không dùng `t` ở đâu cả**.
+
+**Kiểm chứng gốc rẽ 2 bước trước khi sửa** (L-V02):
+1. Đo lại thi giả "vòng lặp vô hạn" ⇒ chỉ **+1 lần gọi API / 2 s** ⇒ **KHÔNG**
+   phải nguyên nhân. Nếu tin giả này thì sẽ sửa sai.
+2. Chụp DOM của panel ⇒ thấy nó kẹt ở trạng thái loading. Mới đọc lại
+   `LangContext.js` và thấy fallback tạo object trong render.
+
+**Sửa**: `I18N_FALLBACK` thành hằng số ở cấp module. App thật luôn có
+`LangProvider` (`main.tsx:241`) nên nhánh này không xảy ra — nhưng đây là bẫy cho
+mọi test và mọi component mới.
+
+**Test khoá hành vi** `src/context/__tests__/lang-context-fallback-identity.component.test.tsx`
+— 4 case, khoá **identity** chứ không khoá giá trị. **Fail-before**: đổi fallback
+về `{ ...I18N_FALLBACK }` ⇒ **1/4 FAIL** (`Object.is equality`); trả về hằng số ⇒ 4/4.
+
+### 5. ④ 409 của BE hướng người dùng tới tính năng không tồn tại
+
+`views.py:229-234` bảo *"Hãy ẩn danh mục"* nhưng model `Portfolio`
+(`user_workspace/models.py`) **không có** field archive. Entry 282 đã ghi
+mâu thuẫn nhưng chưa sửa vì sợ cần migration.
+
+**Sửa được KHÔNG cần migration** — chỉ sửa văn bản:
+- `detail`: đổi khuyến nghị sang hành động có thật (**đổi tên** qua
+  `PortfolioDetailView.patch`, `:186`) — hợp lý vì sau rebuild trang đã có nút
+  **Sửa**.
+- thêm `suggested_action: 'rename'` — **khoá máy** để client không phải parse
+  `detail` tiếng Việt mới biết nên đề xuất hành động nào.
+
+Việc thêm `is_archived` thật sự **cần migration ⇒ ngoài phạm vi**, ghi ở §7.
+
+### 6. GATE CHẠY THẬT
+
+| Gate | Kết quả |
+|---|---|
+| `tsc --noEmit` | **0** |
+| `npm run lint` | **0 error** (3936 warning có sẵn) |
+| `npm run test:components` | **130 file / 932 test PASS** (918 → 932) |
+| `npm run build` | **0** (25 s) |
+| `check-portfolio-contrast` | 12/12 PASS (token) |
+| `check:tokens` | 0 vi phạm |
+| `check-multi-agent` | 0 lỗi |
+| `check-lessons` | 40/40 |
+| `pre-push-gate` | **21 PASS / 0 SKIP / 0 FAIL** |
+| **BE `user_workspace`** (staging, Postgres thật) | **Ran 681 tests — OK (skipped=7)** |
+| **Playwright `portfolios-manage.spec.ts`** (staging) | **8/8 PASS** |
+
+### 7. CHƯA CHẠY (không tính là PASS)
+
+- **Full BE suite** — chạy trên VPS staging thì bị **OOM**: `exit=137` (SIGKILL).
+  Staging đang chạy cả stack nên không đủ RAM cho ~2.960 test. App đã sửa
+  (`user_workspace`) **chạy OK 681 test**. Cần chạy full suite ở nơi có đủ RAM
+  (local có 21 container, host yếu; CI có billing blocker — CLAIMS `adminui-w17c`).
+- **Migrations mới** — không có. `is_archived` cho Portfolio vẫn là đề xuất mở.
+- **`nav_reason_text` tiếng Việt hardcode trong BE** (`ledger/valuation.py:39-45`)
+  đã được **vòng qua** ở FE (tra mã máy `nav_reason` → key i18n), nhưng **BE
+  vẫn trả tiếng Việt** cho client khác. Sửa đúng ở BE cần cơ chế i18n chung — chưa làm.
+- **Light mode / mobile** — **đã** đo thật (7 cặp ≥ 4.5:1 ở 2 theme; mobile 390px
+  không tràn ngang, bảng cuộn trong wrapper). **Chưa** chụp ảnh đối chiếu pixel.
+
+### 8. L-V02: một fail-before của chính tôi **không có tác dụng** — và cách phát hiện
+
+Muốn chứng minh spec E2E bắt được lỗi light mode, tôi dùng PowerShell
+`.Replace()` để bỏ `background` khỏi `.pfm-table-wrap`. **Lệnh không khớp chuỗi
+nên không đổi gì cả** — nhưng tôi vẫn deploy và đọc kết quả `"2 passed"`, tưởng
+là bằng chứng. Chỉ phát hiện khi `git show HEAD:<file>` cho thấy `background`
+vẫn còn nguyên.
+
+Làm lại bằng `edit` tool thật ⇒ `Expected >= 4.5, Received 1.18` ⇒ FAIL như
+dự kiến. Trả nền ⇒ 8/8 PASS.
+
+**Quy tắc rút ra**: bằng chứng "trước/sau" chỉ có giá trị nếu **xác nhận trạng
+thái đã đổi thật** — `git show`/`git diff` đọc lại blob, không tin lệnh sửa file
+báo thành công.
+
+**Tai nạn kéo theo**: `git revert` commit fail-before xoá luôn 3 thứ khác bị gộp
+nhầm vào cùng commit (spec E2E, fix `auth.setup.ts`, fix `views.py`). Đã khôi
+phục bằng `git checkout <sha> -- <path>` ở commit kế tiếp. **Bài học**: commit
+fail-before phải **chỉ** chứa thay đổi cần đo.
+
+### 9. ⑤ L-T01 lần 14 + script chặn + sửa 1 lỗi chặn E2E cả repo
+
+**Gate EOL mới** — `scripts/normalize-eol.mjs` + `.githooks/pre-commit` bước 3:
+
+- Repo **hỗn tạp** (file này lưu LF, file kia lưu CRLF) và `core.autocrlf=false`
+  ⇒ git so sánh **byte-for-byte** ⇒ `Edit` tool chép LF→CRLF làm **toàn bộ file**
+  hiện trong diff. Đã dính 14 lần/2 phiên.
+- Script đọc **dang EOL của blob trong HEAD** — KHÔNG phải cột `i/` của
+  `git ls-files --eol` **sau khi stage** (cột đó đã bị chính blob mới đẩy vào;
+  chính tôi đã bị dắm vào đúng chỗ này và chuẩn hoá **ngược** một file gốc
+  CRLF thành LF).
+- **Fail-before của chính gate**: đưa `format.ts` (blob LF) về CRLF ⇒
+  `git diff --numstat` ra **183/183**, `git commit` **bị BLOCKED**; `--fix` ⇒ 0/0,
+  commit pass.
+
+**Lỗi chặn E2E cả repo** — `tests/visual/auth.setup.ts`:
+`page.waitForURL('**/dashboard', { timeout: 15000 })` mặc định chờ **`load`**,
+mà app giữ WebSocket/pollng nên **sự kiện `load` không bao giờ fire**. Log lỗi tự
+mâu thuẫn: *"navigated to `https://docker.edusuccess.vn/dashboard`"* — **đã điều
+hướng rồi** — rồi vẫn timeout. Hệ quả: `storageState` không bao giờ được ghi ⇒
+**mọi** spec E2E trong repo fail ở bước đăng nhập với **lý do sai** (tưởng app
+hỏng). Sửa: `waitUntil: 'domcontentloaded'`, timeout 30 s.
+
 ## Entry 282: Thuc thi 5 quyet Owner tu audit 360 — unify routeId theo routeCatalog (D-01) + chot mau do=giam (2026-10-13)
 
 - **Nhanh**: `feat/audit-followup-5q` -> `dev` · claim `audit-followup-5q`
