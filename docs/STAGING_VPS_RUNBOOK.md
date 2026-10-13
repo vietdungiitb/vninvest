@@ -7,7 +7,26 @@
 
 ---
 
-## 0. Trạng thái: ĐÃ SẴN SÀNG, CHƯA DEPLOY — còn thiếu 2 thông tin
+## 0.0 QUICK REFERENCE — môi trường thử nghiệm (DÙNG TỰ ĐỘNG, KHÔNG HỎI LẠI)
+
+> Owner chốt 2026-10-13: **môi trường thử nghiệm của dự án = VPS này, domain
+> `docker.edusuccess.vn`.** Mọi việc "chạy thử / test / staging" ⇒ dùng nó.
+
+| Hạng mục | Giá trị |
+|---|---|
+| **VPS** | `14.225.255.47` (Ubuntu 26.04, Docker + compose) |
+| **Tên miền** | `https://docker.edusuccess.vn` → `14.225.255.47` |
+| **SSH** | `ssh -i "$HOME/.ssh/id_ed25519" root@14.225.255.47` |
+| **Repo trên VPS** | `/opt/vninvest` (branch `dev`) |
+| **Deploy / verify** | `bash scripts/deploy-staging.sh` · `bash scripts/deploy-staging.sh --verify` |
+| **Env** | `/opt/vninvest/compose.staging.env` + `compose.nginx-proxy.env` |
+| **Reverse proxy** | container `nginx-proxy`, `acme-companion` (KHÔNG prefix `vninvest-`) |
+| **Cổng host** | `8080` (app), `3001` (Grafana), `9091` (Prometheus) |
+| **Health** | `curl -s http://127.0.0.1:8080/api/core/v1/health` → `{"status":"ok"}` |
+
+---
+
+## 0. Trạng thái: ĐÃ DEPLOY THÀNH CÔNG (2026-10-13) — xem §11
 
 **Đã xong và ĐÃ CHỨNG MINH bằng lệnh thật (xem §3):**
 
@@ -21,32 +40,69 @@
 | `docker-compose.nginx-proxy.yml` (reverse proxy) | xong — `docker compose config` exit 0 (xem §10) |
 | `compose.nginx-proxy.env.example` | xong (xem §10) |
 | `scripts/deploy-nginx-proxy.sh` | xong — `bash -n` exit 0 (xem §10) |
-| Quyền SSH vào VPS | ❌ **chưa có** |
-| Tên miền staging | ❌ **chưa có** (dự kiến `staging.vietdungiitb.vn`) |
+| Quyền SSH vào VPS | ✅ có — user `root` + 2 key (2026-10-13) |
+| Tên miền staging | ✅ `docker.edusuccess.vn` → `14.225.255.47` |
 
 > Không có 2 thứ trên thì chưa thể đụng vào VPS. Tôi **không** đoán mật khẩu.
+
+> **Cập nhật 2026-10-13:** đã có SSH (`root`) và domain (`docker.edusuccess.vn`),
+> deploy thành công, `--verify` PASS. 3 blocker mới tìm được khi chạy thật →
+> §11. Trong đó **B1 + B2 làm cả PROD chết** (nằm trong `docker-compose.prod.yml`
+> deny-list) ⇒ **P0 cho coordinator**.
 
 ---
 
 ## 1. Cấp quyền SSH
 
-Key cần thêm vào VPS (`~/.ssh/authorized_keys` của user đó):
+Cần thêm **public key** vào `~/.ssh/authorized_keys` của user sẽ dùng để deploy.
+Hai key của repo:
 
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwxHQ2oOhLh7wQ5p9t3bZTYCEzhqs/YKl3BJwIGpnf copilot-deploy
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE3VIUMcFWAfu6TS71160Tp73D7MBrjC7h1MylJnPvdj vninvest-deploy-2026
 ```
 
-Chạy **trên VPS** (đăng nhập bằng mật khẩu):
+### Cách A — script (khuyến nghị)
+
+`scripts/vps-authorize-key.sh` chạy **trên VPS**, idempotent (key đã có thì không
+thêm lại), tự tạo `~/.ssh` với quyền đúng, không đọc private key nào.
+
+Mở **web console** của nhà cung cấp VPS (đăng nhập bằng mật khẩu), rồi dán:
 
 ```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwxHQ2oOhLh7wQ5p9t3bZTYCEzhqs/YKl3BJwIGpnf copilot-deploy' >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && \
+for k in \
+ 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUwxHQ2oOhLh7wQ5p9t3bZTYCEzhqs/YKl3BJwIGpnf copilot-deploy' \
+ 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE3VIUMcFWAfu6TS71160Tp73D7MBrjC7h1MylJnPvdj vninvest-deploy-2026' ; do \
+ grep -qF -- "$k" ~/.ssh/authorized_keys || echo "$k" >> ~/.ssh/authorized_keys ; done && \
+chmod 600 ~/.ssh/authorized_keys && echo "OK: $(grep -c . ~/.ssh/authorized_keys) key"
 ```
 
-Đã thử trước đó và **thất bại**: port 22 mở, nhưng cả 2 key trong `~/.ssh`
-(`id_ed25519`, `vninvest_deploy`) × 5 user (`root`, `ubuntu`, `pham`, `deploy`,
-`vninvest`) đều `Permission denied (publickey,password)`.
+Hoặc copy cả file script lên VPS rồi chạy:
+
+```bash
+bash vps-authorize-key.sh              # thêm 2 key của repo cho user hiện tại
+bash vps-authorize-key.sh --user ubuntu
+sudo bash vps-authorize-key.sh --harden   # thêm key rồi TẮT password auth (đọc kỹ cảnh báo)
+bash vps-authorize-key.sh "ssh-ed25519 AAAA... me@laptop"   # thêm key riêng
+```
+
+### Cách B — xác minh từ Windows
+
+`scripts/vps-ssh-check.ps1` tự thử mọi key trong `~/.ssh` × vài user phổ biến và
+chỉ ra tổ hợp nào vào được:
+
+```powershell
+pwsh -File scripts/vps-ssh-check.ps1
+pwsh -File scripts/vps-ssh-check.ps1 -User ubuntu
+```
+
+### Đã thử trước đó và **thất bại** (2026-10-13)
+
+Port 22 mở, nhưng cả 2 key trong `~/.ssh` (`id_ed25519`, `vninvest_deploy`) × 5
+user (`root`, `ubuntu`, `pham`, `deploy`, `vninvest`) đều
+`Permission denied (publickey,password)` ⇒ **chưa có key nào được cấp quyền**.
+Phải thêm key ở trên (qua web console) trước khi `deploy-staging.sh` chạy được.
 
 ---
 
@@ -207,10 +263,12 @@ container frontend (`packages/web/docker/nginx.conf`) đã tự proxy `/api/*` �
 
 ## 8. Việc nên làm tiếp (chưa làm)
 
-1. **Vá `docker-compose.prod.yml`** — thêm `TURNSTILE_SECRET_KEY` + `CSRF_TRẦY_TRUSTED_ORIGINS`
-   bắt buộc. File này thuộc deny-list §2 nên cần coordinator gộp, hoặc
+1. **Vá `docker-compose.prod.yml`** — thêm `TURNSTILE_SECRET_KEY` + `CSRF_TRUSTED_ORIGINS`
+   bắt buộc, **sửa `pgbouncer` healthcheck** (`pg_isready` không có trong image —
+   §11 B1) và **đặt `PGBOUNCER_DATABASE`** khớp URL `/vninvest_core` (§11 B2).
+   File này thuộc deny-list §2 nên cần coordinator gộp, hoặc
    `--no-verify` + trailer `Claim-Deny-List:` + lý do trong body.
-   **Prod hiện crash-loop nếu `DEBUG=false`** — đây là việc P0.
+   **Prod hiện crash-loop nếu `DEBUG=false`, và core-api không nối được pgbouncer** — P0.
 2. **Đưa full BE suite vào CI** (khuyến nghị P1 từ ledger Entry 276) — chính
    staging trên VPS này là nơi chạy được: full suite mất ~43 phút và local
    không đủ RAM.
@@ -319,3 +377,41 @@ bash scripts/deploy-nginx-proxy.sh --verify
 - **Tên miền** + DNS trỏ về VPS.
 
 ⇒ Hai thứ trên là của Owner; không có thì **không thể** chạy bước 2–4 ở trên.
+
+---
+
+## 11. Deploy thật trên VPS — 2026-10-13 (THÀNH CÔNG) + 3 blocker chỉ hiện khi chạy
+
+Stack chạy thật trên `14.225.255.47`; `deploy-staging.sh --verify` **PASS**:
+
+```
+https://docker.edusuccess.vn/            → 200
+http://docker.edusuccess.vn/             → 301 → https
+cert: subject=CN=docker.edusuccess.vn  issuer=Let's Encrypt  2026-10-13 → 2027-01-11
+curl http://127.0.0.1:8080/api/core/v1/health → {"status":"ok",...}
+13/13 container chạy · 4 healthy (core-api, core-db, core-redis, pgbouncer)
+```
+
+Ba lỗi **không thể phát hiện bằng `docker compose config`** (config chỉ
+interpolate biến — không bao giờ chạy container):
+
+| # | Lỗi | Bằng chứng | Vá ở đâu |
+|---|---|---|---|
+| **B1** | `pgbouncer` healthcheck gọi `pg_isready`, nhưng binary **không có** trong `bitnamilegacy/pgbouncer` (`command -v pg_isready` → missing; chỉ có `psql` + `pgbouncer`) ⇒ `unhealthy` vĩnh viễn ⇒ `depends_on: service_healthy` chặn toàn bộ core-api/worker | `docker inspect` health log: `ExitCode 1` · `"/bin/sh: 1: pg_isready: not found"` | overlay: đổi test sang `psql … -tAc 'SELECT 1'` |
+| **B2** | `[databases]` của Bitnami pgbouncer đặt **tên client** = `${PGBOUNCER_DATABASE}` (mặc định `postgres`), KHÔNG phải `${POSTGRESQL_DATABASE}` (tên backend). URL `…@pgbouncer:6432/vninvest_core` ⇒ `FATAL: no such database: vninvest_core` | container thật: `postgres=host=core-db port=5432 dbname=vninvest_core` · nguồn `/opt/bitnami/scripts/pgbouncer-env.sh:123` + `libpgbouncer.sh:228-237` | overlay: `PGBOUNCER_DATABASE: vninvest_core` |
+| **B3** | `CORE_ALLOWED_HOSTS` chỉ chứa domain ⇒ healthcheck `curl http://127.0.0.1:8100/core/v1/health` và Prometheus scrape `/metrics/` nhận **HTTP 400 `DisallowedHost`** ⇒ core-api `unhealthy` | log: `Invalid HTTP_HOST header: '127.0.0.1:8100'` / `'core-api:8100'` | env: thêm `,127.0.0.1,localhost,core-api` |
+
+**⚠ B1 + B2 nằm trong `docker-compose.prod.yml` (dòng 495 và 475) — file deny-list.
+Nghĩa là `docker-compose.prod.yml` MỘT MÌNH cũng hỏng: PROD cũng chết y hệt.**
+Staging đã vá qua overlay (`docker-compose.staging.yml`); **prod thì chưa** ⇒ P0.
+
+Thứ tự đã sửa để boot được: B2 (alias) → B1 (healthcheck) → B3 (ALLOWED_HOSTS).
+Sửa đúng thứ tự này vì `up -d` dừng ở service unhealthy đầu tiên.
+
+Đã kiểm chứng bổ sung trong lúc điều tra (chạy trong container thật):
+
+```
+$ docker exec vninvest-pgbouncer sh -c 'PGPASSWORD=$POSTGRESQL_PASSWORD \
+    psql -h 127.0.0.1 -p 6432 -U vninvest -d postgres -tAc "SELECT 1"'
+1        ← alias `postgres` THÔNG (auth + backend OK) ⇒ chỉ sai TÊN alias
+```

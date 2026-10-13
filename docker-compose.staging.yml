@@ -142,3 +142,37 @@ services:
   prometheus:
     ports:
       - "127.0.0.1:${STAGING_PROMETHEUS_PORT:-9091}:9090"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # PGBOUNCER — vá 2 lỗi khiến core-api KHÔNG BAO GIỜ kết nối được
+  #
+  # (a) TÊN DATABASE. Ảnh `bitnamilegacy/pgbouncer` sinh `[databases]` với
+  #     TÊN CLIENT = `${PGBOUNCER_DATABASE}` (mặc định `postgres`), tên
+  #     backend = `${POSTGRESQL_DATABASE}`. Bằng chứng từ container thật:
+  #         [databases]
+  #         postgres=host=core-db port=5432 dbname=vninvest_core
+  #     Nhưng `docker-compose.prod.yml:91` (và 4 dòng khác) đặt
+  #     `CORE_DATABASE_URL=...@pgbouncer:6432/vninvest_core` ⇒ kết nối vào
+  #     db `vninvest_core` tại pgbouncer, mà alias chỉ có `postgres`:
+  #         $ psql ... -d vninvest_core
+  #         FATAL:  no such database: vninvest_core
+  #     ⇒ Bắt buộc đặt alias = `vninvest_core` cho khớp URL.
+  #     Nguồn: `/opt/bitnami/scripts/pgbouncer-env.sh:123` +
+  #            `/opt/bitnami/scripts/libpgbouncer.sh:228-237`.
+  #
+  # (b) HEALTHCHECK. `docker-compose.prod.yml:495` gọi `pg_isready`, nhưng
+  #     ảnh pgbouncer KHÔNG chứa binary này (`command -v pg_isready` →
+  #     missing; chỉ có `psql` + `pgbouncer`). Healthcheck fail vĩnh viễn ⇒
+  #     `depends_on: service_healthy` chặn toàn bộ core-api/worker. Thay
+  #     bằng `psql` SELECT 1 (mật khẩu lấy từ env container, KHÔNG hardcode).
+  # ══════════════════════════════════════════════════════════════════════
+  pgbouncer:
+    environment:
+      PGBOUNCER_DATABASE: vninvest_core
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "PGPASSWORD=\"$$POSTGRESQL_PASSWORD\" psql -h 127.0.0.1 -p 6432 -U \"$$POSTGRESQL_USERNAME\" -d \"$$PGBOUNCER_DATABASE\" -tAc 'SELECT 1' | grep -q 1 || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5

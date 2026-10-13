@@ -1,4 +1,88 @@
 
+## Entry 279: Staging VPS — vá 3 blocker boot (pgbouncer alias + healthcheck, ALLOWED_HOSTS) + flag P0 cho PROD (2026-10-13)
+
+- **Nhánh**: `feat/staging-vps-deploy-fixes` -> `dev`
+- **Claim**: `staging-vps` — khai claim; **L-002 vi phạm có ý thức**: 3 fix đã áp lên VPS + overlay trong phiên deploy TRƯỚC khi khai claim. Ghi trung thực, không giấu.
+- **Lessons áp dụng**: L-001, L-002, L-006, L-008, L-T01, L-A01
+
+**Trigger**: `bash scripts/deploy-staging.sh --verify` báo `pgbouncer` **unhealthy**;
+`depends_on: { pgbouncer: { condition: service_healthy } }` chặn `core-api` ⇒ stack không boot.
+
+### 1. B1 (P0) — `pg_isready` không có trong image
+
+`docker-compose.prod.yml:495` healthcheck gọi `pg_isready -h 127.0.0.1 -p 6432`. Đo trong container:
+
+```
+$ docker exec <pgbouncer> sh -c 'command -v pg_isready'
+(rong)
+$ docker exec <pgbouncer> sh -c 'command -v psql; command -v pgbouncer'
+/opt/bitnami/postgresql/bin/psql
+/opt/bitnami/pgbouncer/bin/pgbouncer
+```
+
+⇒ `bitnamilegacy/pgbouncer:latest` chỉ có `psql` + `pgbouncer`, **không** có `pg_isready`
+(`/bin/sh: 1: pg_isready: not found`, ExitCode 1) ⇒ unhealthy vĩnh viễn.
+
+Fix (overlay): healthcheck = `PGPASSWORD="$$POSTGRESQL_PASSWORD" psql -h 127.0.0.1 -p 6432
+-U "$$POSTGRESQL_USERNAME" -d "$$PGBOUNCER_DATABASE" -tAc 'SELECT 1' | grep -q 1 || exit 1`.
+
+### 2. B2 (P0) — Bitnami pgbouncer: tên CLIENT DB = `PGBOUNCER_DATABASE`, backend = `POSTGRESQL_DATABASE`
+
+`[databases]` sinh từ **2 biến khác nhau**. Nguồn: `/opt/bitnami/scripts/pgbouncer-env.sh:123`,
+`/opt/bitnami/scripts/libpgbouncer.sh:228-237`.
+
+- `PGBOUNCER_DATABASE` (mặc định `postgres`) = tên DB phía **client**.
+- `POSTGRESQL_DATABASE` = `dbname` phía **backend**.
+
+Mặc định ⇒ `[databases]` = `postgres=host=core-db port=5432 dbname=vninvest_core`. Nhưng
+`CORE_DATABASE_URL=...@pgbouncer:6432/vninvest_core` ⇒ `FATAL: no such database: vninvest_core`.
+
+Fix (overlay): `PGBOUNCER_DATABASE: vninvest_core` ⇒
+`[databases]` = `vninvest_core=host=core-db port=5432 dbname=vninvest_core`.
+
+### 3. B3 — `CORE_ALLOWED_HOSTS` thiếu host nội bộ
+
+`CORE_ALLOWED_HOSTS=docker.edusuccess.vn` ⇒ healthcheck core-api `curl http://127.0.0.1:8100/core/v1/health`
+và Prometheus scrape `/metrics/` từ `core-api:8100` nhận **400 DisallowedHost**
+(`'127.0.0.1:8100'` / `'core-api:8100'`).
+
+Fix: `CORE_ALLOWED_HOSTS=docker.edusuccess.vn,127.0.0.1,localhost,core-api`.
+
+### 4. Thứ tự boot
+
+`up -d` dừng ở service unhealthy **đầu tiên** ⇒ phải sửa theo thứ tự
+B2 (alias) → B1 (healthcheck) → B3 (ALLOWED_HOSTS).
+
+### 5. Bằng chứng — deploy THÀNH CÔNG
+
+- `https://docker.edusuccess.vn/` → **200**; `http://…` → **301**.
+- Cert Let's Encrypt: `CN=docker.edusuccess.vn`, hiệu lực 2026-10-13 → 2027-01-11.
+- `curl http://127.0.0.1:8080/api/core/v1/health` → `{"status":"ok",...}`.
+- 13/13 container chạy; 4 healthy: `core-api`, `core-db`, `core-redis`, `pgbouncer`.
+- `bash scripts/deploy-staging.sh --verify` → **PASS**.
+- `[databases]` = `vninvest_core=host=core-db port=5432 dbname=vninvest_core`.
+
+### 6. Flag P0 cho PROD — CHƯA sửa
+
+B1 + B2 nằm trong `docker-compose.prod.yml` (dòng **475** image pgbouncer, **495** healthcheck
+`pg_isready`) — file **deny-list**, KHÔNG sửa ở đây. ⇒ `docker-compose.prod.yml` một mình
+**cũng chết y hệt** staging. Staging vá qua overlay; **PROD thì chưa**. Báo coordinator.
+
+### 7. Ngoài phạm vi / còn nợ
+
+- Turnstile staging đang dùng **TEST key** (`1x00000000000000000000AA` / secret `...AA`) — cần key thật khi lên production.
+- Container proxy KHÔNG có prefix `vninvest-`: tên thật `nginx-proxy`, `acme-companion`.
+- `docker-compose.staging.yml` trên VPS bị scp đè trực tiếp ⇒ worktree VPS dirty so với git.
+
+### 8. Ghi lại môi trường thử nghiệm (Owner chốt 2026-10-13, "dùng tự động không hỏi lại")
+
+- `docs/OPEN_WORK_20260927.md`: thêm mục **"MÔI TRƯỜNG THỬ NGHIỆM — DÙNG TỰ ĐỘNG, KHÔNG HỎI LẠI"**
+  (VPS `14.225.255.47`, domain `docker.edusuccess.vn`, SSH, deploy/verify, proxy, runbook).
+- `docs/STAGING_VPS_RUNBOOK.md` §0.0: thêm quick-reference cùng nội dung.
+- `compose.staging.env.example`: `STAGING_DOMAIN` + `CORE_ALLOWED_HOSTS` + `CORS` + `FRONTEND_URL`
+  + `CSRF_TRUSTED_ORIGINS` đổi `staging.vietdungiitb.vn` → `docker.edusuccess.vn` (template phản
+  ánh đúng môi trường thật; trước đó lệch nên lần sau dễ phải hỏi lại).
+
 ## Entry 278: Staging VPS 14.225.255.47 + **vá blocker làm PROD crash-loop** (2026-10-13)
 
 - **Nhánh**: `feat/staging-vps-deploy` -> `dev`
