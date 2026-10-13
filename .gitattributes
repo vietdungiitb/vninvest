@@ -19,3 +19,5 @@ docs/CLAIMS.md merge=union
 *.sh                        text eol=lf
 docker-compose.staging.yml text eol=lf
 compose.staging.env.example text eol=lf
+docker-compose.nginx-proxy.yml text eol=lf
+compose.nginx-proxy.env.example text eol=lf

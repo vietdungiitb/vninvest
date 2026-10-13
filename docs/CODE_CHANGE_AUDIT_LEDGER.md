@@ -1,3 +1,54 @@
+## Entry 277: Tầng reverse proxy đa domain cho VPS staging — `nginx-proxy` + `acme-companion` (2026-10-13)
+
+- **Nhánh**: `feat/staging-vps-deploy` -> `dev`
+- **Claim**: `staging-vps-proxy` — khai **TRƯỚC** khi sửa dòng đầu tiên (commit `b4e68c81e`)
+
+**Trigger**: yêu cầu cấu hình VPS `14.225.255.47` thành staging **nhiều domain + TLS**.
+
+### Khoảng trống đã chứng minh, không đoán
+
+Repo chỉ có APP. App **đã** được viết sẵn để nằm sau proxy: `docker-compose.prod.yml:592`
+khai network `nginx-proxy_default` là `external: true`, `:561-564` set
+`VIRTUAL_HOST`/`VIRTUAL_PORT`/`LETSENCRYPT_HOST`. Nhưng **không file nào chạy proxy** ⇒
+`https://` không tồn tại và không thêm được domain thứ hai nếu không sửa tay nginx.
+
+### Đã thêm (3 file mới)
+
+| File | Vai trò |
+|---|---|
+| `docker-compose.nginx-proxy.yml` | `nginx-proxy` (80/443) + `acme-companion`, chung network `nginx-proxy_default`, image pin **tag + digest** (`1.11.6`, `2.8.2`) — không `:latest` |
+| `compose.nginx-proxy.env.example` | 1 biến bắt buộc `LETSENCRYPT_EMAIL`; file `.env` thật khớp `compose*.env` (`.gitignore:52`) nên không bị commit |
+| `scripts/deploy-nginx-proxy.sh` | deploy / `--verify`, idempotent, tạo network nếu thiếu, kiểm port 80/443 + cert theo `STAGING_DOMAIN` |
+
+### Đã sửa
+
+- `docker-compose.staging.yml`: 3 port publish (frontend/grafana/prometheus) bind **`127.0.0.1`**
+  — tầng công khai duy nhất là `nginx-proxy`; đóng cổng HTTP không mã hoá ra Internet.
+- `docker-compose.staging.yml`: `LETSENCRYPT_EMAIL` đổi từ default giả `admin@example.com`
+  sang **bắt buộc** (`:?`). `acme-companion` đọc email này từ **chính container app** (không
+  đọc biến của stack proxy) ⇒ default giả sẽ âm thầm đăng ký cert bằng địa chỉ sai.
+- `scripts/deploy-staging.sh`: phần "Truy cập" đổi sang domain-qua-proxy + SSH tunnel.
+- `.gitattributes`: pin LF cho 2 file staging mới.
+
+### Gate chạy THẬT (không "chắc là được")
+
+- `bash -n` 3 script (`deploy-nginx-proxy`, `deploy-staging`, `bootstrap-staging`) → **exit 0** (Git Bash).
+- `docker compose -f docker-compose.nginx-proxy.yml config --quiet` → **exit 0**.
+- Guard `:?`: bỏ `LETSENCRYPT_EMAIL` → **exit 1** (`required variable ... is missing a value`).
+- Merged `prod + staging` config → **exit 0**; `config` in `host_ip: 127.0.0.1` cho `published` 8080/3001/9091.
+- Negative: bỏ `LETSENCRYPT_EMAIL` khỏi merged config → **exit 1** (guard `:?` có hiệu lực).
+- EOL 3 file mới: `CRLF=0`, kết thúc bằng LF; `git check-attr` → `text: set`, `eol: lf`.
+- **CHƯA CHẠY**: E2E trên VPS — chưa có SSH key trong `authorized_keys` và chưa có tên miền/DNS.
+  Ghi rõ "CHƯA CHẠY", **không** suy diễn "chắc là được".
+
+### Bài học áp dụng
+
+`L-001` (không commit shared file — `docker-compose.prod.yml` giữ nguyên, dùng file mới),
+`L-002` (khai claim `staging-vps-proxy` trước dòng đầu), `L-G01` (chạy lại gate sau rebase),
+`L-T01` (kiểm EOL bằng byte, không để CRLF lọt vào shell script chạy trên Linux).
+
+---
+
 ## Entry 275: Biến sai lầm lặp thành cơ chế — 3 lesson mới + **C4** chặn bài học không ai nạp (2026-10-12)
 
 - **Nhanh**: `chore/lessons-mechanism` -> `dev`
