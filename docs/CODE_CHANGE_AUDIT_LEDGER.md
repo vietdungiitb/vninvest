@@ -74,6 +74,15 @@ B1 + B2 nằm trong `docker-compose.prod.yml` (dòng **475** image pgbouncer, **
 - Container proxy KHÔNG có prefix `vninvest-`: tên thật `nginx-proxy`, `acme-companion`.
 - `docker-compose.staging.yml` trên VPS bị scp đè trực tiếp ⇒ worktree VPS dirty so với git.
 
+### 8. Ghi lại môi trường thử nghiệm (Owner chốt 2026-10-13, "dùng tự động không hỏi lại")
+
+- `docs/OPEN_WORK_20260927.md`: thêm mục **"MÔI TRƯỜNG THỬ NGHIỆM — DÙNG TỰ ĐỘNG, KHÔNG HỎI LẠI"**
+  (VPS `14.225.255.47`, domain `docker.edusuccess.vn`, SSH, deploy/verify, proxy, runbook).
+- `docs/STAGING_VPS_RUNBOOK.md` §0.0: thêm quick-reference cùng nội dung.
+- `compose.staging.env.example`: `STAGING_DOMAIN` + `CORE_ALLOWED_HOSTS` + `CORS` + `FRONTEND_URL`
+  + `CSRF_TRUSTED_ORIGINS` đổi `staging.vietdungiitb.vn` → `docker.edusuccess.vn` (template phản
+  ánh đúng môi trường thật; trước đó lệch nên lần sau dễ phải hỏi lại).
+
 ## Entry 278: Staging VPS 14.225.255.47 + **vá blocker làm PROD crash-loop** (2026-10-13)
 
 - **Nhánh**: `feat/staging-vps-deploy` -> `dev`

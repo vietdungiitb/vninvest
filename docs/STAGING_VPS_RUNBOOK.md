@@ -7,6 +7,25 @@
 
 ---
 
+## 0.0 QUICK REFERENCE — môi trường thử nghiệm (DÙNG TỰ ĐỘNG, KHÔNG HỎI LẠI)
+
+> Owner chốt 2026-10-13: **môi trường thử nghiệm của dự án = VPS này, domain
+> `docker.edusuccess.vn`.** Mọi việc "chạy thử / test / staging" ⇒ dùng nó.
+
+| Hạng mục | Giá trị |
+|---|---|
+| **VPS** | `14.225.255.47` (Ubuntu 26.04, Docker + compose) |
+| **Tên miền** | `https://docker.edusuccess.vn` → `14.225.255.47` |
+| **SSH** | `ssh -i "$HOME/.ssh/id_ed25519" root@14.225.255.47` |
+| **Repo trên VPS** | `/opt/vninvest` (branch `dev`) |
+| **Deploy / verify** | `bash scripts/deploy-staging.sh` · `bash scripts/deploy-staging.sh --verify` |
+| **Env** | `/opt/vninvest/compose.staging.env` + `compose.nginx-proxy.env` |
+| **Reverse proxy** | container `nginx-proxy`, `acme-companion` (KHÔNG prefix `vninvest-`) |
+| **Cổng host** | `8080` (app), `3001` (Grafana), `9091` (Prometheus) |
+| **Health** | `curl -s http://127.0.0.1:8080/api/core/v1/health` → `{"status":"ok"}` |
+
+---
+
 ## 0. Trạng thái: ĐÃ DEPLOY THÀNH CÔNG (2026-10-13) — xem §11
 
 **Đã xong và ĐÃ CHỨNG MINH bằng lệnh thật (xem §3):**
