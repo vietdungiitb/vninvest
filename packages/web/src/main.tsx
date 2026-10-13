@@ -30,7 +30,12 @@ function resolvePageComponent(routeId: string) {
   // `routeCatalog` để titleKey/requiredCapabilities không bao giờ mù chiều
   // ngược. Registry id (`core-*`) giữ nguyên — resolver là lớp ánh xạ duy nhất.
   else if (routeId === 'portfolios') registryId = 'portfolio-workspace';
-  else if (routeId === 'portfolios-manage') registryId = 'core-portfolios';
+    else if (routeId === 'portfolios-manage') registryId = 'core-portfolios';
+    // D-36: broker panel tach route rieng. Registry id giu `portfolios-broker`
+    // de khong doi 2 chiều với routeId catalog `portfolios-manage-broker`.
+    // KHONG bat `routeId.startsWith('portfolio-')` o duoi: rule do chi bat
+    // `portfolio-` (so), `portfolios-manage-broker` bat dau bang `portfolios-`.
+    else if (routeId === 'portfolios-manage-broker') registryId = 'portfolios-broker';
   else if (routeId === 'admin-tenants') registryId = 'admin-core-tenants';
   else if (routeId === 'admin-tenant-service-accounts') registryId = 'admin-core-service-accounts';
   else if (routeId === 'admin-tenant-pats') registryId = 'admin-core-pats';
@@ -155,8 +160,15 @@ function App() {
         // /portfolios la entry workspace: neu URL khong co id, trang tu chon
         // danh muc dau tien (PortfolioWorkspacePage). Trang quan ly CRUD chuyen
         // sang /portfolios/manage de khong con la "man hinh chet".
-        createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
-        createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios-manage')) }),
+          createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolio-workspace')) }),
+          createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios-manage')) }),
+          // D-36 (`PORTFOLIO_EXEC_PLAN_MASTER_20260927.md:83`) "Broker Hub tach rieng".
+          // Panel DNSE (nhap credential + sync + DAT LENH) da nam tren cung trang
+          // danh muc; tach route rieng cho ranh giinh giua "xem" va "giao dich".
+          // Thu tu KHONG duoc doi: phai khai `manage/broker` TRUOC `manage`,
+          // neu khong React Router se gan `manage/broker` vao param cua
+          // `portfolios/:portfolioId/...` va mo sai trang.
+          createElement(Route, { path: 'portfolios/manage/broker', element: createElement(resolvePageComponent('portfolios-manage-broker')) }),
         // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + F5 giu dung
         // tab. Cung tro toi MOT entry `portfolio-workspace`; tab lay tu path.
         createElement(Route, { path: 'portfolios/:portfolioId/overview', element: createElement(resolvePageComponent('portfolio-overview')) }),

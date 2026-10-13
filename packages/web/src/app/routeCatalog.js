@@ -207,6 +207,29 @@ export const routeCatalog = Object.freeze([
     adapter: "core",
     status: "new",
   },
+  // `/portfolios/manage` va `/portfolios/manage/broker` truoc day KHONG co entry
+  // o day: route chi khai trong `main.tsx` ⇒ mat `titleKey` + `requiredCapabilities`
+  // va khong gate nao bat duoc vi contract test chi kiem CHIEU catalog -> main.tsx.
+  {
+    id: "portfolios-manage",
+    path: "/portfolios/manage",
+    titleKey: "portfoliosManage.title",
+    group: "workspace",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["workspace.portfolios.manage"],
+    adapter: "core",
+    status: "new",
+  },
+  {
+    id: "portfolios-manage-broker",
+    path: "/portfolios/manage/broker",
+    titleKey: "portfoliosManage.broker.title",
+    group: "workspace",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["workspace.portfolios.manage"],
+    adapter: "core",
+    status: "new",
+  },
   {
     id: "support",
     path: "/support",

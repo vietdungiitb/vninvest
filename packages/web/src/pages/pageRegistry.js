@@ -220,6 +220,9 @@ export const pageRegistry = Object.freeze([
     import("./DashboardPage.tsx").then((module) => module.default)),
   makePageEntry("core-portfolios", "core", () =>
     import("./PortfoliosPage.tsx").then((module) => module.PortfoliosPage)),
+  // /portfolios/manage/broker - panel broker tach khoi trang quan ly danh muc.
+  makePageEntry("portfolios-broker", "core", () =>
+    import("./PortfoliosBrokerPage.tsx").then((module) => module.PortfoliosBrokerPage)),
   // S-04/S-11: 5 man hinh danh muc dung chung 1 entry. `routeId` trong
   // routeCatalog quyet dinh tab nao duoc mo; component doc `tab` tu path.
   makePageEntry("portfolio-workspace", "core", () =>

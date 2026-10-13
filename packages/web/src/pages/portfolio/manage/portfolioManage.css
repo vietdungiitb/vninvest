@@ -1,0 +1,610 @@
+/* ──────────────────────────────────────────────────────────────────────
+ * `/portfolios/manage` — style riêng của trang quản lý danh mục.
+ *
+ * BA LỖI CỦA FILE BỊ XOÁ (`PortfoliosPage.css`, 341 dòng) — KHÔNG lặp lại:
+ *
+ * 1. `PortfoliosPage.css:172,185,191` khai selector `button` / `button:hover` /
+ *    `button:disabled` **KHÔNG có tiền tố class**. File này được import khi vào
+ *    trang nên Vite đưa vào global bundle ⇒ mọi `<button>` toàn app đổi style.
+ *    Ở đây MỌI selector đều bắt đầu bằng `.pfm-` / `.pfm-page`.
+ *
+ * 2. `.dnse-panel*` bị định nghĩa HAI LẦN: `PortfoliosPage.css:51-170` và
+ *    `DNSEConnectionPanel.css:22-291`, giá trị khác nhau, thắng/thua tuỳ thứ tự
+ *    import. DNSE panel nay đã chuyển sang `/portfolios/manage/broker` và giữ
+ *    nguyên CSS riêng — trang này không còn `.dnse-panel*` nào.
+ *
+ * 3. Biến `--port-c0..c4`, `--port-success-500-rgb`, `--port-danger-500-rgb` khai
+ *    trong `:root` (tức global) chỉ để phục vụ đúng 1 trang.
+ *
+ * MÀU TĂNG/GIẢM: dùng token `--pf-gain` (xanh) / `--pf-loss` (đỏ) — chuẩn
+ * Bloomberg, Owner chốt 2026-10-07. Gate đọc thật token này:
+ * `node scripts/check-portfolio-contrast.mjs` (KHÔNG phải `npm run check:contrast`
+ * vốn là mảng 7 cặp tĩnh không đọc file — `docs/KE_HOACH…20261007.md:97-102`).
+ * ────────────────────────────────────────────────────────────────────── */
+
+.pfm-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────── */
+
+.pfm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-md);
+}
+
+.pfm-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.pfm-toolbar__search {
+  min-width: 14rem;
+  padding: var(--sp-xs) var(--sp-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.pfm-toolbar__count {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+/* ── Nút ───────────────────────────────────────────────────────────── */
+
+.pfm-btn,
+.pfm-btn-primary,
+.pfm-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  min-height: 2rem;
+  padding: var(--sp-xs) var(--sp-md);
+  color: var(--text-primary);
+  background: var(--bg-panel-soft);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  /* Giữ <time> <easing> — bỏ 2 thuộc tính này làm hover cắt đứt (L-F05). */
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pfm-btn:hover:not(:disabled),
+.pfm-btn-primary:hover:not(:disabled),
+.pfm-btn-danger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: rgba(var(--soc-rgb-5078a8) / 0.12);
+}
+
+.pfm-btn-primary {
+  color: var(--pf-surface);
+  background: var(--pf-accent);
+  border-color: var(--pf-accent);
+  font-weight: 600;
+}
+
+.pfm-btn-danger {
+  color: var(--pf-negative-text);
+  border-color: rgba(var(--soc-rgb-ef4444) / 0.45);
+}
+
+.pfm-btn:disabled,
+.pfm-btn-primary:disabled,
+.pfm-btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pfm-btn:focus-visible,
+.pfm-btn-primary:focus-visible,
+.pfm-btn-danger:focus-visible,
+.pfm-toolbar__search:focus-visible,
+.pfm-sortbtn:focus-visible,
+.pfm-table__actions button:focus-visible,
+.pfm-table-wrap button:focus-visible,
+.pfm-table-wrap a:focus-visible,
+.pfm-modal button:focus-visible,
+.pfm-modal input:focus-visible,
+.pfm-modal textarea:focus-visible,
+.pfm-drawer button:focus-visible,
+.pfm-drawer a:focus-visible {
+  outline: 2px solid var(--pf-accent);
+  outline-offset: 2px;
+}
+
+/* ── KPI ───────────────────────────────────────────────────────────── */
+
+.pfm-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--sp-md);
+}
+
+.pfm-kpi__card {
+  padding: var(--sp-md);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+}
+
+.pfm-kpi__label {
+  margin: 0 0 var(--sp-xs);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pfm-kpi__value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.pfm-kpi__hint {
+  margin: var(--sp-xs) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.pfm-kpi__notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--sp-xs) var(--sp-sm);
+  color: var(--pf-positive-text);
+  background: var(--pf-positive-soft);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+}
+
+/* ── Bảng ──────────────────────────────────────────────────────────── */
+
+.pfm-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+}
+
+.pfm-table {
+  width: 100%;
+  /* 8 cột: bảng cũ có 4 và vừa sát mép ở 1024px. */
+  min-width: 68rem;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.pfm-table th,
+.pfm-table td {
+  padding: var(--sp-sm) var(--sp-md);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.pfm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-panel-soft);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pfm-table tbody tr:hover {
+  background: rgba(var(--soc-rgb-5078a8) / 0.07);
+}
+
+.pfm-table__num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pfm-table__name {
+  font-weight: 600;
+}
+
+.pfm-table__nameText {
+  display: block;
+}
+
+.pfm-table__desc {
+  display: block;
+  max-width: 22rem;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pfm-table__pct {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.pfm-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-xs);
+  white-space: normal;
+}
+
+.pfm-table__actions button {
+  min-height: 2rem;
+  padding: var(--sp-xs) var(--sp-sm);
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pfm-table__actions button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: rgba(var(--soc-rgb-5078a8) / 0.12);
+}
+
+.pfm-table__actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pfm-table__row--busy {
+  opacity: 0.6;
+}
+
+.pfm-table--holdings {
+  min-width: 60rem;
+}
+
+.pfm-sortbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.pfm-sortbtn__mark {
+  color: var(--pf-accent);
+  font-size: 0.7em;
+}
+
+/* ── Badge ─────────────────────────────────────────────────────────── */
+
+.pfm-badge {
+  display: inline-block;
+  margin-left: var(--sp-xs);
+  padding: 0 var(--sp-xs);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pfm-badge--default {
+  color: var(--pf-accent);
+  background: rgba(var(--soc-rgb-34d399) / 0.14);
+}
+
+.pfm-badge--ok {
+  color: var(--pf-positive-text);
+  background: var(--pf-positive-soft);
+}
+
+.pfm-badge--warn {
+  color: var(--pf-negative-text);
+  background: var(--pf-negative-soft);
+}
+
+/* ── Lớp màu tăng/giảm (Bloomberg: xanh = tăng) ─────────────────────── */
+
+.pfm-tone-gain {
+  color: var(--pf-gain);
+}
+
+.pfm-tone-loss {
+  color: var(--pf-loss);
+}
+
+.pfm-tone-flat {
+  color: var(--pf-flat);
+}
+
+/* ── Trạng thái ────────────────────────────────────────────────────── */
+
+.pfm-state {
+  margin: 0;
+  padding: var(--sp-xl) var(--sp-lg);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.pfm-state--error {
+  color: var(--pf-negative-text);
+  background: var(--pf-negative-soft);
+  border-radius: var(--r-md);
+}
+
+.pfm-state__actions {
+  margin-top: var(--sp-md);
+}
+
+.pfm-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.pfm-pager__label {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+/* ── Modal ─────────────────────────────────────────────────────────── */
+
+.pfm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-lg);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.pfm-modal__panel {
+  width: min(34rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--sp-lg);
+  color: var(--text-primary);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.pfm-modal__title {
+  margin: 0 0 var(--sp-md);
+  font-size: var(--fs-lg);
+}
+
+/* ── Form ──────────────────────────────────────────────────────────── */
+
+.pfm-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.pfm-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-xs);
+}
+
+.pfm-field label {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.pfm-field input,
+.pfm-field textarea {
+  width: 100%;
+  padding: var(--sp-xs) var(--sp-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.pfm-field input[aria-invalid="true"] {
+  border-color: var(--pf-loss);
+}
+
+.pfm-field__hint,
+.pfm-field__error {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+
+.pfm-field__hint {
+  color: var(--text-secondary);
+}
+
+.pfm-field__error,
+.pfm-form__error {
+  color: var(--pf-negative-text);
+}
+
+.pfm-form__error {
+  margin: 0;
+  padding: var(--sp-xs) var(--sp-sm);
+  background: var(--pf-negative-soft);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+}
+
+.pfm-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-sm);
+}
+
+/* ── Drawer ────────────────────────────────────────────────────────── */
+
+.pfm-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.pfm-drawer__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+  width: min(64rem, 100%);
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--sp-lg);
+  color: var(--text-primary);
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-strong);
+}
+
+.pfm-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-md);
+}
+
+.pfm-drawer__header h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.pfm-drawer__header button {
+  min-width: 2rem;
+  min-height: 2rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.pfm-drawer__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--sp-md);
+  margin: 0;
+}
+
+.pfm-drawer__stats dt {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.pfm-drawer__stats dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pfm-drawer__reason {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+.pfm-drawer__notice {
+  margin: 0;
+  padding: var(--sp-xs) var(--sp-sm);
+  color: var(--pf-negative-text);
+  background: var(--pf-negative-soft);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+}
+
+.pfm-drawer__subtitle {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+
+.pfm-drawer__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.pfm-drawer__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-sm);
+  margin-top: auto;
+  padding-top: var(--sp-md);
+  border-top: 1px solid var(--border-default);
+}
+
+/* ── Screen-reader-only (KHÔNG dùng `.pf-visually-hidden`: class đó khai ở
+ *    `PortfolioWorkspace.css:4`, file chỉ được load khi mở workspace —
+ *    dùng ở đây là class không tồn tại lúc runtime). ─────────────────── */
+
+.pfm-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .pfm-kpi {
+    grid-template-columns: 1fr;
+  }
+
+  .pfm-drawer__panel {
+    width: 100%;
+    padding: var(--sp-md);
+  }
+
+  .pfm-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pfm-toolbar__search {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pfm-btn,
+  .pfm-btn-primary,
+  .pfm-btn-danger,
+  .pfm-table__actions button {
+    transition: none;
+  }
+}
