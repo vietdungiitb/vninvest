@@ -79,4 +79,31 @@ MSG
   fi
 fi
 
+# 3. Line-ending khong khop dang blob goc (L-T01).
+#
+#    Repo HON TAP: mot so file luu LF, so khac luu CRLF. `core.autocrlf=false`
+#    va `.gitattributes` khong co quy tac chung cho file nguon, nen git so san
+#    byte-for-byte. Do do, `Edit` tool tren Windows (hoac mot script PowerShell)
+#    chep mot file LF thanh CRLF lam TOAN BO file hien trong diff.
+#
+#    Da gap 14 lan/2 phien: workspace.js +762/-750 cho sua ~10 dong,
+#    routeCatalog.js +681/-658 cho ~23 dong, LangContext.js +136/-116 cho ~22 dong.
+#    Gate nay doc dang EOL cua BLOB trong HEAD (khong phai working tree, va
+#    KHONG phai cot `i/` cua `git ls-files --eol` sau khi da stage).
+if [ -f scripts/normalize-eol.mjs ]; then
+  eol_out=$(node scripts/normalize-eol.mjs 2>&1)
+  eol_st=$?
+  if [ "$eol_st" -ne 0 ]; then
+    echo "$eol_out" | sed 's/^/  /' >&2
+    cat >&2 <<'MSG'
+
+BLOCKED: file thay doi co line-ending lech dang blob goc (L-T01).
+Chay `node scripts/normalize-eol.mjs --fix` roi kiem `git diff --numstat`
+truoc khi commit. KHONG `--no-verify` - fix theo cach dung.
+
+MSG
+    exit 1
+  fi
+fi
+
 exit 0
