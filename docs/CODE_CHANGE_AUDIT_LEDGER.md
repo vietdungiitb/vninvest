@@ -36,6 +36,98 @@
   (6 tenant-admin + AdminAnalytics + AIUsageDashboard + OrderFlowRadarPanel) — can slice
   rieng (migrate sang echarts + bo dep, cham `package.json` deny-list).
 
+## Entry 283: Xây lại `/portfolios/manage` — trang không hiển thị một đồng tiền nào trong khi BE đã tính sẵn (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` → `dev` (claim `pf-manage-rebuild`)
+- **Owner chốt scope 2026-10-13**: Full rebuild CRUD + KPI + Holdings · tách DNSE panel sang `/portfolios/manage/broker` · Holdings lấy từ BE thật
+- **Lessons áp dụng**: L-F01, L-F03, L-F08, L-F09, L-F10, L-V01, L-V02, L-V03, L-T01, L-T02, L-F04
+
+**Trigger**: Owner báo `/portfolios/manage` "quá thô sơ" và yêu cầu rà lại bộ tài liệu
+thiết kế system-design, tham khảo phần mềm thương mại, rồi refactor.
+
+### 1. Nguyên nhân gốc: không phải "thiếu tính năng" mà là **UI không đọc API đã có sẵn**
+
+| Bên | Bằng chứng |
+|---|---|
+| BE **đã** tính giá trị / giá vốn / lãi-lỗ / tiền mặt / NAV | `portfolio_analytics_views.py:366-407` |
+| Adapter **đã** có `getPortfolioSummary` | `workspace.js:183` (bản cũ) |
+| Trang cũ **0 lần** gọi hàm đó | `PortfoliosPage.tsx:58-60` chỉ đọc `res.results` |
+| Bảng hiện ra | `PortfoliosPage.tsx:140` — 4 cột: `Tên / Số dư mở đầu / Ngày tạo / Thao tác` |
+
+⇒ Người dùng thấy danh mục tồn tại nhưng **không biết danh mục đó đang ăn bao nhiêu tiền**.
+Đây là lỗi thiết kế, không phải lỗi style.
+
+### 2. 11 finding đã đọc code thật (không suy từ tài liệu)
+
+1. **Không sửa được danh mục.** BE có `PortfolioDetailView.patch` (`views.py:186`), adapter có `updatePortfolio` (`workspace.js:56`) — trang cũ chỉ create/delete.
+2. **Panel broker 540 dòng nằm TRÊN CÙNG** (`PortfoliosPage.tsx:121-123`), gồm cả **đặt lệnh** — đẩy chức năng lõi xuống dưới màn hình và trộn "xem" với "giao dịch". Vi phạm D-36 (`PORTFOLIO_EXEC_PLAN_MASTER_20260927.md:83`) chốt "Broker Hub tách riêng".
+3. **0 i18n.** Cả `PortfoliosPage.tsx` lẫn `DNSEConnectionPanel.js` đều **không import `LangContext`** ⇒ ~63 chuỗi hardcode, đổi ngôn ngữ là vô hiệu.
+4. **CSS rò toàn app**: `PortfoliosPage.css:172,185,191` khai selector `button` **không có tiền tố class**.
+5. **CSS trùng lặp**: `.dnse-panel*` định nghĩa 2 lần với giá trị khác nhau — `PortfoliosPage.css:51-170` vs `DNSEConnectionPanel.css:22-291`.
+6. **Phân trang bị bỏ**: BE dùng `CoreCursorPagination` (`views.py:120`, page_size 50) trả `next`; FE chỉ đọc `results` ⇒ **âm thầm cắt danh sách ở 50 dòng**, không báo lỗi.
+7. **409 hiện chuỗi thô**: `views.py:227-238` trả 409 + `code: portfolio_has_financial_history`; `PortfoliosPage.tsx:115` ném thẳng `Error.message` của `CoreApiRequestError` (`transport.js:305`) vào toast.
+8. **Route không có entry `routeCatalog`** ⇒ mất `titleKey` + `requiredCapabilities`; contract test chỉ kiểm chiều catalog → `main.tsx` nên không bắt được.
+9. **0 test render trang.** `grep PortfoliosPage` trong `packages/web` chỉ ra 1 dòng *comment* trong `field-contract.test.js`.
+10. **Trùng lặp kiến trúc**: `/portfolios` đã có workspace 5 tab, `/portfolios/manage` là CRUD song song không kế thừa gì.
+11. **Link "Giao dịch" trỏ sai**: `PortfoliosPage.tsx:151` trỏ `/transactions` **không truyền `portfolioId`** ⇒ màn hình chết (`TransactionsPage` luôn báo "Vui lòng chọn danh mục").
+
+### 3. MÂU THUẪN phát hiện: BE khuyên "hãy ẩn danh mục" nhưng **không có tính năng ẩn**
+
+`views.py:229-234` trả 409 với lời nhắc *"Hãy ẩn danh mục thay vì xoá"*. Đọc `user_workspace/models.py` `class Portfolio`: có `user/tenant/name/description/is_default/opening_balance/opening_balance_source/legacy_portfolio_id` — **không có** field archive. ⇒ Lời nhắc hướng người dùng tới một tính năng không tồn tại.
+
+**Xử lý**: FE **không** hứa tính năng không có; thông điệp 409 do trang phát ra là *"đã đổi tên để đánh dấu không dùng nữa, hoặc liên hệ quản trị viên"* — vì sau rebuild trang đã có thao tác **Sửa/đổi tên**. Không sửa BE (ngoài phạm vi, cần migration).
+
+### 4. MÂU THUẪN tài liệu đã kiểm chứng (không tin báo cáo cũ)
+
+`docs/archive/.../PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md` khẳng định widget có `Line`/`Area`/`Bar` để vẽ chart danh mục. Kiểm bằng **export surface** của `dist/index.js`: **29 export, không có tên nào trong 3 tên đó**. Tài liệu đó (a) đã archive theo `docs/archive/README.md:14` và (b) sai về mặt kỹ thuật. Nguồn FE đúng là `docs/KE_HOACH_THIET_KE_FRONTEND_PORTFOLIO_20261007.md` + `docs/evidence/portfolio-fe/TEST_REPORT.md`.
+
+### 5. Đã sửa
+
+- **Tiền thật**: lưới KPI (tổng giá trị / giá vốn / lãi-lỗ) + bảng 8 cột có **giá trị thị trường, lãi-lỗ (+%), số mã đang giữ, ngày cập nhật dữ liệu**. `getPortfolioSummary` gọi song song bằng `Promise.allSettled` — một danh mục lỗi **không làm mất danh mục khỏi bảng**.
+- **CRUD đủ**: thêm Sửa (PATCH); form dùng chung create/edit.
+- **Fail-closed**: ô thiếu số liệu hiện `—` + lý do từ `price_missing_reason`/`market_value_reason`, **không** hiện `0` (nguyên tắc NO ZERO DISPLAY, `PORTFOLIO_COMMERCIAL_UPGRADE_PROPOSAL_20260927.md:87-108`). Mã chưa có giá **vẫn hiện dòng** — ẩn đi sẽ làm méo tổng tỷ trọng.
+- **KPI tổng** gắn nhãn "Tạm tính" + nêu lý do khi còn danh mục chưa có giá trị thị trường.
+- **Broker tách route** `/portfolios/manage/broker`. Khai **TRƯỚC** `portfolios/manage` trong `main.tsx` — khai sau sẽ bị React Router gán `manage/broker` vào param `portfolios/:portfolioId/...` và mở sai trang.
+- **Phân trang cursor**: `getPortfolios(params)` nhận `cursor`; giữ stack để "Trang trước" không cần biết cursor lùi.
+- **i18n**: namespace `portfoliosManage` **116 key × 2 locale**.
+- **Xoá** `PortfoliosPage.css` (341 dòng) với selector global + CSS trùng.
+- **DI**: `usePortfolioManage(client)` + prop `adapter` — cùng cách 5 trang workspace làm, nhờ đó trang **test được** không cần `vi.mock` module.
+
+### 6. 2 lỗi CHỈ lộ ra khi chạy Playwright trên staging thật — test component không bắt được
+
+| Lỗi | Vì sao test không bắt | Bằng chứng |
+|---|---|---|
+| Nhãn phân trang luôn sai | `t(key, {defaultValue: cond ? A : B})` — `createTranslator` (`i18n/index.js:38`) **chỉ đọc `defaultValue` khi KEY KHÔNG có** trong dictionary; key đã có nên nhánh điều kiện không bao giờ chạy | staging hiện *"Đang xem trang sau…"* ở trang đầu tiên |
+| Ghi chú kỹ thuật của BE lộ vào UI | `cash_note` là câu 2 dòng *"cash = tổng dòng tiền gom từ Transaction (mua - bán + cổ tức - phí - thuế)…"* | đọc trong drawer khi probe staging |
+
+Cả hai đã sửa (`pager.onLaterPage/onFirstPage`; `cash_note` → câu ngắn + `title`). Bonus: `nav_reason_text` là **tiếng Việt hardcode trong BE** (`ledger/valuation.py:39-45`) nên đổi sang EN vẫn ra tiếng Việt ⇒ chuyển sang tra **mã máy** `nav_reason` (`no_opening_balance`/`no_positions`) sang key i18n.
+
+### 7. BẰNG CHỨNG CHẠY THẬT (không báo PASS cho thứ chưa chạy)
+
+**Gate cục bộ** — `tsc --noEmit` **0** · `lint` **0 error** (3930 warning có sẵn) · `test:components` **129 file / 928 test PASS** (baseline `dev` 918 + **10 test mới**) · `build` **0** · `check:tokens` **0 vi phạm** · `check-portfolio-contrast` **12 cặp × 2 theme ≥ 4.5:1** · `check:shell` **exit 0** · `i18n:scan` **exit 0** · `check-multi-agent` **0 lỗi** · `check-lessons` **40/40** · `pre-push-gate` **21 PASS / 0 SKIP / 0 FAIL**.
+
+**Fail-before chứng minh test có tác dụng** — sửa `format.ts` `opening_balance: balance === "" ? null : balance` → `? "0" : balance` ⇒ test **FAIL** `expected '0' to be null` (1/10 fail); khôi phục ⇒ **10/10**.
+
+**Artifact trong container, không phải `dist/` trên host** (L-V01) — `docker exec vninvest-frontend grep -rl 'pfm-kpi__value' /usr/share/nginx/html/assets/` → `PortfoliosPage-BlN5j0Rt.css` + `PortfoliosPage-DEVoZxPc.js`; `grep -rl 'core-portfolios-table'` → **không còn** ⇒ selector `button` toàn cục đã thật sự biến mất khỏi bản deploy.
+
+**E2E thật trên `docker.edusuccess.vn`** (Playwright, đăng nhập `testuser`): tạo danh mục → bảng hiện đủ 8 cột → NAV tính được **50.000.000** từ số dư mở đầu → Sửa (pre-fill đúng tên + `50000000.00`) → Chi tiết (drawer vị thế + NAV + tiền mặt) → Xoá (còn 0 dòng) · **0 console error**. Dữ liệu test đã dọn sạch staging sau khi chạy.
+
+### 8. CHƯA CHẠY (ghi rõ, không tính là PASS)
+
+- **BE test** — không chạy: không sửa backend, nhưng cũng **không** xác nhận được là baseline BE còn xanh sau khi đổi `workspace.js`.
+- **Playwright có sẵn trong repo** (`tests/visual/*.spec.ts`) — không thêm spec nào vào repo; probe viết ở thư mục tạm và xoá sau (L-V03: lần đầu probe ghi 4 file PNG vào `packages/web/`, đã revert).
+- **Chưa seed dữ liệu có vị thế thật** ⇒ cột tiền chỉ được kiểm ở mức "0 là đúng vì danh mục rỗng". Chưa chứng minh hiển thị giá khi có `LedgerEntry` thật.
+- **Light mode / mobile** — có CSS + `prefers-reduced-motion` nhưng **chưa** chụp ảnh đối chiếu.
+- `DNSEConnectionPanel` **không sửa 1 dòng**; ~28 chuỗi hardcode của nó **chưa** i18n (slice riêng, để diff dễ đọc).
+
+### 9. L-T01 bắt lần thứ 12: `Edit` tool đổi LF → CRLF **hai file**
+
+`git diff --numstat` ra `workspace.js` **+762/−750** và `routeCatalog.js` **+681/−658** cho thay đổi thật lần lượt ~10 và ~23 dòng. HEAD lưu **LF** (`git ls-files --eol` báo `i/crlf` cho cả hai trạng thái nên **không** phát hiện được). Chuẩn hoá byte về LF ⇒ **`+15/−3`** và **`+23/−0`** khớp đúng nội dung sửa.
+
+**Còn lần 13 ngay trong Entry này**: dùng `[System.IO.File]::WriteAllLines` để chèn 1 dòng index vào chính file ledger này — hàm đó ghi **CRLF** (theo `Environment.NewLine`) nên **9 753 dòng biến mất khỏi diff**. Khôi phục bằng `git checkout --` rồi làm lại bằng `edit` tool.
+
+**Bài học**: `git diff --numstat` là cảm biến **duy nhất** bắt được chuyện này, và phải chạy **trước khi stage**. Không dùng `WriteAllLines`/`WriteAllText` cho file append-only trong repo.
+
 ## Entry 281: Vá P0 pgbouncer trong `docker-compose.prod.yml` + chuyển DB `vninvest_core` local → VPS staging (2026-10-13)
 
 - **Nhánh**: `fix/prod-pgbouncer-db-migrate` → `dev` (claim `ops-vps`, commit `0b766903d`)
