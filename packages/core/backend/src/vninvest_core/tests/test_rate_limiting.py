@@ -167,8 +167,6 @@ class RateLimitLoginEndpointTests(APITestCase):
         self.assertTrue(str(data['request_id']).strip() != '')
 
 
-@override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
-@patch('requests.post', side_effect=turnstile_ok)
 class RateLimitRegisterEndpointTests(APITestCase):
     """Test @ratelimit decorator on /api/auth/register/ endpoint (3/minute per IP).
 
@@ -176,12 +174,21 @@ class RateLimitRegisterEndpointTests(APITestCase):
     bắt buộc token khi secret có giá trị, nếu không mọi request đều 400 và assert
     rate limit vô nghĩa. Mock trả `{'success': True}` để token "hợp lệ".
     """
-    
+
+    @override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
     def setUp(self):
         self.client = APIClient()
         self.register_url = '/core/v1/auth/register/'
         # Clear cache before each test
         cache.clear()
+        # Patch ở setUp, KHÔNG dùng `@patch` trên class.
+        # Lý do: `@patch` cấp class truyền thêm 1 đối số mock vào **mọi** method
+        # của class, kể cả method không khai tham số ⇒
+        # `TypeError: test_x() takes 1 positional argument but 2 were given`.
+        # Đo thật 2026-10-13: 5 FAIL biến thành 5 ERROR cùng loại.
+        patcher = patch('requests.post', side_effect=turnstile_ok)
+        patcher.start()
+        self.addCleanup(patcher.stop)
     
     def test_register_within_limit(self):
         """First 3 register requests within limit should succeed."""
@@ -374,19 +381,23 @@ class RateLimitPasswordResetEndpointTests(APITestCase):
 
 
 @override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
-@patch('requests.post', side_effect=turnstile_ok)
 class RateLimitWindowExpiryTests(APITestCase):
     """Test rate limit counter expiration after 1 minute window.
 
-    Mock Turnstile cho phần `register` — xem `reg_payload()`.
+    Mock Turnstile cho phần `register` — xem `reg_payload()`. Patch ở `setUp`,
+    không `@patch` cấp class (xem `RateLimitRegisterEndpointTests`).
     """
-    
+
+    @override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
     def setUp(self):
         self.client = APIClient()
         self.register_url = '/core/v1/auth/register/'
         self.password_reset_url = '/core/v1/auth/password-reset/'
         # Clear cache before each test
         cache.clear()
+        patcher = patch('requests.post', side_effect=turnstile_ok)
+        patcher.start()
+        self.addCleanup(patcher.stop)
     
     def test_register_limit_expires_after_window(self):
         """Register rate limit should reset after cache expiration (1 minute)."""
