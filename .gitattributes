@@ -6,3 +6,16 @@ vninvest-deploy.bundle filter=lfs diff=lfs merge=lfs -text
 # CLAIMS.md is append-at-end by rule, so `merge=union` makes two agents appending
 # their own claim rows auto-merge instead of producing a conflict marker.
 docs/CLAIMS.md merge=union
+
+# Pin LF cho shell script chay tren LINUX (VPS staging 14.225.255.47).
+# Neu may dev co core.autocrlf=true, file bi doi sang CRLF khi checkout =>
+# #!/usr/bin/env bash\r => Linux bao ad interpreter: ... bash^M.
+#
+# KHONG dung * text=auto cho ca repo: nhieu file dang luu CRLF co chu dich
+# (nadmin.css la CRLF-native - xem ledger Entry 273 §7). Ep chuan hoa ca
+# repo se phinh diff hang nghin dong cho thay doi khong lien quan.
+# git add --renormalize tren cac file staging da kiem chung: KHONG file
+# dang ton tai nao bi dong vao.
+*.sh                        text eol=lf
+docker-compose.staging.yml text eol=lf
+compose.staging.env.example text eol=lf
