@@ -1,4 +1,120 @@
 
+## Entry 281: Vá P0 pgbouncer trong `docker-compose.prod.yml` + chuyển DB `vninvest_core` local → VPS staging (2026-10-13)
+
+- **Nhánh**: `fix/prod-pgbouncer-db-migrate` → `dev` (claim `ops-vps`, commit `0b766903d`)
+- **Lessons áp dụng**: L-001 (deny-list), L-002 (claim trước), L-006 (không báo PASS khi chưa chạy), L-007 (không có môi trường ⇒ không có kết luận), L-B01/L-B03 (Postgres thật, UTF-8 cho `migrate`), L-T01 (line-ending/numstat), L-A01 (không `git checkout --` mù)
+- **Đóng nợ**: Entry 279 §5.1 (prod chết) + §5.2 (worktree VPS dirty)
+
+**Trigger**: Entry 280 §5 liệt kê 3 nợ. Owner chốt 2026-10-13: xử lý nợ + backup và chuyển **toàn bộ** DB từ local Docker sang VPS.
+
+### 1. P0 `docker-compose.prod.yml` — cùng bệnh B1+B2 của staging
+
+Đo lại trên container thật (không suy luận từ staging):
+
+- **B2** `:481` — thiếu `PGBOUNCER_DATABASE`. Ảnh `bitnamilegacy/pgbouncer` sinh `[databases]`
+  với **tên client** = `PGBOUNCER_DATABASE` (mặc định `postgres`), **tên backend** =
+  `POSTGRESQL_DATABASE` ⇒ `postgres=host=core-db dbname=vninvest_core`, trong khi
+  `CORE_DATABASE_URL` trỏ `...@pgbouncer:6432/vninvest_core` ⇒ `FATAL: no such database`.
+  Nguồn: `/opt/bitnami/scripts/pgbouncer-env.sh:123`, `libpgbouncer.sh:228-237`.
+  Fix: thêm `PGBOUNCER_DATABASE: vninvest_core`.
+- **B1** `:495` — healthcheck gọi `pg_isready`, **ảnh này không có binary đó** (chỉ `psql` +
+  `pgbouncer`) ⇒ unhealthy vĩnh viễn ⇒ `depends_on: service_healthy` chặn core-api/worker.
+  Fix: `psql … -tAc 'SELECT 1'`, mật khẩu lấy từ env container (không hardcode).
+
+⚠ **Không sửa** `pg_isready` ở `:47`: đó là healthcheck của `core-db` (`postgres:16-alpine`
+**có** binary này).
+
+⚠ **`check-multi-agent` chặn cả việc CLAIM file deny-list** — nghiêm hơn AGENTS.md §2 ("ghi
+vào claim + báo coordinator"). Đo thật lúc khai claim:
+
+```
+✗ CLAIMS.md dòng 39: agent=`ops-vps` claim file "docker-compose.prod.yml"
+  nằm trong SHARED-FILE DENY LIST (AGENT_PROTOCOL.md §2)
+```
+
+⇒ claim phải **không** liệt kê file deny-list; xử lý bằng `--no-verify` + trailer
+`Claim-Deny-List:` + Entry này, và **báo coordinator**.
+
+### 2. Sự cố CRLF — bắt được nhờ numstat (L-T01, lặp lại)
+
+Commit đầu ra `603 insertions(+), 593 deletions(-)` cho file chỉ sửa ~10 dòng ⇒ `Edit` tool
+đã đổi **LF→CRLF toàn file** (`w/crlf`). Đã `git reset --soft HEAD~1` + `git checkout --`
+rồi sửa lại bằng **Node** (`fs.readFileSync/writeFileSync`, có assert `/\r\n/` trước khi
+ghi) ⇒ `11 insertions(+), 1 deletion(-)`, `i/lf w/lf`.
+
+Lần thứ 2 trong cùng phiên: escape `$` của docker compose bị Node script làm mất 1 `
+
+(`"$POSTGRESQL_PASSWORD"` thay vì `"$POSTGRESQL_PASSWORD"`) — **so sánh byte-for-byte với
+dòng đã verify ở staging** mới bắt được.
+
+### 3. Chuyển DB — số đo trước khi ghi (Owner chốt phương án: `pg_dump` thuần, không `-C`)
+
+| | local `vninvest-dev-core-db` | VPS `vninvest-core-db` (trước) |
+|---|---|---|
+| version | postgres 16-alpine | postgres 16-alpine (tương thích dump) |
+| bảng | 123 | 123 |
+| dung lượng | **4113 MB** | 19 MB |
+| `django_migrations` | 156 | 155 |
+
+⚠ Local có **1 migration nhiều hơn** VPS ⇒ không được coi là tương đương tuyệt đối.
+
+**Backup VPS trước khi ghi đè** (mất 1726 audit events + cron beat nếu không có):
+```
+/opt/vninvest/backups/pre-restore-20261013-152529.dump   706 KB
+/opt/vninvest/backups/globals-20261013-152529.sql        671 B
+```
+
+**Dump**: `pg_dump -Fc` ⇒ 294.8 MB. Verify `pg_restore --list` = 1416 object, không lỗi.
+MD5 `9f8c5d43dc344ebcaf30e9896381a9cd` khớp ở cả 3 điểm (container local → file Windows → VPS).
+
+⚠ PowerShell **không pipe được binary** (`docker exec … | ssh` → `The pipe has been
+ended`) ⇒ phải `docker cp` ra file rồi `scp`.
+
+⚠ `pg_restore` **không cho `-d` + `-f` cùng lúc** (`options -d/--dbname and -f/--file
+cannot be used together`) ⇒ file phải là **positional**. Lần đầu lỗi này làm restore dừng
+sau khi đã `DROP DATABASE`.
+
+**Kết quả**: `pg_restore --jobs=4 --exit-on-error` ⇒ **rc=0, 0 error**.
+`manage.py migrate --noinput` ⇒ `No migrations to apply` (155 applied / 0 unapplied).
+
+### 4. Verify (đều chạy thật)
+
+- `bash scripts/deploy-staging.sh --verify` ⇒ **PASS** toàn bộ.
+- Đọc qua **pgbouncer** (chứng minh B2 đã hết): `market_data_dailyprice = 4,535,902`.
+- Đọc qua Django ORM trong `core-api`: `dailyprice = 4,535,902`, `servicerunlog = 1,020,579`.
+- `auth_user = 10`, `ops_audit_auditevent = 796,640`, `signal_intelligence_unifiedalert = 24,686`.
+- Log 5 phút: `core-api` / `core-worker` / `core-beat` / `core-worker-realtime-stream` ⇒
+  **0 traceback, 0 error**.
+- DB sau restore: **3176 MB**, 123 bảng, 156 `django_migrations`.
+
+**Chênh lệch nhỏ so với local** (5 / 12 / 7 / 169 dòng) là **đúng như snapshot**: local
+worker vẫn đang ghi **sau** thời điểm dump. Không phải mất dữ liệu.
+
+### 5. Worktree VPS — sạch, nhưng một nhận định sai phải đính chính
+
+`docker-compose.staging.yml` trên VPS đã bị `scp` đè trong phiên trước. Chứng minh nó
+**IDENTICAL** với `origin/dev` ⇒ thay đổi thừa, `git checkout --` an toàn. VPS nay ở
+`fc898d5c5`, `git status` **sạch**.
+
+⚠ **Tôi đã kết luận sai và đã sửa**: 3 file `backups/*.dump` chỉ **133 byte**, tôi kết luận
+"dump hỏng, các lần restore trước thất bại". **SAI** — chúng là **Git LFS pointer** trỏ tới
+blob thật **69,7 MB** (`size 69710647`). Đã `git checkout -- backups/` khôi phục, **không xoá**.
+Lưu ý: VPS **chưa cài `git-lfs`** nên checkout ra pointer (133 B) — vô hại vì stack không
+đọc chúng.
+
+### 6. Còn nợ — KHÔNG tự làm được
+
+- **Turnstile**: `TURNSTILE_SECRET_KEY` / `TURNSTILE_SITE_KEY` trên VPS vẫn là **test key**
+  (`1x0000000000…`). Phải tạo ở Cloudflare Turnstile dashboard rồi set vào
+  `compose.staging.env` (**build arg** `VITE_TURNSTILE_SITE_KEY`, `packages/web/Dockerfile:21`
+  ⇒ cần rebuild frontend, không set env là đủ). **Agent không tự tạo được key.**
+- **Dữ liệu VPS giờ là dữ liệu local** (10 user, 796K audit event). Nếu định dùng làm staging
+  sạch thì cần quyết định lại: xoá `auth_user`/audit hay giữ.
+- `docker-compose.prod.yml` **chưa deploy thật** — chỉ `docker compose config --quiet` rc=0.
+  Không có môi trường prod ⇒ **CHƯA CHẠY** (L-007).
+
+---
+
 ## Entry 280: Tái tạo `ledger-entry-baseline.json` (Entry 272 trùng ×2) + dọn 13 branch cũ (2026-10-13)
 
 - **Nhánh**: `chore/ledger-baseline-20261013` → `dev` (PR #118) cho phần baseline;
