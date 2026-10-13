@@ -188,6 +188,7 @@
 
 .pfm-table-wrap {
   overflow-x: auto;
+  background: var(--bg-panel);
   border: 1px solid var(--border-default);
   border-radius: var(--r-md);
 }
