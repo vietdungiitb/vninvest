@@ -38,6 +38,25 @@ if [ "$TOTAL_MB" -lt "$NEED_MB" ]; then
 fi
 [ "$DISK_GB" -lt 20 ] && die "Disk ${DISK_GB} GB — không đủ cho image build (cần >= 20 GB)."
 
+# ── 1b. Gói nền (git/gnupg/curl/ca-certificates) ──────────────────────────
+# VPS Ubuntu trắng thường KHÔNG có `git` lẫn `gpg` (đã gặp thật 2026-10-13).
+# Script cần cả hai: `gpg` cho keyring Docker (§2), `git` để clone repo (§3).
+# Thiếu thì lỗi rất khó hiểu ở GIỮA script. Image cloud đôi khi còn có apt
+# hỏng sẵn (`linux-firmware` thiếu gói con) ⇒ `--fix-broken` trước.
+NEED_PKGS=""
+command -v git  >/dev/null 2>&1 || NEED_PKGS="$NEED_PKGS git"
+command -v gpg  >/dev/null 2>&1 || NEED_PKGS="$NEED_PKGS gnupg"
+command -v curl >/dev/null 2>&1 || NEED_PKGS="$NEED_PKGS curl"
+[ -d /etc/ssl/certs ] || NEED_PKGS="$NEED_PKGS ca-certificates"
+if [ -n "$NEED_PKGS" ]; then
+  log "Cài gói nền:$NEED_PKGS"
+  export DEBIAN_FRONTEND=noninteractive
+  dpkg --configure -a || true
+  apt-get update -qq || true
+  apt-get install -y -qq $NEED_PKGS \
+    || { apt-get -y -qq --fix-broken install && apt-get install -y -qq $NEED_PKGS; }
+fi
+
 # ── 2. Docker ──────────────────────────────────────────────────────────────
 if ! command -v docker >/dev/null 2>&1; then
   log "Cài Docker Engine + compose plugin"
