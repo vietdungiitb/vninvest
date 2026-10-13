@@ -1,14 +1,14 @@
 {
   "_comment": "Tan suat xuat hien cua tung so `## Entry N` trong ledger. Cong CHAN TRUNG MOI, khong chan 59 nhom trung co san. KHONG danh so lai lich su — Owner chot 2026-10-08 vi se lam hong moi trich dan 'Entry N' trong AGENTS.md / CLAIMS.md / docs/*.",
-  "_measured_at": "2026-10-08",
+  "_measured_at": "2026-10-13",
   "_measured_from": "git HEAD (khong bao gio lay viec dang lam trong worktree)",
   "_reproduce": "node docs/audit-uiux/scripts/check-ledger-entry.mjs",
   "totals": {
-    "headers": 305,
-    "distinct": 243,
-    "dupGroups": 59,
-    "extras": 62,
-    "max": 255
+    "headers": 330,
+    "distinct": 267,
+    "dupGroups": 60,
+    "extras": 63,
+    "max": 279
   },
   "frequencies": {
     "33": 2,
@@ -69,6 +69,7 @@
     "153": 2,
     "154": 2,
     "250": 2,
-    "251": 2
+    "251": 2,
+    "272": 2
   }
 }
