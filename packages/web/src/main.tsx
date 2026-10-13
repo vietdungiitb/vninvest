@@ -160,7 +160,7 @@ function App() {
         // /portfolios la entry workspace: neu URL khong co id, trang tu chon
         // danh muc dau tien (PortfolioWorkspacePage). Trang quan ly CRUD chuyen
         // sang /portfolios/manage de khong con la "man hinh chet".
-          createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolio-workspace')) }),
+          createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
           createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios-manage')) }),
           // D-36 (`PORTFOLIO_EXEC_PLAN_MASTER_20260927.md:83`) "Broker Hub tach rieng".
           // Panel DNSE (nhap credential + sync + DAT LENH) da nam tren cung trang
