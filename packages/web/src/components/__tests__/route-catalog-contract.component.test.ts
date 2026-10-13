@@ -30,4 +30,23 @@ describe("route catalog ↔ router contract (F-04)", () => {
   it("registers /vip/local-control (F-04 regression)", () => {
     expect(registeredPaths.has("/vip/local-control")).toBe(true);
   });
+
+  it("uses only catalog ids in main.tsx (D-01 reverse direction)", () => {
+    // Mọi resolvePageComponent('X') trong main.tsx phải có id X trong catalog.
+    // Khóa chiều ngược: đổi id ở catalog mà quên main (hoặc ngược lại) là vỡ.
+    // Ngoại lệ duy nhất: id đi qua lớp ánh xạ registry (`core-*`,
+    // `portfolio-workspace`, `alert-center`, `whale-advisory`, ...) là đầu RA
+    // của resolver, không phải routeId — test này chỉ quét đầu VÀO.
+    const catalogIds = new Set(
+      (routeCatalog as Array<{ id: string }>).map((e) => e.id),
+    );
+    const idRe = /resolvePageComponent\(\s*['"]([^'"]+)['"]\s*\)/g;
+    const usedIds = new Set<string>();
+    let im: RegExpExecArray | null;
+    while ((im = idRe.exec(mainSource as unknown as string)) !== null) {
+      usedIds.add(im[1]);
+    }
+    const unknown = [...usedIds].filter((id) => !catalogIds.has(id));
+    expect(unknown).toEqual([]);
+  });
 });
