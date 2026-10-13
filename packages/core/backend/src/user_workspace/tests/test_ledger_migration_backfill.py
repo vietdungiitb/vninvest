@@ -33,6 +33,25 @@ TARGET = '0022_backfill_transaction_to_ledger'
 logger = logging.getLogger(__name__)
 
 
+# ── Vì sao fixture tạo `Transaction` bằng `bulk_create` ──────────────────
+#
+# Tín hiệu `post_save` trên `Transaction` (`user_workspace/signals.py:113` ->
+# `ledger/transaction_sync.py:253`, thêm ở `d7226a591` P0-2 ngày 2026-10-06)
+# ghi `LedgerEntry` **mỗi lần giao dịch được lưu**. File test này viết ngày
+# 2026-10-03, tứ **trước** hành vi đó — và trước `768d0897f` (2026-10-12) nó
+# chưa từng được `manage.py test` chạy tới, nên xung đột nằm im cho tới nay.
+#
+# Dùng `create()` ở đây thì mọi AC về marker (`backfilled_by=BACKFILL_MARKER`)
+# đều hỏng theo cách KHÔNG đại diện cho sản phẩm: dòng sổ cái do tín hiệu sinh
+# ra không mang marker, nên `0022` bỏ qua (đúng — nó không được ghi trùng) và
+# assertion "backfill ghi 3 dòng" thành sai. Test sẽ đo hành vi của tín hiệu
+# chứ không đo hành vi của migration.
+#
+# `bulk_create` **không** bắn `post_save` ⇒ fixture đúng trạng thái lịch sử
+# mà `0022` được thiết kế để chạy trên đó: dữ liệu thô, chưa đồng bộ sổ cái.
+_TX_WHY_BULK_CREATE = True
+
+
 def _discard_test_transactions():
     """Xoá sạch `Transaction` mà test vừa tạo, TRƯỚC khi đi tiếp migration.
 
@@ -88,7 +107,8 @@ def _tx(portfolio, tenant, **overrides):
         'external_id': '',
     }
     payload.update(overrides)
-    return Transaction.objects.create(**payload)
+    # **`bulk_create`, không `create`** — xem `_TX_WHY_BULK_CREATE` ở trên.
+    return Transaction.objects.bulk_create([Transaction(**payload)])[0]
 
 
 class BackfillMigrationTests(TransactionTestCase):
@@ -333,3 +353,44 @@ class BackfillMigrationTests(TransactionTestCase):
         self._run_backfill()
         self.assertEqual(LedgerEntry.objects.count(), 0)
         self.assertEqual(CashFlow.objects.count(), 0)
+
+    # ── AC: backfill phải chạy được khi sổ cái ĐÃ có dòng cho giao dịch ──
+
+    def test_backfill_does_not_rewrite_entries_the_signal_already_synced(self):
+        """**Lỗi thật, đã từng làm hỏng 10 test.**
+
+        Tín hiệu `post_save` trên `Transaction` (`signals.py:113`, P0-2
+        `d7226a591`) ghi `LedgerEntry` mỗi lần giao dịch được lưu. Nếu dữ liệu
+        được tạo **qua ORM** (đúng đường đi của ứng dụng thật) thì tới lúc
+        backfill chạy, dòng sổ cái **đã tồn tại**.
+
+        Bản `forwards()` đầu tiên `bulk_create` không hỏi ⇒ ghi 2 lần ⇒ đụng
+        `uniq_ledger_entry_tenant_external_id` ⇒ **cả migration abort**. Đây
+        không chỉ là chuyện của test: bất kỳ lần rollback rồi thiết lập lại trên
+        DB thật nào cũng đi vào đúng ngõ cụt này.
+
+        Ở đây cố tình dùng `create()` — **không** phải `_tx`/`bulk_create` —
+        vì cần đúng cái trạng thái đã đồng bộ sẵn đó.
+        """
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
+            quantity=1000, fee=Decimal('0'), tax=Decimal('0'), external_id='B-1')
+
+        synced = LedgerEntry.objects.filter(external_id='B-1')
+        self.assertEqual(
+            synced.count(), 1,
+            'tiền đề của test: tín hiệu post_save phải tạo đúng 1 dòng sổ cái')
+
+        # Không được ném `IntegrityError`.
+        self._run_backfill()
+
+        self.assertEqual(
+            LedgerEntry.objects.filter(external_id='B-1').count(), 1,
+            'backfill không được nhân bản dòng đã có')
+        self.assertEqual(
+            LedgerEntry.objects.filter(backfilled_by=BACKFILL_MARKER).count(), 0,
+            'dòng đã đồng bộ thì không phải việc của backfill — nó không được gắn marker')
+        # Dòng đồng bộ sẵn phải giữ nguyên tiền mặt, không bị đụng.
+        self.assertEqual(
+            CashFlow.objects.filter(entry__external_id='B-1').count(), 1)
