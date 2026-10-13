@@ -26,7 +26,19 @@ function resolvePageComponent(routeId: string) {
   else if (routeId === 'ai-advisory') registryId = 'whale-advisory';
   else if (routeId === 'watchlist') registryId = 'core-watchlist';
   else if (routeId === 'transactions') registryId = 'core-transactions';
-  else if (routeId === 'portfolios') registryId = 'core-portfolios';
+  // D-01 (Owner chốt 2026-10-13): routeId ở đây PHẢI trùng id trong
+  // `routeCatalog` để titleKey/requiredCapabilities không bao giờ mù chiều
+  // ngược. Registry id (`core-*`) giữ nguyên — resolver là lớp ánh xạ duy nhất.
+  else if (routeId === 'portfolios') registryId = 'portfolio-workspace';
+  else if (routeId === 'portfolios-manage') registryId = 'core-portfolios';
+  else if (routeId === 'admin-tenants') registryId = 'admin-core-tenants';
+  else if (routeId === 'admin-tenant-service-accounts') registryId = 'admin-core-service-accounts';
+  else if (routeId === 'admin-tenant-pats') registryId = 'admin-core-pats';
+  else if (routeId === 'admin-tenant-usage') registryId = 'admin-core-usage';
+  else if (routeId === 'admin-tenant-billing') registryId = 'admin-core-billing';
+  else if (routeId === 'admin-overview') registryId = 'admin-core-overview';
+  else if (routeId === 'admin-jobs') registryId = 'admin-core-jobs';
+  else if (routeId === 'admin-audit-trace') registryId = 'admin-core-audit-trace';
   // S-11: 5 route danh muc cung dung MOT entry. Component doc tab tu path.
   else if (routeId.startsWith('portfolio-')) registryId = 'portfolio-workspace';
   else if (routeId === 'settings') registryId = 'core-user-settings';
@@ -143,8 +155,8 @@ function App() {
         // /portfolios la entry workspace: neu URL khong co id, trang tu chon
         // danh muc dau tien (PortfolioWorkspacePage). Trang quan ly CRUD chuyen
         // sang /portfolios/manage de khong con la "man hinh chet".
-        createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolio-workspace')) }),
-        createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios')) }),
+        createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
+        createElement(Route, { path: 'portfolios/manage', element: createElement(resolvePageComponent('portfolios-manage')) }),
         // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + F5 giu dung
         // tab. Cung tro toi MOT entry `portfolio-workspace`; tab lay tu path.
         createElement(Route, { path: 'portfolios/:portfolioId/overview', element: createElement(resolvePageComponent('portfolio-overview')) }),
@@ -173,15 +185,15 @@ function App() {
         createElement(Route, { path: 'admin/usage', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-usage'))) }),
         createElement(Route, { path: 'admin/audit', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-audit'))) }),
         createElement(Route, { path: 'admin/analytics', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-analytics'))) }),
-        createElement(Route, { path: 'admin/tenants', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-tenants'))) }),
-        createElement(Route, { path: 'admin/tenants/:tenantId', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-tenants'))) }),
-        createElement(Route, { path: 'admin/tenants/:tenantId/service-accounts', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-service-accounts'))) }),
-        createElement(Route, { path: 'admin/tenants/:tenantId/pats', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-pats'))) }),
-        createElement(Route, { path: 'admin/tenants/:tenantId/usage', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-usage'))) }),
-        createElement(Route, { path: 'admin/tenants/:tenantId/billing', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-billing'))) }),
-        createElement(Route, { path: 'admin/overview', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-overview'))) }),
-        createElement(Route, { path: 'admin/jobs', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-jobs'))) }),
-        createElement(Route, { path: 'admin/audit-trace', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-audit-trace'))) }),
+        createElement(Route, { path: 'admin/tenants', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenants'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenants'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/service-accounts', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenant-service-accounts'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/pats', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenant-pats'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/usage', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenant-usage'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/billing', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-tenant-billing'))) }),
+        createElement(Route, { path: 'admin/overview', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-overview'))) }),
+        createElement(Route, { path: 'admin/jobs', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-jobs'))) }),
+        createElement(Route, { path: 'admin/audit-trace', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-audit-trace'))) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
         createElement(Route, { path: 'tenant-admin', element: createElement(TenantRoute, null, createElement(TenantAdminLayout)) },
           createElement(Route, { index: true, element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),

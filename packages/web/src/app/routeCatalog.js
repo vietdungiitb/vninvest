@@ -135,6 +135,24 @@ export const routeCatalog = Object.freeze([
     adapter: "core",
     status: "baseline",
   },
+  // D-01 (Owner chốt 2026-10-13): `/portfolios/manage` co entry RIENG de giu
+  // `titleKey` + `requiredCapabilities`. `main.tsx` dung dung id nay
+  // (`portfolios-manage`); contract test khoa CA HAI CHIEU
+  // (`route-catalog-contract.component.test.ts`): catalog->main (path) +
+  // main->catalog (routeId). Khong doi id o 1 noi ma quen noi kia.
+  // GHI CHU cho PR sau (pf-manage-rebuild #121): khi them route
+  // `/portfolios/manage/broker`, phai them entry `portfolios-manage-broker`
+  // VA dung id do trong `main.tsx` — neu khong test nguoc se do.
+  {
+    id: "portfolios-manage",
+    path: "/portfolios/manage",
+    titleKey: "routes.portfolios",
+    group: "workspace",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["workspace.portfolios.manage"],
+    adapter: "core",
+    status: "new",
+  },
   // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + doi danh muc giu
   // duoc khi F5. Moi route du day DU 8 truong cua schema (id, path, titleKey,
   // group, buildTargets, requiredCapabilities, adapter, status) — thieu truong

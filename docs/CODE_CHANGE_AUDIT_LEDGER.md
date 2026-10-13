@@ -1,4 +1,41 @@
 
+## Entry 282: Thuc thi 5 quyet Owner tu audit 360 — unify routeId theo routeCatalog (D-01) + chot mau do=giam (2026-10-13)
+
+- **Nhanh**: `feat/audit-followup-5q` -> `dev` · claim `audit-followup-5q`
+- **Lessons ap dung**: L-V01, L-V02, L-G02, L-G04, L-G07, L-T01
+- **Quyet (1) mau do=giam — XONG**: `soc.tokens.css` xoa khoi canh bao, ghi Owner chot
+  2026-10-13 (do=giam, xanh=tang — khop spec + bang gia VN). **Tu sua bao cao audit**:
+  audit ghi "chuan VN la do=tang" la SAI (do la chuan Trung Quoc); bang gia VN dung
+  xanh la=tang, do=giam, vang=TC, tim=tran, xanh duong=san. Token hien tai dung san.
+- **Quyet (2) unify routeId — XONG**: `main.tsx` dung id catalog cho 11 route
+  (`portfolios`, `portfolios-manage`, `admin-tenants`, `admin-tenant-*` x4,
+  `admin-overview`, `admin-jobs`, `admin-audit-trace`); resolver map ve registry id cu
+  (`portfolio-workspace`, `core-portfolios`, `admin-core-*`) nen render KHONG doi.
+  Them entry `portfolios-manage` vao catalog (titleKey dung chung `routes.portfolios`
+  vi namespace moi chua co tren dev) + test nguoc main->catalog. **Hieu chinh audit**:
+  D-01 that su chi la id-drift contract (khong phai lo hong live) — `routeCatalog`
+  runtime chi duoc export qua `src/index.js:2` + 2 contract test, khong gate capability
+  nao doc theo id; phan quyen that o BE.
+- **L-T01 bat that**: Edit tool doi LF->CRLF/mixed o 2 file tren nhanh cu, numstat
+  phong 185/189 + 52/33; dung `normalize-eol` (khong co tren dev) --fix ve LF,
+  numstat gon dung 26/13, 5/3, 19/0, 5/9 (nhanh nay Edit giu LF, khong tai phat).
+- **Transplant sach**: code goc lam tren `feat/pf-manage-rebuild` (`a30a7cd44`) nhung
+  nhanh do con 16 commit chua merge (PR #121) nen lam rieng 4 file sang nhanh nay —
+  merge khong keo viec nguoi khac. Khong sua `pageRegistry.js` (`check-shell.mjs:155`
+  assert entry `portfolios`), khong `package.json`, khong migration.
+- **Gates chay that tren nhanh nay**: vitest route-catalog-contract + main-menu-contract
+  **2 file / 11 test PASS** (gom test nguoc moi); `npx tsc --noEmit` **exit 0**;
+  `eslint` 3 file **exit 0**; `check-multi-agent` o hook **0 loi**.
+- **CANH BAO DANH SO cho PR #121**: nhanh do dang giu `## Entry 282/283/284` rieng —
+  sau khi Entry nay merge, PR #121 rebase PHAl danh lai so (lay so tiep theo tren dev),
+  khong giu so cu keo trung ledger.
+- **Quyet (3)(4)(5) CHUA CODE**: (3) POST /ai/usage giu nguyen — FE chi GET
+  (`workspace.js:742-760`, khong caller POST), writer dung phai la server-side; cho
+  Owner chon go han (405) hay staff-only. (4) Y kien: CORS default false o prod +
+  `tenant=None -> qs.none()` tru 2 view support co ly do ghi ro. (5) Rechards: 9 file
+  (6 tenant-admin + AdminAnalytics + AIUsageDashboard + OrderFlowRadarPanel) — can slice
+  rieng (migrate sang echarts + bo dep, cham `package.json` deny-list).
+
 ## Entry 281: Vá P0 pgbouncer trong `docker-compose.prod.yml` + chuyển DB `vninvest_core` local → VPS staging (2026-10-13)
 
 - **Nhánh**: `fix/prod-pgbouncer-db-migrate` → `dev` (claim `ops-vps`, commit `0b766903d`)

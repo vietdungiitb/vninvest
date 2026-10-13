@@ -31,15 +31,11 @@
    *    src/layouts|src/theme` - thu muc `src/styles/` KHONG duoc quet, nen
    *    file token dat o do se khong doi duoc gate nao nhin thay (audit M2).
    *
-   * MAU TANG/GIAM - doc ky truoc khi dung:
-   * Spec `PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157,1222,1225` quy dinh
-   * chuan WESTERN: gain = xanh (#00B96B), loss = do (#F23645), va goi ro
-   * "Bloomberg green (up)". Token duoi day THEO SPEC.
-   *
-   * ⚠ CONG TRANG BO MO CHUA DONG: thi truong Viet Nam dung chuan NGHICH -
-   * DO = tang, XANH = giam. Hai quy uoc ton tai cung luc trong mot san pham
-   * tai chinh la loi. Giu nguyen theo spec cho den khi Owner chot; xem
-   * docs/KE_HOACH_THIET_KE_FRONTEND_PORTFOLIO_20261007.md §6 (cau hoi mo).
+    * MAU TANG/GIAM - Owner chot 2026-10-13: DO = GIAM, XANH = TANG.
+    * Khop ca spec (`PORTFOLIO_UI_UX_DESIGN_SPEC_20260927.md:156-157`:
+    * gain #00B96B / loss #F23645, "Bloomberg green (up)") VA chuan bang gia
+    * Viet Nam (xanh la = tang, do = giam, vang = tham chieu, tim = tran,
+    * xanh duong = san). Khong con cong trang bo mo.
    *
    * Do contrast bang `node scripts/check-portfolio-contrast.mjs` - gate doc
    * THAT file nay, khong phai bang mau tinh san nhu `check:contrast`.
