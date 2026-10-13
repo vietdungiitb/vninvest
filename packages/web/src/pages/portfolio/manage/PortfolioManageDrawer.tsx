@@ -44,6 +44,17 @@ const adapter = coreApiAdapter as unknown as {
   getPortfolioHoldings(id: string | number): Promise<unknown>;
 };
 
+/**
+ * `nav_reason` là MÃ MÁY (`no_opening_balance` / `no_positions` —
+ * `ledger/valuation.py:36-45`), `nav_reason_text` là câu tiếng Việt **hardcode
+ * trong backend** nên đổi sang tiếng Anh sẽ còn tiếng Việt. Vì vậy tra mã sang
+ * key i18n trước; `nav_reason_text` chỉ làm phương án dự phòng + tooltip.
+ */
+const NAV_REASON_KEYS: Record<string, string> = {
+  no_opening_balance: "portfoliosManage.drawer.navNoOpeningBalance",
+  no_positions: "portfoliosManage.drawer.navNoPositions",
+};
+
 export interface PortfolioManageDrawerProps {
   portfolio: PortfolioRow | null;
   summary?: PortfolioSummary;
@@ -145,6 +156,17 @@ export function PortfolioManageDrawer({
   if (!open || !portfolio) return null;
 
   const unpriced = meta.unpriced_symbols ?? summary?.unpriced_symbols ?? [];
+  const navReasonKey = summary?.nav_reason ? NAV_REASON_KEYS[summary.nav_reason] : null;
+  const navReasonText = navReasonKey
+    ? t(navReasonKey, {
+        defaultValue:
+          summary?.nav_reason_text ??
+          t("portfoliosManage.drawer.navBlocked", {
+            defaultValue: "NAV chưa tính được ({reason})",
+            reason: summary?.nav_reason ?? "",
+          }),
+      })
+    : null;
 
   return (
     <div className="pfm-drawer" role="presentation" onMouseDown={(ev) => {
@@ -187,8 +209,10 @@ export function PortfolioManageDrawer({
             <dt>{t("portfoliosManage.drawer.nav", { defaultValue: "NAV" })}</dt>
             <dd>
               {formatVnd(summary?.nav ?? null, localeTag) ?? EM_DASH}
-              {summary?.nav_reason_text ? (
-                <span className="pfm-drawer__reason">{summary.nav_reason_text}</span>
+              {navReasonText ? (
+                <span className="pfm-drawer__reason" title={summary?.nav_reason_text ?? undefined}>
+                  {navReasonText}
+                </span>
               ) : null}
             </dd>
           </div>
@@ -197,11 +221,17 @@ export function PortfolioManageDrawer({
             <dd>
               {formatVnd(summary?.cash ?? null, localeTag) ?? EM_DASH}
               {summary?.cash_complete === false ? (
-                <span className="pfm-drawer__reason">
-                  {summary.cash_note ??
-                    t("portfoliosManage.drawer.cashIncomplete", {
-                      defaultValue: "Sổ cái chưa đầy đủ",
-                    })}
+                /* `cash_note` từ BE là GHI CHÚ KỸ THUẬT dài 2 câu
+                   ("cash = tổng dòng tiền gom từ Transaction…"). Đo thật trên
+                   staging 2026-10-13: hiện thẳng vào UI. Chỉ hiện câu ngắn cho
+                   user, đặt ghi chú gốc vào `title` để kỹ thuật còn tra được. */
+                <span
+                  className="pfm-drawer__reason"
+                  title={summary.cash_note ?? undefined}
+                >
+                  {t("portfoliosManage.drawer.cashIncomplete", {
+                    defaultValue: "Sổ cái chưa đầy đủ",
+                  })}
                 </span>
               ) : null}
             </dd>
@@ -212,15 +242,11 @@ export function PortfolioManageDrawer({
           </div>
         </dl>
 
-        {summary?.nav_reason ? (
+        {navReasonText && (
           <p className="pfm-drawer__notice" role="status">
-            {summary.nav_reason_text ??
-              t("portfoliosManage.drawer.navBlocked", {
-                defaultValue: "NAV chưa tính được ({reason})",
-                reason: summary.nav_reason,
-              })}
+            {navReasonText}
           </p>
-        ) : null}
+        )}
 
         {unpriced.length > 0 && (
           <p className="pfm-drawer__notice" role="status">

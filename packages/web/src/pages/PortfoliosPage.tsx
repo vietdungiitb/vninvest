@@ -283,11 +283,14 @@ export function PortfoliosPage({ className = "", adapter }: PortfoliosPageProps)
           {t("portfoliosManage.pager.prev", { defaultValue: "Trang trước" })}
         </button>
         <span className="pfm-pager__label" role="status">
-          {t("portfoliosManage.pager.position", {
-            defaultValue: canPrev
-              ? "Đang xem trang sau — bấm “Trang trước” để quay lại."
-              : "Trang đầu tiên",
-          })}
+          {/* KHÔNG được nhét điều kiện vào `defaultValue`: `createTranslator`
+              (`i18n/index.js:38`) chỉ đọc `defaultValue` khi KEY KHÔNG có trong
+              dictionary — key này ĐÃ có nên nhánh phải chọn TRƯỚC khi gọi `t`. */}
+          {canPrev
+            ? t("portfoliosManage.pager.onLaterPage", {
+                defaultValue: "Đang xem trang sau — bấm “Trang trước” để quay lại.",
+              })
+            : t("portfoliosManage.pager.onFirstPage", { defaultValue: "Trang đầu tiên" })}
         </span>
         <button type="button" className="pfm-btn" onClick={goNext} disabled={loading || !hasNext}>
           {t("portfoliosManage.pager.next", { defaultValue: "Trang sau" })}

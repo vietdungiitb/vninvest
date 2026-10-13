@@ -6673,7 +6673,8 @@ const en = {
     pager: {
       prev: 'Previous',
       next: 'Next',
-      position: 'Showing a later page — use “Previous” to go back.',
+      onLaterPage: 'Showing a later page — use “Previous” to go back.',
+      onFirstPage: 'First page',
     },
     form: {
       createTitle: 'New portfolio',
@@ -6694,6 +6695,9 @@ const en = {
       pnl: 'Unrealised P/L',
       nav: 'NAV',
       navBlocked: 'NAV could not be computed ({reason})',
+      navNoOpeningBalance:
+        'No opening cash balance. NAV needs the account balance from before the ledger started recording; set an opening balance for this portfolio to compute it.',
+      navNoPositions: 'No positions to value yet.',
       cash: 'Cash',
       cashIncomplete: 'Ledger is incomplete',
       asOf: 'Data as of',
