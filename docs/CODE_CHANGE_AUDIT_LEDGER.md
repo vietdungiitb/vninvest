@@ -1,4 +1,74 @@
 
+## Entry 280: Tái tạo `ledger-entry-baseline.json` (Entry 272 trùng ×2) + dọn 13 branch cũ (2026-10-13)
+
+- **Nhánh**: `chore/ledger-baseline-20261013` → `dev` (PR #118) cho phần baseline;
+  phần dọn branch là thao tác local, **không sinh diff**.
+- **Claim**: không khai — thay đổi chỉ đụng 1 file gate baseline, không chạm code/slice nào khác.
+- **Lessons áp dụng**: NONE — phiên này chỉ tái tạo baseline + dọn branch, không sửa logic sản phẩm.
+
+**Trigger**: sau khi merge PR #117, `agent-sync.ps1` vẫn **die ở bước 5a**: `check-ledger-entry`
+FAIL vì `## Entry 272` xuất hiện **2 lần** (dòng 517 "Dashboard UI/UX" + dòng 9299 "Cuu 28 file
+uncommitted"). Cả hai đã commit trên `dev` ngày 2026-10-12, **sau** mốc baseline 2026-10-08.
+Không liên quan Entry 279 — mọi phiên đều bị chặn ở đây.
+
+### 1. Vì sao tái tạo baseline chứ không đánh số lại
+
+Cơ chế gate cố ý **chặn tại phát, không sửa lịch sử** (Owner chốt 2026-10-08) —
+`check-ledger-entry.mjs:16-26`: `## Entry N` hiện **nhiều hơn** tần suất baseline ⇒ FAIL.
+Trong ledger có `## Entry 33` và `## Entry 53` là hai nội dung **khác nhau** cùng số;
+`## Entry 62` xuất hiện 3 lần với 3 bản **giống nhau**.
+
+Đánh số lại sẽ phá vỡ **32 trích dẫn** `Entry 272` rải ở `AGENTS.md`, `docs/*.md`,
+`docs/LESSONS/*`, `packages/web/src/index.css:391`. Owner chốt 2026-10-13: **tái tạo baseline**.
+
+```
+node docs/audit-uiux/scripts/check-ledger-entry.mjs --write-baseline   # đọc HEAD, KHÔNG đọc worktree
+```
+
+Mặc định đọc HEAD là chủ ý (`:218-223`): đọc worktree sẽ nạp việc chưa commit của agent khác
+vào baseline.
+
+### 2. Thay đổi
+
+| Mốc | dupGroups | max | headers | frequencies |
+|---|---|---|---|---|
+| 2026-10-08 | 59 | 255 | 305 | — |
+| **2026-10-13** | **60** | **279** | 330 | thêm `"272": 2` |
+
+1 file, +8/−7. Gate **vẫn bắt trùng mới**: `## Entry 272` lần 3 ⇒ `3 > 2` ⇒ FAIL.
+
+### 3. Dọn branch (thao tác local, không vào git)
+
+13 → **2** branch còn lại (`dev`, `main`).
+
+- Xoá **9 branch đã MERGED**: `docs/admin-handoff-close` (#106), `docs/admin-verify-entrypoint`
+  (#104), `docs/record-e2e-blocker` (#105), `feat/admin-design-token-contract` (#103),
+  `fix/admin-uiux-audit` (#107), `feat/arch-template-r13-verified` (#72),
+  `feat/arch-template-r14-r16` (#71), `docs/workflow-concurrency-traps` (#54),
+  `feat/preflight-identity` (#52).
+- Xoá **2 branch không PR** (Owner chốt): `feat/arch-as-is-doc` (2026-10-03, lệch 512 file
+  +8866/−67603 so với `dev`), `backup-dev-stale` (2026-09-29).
+
+⚠ **`git branch --merged dev` không phải cách kiểm tra ở repo này.** Nó chỉ liệt kê
+`dev`, vì các branch squash-merge **không phải ancestor** của `dev`. Phải đối chiếu
+`gh pr list --state all` theo `headRefName` mới khẳng định được đã merge.
+
+### 4. Gates (chạy thật, sau khi merge lên `dev`)
+
+- `check-ledger-entry` → **PASS** (rc=0, 60 nhóm trùng có sẵn vẫn được đánh dấu)
+- `check-multi-agent` → PASS (0 lỗi, 0 trùng số migration)
+- `check-lessons` → 40/40 sạch
+- `pre-push-gate` → 21 PASS / 0 SKIP / 0 FAIL
+
+### 5. Còn nợ (P0, chưa đụng)
+
+- **`docker-compose.prod.yml:475,495` — PROD chết y hệt B1+B2 của staging.** Nằm trong
+  deny-list ⇒ cần PR riêng, Owner duyệt trailer `Claim-Deny-List:`.
+- `docker-compose.staging.yml` trên VPS đang **dirty** (scp đè trực tiếp, còn `.bak`).
+- Turnstile staging đang dùng **test key** — phải thay trước production.
+
+---
+
 ## Entry 279: Staging VPS — vá 3 blocker boot (pgbouncer alias + healthcheck, ALLOWED_HOSTS) + flag P0 cho PROD (2026-10-13)
 
 - **Nhánh**: `feat/staging-vps-deploy-fixes` -> `dev`
