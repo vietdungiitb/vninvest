@@ -60,7 +60,7 @@ def _normalise_symbol(symbol):
     return str(symbol or '').strip().upper()
 
 
-def _existing_refs(LedgerEntry):
+def _existing_refs(entries):
     """Tap `(tenant_id, ref)` da co trong so cai.
 
     **Vi sao migration nay can buoc nay.** `ledger/transaction_sync.py`
@@ -81,7 +81,7 @@ def _existing_refs(LedgerEntry):
     (xem `active_entry_for` trong `transaction_sync.py`).
     """
     refs = set()
-    rows = LedgerEntry.objects.exclude(external_id='').values_list(
+    rows = entries.exclude(external_id='').values_list(
         'tenant_id', 'external_id')
     for tenant_id, external_id in rows:
         refs.add((tenant_id, external_id))
@@ -108,7 +108,7 @@ def forwards(apps, schema_editor):
     already_synced = []
 
     # Giao dich nao da co dong so cai thi KHONG ghi lan nua - xem `_existing_refs`.
-    existing_refs = _existing_refs(LedgerEntry)
+    existing_refs = _existing_refs(LedgerEntry.objects)
     if existing_refs:
         logger.info(
             'LED-05 backfill: %s ref da ton tai trong so cai (sync P0-2 se co '
