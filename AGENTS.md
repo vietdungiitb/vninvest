@@ -2,6 +2,14 @@
 ## Goal
 Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã xong. Maintenance và build verification cho codebase sau khi thay local vninvestcharts component bằng npm package `vninvestcharts-widget`.
 
+## Môi trường thử nghiệm (mặc định — DÙNG TỰ ĐỘNG, KHÔNG HỎI LẠI)
+Owner chốt 2026-10-13. Mọi việc **"chạy thử / test / staging"** của dự án ⇒ dùng VPS này, **không hỏi lại**:
+- **VPS:** `14.225.255.47` · **domain:** `https://docker.edusuccess.vn`
+- **SSH:** `ssh -i "$HOME/.ssh/id_ed25519" root@14.225.255.47`
+- **repo trên VPS:** `/opt/vninvest` (branch `dev`) · **deploy/verify:** `bash scripts/deploy-staging.sh` (`--verify`)
+- **env:** `/opt/vninvest/compose.staging.env` + `compose.nginx-proxy.env` · **proxy:** `nginx-proxy`, `acme-companion` (KHÔNG prefix `vninvest-`)
+- Chi tiết: `docs/STAGING_VPS_RUNBOOK.md` · `docs/OPEN_WORK_20260927.md` §Môi trường.
+
 ## Constraints & Preferences
 - SOC glassmorphism patterns, `soc.tokens.css` (biến) + `soc.components.css` (class), i18n qua `LangContext`.
   - ⚠ **KHÔNG dùng `soc.module.css`** — file đó chỉ là barrel 3 dòng re-export, **0 token, 0 class**
