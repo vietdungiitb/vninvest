@@ -28,6 +28,21 @@
   gap: var(--sp-lg);
   color: var(--text-primary);
   font-size: var(--fs-md);
+
+  /* NỀN RIÊNG — KHÔNG kế thừa từ app shell.
+   *
+   * Đo thật trên staging 2026-10-13 (Chromium, `getComputedStyle`):
+   * wrapper của shell là `bg-[var(--color-bg-primary)]` = `rgb(2, 6, 23)` và
+   * **KHÔNG đổi** khi bật `data-theme="light"` (light mode là theme thật, người
+   * dùng chọn được — `main.tsx:226-230` đọc `localStorage['vninvest-theme']`).
+   * Trong khi đó token SOC **có** đổi: chữ bảng thành `rgb(15, 23, 42)` (gần đen)
+   * trên nền `rgb(2, 6, 23)` (gần đen) ⇒ **1.13:1** — chữ biến mất.
+   * Đây là lỗi có sẵn của app shell (Entry 272 §6 cũng ghi lỗi light mode),
+   * NHƯNG trang này không được phép thừa hưởng nó: mọi bề mặt của trang tự
+   * vẽ nền. `--bg-panel` là `#ffffff` (đục) ở light ⇒ chữ tối trên nền sáng. */
+  background: var(--bg-panel);
+  padding: var(--sp-lg);
+  border-radius: var(--r-lg);
 }
 
 /* ── Toolbar ───────────────────────────────────────────────────────── */
@@ -173,6 +188,7 @@
 
 .pfm-table-wrap {
   overflow-x: auto;
+  background: var(--bg-panel);
   border: 1px solid var(--border-default);
   border-radius: var(--r-md);
 }
