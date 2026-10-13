@@ -481,6 +481,11 @@ services:
       POSTGRESQL_DATABASE: vninvest_core
       POSTGRESQL_USERNAME: vninvest
       POSTGRESQL_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD must be set for core-db}
+      # B2: ten DB phia CLIENT cua pgbouncer. Mac dinh `postgres` => [databases]
+      # = postgres=host=core-db dbname=vninvest_core, nhung CORE_DATABASE_URL
+      # tro `...@pgbouncer:6432/vninvest_core` => "FATAL: no such database".
+      # Nguon: /opt/bitnami/scripts/pgbouncer-env.sh:123, libpgbouncer.sh:228-237.
+      PGBOUNCER_DATABASE: vninvest_core
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_MAX_CLIENT_CONN: "500"
       PGBOUNCER_DEFAULT_POOL_SIZE: "20"
@@ -492,7 +497,12 @@ services:
       core-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 1"]
+      # B1: anh `bitnamilegacy/pgbouncer` KHONG co `pg_isready` (chi co psql +
+      # pgbouncer) => healthcheck fail vinh vien, chan `depends_on:
+      # service_healthy` cua toan bo core-api/worker. Do bang psql SELECT 1.
+      test:
+        - "CMD-SHELL"
+        - "PGPASSWORD=\"$$POSTGRESQL_PASSWORD\" psql -h 127.0.0.1 -p 6432 -U \"$$POSTGRESQL_USERNAME\" -d \"$$PGBOUNCER_DATABASE\" -tAc 'SELECT 1' | grep -q 1 || exit 1"
       interval: 10s
       timeout: 5s
       retries: 5
