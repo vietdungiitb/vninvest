@@ -3,6 +3,50 @@
 > Nhật ký công việc. Mỗi dòng có **bằng chứng lệnh tái lập**, không ghi "PASS" cho thứ chưa chạy.
 > Quy ước: `PASS` (đã chạy, xanh) · `FAIL` (đã chạy, đỏ) · `CHƯA CHẠY` (chưa chạy được).
 
+## 2026-10-13 - Đóng P0 "test suite không chạy được" (PM/Tech Lead, Mode B solo)
+
+| # | Task | Kết quả | Bằng chứng (lệnh) | Rủi ro | Next |
+|---|---|---|---|---|---|
+| 1 | Nạp skill `project-lessons` + `multi-agent-workflow` trước khi lập kế hoạch | PASS | Đọc `docs/LESSONS/{multi-agent,build-gates,tooling-traps,migrations}.md`; đọc `docs/HANDOFF_20261012_AFTER_RESCUE.md` | - | - |
+| 2 | Đo baseline `dev` **sạch** (không tái dùng số liệu branch khác) | PASS | `pre-push-gate` **21/0/0**; full BE `Ran 2959 · failures=9 · errors=14 · skipped=6` (1565s) | - | - |
+| 3 | Kiểm handoff cũ còn đúng không | PASS | §3.2/§3.3 đã sửa (`f540a0e9e` ∈ `dev`); §3.4 đã xoá (`790a53166` ∈ `dev`, grep `vn-kpi__` = 0 hit) | **Handoff cũ sai 3/4 mục** | Đã ghi rõ trong handoff mới |
+| 4 | Tìm nguyên nhân gốc 14 error — **bằng probe, không đoán** | PASS | `LedgerEntry.objects.count()==1` **trước** khi `forwards()`; gọi `forwards()` trực tiếp ⇒ `IntegrityError Key (tenant_id=1, external_id='B-1')` | - | - |
+| 5 | Chứng minh là xung đột ngâm, không phải hồi quy | PASS | test `c804a9422` (2026-10-03) · signal `d7226a591` (2026-10-06) · test lộ ra `768d0897f` (2026-10-12) | - | - |
+| 6 | Tạo branch + **khai claim commit riêng** trước dòng code đầu tiên | PASS | `5ce4d9c63`; `docs/CLAIMS.md` `git diff --numstat` = `6/1` (đúng số dòng thêm) | - | - |
+| 7 | Fix migration `0022` idempotent | PASS | `_existing_refs()` + bỏ qua `already_synced`; verify vẫn so `len(entries)` | Migration đã chạy ở DB nào đó thì không tái chạy | - |
+| 8 | **Fail-before** chứng minh bằng vòng thật | PASS | Gỡ guard ⇒ `errors=1` `IntegrityError duplicate key ... Key (tenant_id=1, external_id='B-1')`; dựng lại ⇒ OK | Không dùng `git checkout --` (L-A01) | - |
+| 9 | Fix fixture test (không nới lỏng assertion) | PASS | `_tx()`→`bulk_create`; `_tx_raw()` chỉ áp cho test đang FAIL | Test đang xanh giữ nguyên nguyên bản | - |
+| 10 | Phát hiện **`seed_ledger_verification.py` là lệnh thật, không phải lỗi test** | PASS | Lệnh tự báo đỏ `LedgerEntry=5, CashFlow=5, Transaction=6` trên chính dữ liệu sạch của nó | - | - |
+| 11 | Chạy lại full BE | PASS | **`Ran 2960 tests — OK (skipped=6)`** (2566s) | - | - |
+| 12 | Rebase → check migration → gate (đúng thứ tự L-G01) | PASS | rebase sạch (`dev` không nhúc nhích) → `makemigrations --check` **No changes detected** → `pre-push-gate` **21/0/0** | - | - |
+| 13 | Gate đầy đủ sau rebase | PASS | `check` 0 · `ruff --select F821` All checks passed · `check_admin_ux` 0/0 + self-test 25/25 · `test_admin_ui` **45/45** · `tsc` 0 · `lint` 0 error · `build` 0 · FE **918/918** | - | - |
+| 14 | Ghi trung thực FE flake (không làm xanh) | **Ghi trung thực** | 3 run: run1 `2 failed \| 916 passed`, run2 **918/918**, run3 **918/918**; `tenantreg-auth-pages` riêng **29/29** | **Không ghi được tên file fail ở run 1** ⇒ không khẳng định là file đó | Phiên sau ghi tên khi gặp |
+| 15 | Cập nhật ledger + báo cáo + handoff | PASS | ledger `## Entry 276`; `REPORT_FINAL_20261013.md`; `HANDOFF_20261013.md`; file này | - | - |
+| 16 | **CHƯA CHẠY**: Playwright/E2E | CHƯA CHẠY | Đã xác nhận nguyên nhân: `vite.config.ts` khai `proxy` chỉ trong `server:` (dòng 27-43), **không có** khối `preview:`; `playwright.config.ts:71` chạy `npm run preview` | Sửa mà không chạy thật = không chứng minh được | Ticket riêng |
+| 17 | **CHƯA CHẠY**: `ruff` mức cấu hình đầy đủ | CHƯA CHẠY | Chỉ chạy `--select F821`. 3 140 lỗi style còn lại | Owner phải chọn mức | Hỏi Owner |
+| 18 | **CHƯA CHẠY**: `LiveBrokerContractTests` | CHƯA CHẠY | Cần `VNBROKER_RUN_LIVE_CONTRACT=1` + JWT thật | - | - |
+| 19 | **CHƯA CHẠY**: CI billing | CHƯA CHẠY | Job bị chặn "recent account payments have failed"; `scan` vẫn chạy | Không riêng repo | Owner trả billing |
+| 20 | **KHÔNG TỰ LÀM**: purge git history (P0-SEC-01) | Chờ Owner | `gh repo view` ⇒ `isPrivate: false` (**PUBLIC**) — điều kiện "không rotate" của `AGENTS.md` (2026-10-07) **đã không còn đúng** | Force-push không hoàn tác được | Owner chọn |
+
+### Sai lầm của chính mình trong phiên này — ghi lại để không lặp
+
+| # | Sai lầm | Hậu quả | Bắt bằng gì |
+|---|---|---|---|
+| 1 | Khai claim lần đầu **chèn giữa file** thay vì append cuối | Phải làm lại | `docs/AGENT_PROTOCOL.md` §3 |
+| 2 | **L-T01 lần 10**: `Edit` đổi LF→CRLF trên `0022_...py` | `numstat` ra `307/252` thay vì `56/1` | `git diff --numstat` **trước khi stage** |
+| 3 | **L-T01 lần 11**: `Edit` đổi LF→CRLF trên `test_review_findings_wave2.py` | `numstat` ra `867/868` thay vì `39/40` | `git diff --numstat` trước khi stage |
+| 4 | **`Edit` khớp `oldString` chỉ với TIỀN TỐ của một method** | Nuốt mất assertion `CashFlow.objects.count() == 0` của test kế bên. Test kia FAIL **ở file khác** lúc tôi đang nhìn file khác | Đọc `git diff` cuối cùng — "test xanh" **không** phải giấy phép bỏ qua soi file |
+| 5 | Dùng `Write` để ghi đè `docs/WORKLOG.md` thay vì chèn | **Mất nguyên mục 2026-10-12** (file còn trong git nên đã khôi phục được ngay) | `git checkout --` khôi phục; chèn bằng script Node |
+| 6 | Lọc output vitest bằng mẫu không khớp | **Không ghi được** tên file FE fail ở run 1 | Tách `$LASTEXITCODE` khỏi pipeline (L-F07) |
+
+### Sai lầm của **phiên trước** — đo lại được, không phải suy đoán
+
+| Claim cũ | Thực tế | Lệnh tái lập |
+|---|---|---|
+| "Bug KBS: KBS cần ≥2 ngày" | **SAI** — `TickerModel` không có validator nào; cả 1 ngày lẫn 2 ngày đều `ValueError` vì **KBS chưa có bar cho ngày đó** | `vnbroker==3.7.2` thật |
+| "Timestamp tick lệch 7h còn dở" | **ĐÃ SỬA** | `git merge-base --is-ancestor f540a0e9e origin/dev` → 0 |
+| "Dead CSS `vn-kpi__*` còn dở" | **ĐÃ XOÁ** | `grep vn-kpi__ vnadmin.css` → 0 hit |
+| "Full BE 724 test OK" | Đúng cho **trước** `768d0897f`; nay là 2959 test / 23 lỗi | `manage.py test --noinput` trên `dev` sạch |
 ## 2026-10-12 — Rotate secret · dọn branch · fix bug · audit toàn diện
 
 | # | Task | Kết quả | Bằng chứng (lệnh) | Rủi ro | Next |
