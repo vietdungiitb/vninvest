@@ -12,13 +12,29 @@ Test Design: Focus on proven exception handling via real API calls (not fragile 
 Cache is cleared between test classes to prevent rate limit cross-contamination
 """
 
-from django.test import TestCase
+from unittest.mock import MagicMock, patch
+
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 
 User = get_user_model()
+
+# `SaaSRegisterSerializer` bat buoc `turnstile_token` khi `TURNSTILE_SECRET_KEY`
+# co gia tri. Staging dat Cloudflare test key (`1x000...AA`) nen nhanh "khong co
+# secret" khong lo duoc return som: request thieu token luon 400 truoc khi vao
+# so dem rate limit. Test nay doi `400` voi `429`.
+TURNSTILE_KEY = '1x0000000000000000000000000000000AA'
+
+
+def turnstile_ok(*args, **kwargs):
+    """Mock `requests.post` tra Cloudflare `{success: true}` cho /siteverify."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {'success': True}
+    return resp
 
 
 class A61_StandardErrorEnvelopeFormatTests(APITestCase):
@@ -224,9 +240,16 @@ class A65_RateLimitErrorEnvelopeTests(APITestCase):
     Ensure: B1 rate limiting integration with A6 exception handling.
     """
 
+    @override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
     def setUp(self):
         cache.clear()
         self.client = APIClient()
+        # Patch o `setUp`, KHONG `@patch` cap class: decorator cap class truyen
+        # them 1 doi so mock vao moi method ke ca method khai method(self)
+        # => `TypeError: ... takes 1 positional argument but 2 were given`.
+        patcher = patch('requests.post', side_effect=turnstile_ok)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_login_rate_limit_429_with_envelope(self):
         """Verify login rate limit returns 429 (not 403) with envelope."""
@@ -249,6 +272,9 @@ class A65_RateLimitErrorEnvelopeTests(APITestCase):
         """Verify register rate limit returns 429 with envelope."""
         # `SaaSRegisterSerializer` (serializers.py:392) bat buoc `password_confirm`;
         # payload thieu no bi 400 truoc khi vao so dem rate limit.
+        # `turnstile_token` cung bat buoc khi `TURNSTILE_SECRET_KEY` co gia tri —
+        # xem `turnstile_ok()` o dau file. Do 2026-10-13: thieu no thi 4 request
+        # deu 400, khong request nao cham nguong 3/minute nen assert 429 fail.
         for i in range(4):
             response = self.client.post(
                 '/core/v1/auth/register/',
@@ -257,6 +283,7 @@ class A65_RateLimitErrorEnvelopeTests(APITestCase):
                     'email': f'u{i}@test.com',
                     'password': 'TestPass123!',
                     'password_confirm': 'TestPass123!',
+                    'turnstile_token': 'test-turnstile-token',
                 },
                 format='json'
             )
