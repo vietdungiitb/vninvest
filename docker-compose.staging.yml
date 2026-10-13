@@ -1,0 +1,134 @@
+# STAGING OVERLAY — VPS 14.225.255.47
+#
+# Dùng SAU `docker-compose.prod.yml`:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml up -d
+#
+# ── Vì sao file này tồn tại thay vì sửa `docker-compose.prod.yml` ──────────
+#
+# 1. `docker-compose*.yml` nằm trong deny-list shared (§2 `AGENT_PROTOCOL.md`).
+#    File MỚI không có nội dung cũ để xung đột, và hook `.githooks/pre-commit`
+#    khớp **EXACT** trên danh sách cố định ⇒ file mới không bị chặn.
+#
+# 2. Overlay còn là **bằng chứng**: những gì staging cần thêm chỉ nằm ở đây,
+#    nên diff review được mà không phải đụng vào prod.
+#
+# ── Blocker thật mà file này vá, CHỨNG MINH bằng lệnh ─────────────────────
+#
+# `TURNSTILE_SECRET_KEY` **không hề xuất hiện** trong `docker-compose.prod.yml`
+# (chỉ có ở `docker-compose.dev.yml:92`), trong khi
+# `vninvest_core/env_validation.py:123` **bắt buộc** nó khi `DEBUG=false`.
+#
+#   $ DJANGO_DEBUG=0 DJANGO_SECRET_KEY=... DJANGO_ALLOWED_HOSTS=... \
+#     CORE_PAT_PEPPER=... FRONTEND_URL=... CORS_ALLOWED_ORIGINS=... \
+#     CSRF_TRUSTED_ORIGINS=... BROKER_SECRET_KEY=... \
+#     python manage.py check
+#   ImproperlyConfigured: Production validation failed:
+#     Required environment variable 'TURNSTILE_SECRET_KEY' is not set
+#     (Cloudflare Turnstile secret for registration bot protection)
+#
+# ⇒ `docker-compose.prod.yml` **không boot được** ở chế độ production.
+# Thêm biến vào file env **không đủ** — biến phải được truyền vào container.
+#
+# Các biến dưới đây đặt ở dạng `:?` (bắt buộc) thay vì `:-` (rỗng được).
+# Rỗng thì Django raise, mà raise trong `entrypoint.sh` = container chết ngay.
+
+name: vninvest-staging
+
+services:
+  # ══════════════════════════════════════════════════════════════════════
+  # CORE API — vá biến bắt buộc còn thiếu + đổi CSRF thành bắt buộc
+  # ══════════════════════════════════════════════════════════════════════
+  core-api:
+    environment:
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set - settings.py:462 raises when empty}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+
+  # ══════════════════════════════════════════════════════════════════════
+  # WORKERS — cùng bộ biến. `entrypoint.sh` KHÔNG chạy `migrate` cho
+  # worker (chỉ `ROLE=api` tại entrypoint.sh:16) nên worker không cần
+  # Turnstile để boot, nhưng nếu thiếu thì task đụng settings vẫn chết.
+  # Để đồng bộ, cả 5 service core nhận cùng một bộ.
+  # ══════════════════════════════════════════════════════════════════════
+  core-worker:
+    environment:
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+
+  core-worker-realtime-prefetch:
+    environment:
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+
+  core-worker-realtime-stream:
+    environment:
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+
+  core-beat:
+    environment:
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+
+  # ══════════════════════════════════════════════════════════════════════
+  # FRONTEND — 2 việc:
+  #
+  # (a) `VITE_TURNSTILE_SITE_KEY` là BUILD ARG (`packages/web/Dockerfile:21`)
+  #     nhưng `docker-compose.prod.yml:554-556` chỉ truyền `VITE_API_URL` +
+  #     `APP_RELEASE`. Thiếu nó thì form đăng ký hiện lỗi tường minh
+  #     (chính Dockerfile ghi ở comment :17-20).
+  #
+  # (b) TRUY CẬP — `docker-compose.prod.yml` KHÔNG publish port nào (0
+  #     `ports:`). Toàn bộ ingress được đẩy sang network `nginx-proxy_default`
+  #     bên ngoài (prod.yml:592-593, `external: true`). VPS staging mới thì
+  #     không có.
+  #
+  #     ⇒ publish thẳng `frontend` ra host. Nginx BÊN TRONG container
+  #     frontend (`packages/web/docker/nginx.conf`) đã tự proxy
+  #     `/api/*` → `core-api:8100` và `/ws/` lên HTTP/1.1 upgrade, nên chỉ
+  #     cần một cổng là chạy trọn vẹn. Nếu VPS đã có nginx-proxy sẵn thì
+  #     bỏ khối `ports` dưới đây.
+  #
+  # ⚠ KHÔNG được tách thành hai khối `frontend:` — YAML sẽ lấy khối CUỐI và
+  # âm thầm **vứt mất** phần `build.args`. Đã mắc lỗi này 1 lần khi viết
+  # bản đầu; `docker compose config` mới bắt được.
+  # ══════════════════════════════════════════════════════════════════════
+  frontend:
+    build:
+      context: packages/web/
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        APP_RELEASE: ${APP_RELEASE:-staging}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
+    environment:
+      # `docker-compose.prod.yml:561-564` **hard-code** domain prod
+      # (`saas.edusuccess.vn`). Không ghi đè thì VPS staging vẫn trỏ về
+      # domain của prod ⇒ Let's Encrypt xin cert sai, và `VIRTUAL_HOST`
+      # sai với host thật.
+      VIRTUAL_HOST: ${STAGING_DOMAIN:?STAGING_DOMAIN must be set}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${STAGING_DOMAIN:?STAGING_DOMAIN must be set}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+      APP_RELEASE: ${APP_RELEASE:-staging}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-staging}
+    ports:
+      - "${STAGING_HTTP_PORT:-8080}:80"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # OBSERVABILITY — prod compose không publish. Staging thì cần nhìn được
+  # để biết worker có sống không (5 service không có healthcheck).
+  # ══════════════════════════════════════════════════════════════════════
+  grafana:
+    ports:
+      - "${STAGING_GRAFANA_PORT:-3001}:3000"
+
+  prometheus:
+    ports:
+      - "${STAGING_PROMETHEUS_PORT:-9091}:9090"
