@@ -195,69 +195,44 @@ class RateLimitRegisterEndpointTests(APITestCase):
         for i in range(3):
             response = self.client.post(
                 self.register_url,
-                {
-                    'username': f'user{i}',
-                    'email': f'user{i}@test.com',
-                    'password': 'TestPass123!',
-                    'password_confirm': 'TestPass123!',
-                },
+                reg_payload(f'user{i}', f'user{i}@test.com'),
                 format='json',
             )
             # Expect 201 Created or 409 Conflict (duplicate), NOT 429
             self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_409_CONFLICT])
-    
+
     def test_register_fourth_request_rate_limited(self):
         """4th register request from same IP should be rate limited (429)."""
         # Use 3 requests
         for i in range(3):
             self.client.post(
                 self.register_url,
-                {
-                    'username': f'test_user_{i}',
-                    'email': f'test_user_{i}@test.com',
-                    'password': 'TestPass123!',
-                    'password_confirm': 'TestPass123!',
-                },
+                reg_payload(f'test_user_{i}', f'test_user_{i}@test.com'),
                 format='json',
             )
-        
+
         # 4th request should be rate limited
         response = self.client.post(
             self.register_url,
-            {
-                'username': 'test_user_4',
-                'email': 'test_user_4@test.com',
-                'password': 'TestPass123!',
-                'password_confirm': 'TestPass123!',
-            },
+            reg_payload('test_user_4', 'test_user_4@test.com'),
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-    
+
     def test_register_rate_limit_error_envelope(self):
         """Rate limit error should return StandardErrorEnvelope format."""
         # Exhaust limit
         for i in range(3):
             self.client.post(
                 self.register_url,
-                {
-                    'username': f'envelope_user_{i}',
-                    'email': f'envelope_user_{i}@test.com',
-                    'password': 'TestPass123!',
-                    'password_confirm': 'TestPass123!',
-                },
+                reg_payload(f'envelope_user_{i}', f'envelope_user_{i}@test.com'),
                 format='json',
             )
-        
+
         # Get rate limit error
         response = self.client.post(
             self.register_url,
-            {
-                'username': 'envelope_user_3',
-                'email': 'envelope_user_3@test.com',
-                'password': 'TestPass123!',
-                'password_confirm': 'TestPass123!',
-            },
+            reg_payload('envelope_user_3', 'envelope_user_3@test.com'),
             format='json',
         )
         
@@ -405,14 +380,14 @@ class RateLimitWindowExpiryTests(APITestCase):
         for i in range(3):
             self.client.post(
                 self.register_url,
-                **reg_payload(f'window_user_{i}', f'window_user_{i}@test.com'),
+                reg_payload(f'window_user_{i}', f'window_user_{i}@test.com'),
                 format='json',
             )
 
         # Should be rate limited
         response = self.client.post(
             self.register_url,
-            **reg_payload('window_user_3', 'window_user_3@test.com'),
+            reg_payload('window_user_3', 'window_user_3@test.com'),
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
@@ -423,7 +398,7 @@ class RateLimitWindowExpiryTests(APITestCase):
         # Should now be able to make requests again
         response = self.client.post(
             self.register_url,
-            **reg_payload('window_user_reset', 'window_user_reset@test.com'),
+            reg_payload('window_user_reset', 'window_user_reset@test.com'),
             format='json',
         )
         self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
