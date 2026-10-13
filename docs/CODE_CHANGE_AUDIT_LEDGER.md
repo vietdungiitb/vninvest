@@ -72,7 +72,7 @@ vì cùng file deny-list): `CSRF_TRUSTED_ORIGINS` rỗng ⇒ `settings.py:462` r
 | CRLF trong `.sh` | **0** |
 | **CHƯA CHẠY** | deploy thật lên VPS |
 
-### 5. Sai lầm của chính mình — 4 lần, ghi công khai
+### 5. Sai lầm của chính mình — 5 lần, ghi công khai
 
 1. **Dùng `Write` ghi đè `.gitattributes` không kiểm tra file đã tồn tại** ⇒ suýt xoá
    **3 rule Git LFS** và **`docs/CLAIMS.md merge=union`** — quy tắc ghép claim của cả
@@ -88,6 +88,14 @@ vì cùng file deny-list): `CSRF_TRUSTED_ORIGINS` rỗng ⇒ `settings.py:462` r
    shell script CRLF vào index — **đúng thứ cần tránh**.
 4. Commit message viết trực tiếp trong PowerShell ⇒ **backtick bị nuốt** làm vỡ
    parser (`Neu \`up\` fail` → `Unicode escape sequence is not valid`). Dùng `-F file`.
+5. **Khôi phục dòng claim bằng sai encoding** ⇒ dòng `staging-vps-proxy` chứa
+   **21 ký tự U+FFFD**. Nguyên nhân: đọc file nguồn bằng `utf8` rồi ghi vào buffer
+   `latin1` ⇒ double-encode. Bắt bằng gate `encoding` của `pre-push-gate`
+   (**FAIL, chặn push**) chứ không phải bằng mắt.
+   *Chỉ là may mắn: file `CLAIMS.md` là UTF-8 hợp lệ (round-trip kiểm được), nên các
+   append `latin1` trước đó vô hại — nhưng **tôi đã không kiểm tra điều đó**,
+   chỉ may mắn là byte-identical.* Sửa bằng cách đọc lại từ blob `b4e68c81e` và ghi
+   bằng `utf8`; xác nhận `FFFD count = 0`, `git diff --numstat` = `1/1`.
 
 ### 6. Việc song song không do tôi — xử lý thế nào
 
