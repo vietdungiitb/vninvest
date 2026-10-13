@@ -226,13 +226,29 @@ class PortfolioDetailView(APIView):
                 or portfolio.valuation_snapshots.exists():
             return Response(
                 {
+                    # Sửa 2026-10-13 (claim `pf-manage-rebuild`): câu cũ khuyên
+                    # *"Hãy ẩn danh mục"* nhưng model `Portfolio` **không có**
+                    # field archive — đọc `user_workspace/models.py`
+                    # `class Portfolio` (user/tenant/name/description/
+                    # is_default/opening_balance/opening_balance_source/
+                    # legacy_portfolio_id). Người dùng bị hướng tới một tính
+                    # năng KHÔNG TỒN TẠI. Thay bằng hành động có thật:
+                    # **đổi tên** (PATCH `name` qua `PortfolioDetailView.patch`,
+                    # :186) để đánh dấu là không dùng nữa.
+                    #
+                    # Không thêm `is_archived` ở đây: cần migration, ngoài phạm
+                    # vi slice FE. Ghi nhận việc mở rộng này trong ledger.
                     'detail': (
                         'Danh mục đã có lịch sử giao dịch nên không thể xoá cứng. '
                         'Sổ cái là dữ liệu append-only và phải lưu ≥ 7 năm '
-                        '(D-17). Hãy ẩn danh mục thay vì xoá, hoặc liên hệ quản '
-                        'trị viên để xử lý theo quy trình lưu trữ.'
+                        '(D-17). Hãy đổi tên danh mục để đánh dấu là không dùng '
+                        'nữa, hoặc liên hệ quản trị viên để xử lý theo quy trình '
+                        'lưu trữ.'
                     ),
                     'code': 'portfolio_has_financial_history',
+                    # Khoá máy để client KHÔNG phải parse `detail` (tiếng Việt)
+                    # mới biết nên đề xuất hành động nào.
+                    'suggested_action': 'rename',
                     'portfolio_id': portfolio_id,
                 },
                 status=status.HTTP_409_CONFLICT,
