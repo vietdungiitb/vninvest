@@ -13,6 +13,7 @@ Uses manual cache-based limiting for per-email rate limiting (password-reset).
 """
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
+from unittest.mock import MagicMock, patch
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.core.cache import cache
@@ -21,6 +22,48 @@ from vninvest_core.exceptions import RateLimitErrorException
 
 
 User = get_user_model()
+
+#: `TURNSTILE_SECRET_KEY` đặt cho các test đăng ký. Không để rỗng vì
+#: `serializers.py::_verify_turnstile` chỉ **bỏ qua** khi key rỗng; key có giá
+#: trị thì bắt buộc phải có token.
+TURNSTILE_KEY = 'test-secret-key'
+
+
+def reg_payload(username, email, password='TestPass123!'):
+    """Payload đăng ký **kèm `turnstile_token`**.
+
+    Sửa 2026-10-13 (Entry 284 §7). `SaaSRegisterSerializer._verify_turnstile`
+    (`identity_access/serializers.py`) **yêu cầu token khi `TURNSTILE_SECRET_KEY`
+    có giá trị**, kể cả khi chạy test — nhánh "thiếu key mới bỏ qua" mới có điều
+    kiện `settings.TESTING`, nhánh "thiếu token" thì không.
+
+    ⇒ Các test dưới đây viết trước khi Turnstile được siết, gửi payload không
+    có token ⇒ endpoint trả **400** thay vì 201/409/429 ⇒ **mọi assert về rate
+    limit trở nên vô nghĩa** (5 FAIL, đã chứng minh là baseline đỏ có sẵn).
+
+    KHÔNG sửa production code để "cho test chạy": có test chủ động kiểm Turnstile
+    chặn đúng (`identity_access/tests/test_register_upgrade.py::
+    test_turnstile_token_invalid_blocked`), nới lỏng ở đó sẽ xoá một lớp bảo vệ.
+    """
+    return {
+        'username': username,
+        'email': email,
+        'password': password,
+        'password_confirm': password,
+        'turnstile_token': 'test-turnstile-token',
+    }
+
+
+def turnstile_ok(_url=None, **_kwargs):
+    """Trả về payload Cloudflare coi token là hợp lệ.
+
+    Dùng cho `@patch('requests.post')` — `_verify_turnstile` gọi
+    `requests.post(verify_url, ...)`.
+    """
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {'success': True}
+    return response
 
 
 class RateLimitLoginEndpointTests(APITestCase):
@@ -124,8 +167,15 @@ class RateLimitLoginEndpointTests(APITestCase):
         self.assertTrue(str(data['request_id']).strip() != '')
 
 
+@override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
+@patch('requests.post', side_effect=turnstile_ok)
 class RateLimitRegisterEndpointTests(APITestCase):
-    """Test @ratelimit decorator on /api/auth/register/ endpoint (3/minute per IP)."""
+    """Test @ratelimit decorator on /api/auth/register/ endpoint (3/minute per IP).
+
+    `override_settings` + mock `requests.post`: xem `reg_payload()` — Turnstile
+    bắt buộc token khi secret có giá trị, nếu không mọi request đều 400 và assert
+    rate limit vô nghĩa. Mock trả `{'success': True}` để token "hợp lệ".
+    """
     
     def setUp(self):
         self.client = APIClient()
@@ -323,8 +373,13 @@ class RateLimitPasswordResetEndpointTests(APITestCase):
         self.assertTrue(str(data['request_id']).strip() != '')
 
 
+@override_settings(TURNSTILE_SECRET_KEY=TURNSTILE_KEY)
+@patch('requests.post', side_effect=turnstile_ok)
 class RateLimitWindowExpiryTests(APITestCase):
-    """Test rate limit counter expiration after 1 minute window."""
+    """Test rate limit counter expiration after 1 minute window.
+
+    Mock Turnstile cho phần `register` — xem `reg_payload()`.
+    """
     
     def setUp(self):
         self.client = APIClient()
@@ -339,39 +394,25 @@ class RateLimitWindowExpiryTests(APITestCase):
         for i in range(3):
             self.client.post(
                 self.register_url,
-                {
-                    'username': f'window_user_{i}',
-                    'email': f'window_user_{i}@test.com',
-                    'password': 'TestPass123!',
-                    'password_confirm': 'TestPass123!',
-                },
+                **reg_payload(f'window_user_{i}', f'window_user_{i}@test.com'),
                 format='json',
             )
-        
+
         # Should be rate limited
         response = self.client.post(
             self.register_url,
-            {
-                'username': 'window_user_3',
-                'email': 'window_user_3@test.com',
-                'password': 'TestPass123!',
-                'password_confirm': 'TestPass123!',
-            },
+            **reg_payload('window_user_3', 'window_user_3@test.com'),
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-        
+
         # Manually clear rate limit cache (simulating 1 minute passing)
         cache.clear()
-        
+
         # Should now be able to make requests again
         response = self.client.post(
             self.register_url,
-            {
-                'username': 'window_user_reset',
-                'email': 'window_user_reset@test.com',
-                'password': 'TestPass123!',
-            },
+            **reg_payload('window_user_reset', 'window_user_reset@test.com'),
             format='json',
         )
         self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

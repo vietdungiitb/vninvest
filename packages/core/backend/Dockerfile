@@ -63,6 +63,14 @@ COPY --from=builder /install /usr/local
 
 # Copy application source
 COPY src/ /app/src/
+# `scripts/` chứa `check-envelope-contract.py`, mà
+# `vninvest_core/tests/test_api_envelope_schema.py::_load_gate()` nạp bằng đường
+# dẫn tuyệt đối `BACKEND/scripts/...` (`BACKEND = parents[3]` của
+# `src/vninvest_core/tests/`). Thiếu dòng COPY này thì 2 test đó **không import
+# được** (`ERROR ... unittest.loader._FailedTest`) — đo 2026-10-13, Entry 284 §8.
+# `identity_access/tests/test_openapi_schema_contract.py` import lại module trên
+# nên cùng chết theo.
+COPY scripts/ /app/scripts/
 COPY manage.py /app/src/manage.py
 COPY entrypoint.sh /app/entrypoint.sh
 RUN sed -i 's/\r$//' /app/entrypoint.sh \
