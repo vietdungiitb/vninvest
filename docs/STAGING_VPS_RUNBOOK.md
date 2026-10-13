@@ -18,8 +18,11 @@
 | `compose.staging.env.example` | xong — điền secret thật → config exit 0, **0 placeholder sót** |
 | `scripts/bootstrap-staging.sh` | xong — `bash -n` exit 0 |
 | `scripts/deploy-staging.sh` | xong — `bash -n` exit 0 |
+| `docker-compose.nginx-proxy.yml` (reverse proxy) | xong — `docker compose config` exit 0 (xem §10) |
+| `compose.nginx-proxy.env.example` | xong (xem §10) |
+| `scripts/deploy-nginx-proxy.sh` | xong — `bash -n` exit 0 (xem §10) |
 | Quyền SSH vào VPS | ❌ **chưa có** |
-| Tên miền staging | ❌ **chưa có** |
+| Tên miền staging | ❌ **chưa có** (dự kiến `staging.vietdungiitb.vn`) |
 
 > Không có 2 thứ trên thì chưa thể đụng vào VPS. Tôi **không** đoán mật khẩu.
 
@@ -155,20 +158,23 @@ python3 -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().d
 
 ## 5. Truy cập
 
+Sau khi có tầng proxy (§10), **mọi port publish của app chỉ bind loopback** —
+duy nhất `nginx-proxy` (80/443) là công khai.
+
 | | |
 |---|---|
-| App | `http://<VPS_IP>:8080/` |
-| Grafana | `http://<VPS_IP>:3001/` |
-| Prometheus | `http://<VPS_IP>:9091/` |
+| App (công khai) | `https://<STAGING_DOMAIN>/` |
+| App (trên VPS) | `http://127.0.0.1:8080/` |
+| Grafana | SSH tunnel: `ssh -L 3001:127.0.0.1:3001 <user>@14.225.255.47` → `http://127.0.0.1:3001/` |
+| Prometheus | SSH tunnel: `ssh -L 9091:127.0.0.1:9091 <user>@14.225.255.47` → `http://127.0.0.1:9091/` |
 
 `docker-compose.prod.yml` **không publish port nào** (0 `ports:`) — toàn bộ
 ingress của prod được đẩy sang network `nginx-proxy_default` bên ngoài.
-Overlay publish thẳng `frontend` ra host. Nginx **bên trong** container
-frontend (`packages/web/docker/nginx.conf`) đã tự proxy `/api/*` → `core-api:8100`
-và `/ws/` lên HTTP/1.1 upgrade ⇒ một cổng là chạy trọn vẹn.
+Overlay publish `frontend` ra host nhưng **chỉ loopback**. Nginx **bên trong**
+container frontend (`packages/web/docker/nginx.conf`) đã tự proxy `/api/*` →
+`core-api:8100` và `/ws/` lên HTTP/1.1 upgrade ⇒ một cổng là chạy trọn vẹn.
 
-**Cần TLS** (nếu muốn `https://` + Let's Encrypt): chạy thêm `nginx-proxy`
-đứng trước. Đó là cấu hình prod; staging HTTP trước để kiểm chứng nhanh.
+**TLS + đa domain**: dùng `nginx-proxy` + `acme-companion` — xem §10.
 
 ---
 
@@ -231,3 +237,85 @@ nhanh; phần nặng (worker) đã chuyển sang VPS.
 
 > ⚠ **Không** `docker compose down -v` — `-v` xoá volume, mất toàn bộ dữ liệu
 > QA. Chỉ dùng `stop`.
+
+---
+
+## 10. Reverse proxy đa domain + TLS (nginx-proxy + acme-companion)
+
+### Vì sao cần
+
+Repo chỉ có **app**. `docker-compose.prod.yml:592` khai network
+`nginx-proxy_default` là `external: true` và `:561-564` set `VIRTUAL_HOST` cho
+frontend — tức app **đã được viết sẵn** để nằm sau một nginx-proxy, chỉ thiếu
+đúng cái proxy. Chưa có nó thì không có `https://` và không thêm được domain
+thứ hai mà không sửa tay nginx.
+
+### Thành phần (3 file mới)
+
+| File | Vai trò |
+|---|---|
+| `docker-compose.nginx-proxy.yml` | `nginx-proxy` (80/443) + `acme-companion`, dùng chung network `nginx-proxy_default` |
+| `compose.nginx-proxy.env.example` | Template env — chỉ **1 biến bắt buộc**: `LETSENCRYPT_EMAIL` |
+| `scripts/deploy-nginx-proxy.sh` | Deploy/`--verify`, idempotent, tạo network nếu thiếu |
+
+Image **pin cả tag lẫn digest** (`nginxproxy/nginx-proxy:1.11.6`,
+`nginxproxy/acme-companion:2.8.2`) — không dùng `:latest` (rủi ro R4).
+
+### Cách hoạt động: label-based, đa domain
+
+`nginx-proxy` mount `/var/run/docker.sock` (ro) nên **tự đọc label/env** của
+mọi container trên network chung:
+
+| Biến trên service app | Ý nghĩa |
+|---|---|
+| `VIRTUAL_HOST` | domain phục vụ (vd `staging.vietdungiitb.vn`) |
+| `VIRTUAL_PORT` | cổng nội bộ container nghe |
+| `LETSENCRYPT_HOST` | domain xin cert (thường = `VIRTUAL_HOST`) |
+| `LETSENCRYPT_EMAIL` | email hết hạn cert |
+
+Staging đã khai đủ 4 biến này trong `docker-compose.staging.yml` (frontend).
+**Thêm domain mới = thêm container có 4 biến đó**, không sửa file proxy.
+
+### Trình tự deploy
+
+```bash
+# 1. (đã làm ở §4) bootstrap -> tạo network nginx-proxy_default
+ssh <user>@14.225.255.47 'bash -s' < scripts/bootstrap-staging.sh
+
+# 2. Proxy — MỘT LẦN
+ssh <user>@14.225.255.47
+cd /opt/vninvest
+cp compose.nginx-proxy.env.example compose.nginx-proxy.env
+nano compose.nginx-proxy.env          # đặt LETSENCRYPT_EMAIL
+bash scripts/deploy-nginx-proxy.sh
+
+# 3. App (join network -> vhost + cert tự sinh)
+bash scripts/deploy-staging.sh
+
+# 4. Kiểm tra lại bất cứ lúc nào
+bash scripts/deploy-nginx-proxy.sh --verify
+```
+
+### Yêu cầu trước khi cert xin được
+
+1. **DNS** của `<STAGING_DOMAIN>` trỏ về `14.225.255.47` (A record).
+2. **Port 80 + 443** mở trên firewall VPS và **không bị container khác giữ**.
+3. Let's Encrypt giới hạn **5 cert/domain/tuần** — thử nghiệm vòng xin cert
+   thì đặt `ACME_CA_URI=https://acme-staging-v02.api.letsencrypt.org/directory`
+   trong `compose.nginx-proxy.env` (cert staging không được tin, chỉ để test).
+
+### Đã kiểm chứng (local, không cần VPS)
+
+| Kiểm tra | Lệnh | Kết quả |
+|---|---|---|
+| Proxy compose parse | `docker compose -f docker-compose.nginx-proxy.yml config --quiet` | **exit 0** |
+| 2 service + network external | `config` | `nginx-proxy`, `acme-companion`, network `nginx-proxy_default` external |
+| `:?` guard thật sự chặn | bỏ `LETSENCRYPT_EMAIL` → `config` | **exit 1** |
+| Script đúng cú pháp | `bash -n scripts/deploy-nginx-proxy.sh` | **exit 0** |
+
+### Còn thiếu (blocker deploy trên VPS)
+
+- **SSH** vào VPS (§1) — chưa có key trong `authorized_keys`.
+- **Tên miền** + DNS trỏ về VPS.
+
+⇒ Hai thứ trên là của Owner; không có thì **không thể** chạy bước 2–4 ở trên.

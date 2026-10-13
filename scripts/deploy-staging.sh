@@ -113,9 +113,11 @@ rc=$?
 log "Deploy xong"
 "${COMPOSE[@]}" ps
 echo
-echo "Truy cập:"
-echo "  App      : http://<VPS_IP>:$(grep -E '^STAGING_HTTP_PORT=' "$ENV_FILE" | cut -d= -f2 || echo 8080)/"
-echo "  Grafana  : http://<VPS_IP>:$(grep -E '^STAGING_GRAFANA_PORT=' "$ENV_FILE" | cut -d= -f2 || echo 3001)/"
+echo "Truy cập (port publish chỉ bind LOOPBACK — không lộ ra Internet):"
+echo "  App (cong khai qua proxy): https://$(grep -E '^STAGING_DOMAIN=' "$ENV_FILE" | cut -d= -f2- || echo '<STAGING_DOMAIN>')/"
+echo "  App (tren VPS)           : http://127.0.0.1:$(grep -E '^STAGING_HTTP_PORT=' "$ENV_FILE" | cut -d= -f2 || echo 8080)/"
+echo "  Grafana (SSH tunnel)     : ssh -L 3001:127.0.0.1:3001 <user>@<VPS_IP>  ->  http://127.0.0.1:3001/"
+echo "  Prometheus (SSH tunnel)  : ssh -L 9091:127.0.0.1:9091 <user>@<VPS_IP> ->  http://127.0.0.1:9091/"
 echo
 echo "Nếu service không lên:  ${COMPOSE[*]} logs --tail=100 <service>"
 echo "Nếu migration lỗi:      ${COMPOSE[*]} logs core-api | grep -i migration"

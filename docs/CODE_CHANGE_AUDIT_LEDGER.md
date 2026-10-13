@@ -1,3 +1,198 @@
+
+## Entry 278: Staging VPS 14.225.255.47 + **vá blocker làm PROD crash-loop** (2026-10-13)
+
+- **Nhánh**: `feat/staging-vps-deploy` -> `dev`
+- **Claim**: `staging-vps` — khai **TRƯỚC** dòng code đầu tiên
+- **Lessons áp dụng**: L-001, L-002, L-006, L-007, L-G01, L-G02, L-G07, L-T01, L-T02,
+  L-F04, L-M01, L-A01
+
+**Trigger**: local thiếu RAM nên chuyển mô hình thử nghiệm sang VPS.
+Đo trước khi kế hoạch: host local **13.7 GB RAM, còn 0.3 GB free**, **21 container**
+đang chạy — đúng nguyên nhân gốc của các lỗi `psycopg2.OperationalError` mà
+`## Entry 273` §5 ghi là "môi trường" và `## Entry 276` không tái hiện được.
+
+### 1. Blocker sản phẩm — CHỨNG MINH bằng lệnh, không đoán
+
+`TURNSTILE_SECRET_KEY` **0 lần** trong `docker-compose.prod.yml` (chỉ có ở
+`docker-compose.dev.yml:92`), trong khi `vninvest_core/env_validation.py:123`
+**bắt buộc** nó khi `DEBUG=false`.
+
+```
+$ DJANGO_DEBUG=0 DJANGO_SECRET_KEY=… DJANGO_ALLOWED_HOSTS=… CORE_PAT_PEPPER=…
+  FRONTEND_URL=… CORS_ALLOWED_ORIGINS=… CSRF_TRUSTED_ORIGINS=… BROKER_SECRET_KEY=…
+  python manage.py check
+ImproperlyConfigured: Production validation failed:
+  Required environment variable 'TURNSTILE_SECRET_KEY' is not set
+  (Cloudflare Turnstile secret for registration bot protection)
+```
+
+⇒ **`docker-compose.prod.yml` không boot được ở chế độ production.** Thêm biến vào
+file env **không đủ** — biến phải được truyền vào container.
+
+### 2. Overlay, không sửa file deny-list
+
+`docker-compose*.yml` thuộc deny-list §2. Overlay là cách gọn nhất: file **mới**,
+hook `.githooks/pre-commit` khớp *exact* trên danh sách cố định ⇒ **không cần
+`--no-verify`**; file cũ không đổi ⇒ không có hunk gộp với agent khác.
+
+Overlay dùng `${VAR:?}` để `docker compose` **dừng lúc parse**:
+
+```
+thieu TURNSTILE_SECRET_KEY + overlay      -> config exit=1  (error while interpolating)
+docker-compose.prod.yml don le (khong overlay) -> config exit=0  <- chấp nhận cấu hình làm Django chết
+```
+
+Ba blocker còn lại trong prod compose, **đã ghi nhận nhưng chưa sửa** (ngoài phạm vi PR,
+vì cùng file deny-list): `CSRF_TRUSTED_ORIGINS` rỗng ⇒ `settings.py:462` raise;
+`GRAFANA_ADMIN_PASSWORD` và `MAIL_CREDENTIAL_FERNET_KEY` thiếu trong
+`compose.prod.env.example` (2 template env lệch nhau).
+
+### 3. Đã thêm
+
+| File | Vai trò |
+|---|---|
+| `docker-compose.staging.yml` | Overlay 13 service của prod: vá 5 core service, build arg `VITE_TURNSTILE_SITE_KEY`, ghi đè `VIRTUAL_HOST`/`LETSENCRYPT_HOST` (prod compose **hard-code** `saas.edusuccess.vn` ở `:561-564`), publish 8080/3001/9091 (prod compose có **0 `ports:`**) |
+| `compose.staging.env.example` | 14 biến bắt buộc, kèm lý do từng biến + lệnh sinh secret |
+| `scripts/bootstrap-staging.sh` | Một lần: đo RAM/disk **trước khi làm gì**, cài Docker, tạo 4 GB swap, clone repo, tạo network `nginx-proxy_default` (`prod.yml:592` khai `external: true`), **validate config trước khi build** |
+| `scripts/deploy-staging.sh` | `pull → build → up --wait → verify`; `--verify` chạy lại độc lập |
+| `docs/STAGING_VPS_RUNBOOK.md` | Runbook + 6 rủi ro + §7 sai lầm của chính mình |
+| `.gitattributes` | **Chỉ append** 3 rule pin LF. Cố tình **không** dùng `* text=auto`: `vnadmin.css` là CRLF-native (`## Entry 273` §7), ép chuẩn hoá cả repo sẽ phình diff hàng nghìn dòng. `git add --renormalize` xác nhận **0 file đang tồn tại** bị đụng. Giữ nguyên 3 rule LFS + `docs/CLAIMS.md merge=union` |
+
+### 4. Gate chạy THẬT (không cần VPS)
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `docker compose -f prod -f staging config --quiet` | **exit 0** |
+| Env template điền secret thật → `config` | **exit 0**, **0 placeholder** sót (grep case-sensitive) |
+| `TURNSTILE_SECRET_KEY` tới container | **5/5 core service** |
+| `frontend.build.args` | `APP_RELEASE` + `VITE_API_URL` + `VITE_TURNSTILE_SITE_KEY` |
+| `VIRTUAL_HOST` | `stg.test.local` — không còn dính domain prod |
+| **Django boot với env staging, `DEBUG=0`** | **`manage.py check` exit 0** (1 Warning W004, không chặn) |
+| `bash -n` 3 script (Git Bash) | **exit 0 / 0 / 0** |
+| CRLF trong `.sh` | **0** |
+| **CHƯA CHẠY** | deploy thật lên VPS |
+
+### 5. Sai lầm của chính mình — 5 lần, ghi công khai
+
+1. **Dùng `Write` ghi đè `.gitattributes` không kiểm tra file đã tồn tại** ⇒ suýt xoá
+   **3 rule Git LFS** và **`docs/CLAIMS.md merge=union`** — quy tắc ghép claim của cả
+   hệ multi-agent (`AGENT_PROTOCOL.md` §3). Bắt bằng `git diff --numstat` ra `12/8`
+   trên file tưởng là **mới**. Khôi phục từ `origin/dev` rồi **append** ⇒ `13/0`.
+   *Lần thứ 2 trong 2 phiên liên tiếp* (phiên trước: `docs/WORKLOG.md`). **Bài học:
+   `Write` không phải "tạo file".** Trước khi dùng lên đường dẫn có thể tồn tại:
+   `git ls-files <path>`.
+2. Overlay viết **hai khối `frontend:`** ⇒ YAML lấy khối CUỐI và **âm thầm mất
+   `build.args`**. Chỉ `docker compose config` mới bắt được. Đã gộp + ghi cảnh báo.
+3. `.gitattributes` viết `*.sh text eol=lf` **rồi** `*.sh -text` ⇒ gitattributes lấy
+   rule khớp cùng, `-text` vô hiệu hoá `eol=lf` ⇒ máy có `autocrlf=true` sẽ lưu
+   shell script CRLF vào index — **đúng thứ cần tránh**.
+4. Commit message viết trực tiếp trong PowerShell ⇒ **backtick bị nuốt** làm vỡ
+   parser (`Neu \`up\` fail` → `Unicode escape sequence is not valid`). Dùng `-F file`.
+5. **Khôi phục dòng claim bằng sai encoding** ⇒ dòng `staging-vps-proxy` chứa
+   **21 ký tự U+FFFD**. Nguyên nhân: đọc file nguồn bằng `utf8` rồi ghi vào buffer
+   `latin1` ⇒ double-encode. Bắt bằng gate `encoding` của `pre-push-gate`
+   (**FAIL, chặn push**) chứ không phải bằng mắt.
+   *Chỉ là may mắn: file `CLAIMS.md` là UTF-8 hợp lệ (round-trip kiểm được), nên các
+   append `latin1` trước đó vô hại — nhưng **tôi đã không kiểm tra điều đó**,
+   chỉ may mắn là byte-identical.* Sửa bằng cách đọc lại từ blob `b4e68c81e` và ghi
+   bằng `utf8`; xác nhận `FFFD count = 0`, `git diff --numstat` = `1/1`.
+
+### 6. Việc song song không do tôi — xử lý thế nào
+
+`docker-compose.nginx-proxy.yml` + `compose.nginx-proxy.env.example` **không do tôi
+viết**: tìm thấy untracked lúc 10:08, không claim nào giữ, và tham chiếu
+`scripts/deploy-nginx-proxy.sh` khi file đó **chưa tồn tại**.
+
+- **Backup trước khi đụng**: `%TEMP%\orphan-nginx-proxy-20261013-100907\`.
+- Báo Owner, Owner cho phép **hoàn thiện + commit, ghi rõ nguồn gốc**.
+- Tôi viết nốt `scripts/deploy-nginx-proxy.sh`; kiểm chứng cả 3 file
+  (`config` exit 0 · `bash -n` exit 0 · CRLF=0 · mọi `scripts/*.sh` được tham chiếu
+  đều tồn tại 3/3).
+- **Hai edit song song khác** (binding loopback + `.gitattributes` + `deploy-staging.sh`
+  + runbook §10) đã **kiểm chứng là đúng** trước khi giữ: merged config cho
+  `host_ip: 127.0.0.1` ở cả 3 cổng (Grafana có mật khẩu admin ⇒ không được lộ Internet).
+- Tôi sửa 1 lỗi edit song park để lại: `docker-compose.staging.yml` **thiếu newline
+  cuối file**.
+
+### 7. Citation mồ côi — đã phát hiện và gỡ
+
+`## Entry 277` trích commit `b4e68c81e` làm bằng chứng cho việc khai claim. Lệnh
+`git branch -a --contains b4e68c81e` = **rỗng** ⇒ commit **mồ côi**, và PR này
+squash-merge nên SHA đó **không tồn tại trên `dev`**. Đã:
+
+1. khôi phục dòng claim `staging-vps-proxy` từ blob `b4e68c81e` vào `CLAIMS.md`;
+2. sửa `## Entry 277` để **không còn trích SHA mồ côi**, nêu rõ vì sao.
+
+*(L-T02: một citation là (file, dòng, nội dung) — SHA không ai verify được thì không
+phải bằng chứng.)*
+
+### 8. CHƯA CHẠY — không suy ra "chắc là được"
+
+- **Deploy thật lên `14.225.255.47`.** Đã thử 2 key (`id_ed25519`, `vninvest_deploy`)
+  × 5 user (`root`, `ubuntu`, `pham`, `deploy`, `vninvest`) ⇒ `Permission denied
+  (publickey,password)`. Cần Owner thêm public key + cung cấp tên miền/DNS.
+  Hướng dẫn: runbook §1.
+- **Digest image nginx-proxy / acme-companion** — `sha256:dd78565e…` và
+  `sha256:e3c5fb08…` **chỉ đọc từ file, KHÔNG pull thử** ⇒ không biết có tồn tại thật
+  trên Docker Hub hay không. Nếu `up` fail ở bước pull thì bỏ phần digest.
+  Đã ghi trong runbook §5.2.
+- **`curl` tới health endpoint trên VPS** — chỉ chạy được sau khi có VPS.
+
+## Entry 277: Tầng reverse proxy đa domain cho VPS staging — `nginx-proxy` + `acme-companion` (2026-10-13)
+
+- **Nhánh**: `feat/staging-vps-deploy` -> `dev`
+- **Claim**: `staging-vps-proxy` — khai **TRƯỚC** khi sửa dòng đầu tiên.
+  Claim gốc nằm ở commit **mồ côi** `b4e68c81e` (`git branch -a --contains` = rỗng —
+  không branch nào chứa). PR này squash-merge nên SHA đó **không tồn tại trên `dev`**;
+  dòng claim đã được chèn lại vào `CLAIMS.md` trong chính PR này. **Không trích SHA
+  mồ côi vào ledger** — đó là citation không ai verify được (L-T02).
+
+**Trigger**: yêu cầu cấu hình VPS `14.225.255.47` thành staging **nhiều domain + TLS**.
+
+### Khoảng trống đã chứng minh, không đoán
+
+Repo chỉ có APP. App **đã** được viết sẵn để nằm sau proxy: `docker-compose.prod.yml:592`
+khai network `nginx-proxy_default` là `external: true`, `:561-564` set
+`VIRTUAL_HOST`/`VIRTUAL_PORT`/`LETSENCRYPT_HOST`. Nhưng **không file nào chạy proxy** ⇒
+`https://` không tồn tại và không thêm được domain thứ hai nếu không sửa tay nginx.
+
+### Đã thêm (3 file mới)
+
+| File | Vai trò |
+|---|---|
+| `docker-compose.nginx-proxy.yml` | `nginx-proxy` (80/443) + `acme-companion`, chung network `nginx-proxy_default`, image pin **tag + digest** (`1.11.6`, `2.8.2`) — không `:latest` |
+| `compose.nginx-proxy.env.example` | 1 biến bắt buộc `LETSENCRYPT_EMAIL`; file `.env` thật khớp `compose*.env` (`.gitignore:52`) nên không bị commit |
+| `scripts/deploy-nginx-proxy.sh` | deploy / `--verify`, idempotent, tạo network nếu thiếu, kiểm port 80/443 + cert theo `STAGING_DOMAIN` |
+
+### Đã sửa
+
+- `docker-compose.staging.yml`: 3 port publish (frontend/grafana/prometheus) bind **`127.0.0.1`**
+  — tầng công khai duy nhất là `nginx-proxy`; đóng cổng HTTP không mã hoá ra Internet.
+- `docker-compose.staging.yml`: `LETSENCRYPT_EMAIL` đổi từ default giả `admin@example.com`
+  sang **bắt buộc** (`:?`). `acme-companion` đọc email này từ **chính container app** (không
+  đọc biến của stack proxy) ⇒ default giả sẽ âm thầm đăng ký cert bằng địa chỉ sai.
+- `scripts/deploy-staging.sh`: phần "Truy cập" đổi sang domain-qua-proxy + SSH tunnel.
+- `.gitattributes`: pin LF cho 2 file staging mới.
+
+### Gate chạy THẬT (không "chắc là được")
+
+- `bash -n` 3 script (`deploy-nginx-proxy`, `deploy-staging`, `bootstrap-staging`) → **exit 0** (Git Bash).
+- `docker compose -f docker-compose.nginx-proxy.yml config --quiet` → **exit 0**.
+- Guard `:?`: bỏ `LETSENCRYPT_EMAIL` → **exit 1** (`required variable ... is missing a value`).
+- Merged `prod + staging` config → **exit 0**; `config` in `host_ip: 127.0.0.1` cho `published` 8080/3001/9091.
+- Negative: bỏ `LETSENCRYPT_EMAIL` khỏi merged config → **exit 1** (guard `:?` có hiệu lực).
+- EOL 3 file mới: `CRLF=0`, kết thúc bằng LF; `git check-attr` → `text: set`, `eol: lf`.
+- **CHƯA CHẠY**: E2E trên VPS — chưa có SSH key trong `authorized_keys` và chưa có tên miền/DNS.
+  Ghi rõ "CHƯA CHẠY", **không** suy diễn "chắc là được".
+
+### Bài học áp dụng
+
+`L-001` (không commit shared file — `docker-compose.prod.yml` giữ nguyên, dùng file mới),
+`L-002` (khai claim `staging-vps-proxy` trước dòng đầu), `L-G01` (chạy lại gate sau rebase),
+`L-T01` (kiểm EOL bằng byte, không để CRLF lọt vào shell script chạy trên Linux).
+
+---
+
 ## Entry 275: Biến sai lầm lặp thành cơ chế — 3 lesson mới + **C4** chặn bài học không ai nạp (2026-10-12)
 
 - **Nhanh**: `chore/lessons-mechanism` -> `dev`

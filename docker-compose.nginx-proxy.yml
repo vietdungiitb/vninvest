@@ -1,0 +1,108 @@
+# NGINX-PROXY + ACME-COMPANION — tang reverse proxy da domain cho VPS staging.
+#
+# ── Vi sao file nay ton tai ────────────────────────────────────────────────
+#
+# Repo chi co APP (docker-compose.prod.yml + overlay staging). Khong co file
+# nao chay reverse proxy. Nhung `docker-compose.prod.yml:592` lai khai network
+# `nginx-proxy_default` la `external: true` va `:561-564` set `VIRTUAL_HOST`
+# cho frontend — tuc la APP DA duoc viet san de nam sau mot nginx-proxy, chi
+# thieu dung cai proxy do. File nay lap cho trong that.
+#
+# ── Chay o dau ─────────────────────────────────────────────────────────────
+#
+#   bash scripts/deploy-nginx-proxy.sh
+#
+# Dung CHUNG network `nginx-proxy_default` voi app => nginx-proxy tu doc
+# `VIRTUAL_HOST` / `VIRTUAL_PORT` / `LETSENCRYPT_HOST` cua tung container va
+# sinh vhost + xin cert. Them domain moi = them 3 bien do vao service do,
+# KHONG phai sua file nay (do la y nghia cua "label-based, da domain").
+#
+# ── Thu tu khoi dong ───────────────────────────────────────────────────────
+#
+#   bootstrap-staging.sh  -> tao network ngoai `nginx-proxy_default`
+#   deploy-nginx-proxy.sh -> proxy + acme (file nay)
+#   deploy-staging.sh     -> app (join network do)
+#
+# Proxy nen chay TRUOC app: acme-companion chi xin duoc cert khi vhost da ton
+# tai, ma vhost sinh tu label cua app. Chay sau cung duoc — cert se xin lai
+# trong vong ~60s ke tiep.
+
+name: nginx-proxy
+
+services:
+  # ══════════════════════════════════════════════════════════════════════════
+  # REVERSE PROXY — nginx + docker-gen. Lang nghe 80/443, sinh vhost tu label.
+  # ══════════════════════════════════════════════════════════════════════════
+  nginx-proxy:
+    # Pin ca TAG lan DIGEST (R4 cam `:latest`). Digest la manifest-list cua
+    # dung tag 1.11.6 -> tai lap duoc tren moi kien truc.
+    image: ${NGINX_PROXY_IMAGE:-nginxproxy/nginx-proxy:1.11.6@sha256:dd78565eca9742624655bb743723e0aeeab552153c4eea01095e4266c59150d5}
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      com.vninvest.layer: reverse-proxy
+    volumes:
+      # doc-only: dung de phat hien container + doc label/env, khong ghi.
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      # Named volume: nginx-proxy GHI vao day nen KHONG duoc `:ro`.
+      - nginx-conf:/etc/nginx/conf.d
+      - nginx-vhost:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html
+      - nginx-dhparam:/etc/nginx/dhparam
+      - nginx-certs:/etc/nginx/certs
+    environment:
+      # Email mac dinh cho Let's Encrypt (acme-companion cung doc bien nay).
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL must be set - compose.nginx-proxy.env}
+      # Bo comment neu VPS co IPv6 cong khai.
+      # ENABLE_IPV6: "true"
+    networks:
+      - proxy
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # ACME-COMPANION — xin/xoay cert Let's Encrypt theo `LETSENCRYPT_HOST`.
+  # Chung volume cert/vhost/html voi nginx-proxy.
+  # ══════════════════════════════════════════════════════════════════════════
+  acme-companion:
+    image: ${ACME_COMPANION_IMAGE:-nginxproxy/acme-companion:2.8.2@sha256:e3c5fb08bf623ae93dbc945d78fe50040c1fa107ddf59f7ee04ba6a61f34cbc1}
+    container_name: acme-companion
+    restart: unless-stopped
+    depends_on:
+      - nginx-proxy
+    labels:
+      com.vninvest.layer: reverse-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - nginx-conf:/etc/nginx/conf.d
+      - nginx-vhost:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html
+      - nginx-dhparam:/etc/nginx/dhparam
+      - nginx-certs:/etc/nginx/certs
+      - nginx-acme:/etc/acme.sh
+    environment:
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL must be set - compose.nginx-proxy.env}
+      # acme-companion phai biet container nao la proxy de nhet config.
+      NGINX_PROXY_CONTAINER: nginx-proxy
+      # Rate limit Let's Encrypt: dung fetch tu staging, tranh 429 khi thu lai
+      # nhieu lan. Dat "true" chi khi DA chac chan muon test nghiem ngat.
+      # ACME_CA_URI: https://acme-staging-v02.api.letsencrypt.org/directory
+    networks:
+      - proxy
+
+networks:
+  # Dung DUNG ten network ma app khai `external: true` (prod.yml:592).
+  # `external: true` nghia la compose KHONG tao, chi attach — bootstrap-staging.sh
+  # (hoac deploy-nginx-proxy.sh) tao truoc.
+  proxy:
+    external: true
+    name: nginx-proxy_default
+
+volumes:
+  nginx-conf:
+  nginx-vhost:
+  nginx-html:
+  nginx-dhparam:
+  nginx-certs:
+  nginx-acme:
