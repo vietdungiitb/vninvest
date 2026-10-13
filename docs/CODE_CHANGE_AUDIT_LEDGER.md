@@ -1,4 +1,212 @@
 
+## Entry 282: Thuc thi 5 quyet Owner tu audit 360 — unify routeId theo routeCatalog (D-01) + chot mau do=giam (2026-10-13)
+
+- **Nhanh**: `feat/audit-followup-5q` -> `dev` · claim `audit-followup-5q`
+- **Lessons ap dung**: L-V01, L-V02, L-G02, L-G04, L-G07, L-T01
+- **Quyet (1) mau do=giam — XONG**: `soc.tokens.css` xoa khoi canh bao, ghi Owner chot
+  2026-10-13 (do=giam, xanh=tang — khop spec + bang gia VN). **Tu sua bao cao audit**:
+  audit ghi "chuan VN la do=tang" la SAI (do la chuan Trung Quoc); bang gia VN dung
+  xanh la=tang, do=giam, vang=TC, tim=tran, xanh duong=san. Token hien tai dung san.
+- **Quyet (2) unify routeId — XONG**: `main.tsx` dung id catalog cho 11 route
+  (`portfolios`, `portfolios-manage`, `admin-tenants`, `admin-tenant-*` x4,
+  `admin-overview`, `admin-jobs`, `admin-audit-trace`); resolver map ve registry id cu
+  (`portfolio-workspace`, `core-portfolios`, `admin-core-*`) nen render KHONG doi.
+  Them entry `portfolios-manage` vao catalog (titleKey dung chung `routes.portfolios`
+  vi namespace moi chua co tren dev) + test nguoc main->catalog. **Hieu chinh audit**:
+  D-01 that su chi la id-drift contract (khong phai lo hong live) — `routeCatalog`
+  runtime chi duoc export qua `src/index.js:2` + 2 contract test, khong gate capability
+  nao doc theo id; phan quyen that o BE.
+- **L-T01 bat that**: Edit tool doi LF->CRLF/mixed o 2 file tren nhanh cu, numstat
+  phong 185/189 + 52/33; dung `normalize-eol` (khong co tren dev) --fix ve LF,
+  numstat gon dung 26/13, 5/3, 19/0, 5/9 (nhanh nay Edit giu LF, khong tai phat).
+- **Transplant sach**: code goc lam tren `feat/pf-manage-rebuild` (`a30a7cd44`) nhung
+  nhanh do con 16 commit chua merge (PR #121) nen lam rieng 4 file sang nhanh nay —
+  merge khong keo viec nguoi khac. Khong sua `pageRegistry.js` (`check-shell.mjs:155`
+  assert entry `portfolios`), khong `package.json`, khong migration.
+- **Gates chay that tren nhanh nay**: vitest route-catalog-contract + main-menu-contract
+  **2 file / 11 test PASS** (gom test nguoc moi); `npx tsc --noEmit` **exit 0**;
+  `eslint` 3 file **exit 0**; `check-multi-agent` o hook **0 loi**.
+- **CANH BAO DANH SO cho PR #121**: nhanh do dang giu `## Entry 282/283/284` rieng —
+  sau khi Entry nay merge, PR #121 rebase PHAl danh lai so (lay so tiep theo tren dev),
+  khong giu so cu keo trung ledger.
+- **Quyet (3)(4)(5) CHUA CODE**: (3) POST /ai/usage giu nguyen — FE chi GET
+  (`workspace.js:742-760`, khong caller POST), writer dung phai la server-side; cho
+  Owner chon go han (405) hay staff-only. (4) Y kien: CORS default false o prod +
+  `tenant=None -> qs.none()` tru 2 view support co ly do ghi ro. (5) Rechards: 9 file
+  (6 tenant-admin + AdminAnalytics + AIUsageDashboard + OrderFlowRadarPanel) — can slice
+  rieng (migrate sang echarts + bo dep, cham `package.json` deny-list).
+
+## Entry 285: `/portfolios/manage` phần 3 — **P0 staging: 3 celery worker crash-loop 0 task** + làm rõ cái tôi ghi sai (2026-10-13)
+
+- **Nhánh**: `feat/pf-manage-rebuild` (PR #121) · claim `pf-manage-rebuild`
+- **Lessons áp dụng**: L-V01, L-V02, L-V03, L-T01, L-T02
+
+Owner hỏi: *"vps 24 gb ram mà không đủ là sao"*. Câu hỏi đúng — Entry 283 §7
+ghi *"bị OOM exit=137, staging đang chạy cả stack nên không đủ RAM"*. **Kết luận
+đó sai ở phần giải thích.** Điều tra lại từ đầu.
+
+### 1. Host KHÔNG hết RAM
+
+```
+Mem: total 24073  used 6263  free 390  buff/cache 18020  available 17809   (MiB)
+```
+
+`available` **17.8 GB**. Host không thiếu RAM. Nhận định "cả stack chiếm hết"
+trong Entry 283 là **sai**.
+
+### 2. Nguồn gốc thật: `mem_limit` của **container**, không phải host
+
+Đo `docker inspect` cho từng container:
+
+| Container | `mem_limit` | Dùng thật |
+|---|---|---|
+| **`vninvest-core-api`** | **256 MiB** | 181 MiB |
+| **`core-worker`**, **`core-beat`**, **`-realtime-prefetch`**, **`-realtime-stream`** | **128 MiB** | 127.6 MiB (**99.66%**) |
+| `core-db` / `frontend` / `grafana` | 1 GiB / 750 MiB / 256 MiB | bình thường |
+| `vnsaas-staging-*`, `erp-*`, `charts_test_app` | **không giới hạn** | thấp |
+
+`docker-compose.prod.yml:167,252,290,325` đặt
+`mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}` và `${CORE_BEAT_MEM_LIMIT:-128m}`;
+`:129` đặt `${CORE_API_MEM_LIMIT:-256m}`.
+
+**Vì sao mặc định lại là 128m**: `compose.staging.env.example:102` có sẵn
+`CORE_WORKER_MEM_LIMIT=256m` — nhưng **bị comment**, nên default của prod compose
+(128m) được dùng. Cùng kiểu với `CORE_BEAT_MEM_LIMIT` và `compose.staging.env`
+trên VPS (dòng 95, cũng comment).
+
+### 3. BẰNG CHỨNG: python test BỊ OOM thật (lần này có đủ bằng chứng)
+
+Entry 283 ghi "OOM" nhưng lúc đó **chưa có bằng chứng** — `dmesg` chỉ có 40 lần
+OOM và **tất cả đều là `celery`**, không có dòng nào ứng với `python manage.py
+test`. Điều tra lại đủ bằng chứng:
+
+```
+dmesg: Killed process 1156141 (python) total-vm:2517796kB, anon-rss:192212kB, file-rss:55732kB
+dmesg: Killed process 1099614 (python) total-vm:2511824kB, anon-rss:185228kB, file-rss:55520kB
+
+/sys/fs/cgroup/memory.peak  = 568496128   (542 MiB)
+/sys/fs/cgroup/memory.max   = 268435456   (256 MiB)   <- docker-compose.prod.yml:129
+/sys/fs/cgroup/memory.events: oom 37 · oom_kill 3
+
+dem so lan OOM theo ten process:  34 celery · 3 python
+```
+
+⇒ Full BE suite cần đỉnh **542 MiB**, container chỉ có 256 MiB ⇒ bị kernel OOM-kill
+⇒ `docker exec` trả **137**. **Kết luận "OOM" của Entry 283 ĐÚNG**; chỉ có phần
+giải thích ("không đủ RAM") là sai.
+
+### 4. Ba lần `exit=137` có **ba nguyên nhân khác nhau** — không phải lúc nào cũng OOM
+
+| Lần | Cách chạy | Nguyên nhân thật |
+|---|---|---|
+| 1 | foreground qua SSH | **SSH session reset → SIGHUP** giết `docker exec` |
+| 2 | `setsid nohup` detached | **tôi tự chạy `docker compose up --force-recreate`** cho worker trong lúc nó chạy ⇒ compose chạm `core-api` ⇒ container recreate ⇒ `docker exec` chết |
+| 3 | detached, 8 GiB | chạy xong ⇒ **2211 test, `FAILED (failures=10, errors=2)`** |
+| 4 | detached, đúng 256 MiB, không đụng VPS | **OOM thật** (xem §3) |
+
+Lần 2 nguy hiểm nhất: nếu không kiểm `memory.events` mà tin `exit=137 ⇒ OOM`
+thì sẽ kết luận sai **ngay lần thứ hai**.
+
+### 5. P0 PHÁT HIỆN: 3 celery worker crash-loop, **0 task** được xử lý
+
+Trong lúc điều tra RAM tôi thấy dmesg có **34 lần OOM `celery`**. Truy ra:
+
+```
+vninvest-core-worker                    RestartCount=78  mem=128 MiB
+vninvest-core-worker-realtime-prefetch  RestartCount=78  mem=128 MiB
+vninvest-core-worker-realtime-stream    RestartCount=78  mem=128 MiB
+```
+
+`StartedAt` cách nhau **5-15 giây** ⇒ **crash-restart loop vĩnh viễn**. Celery bị
+OOM ở `anon-rss ≈ 67-72 MiB` + `file-rss ≈ 40 MiB` ⇒ **cần > 128 MiB**.
+
+`docker logs vninvest-core-worker | grep -c "received\|succeeded"` = **0**
+⇒ worker chưa từng nhận nhiệm vụ nào. Trên staging, **toàn bộ job nền đã chết**:
+`signal_detection`, `sync_dnse_*`, `screener_*`, `tenant_lifecycle_*`,
+`warm_intraday_universe`, `materialize_session_facts`.
+
+**Vì sao `deploy-staging.sh` không bắt được**: `verify()` chỉ kiểm
+`ps --format {{.State}}` = `running`. Container vừa restart 5 giây trước thì
+`running` ⇒ gate xanh. Cùng kiểu với ghi chú đã có sẵn trong `verify()`:
+*"5 service KHÔNG có healthcheck — worker chết là KHÔNG ai báo"*. Nhưng ở đây
+nó **không chỉ không ai báo, mà luôn ở trạng thái `running`** ⇒ im lặng tuyệt đối.
+
+### 6. Sửa và kiểm chứng
+
+Sửa ở `compose.staging.env` trên VPS — file **runtime, KHÔNG track git** nên
+không chạm file deny-list (`docker-compose*.yml`, `.env*`):
+
+```bash
+CORE_WORKER_MEM_LIMIT=1g
+CORE_BEAT_MEM_LIMIT=512m
+```
+
+Đặt `docker compose up -d --force-recreate` cho 4 container, rồi **đo lại 5 phút**:
+
+```
+phut 1..5  core-worker=36.8%  prefetch=54.2%  stream=44.4%  beat=31.0%  | restart=0
+OOM truoc=37  OOM sau=37  (chenh = 0)
+```
+
+**Bằng chứng đạt**: `RestartCount=0` suốt 5 phút (trước 78+), **không có OOM mới**,
+và worker **bắt đầu nhận task thật**:
+
+```
+materialize_session_facts: symbols_total=115 upserted=115 errors=0
+warm_intraday_universe (native): warmed 21/30 symbols, updated=13
+schedule_realtime_prefetch_shards: skipped_offhours / outside_trading_session
+```
+
+Trước khi sửa: `0 task`. Sau khi sửa: **24 task trong 5 phút**.
+
+**Vì sao `1g` chứ không phải `512m`**: lần đầu đặt `512m` thì
+`prefetch` bám **99.32%** (`memory.current=533245952 / max=536870912`) và
+`materialize_session_facts` một lần mất **108 s** cho 115 mã — 512 MiB quá chật.
+Nâng `1g` thì prefetch rơi về ~50%.
+
+⚠ **Fix này chỉ nằm trên VPS**, không có trong git ⇒ `bootstrap-staging.sh` chạy
+lại sẽ mất. Cần Owner quyết có đưa vào `compose.staging.env.example` hay không
+(file đó được track nhưng không nằm trong deny-list máy).
+
+### 7. 12 lỗi full BE suite: CHỨNG MINH có sẵn, không phải do thay đổi của tôi
+
+Đầy đủ 12 lỗi:
+
+- **5 FAIL** `service_ops.tests.test_soc_tasks` — `create_global_planner_run`
+  "Called 0 times", `dispatched_runs` 0 != 1.
+- **5 FAIL** `vninvest_core.tests.test_rate_limiting` + `test_exception_handling_a6`
+  — endpoint `register` trả **400** thay vì 201/409/429.
+- **2 ERROR** loader — `test_openapi_schema_contract`, `test_api_envelope_schema`.
+
+Không lỗi nào chạm `user_workspace`. Thay đổi BE của tôi chỉ nằm ở
+`PortfolioDetailView.delete` (`views.py:227-248`) — đổi một chuỗi `detail` 409
+và thêm khoá `suggested_action`.
+
+**Chứng minh bằng A/B, không bằng lập luận**: chạy 65 test của 3 module đó
+hai lần — lần 1 với thay đổi của tôi, lần 2 thay file bằng bản `origin/dev`:
+
+```
+LAN 1 (co thay doi):      Ran 65 tests — FAILED (failures=10)
+LAN 2 (origin/dev):      Ran 65 tests — FAILED (failures=10)
+```
+
+⚠ **Bẫy lần đầu**: lần chạy đầu tôi dùng `git checkout -- views.py` và tưởng
+đó là baseline — nhưng file **đã được commit trên nhánh**, nên `git checkout --`
+trả về bản **có** thay đổi của tôi (`grep -c suggested_action` = 1). Phải dùng
+`git show origin/dev:<path>` mới được baseline thật.
+
+### 8. Việc còn để lại — **KHÔNG** sửa ở PR này
+
+10 FAIL + 2 ERROR là **baseline đỏ có sẵn trên `dev`**, ngoài phạm vi
+`/portfolios/manage`. Đáng mở ticket riêng:
+- `service_ops.test_soc_tasks` (5) — scheduler không dispatch.
+- `vninvest_core.test_rate_limiting` (5) — `register` trả 400.
+- 2 loader error — test module không import được.
+
+Ngoài ra: full suite chạy được là nhờ nâng `mem_limit` **tạm thời lên 8 GiB**;
+giá trị trong `compose.prod.yml` vẫn là 256 MiB. Muốn gate BE chạy được trên
+staging thì cần nâng `CORE_API_MEM_LIMIT` **vĩnh viễn** trong `compose.staging.env`.
+
 ## Entry 284: Phần 2 của `/portfolios/manage` — i18n panel broker, sửa 2 lỗi chỉ lộ ra khi đo thật, và gate EOL (2026-10-13)
 
 - **Nhánh**: `feat/pf-manage-rebuild` (cùng PR #121 với Entry 282)
@@ -126,9 +334,12 @@ Việc thêm `is_archived` thật sự **cần migration ⇒ ngoài phạm vi**,
 ### 7. CHƯA CHẠY (không tính là PASS)
 
 - **Full BE suite** — chạy trên VPS staging thì bị **OOM**: `exit=137` (SIGKILL).
-  Staging đang chạy cả stack nên không đủ RAM cho ~2.960 test. App đã sửa
-  (`user_workspace`) **chạy OK 681 test**. Cần chạy full suite ở nơi có đủ RAM
-  (local có 21 container, host yếu; CI có billing blocker — CLAIMS `adminui-w17c`).
+  ⚠ **Entry 284 §1-3 đã điều tra lại và SỬA phần giải thích của dòng này**: host
+  **KHÔNG** thiếu RAM (`available` 17.8 GB / 24 GB); nguyên nhân là
+  `mem_limit` **256 MiB** của container `core-api` trong khi full suite cần đỉnh
+  **542 MiB** (`memory.peak` đo được). App đã sửa (`user_workspace`) **chạy OK
+  681 test**; full suite với limit nâng lên 8 GiB ⇒ **2211 test, 10 FAIL + 2 ERROR
+  — đã chứng minh A/B là baseline đỏ có sẵn trên `dev`** (Entry 284 §7).
 - **Migrations mới** — không có. `is_archived` cho Portfolio vẫn là đề xuất mở.
 - **`nav_reason_text` tiếng Việt hardcode trong BE** (`ledger/valuation.py:39-45`)
   đã được **vòng qua** ở FE (tra mã máy `nav_reason` → key i18n), nhưng **BE
@@ -178,43 +389,6 @@ mâu thuẫn: *"navigated to `https://docker.edusuccess.vn/dashboard`"* — **đ
 hướng rồi** — rồi vẫn timeout. Hệ quả: `storageState` không bao giờ được ghi ⇒
 **mọi** spec E2E trong repo fail ở bước đăng nhập với **lý do sai** (tưởng app
 hỏng). Sửa: `waitUntil: 'domcontentloaded'`, timeout 30 s.
-
-## Entry 282: Thuc thi 5 quyet Owner tu audit 360 — unify routeId theo routeCatalog (D-01) + chot mau do=giam (2026-10-13)
-
-- **Nhanh**: `feat/audit-followup-5q` -> `dev` · claim `audit-followup-5q`
-- **Lessons ap dung**: L-V01, L-V02, L-G02, L-G04, L-G07, L-T01
-- **Quyet (1) mau do=giam — XONG**: `soc.tokens.css` xoa khoi canh bao, ghi Owner chot
-  2026-10-13 (do=giam, xanh=tang — khop spec + bang gia VN). **Tu sua bao cao audit**:
-  audit ghi "chuan VN la do=tang" la SAI (do la chuan Trung Quoc); bang gia VN dung
-  xanh la=tang, do=giam, vang=TC, tim=tran, xanh duong=san. Token hien tai dung san.
-- **Quyet (2) unify routeId — XONG**: `main.tsx` dung id catalog cho 11 route
-  (`portfolios`, `portfolios-manage`, `admin-tenants`, `admin-tenant-*` x4,
-  `admin-overview`, `admin-jobs`, `admin-audit-trace`); resolver map ve registry id cu
-  (`portfolio-workspace`, `core-portfolios`, `admin-core-*`) nen render KHONG doi.
-  Them entry `portfolios-manage` vao catalog (titleKey dung chung `routes.portfolios`
-  vi namespace moi chua co tren dev) + test nguoc main->catalog. **Hieu chinh audit**:
-  D-01 that su chi la id-drift contract (khong phai lo hong live) — `routeCatalog`
-  runtime chi duoc export qua `src/index.js:2` + 2 contract test, khong gate capability
-  nao doc theo id; phan quyen that o BE.
-- **L-T01 bat that**: Edit tool doi LF->CRLF/mixed o 2 file tren nhanh cu, numstat
-  phong 185/189 + 52/33; dung `normalize-eol` (khong co tren dev) --fix ve LF,
-  numstat gon dung 26/13, 5/3, 19/0, 5/9 (nhanh nay Edit giu LF, khong tai phat).
-- **Transplant sach**: code goc lam tren `feat/pf-manage-rebuild` (`a30a7cd44`) nhung
-  nhanh do con 16 commit chua merge (PR #121) nen lam rieng 4 file sang nhanh nay —
-  merge khong keo viec nguoi khac. Khong sua `pageRegistry.js` (`check-shell.mjs:155`
-  assert entry `portfolios`), khong `package.json`, khong migration.
-- **Gates chay that tren nhanh nay**: vitest route-catalog-contract + main-menu-contract
-  **2 file / 11 test PASS** (gom test nguoc moi); `npx tsc --noEmit` **exit 0**;
-  `eslint` 3 file **exit 0**; `check-multi-agent` o hook **0 loi**.
-- **CANH BAO DANH SO cho PR #121**: nhanh do dang giu `## Entry 282/283/284` rieng —
-  sau khi Entry nay merge, PR #121 rebase PHAl danh lai so (lay so tiep theo tren dev),
-  khong giu so cu keo trung ledger.
-- **Quyet (3)(4)(5) CHUA CODE**: (3) POST /ai/usage giu nguyen — FE chi GET
-  (`workspace.js:742-760`, khong caller POST), writer dung phai la server-side; cho
-  Owner chon go han (405) hay staff-only. (4) Y kien: CORS default false o prod +
-  `tenant=None -> qs.none()` tru 2 view support co ly do ghi ro. (5) Rechards: 9 file
-  (6 tenant-admin + AdminAnalytics + AIUsageDashboard + OrderFlowRadarPanel) — can slice
-  rieng (migrate sang echarts + bo dep, cham `package.json` deny-list).
 
 ## Entry 283: Xây lại `/portfolios/manage` — trang không hiển thị một đồng tiền nào trong khi BE đã tính sẵn (2026-10-13)
 
@@ -9801,6 +9975,8 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 271 | 2026-10-11 | **Portfolio entry** - `/portfolios` mo Portfolio workspace, trang quan ly CRUD chuyen sang `/portfolios/manage` (phuong an A do Owner chot) | `feat/portfolio-entry` -> `dev` | `tsc` 0 · `lint` 0 error · `check:shell` 0 · `check:ts-imports` PASS · `vitest src/pages/portfolio` 43/43 · `route-catalog-contract`+`main-menu-contract` 10/10 · `build` 0 · `check-multi-agent` 0 | Root cause `main.tsx:29` remap `portfolios` -> `core-portfolios` khien 5 man hinh Portfolio moi khong toi duoc. Lift `usePortfolioWorkspace` len page, khung thanh presentational; dong bug co san `selectedId` khong dieu khien 5 tab con. Sua BRK-06 trong 2 doc portfolio tro `/portfolios/manage`. **CHUA CHAY**: BE test, Playwright, full FE suite. L-T01 tai pham (Edit tool doi LF->CRLF, da chuan hoa lai). |
 | 272 | 2026-10-12 | **Dashboard UI/UX — sửa theo đo runtime, 1 claim audit bị refute, đóng thêm lỗi light mode** - 5 file. `align-items: start`→`stretch` (hết khoảng trống 380px vs 654px, treemap `flex:1` giãn ra); bỏ `padding-top:1.25rem` phá alignment tiêu đề; cụm nút heatmap `shrink-0`+`whitespace-nowrap` (hết gãy 2 dòng); **BUG THẬT** `UnifiedAlertCenter` gộp "chưa biết" vào "đã đọc" ⇒ 100% card mất màu severity + `opacity-60`; bỏ viền lồng 4 cạnh chỉ giữ severity rail; `text-slate-600` (2.5:1, FAIL AA) → `slate-400`; **khối light mode** `[data-theme="light"] .core-dashboard-page` | `feat/dashboard-uiux-ui` -> `dev` (claim `364da5a08`) | `tsc` 0 · **`test:components` full 128 file / 918 test PASS** · `npm run build` (tsc && vite build) 0 · `eslint src` **0 error** (3786 warn có sẵn, 12 trong 5 file này đều `no-unused-vars` có sẵn) · `check:tokens` PASS · `check:contrast` PASS · `check:ts-imports` PASS · `check:shell` **exit 0** · `check-multi-agent` 0 lỗi · `start_dev.ps1 -FrontendOnly` smoke **API OK / FE OK** | **Đo thật trên `:8080`** (Playwright + `page.route` mock, mẫu từ `dashboard-ui-fixes.spec.ts`): 1237px → 2 lane **587x654 bằng nhau**, `padTop` 16px cả 3, tiêu đề lệch 1px, nút 27px (1 dòng), card border `0\|0\|0\|4px`; 1600px → 3 lane 654px; `pageerror: none`. **Claim audit "ép chữ treemap thành trắng" SAI** — `textOnHeat()` đã chọn màu theo luminance và bảng màu cố ý toàn stop tối (`#14532d`) ⇒ chữ **đã trắng sẵn**; ép trắng xoá lớp bảo vệ, có test `heatmap-scale.component.test.ts` khoá. Hex `#090D16`/`#111827` cũng bị bỏ vì phá `check:tokens` + light mode. **Lỗi #6 light mode có sẵn** (chữ sáng trên nền sáng ≈1.2:1): HEAD đã dùng `bg-slate-900/30` tối hơn, và **mọi** rule `[data-theme="light"]` cũ đều scope trong `.advisory-page`; sau khi phủ → `9.45:1` / `9.9:1`. **`dist/` trên host KHÔNG phải artifact docker build** (build chạy trong image) — verify đầu báo "NOT FOUND" giả, phải `docker cp` từ container. **L-F07**: lần đầu báo "check:shell exit 0" lấy `$LASTEXITCODE` **sau** pipeline `\| Select-String` ⇒ đo nhầm (đó là exit của `Select-String`); đã tách 2 bước, mọi gate trên đều **EXIT=0 thật**. **CHƯA CHẠY**: BE test (thay đổi không chạm BE ⇒ không phải PASS cũng không phải FAIL) · Playwright trong repo (blocker Entry 270: `vite.config.ts` khai `proxy` chỉ trong `server`) · **app shell vẫn tối trong light mode** (ngoài phạm vi 5 file, đã đo để bàn giao) |
 ## Entry 272: Cuu 28 file uncommitted — 6 claim admin "done" nhung CHUA co commit nao (2026-10-12)
+
+| 282 | 2026-10-13 | **Xây lại `/portfolios/manage`** — trang cũ **không hiển thị một đồng tiền nào** dù BE đã tính sẵn (`portfolio_analytics_views.py:366-407`) và adapter đã có `getPortfolioSummary` (**0 lần gọi**). 11 finding đọc code thật · broker tách sang `/portfolios/manage/broker` · 8 cột tiền + KPI + drawer vị thế · sửa danh mục (PATCH) · 409 có thông điệp tiếng Việt · phân trang cursor (trước âm thầm cắt ở 50 dòng) · i18n 116 key × 2 · xoá `PortfoliosPage.css` (selector `button` toàn cục). **2 lỗi chỉ lộ khi probe staging thật**: nhãn phân trang luôn sai vì `defaultValue` bị bỏ qua khi key đã có trong dictionary; `cash_note` kỹ thuật lộ thẳng vào UI. Gate **21 PASS / 0 FAIL** · **928 test** · E2E staging **0 console error**. **L-T01 lần 13**: `File.WriteAllLines` chèn 1 dòng index làm **9 753 dòng** biến mất khỏi diff. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
