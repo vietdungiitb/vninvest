@@ -513,6 +513,30 @@ function checkClaims(dir = SD) {
   return { code: 0, out: [`check-claims: ${(raw.claims ?? []).length} tuyen bo — khop code.`], rows };
 }
 
+/* ------------------------------------------------------- catalog (Lop 2) */
+
+function checkCatalog() {
+  const gen = join(META, 'tools', 'gen-endpoint-catalog.py');
+  const target = join(SD, '07-API-SPEC', '07.02-danh-muc-api.md');
+  if (!existsSync(gen) || !existsSync(target)) {
+    return { code: 2, out: ['catalog: thieu tool hoac file dich — KHONG verify duoc'] };
+  }
+  let r;
+  try {
+    r = spawnSync('python', [gen, '--check', target], {
+      encoding: 'utf8', shell: false, windowsHide: true, cwd: ROOT,
+    });
+  } catch {
+    return { code: 2, out: ['catalog: khong chay duoc python — KHONG verify duoc'] };
+  }
+  if (r.error) {
+    return { code: 2, out: [`catalog: khong chay duoc python (${r.error.code}) — KHONG verify duoc`] };
+  }
+  const out = ((r.stdout ?? '') + (r.stderr ?? '')).trim().split('\n').filter(Boolean);
+  if (r.status !== 0) return { code: 1, out };
+  return { code: 0, out: [out[out.length - 1] ?? 'check-catalog: khop.'] };
+}
+
 /* ------------------------------------------------------------------- modes */
 
 function runCheck(dir = SD) {
@@ -576,6 +600,17 @@ function runCheck(dir = SD) {
   const cl = checkClaims(dir);
   all.push(...cl.out);
   if (cl.code !== 0) code = Math.max(code, cl.code);
+  // 6. danh muc API sinh lai (can Python + Django runtime; thieu thi SKIP
+  //    trung thuc chu khong bao xanh — L-G02)
+  if (dir === SD) {
+    const cat = checkCatalog();
+    all.push(...cat.out);
+    if (cat.code === 2) {
+      for (const line of cat.out) console.log('  SKIP  ' + line);
+    } else if (cat.code !== 0) {
+      code = Math.max(code, cat.code);
+    }
+  }
   for (const line of all) {
     if (/^FAIL/.test(line)) console.error(line);
     else console.log(line.startsWith('  ') ? line : '  ' + line);
