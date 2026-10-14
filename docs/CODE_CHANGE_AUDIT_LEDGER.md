@@ -1,4 +1,16 @@
 
+## Entry 314: Wave 0 B0.5 DONE - sync async 202 + xoa SyncView chet (2026-10-14)
+
+- **Nhanh**: `feat/mbw0-b05-async` -> `dev` - claim `mbw0-b05`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03. TDD fail-before.
+- **Viec lam**: 3 view sync `.delay()` + 202 `{job_id, state}` + envelope 100% (helper `_enqueue_sync_job` 503 + `_require_dnse_credentials` 400); XOA `PortfolioSyncView` stub + import + EXPECTED; 8 test (mock `.delay`, SimpleNamespace job).
+- **TDD (VPS staging, DB tam mbw0_b05, runbook §12)**: fail-before ImportError tren base; decorator tests lam regression; pass **8/8**; regression **111/111 OK** (capability_pav sau xoa SyncView, broker_config_api, worker_tenant, holdings, ledger sync/models).
+- **Bug that sua 2 lan**: (1) sua body quen decorator — `sync-accounts` rot xuong ham tran (mat auth/method check), gate endpoint-catalog bat duoc (`?` + perms `--`); them 2 test 401/405 + sua. (2) MagicMock trong response lam DRF JSONEncoder de quy vo han -> OOM 10-20GB (exit 137), chung minh bang faulthandler; doi sang SimpleNamespace. Quy tac moi: mock vao response chi chua kieu that.
+- **Su co VPS**: `git --work-tree=X checkout/reset` doi HEAD checkout chinh (nguy hiem) — da khoi phuc `dev@fd8b3f64d` co chung minh vo hai; ve sau chi `worktree remove/add`. Host co dot nghech do stack ERP team khac deploy song song (khong dung vao).
+- **Gate**: `makemigrations --check` exit 0 (khong model moi) · py_compile 0 · pre-push-gate **22/22 PASS** · system-design SACH (khong regen — 0 route/model moi).
+- **Don dep VPS**: DROP DB + 2 worktree + log - xong, verify.
+- **CHUA CHAY**: full BE suite · FE (da audit: panel chiu duoc 202; polling de Wave 2) · ruff (chua cai).
+
 ## Entry 313: Wave 0 B0.4 DONE - BrokerSyncRun + BrokerSyncIssue (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b04-syncrun` -> `dev` - claim `mbw0-b04`. 1 agent duy nhat, khong cham deny-list.
@@ -10261,6 +10273,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 311 | 2026-10-14 | **Wave 0 B0.2 DONE** - Portfolio kind/binding + Watchlist source, 7/7 + 48/48 + 118/118 OK tren VPS, pre-push 22/22. |
 | 312 | 2026-10-14 | **Wave 0 B0.3 DONE** - broker_account FK + trigger guard, 7/7 + 21/21 + 152/152 OK tren VPS, pre-push 22/22. |
 | 313 | 2026-10-14 | **Wave 0 B0.4 DONE** - SyncRun + SyncIssue, 6/6 + 21/21 + 111/111 OK tren VPS, pre-push 22/22. |
+| 314 | 2026-10-14 | **Wave 0 B0.5 DONE** - sync async 202 + xoa SyncView, 8/8 + 111/111 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
