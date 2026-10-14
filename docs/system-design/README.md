@@ -95,7 +95,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | `04-FUNCTIONAL-SPEC/` | Phân rã chức năng, sổ quy tắc nghiệp vụ | ⏳ Skeleton (slice tiếp theo) |
 | `05-WORKFLOW/` | Luồng công việc end-to-end | ⏳ Skeleton (slice tiếp theo) |
 | `06-DATA-ARCHITECTURE/` | Mô hình dữ liệu, data dictionary | ⏳ Skeleton — trỏ `D02` + `gen_data_doc.py` |
-| `07-API-SPEC/` | Quy ước API, danh mục endpoint | ⏳ Skeleton — trỏ `D03` + envelope contract |
+| `07-API-SPEC/` | Quy ước API, danh mục endpoint | ✅ 07.02 máy sinh 1473 route (vòng so trong `--check`) |
 | `08-TECH-STACK/` | Công nghệ, dependency, toolchain | ✅ 08.01 có stack đã verify |
 | `09-DEPLOYMENT-OPS/` | Triển khai, vận hành | ⏳ Skeleton — trỏ runbook staging |
 | `10-QUALITY-SECURITY/` | Kiểm thử, bảo mật, findings | ⏳ Skeleton — trỏ gate + lesson |
