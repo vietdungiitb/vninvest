@@ -1,4 +1,12 @@
 
+## Entry 291: Slice 05.01 luong cong viec - trace 5 workflow (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p6-flow` -> `dev` - claim `sysdesign-p6` (Phase 2 slice 5, sau merge PR #126).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: trace WF-01 onboarding (urls:27-28, onboarding_views:166), WF-02 dat lenh (views_dnse:621/:585, idempotency service, adapters:297, signals:113, transaction_sync:253), WF-03 advisory (views:273, tasks:170, orchestrator:230), WF-04 ingest (7 lich beat settings), WF-05 alert center (views:410, models:15, stream:760). Moi buoc file:line + cot tin cay.
+- **Ket qua**: `--check` exit 0 (139 citation) - pre-push **22/0/0** - LF sach.
+- **CHUA LAM**: dossier MODULES (nang tin cay) - 02.01 noi dung - 03.01 so do - 09/10/11 noi dung - ADR hoi to - test khoa advisory (0 file).
+
 ## Entry 290: Slice 07 remainder - ma tran quyen + danh muc ma loi (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p5-apix` -> `dev` - claim `sysdesign-p5` (Phase 2 slice 4, sau merge PR #125).
@@ -10035,6 +10043,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 288 | 2026-10-14 | **Slice 06 du lieu** - 107 model + 115 migration may sinh theo app, cot tenant FK. 06.01 ba bat bien verify tay. Con lai: MODULES verdict, 04.01, 05.01. |
 | 289 | 2026-10-14 | **Slice 04.01 ban do tinh nang** - 7 cum, cot tin cay, 3 GAP 0-test. Phat hien tenant_lifecycle 0 route + partner API can dossier. Con lai: 05.01, MODULES, ma tran quyen. |
 | 290 | 2026-10-14 | **Slice 07 remainder** - ma tran quyen 1473 route + 16 ma loi + 30 AllowAny da ra. 07 XONG tron bo. Con lai: 05.01, MODULES, 02/03/09/10/11. |
+| 291 | 2026-10-14 | **Slice 05.01 workflow** - trace 5 luong end-to-end co file:line. Con lai: MODULES, 02/03/09/10/11, ADR. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

@@ -46,9 +46,9 @@
       "title": "04.01 — Bản Đồ Tính Năng (Phân Rã Chức Năng)"
     },
     {
-      "lines": 27,
+      "lines": 72,
       "path": "docs/system-design/05-WORKFLOW/05.01-tong-quan-quy-trinh.md",
-      "title": "05.01 — Tổng Quan Quy Trình (Luồng Công Việc)"
+      "title": "05.01 — Tổng Quan Quy Trình (Luồng Công Việc End-to-End)"
     },
     {
       "lines": 40,
