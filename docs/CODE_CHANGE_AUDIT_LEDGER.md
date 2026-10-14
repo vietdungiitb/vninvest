@@ -1,4 +1,12 @@
 
+## Entry 301: Phase 3 slice 7 - test nhanh verify-fail Stripe (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p16-stripetest` -> `dev` - claim `sysdesign-p16` (sau merge PR #136). Slice code dau tien trong chuoi docs (them test, khong sua production).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04 + fail-before.
+- **Viec lam**: 2 test `StripeWebhookSignatureTestCase` (thieu header -> 400, sai ky -> 400 + verify goi 1 lan). Fail-before that: thieu mock is_configured -> 503 (singleton doc settings luc import). Chay local PG: 2/2 OK, ca file 16/16 OK.
+- **Bai hoc EOL**: Edit doi ca file CRLF (310/269) - chuan hoa LF theo index (42/1). Dong F-COM-01b.
+- **Ket qua**: `--check` exit 0 - pre-push **22/0/0** - CI cho PR sau.
+
 ## Entry 300: Phase 3 slice 6 - verdict webhook signature (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p15-webhook` -> `dev` - claim `sysdesign-p15` (sau merge PR #135). Tron 300 Entry.
@@ -10127,6 +10135,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 298 | 2026-10-14 | **Phase 3 slice 4** - GAP 0-test SAI, that ra 18 file/170 tests OK local. Sua 04.01 + 3 dossier + 10.01 + 13.01. |
 | 299 | 2026-10-14 | **Phase 3 slice 5** - ma tran test 186 file. Phat hien Edit bao success nhung khong persist - quy tac verify sau moi Edit. |
 | 300 | 2026-10-14 | **Phase 3 slice 6** - webhook 2 dau fail-closed, dong F-COM-01. Mo F-COM-01b (test nhanh verify-fail). |
+| 301 | 2026-10-14 | **Phase 3 slice 7** - 2 test khoa Stripe verify-fail (16/16 OK). Dong F-COM-01b. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
