@@ -1,4 +1,12 @@
 
+## Entry 295: Phase 3 slice 1 - giai ma partner API (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p10-partner` -> `dev` - claim `sysdesign-p10` (sau merge PR #130).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: doc `partner_urls.py` (docstring 1-7) + `views_tenant.py:50-251` - ket luan: `partner/*` la tenant self-admin (~54 endpoint x2 slash), KHONG phai API doi tac thu ba. Phan quyen 3-4 lop: TENANT_PERMISSION_CLASSES (:50) + partner scope (:74) + quyen min (:168) + loc theo tenant (:247-251). Dong F-IAA-01, nang dossier len XAC MINH.
+- **Ket qua**: `--check` exit 0 (192 citation) - pre-push **22/0/0** - LF sach.
+- **CHUA LAM**: advisory tenant FK - test 3 app 0-test - runbook rollback - C4 component sau.
+
 ## Entry 294: Slice final - noi dung 09/10/11 + 13.01 + 00.02 + 4 ADR (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p9-final` -> `dev` - claim `sysdesign-p9` (Phase 2 slice 8, sau merge PR #129). Bo ho so DU 13 phan he co noi dung.
@@ -10073,6 +10081,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 292 | 2026-10-14 | **Slice MODULES** - 15 dossier v1 theo khung. Gate bat 33 citation, sua xong. Con lai: 02/03/09/10/11/13.01, ADR. |
 | 293 | 2026-10-14 | **Slice 02+03** - 02.01 container+shell, 03.01 5 so do Mermaid. Con lai: 09/10/11, 13.01, 00.02, ADR. |
 | 294 | 2026-10-14 | **Slice final - BO HO SO HOAN CHINH v1** - 09/10/11 + 13.01 + 00.02 + 4 ADR. 42 file, 13/13 phan he, gate xanh. |
+| 295 | 2026-10-14 | **Phase 3 slice 1** - giai ma partner API (tenant self-admin, 3-4 lop quyen). Dong F-IAA-01. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
