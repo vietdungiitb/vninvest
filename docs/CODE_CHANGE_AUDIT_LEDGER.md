@@ -1,4 +1,12 @@
 
+## Entry 296: Phase 3 slice 2 - verdict advisory tenant FK (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p11-advtenant` -> `dev` - claim `sysdesign-p11` (sau merge PR #131).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: doc models advisory (Record FK user :101, Session FK user :155, Credential ISOLATION RULE :240) + 12 query loc user trong views + tenant qua user (:289). Verdict F-ADVSR-02: 0 tenant FK la DUNG THIET KE (cach ly qua User, BYOK per-user), khong phai loi.
+- **Ket qua**: `--check` exit 0 (194 citation, 2 citation moi duoc kiem that sau khi phat hien NON_CITATION bo qua) - pre-push **22/0/0** - LF sach.
+- **CHUA LAM**: test 3 app 0-test - runbook rollback - C4 component sau - nang tin cay dossier con lai.
+
 ## Entry 295: Phase 3 slice 1 - giai ma partner API (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p10-partner` -> `dev` - claim `sysdesign-p10` (sau merge PR #130).
@@ -10082,6 +10090,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 293 | 2026-10-14 | **Slice 02+03** - 02.01 container+shell, 03.01 5 so do Mermaid. Con lai: 09/10/11, 13.01, 00.02, ADR. |
 | 294 | 2026-10-14 | **Slice final - BO HO SO HOAN CHINH v1** - 09/10/11 + 13.01 + 00.02 + 4 ADR. 42 file, 13/13 phan he, gate xanh. |
 | 295 | 2026-10-14 | **Phase 3 slice 1** - giai ma partner API (tenant self-admin, 3-4 lop quyen). Dong F-IAA-01. |
+| 296 | 2026-10-14 | **Phase 3 slice 2** - verdict advisory tenant FK (dung thiet ke). Dong F-ADVSR-02. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
