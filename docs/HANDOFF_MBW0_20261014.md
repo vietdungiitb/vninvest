@@ -1,18 +1,17 @@
-# HANDOFF — phiên tiếp theo: Wave 0 B0.5 (sau B0.4/PR #143)
+# HANDOFF — phiên tiếp theo: Wave 0 B0.6 (sau B0.5/PR #144)
 
-- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.4)
-- **Trạng thái Wave 0:** B0.1–B0.4 DONE (B0.4: PR #143 chờ merge) · B0.5–B0.6 chưa
-  làm. Migration head sau merge: **0029**.
+- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.5)
+- **Trạng thái Wave 0:** B0.1–B0.5 DONE (B0.5: PR #144 chờ merge) · B0.6 chưa làm.
+  Không migration mới ở B0.5 (head vẫn **0029**).
 
-## 1. B0.5 làm gì (kế tiếp)
+## 1. B0.6 làm gì (kế tiếp — slice cuối Wave 0)
 
-`.delay()` cho 3 view sync DNSE (`views_dnse.py:504,534,558` gọi task trực tiếp) +
-bọc envelope cho nhánh lỗi `Response` thô (`:510-513`, `:525-528`) + route hoặc
-xoá `PortfolioSyncView` (chết, stub `sync_queued`). Test: response 202 + `job_id`
-(mock `task.delay`, không gọi broker thật), envelope 100% nhánh lỗi, route tồn tại
-hoặc view bị xoá. Không migration mới (không đổi model) — nhưng endpoint catalog
-(1473 route) có thể đổi nếu thêm/xoá route ⇒ regen + `--check`. Chạy test trên VPS
-theo runbook §12.3 (DB tạm mới, vd `mbw0_b05`).
+`GET /broker/capabilities/` trả `capability_matrix()` (`broker/base.py:70`) +
+`FULLY_SUPPORTED` dùng `is_fully_supported()` (`broker/base.py:78`) thay hardcode
+(`views_broker.py:38`). Test: version khớp `CAPABILITY_MATRIX_VERSION`, dnse only
+fully-supported, ssi/tcbs unverified với lý do. Không migration. Endpoint catalog
++1 route ⇒ regen + `--check`. Chạy test trên VPS theo runbook §12.3 (DB tạm mới,
+vd `mbw0_b06`). Sau B0.6: Wave 0 đóng (6/6), mở Wave 1 theo PLAN mục 4.
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 
