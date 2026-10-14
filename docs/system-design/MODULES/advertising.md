@@ -24,7 +24,8 @@ Có `advertising/tasks.py` + `advertising/signals.py` (tồn tại đo được;
 
 ## 5. Finding mở
 
-- F-ADV-01 (⚠ GAP): **0 test file** (đo được ở `04.01`).
+- F-ADV-01 (✅ ĐÃ ĐÓNG slice sysdesign-p13 — GAP sai): `advertising` CÓ 2 test
+  file ở `backend/tests/` (170 tests OK chung, 2026-10-14).
 - F-ADV-02 (❓): `TrademarkConfig` không tenant FK — xác minh dùng chung hay sót.
 
 ## 6. Test khóa + trạng thái

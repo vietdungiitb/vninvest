@@ -61,7 +61,7 @@
       "title": "03.01 — Danh Mục Sơ Đồ"
     },
     {
-      "lines": 70,
+      "lines": 74,
       "path": "docs/system-design/04-FUNCTIONAL-SPEC/04.01-ban-do-tinh-nang.md",
       "title": "04.01 — Bản Đồ Tính Năng (Phân Rã Chức Năng)"
     },
@@ -111,7 +111,7 @@
       "title": "09.02 — Runbook Khôi Phục (Rollback + Backup/Restore)"
     },
     {
-      "lines": 34,
+      "lines": 36,
       "path": "docs/system-design/10-QUALITY-SECURITY/10.01-chien-luoc-kiem-thu.md",
       "title": "10.01 — Chiến Lược Kiểm Thử"
     },
@@ -121,7 +121,7 @@
       "title": "11.01 — Quy Trình Phát Triển"
     },
     {
-      "lines": 33,
+      "lines": 35,
       "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
       "title": "13.01 — Lộ Trình Phát Triển"
     },
@@ -136,12 +136,12 @@
       "title": "MODULES — Dossier Từng Django App"
     },
     {
-      "lines": 33,
+      "lines": 34,
       "path": "docs/system-design/MODULES/advertising.md",
       "title": "MODULES/advertising — Advertising"
     },
     {
-      "lines": 42,
+      "lines": 43,
       "path": "docs/system-design/MODULES/advisory.md",
       "title": "MODULES/advisory — Advisory"
     },
@@ -196,7 +196,7 @@
       "title": "MODULES/signal_intelligence — Signal Intelligence"
     },
     {
-      "lines": 30,
+      "lines": 31,
       "path": "docs/system-design/MODULES/support.md",
       "title": "MODULES/support — Support"
     },

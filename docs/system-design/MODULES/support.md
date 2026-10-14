@@ -22,7 +22,8 @@ Có `support/tasks.py`. Không có file signal riêng.
 
 ## 5. Finding mở
 
-- F-SUP-01 (⚠ GAP): **0 test file** (đo được ở `04.01`).
+- F-SUP-01 (✅ ĐÃ ĐÓNG slice sysdesign-p13 — GAP sai): `support` CÓ 1 test
+  file ở `backend/tests/` (170 tests OK chung, 2026-10-14).
 
 ## 6. Test khóa + trạng thái
 
