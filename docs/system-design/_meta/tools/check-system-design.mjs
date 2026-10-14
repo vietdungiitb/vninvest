@@ -515,11 +515,11 @@ function checkClaims(dir = SD) {
 
 /* ------------------------------------------------------- catalog (Lop 2) */
 
-function checkCatalog() {
-  const gen = join(META, 'tools', 'gen-endpoint-catalog.py');
-  const target = join(SD, '07-API-SPEC', '07.02-danh-muc-api.md');
+function checkGenerated(genName, targetRel, okNote) {
+  const gen = join(META, 'tools', genName);
+  const target = join(SD, targetRel);
   if (!existsSync(gen) || !existsSync(target)) {
-    return { code: 2, out: ['catalog: thieu tool hoac file dich — KHONG verify duoc'] };
+    return { code: 2, out: [`catalog: thieu ${genName} hoac ${targetRel} — KHONG verify duoc`] };
   }
   let r;
   try {
@@ -534,7 +534,19 @@ function checkCatalog() {
   }
   const out = ((r.stdout ?? '') + (r.stderr ?? '')).trim().split('\n').filter(Boolean);
   if (r.status !== 0) return { code: 1, out };
-  return { code: 0, out: [out[out.length - 1] ?? 'check-catalog: khop.'] };
+  return { code: 0, out: [out[out.length - 1] ?? okNote] };
+}
+
+function checkCatalog() {
+  return checkGenerated(
+    'gen-endpoint-catalog.py', join('07-API-SPEC', '07.02-danh-muc-api.md'),
+    'check-catalog: khop.');
+}
+
+function checkModelCatalog() {
+  return checkGenerated(
+    'gen-model-catalog.py', join('06-DATA-ARCHITECTURE', '06.02-danh-muc-model.md'),
+    'check-model-catalog: khop.');
 }
 
 /* ------------------------------------------------------------------- modes */
@@ -602,6 +614,7 @@ function runCheck(dir = SD) {
   if (cl.code !== 0) code = Math.max(code, cl.code);
   // 6. danh muc API sinh lai (can Python + Django runtime; thieu thi SKIP
   //    trung thuc chu khong bao xanh — L-G02)
+  // 7. danh muc model sinh lai (tuong tu)
   if (dir === SD) {
     const cat = checkCatalog();
     all.push(...cat.out);
@@ -609,6 +622,13 @@ function runCheck(dir = SD) {
       for (const line of cat.out) console.log('  SKIP  ' + line);
     } else if (cat.code !== 0) {
       code = Math.max(code, cat.code);
+    }
+    const mcat = checkModelCatalog();
+    all.push(...mcat.out);
+    if (mcat.code === 2) {
+      for (const line of mcat.out) console.log('  SKIP  ' + line);
+    } else if (mcat.code !== 0) {
+      code = Math.max(code, mcat.code);
     }
   }
   for (const line of all) {
