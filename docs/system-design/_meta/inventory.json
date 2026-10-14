@@ -61,7 +61,7 @@
       "title": "06.02 — Danh Mục Model (Máy Sinh, Không Sửa Tay)"
     },
     {
-      "lines": 27,
+      "lines": 29,
       "path": "docs/system-design/07-API-SPEC/07.01-quy-uoc-api.md",
       "title": "07.01 — Quy Ước API"
     },
@@ -69,6 +69,11 @@
       "lines": 1493,
       "path": "docs/system-design/07-API-SPEC/07.02-danh-muc-api.md",
       "title": "07.02 — Danh Mục API (Máy Sinh, Không Sửa Tay)"
+    },
+    {
+      "lines": 72,
+      "path": "docs/system-design/07-API-SPEC/07.03-ma-tran-phan-quyen.md",
+      "title": "07.03 — Ma Trận Phân Quyền & Danh Mục Mã Lỗi"
     },
     {
       "lines": 48,
