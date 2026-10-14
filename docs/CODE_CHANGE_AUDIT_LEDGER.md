@@ -1,4 +1,19 @@
 
+## Entry 286: Phase 1 bo ho so system-design - governance + skeleton 13 phan he + topic-map + tools/gate (2026-10-14)
+
+- **Nhanh**: `feat/system-design-phase1` -> `dev` - claim `sysdesign-p1`
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08
+- **Owner chot (2026-10-14)**: Phase 1 xuong song truoc - giu `docs/architecture/` + `docs/saas_design_pack/` nguyen (chi tro toi) - tieng Viet - tools kem gate chan.
+- **Khao sat**: ca 3 repo anh em (`vninvestcharts-widget`, `vnsaas`, `ERP-Edusuccess`) dung chung khung `docs/system-design/` 13 phan he + `_meta/tools` + `claims.json` + gate `--check` trong pre-push. vninvest co **1755 file `.md`** trong `docs/` (19 thu muc con) - dung benh can chua.
+- **Phat hien dat gia ngay phien 1**: `measure_repo.py` bao **4/9 so lieu `architecture/README` s0.4 da lech** (routes 1029->1473, core_v1 609->615, compose 8->10, web files 516->563) - bang chung song cho can bo ho so co may canh. Khong sua file cua session khac, chi ghi nhan + dung so do moi.
+- **Dem chuan truoc khi ghi (L-G04)**: 16 dir co `apps.py` nhung `measure` bao 15 - doc `count_apps()` thay loai tru `vninvest_core` (project package). So chuan: **15 app / 107 model / 115 migration / 10 compose / 42 beat** (do 2026-10-14).
+- **TAO MOI**: `docs/system-design/` 21 file viet tay (README + 00.01-00.04 + adr/README + 01.01 + 12 stub 02-13 + MODULES/README) + `_meta/claims.json` (6 claims) + `_meta/retired-citations.json` + `_meta/tools/check-system-design.mjs` + 2 file may sinh (`inventory.json`, `freshness-report.md`).
+- **SUA (additive, co guard)**: `scripts/pre-push-gate.mjs` +10/-0 (khoi `system-design`). Khong cham deny-list, khong package.json, khong migration.
+- **Gate tu chung minh**: `--self-test` 5/5 (1 control + 4 probe bat loi). Trong luc viet, gate tu bat 4 loi that: citation `scripts/check-envelope-contract.py` sai duong dan (that la `packages/core/backend/scripts/`) - 3 trich dan ma chet - quote C-006 lech 22/21 - cum tieng Hoa lot vao 07.01.
+- **Ket qua**: `--check` exit 0 (21 file - 29 link - 101 citation - 18 chu de - 6 claims khop code). `pre-push-gate` **22 PASS / 0 SKIP / 0 FAIL**. File moi thuan LF (26 file, 0 CR).
+- **Bai hoc moi**: tool `--write` sinh `freshness-report.md` roi `--check` dem luon file vua sinh => tu tao drift (2->3). Sua: `_meta/` ra khoi vong quet viet tay (co vong so rieng). Hai edit truot oldString lien tiep deu do NHO SAI noi dung da viet - tin Read, dung tin nho (L-T02).
+- **CHUA LAM (Phase 2)**: noi dung chi tiet 04/05/07.02/06/MODULES tung app - kiem ke 262 file goc + 1369 archive - danh muc env - ma tran phan quyen.
+
 ## Entry 282: Thuc thi 5 quyet Owner tu audit 360 — unify routeId theo routeCatalog (D-01) + chot mau do=giam (2026-10-13)
 
 - **Nhanh**: `feat/audit-followup-5q` -> `dev` · claim `audit-followup-5q`
@@ -9977,6 +9992,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 ## Entry 272: Cuu 28 file uncommitted — 6 claim admin "done" nhung CHUA co commit nao (2026-10-12)
 
 | 282 | 2026-10-13 | **Xây lại `/portfolios/manage`** — trang cũ **không hiển thị một đồng tiền nào** dù BE đã tính sẵn (`portfolio_analytics_views.py:366-407`) và adapter đã có `getPortfolioSummary` (**0 lần gọi**). 11 finding đọc code thật · broker tách sang `/portfolios/manage/broker` · 8 cột tiền + KPI + drawer vị thế · sửa danh mục (PATCH) · 409 có thông điệp tiếng Việt · phân trang cursor (trước âm thầm cắt ở 50 dòng) · i18n 116 key × 2 · xoá `PortfoliosPage.css` (selector `button` toàn cục). **2 lỗi chỉ lộ khi probe staging thật**: nhãn phân trang luôn sai vì `defaultValue` bị bỏ qua khi key đã có trong dictionary; `cash_note` kỹ thuật lộ thẳng vào UI. Gate **21 PASS / 0 FAIL** · **928 test** · E2E staging **0 console error**. **L-T01 lần 13**: `File.WriteAllLines` chèn 1 dòng index làm **9 753 dòng** biến mất khỏi diff. |
+| 286 | 2026-10-14 | **Phase 1 bo ho so system-design** - governance + skeleton 13 phan he + topic-map + tools/gate. `--check` exit 0, pre-push **22/0/0**. Phase 2: noi dung 04/05/07.02/06/MODULES + kiem ke docs cu. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
