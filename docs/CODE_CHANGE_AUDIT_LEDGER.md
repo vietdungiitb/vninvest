@@ -1,4 +1,14 @@
 
+## Entry 312: Wave 0 B0.3 DONE - broker_account FK + trigger tenant guard (2026-10-14)
+
+- **Nhanh**: `feat/mbw0-b03-broker-account` -> `dev` - claim `mbw0-b03`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-M01, L-M02, L-M03, L-B01, L-B02, L-B03, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03, TDD fail-before.
+- **Viec lam**: 4 FK `broker_account` (nullable, SET_NULL, related_name rieng); trigger `user_workspace_check_broker_account_tenant` (BEFORE INSERT/UPDATE, 3 bang co tenant; AccountSnapshot chi FK — bat doi xung ghi PLAN + test). Migration 0027 (schema) + 0028 (RunSQL trigger, ASCII-only, `elidable=False`). 7 test moi.
+- **TDD (VPS staging, DB tam mbw0_b03, runbook §12)**: fail-before `TypeError ... broker_account` 7 errors => pass **7/7**; kem B0.1+B0.2: **21/21**; regression mo rong: **152/152 OK**.
+- **Gate**: `makemigrations --check` exit 0 · py_compile 0 · pre-push-gate **22/22 PASS** · system-design regen (108 model/120 migration, C-003) --check SACH.
+- **VPS sach**: DROP DB + 2 worktree + log - xong. Quy trinh dung: `worktree remove --force` (khong `checkout` qua work-tree nhu su co B0.2).
+- **CHUA CHAY**: full BE suite · FE (slice BE-only) · ruff (chua cai).
+
 ## Entry 311: Wave 0 B0.2 DONE - Portfolio kind/binding + Watchlist source (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b02-portfolio` -> `dev` - claim `mbw0-b02`. 1 agent duy nhat, khong cham deny-list.
@@ -10239,6 +10249,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 309 | 2026-10-14 | **Quy dinh test tren VPS** - runbook §12, BE du dieu kien, FE CHUA KIEM CHUNG. |
 | 310 | 2026-10-14 | **Nhan phan hoi vnbroker + ADR-007** - 26 contract test passed, gate 3.8.0, B0.2 mo rong Watchlist. |
 | 311 | 2026-10-14 | **Wave 0 B0.2 DONE** - Portfolio kind/binding + Watchlist source, 7/7 + 48/48 + 118/118 OK tren VPS, pre-push 22/22. |
+| 312 | 2026-10-14 | **Wave 0 B0.3 DONE** - broker_account FK + trigger guard, 7/7 + 21/21 + 152/152 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
