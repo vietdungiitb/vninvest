@@ -1,4 +1,13 @@
 
+## Entry 293: Slice 02+03 kien truc - noi dung 02.01 + so do 03.01 (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p8-arch` -> `dev` - claim `sysdesign-p8` (Phase 2 slice 7, sau merge PR #128).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: 02.01 container do tu compose prod (12 service) + shell FE (registry lazy, 16 adapter) + 7 cum + quyet dinh dong goi. 03.01 nam so do Mermaid co ban (context/container/FBD/DFD/ERD) kem nguon tung so do.
+- **Tu sua truoc gate**: 3 con so viet tay trong 02.01 (62 lazy, 16 adapter, 42 lich) dien dat lai theo nguyen tac may-do (1 edit truot do nho sai - tin Read).
+- **Ket qua**: `--check` exit 0 (171 citation) - pre-push **22/0/0** - LF sach.
+- **CHUA LAM**: 09/10/11 noi dung - 13.01 chi tiet - 00.02 mo rong - ADR hoi to - C4 component 2 app phuc tap.
+
 ## Entry 292: Slice MODULES - 15 dossier app v1 (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p7-modules` -> `dev` - claim `sysdesign-p7` (Phase 2 slice 6, sau merge PR #127).
@@ -10054,6 +10063,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 290 | 2026-10-14 | **Slice 07 remainder** - ma tran quyen 1473 route + 16 ma loi + 30 AllowAny da ra. 07 XONG tron bo. Con lai: 05.01, MODULES, 02/03/09/10/11. |
 | 291 | 2026-10-14 | **Slice 05.01 workflow** - trace 5 luong end-to-end co file:line. Con lai: MODULES, 02/03/09/10/11, ADR. |
 | 292 | 2026-10-14 | **Slice MODULES** - 15 dossier v1 theo khung. Gate bat 33 citation, sua xong. Con lai: 02/03/09/10/11/13.01, ADR. |
+| 293 | 2026-10-14 | **Slice 02+03** - 02.01 container+shell, 03.01 5 so do Mermaid. Con lai: 09/10/11, 13.01, 00.02, ADR. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

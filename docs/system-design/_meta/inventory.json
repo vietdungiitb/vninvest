@@ -31,12 +31,12 @@
       "title": "01.01 — Tóm Tắt Điều Hành"
     },
     {
-      "lines": 30,
+      "lines": 50,
       "path": "docs/system-design/02-ARCHITECTURE/02.01-tong-quan-kien-truc.md",
       "title": "02.01 — Tổng Quan Kiến Trúc"
     },
     {
-      "lines": 24,
+      "lines": 98,
       "path": "docs/system-design/03-DIAGRAMS/03.01-danh-muc-so-do.md",
       "title": "03.01 — Danh Mục Sơ Đồ"
     },

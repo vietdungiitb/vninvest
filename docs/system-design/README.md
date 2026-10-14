@@ -90,8 +90,8 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 |---|---|---|
 | `00-GOVERNANCE/` | Quản trị, thuật ngữ, đồng bộ, bản đồ chủ đề, ADR | ✅ Đầy đủ |
 | `01-SYSTEM-OVERVIEW/` | Tóm tắt điều hành, ngữ cảnh hệ thống | ✅ 01.01 có số liệu máy đo |
-| `02-ARCHITECTURE/` | Tổng quan kiến trúc, container, bản đồ module | ⏳ Skeleton — trỏ `D02` |
-| `03-DIAGRAMS/` | Danh mục sơ đồ (C4, FBD, DFD, ERD) | ⏳ Skeleton — trỏ `D01`/`D02` |
+| `02-ARCHITECTURE/` | Tổng quan kiến trúc, container, bản đồ module | ✅ 02.01 container + shell + 7 cụm (đo từ compose/registry) |
+| `03-DIAGRAMS/` | Danh mục sơ đồ (C4, FBD, DFD, ERD) | ✅ 03.01 năm sơ đồ Mermaid cơ bản (context/container/FBD/DFD/ERD) |
 | `04-FUNCTIONAL-SPEC/` | Phân rã chức năng, sổ quy tắc nghiệp vụ | ✅ 04.01 theo 7 cụm (nhóm route máy trích + cột tin cậy + 3 GAP 0-test) |
 | `05-WORKFLOW/` | Luồng công việc end-to-end | ✅ 05.01 trace 5 workflow (mỗi bước `file:line` + cột tin cậy) |
 | `06-DATA-ARCHITECTURE/` | Mô hình dữ liệu, data dictionary | ✅ 06.01 ba bất biến verify + 06.02 máy sinh 107 model (vòng so trong `--check`) |
