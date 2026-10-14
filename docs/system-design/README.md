@@ -92,7 +92,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | `01-SYSTEM-OVERVIEW/` | Tóm tắt điều hành, ngữ cảnh hệ thống | ✅ 01.01 có số liệu máy đo |
 | `02-ARCHITECTURE/` | Tổng quan kiến trúc, container, bản đồ module | ⏳ Skeleton — trỏ `D02` |
 | `03-DIAGRAMS/` | Danh mục sơ đồ (C4, FBD, DFD, ERD) | ⏳ Skeleton — trỏ `D01`/`D02` |
-| `04-FUNCTIONAL-SPEC/` | Phân rã chức năng, sổ quy tắc nghiệp vụ | ⏳ Skeleton (slice tiếp theo) |
+| `04-FUNCTIONAL-SPEC/` | Phân rã chức năng, sổ quy tắc nghiệp vụ | ✅ 04.01 theo 7 cụm (nhóm route máy trích + cột tin cậy + 3 GAP 0-test) |
 | `05-WORKFLOW/` | Luồng công việc end-to-end | ⏳ Skeleton (slice tiếp theo) |
 | `06-DATA-ARCHITECTURE/` | Mô hình dữ liệu, data dictionary | ✅ 06.01 ba bất biến verify + 06.02 máy sinh 107 model (vòng so trong `--check`) |
 | `07-API-SPEC/` | Quy ước API, danh mục endpoint | ✅ 07.02 máy sinh 1473 route (vòng so trong `--check`) |
