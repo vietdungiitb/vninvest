@@ -11,10 +11,15 @@ qua 6 endpoint (status/refresh/refresh-info/latest/history/backtest —
 
 ## 2. Models (6 — chi tiết ở `06.02`)
 
-`AdvisoryRecord`, `AdvisorySession`, `AdvisoryComponent`, `SystemAISettings`,
-`UserAICredential`, `AIAuditLog` — **0/6 có tenant FK trực tiếp** (❓ finding
-candidate: bản ghi theo user hay tenant? Cách ly qua bảng cha hay thiếu scope?
-Chưa verdict — cần đọc quan hệ FK).
+`AdvisoryRecord` (FK user nullable), `AdvisorySession` (FK user), `AdvisoryComponent`,
+`SystemAISettings`, `UserAICredential`, `AIAuditLog` — 0/6 có tenant FK trực tiếp.
+**Verdict F-ADVSR-02 (✅ ĐÃ XÁC MINH slice sysdesign-p11): ĐÚNG THIẾT KẾ, không
+phải lỗi.** Quy tắc cách ly ghi ngay trong code (`advisory/models.py:240`:
+"ISOLATION RULE: Chỉ dependency là User model" — BYOK per-user); mọi query lọc
+`user=request.user` (12 chỗ trong `advisory/views.py`: `:159`, `:209`, `:251`, `:324`,
+`:352`, `:592`, `:711`, `:758`, `:843`…); credential đọc theo user (`:416`,
+`:494`); tenant resolve qua user (`:289` `_get_tenant`). Tenant kế thừa qua
+user, không cần FK trực tiếp.
 
 ## 3. API (6 route — chi tiết ở `07.02`)
 
@@ -26,9 +31,10 @@ Có `advisory/tasks.py` (`generate_advisory_task` ở `advisory/tasks.py:170`); 
 
 ## 5. Finding mở
 
+- F-ADVSR-02 (✅ ĐÃ ĐÓNG slice sysdesign-p11): 0/6 tenant FK là đúng thiết kế
+  (cách ly qua User — xem §2). Không mở lại trừ khi đổi mô hình BYOK.
 - F-ADVSR-01 (⚠ GAP): **0 test file** (đo được ở `04.01`) — pipeline 3-agent
   không có test khóa nào.
-- F-ADVSR-02 (❓): 0/6 model có tenant FK trực tiếp — xác minh cách ly tenant.
 
 ## 6. Test khóa + trạng thái
 
