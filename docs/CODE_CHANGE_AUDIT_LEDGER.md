@@ -1,4 +1,13 @@
 
+## Entry 290: Slice 07 remainder - ma tran quyen + danh muc ma loi (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p5-apix` -> `dev` - claim `sysdesign-p5` (Phase 2 slice 4, sau merge PR #125).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: 07.03 trich may tu cot perms 07.02 (1473 route du 0 lech, sua script split ton trong backtick) + danh muc 16 ma loi grep co file:line + ra 30 route AllowAny tung path (webhook ky rieng, capabilities chua xac minh). Dong todo 07.01 muc 2+3.
+- **Loai bo nhieu**: `error_code_slug` chi la vi du docstring (exceptions.py:399) - `market_serving || identity_access` chi la split hong cua script thong ke.
+- **Ket qua**: `--check` exit 0 (121 citation) - pre-push **22/0/0** - LF sach. C-006 22->23.
+- **07 XONG**: quy uoc + danh muc + ma tran + ma loi. Con lai: 05.01, 02.01 noi dung, 03.01 so do, MODULES, 09/10/11 noi dung, ADR hoi to.
+
 ## Entry 289: Slice 04.01 ban do tinh nang - 7 cum + cot tin cay (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p4-func` -> `dev` - claim `sysdesign-p4` (Phase 2 slice 3, sau merge PR #124).
@@ -10025,6 +10034,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 287 | 2026-10-14 | **Slice 07.02 danh muc API may sinh** - 1473 route walk resolver, khop measure doc lap. Vong so trong `--check`. Con lai: ma tran quyen, ma loi, test khoa. |
 | 288 | 2026-10-14 | **Slice 06 du lieu** - 107 model + 115 migration may sinh theo app, cot tenant FK. 06.01 ba bat bien verify tay. Con lai: MODULES verdict, 04.01, 05.01. |
 | 289 | 2026-10-14 | **Slice 04.01 ban do tinh nang** - 7 cum, cot tin cay, 3 GAP 0-test. Phat hien tenant_lifecycle 0 route + partner API can dossier. Con lai: 05.01, MODULES, ma tran quyen. |
+| 290 | 2026-10-14 | **Slice 07 remainder** - ma tran quyen 1473 route + 16 ma loi + 30 AllowAny da ra. 07 XONG tron bo. Con lai: 05.01, MODULES, 02/03/09/10/11. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
