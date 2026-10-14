@@ -730,16 +730,6 @@ class PortfolioAnalyticsView(APIView):
         }, meta=summary_body.get('meta') if isinstance(summary_body, dict) else None)
 
 
-class PortfolioSyncView(APIView):
-    """POST /api/portfolio/portfolios/<portfolio_id>/sync/"""
-    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
-    required_workspace_permission = 'portfolio_write'
-
-    def post(self, request, portfolio_id):
-        _get_user_portfolio(request, portfolio_id)
-        return envelope({'portfolio_id': portfolio_id, 'status': 'sync_queued'})
-
-
 @extend_schema(
     summary='PortfolioTechnicalsView (native route)',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',

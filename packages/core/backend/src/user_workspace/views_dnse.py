@@ -11,7 +11,6 @@ from rest_framework.decorators import (
     throttle_classes,
 )
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.throttling import ScopedRateThrottle
 from django.utils import timezone
@@ -32,8 +31,7 @@ from .dnse_adapter import (
     DNSECredentialMissingError,
     DNSEVnbrokerUnavailableError,
 )
-from .models import DNSECredential, SubAccount, get_user_broker_config, set_user_broker_secrets
-from .serializers import SubAccountSerializer
+from .models import DNSECredential, get_user_broker_config, set_user_broker_secrets
 from .services import idempotency
 from .tasks import (
     reconcile_dnse_transactions_task,
@@ -498,34 +496,52 @@ def _get_active_dnse_client(user):
 # Giữ lại sync/OTP/order views (đọc secrets qua _get_dnse_secrets → store mới trước).
 
 
+def _enqueue_sync_job(task, *args, **kwargs):
+    """Day task broker vao hang doi, tra job. Hang doi chet => 503 fail-closed.
+
+    B0.5 (Wave 0): MỌI I/O broker ra khoi request. Caller khong bao gio nhan
+    ket qua dong bo truc tiep nua — poll qua `broker/jobs/<job_id>/`
+    (views_broker.broker_job_status_api). FE Sync Center (Wave 2) dung co che nay.
+    """
+    try:
+        return task.delay(*args, **kwargs)
+    except Exception as exc:
+        logger.warning('dnse: enqueue %s that bai — %s', task.name, exc)
+        raise ServiceUnavailableException(
+            detail='Khong day duoc tac vu dong bo vao hang doi. Vui long thu lai sau.',
+            code='broker_queue_unavailable',
+        ) from exc
+
+
+def _require_dnse_credentials(user):
+    """Thieu credential => 400 envelope (thong nhat ca 3 view sync)."""
+    if not _has_dnse_credentials(user):
+        raise ValidationErrorException(
+            detail='DNSE LightSpeed credential chua duoc thiet lap. '
+                   'Cau hinh Client ID va Client Secret truoc.',
+            code='validation_error',
+        )
+
+
 @required_workspace_permission('portfolio_write')
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_accounts_api(request):
     """
-    Kích hoạt tác vụ đồng bộ tiểu khoản từ DNSE LightSpeed API.
+    B0.5: tra 202 + job_id ngay (<500ms), dong bo chay trong worker.
+    Ket qua cu `{synced_count, accounts}` khong con — FE hien tai chiu duoc
+    (hien count 0, khong crash); polling job la viec cua Wave 2 (Sync Center).
     """
     user = request.user
-    if not _has_dnse_credentials(user):
-        return Response({
-            "ok": False,
-            "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    result = sync_dnse_accounts_task(user.id)
-
-    if result.get("ok"):
-        sub_accounts = SubAccount.objects.filter(user=user, broker_source='DNSE')
-        serializer = SubAccountSerializer(sub_accounts, many=True)
-        return envelope({
-            "ok": True,
-            "synced_count": result.get("synced_count", 0),
-            "accounts": serializer.data,
-        })
-    return Response({
-        "ok": False,
-        "error": result.get("error", "Đồng bộ thất bại."),
-    }, status=status.HTTP_502_BAD_GATEWAY)
+    _require_dnse_credentials(user)
+    tenant = getattr(request, 'tenant', None)
+    job = _enqueue_sync_job(
+        sync_dnse_accounts_task, user.id,
+        tenant_id=getattr(tenant, 'id', None),
+    )
+    return envelope(
+        {'ok': True, 'job_id': job.id, 'state': 'pending'},
+        status=status.HTTP_202_ACCEPTED)
 
 
 @required_workspace_permission('portfolio_write')
@@ -533,23 +549,14 @@ def dnse_sync_accounts_api(request):
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_balances_api(request):
     """
-    Kích hoạt tác vụ đồng bộ số dư/NAV từ DNSE cho các tiểu khoản đã liên kết.
+    B0.5: tra 202 + job_id ngay (<500ms), dong bo chay trong worker.
     """
     user = request.user
-    if not _has_dnse_credentials(user):
-        raise ValidationErrorException(
-            detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
-            code="validation_error"
-        )
-
-    result = sync_dnse_balances_task(user.id)
-    if result.get("ok"):
-        return envelope(result)
-
-    raise ValidationErrorException(
-        detail=result.get("error", "Đồng bộ số dư thất bại."),
-        code="validation_error"
-    )
+    _require_dnse_credentials(user)
+    job = _enqueue_sync_job(sync_dnse_balances_task, user.id)
+    return envelope(
+        {'ok': True, 'job_id': job.id, 'state': 'pending'},
+        status=status.HTTP_202_ACCEPTED)
 
 
 @required_workspace_permission('portfolio_write')
@@ -557,14 +564,10 @@ def dnse_sync_balances_api(request):
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_reconcile_transactions_api(request):
     """
-    Kích hoạt đối soát giao dịch DNSE cho các tiểu khoản đã liên kết.
+    B0.5: tra 202 + job_id ngay (<500ms), doi soat chay trong worker.
     """
     user = request.user
-    if not _has_dnse_credentials(user):
-        raise ValidationErrorException(
-            detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
-            code="validation_error"
-        )
+    _require_dnse_credentials(user)
 
     raw_days_back = request.data.get("days_back", 7)
     try:
@@ -572,14 +575,11 @@ def dnse_reconcile_transactions_api(request):
     except (TypeError, ValueError):
         days_back = 7
 
-    result = reconcile_dnse_transactions_task(user.id, days_back=days_back)
-    if result.get("ok"):
-        return envelope(result)
-
-    raise ValidationErrorException(
-        detail=result.get("error", "Đối soát giao dịch thất bại."),
-        code="validation_error"
-    )
+    job = _enqueue_sync_job(
+        reconcile_dnse_transactions_task, user.id, days_back=days_back)
+    return envelope(
+        {'ok': True, 'job_id': job.id, 'state': 'pending'},
+        status=status.HTTP_202_ACCEPTED)
 
 
 def _assert_broker_writes_allowed(request, provider, *, action: str) -> None:
