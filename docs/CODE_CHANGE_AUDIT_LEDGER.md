@@ -1,4 +1,13 @@
 
+## Entry 288: Slice 06 du lieu - gen-model-catalog + noi dung 06.01 ba bat bien (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p3-data` -> `dev` - claim `sysdesign-p3` (Phase 2 slice 2, sau merge PR #123).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: `gen-model-catalog.py` tu Django runtime (`apps.get_models` + doc `migrations/`): **107 model + 115 migration** theo 15 app - khop claims qua phuong phap doc lap thu ba. Cot tenant FK moi model (42 co, 65 khong - chu yeu bang nen/dung chung, verdict tung app de dossier MODULES). Sinh `06.02-danh-muc-model.md`; refactor vong so catalog thanh ham chung + them buoc model.
+- **Noi dung 06.01 viet tu code doc that**: Portfolio khong co `is_archived` (grep 0 ket qua) + tenant FK NOT NULL (`models.py:35-43`); LedgerEntry `AppendOnlyMixin` (`:1040`) + tenant NOT NULL (`:1086-1092`) + unique `(tenant, external_id)` (`:1150-1154`) + single reversal (`:1157-1161`). Tham chieu probe cu bang con tro (migration + claim), khong khang dinh lai.
+- **Ket qua**: model `--check` khop 107 - self-test 5/5 - `--check` exit 0 (7 buoc) - pre-push **22/0/0**. C-006 21->22 (06.02 la file moi hoan toan). File moi thuan LF.
+- **CHUA LAM**: verdict tenant FK tung model (MODULES) - 04.01 ban do tinh nang - 05.01 workflow - ma tran quyen - ma loi - test khoa.
+
 ## Entry 287: Slice 07.02 danh muc API may sinh - gen-endpoint-catalog walk resolver (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p2-api` -> `dev` - claim `sysdesign-p2` (Phase 2 slice 1, sau merge PR #122).
@@ -10004,6 +10013,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 282 | 2026-10-13 | **Xây lại `/portfolios/manage`** — trang cũ **không hiển thị một đồng tiền nào** dù BE đã tính sẵn (`portfolio_analytics_views.py:366-407`) và adapter đã có `getPortfolioSummary` (**0 lần gọi**). 11 finding đọc code thật · broker tách sang `/portfolios/manage/broker` · 8 cột tiền + KPI + drawer vị thế · sửa danh mục (PATCH) · 409 có thông điệp tiếng Việt · phân trang cursor (trước âm thầm cắt ở 50 dòng) · i18n 116 key × 2 · xoá `PortfoliosPage.css` (selector `button` toàn cục). **2 lỗi chỉ lộ khi probe staging thật**: nhãn phân trang luôn sai vì `defaultValue` bị bỏ qua khi key đã có trong dictionary; `cash_note` kỹ thuật lộ thẳng vào UI. Gate **21 PASS / 0 FAIL** · **928 test** · E2E staging **0 console error**. **L-T01 lần 13**: `File.WriteAllLines` chèn 1 dòng index làm **9 753 dòng** biến mất khỏi diff. |
 | 286 | 2026-10-14 | **Phase 1 bo ho so system-design** - governance + skeleton 13 phan he + topic-map + tools/gate. `--check` exit 0, pre-push **22/0/0**. Phase 2: noi dung 04/05/07.02/06/MODULES + kiem ke docs cu. |
 | 287 | 2026-10-14 | **Slice 07.02 danh muc API may sinh** - 1473 route walk resolver, khop measure doc lap. Vong so trong `--check`. Con lai: ma tran quyen, ma loi, test khoa. |
+| 288 | 2026-10-14 | **Slice 06 du lieu** - 107 model + 115 migration may sinh theo app, cot tenant FK. 06.01 ba bat bien verify tay. Con lai: MODULES verdict, 04.01, 05.01. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
