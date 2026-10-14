@@ -51,9 +51,14 @@
       "title": "05.01 — Tổng Quan Quy Trình (Luồng Công Việc)"
     },
     {
-      "lines": 22,
+      "lines": 40,
       "path": "docs/system-design/06-DATA-ARCHITECTURE/06.01-tong-quan-mo-hinh-du-lieu.md",
       "title": "06.01 — Tổng Quan Mô Hình Dữ Liệu"
+    },
+    {
+      "lines": 1518,
+      "path": "docs/system-design/06-DATA-ARCHITECTURE/06.02-danh-muc-model.md",
+      "title": "06.02 — Danh Mục Model (Máy Sinh, Không Sửa Tay)"
     },
     {
       "lines": 27,
