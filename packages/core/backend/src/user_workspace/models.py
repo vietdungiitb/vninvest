@@ -158,6 +158,18 @@ class Transaction(models.Model):
         verbose_name='Thuế',
     )
     external_id = models.CharField(max_length=100, blank=True, default='', db_index=True, verbose_name='Mã tham chiếu broker')
+    # B0.3 (Wave 0, QD-1): moi dong tai chinh thuoc dung 1 tieu khoan.
+    # Giai doan expand: nullable. Trigger DB (migration 0028) chan tenant lech.
+    broker_account = models.ForeignKey(
+        'SubAccount',
+        on_delete=models.SET_NULL,
+        related_name='transactions',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Tieu khoan broker',
+        help_text='NULL = chua gan (du lieu cu / nhap tay).',
+    )
     note = models.TextField(blank=True, default='', verbose_name='Ghi chú')
     # Migration tracking
     legacy_transaction_id = models.IntegerField(null=True, blank=True, db_index=True)
@@ -890,7 +902,18 @@ class AccountSnapshot(models.Model):
     cash_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name='Số dư tiền')
     stock_value = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name='Giá trị chứng khoán')
     debt = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name='Nợ')
-    
+    # B0.3: FK thuan (khong trigger — bang nay khong co tenant, suy qua
+    # sub_account). Giu SET_NULL de lich su NAV khong mat khi xoa lien ket.
+    broker_account = models.ForeignKey(
+        'SubAccount',
+        on_delete=models.SET_NULL,
+        related_name='account_snapshots',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Tieu khoan broker',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1280,6 +1303,16 @@ class LedgerEntry(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
     external_id = models.CharField(
         max_length=100, blank=True, default='', db_index=True,
         verbose_name='Mã tham chiếu broker')
+    # B0.3 (Wave 0, QD-1): nhu Transaction. Trigger DB chan tenant lech.
+    broker_account = models.ForeignKey(
+        'SubAccount',
+        on_delete=models.SET_NULL,
+        related_name='ledger_entries',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Tieu khoan broker',
+    )
     reversal_of = models.ForeignKey(
         'self', on_delete=models.PROTECT, related_name='reversals',
         null=True, blank=True, verbose_name='Đảo của dòng')
@@ -1458,6 +1491,16 @@ class PositionSnapshot(AppendOnlyMixin, TenantScopedByParentMixin, models.Model)
     calculation_version = models.CharField(
         max_length=32, verbose_name='Phiên bản thuật toán')
     source = models.CharField(max_length=16, default='computed', verbose_name='Nguồn')
+    # B0.3 (Wave 0, QD-1): vi the nguon broker mang source='broker' + FK nay.
+    broker_account = models.ForeignKey(
+        'SubAccount',
+        on_delete=models.SET_NULL,
+        related_name='position_snapshots',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Tieu khoan broker',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
