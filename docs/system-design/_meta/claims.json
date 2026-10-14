@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "note": "So doi chieu tuyen bo viet tay <-> code. Quy tac: sua TAI LIEU cho xanh, khong sua claims de xanh (00.03 s5). Moi docQuote phai ton tai NGUYEN VAN trong doc.",
+  "claims": [
+    {
+      "id": "C-001",
+      "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "docQuote": "15 Django app nghiệp vụ",
+      "fact": "djangoApps",
+      "expected": 15,
+      "why": "So app quyet dinh quy mo bao tri; them/bot app deu phai cap nhat 01.01 + MODULES/."
+    },
+    {
+      "id": "C-002",
+      "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "docQuote": "107 model",
+      "fact": "models",
+      "expected": 107,
+      "why": "Model moi doi ERD (D02 s4) va 06.01."
+    },
+    {
+      "id": "C-003",
+      "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "docQuote": "115 migration",
+      "fact": "migrations",
+      "expected": 115,
+      "why": "Migration moi co the doi so do du lieu va can kiem leaf-conflict."
+    },
+    {
+      "id": "C-004",
+      "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "docQuote": "10 compose stack",
+      "fact": "composeStacks",
+      "expected": 10,
+      "why": "Them stack doi ban do trien khai 09.01."
+    },
+    {
+      "id": "C-005",
+      "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "docQuote": "42 lịch Celery beat",
+      "fact": "beatEntries",
+      "expected": 42,
+      "why": "Lich beat moi doi hanh vi nen (ingest/warmup) va 05.01."
+    },
+    {
+      "id": "C-006",
+      "doc": "docs/system-design/README.md",
+      "docQuote": "21 file trong bộ hồ sơ",
+      "fact": "systemDesignFiles",
+      "expected": 21,
+      "why": "Them file vao bo ho so ma khong chay --write thi inventory lech."
+    }
+  ]
+}

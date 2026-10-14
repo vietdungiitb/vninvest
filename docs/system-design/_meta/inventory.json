@@ -1,0 +1,111 @@
+{
+  "files": [
+    {
+      "lines": 54,
+      "path": "docs/system-design/00-GOVERNANCE/00.01-quan-tri-tai-lieu.md",
+      "title": "00.01 — Quản Trị Tài Liệu"
+    },
+    {
+      "lines": 32,
+      "path": "docs/system-design/00-GOVERNANCE/00.02-thuat-ngu.md",
+      "title": "00.02 — Thuật Ngữ Thống Nhất"
+    },
+    {
+      "lines": 123,
+      "path": "docs/system-design/00-GOVERNANCE/00.03-quy-trinh-dong-bo.md",
+      "title": "00.03 — Quy Trình Đồng Bộ Tài Liệu Với Code"
+    },
+    {
+      "lines": 52,
+      "path": "docs/system-design/00-GOVERNANCE/00.04-ban-do-chu-de.md",
+      "title": "00.04 — Bản Đồ Chủ Đề (Toàn Bộ `docs/`)"
+    },
+    {
+      "lines": 19,
+      "path": "docs/system-design/00-GOVERNANCE/adr/README.md",
+      "title": "ADR — Sổ Quyết Định Kiến Trúc"
+    },
+    {
+      "lines": 41,
+      "path": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
+      "title": "01.01 — Tóm Tắt Điều Hành"
+    },
+    {
+      "lines": 30,
+      "path": "docs/system-design/02-ARCHITECTURE/02.01-tong-quan-kien-truc.md",
+      "title": "02.01 — Tổng Quan Kiến Trúc"
+    },
+    {
+      "lines": 24,
+      "path": "docs/system-design/03-DIAGRAMS/03.01-danh-muc-so-do.md",
+      "title": "03.01 — Danh Mục Sơ Đồ"
+    },
+    {
+      "lines": 32,
+      "path": "docs/system-design/04-FUNCTIONAL-SPEC/04.01-ban-do-tinh-nang.md",
+      "title": "04.01 — Bản Đồ Tính Năng (Phân Rã Chức Năng)"
+    },
+    {
+      "lines": 27,
+      "path": "docs/system-design/05-WORKFLOW/05.01-tong-quan-quy-trinh.md",
+      "title": "05.01 — Tổng Quan Quy Trình (Luồng Công Việc)"
+    },
+    {
+      "lines": 22,
+      "path": "docs/system-design/06-DATA-ARCHITECTURE/06.01-tong-quan-mo-hinh-du-lieu.md",
+      "title": "06.01 — Tổng Quan Mô Hình Dữ Liệu"
+    },
+    {
+      "lines": 25,
+      "path": "docs/system-design/07-API-SPEC/07.01-quy-uoc-api.md",
+      "title": "07.01 — Quy Ước API"
+    },
+    {
+      "lines": 20,
+      "path": "docs/system-design/07-API-SPEC/07.02-danh-muc-api.md",
+      "title": "07.02 — Danh Mục API (Danh Mục Hàm/Endpoint)"
+    },
+    {
+      "lines": 48,
+      "path": "docs/system-design/08-TECH-STACK/08.01-cong-nghe-va-ky-thuat.md",
+      "title": "08.01 — Công Nghệ Và Kỹ Thuật"
+    },
+    {
+      "lines": 22,
+      "path": "docs/system-design/09-DEPLOYMENT-OPS/09.01-trien-khai-va-van-hanh.md",
+      "title": "09.01 — Triển Khai Và Vận Hành"
+    },
+    {
+      "lines": 21,
+      "path": "docs/system-design/10-QUALITY-SECURITY/10.01-chien-luoc-kiem-thu.md",
+      "title": "10.01 — Chiến Lược Kiểm Thử"
+    },
+    {
+      "lines": 25,
+      "path": "docs/system-design/11-DEVELOPMENT/11.01-quy-trinh-phat-trien.md",
+      "title": "11.01 — Quy Trình Phát Triển"
+    },
+    {
+      "lines": 18,
+      "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
+      "title": "13.01 — Lộ Trình Phát Triển"
+    },
+    {
+      "lines": 15,
+      "path": "docs/system-design/13-ROADMAP/13.02-so-no-ky-thuat.md",
+      "title": "13.02 — Sổ Nợ Kỹ Thuật"
+    },
+    {
+      "lines": 38,
+      "path": "docs/system-design/MODULES/README.md",
+      "title": "MODULES — Dossier Từng Django App"
+    },
+    {
+      "lines": 116,
+      "path": "docs/system-design/README.md",
+      "title": "vninvest — Bộ Hồ Sơ Phân Tích & Thiết Kế Hệ Thống"
+    }
+  ],
+  "generatedAt": "2026-10-14",
+  "root": "docs/system-design"
+}
