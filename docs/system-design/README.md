@@ -80,7 +80,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | **Công nghệ** | Django + DRF + PostgreSQL (bắt buộc) · React 19 + Vite · xem [08.01](08-TECH-STACK/08.01-cong-nghe-va-ky-thuat.md) |
 | Quy mô BE | 15 Django app nghiệp vụ · 107 model · 115 migration |
 | Vận hành | 10 compose stack · 42 lịch Celery beat |
-| Quy mô tài liệu | 23 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
+| Quy mô tài liệu | 38 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
 
 ---
 
@@ -101,7 +101,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | `10-QUALITY-SECURITY/` | Kiểm thử, bảo mật, findings | ⏳ Skeleton — trỏ gate + lesson |
 | `11-DEVELOPMENT/` | Quy trình phát triển, multi-agent | ⏳ Skeleton — trỏ `AGENT_PROTOCOL.md` |
 | `13-ROADMAP/` | Lộ trình, nợ kỹ thuật | ✅ 13.02 có 2 nợ đã đo |
-| `MODULES/` | Dossier từng Django app (15 app) | ⏳ Quy ước + danh sách app |
+| `MODULES/` | Dossier từng Django app (15 app) | ✅ 15 dossier v1 (số liệu máy + mục đích/findings có cột tin cậy) |
 | `_meta/` | Tools, claims, inventory, freshness | ✅ Tools + gate |
 
 ---
