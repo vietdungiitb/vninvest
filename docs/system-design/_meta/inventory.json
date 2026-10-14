@@ -11,7 +11,7 @@
       "title": "00.02 — Thuật Ngữ Thống Nhất"
     },
     {
-      "lines": 125,
+      "lines": 126,
       "path": "docs/system-design/00-GOVERNANCE/00.03-quy-trinh-dong-bo.md",
       "title": "00.03 — Quy Trình Đồng Bộ Tài Liệu Với Code"
     },
@@ -111,7 +111,7 @@
       "title": "09.02 — Runbook Khôi Phục (Rollback + Backup/Restore)"
     },
     {
-      "lines": 36,
+      "lines": 57,
       "path": "docs/system-design/10-QUALITY-SECURITY/10.01-chien-luoc-kiem-thu.md",
       "title": "10.01 — Chiến Lược Kiểm Thử"
     },
@@ -121,7 +121,7 @@
       "title": "11.01 — Quy Trình Phát Triển"
     },
     {
-      "lines": 35,
+      "lines": 36,
       "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
       "title": "13.01 — Lộ Trình Phát Triển"
     },

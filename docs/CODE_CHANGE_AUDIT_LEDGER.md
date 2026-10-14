@@ -1,4 +1,12 @@
 
+## Entry 299: Phase 3 slice 5 - ma tran test 186 file + loi cong cu im lang (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p14-testmatrix` -> `dev` - claim `sysdesign-p14` (sau merge PR #134).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: dem test ca 2 thu muc (186 file, ~2245 methods, 41 file xuyen app khong gan rieng) - viet ma tran vao 10.01 s3 - mien tru volatile 00.03 s7.
+- **Loi cong cu moi (nguy hiem)**: Edit bao "applied successfully" nhung file KHONG doi (oldString viet tu ban cu, le ra phai bao not-found). Phat hien nho doc numstat commit (7 insertions cho ca bang 20 dong). Quy tac moi: moi Edit xong phai doc lai/grep xac minh - tin bao success la sai. Da sua + verify + amend (branch chua push).
+- **Ket qua**: `--check` exit 0 (amend day du 4 file, 34 insertions) - pre-push **22/0/0** - LF sach.
+
 ## Entry 298: Phase 3 slice 4 - sua GAP 0-test sai, chay 170 tests (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p13-testverify` -> `dev` - claim `sysdesign-p13` (sau merge PR #133).
@@ -10110,6 +10118,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 296 | 2026-10-14 | **Phase 3 slice 2** - verdict advisory tenant FK (dung thiet ke). Dong F-ADVSR-02. |
 | 297 | 2026-10-14 | **Phase 3 slice 3** - 09.02 runbook 3 kich ban khoi phuc. Chua dien tap e2e. |
 | 298 | 2026-10-14 | **Phase 3 slice 4** - GAP 0-test SAI, that ra 18 file/170 tests OK local. Sua 04.01 + 3 dossier + 10.01 + 13.01. |
+| 299 | 2026-10-14 | **Phase 3 slice 5** - ma tran test 186 file. Phat hien Edit bao success nhung khong persist - quy tac verify sau moi Edit. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
