@@ -1,17 +1,17 @@
-# HANDOFF — phiên tiếp theo: Wave 0 B0.6 (sau B0.5/PR #144)
+# HANDOFF — Wave 0 ĐÓNG (6/6). Phiên tiếp theo: Wave 1 B1.1 (sau B0.6/PR #145)
 
-- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.5)
-- **Trạng thái Wave 0:** B0.1–B0.5 DONE (B0.5: PR #144 chờ merge) · B0.6 chưa làm.
-  Không migration mới ở B0.5 (head vẫn **0029**).
+- **Ngày:** 2026-10-15 · **Người bàn giao:** PM/Tech Lead (phiên B0.6)
+- **Trạng thái Wave 0:** B0.1–B0.6 DONE (B0.6: PR #145 chờ merge) · **WAVE 0 ĐÓNG**.
+  Không migration mới ở B0.6 (head vẫn **0029**).
 
-## 1. B0.6 làm gì (kế tiếp — slice cuối Wave 0)
+## 1. Wave 1 B1.1 làm gì (kế tiếp — SyncService đa provider)
 
-`GET /broker/capabilities/` trả `capability_matrix()` (`broker/base.py:70`) +
-`FULLY_SUPPORTED` dùng `is_fully_supported()` (`broker/base.py:78`) thay hardcode
-(`views_broker.py:38`). Test: version khớp `CAPABILITY_MATRIX_VERSION`, dnse only
-fully-supported, ssi/tcbs unverified với lý do. Không migration. Endpoint catalog
-+1 route ⇒ regen + `--check`. Chạy test trên VPS theo runbook §12.3 (DB tạm mới,
-vd `mbw0_b06`). Sau B0.6: Wave 0 đóng (6/6), mở Wave 1 theo PLAN mục 4.
+`BrokerSyncService` interface + registry 3 lane (dùng `broker/adapters.py` có sẵn,
+thêm `get_positions` DNSE — P0-4 đã chứng minh có endpoint). Position-first sync →
+`PositionSnapshot(source='broker')` + `AccountSnapshot`, idempotent (2 lần ⇒ 0 row
+trùng). Test trên VPS (DB tạm mới, vd `mbw1_b11`). **Gate 3.8.0 vẫn giữ**: chỉ dùng
+API đã có ở 3.7.2; REQ-001..005 là ticket adopt riêng sau khi vnbroker merge+bump.
+Đọc PLAN mục 4 (Wave 1) + ADR-005/006/007 trước khi khai claim.
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 
