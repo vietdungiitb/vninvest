@@ -443,6 +443,34 @@ class SubAccount(models.Model):
     broker_source = models.CharField(max_length=50, blank=True, default='', verbose_name='Nguồn Broker')
     sync_status = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái đồng bộ')
 
+    # B0.1 (Wave 0): lien ket tuong minh toi credential + provider chuan.
+    # Giai doan expand: `broker_config` nullable, backfill sau (migration 0025);
+    # contract NOT NULL o B3.4. `broker`/`broker_source` giu nguyen (deprecate sau).
+    provider = models.CharField(
+        max_length=16,
+        # Giu dong bo voi UserBrokerConfig.ProviderChoices (khai o duoi file) —
+        # khong import nguoc duoc vi SubAccount dung truoc. Gia tri chuan:
+        # dnse/ssi/tcbs ( them 'tcb' o tang backfill, khong o day).
+        choices=[('dnse', 'DNSE'), ('ssi', 'SSI'), ('tcbs', 'TCBS')],
+        default='',
+        blank=True,
+        db_index=True,
+        verbose_name='Nha moi gioi (chuan)',
+        help_text="dnse/ssi/tcbs. Rong = chua phan loai (cho backfill).",
+    )
+    broker_config = models.ForeignKey(
+        'UserBrokerConfig',
+        on_delete=models.SET_NULL,
+        related_name='sub_accounts',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Cau hinh broker',
+        help_text='Credential da dung de dong bo tieu khoan nay. NULL = chua lien ket.',
+    )
+    last_sync_at = models.DateTimeField(
+        null=True, blank=True, verbose_name='Dong bo cuoi')
+
     # Migration tracking
     legacy_sub_account_id = models.IntegerField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -452,6 +480,16 @@ class SubAccount(models.Model):
         verbose_name = 'Tiểu khoản'
         verbose_name_plural = 'Tiểu khoản'
         ordering = ['-created_at']
+        constraints = [
+            # B0.1: so tieu khoan duy nhat theo (tenant, credential, external_id).
+            # Partial (chi khi da lien ket + co external_id) de hang legacy
+            # NULL/rong khong chan nhau trong giai doan expand.
+            models.UniqueConstraint(
+                fields=['tenant', 'broker_config', 'external_id'],
+                condition=Q(broker_config__isnull=False) & ~Q(external_id=''),
+                name='uniq_subaccount_tenant_config_external',
+            ),
+        ]
 
     def __str__(self) -> str:
         return f'{self.display_name} — {self.broker} ({self.user.username})'
