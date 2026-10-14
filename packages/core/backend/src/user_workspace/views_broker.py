@@ -1,7 +1,9 @@
 """
 views_broker.py — B1.2: API cấu hình broker đa-nhà (dnse/ssi/tcbs) cho người dùng.
 
-Đợt 1 chỉ hỗ trợ đầy đủ `dnse`; `ssi`/`tcbs` trả `not_supported_yet` (khung có sẵn).
+B0.6 (Wave 0): cau hinh/credential MO cho ca 3 lane da biet (worker task da
+xu ly ssi/tcbs) — khong con `not_supported_yet`. Muc do ho tro that nam o
+`GET /broker/capabilities/` (matrix versioned, `broker/base.py`).
 Mọi I/O tới broker chạy trong Celery (test-connection enqueue + poll) — cấm I/O trong request.
 Secret không bao giờ xuất hiện trong response (chỉ preview mask).
 """
@@ -20,7 +22,11 @@ from vninvest_core.exceptions import (
 from .permissions import (attach_required_permissions, WorkspacePermission, required_workspace_permission,)
 
 from .broker import SCHEMAS
-from .broker.base import mask_secrets_preview
+from .broker.base import (
+    capability_matrix,
+    is_fully_supported,
+    mask_secrets_preview,
+)
 from .envelope import envelope
 from .models import (
     DNSECredential,
@@ -35,7 +41,11 @@ from vninvest_core.api_envelope import envelope_response
 
 
 SUPPORTED_PROVIDERS = ('dnse', 'ssi', 'tcbs')
-FULLY_SUPPORTED = frozenset({'dnse', 'ssi', 'tcbs'})
+
+
+def _is_fully_supported(provider: str) -> bool:
+    """Uy quyen cho `broker/base.py` (C-04) — view khong hardcode."""
+    return is_fully_supported(provider)
 
 TEST_CONN_LIMIT = 5
 TEST_CONN_WINDOW_SECONDS = 60
@@ -47,11 +57,6 @@ def _require_provider(provider: str) -> str:
         raise NotFoundErrorException(
             detail=f'Broker không hỗ trợ: {provider}',
             code='broker_not_supported',
-        )
-    if normalized not in FULLY_SUPPORTED:
-        raise ValidationErrorException(
-            detail=f'Broker {normalized} chưa hỗ trợ ở giai đoạn này.',
-            code='not_supported_yet',
         )
     return normalized
 
@@ -98,16 +103,13 @@ def _mirror_to_legacy_dnse(user, secrets: dict, is_active: bool) -> None:
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def broker_providers_api(request):
-    """Danh sách broker + trạng thái đã nối của user."""
+    """Danh sách broker + trạng thái đã nối của user.
+
+    B0.6: moi lane deu doc duoc trang thai that; `fully_supported` cho UI biet
+    lane nao da xac minh day du (chi dnse), lane nao cho xac minh (ssi/tcbs).
+    """
     items = []
     for provider in SUPPORTED_PROVIDERS:
-        if provider not in FULLY_SUPPORTED:
-            items.append({
-                'id': provider,
-                'status': 'not_supported_yet',
-                'is_configured': False,
-            })
-            continue
         config = get_user_broker_config(
             request.user, provider, tenant=getattr(request, 'tenant', None),
         )
@@ -115,8 +117,28 @@ def broker_providers_api(request):
             'id': provider,
             'status': (config.status if config else UserBrokerConfig.StatusChoices.NEVER_CONNECTED),
             'is_configured': bool(config and config.has_secrets()),
+            'fully_supported': _is_fully_supported(provider),
         })
     return envelope({'providers': items})
+
+
+@extend_schema(
+    summary='broker_capabilities_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def broker_capabilities_api(request):
+    """B0.6: ma tran kha nang versioned — nguon that duy nhat cho UI.
+
+    Client doc `version` de phat hien cache cu. Khong bao gio suy trang thai
+    ho tro tu ten provider.
+    """
+    return envelope(capability_matrix())
 
 
 @extend_schema(
