@@ -1,4 +1,15 @@
 
+## Entry 302: Wave 0 B0.1 DONE - SubAccount provider + broker_config FK + backfill (2026-10-14)
+
+- **Nhanh**: `feat/mbw0-b01-subaccount` -> `dev` - claim `mbw0-b01`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-M01, L-M02, L-M03, L-B01, L-B02, L-B03, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03, TDD fail-before.
+- **Viec lam**: `SubAccount` +provider (choices dnse/ssi/tcbs) +broker_config FK nullable (SET_NULL) +last_sync_at + unique partial (tenant, broker_config, external_id); migration 0024 (schema, `makemigrations` sinh) + 0025 (data backfill, idempotent, khong print); 7 test moi.
+- **TDD fail-before (VPS staging, DB tam mbw0_b01, runbook §12)**: test moi tren base `origin/dev` 0537d9b93 => 7 errors (`TypeError: SubAccount() got unexpected keyword arguments`); tren nhanh => **7/7 OK**. Regression 89/89 OK (`test_user_broker_config`, `test_worker_tenant`, `test_capability_matrix`, `test_user_workspace_tenant_isolation`).
+- **Gate**: `makemigrations --check` exit 0 · py_compile 0 · pre-push-gate **22/22 PASS** · system-design regen (06.02 + freshness + inventory + C-003 115->117) --check SACH.
+- **Su co gate**: (1) pre-push chan 1 lan do system-design drift that (migration 115->117) - sua dung (regen + sua tay C-003), khong bypass; (2) Edit lam vo EOL models.py (1587/1549) - hook normalize-eol bat, sua bang `--fix` (38/0); (3) `makemigrations --check` treo khi khong `--skip-checks` (system checks cham, chua dieu tra) - ghi nhan.
+- **Don dep VPS**: DROP DB mbw0_b01 + xoa 2 worktree + xoa log - xong.
+- **CHUA CHAY**: full BE suite (nang, theo quy dinh chay tren VPS khi can) · FE (slice BE-only) · ruff (chua cai trong venv).
+
 ## Entry 301: Phase 3 slice 7 - test nhanh verify-fail Stripe (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p16-stripetest` -> `dev` - claim `sysdesign-p16` (sau merge PR #136). Slice code dau tien trong chuoi docs (them test, khong sua production).
@@ -10136,6 +10147,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 299 | 2026-10-14 | **Phase 3 slice 5** - ma tran test 186 file. Phat hien Edit bao success nhung khong persist - quy tac verify sau moi Edit. |
 | 300 | 2026-10-14 | **Phase 3 slice 6** - webhook 2 dau fail-closed, dong F-COM-01. Mo F-COM-01b (test nhanh verify-fail). |
 | 301 | 2026-10-14 | **Phase 3 slice 7** - 2 test khoa Stripe verify-fail (16/16 OK). Dong F-COM-01b. |
+| 302 | 2026-10-14 | **Wave 0 B0.1 DONE** - SubAccount provider/broker_config/backfill, 7/7 + 89/89 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
