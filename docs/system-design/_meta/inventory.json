@@ -106,6 +106,11 @@
       "title": "09.01 — Triển Khai Và Vận Hành"
     },
     {
+      "lines": 53,
+      "path": "docs/system-design/09-DEPLOYMENT-OPS/09.02-runbook-khoi-phuc.md",
+      "title": "09.02 — Runbook Khôi Phục (Rollback + Backup/Restore)"
+    },
+    {
       "lines": 34,
       "path": "docs/system-design/10-QUALITY-SECURITY/10.01-chien-luoc-kiem-thu.md",
       "title": "10.01 — Chiến Lược Kiểm Thử"
