@@ -1,4 +1,14 @@
 
+## Entry 289: Slice 04.01 ban do tinh nang - 7 cum + cot tin cay (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p4-func` -> `dev` - claim `sysdesign-p4` (Phase 2 slice 3, sau merge PR #124).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: nhom route theo app trich may tu 07.02 + capability viet tay co cot tin cay (XAC MINH/SUY LUAN/CHUA XAC MINH) + test khoa dem theo app. Phat hien: `tenant_lifecycle` 0 route do duoc (khong urls/views, chay signals/tasks); partner API 108 route chua dossier; `test_audit_logs_api.py` trung ten 2 noi.
+- **3 GAP 0-test do duoc**: `advisory`, `advertising`, `support` (0 test file). So route/test theo app la anh chup co ngay, mien tru volatile (00.03 s7).
+- **Gate tu bat 2 citation**: `test_models/signals/tasks.py` ghep 3 file thanh 1 duong dan + `test_audit_logs_api.py` mo ho. Sua tai lieu theo cong.
+- **Ket qua**: `--check` exit 0 (105 citation) - pre-push **22/0/0** - LF sach.
+- **CHUA LAM**: 05.01 workflow - dossier MODULES tung app (nang tin cay) - ma tran quyen - ma loi - noi dung 02/03/09/10/11.
+
 ## Entry 288: Slice 06 du lieu - gen-model-catalog + noi dung 06.01 ba bat bien (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p3-data` -> `dev` - claim `sysdesign-p3` (Phase 2 slice 2, sau merge PR #123).
@@ -10014,6 +10024,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 286 | 2026-10-14 | **Phase 1 bo ho so system-design** - governance + skeleton 13 phan he + topic-map + tools/gate. `--check` exit 0, pre-push **22/0/0**. Phase 2: noi dung 04/05/07.02/06/MODULES + kiem ke docs cu. |
 | 287 | 2026-10-14 | **Slice 07.02 danh muc API may sinh** - 1473 route walk resolver, khop measure doc lap. Vong so trong `--check`. Con lai: ma tran quyen, ma loi, test khoa. |
 | 288 | 2026-10-14 | **Slice 06 du lieu** - 107 model + 115 migration may sinh theo app, cot tenant FK. 06.01 ba bat bien verify tay. Con lai: MODULES verdict, 04.01, 05.01. |
+| 289 | 2026-10-14 | **Slice 04.01 ban do tinh nang** - 7 cum, cot tin cay, 3 GAP 0-test. Phat hien tenant_lifecycle 0 route + partner API can dossier. Con lai: 05.01, MODULES, ma tran quyen. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

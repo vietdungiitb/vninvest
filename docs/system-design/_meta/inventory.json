@@ -11,7 +11,7 @@
       "title": "00.02 — Thuật Ngữ Thống Nhất"
     },
     {
-      "lines": 123,
+      "lines": 124,
       "path": "docs/system-design/00-GOVERNANCE/00.03-quy-trinh-dong-bo.md",
       "title": "00.03 — Quy Trình Đồng Bộ Tài Liệu Với Code"
     },
@@ -41,7 +41,7 @@
       "title": "03.01 — Danh Mục Sơ Đồ"
     },
     {
-      "lines": 32,
+      "lines": 70,
       "path": "docs/system-design/04-FUNCTIONAL-SPEC/04.01-ban-do-tinh-nang.md",
       "title": "04.01 — Bản Đồ Tính Năng (Phân Rã Chức Năng)"
     },
