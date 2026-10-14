@@ -1,16 +1,16 @@
-# HANDOFF — phiên tiếp theo: Wave 0 B0.2 (sau B0.1/PR #139)
+# HANDOFF — phiên tiếp theo: Wave 0 B0.3 (sau B0.2/PR #141)
 
-- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.1)
-- **Trạng thái Wave 0:** B0.1 DONE (PR #139 chờ merge) · B0.2–B0.6 chưa làm
+- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.2)
+- **Trạng thái Wave 0:** B0.1 DONE (merged) · B0.2 DONE (PR #141 chờ merge) ·
+  B0.3–B0.6 chưa làm. Migration head sau merge: **0026**.
 
-## 1. B0.2 làm gì (kế tiếp)
+## 1. B0.3 làm gì (kế tiếp)
 
-`Portfolio` +`kind` (`manual`/`broker_backed`/`aggregate`) +`is_archived` +
-bảng `PortfolioBrokerBinding` (portfolio, sub_account, role, is_default; unique).
-Migration mới (đọc head trên `dev` SAU khi PR #139 merge — B0.1 thêm 0024/0025 nên
-head sẽ là 0025). Test: kind default, binding unique, aggregate-read-only ở tầng
-model (enforce ở B3.1, B0.2 chỉ schema). Chạy test trên VPS theo runbook §12.3
-(DB tạm mới, vd `mbw0_b02`).
+`Transaction`/`LedgerEntry`/`PositionSnapshot`/`AccountSnapshot` +`broker_account`
+FK (nullable, expand) + trigger tenant guard (mẫu `0023_append_only_guards.py`).
+Không data migration (toàn nullable). Test: FK nullable, trigger từ chối tenant
+lệch, clean() qua 2 bảng. Chạy test trên VPS theo runbook §12.3 (DB tạm mới,
+vd `mbw0_b03`). Đọc head migration trên `dev` SAU khi PR #141 merge.
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 
@@ -32,7 +32,20 @@ cd /opt/vninvest && git fetch origin <nhanh> \
 - Fail-before: copy test mới sang worktree `origin/dev`, chạy (đỏ), xoá file.
 - **Cấm quote lồng** trong lệnh SSH (xem WORKLOG §sự cố #5): không `"..."` trong `'...'`.
 
-## 3. Bẫy đã gặp (đừng lặp lại)
+## 3. Bẫy đã gặp (đừng lặp lại — bổ sung phiên B0.2)
+
+1. (B0.2 mới) `git --work-tree=X checkout -f <sha>` **đổi HEAD của checkout chính**
+   (detached) + skew index (M/D ảo), suýt làm hỏng checkout staging `/opt/vninvest`.
+   Refresh worktree đúng: `git fetch` + `git --work-tree=X reset --hard <sha>`
+   (không đổi HEAD), hoặc xoá + `worktree add` lại. Kiểm chứng vô hại bằng
+   `git diff <sha-cu> --stat` (rỗng) trước khi `checkout -f` khôi phục.
+2. (B0.2 mới) Helper test do leaf migration (`leaf_nodes`) vỡ ngay slice sau
+   (0026 làm 3 test B0.1 `AttributeError`). Ghim tên migration + `project_state`
+   tại đúng migration đó — miễn nhiễm leaf tương lai.
+3. (B0.2 mới) Model mới (+1) làm C-002 đỏ theo (107→108), không chỉ C-003.
+   Regen xong chạy `--check` rồi mới kết luận xanh.
+
+## 4. Bẫy cũ (từ phiên B0.1, vẫn hiệu lực)
 
 1. Mọi migration mới làm gate `system-design` đỏ (C-003 + catalog) → regen `--write`
    (nhớ `PYTHONIOENCODING=utf-8`) + sửa tay số ở claims.json/01.01/06.01/README.
@@ -45,7 +58,7 @@ cd /opt/vninvest && git fetch origin <nhanh> \
    `vninvest-staging_vninvest_network`.
 5. `git push` dùng `GIT_TERMINAL_PROMPT=0`; PowerShell 5.1 không có `&&`.
 
-## 4. Việc dang dở khác
+## 5. Việc dang dở khác
 
 - Claim `multibroker-plan` (nhánh `feat/multibroker-plan-research`) vẫn in-progress —
   giữ cho công việc tài liệu; REQ-001..005 CHƯA GỬI sang vnbroker.
