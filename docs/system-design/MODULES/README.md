@@ -17,21 +17,21 @@
 
 | App | Tên hiển thị (`apps.py`) | Dossier |
 |---|---|---|
-| `advertising` | Advertising | ⏳ chưa viết |
-| `advisory` | Advisory | ⏳ chưa viết |
-| `ai_agents` | AI Agents Registry | ⏳ chưa viết |
-| `ai_analytics` | AI Usage Analytics | ⏳ chưa viết |
-| `commercial` | Commercial | ⏳ chưa viết |
-| `data_ingest` | Data Ingest | ⏳ chưa viết |
-| `identity_access` | Identity & Access | ⏳ chưa viết |
-| `market_data` | Market Data | ⏳ chưa viết |
-| `market_serving` | Market Serving | ⏳ chưa viết |
-| `ops_audit` | Ops Audit | ⏳ chưa viết |
-| `service_ops` | Service Operations Center | ⏳ chưa viết |
-| `signal_intelligence` | Signal Intelligence | ⏳ chưa viết |
-| `support` | (apps.py không khai `verbose_name`) | ⏳ chưa viết |
-| `tenant_lifecycle` | Tenant Lifecycle | ⏳ chưa viết |
-| `user_workspace` | User Workspace | ⏳ chưa viết |
+| `advertising` | Advertising | ✅ dossier v1 (2026-10-14) |
+| `advisory` | Advisory | ✅ dossier v1 (2026-10-14) |
+| `ai_agents` | AI Agents Registry | ✅ dossier v1 (2026-10-14) |
+| `ai_analytics` | AI Usage Analytics | ✅ dossier v1 (2026-10-14) |
+| `commercial` | Commercial | ✅ dossier v1 (2026-10-14) |
+| `data_ingest` | Data Ingest | ✅ dossier v1 (2026-10-14) |
+| `identity_access` | Identity & Access | ✅ dossier v1 (2026-10-14) |
+| `market_data` | Market Data | ✅ dossier v1 (2026-10-14) |
+| `market_serving` | Market Serving | ✅ dossier v1 (2026-10-14) |
+| `ops_audit` | Ops Audit | ✅ dossier v1 (2026-10-14) |
+| `service_ops` | Service Operations Center | ✅ dossier v1 (2026-10-14) |
+| `signal_intelligence` | Signal Intelligence | ✅ dossier v1 (2026-10-14) |
+| `support` | (apps.py không khai `verbose_name`) | ✅ dossier v1 (2026-10-14) |
+| `tenant_lifecycle` | Tenant Lifecycle | ✅ dossier v1 (2026-10-14) |
+| `user_workspace` | User Workspace | ✅ dossier v1 (2026-10-14) |
 
 > Ngoài ra `vninvest_core` là project package (settings, envelope, middleware) —
 > không phải app nghiệp vụ, không có dossier riêng mà mô tả ở `02.01`.
