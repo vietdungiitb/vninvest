@@ -1,4 +1,11 @@
 
+## Entry 300: Phase 3 slice 6 - verdict webhook signature (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p15-webhook` -> `dev` - claim `sysdesign-p15` (sau merge PR #135). Tron 300 Entry.
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: doc chu ky webhook 2 dau - Stripe thieu header/sai ky -> 400 (`stripe_webhooks.py:73-88`, SDK verify `stripe_service.py:145-159`) - VNPay HMAC-SHA512 compare_digest (`vnpay_service.py:96-133`), sai -> RspCode 97 khong doi state (`views.py:284-287`) + atomic/finalized/amount (`:291-303`). Verdict F-COM-01: DU, dong. Mo F-COM-01b: mock thay toan bo construct_event nen nhanh verify-fail chua ro co test that.
+- **Ket qua**: `--check` exit 0 (204 citation) - pre-push **22/0/0** - LF sach.
+
 ## Entry 299: Phase 3 slice 5 - ma tran test 186 file + loi cong cu im lang (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p14-testmatrix` -> `dev` - claim `sysdesign-p14` (sau merge PR #134).
@@ -10119,6 +10126,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 297 | 2026-10-14 | **Phase 3 slice 3** - 09.02 runbook 3 kich ban khoi phuc. Chua dien tap e2e. |
 | 298 | 2026-10-14 | **Phase 3 slice 4** - GAP 0-test SAI, that ra 18 file/170 tests OK local. Sua 04.01 + 3 dossier + 10.01 + 13.01. |
 | 299 | 2026-10-14 | **Phase 3 slice 5** - ma tran test 186 file. Phat hien Edit bao success nhung khong persist - quy tac verify sau moi Edit. |
+| 300 | 2026-10-14 | **Phase 3 slice 6** - webhook 2 dau fail-closed, dong F-COM-01. Mo F-COM-01b (test nhanh verify-fail). |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
