@@ -43,8 +43,8 @@ _WRITE_METHODS = ('post', 'put', 'patch', 'delete')
 #: - `order_*`       : sinh rủi ro tài chính trực tiếp -> order_write
 #: - `broker_manage` : cấu hình / credential broker    -> broker_manage
 EXPECTED: dict[str, str] = {
-    # Đồng bộ portfolio từ broker (ghi dữ liệu tài chính).
-    'PortfolioSyncView.post': 'portfolio_write',
+    # B0.5: `PortfolioSyncView` (stub khong route) da xoa — dong bo that thuoc
+    # Wave 1 (`/broker/accounts/<id>/sync/`), khong phai stub `sync_queued`.
     # AI advisory: refresh tạo lượt gọi provider (có chi phí + ghi log).
     'PortfolioAIAdvisoryRefreshView.post': 'portfolio_write',
     # AI Command Center: sửa prompt config của toàn tenant.

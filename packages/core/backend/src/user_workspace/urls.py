@@ -11,7 +11,6 @@ from .portfolio_analytics_views import (
     PortfolioAllocationView,
     PortfolioMetricsView,
     PortfolioAnalyticsView,
-    PortfolioSyncView,
     PortfolioTechnicalsView,
     PortfolioAIAdvisoryCanonicalView,
     PortfolioAIAdvisoryCurrentView,
