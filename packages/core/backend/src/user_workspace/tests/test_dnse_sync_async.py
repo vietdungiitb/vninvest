@@ -1,5 +1,12 @@
 """Wave 0 B0.5 tests: 3 view sync DNSE enqueue (.delay) + envelope loi.
 
+BAY OOM (ghi lai de khong lap): job gia dung `SimpleNamespace`, KHONG
+MagicMock. MagicMock trong response lam DRF JSONEncoder de quy vo han qua
+attribute tu sinh (`mock.__new__` -> `_increment_mock_call` -> ...) — process
+phinh toi 10-20GB roi OOM-kill (exit 137), chung minh bang faulthandler.
+Quy tac: mock tra ve response chi chua kieu du lieu that (str/int/dict).
+
+
 Chay TREN VPS STAGING theo runbook §12 (cam local):
   python manage.py test user_workspace.tests.test_dnse_sync_async --noinput
 
@@ -8,7 +15,8 @@ Fail-before: truoc B0.5, view goi task truc tiep (khong `.delay`) nen mock
 
 Tat ca goi broker that deu duoc mock — khong credential, khong mang.
 """
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -44,8 +52,7 @@ class DnseSyncAsyncTests(TestCase):
 
     def test_sync_accounts_enqueues_202(self):
         _with_credential(self.user)
-        fake_job = MagicMock()
-        fake_job.id = 'job-accounts-1'
+        fake_job = SimpleNamespace(id='job-accounts-1')
         with patch(
             'user_workspace.views_dnse.sync_dnse_accounts_task'
         ) as task:
@@ -65,8 +72,7 @@ class DnseSyncAsyncTests(TestCase):
 
     def test_sync_balances_enqueues_202(self):
         _with_credential(self.user)
-        fake_job = MagicMock()
-        fake_job.id = 'job-balances-1'
+        fake_job = SimpleNamespace(id='job-balances-1')
         with patch(
             'user_workspace.views_dnse.sync_dnse_balances_task'
         ) as task:
@@ -78,8 +84,7 @@ class DnseSyncAsyncTests(TestCase):
 
     def test_reconcile_enqueues_with_days_back(self):
         _with_credential(self.user)
-        fake_job = MagicMock()
-        fake_job.id = 'job-reconcile-1'
+        fake_job = SimpleNamespace(id='job-reconcile-1')
         with patch(
             'user_workspace.views_dnse.reconcile_dnse_transactions_task'
         ) as task:
@@ -92,8 +97,7 @@ class DnseSyncAsyncTests(TestCase):
 
     def test_reconcile_days_back_clamped(self):
         _with_credential(self.user)
-        fake_job = MagicMock()
-        fake_job.id = 'job-reconcile-2'
+        fake_job = SimpleNamespace(id='job-reconcile-2')
         with patch(
             'user_workspace.views_dnse.reconcile_dnse_transactions_task'
         ) as task:
