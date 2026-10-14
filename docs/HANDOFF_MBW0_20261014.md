@@ -1,17 +1,18 @@
-# HANDOFF — phiên tiếp theo: Wave 0 B0.4 (sau B0.3/PR #142)
+# HANDOFF — phiên tiếp theo: Wave 0 B0.5 (sau B0.4/PR #143)
 
-- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.3)
-- **Trạng thái Wave 0:** B0.1–B0.3 DONE (B0.3: PR #142 chờ merge) · B0.4–B0.6 chưa
-  làm. Migration head sau merge: **0028**.
+- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.4)
+- **Trạng thái Wave 0:** B0.1–B0.4 DONE (B0.4: PR #143 chờ merge) · B0.5–B0.6 chưa
+  làm. Migration head sau merge: **0029**.
 
-## 1. B0.4 làm gì (kế tiếp)
+## 1. B0.5 làm gì (kế tiếp)
 
-`BrokerSyncRun` + `BrokerSyncIssue` mới (model + migration + test, schema-only):
-run (provider, started/finished, status, stats JSON), issue (run FK, severity,
-code, payload JSON, resolved). Không trigger (bảng vận hành, không phải tài chính).
-Test: tạo run/issue, quan hệ, unique nếu cần. Chạy test trên VPS theo runbook
-§12.3 (DB tạm mới, vd `mbw0_b04`). Đọc head migration trên `dev` SAU khi PR #142
-merge.
+`.delay()` cho 3 view sync DNSE (`views_dnse.py:504,534,558` gọi task trực tiếp) +
+bọc envelope cho nhánh lỗi `Response` thô (`:510-513`, `:525-528`) + route hoặc
+xoá `PortfolioSyncView` (chết, stub `sync_queued`). Test: response 202 + `job_id`
+(mock `task.delay`, không gọi broker thật), envelope 100% nhánh lỗi, route tồn tại
+hoặc view bị xoá. Không migration mới (không đổi model) — nhưng endpoint catalog
+(1473 route) có thể đổi nếu thêm/xoá route ⇒ regen + `--check`. Chạy test trên VPS
+theo runbook §12.3 (DB tạm mới, vd `mbw0_b05`).
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 

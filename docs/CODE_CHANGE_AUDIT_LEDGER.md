@@ -1,4 +1,14 @@
 
+## Entry 313: Wave 0 B0.4 DONE - BrokerSyncRun + BrokerSyncIssue (2026-10-14)
+
+- **Nhanh**: `feat/mbw0-b04-syncrun` -> `dev` - claim `mbw0-b04`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-M01, L-M02, L-M03, L-B01, L-B02, L-B03, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03, TDD fail-before.
+- **Viec lam**: 2 model moi (Run: user/tenant/provider/status/started/finished/stats/error; Issue: run FK SET_NULL/tenant/severity/code/payload/resolved). Migration 0029 (schema, `makemigrations` sinh). 6 test moi.
+- **TDD (VPS staging, DB tam mbw0_b04, runbook §12)**: fail-before ImportError tren base => pass **6/6**; kem B0.1-B0.3: **21/21** (trong dot 111); regression: **111/111 OK**.
+- **Gate**: `makemigrations --check` exit 0 · py_compile 0 · pre-push-gate **22/22 PASS** · system-design regen (110 model/121 migration, C-002/C-003) --check SACH.
+- **Don dep VPS**: DROP DB + 2 worktree + log - xong (`worktree remove`, dung quy trinh B0.3).
+- **CHUA CHAY**: full BE suite · FE (slice BE-only) · ruff (chua cai).
+
 ## Entry 312: Wave 0 B0.3 DONE - broker_account FK + trigger tenant guard (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b03-broker-account` -> `dev` - claim `mbw0-b03`. 1 agent duy nhat, khong cham deny-list.
@@ -10250,6 +10260,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 310 | 2026-10-14 | **Nhan phan hoi vnbroker + ADR-007** - 26 contract test passed, gate 3.8.0, B0.2 mo rong Watchlist. |
 | 311 | 2026-10-14 | **Wave 0 B0.2 DONE** - Portfolio kind/binding + Watchlist source, 7/7 + 48/48 + 118/118 OK tren VPS, pre-push 22/22. |
 | 312 | 2026-10-14 | **Wave 0 B0.3 DONE** - broker_account FK + trigger guard, 7/7 + 21/21 + 152/152 OK tren VPS, pre-push 22/22. |
+| 313 | 2026-10-14 | **Wave 0 B0.4 DONE** - SyncRun + SyncIssue, 6/6 + 21/21 + 111/111 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

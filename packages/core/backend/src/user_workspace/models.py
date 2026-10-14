@@ -623,6 +623,116 @@ class PortfolioBrokerBinding(models.Model):
         return f'{self.portfolio_id} <-> {self.sub_account_id} ({self.role})'
 
 
+class BrokerSyncRun(models.Model):
+    """
+    B0.4 (Wave 0): mot lan dong bo broker (lich su van hanh, khong phai tai chinh).
+
+    Bang van hanh: khong trigger, khong append-only. Wave 1 (B1.4) ghi vao day
+    moi lan beat/manual sync chay; Wave 2 (Sync Center) doc lich su tu day.
+    """
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Cho chay'
+        RUNNING = 'running', 'Dang chay'
+        SUCCEEDED = 'succeeded', 'Thanh cong'
+        FAILED = 'failed', 'That bai'
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='broker_sync_runs',
+        verbose_name='Nguoi dung',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='broker_sync_runs',
+        verbose_name='Tenant',
+        db_index=True,
+    )
+    provider = models.CharField(
+        max_length=16,
+        choices=[('dnse', 'DNSE'), ('ssi', 'SSI'), ('tcbs', 'TCBS')],
+        db_index=True,
+        verbose_name='Nha moi gioi',
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+        db_index=True,
+        verbose_name='Trang thai',
+    )
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name='Bat dau')
+    finished_at = models.DateTimeField(
+        null=True, blank=True, verbose_name='Ket thuc')
+    stats = models.JSONField(
+        default=dict, blank=True,
+        verbose_name='Thong ke (so TK/vi the/lenh da dong bo)')
+    error = models.TextField(blank=True, default='', verbose_name='Loi (neu that bai)')
+
+    class Meta:
+        verbose_name = 'Lan dong bo broker'
+        verbose_name_plural = 'Lan dong bo broker'
+        ordering = ['-started_at']
+
+    def __str__(self) -> str:
+        return f'{self.provider} {self.status} @ {self.started_at}'
+
+
+class BrokerSyncIssue(models.Model):
+    """
+    B0.4 (Wave 0): lech/van de phat hien trong/khi dong bo (drift detection o B1.5
+    ghi vao day; Wave 2 hien danh sach de user xu ly).
+    """
+
+    class SeverityChoices(models.TextChoices):
+        INFO = 'info', 'Thong tin'
+        WARNING = 'warning', 'Canh bao'
+        ERROR = 'error', 'Loi'
+
+    run = models.ForeignKey(
+        BrokerSyncRun,
+        on_delete=models.SET_NULL,
+        related_name='issues',
+        null=True,
+        blank=True,
+        verbose_name='Lan dong bo',
+        help_text='NULL = tao thu cong, khong gan lan chay cu the.',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='broker_sync_issues',
+        verbose_name='Tenant',
+        db_index=True,
+    )
+    severity = models.CharField(
+        max_length=16,
+        choices=SeverityChoices.choices,
+        default=SeverityChoices.INFO,
+        db_index=True,
+        verbose_name='Muc do',
+    )
+    code = models.CharField(
+        max_length=64, db_index=True, verbose_name='Ma lech')
+    payload = models.JSONField(
+        default=dict, blank=True, verbose_name='Chi tiet (symbol, so lieu 2 ben)')
+    resolved = models.BooleanField(
+        default=False, db_index=True, verbose_name='Da xu ly')
+    resolved_at = models.DateTimeField(
+        null=True, blank=True, verbose_name='Xu ly luc')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Lech dong bo broker'
+        verbose_name_plural = 'Lech dong bo broker'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'{self.code} [{self.severity}]'
+
+
 class DNSECredential(models.Model):
     """
     SFI-DNSE: Lưu trữ thông tin xác thực DNSE LightSpeed API của người dùng.
