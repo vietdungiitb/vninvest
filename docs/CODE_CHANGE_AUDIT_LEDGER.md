@@ -1,4 +1,14 @@
 
+## Entry 287: Slice 07.02 danh muc API may sinh - gen-endpoint-catalog walk resolver (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p2-api` -> `dev` - claim `sysdesign-p2` (Phase 2 slice 1, sau merge PR #122).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: `gen-endpoint-catalog.py` walk Django resolver (khong cham DB), lay path/methods/view/permissions/app cho **1473 route** - khop tuyet doi `measure_repo.py` do doc lap. Sinh `07.02-danh-muc-api.md`; noi vong `--check` vao `check-system-design.mjs` (buoc 6, thieu python thi SKIP trung thuc).
+- **3 goc re do bang runtime, khong doan**: (1) ViewSet router la function tran co `.cls` + `.actions`, khong co `view_class` - doc `dir(cb)` that; (2) tool `--write` tu dem file vua sinh - loai `_meta/` khoi vong quet viet tay (lan 2, sau vu inventory); (3) callback co `__name__` trung ten ViewSet nhung khong phai lop.
+- **Trung thuc so lieu**: 593 `?` con lai deu chinh dang (579 route admin Django + 14 function view thuan - khong metadata method, doan mo la vi pham L-V02). Header ghi ro quy uoc.
+- **Ket qua**: catalog `--check` khop 1473 - self-test 5/5 - `--check` exit 0 (6 buoc) - pre-push **22/0/0**. File moi thuan LF.
+- **CHUA LAM**: ma tran phan quyen endpoint x role - danh sach ma loi BE - test khoa tung endpoint (cot `--` cho den slice kiem thu).
+
 ## Entry 286: Phase 1 bo ho so system-design - governance + skeleton 13 phan he + topic-map + tools/gate (2026-10-14)
 
 - **Nhanh**: `feat/system-design-phase1` -> `dev` - claim `sysdesign-p1`
@@ -9993,6 +10003,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 
 | 282 | 2026-10-13 | **Xây lại `/portfolios/manage`** — trang cũ **không hiển thị một đồng tiền nào** dù BE đã tính sẵn (`portfolio_analytics_views.py:366-407`) và adapter đã có `getPortfolioSummary` (**0 lần gọi**). 11 finding đọc code thật · broker tách sang `/portfolios/manage/broker` · 8 cột tiền + KPI + drawer vị thế · sửa danh mục (PATCH) · 409 có thông điệp tiếng Việt · phân trang cursor (trước âm thầm cắt ở 50 dòng) · i18n 116 key × 2 · xoá `PortfoliosPage.css` (selector `button` toàn cục). **2 lỗi chỉ lộ khi probe staging thật**: nhãn phân trang luôn sai vì `defaultValue` bị bỏ qua khi key đã có trong dictionary; `cash_note` kỹ thuật lộ thẳng vào UI. Gate **21 PASS / 0 FAIL** · **928 test** · E2E staging **0 console error**. **L-T01 lần 13**: `File.WriteAllLines` chèn 1 dòng index làm **9 753 dòng** biến mất khỏi diff. |
 | 286 | 2026-10-14 | **Phase 1 bo ho so system-design** - governance + skeleton 13 phan he + topic-map + tools/gate. `--check` exit 0, pre-push **22/0/0**. Phase 2: noi dung 04/05/07.02/06/MODULES + kiem ke docs cu. |
+| 287 | 2026-10-14 | **Slice 07.02 danh muc API may sinh** - 1473 route walk resolver, khop measure doc lap. Vong so trong `--check`. Con lai: ma tran quyen, ma loi, test khoa. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
