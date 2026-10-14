@@ -161,7 +161,7 @@
       "title": "MODULES/data_ingest — Data Ingest"
     },
     {
-      "lines": 38,
+      "lines": 52,
       "path": "docs/system-design/MODULES/identity_access.md",
       "title": "MODULES/identity_access — Identity & Access"
     },
