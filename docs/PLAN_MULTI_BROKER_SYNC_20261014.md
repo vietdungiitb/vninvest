@@ -102,20 +102,18 @@ PATCH /portfolios/<id>/broker-bindings/   gộp/tách tiểu khoản (explicit, 
 
 ## 4. Lộ trình Wave (tổng ~34 công ngày)
 
-- **Wave 0 — Nền & sửa sai lệch (P0, ~6 ngày, 1 agent, LÀM ĐẦU TIÊN).**
-  B0.1 SubAccount +broker_config FK/+provider/unique · B0.2 Portfolio +kind/+is_archived +
-  PortfolioBrokerBinding + Watchlist +source/+provider/+broker_account? (schema-only, khong
-  data migration; serializer/API de B1.6; KHONG doi 409 `suggested_action: rename` —
-  audit B0.2 2026-10-15) · B0.3 +broker_account (nullable, expand) 4 bảng + trigger
-  tenant-match 3 bảng có tenant (AccountSnapshot chỉ FK) · B0.4 BrokerSyncRun/Issue ·
-  B0.5 `.delay()` 3 view sync + envelope + route/xoá
-  PortfolioSyncView · B0.6 `/broker/capabilities/` + dùng `is_fully_supported()`.
-  Cổng: `makemigrations --check` exit 0 · 1 leaf · BE test Postgres xanh.
-- **Wave 1 — Sync engine đa provider (P0, ~9 ngày, 2 agent).**
-  B1.1 BrokerSyncService + registry 3 lane · B1.2 nối `get_positions`/`get_holdings` cả 3 lane
-  (P0-4) · B1.3 position-first sync idempotent (chạy 2 lần ⇒ 0 row trùng) · B1.4 beat +
-  quiet-hours + kill-switch + backoff · B1.5 drift detection → BrokerSyncIssue · B1.6 7 endpoint
-  + contract test ≥ 12 BE.
+- **Wave 0 — Nền & sửa sai lệch (P0) — ĐÃ XONG 6/6, 2026-10-15.**
+  B0.1 (0024/0025) · B0.2 (0026) · B0.3 (0027/0028) · B0.4 (0029) · B0.5 (async 202,
+  xoá SyncView) · B0.6 (capabilities). Verify as-merged trên dev: **126/126 OK**
+  (VPS staging). Không model mới ở B0.5/B0.6 (head **0029**).
+- **Wave 1 — Sync engine đa provider (P0, ~9 ngày, Mode B tuần tự).**
+  B1.1 BrokerSyncService interface + registry 3 lane (mock adapter, không I/O thật) ·
+  B1.2 nối `get_positions`/`get_holdings` cả 3 lane ở vnbroker **3.7.2** (P0-4;
+  DNSE `market_type` bắt buộc, TCBS history giới hạn in-day) · B1.3 position-first
+  sync idempotent (chạy 2 lần ⇒ 0 row trùng) · B1.4 beat + quiet-hours +
+  kill-switch + backoff · B1.5 drift detection → BrokerSyncIssue · B1.6 7 endpoint
+  + contract test ≥ 12 BE. **Gate 3.8.0 giữ**: chỉ API đã có ở 3.7.2
+  (`requirements.txt` vẫn ghim 3.7.2, đã kiểm 2026-10-15).
 - **Wave 2 — Broker Hub UI (P0/P1, ~9 ngày, 2 agent).**
   B2.1 `/broker`: 3 tile multi-account + badge capability · B2.2 connect schema-driven 3 lane ·
   B2.3 Account Manager 4 tab (Vị thế/Sổ lệnh/Khớp lệnh/Số dư), mọi dòng có badge provider +
