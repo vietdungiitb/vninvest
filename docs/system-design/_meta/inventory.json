@@ -6,7 +6,7 @@
       "title": "00.01 — Quản Trị Tài Liệu"
     },
     {
-      "lines": 32,
+      "lines": 39,
       "path": "docs/system-design/00-GOVERNANCE/00.02-thuat-ngu.md",
       "title": "00.02 — Thuật Ngữ Thống Nhất"
     },
@@ -19,6 +19,26 @@
       "lines": 52,
       "path": "docs/system-design/00-GOVERNANCE/00.04-ban-do-chu-de.md",
       "title": "00.04 — Bản Đồ Chủ Đề (Toàn Bộ `docs/`)"
+    },
+    {
+      "lines": 14,
+      "path": "docs/system-design/00-GOVERNANCE/adr/ADR-001-route-id-theo-catalog.md",
+      "title": "ADR-001 — RouteId Theo `routeCatalog` (D-01)"
+    },
+    {
+      "lines": 13,
+      "path": "docs/system-design/00-GOVERNANCE/adr/ADR-002-so-cai-append-only.md",
+      "title": "ADR-002 — Sổ Cái Append-Only, Lưu ≥ 7 Năm (D-17)"
+    },
+    {
+      "lines": 11,
+      "path": "docs/system-design/00-GOVERNANCE/adr/ADR-003-envelope-contract.md",
+      "title": "ADR-003 — Envelope Contract `{data, meta}`"
+    },
+    {
+      "lines": 12,
+      "path": "docs/system-design/00-GOVERNANCE/adr/ADR-004-cach-ly-tenant.md",
+      "title": "ADR-004 — Cách Ly Tenant (FK + Fail-Closed)"
     },
     {
       "lines": 19,
@@ -81,22 +101,22 @@
       "title": "08.01 — Công Nghệ Và Kỹ Thuật"
     },
     {
-      "lines": 22,
+      "lines": 38,
       "path": "docs/system-design/09-DEPLOYMENT-OPS/09.01-trien-khai-va-van-hanh.md",
       "title": "09.01 — Triển Khai Và Vận Hành"
     },
     {
-      "lines": 21,
+      "lines": 34,
       "path": "docs/system-design/10-QUALITY-SECURITY/10.01-chien-luoc-kiem-thu.md",
       "title": "10.01 — Chiến Lược Kiểm Thử"
     },
     {
-      "lines": 25,
+      "lines": 38,
       "path": "docs/system-design/11-DEVELOPMENT/11.01-quy-trinh-phat-trien.md",
       "title": "11.01 — Quy Trình Phát Triển"
     },
     {
-      "lines": 18,
+      "lines": 33,
       "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
       "title": "13.01 — Lộ Trình Phát Triển"
     },

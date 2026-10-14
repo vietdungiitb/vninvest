@@ -80,7 +80,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | **Công nghệ** | Django + DRF + PostgreSQL (bắt buộc) · React 19 + Vite · xem [08.01](08-TECH-STACK/08.01-cong-nghe-va-ky-thuat.md) |
 | Quy mô BE | 15 Django app nghiệp vụ · 107 model · 115 migration |
 | Vận hành | 10 compose stack · 42 lịch Celery beat |
-| Quy mô tài liệu | 38 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
+| Quy mô tài liệu | 42 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
 
 ---
 
@@ -97,10 +97,10 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | `06-DATA-ARCHITECTURE/` | Mô hình dữ liệu, data dictionary | ✅ 06.01 ba bất biến verify + 06.02 máy sinh 107 model (vòng so trong `--check`) |
 | `07-API-SPEC/` | Quy ước API, danh mục endpoint | ✅ 07.02 máy sinh 1473 route (vòng so trong `--check`) |
 | `08-TECH-STACK/` | Công nghệ, dependency, toolchain | ✅ 08.01 có stack đã verify |
-| `09-DEPLOYMENT-OPS/` | Triển khai, vận hành | ⏳ Skeleton — trỏ runbook staging |
-| `10-QUALITY-SECURITY/` | Kiểm thử, bảo mật, findings | ⏳ Skeleton — trỏ gate + lesson |
-| `11-DEVELOPMENT/` | Quy trình phát triển, multi-agent | ⏳ Skeleton — trỏ `AGENT_PROTOCOL.md` |
-| `13-ROADMAP/` | Lộ trình, nợ kỹ thuật | ✅ 13.02 có 2 nợ đã đo |
+| `09-DEPLOYMENT-OPS/` | Triển khai, vận hành | ✅ 09.01 quy trình deploy + giám sát (runbook chi tiết trỏ ngoài) |
+| `10-QUALITY-SECURITY/` | Kiểm thử, bảo mật, findings | ✅ 10.01 tám tầng kiểm thử + DoD kiểm thử |
+| `11-DEVELOPMENT/` | Quy trình phát triển, multi-agent | ✅ 11.01 vòng đời slice + DoD theo loại + quy ước cứng |
+| `13-ROADMAP/` | Lộ trình, nợ kỹ thuật | ✅ 13.01 lộ trình Phase 1→3 + 13.02 sổ nợ |
 | `MODULES/` | Dossier từng Django app (15 app) | ✅ 15 dossier v1 (số liệu máy + mục đích/findings có cột tin cậy) |
 | `_meta/` | Tools, claims, inventory, freshness | ✅ Tools + gate |
 
