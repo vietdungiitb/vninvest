@@ -11,7 +11,7 @@
       "title": "00.02 — Thuật Ngữ Thống Nhất"
     },
     {
-      "lines": 124,
+      "lines": 125,
       "path": "docs/system-design/00-GOVERNANCE/00.03-quy-trinh-dong-bo.md",
       "title": "00.03 — Quy Trình Đồng Bộ Tài Liệu Với Code"
     },
@@ -109,6 +109,81 @@
       "lines": 38,
       "path": "docs/system-design/MODULES/README.md",
       "title": "MODULES — Dossier Từng Django App"
+    },
+    {
+      "lines": 33,
+      "path": "docs/system-design/MODULES/advertising.md",
+      "title": "MODULES/advertising — Advertising"
+    },
+    {
+      "lines": 36,
+      "path": "docs/system-design/MODULES/advisory.md",
+      "title": "MODULES/advisory — Advisory"
+    },
+    {
+      "lines": 29,
+      "path": "docs/system-design/MODULES/ai_agents.md",
+      "title": "MODULES/ai_agents — AI Agents Registry"
+    },
+    {
+      "lines": 31,
+      "path": "docs/system-design/MODULES/ai_analytics.md",
+      "title": "MODULES/ai_analytics — AI Usage Analytics"
+    },
+    {
+      "lines": 34,
+      "path": "docs/system-design/MODULES/commercial.md",
+      "title": "MODULES/commercial — Commercial"
+    },
+    {
+      "lines": 31,
+      "path": "docs/system-design/MODULES/data_ingest.md",
+      "title": "MODULES/data_ingest — Data Ingest"
+    },
+    {
+      "lines": 38,
+      "path": "docs/system-design/MODULES/identity_access.md",
+      "title": "MODULES/identity_access — Identity & Access"
+    },
+    {
+      "lines": 32,
+      "path": "docs/system-design/MODULES/market_data.md",
+      "title": "MODULES/market_data — Market Data"
+    },
+    {
+      "lines": 30,
+      "path": "docs/system-design/MODULES/market_serving.md",
+      "title": "MODULES/market_serving — Market Serving"
+    },
+    {
+      "lines": 29,
+      "path": "docs/system-design/MODULES/ops_audit.md",
+      "title": "MODULES/ops_audit — Ops Audit"
+    },
+    {
+      "lines": 35,
+      "path": "docs/system-design/MODULES/service_ops.md",
+      "title": "MODULES/service_ops — Service Operations Center"
+    },
+    {
+      "lines": 33,
+      "path": "docs/system-design/MODULES/signal_intelligence.md",
+      "title": "MODULES/signal_intelligence — Signal Intelligence"
+    },
+    {
+      "lines": 30,
+      "path": "docs/system-design/MODULES/support.md",
+      "title": "MODULES/support — Support"
+    },
+    {
+      "lines": 28,
+      "path": "docs/system-design/MODULES/tenant_lifecycle.md",
+      "title": "MODULES/tenant_lifecycle — Tenant Lifecycle"
+    },
+    {
+      "lines": 40,
+      "path": "docs/system-design/MODULES/user_workspace.md",
+      "title": "MODULES/user_workspace — User Workspace"
     },
     {
       "lines": 116,

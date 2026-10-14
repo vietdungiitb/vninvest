@@ -45,9 +45,9 @@
     {
       "id": "C-006",
       "doc": "docs/system-design/README.md",
-      "docQuote": "23 file trong bộ hồ sơ",
+      "docQuote": "38 file trong bộ hồ sơ",
       "fact": "systemDesignFiles",
-      "expected": 23,
+      "expected": 38,
       "why": "Them file vao bo ho so ma khong chay --write thi inventory lech."
     }
   ]
