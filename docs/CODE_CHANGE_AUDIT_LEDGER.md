@@ -1,5 +1,5 @@
 
-## Entry 311: Wave 0 B0.2 DONE - Portfolio kind/binding + Watchlist source (2026-10-15)
+## Entry 311: Wave 0 B0.2 DONE - Portfolio kind/binding + Watchlist source (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b02-portfolio` -> `dev` - claim `mbw0-b02`. 1 agent duy nhat, khong cham deny-list.
 - **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-M01, L-M02, L-M03, L-B01, L-B02, L-B03, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03, TDD fail-before.
@@ -10238,7 +10238,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 308 | 2026-10-14 | **Khong cho vnbroker** - 0/5 REQ chan Wave 0-3, khoi dong ngay song song. |
 | 309 | 2026-10-14 | **Quy dinh test tren VPS** - runbook §12, BE du dieu kien, FE CHUA KIEM CHUNG. |
 | 310 | 2026-10-14 | **Nhan phan hoi vnbroker + ADR-007** - 26 contract test passed, gate 3.8.0, B0.2 mo rong Watchlist. |
-| 311 | 2026-10-15 | **Wave 0 B0.2 DONE** - Portfolio kind/binding + Watchlist source, 7/7 + 48/48 + 118/118 OK tren VPS, pre-push 22/22. |
+| 311 | 2026-10-14 | **Wave 0 B0.2 DONE** - Portfolio kind/binding + Watchlist source, 7/7 + 48/48 + 118/118 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
