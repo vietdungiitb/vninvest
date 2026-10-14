@@ -1,4 +1,73 @@
 
+## Entry 310: Nhan phan hoi vnbroker + chot holdings tach bach watchlist (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-V02, L-T01, L-T02, L-006.
+- **Nguon**: `vnbroker/docs/RESPONSE_TO_VNINVEST_20261014.md` @ `f6cf68b` (nhanh chua merge, CHANGELOG Unreleased) - doc tron 537 dong.
+- **Kiem chung doc lap**: 26 contract test passed (capability + TCBS history, khong credential/mang) + probe `capabilities('tcbs'/'dnse')` khop van ban (`__version__`=3.7.2, order_history/watchlist unsupported, dnse.registered=False).
+- **Quyet dinh Owner (phien nay)**: holdings broker vs watchlist thu cong tach bach -> `docs/adr/ADR-007` (moi). Cap nhat PLAN muc 9 + RESEARCH muc 7 + REQUESTS (001 done/002 van ban/003a done+003b mo/004 done/005 thu hep).
+- **Gate 3.8.0**: chi tich hop sau khi vnbroker merge + bump (`marketType` sai nem loi - breaking; requirements van ghim 3.7.2).
+- **P0 phia vninvest** (vnbroker do duoc): compat balance luon 0 + retry chet - sua o Wave 1 khi adopt, khong hotfix (ADR-006). B0.2 mo rong: Watchlist +source/+provider/+broker_account?.
+- **Ket qua**: 1 file moi + 3 file sua.
+
+## Entry 309: Quy dinh moi - moi test BE/FE chay tren VPS staging (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01, L-G02.
+- **Quyet dinh Owner**: moi suite test BE/FE (ke ca container dung-1-lan) PHAI chay tren VPS staging do RAM local; cam chay local. Ghi vao `docs/STAGING_VPS_RUNBOOK.md` muc 12 (phuong phap BE throwaway + FE + bao cao).
+- **Phan biet**: duoc local = `check`, `makemigrations --check`, `ruff/eslint/tsc`, `config`, `bash -n`; phai VPS = `manage.py test`, `npm run test*`, `npm run build`, E2E.
+- **Trang thai kiem chung**: BE path du dieu kien (image `vninvest-core-api:staging` + `vninvest-core-db` + network san sang, RAM VPS 17 GB free). FE path CHUA KIEM CHUNG (thieu `node_modules` tren VPS) - slice FE dau tien phai chung minh.
+- **Ket qua**: 1 file sua (runbook §12).
+
+## Entry 308: Khong cho vnbroker - 0/5 REQ chan Wave 0-3 (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01.
+- **Ket luan**: ke hoach read-only tren API 3.7.2 co san; 5 REQ la cai tien, khong phai tien de. Wave 0 khoi dong ngay song song cho vnbroker; moi REQ xong => 1 ticket adopt nho. Ma tran phu thuoc ghi PLAN muc 8.
+- **Ket qua**: 1 file sua (PLAN).
+
+## Entry 307: Chot cau 4+5 theo khuyen nghi agent - ke hoach du dieu kien khoi dong (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01, L-M01, L-M02.
+- **Cau 4 (backfill DNSE)**: ve danh muc `broker_backed` rieng theo provider; danh muc cu giu nguyen gan nhan `manual`, khong ghi them.
+- **Cau 5 (migration)**: Wave 0 duoc tao migration, dieu kien 1 agent duy nhat + `makemigrations` sinh so + 1 leaf.
+- **Trang thai ke hoach**: 5/5 cau hoi + SSOT da chot. Du dieu kien mo Wave 0 ( FE/BE slice B0.1-B0.6).
+- **Ket qua**: 1 file sua (PLAN). Claim giu in-progress den khi mo Wave 0.
+
+## Entry 306: Quy tac SSOT broker + van ban yeu cau vnbroker (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01, L-T02.
+- **Quyet dinh Owner**: moi van de broker phai di qua vnbroker, khong tu phat trien; thieu chuc nang thi van ban yeu cau -> `docs/adr/ADR-006-broker-ssot-qua-vnbroker.md` (moi) + `docs/REQUESTS_TO_VNBROKER_20261014.md` (moi, REQ-001 capabilities, REQ-002 TCBS history, REQ-003 watchlist, REQ-004 DNSE market_type, REQ-005 hut compat DNSE ve). Code broker hien co mien tru, khong mo rong.
+- **Ket qua**: 2 file moi + 2 file sua (PLAN muc 8, ledger). Con cau 4 (backfill DNSE) + cau 5 (migration).
+
+## Entry 305: Chot read-only 1 chieu, khong mo lenh tien that (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01, L-T02.
+- **Quyet dinh Owner**: chi lay thong tin 1 chieu tu broker (danh muc, watchlist dan xuat) - KHONG mo lenh tien that. Dong cau 2 + cau 3 muc 6 PLAN doc. Lenh DNSE live dang chay giu nguyen, khong mo rong SSI/TCBS. Pha trade tach ticket rieng.
+- **He qua**: Wave 1-3 thuon read-only; khong can R-V nao gap; watchlist = co che (a)+(b), khong ticket 2 chieu.
+- **Ket qua**: 1 file sua (PLAN). Con cau 4 (backfill DNSE) + cau 5 (migration).
+
+## Entry 304: Chot QD-C (danh muc tuong minh) + phat hien vnbroker go method TCBS (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002, L-T01, L-T02, L-V02.
+- **Chot QD-C**: Owner chot "danh muc phai tuong minh; danh muc thu cong khong lien quan broker" -> `docs/adr/ADR-005-danh-muc-tuong-minh-theo-nguon.md` (moi) + dong cau 1 muc 6 trong PLAN doc.
+- **Phat hien vnbroker 3.7.2** (doc body that, khong doan): `broker/tcbs/equity.py:50-58` `_REMOVED_PATHS` + `account.py:315-403` - Owner vnbroker chu dong go method theo dung 2 file TCBS Owner cung cap. `get_order_history` (`equity.py:169-183`) RAISE; `get_orders`/`get_executions`/`get_holdings` (`:143`/`:219`/`:265`) that. DNSE `get_positions` doi `market_type` bat buoc (`connector/dnse/client.py:310`). TCBS `modify_order` doi chu ky 2026-10-10 (`pin_code` -> `request_id`, `client.py:464`).
+- **He qua ke hoach**: doi soat TCBS chi trong ngay + khop lenh; yeu cau vnbroker R-V1/R-V2/R-V3 ghi trong RESEARCH doc muc 6 + PLAN doc muc 8.
+- **Ket qua**: 1 file moi + 3 file sua. Khong sua code, khong migration.
+
+## Entry 303: Luu draft ke hoach multi-broker sync + nghien cuu watchlist (2026-10-14)
+
+- **Nhanh**: `feat/multibroker-plan-research` ( chua push/PR - tam ghi de nghien cuu tiep) - claim `multibroker-plan` (in-progress).
+- **Lessons ap dung**: L-002 (claim + commit rieng truoc), L-006, L-V01, L-V02, L-T01, L-T02, L-V03.
+- **Viec lam**: luu 2 file draft DOC-ONLY - `docs/PLAN_MULTI_BROKER_SYNC_20261014.md` (ke hoach 5 wave ~34 cong ngay, sua dinh chinh vnbroker 3.4.0 -> **3.7.2** theo `requirements.txt:38` + `.venv` cai 3.7.2) + `docs/RESEARCH_WATCHLIST_BROKER_20261014.md` (ket luan 4 nguon).
+- **Dinh chinh quan trong (L-V02)**: P0-4 ban dau kiem chung tren tag 3.4.0 (`1ff04e6`) - da kiem chung LAI tren **3.7.2 da cai**: `DNSEClient.get_positions` (`connector/dnse/client.py:310`), `SSIBrokerClient.get_holdings` (`broker/ssi/client.py:240`), `TCBSBrokerClient.get_holdings` (`broker/tcbs/client.py:409`). Ket luan giu nguyen.
+- **Watchlist verdict**: DNSE/SSI/TCBS deu KHONG co API watchlist user (DNSE Trading API 30+ endpoint 0 watchlist - doc `hdsd.../ii.-trading-api.md` that; SSI watchlist chi o UI iBoard; TCBS iFlash 50 path + 53 request 0 watchlist - 2 file Owner cung cap; ligo `watchlist/preview` la screener cong khai `tcbsID: None`). Trang `developers.dnse.com.vn/docs/dnse/account`: **CHUA DOC DUOC** (transport error x3) - ghi CHUA XAC MINH.
+- **Citations tai kiem (L-T02)**: `tasks.py:161`, `views_dnse.py:515`, `urls.py:14`, `views_broker.py:38`, `broker/adapters.py:362-363`, `broker/base.py:78` - deu dung tren nhanh hien tai.
+- **Ket qua**: 2 file moi + claim + entry nay. Khong sua code, khong migration, khong package.json.
 ## Entry 302: Wave 0 B0.1 DONE - SubAccount provider + broker_config FK + backfill (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b01-subaccount` -> `dev` - claim `mbw0-b01`. 1 agent duy nhat, khong cham deny-list.
@@ -10148,6 +10217,14 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 300 | 2026-10-14 | **Phase 3 slice 6** - webhook 2 dau fail-closed, dong F-COM-01. Mo F-COM-01b (test nhanh verify-fail). |
 | 301 | 2026-10-14 | **Phase 3 slice 7** - 2 test khoa Stripe verify-fail (16/16 OK). Dong F-COM-01b. |
 | 302 | 2026-10-14 | **Wave 0 B0.1 DONE** - SubAccount provider/broker_config/backfill, 7/7 + 89/89 OK tren VPS, pre-push 22/22. |
+| 303 | 2026-10-14 | **Draft multi-broker sync + watchlist** - 2 file DOC-ONLY, dinh chinh vnbroker 3.7.2, verdict watchlist 4 nguon (DNSE docs V2 CHUA DOC). Cho Owner chot 5 cau hoi. |
+| 304 | 2026-10-14 | **Chot QD-C + vnbroker go method** - ADR-005, TCBS get_order_history RAISE (doi soat chi trong ngay), R-V1/R-V2/R-V3. Con 4 cau hoi. |
+| 305 | 2026-10-14 | **Chot read-only 1 chieu** - khong mo lenh tien that, Wave 1-3 thuon read-only, watchlist (a)+(b). Con cau 4+5. |
+| 306 | 2026-10-14 | **SSOT broker + REQ vnbroker** - ADR-006, REQ-001..005 (CHUA GUI). Con cau 4+5. |
+| 307 | 2026-10-14 | **Chot cau 4+5** - backfill rieng theo provider, Wave 0 duoc migration (1 agent). Ke hoach DU DIEU KIEN. |
+| 308 | 2026-10-14 | **Khong cho vnbroker** - 0/5 REQ chan Wave 0-3, khoi dong ngay song song. |
+| 309 | 2026-10-14 | **Quy dinh test tren VPS** - runbook §12, BE du dieu kien, FE CHUA KIEM CHUNG. |
+| 310 | 2026-10-14 | **Nhan phan hoi vnbroker + ADR-007** - 26 contract test passed, gate 3.8.0, B0.2 mo rong Watchlist. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

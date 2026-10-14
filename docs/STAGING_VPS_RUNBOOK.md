@@ -415,3 +415,78 @@ $ docker exec vninvest-pgbouncer sh -c 'PGPASSWORD=$POSTGRESQL_PASSWORD \
     psql -h 127.0.0.1 -p 6432 -U vninvest -d postgres -tAc "SELECT 1"'
 1        ← alias `postgres` THÔNG (auth + backend OK) ⇒ chỉ sai TÊN alias
 ```
+
+---
+
+## 12. QUY ĐỊNH BẮT BUỘC: mọi test BE/FE chạy trên VPS staging (Owner chốt 2026-10-14)
+
+> **Lý do:** host local cạn RAM (0.3 GB trống, Entry 273) ⇒ suite test local cho kết
+> quả giả (OOM, `OperationalError`). **Cấm chạy suite test trên host local — kể cả
+> bằng container dùng-một-lần local** (container local vẫn ăn RAM host).
+
+### 12.1 PHẢI chạy trên VPS
+
+| Lệnh | Ghi chú |
+|---|---|
+| `manage.py test` (mọi scope: file/app/full) | DB tạm riêng trên `vninvest-core-db`, xem §12.3 |
+| `npm run test*` / `test:components` (FE) | `npm ci` một lần trên VPS rồi giữ `node_modules` (không commit); xem §12.4 |
+| `npm run build` (vite) | RAM-heavy — cấm local |
+| Playwright / E2E | cấm local |
+
+### 12.2 ĐƯỢC chạy local (nhẹ, không RAM/DB)
+
+`manage.py check` · `makemigrations --check` · `ruff` · `eslint` · `tsc --noEmit` ·
+`docker compose config` · `bash -n` · grep/read. Viết code + review diff ở local bình
+thường; chỉ **thực thi suite** là phải lên VPS.
+
+### 12.3 Quy trình BE trên VPS (container dùng-một-lần + DB tạm, xoá sau chạy)
+
+```bash
+# 0. Push nhánh slice lên origin (từ máy local)
+git push origin feat/<slice>
+
+# 1. Trên VPS: worktree tạm (KHÔNG checkout đè /opt/vninvest đang chạy staging)
+cd /opt/vninvest && git fetch origin feat/<slice> \
+  && git worktree add /tmp/wt-<slice> origin/feat/<slice>
+
+# 2. DB tạm riêng trên vninvest-core-db (lấy pass từ compose.staging.env, KHÔNG in ra)
+PW=$(grep -E '^POSTGRES_PASSWORD=' /opt/vninvest/compose.staging.env | cut -d= -f2-)
+docker exec vninvest-core-db psql -U vninvest -d vninvest_core \
+  -c "CREATE DATABASE <db_tam>;"   # vd db_tam=mbw0_b01
+
+# 3. Chạy test bằng image staging (deps đã bake), mount code nhánh đè /app,
+#    --entrypoint python để BỎ QUA entrypoint.sh (migrate/collectstatic)
+docker run --rm --network vninvest-staging_vninvest_network \
+  -v /tmp/wt-<slice>/packages/core/backend:/app \
+  -e CORE_DATABASE_URL="postgresql://vninvest:${PW}@vninvest-core-db:5432/<db_tam>" \
+  -e DJANGO_DEBUG=1 \
+  --entrypoint python vninvest-core-api:staging \
+  manage.py test <test_labels> --noinput
+
+# 4. Dọn (BẮT BUỘC, kể cả khi test đỏ)
+docker exec vninvest-core-db psql -U vninvest -d vninvest_core \
+  -c "DROP DATABASE <db_tam>;"
+cd /opt/vninvest && git worktree remove --force /tmp/wt-<slice> \
+  && git worktree prune
+```
+
+> Image `vninvest-core-api:staging` bake code cũ — volume mount đè `/app` nên test
+> chạy đúng code nhánh. Slice nào đổi dependency (`requirements.txt` — deny-list) thì
+> phải build image test riêng, không dùng image staging.
+
+### 12.4 Quy trình FE trên VPS (CHƯA KIỂM CHỨNG — lần đầu ở Wave 2)
+
+```bash
+# Một lần duy nhất (giữ node_modules trên VPS, không commit vào repo)
+cd /opt/vninvest/packages/web && npm ci
+# Mỗi lần test:
+npm run test:components -- <file>   # hoặc npm run test -- <pattern>
+```
+
+> Chưa có `node_modules` trên VPS (kiểm 2026-10-14) nên đường này **chưa từng chạy**.
+> Slice FE đầu tiên phải chạy thử + sửa § này theo thực tế, không đoán.
+
+### 12.5 Báo cáo
+
+Mọi báo cáo gate ghi rõ **chạy ở đâu** (VPS + tên DB tạm), exit code, và `CHƯA CHẠY`
+cho thứ chưa chạy được. Chạy suite ở local rồi báo PASS = vi phạm quy định này.
