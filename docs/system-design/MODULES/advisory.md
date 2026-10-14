@@ -33,8 +33,9 @@ Có `advisory/tasks.py` (`generate_advisory_task` ở `advisory/tasks.py:170`); 
 
 - F-ADVSR-02 (✅ ĐÃ ĐÓNG slice sysdesign-p11): 0/6 tenant FK là đúng thiết kế
   (cách ly qua User — xem §2). Không mở lại trừ khi đổi mô hình BYOK.
-- F-ADVSR-01 (⚠ GAP): **0 test file** (đo được ở `04.01`) — pipeline 3-agent
-  không có test khóa nào.
+- F-ADVSR-01 (✅ ĐÃ ĐÓNG slice sysdesign-p13 — GAP sai): `advisory` CÓ 15 test
+  file ở `backend/tests/` (script cũ chỉ quét `src/` nên báo 0); chạy 2026-10-14
+  trên Postgres local, chung 18 file: **170 tests OK**.
 
 ## 6. Test khóa + trạng thái
 

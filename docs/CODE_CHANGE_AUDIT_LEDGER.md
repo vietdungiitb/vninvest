@@ -1,4 +1,13 @@
 
+## Entry 298: Phase 3 slice 4 - sua GAP 0-test sai, chay 170 tests (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p13-testverify` -> `dev` - claim `sysdesign-p13` (sau merge PR #133).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08, L-V01.
+- **Phat hien truoc khi viet test moi**: GAP "3 app 0 test" SAI - `backend/tests/` co 18 file (advisory 15 + advertising 2 + support 1) ma script dem sot (chi quet `src/`, dung bay tenantreg). Bai hoc L-G04 mau muc.
+- **Chay that local** (Postgres 127.0.0.1:5433, .venv): 18 file **170 tests OK** (77s). Bai hoc do luong: tail log la output migrate - ket qua nam GIUA log; doc tail bao sai. Luu y: `/app/tests/` khong co trong image staging - 18 file nay chi chay local/CI.
+- **Sua ho so**: 04.01 + 3 dossier + 10.01 + 13.01 (bo GAP sai, ghi quy tac dem ca 2 thu muc).
+- **Ket qua**: `--check` exit 0 (200 citation) - pre-push **22/0/0** - LF sach.
+
 ## Entry 297: Phase 3 slice 3 - 09.02 runbook khoi phuc (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p12-rollback` -> `dev` - claim `sysdesign-p12` (sau merge PR #132).
@@ -10100,6 +10109,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 295 | 2026-10-14 | **Phase 3 slice 1** - giai ma partner API (tenant self-admin, 3-4 lop quyen). Dong F-IAA-01. |
 | 296 | 2026-10-14 | **Phase 3 slice 2** - verdict advisory tenant FK (dung thiet ke). Dong F-ADVSR-02. |
 | 297 | 2026-10-14 | **Phase 3 slice 3** - 09.02 runbook 3 kich ban khoi phuc. Chua dien tap e2e. |
+| 298 | 2026-10-14 | **Phase 3 slice 4** - GAP 0-test SAI, that ra 18 file/170 tests OK local. Sua 04.01 + 3 dossier + 10.01 + 13.01. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
