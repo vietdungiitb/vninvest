@@ -17,14 +17,21 @@ from user_workspace.models import SubAccount, UserBrokerConfig
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 
+BACKFILL_MIGRATION = '0025_auto_20261014_1713'
+
+
 def _run_backfill():
-    """Goi forwards cua migration leaf user_workspace (la migration B0.1)."""
+    """Goi forwards cua migration B0.1 (0025) — ghim ten, KHONG do leaf.
+
+    Ly do (B0.2 phat hien): do leaf (`leaf_nodes`) tra migration MOI NHAT;
+    slice sau them 0026 lam 3 test backfill vo `AttributeError`. Ghim ten +
+    project_state tai 0025 thi mien nhiem voi leaf tuong lai.
+    """
+    mod = importlib.import_module(
+        f'user_workspace.migrations.{BACKFILL_MIGRATION}')
     executor = MigrationExecutor(connection)
-    leaf_names = sorted(name for _, name in executor.loader.graph.leaf_nodes('user_workspace'))
-    assert leaf_names, 'khong tim thay leaf user_workspace'
-    mod = importlib.import_module(f'user_workspace.migrations.{leaf_names[-1]}')
     state_apps = executor.loader.project_state(
-        [('user_workspace', leaf_names[-1])]).apps
+        [('user_workspace', BACKFILL_MIGRATION)]).apps
     mod.backfill_subaccount_provider(state_apps, None)
 
 
