@@ -1,4 +1,12 @@
 
+## Entry 297: Phase 3 slice 3 - 09.02 runbook khoi phuc (2026-10-14)
+
+- **Nhanh**: `feat/sysdesign-p12-rollback` -> `dev` - claim `sysdesign-p12` (sau merge PR #132).
+- **Lessons ap dung**: L-002, L-008, L-V02, L-T01, L-T02, L-G02, L-G04, L-G07, L-G08.
+- **Viec lam**: rap 09.02 tu manh ghep verify (backup beat 02:00 ops_audit/tasks.py:26, test restore 190 dong, backup truoc build prod, deploy lai = rollback code). 3 kich ban + danh sach KHONG lam. Trung thuc: quy trinh rap chua dien tap, RTO/RPO/retention cho Owner.
+- **Ket qua**: `--check` exit 0 (199 citation) - pre-push **22/0/0** - LF sach. C-006 42->43.
+- **CHUA LAM**: test 3 app 0-test - C4 component sau - nang tin cay dossier con lai.
+
 ## Entry 296: Phase 3 slice 2 - verdict advisory tenant FK (2026-10-14)
 
 - **Nhanh**: `feat/sysdesign-p11-advtenant` -> `dev` - claim `sysdesign-p11` (sau merge PR #131).
@@ -10091,6 +10099,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 294 | 2026-10-14 | **Slice final - BO HO SO HOAN CHINH v1** - 09/10/11 + 13.01 + 00.02 + 4 ADR. 42 file, 13/13 phan he, gate xanh. |
 | 295 | 2026-10-14 | **Phase 3 slice 1** - giai ma partner API (tenant self-admin, 3-4 lop quyen). Dong F-IAA-01. |
 | 296 | 2026-10-14 | **Phase 3 slice 2** - verdict advisory tenant FK (dung thiet ke). Dong F-ADVSR-02. |
+| 297 | 2026-10-14 | **Phase 3 slice 3** - 09.02 runbook 3 kich ban khoi phuc. Chua dien tap e2e. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
