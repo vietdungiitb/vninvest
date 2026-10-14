@@ -1,4 +1,16 @@
 
+## Entry 315: Wave 0 B0.6 DONE + Wave 0 DONG (2026-10-15)
+
+- **Nhanh**: `feat/mbw0-b06-capabilities` -> `dev` - claim `mbw0-b06`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03. TDD fail-before (audit C-04 noi vao view).
+- **Audit truoc code**: thay `FULLY_SUPPORTED` bang `is_fully_supported()` TRAN se chan config ssi/tcbs (test khoa + worker task da xu ly) => thiet ke dung: config mo ca 3 lane, muc that ra endpoint rieng. Quyet dinh co bang chung.
+- **Viec lam**: `GET /broker/capabilities/` (matrix versioned); xoa hardcode + nhanh `not_supported_yet`; `providers/` them co `fully_supported`; sua comment urls. 6 test moi.
+- **TDD (VPS staging, DB tam mbw0_b06, runbook §12)**: fail-before 404 + KeyError tren base => pass **6/6**; regression **121/121 OK** (config_api, egress, capability, worker_tenant, dnse_sync_async).
+- **Gate**: `makemigrations --check` exit 0 (khong model moi) · py_compile 0 · pre-push-gate **22/22 PASS** · system-design SACH (endpoint 1473->1474, inventory line-count).
+- **Don dep VPS**: DROP DB + 2 worktree + log - xong, checkout staging nguyen ven.
+- **WAVE 0 DONG 6/6**: B0.1 (0024/0025) · B0.2 (0026) · B0.3 (0027/0028) · B0.4 (0029) · B0.5 (async+delay) · B0.6 (capabilities). Tiep: Wave 1 (B1.1 SyncService) theo PLAN muc 4 + gate 3.8.0.
+- **CHUA CHAY**: full BE suite · FE · ruff (chua cai) · REQ-001..005 CHUA GUI (vnbroker chua merge/bump).
+
 ## Entry 314: Wave 0 B0.5 DONE - sync async 202 + xoa SyncView chet (2026-10-14)
 
 - **Nhanh**: `feat/mbw0-b05-async` -> `dev` - claim `mbw0-b05`. 1 agent duy nhat, khong cham deny-list.
@@ -10274,6 +10286,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 312 | 2026-10-14 | **Wave 0 B0.3 DONE** - broker_account FK + trigger guard, 7/7 + 21/21 + 152/152 OK tren VPS, pre-push 22/22. |
 | 313 | 2026-10-14 | **Wave 0 B0.4 DONE** - SyncRun + SyncIssue, 6/6 + 21/21 + 111/111 OK tren VPS, pre-push 22/22. |
 | 314 | 2026-10-14 | **Wave 0 B0.5 DONE** - sync async 202 + xoa SyncView, 8/8 + 111/111 OK tren VPS, pre-push 22/22. |
+| 315 | 2026-10-15 | **Wave 0 B0.6 DONE + Wave 0 DONG** - capabilities endpoint, 6/6 + 121/121 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

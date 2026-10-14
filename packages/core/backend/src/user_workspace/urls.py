@@ -94,9 +94,11 @@ urlpatterns = [
     path('portfolio/subaccounts/<int:pk>/', views.SubAccountDetailAPIView.as_view(), name='subaccount-detail'),
     path('portfolio/subaccounts/<int:pk>/transactions/', views.SubAccountTransactionsAPIView.as_view(), name='subaccount-transactions'),
 
-    # Broker config đa-nhà (B1.2) — đặt TRƯỚC legacy DNSE để `broker/dnse/config/`
-    # do view mới phục vụ (store UserBrokerConfig). DNSE đầy đủ, ssi/tcbs khung not_supported_yet.
+    # Broker config đa-nhà (B1.2, B0.6) — đặt TRƯỚC legacy DNSE để `broker/dnse/config/`
+    # do view mới phục vụ (store UserBrokerConfig). B0.6: config mo ca 3 lane;
+    # muc do ho tro that o `broker/capabilities/` (matrix versioned).
     path('broker/providers/', views_broker.broker_providers_api, name='broker-providers'),
+    path('broker/capabilities/', views_broker.broker_capabilities_api, name='broker-capabilities'),
     path('broker/config-schema/<str:provider>/', views_broker.broker_config_schema_api, name='broker-config-schema'),
     path('broker/<str:provider>/config/', views_broker.broker_config_api, name='broker-config'),
     path('broker/<str:provider>/test-connection/', views_broker.broker_test_connection_api, name='broker-test-connection'),
