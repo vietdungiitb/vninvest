@@ -1,16 +1,17 @@
-# HANDOFF — phiên tiếp theo: Wave 0 B0.3 (sau B0.2/PR #141)
+# HANDOFF — phiên tiếp theo: Wave 0 B0.4 (sau B0.3/PR #142)
 
-- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.2)
-- **Trạng thái Wave 0:** B0.1 DONE (merged) · B0.2 DONE (PR #141 chờ merge) ·
-  B0.3–B0.6 chưa làm. Migration head sau merge: **0026**.
+- **Ngày:** 2026-10-14 · **Người bàn giao:** PM/Tech Lead (phiên B0.3)
+- **Trạng thái Wave 0:** B0.1–B0.3 DONE (B0.3: PR #142 chờ merge) · B0.4–B0.6 chưa
+  làm. Migration head sau merge: **0028**.
 
-## 1. B0.3 làm gì (kế tiếp)
+## 1. B0.4 làm gì (kế tiếp)
 
-`Transaction`/`LedgerEntry`/`PositionSnapshot`/`AccountSnapshot` +`broker_account`
-FK (nullable, expand) + trigger tenant guard (mẫu `0023_append_only_guards.py`).
-Không data migration (toàn nullable). Test: FK nullable, trigger từ chối tenant
-lệch, clean() qua 2 bảng. Chạy test trên VPS theo runbook §12.3 (DB tạm mới,
-vd `mbw0_b03`). Đọc head migration trên `dev` SAU khi PR #141 merge.
+`BrokerSyncRun` + `BrokerSyncIssue` mới (model + migration + test, schema-only):
+run (provider, started/finished, status, stats JSON), issue (run FK, severity,
+code, payload JSON, resolved). Không trigger (bảng vận hành, không phải tài chính).
+Test: tạo run/issue, quan hệ, unique nếu cần. Chạy test trên VPS theo runbook
+§12.3 (DB tạm mới, vd `mbw0_b04`). Đọc head migration trên `dev` SAU khi PR #142
+merge.
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 
