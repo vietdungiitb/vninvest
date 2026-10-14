@@ -218,6 +218,16 @@ if (existsSync(join(REPO, "scripts/audit-status-claims.mjs"))) {
   else ok("audit-status", "0 dong thieu verified, --strict exit 0");
 } else skip("audit-status", "khong co scripts/audit-status-claims.mjs");
 
+// ------------------------------------------------- system-design freshness
+// Bo ho so docs/system-design tu canh bang may (Phase 1). Khoi additive co
+// guard: chi chay khi tool ton tai; tool fail-closed tren drift that
+// (inventory/links/citations/dups/claims). Xem 00.03-quy-trinh-dong-bo.md.
+if (existsSync(join(REPO, "docs/system-design/_meta/tools/check-system-design.mjs"))) {
+  const r = run(process.execPath, ["docs/system-design/_meta/tools/check-system-design.mjs", "--check"]);
+  if (r.code !== 0) bad("system-design", r.out);
+  else ok("system-design", "inventory/links/cites/dups/claims khop");
+} else skip("system-design", "khong co docs/system-design/_meta/tools/check-system-design.mjs");
+
 // ------------------------------------------------- preflight self-test (11/11)
 // Gate co that su bat loi khong? Chay negative test cua chinh no.
 // Ban nay dung TEMP FIXTURE nen khong cham file that cua repo.
