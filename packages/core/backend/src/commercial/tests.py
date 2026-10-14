@@ -267,3 +267,44 @@ class StripeBillingViewsTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # Error message is in Vietnamese, check for validation error code
         self.assertEqual(response.data['code'], 'validation_error')
+
+
+@override_settings(
+    STRIPE_SECRET_KEY='sk_test_fake',
+    STRIPE_WEBHOOK_SECRET='whsec_fake',
+)
+class StripeWebhookSignatureTestCase(TestCase):
+    """Khoa nhanh verify-fail cua Stripe webhook (F-COM-01b).
+
+    Webhook la endpoint AllowAny duy nhat cham billing nen chu ky la bien
+    phong thu duy nhat: thieu header hoac sai chu ky phai 400, khong duoc
+    cham vao handler.
+    """
+
+    WEBHOOK_URL = '/core/v1/billing/stripe/webhook/'
+
+    @patch('commercial.stripe_webhooks.stripe_service')
+    def test_missing_signature_header_returns_400(self, mock_stripe_service):
+        """Thieu header Stripe-Signature => 400, khong xu ly event."""
+        # Singleton stripe_service doc settings luc import (truoc override)
+        # nen mac dinh unconfigured (503). Mock giong test hien co.
+        mock_stripe_service.is_configured.return_value = True
+        response = self.client.post(self.WEBHOOK_URL, {'type': 'ping'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Missing Stripe signature', str(response.data))
+
+    @patch('commercial.stripe_webhooks.stripe_service')
+    def test_invalid_signature_returns_400(self, mock_stripe_service):
+        """Chu ky sai (SDK nem ValueError) => 400, khong xu ly event."""
+        mock_stripe_service.is_configured.return_value = True
+        mock_stripe_service.verify_webhook_signature.side_effect = ValueError(
+            'Invalid webhook signature')
+
+        response = self.client.post(
+            self.WEBHOOK_URL, {'type': 'ping'}, format='json',
+            HTTP_STRIPE_SIGNATURE='t=123,v1=deadbeef')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid signature', str(response.data))
+        mock_stripe_service.verify_webhook_signature.assert_called_once()
