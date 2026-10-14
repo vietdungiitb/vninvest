@@ -106,8 +106,9 @@ PATCH /portfolios/<id>/broker-bindings/   gộp/tách tiểu khoản (explicit, 
   B0.1 SubAccount +broker_config FK/+provider/unique · B0.2 Portfolio +kind/+is_archived +
   PortfolioBrokerBinding + Watchlist +source/+provider/+broker_account? (schema-only, khong
   data migration; serializer/API de B1.6; KHONG doi 409 `suggested_action: rename` —
-  audit B0.2 2026-10-15) · B0.3 +broker_account (nullable, expand) 4 bảng tài chính + trigger
-  tenant guard · B0.4 BrokerSyncRun/Issue · B0.5 `.delay()` 3 view sync + envelope + route/xoá
+  audit B0.2 2026-10-15) · B0.3 +broker_account (nullable, expand) 4 bảng + trigger
+  tenant-match 3 bảng có tenant (AccountSnapshot chỉ FK) · B0.4 BrokerSyncRun/Issue ·
+  B0.5 `.delay()` 3 view sync + envelope + route/xoá
   PortfolioSyncView · B0.6 `/broker/capabilities/` + dùng `is_fully_supported()`.
   Cổng: `makemigrations --check` exit 0 · 1 leaf · BE test Postgres xanh.
 - **Wave 1 — Sync engine đa provider (P0, ~9 ngày, 2 agent).**
