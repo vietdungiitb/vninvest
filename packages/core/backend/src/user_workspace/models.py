@@ -26,6 +26,11 @@ class Portfolio(models.Model):
     TENANT ISOLATION: explicit FK to CoreTenant via tenant field.
     """
 
+    class KindChoices(models.TextChoices):
+        MANUAL = 'manual', 'Thu cong'
+        BROKER_BACKED = 'broker_backed', 'Lien ket broker'
+        AGGREGATE = 'aggregate', 'Tong hop (chi doc)'
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -44,6 +49,19 @@ class Portfolio(models.Model):
     name = models.CharField(max_length=100, verbose_name='Tên danh mục')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
     is_default = models.BooleanField(default=False, verbose_name='Danh mục mặc định')
+    # B0.2 (Wave 0, QD-C/ADR-005): ranh gioi co lap + lop tong hop.
+    # `aggregate` chi doc (khong co du lieu goc) — enforce o tang view (B3.2).
+    kind = models.CharField(
+        max_length=16,
+        choices=KindChoices.choices,
+        default=KindChoices.MANUAL,
+        db_index=True,
+        verbose_name='Loai danh muc',
+    )
+    # B0.2: archive mem thay vi xoa cung (D-17 giu ledger >= 7 nam).
+    # Hanh vi archive (loc mac dinh, 409 suggest) o slice sau — B0.2 chi schema.
+    is_archived = models.BooleanField(
+        default=False, db_index=True, verbose_name='Da luu tru')
     # LED-03 R6: NAV = stock_value + cash − debt, mà `cash` bắt đầu từ số dư
     # mở đầu. Không có trường này thì `cash` chỉ là tổng dòng tiền kể từ lúc
     # hệ thống bắt đầu ghi, và NAV luôn sai theo một hằng số không ai biết —
@@ -201,6 +219,35 @@ class Watchlist(models.Model):
     name = models.CharField(max_length=100, verbose_name='Tên danh sách')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
     is_default = models.BooleanField(default=False, verbose_name='Danh sách mặc định')
+    # B0.2 (Wave 0, ADR-007): tach bach holdings broker vs watchlist thu cong.
+    # `manual` = user tao (khong day nguoc len broker — khong co API);
+    # `derived` = he thong tu sinh tu vi the broker (Wave 1).
+    source = models.CharField(
+        max_length=16,
+        choices=[('manual', 'Thu cong'), ('derived', 'Tu sinh tu vi the')],
+        default='manual',
+        db_index=True,
+        verbose_name='Nguon danh sach',
+    )
+    provider = models.CharField(
+        max_length=16,
+        choices=[('dnse', 'DNSE'), ('ssi', 'SSI'), ('tcbs', 'TCBS')],
+        default='',
+        blank=True,
+        db_index=True,
+        verbose_name='Pham vi broker',
+        help_text='Rong = ap dung chung; co gia tri = chi hien trong ngu canh broker do.',
+    )
+    broker_account = models.ForeignKey(
+        'SubAccount',
+        on_delete=models.SET_NULL,
+        related_name='scoped_watchlists',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Tieu khoan gan kem',
+        help_text='NULL = khong gan tieu khoan cu the.',
+    )
     # Migration tracking
     legacy_group_id = models.IntegerField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -493,6 +540,75 @@ class SubAccount(models.Model):
 
     def __str__(self) -> str:
         return f'{self.display_name} — {self.broker} ({self.user.username})'
+
+
+class PortfolioBrokerBinding(models.Model):
+    """
+    B0.2 (Wave 0, QD-C/ADR-005): lien ket M:N tuong minh danh muc <-> tieu khoan.
+
+    Mac dinh moi tieu khoan thuoc dung 1 danh muc `broker_backed`; gop thu cong
+    (B3.1) tao them binding co `role='secondary'`. Danh muc `aggregate` chi doc
+    qua cac binding (enforce o tang view, B3.2).
+    """
+
+    class RoleChoices(models.TextChoices):
+        PRIMARY = 'primary', 'Chinh'
+        SECONDARY = 'secondary', 'Gop them'
+
+    portfolio = models.ForeignKey(
+        Portfolio,
+        on_delete=models.CASCADE,
+        related_name='broker_bindings',
+        verbose_name='Danh muc',
+    )
+    sub_account = models.ForeignKey(
+        SubAccount,
+        on_delete=models.CASCADE,
+        related_name='portfolio_bindings',
+        verbose_name='Tieu khoan',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='portfolio_broker_bindings',
+        verbose_name='Tenant',
+        help_text='Phai khop tenant cua ca danh muc va tieu khoan.',
+        db_index=True,
+    )
+    role = models.CharField(
+        max_length=16,
+        choices=RoleChoices.choices,
+        default=RoleChoices.PRIMARY,
+        verbose_name='Vai tro',
+    )
+    is_default = models.BooleanField(
+        default=False, verbose_name='Mac dinh hien thi')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Lien ket danh muc - tieu khoan'
+        verbose_name_plural = 'Lien ket danh muc - tieu khoan'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['portfolio', 'sub_account'],
+                name='uniq_portfolio_broker_binding',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        portfolio_tenant = getattr(getattr(self, 'portfolio', None), 'tenant_id', None)
+        sub_tenant = getattr(getattr(self, 'sub_account', None), 'tenant_id', None)
+        for label, got, want in (
+                ('tenant/danh muc', portfolio_tenant, self.tenant_id),
+                ('tenant/tieu khoan', sub_tenant, self.tenant_id)):
+            if got is not None and want is not None and got != want:
+                raise ValidationError(
+                    {'tenant': f'tenant binding khong khop {label}.'})
+
+    def __str__(self) -> str:
+        return f'{self.portfolio_id} <-> {self.sub_account_id} ({self.role})'
 
 
 class DNSECredential(models.Model):
