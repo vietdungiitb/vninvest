@@ -33,9 +33,12 @@ Có `commercial/tasks.py` + 6 beat (nhiều thứ hai). Không có file signal r
   (`vnpay_service.py:96-133`, fail-closed khi secret demo), sai → RspCode 97
   không đổi state (`views.py:284-287`), kèm khóa atomic + check finalized +
   validate amount (`:291-303`).
-- F-COM-01b (⚠ follow-up): test Stripe mock toàn bộ `construct_event`
-  (`tests.py:26`) nên nhánh verify-fail chưa rõ có test thật — cần 1 test
-  chữ ký sai → 400.
+- F-COM-01b (✅ ĐÃ ĐÓNG slice sysdesign-p16): 2 test mới trong
+  `commercial/tests.py` (`StripeWebhookSignatureTestCase`: thiếu header → 400,
+  chữ ký sai → 400 + verify gọi đúng 1 lần) — chạy local 16/16 OK. Phát hiện khi
+  viết test: singleton `stripe_service` đọc settings lúc import nên trong test
+  luôn unconfigured (503) — phải mock `is_configured` như test hiện có
+  (`stripe_service.py:27-37`).
 - F-COM-02 (⚠): `RequiresTenantPermission` dùng ở đâu ngoài 3 route — rà ở dossier sâu.
 
 ## 6. Test khóa + trạng thái
