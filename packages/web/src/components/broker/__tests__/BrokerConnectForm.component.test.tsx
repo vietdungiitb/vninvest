@@ -99,6 +99,17 @@ describe("BrokerConnectForm — schema-driven (B2.2/AC2)", () => {
     });
   });
 
+  it("uses one button language: primary block save + secondary block test", () => {
+    render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
+    const save = screen.getByRole("button", { name: "Lưu kết nối" });
+    const test = screen.getByRole("button", { name: "Kiểm tra kết nối" });
+    // Cung nhip nut xanh full-width cua form DNSE — 3 lane 1 dinh dang.
+    expect(save.className).toContain("actionBtnPrimary");
+    expect(save.className).toContain("actionBtnBlock");
+    expect(test.className).toContain("actionBtnSecondary");
+    expect(test.className).toContain("actionBtnBlock");
+  });
+
   it("blocks save when a required field is missing (key brokerHub.hub.*)", async () => {
     render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
     fireEvent.click(screen.getByRole("button", { name: "Lưu kết nối" }));

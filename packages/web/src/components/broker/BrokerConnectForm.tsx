@@ -274,7 +274,7 @@ export function BrokerConnectForm({
           type="button"
           onClick={handleSave}
           disabled={busy !== null}
-          className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+          className={`${styles.actionBtn} ${styles.actionBtnPrimary} ${styles.actionBtnBlock}`}
         >
           {busy === "save"
             ? t("brokerHub.hub.saving", { defaultValue: "Đang lưu…" })
@@ -284,7 +284,7 @@ export function BrokerConnectForm({
           type="button"
           onClick={handleTest}
           disabled={busy !== null}
-          className={styles.actionBtn}
+          className={`${styles.actionBtn} ${styles.actionBtnSecondary} ${styles.actionBtnBlock}`}
         >
           {busy === "test"
             ? t("brokerHub.hub.testing", { defaultValue: "Đang kiểm tra…" })

@@ -4022,12 +4022,55 @@
   flex-wrap: wrap;
 }
 
+/* Nut chinh: xanh dac #2563eb — cung ngon ngu voi nut "Luu credential" cua
+ * DNSE (`DNSEConnectionPanel.css` --dnse-c2/c3/c4). Mọi lane 1 kieu nut. */
 .actionBtnPrimary {
-  background: rgba(var(--soc-rgb-00b4d8) / 0.2);
-  color: var(--soc-c-f1f5f9);
-  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.5);
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .actionBtnPrimary:hover:not(:disabled) {
-  background: rgba(var(--soc-rgb-00b4d8) / 0.32);
+  background: #1d4ed8;
+  border-color: #1e40af;
+}
+
+.actionBtnPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Nut phu: vien mo, full-width duoi nut chinh (nhip giong form DNSE). */
+.actionBtnSecondary {
+  background: transparent;
+  color: var(--soc-c-f1f5f9);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.4);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.actionBtnSecondary:hover:not(:disabled) {
+  border-color: var(--accent-cyan, var(--soc-c-22d3ee));
+}
+
+.actionBtnSecondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.actionBtnBlock {
+  width: 100%;
+}
+
+/* Ghi de autofill cua trinh duyet (o trang tren nen toi): giu nen + chu theme. */
+.brokerForm input:-webkit-autofill,
+.brokerForm input:-webkit-autofill:hover,
+.brokerForm input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--soc-c-f1f5f9);
+  -webkit-box-shadow: 0 0 0 100px rgba(var(--soc-rgb-020b23) / 1) inset;
+  transition: background-color 600000s, color 600000s;
 }
