@@ -58,7 +58,9 @@ def _credential_expiry(is_verified: bool, last_verified_at) -> tuple[bool, str]:
     """Expiry derived tu field co san (O-3). Khong them field, khong migration.
 
     Tra (needs_verification, stale_reason) voi reason:
-    '' | 'chua_xac_minh' | 'qua_han_30_ngay' | 'chua_cau_hinh'.
+    '' | 'chua_xac_minh' | 'qua_han_30_ngay'.
+    (Case thieu credential tra mac dinh True/'chua_cau_hinh' o caller
+    BrokerHealthView — ham nay chi danh gia credential da co.)
     """
     if not is_verified or last_verified_at is None:
         return True, 'chua_xac_minh'
@@ -128,14 +130,17 @@ def _broker_lane_metrics() -> tuple[dict[str, dict], list[dict]]:
                 consecutive += 1
             else:
                 break
-        sev_rows = (
-            BrokerSyncIssue.objects
-            .filter(run__provider=provider_id, resolved=False)
-            .values('severity'))
+        sev_counts = {
+            row['severity']: row['n']
+            for row in (
+                BrokerSyncIssue.objects
+                .filter(run__provider=provider_id, resolved=False)
+                .values('severity').annotate(n=Count('pk')))
+        }
         sev = {'info': 0, 'warning': 0, 'error': 0}
-        for row in sev_rows:
-            if row['severity'] in sev:
-                sev[row['severity']] += 1
+        for key, val in sev_counts.items():
+            if key in sev:
+                sev[key] = val
         top_rows = list(
             BrokerSyncIssue.objects
             .filter(run__provider=provider_id, resolved=False)
@@ -151,13 +156,8 @@ def _broker_lane_metrics() -> tuple[dict[str, dict], list[dict]]:
         }
     top_global = list(
         BrokerSyncIssue.objects.filter(resolved=False)
-        .values('code').annotate(n=models_count()).order_by('-n')[:5])
+        .values('code').annotate(n=Count('pk')).order_by('-n')[:5])
     return lanes, [{'code': r['code'], 'count': r['n']} for r in top_global]
-
-
-def models_count():
-    from django.db.models import Count
-    return Count('pk')
 
 
 def _get_or_create_service() -> ServiceDefinition:
