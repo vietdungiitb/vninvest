@@ -105,6 +105,17 @@ urlpatterns = [
     path('broker/<str:provider>/status/', views_broker.broker_config_api, name='broker-status'),
     path('broker/jobs/<str:job_id>/', views_broker.broker_job_status_api, name='broker-job-status'),
 
+    # B1.6: doc broker hub read-only + gop danh muc (QĐ-C).
+    path('broker/accounts/', views_broker.broker_accounts_api, name='broker-accounts'),
+    path('broker/accounts/<int:account_id>/', views_broker.broker_account_detail_api, name='broker-account-detail'),
+    path('broker/accounts/<int:account_id>/positions/', views_broker.broker_account_positions_api, name='broker-account-positions'),
+    path('broker/accounts/<int:account_id>/balance/', views_broker.broker_account_balance_api, name='broker-account-balance'),
+    path('broker/accounts/<int:account_id>/orders/', views_broker.broker_account_orders_api, name='broker-account-orders'),
+    path('broker/accounts/<int:account_id>/sync/', views_broker.broker_account_sync_api, name='broker-account-sync'),
+    path('broker/sync-runs/', views_broker.broker_sync_runs_api, name='broker-sync-runs'),
+    path('broker/sync-issues/', views_broker.broker_sync_issues_api, name='broker-sync-issues'),
+    path('workspace/portfolios/<int:portfolio_id>/broker-bindings/', views_broker.portfolio_broker_bindings_api, name='portfolio-broker-bindings'),
+
     # Broker Integration (DNSE) — Native Core Implementation (legacy, giữ 7 routes còn lại;
     # riêng config đã chuyển sang view mới ở trên — xóa route cũ để khỏi shadow)
     path('broker/dnse/sync-accounts/', views_dnse.dnse_sync_accounts_api, name='dnse-broker-sync-accounts'),

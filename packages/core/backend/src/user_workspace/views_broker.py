@@ -27,14 +27,19 @@ from .broker.base import (
     is_fully_supported,
     mask_secrets_preview,
 )
+from .broker.sync_service import BrokerSyncService
 from .envelope import envelope
 from .models import (
+    BrokerSyncIssue,
+    BrokerSyncRun,
     DNSECredential,
+    Portfolio,
+    SubAccount,
     UserBrokerConfig,
     get_user_broker_config,
     set_user_broker_secrets,
 )
-from .tasks import test_broker_connection_task
+from .tasks import sync_broker_account_task, test_broker_connection_task
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.openapi import OpenApiTypes
 from vninvest_core.api_envelope import envelope_response
@@ -280,7 +285,351 @@ def broker_job_status_api(request, job_id):
         error = 'failed'
     return envelope({'job_id': str(job_id), 'state': 'failed', 'error': error})
 
-# SAFE-04: xem iews_dnse.py — @api_view khong chep attribute sang class.
+def _get_sub_account_or_404(pk, user, tenant):
+    """Tieu khoan thuoc user (+ tenant neu co)."""
+    try:
+        if tenant is not None:
+            return SubAccount.objects.get(pk=pk, user=user, tenant=tenant)
+        return SubAccount.objects.get(pk=pk, user=user)
+    except (SubAccount.DoesNotExist, ValueError, TypeError):
+        raise NotFoundErrorException(
+            detail='Tieu khoan khong ton tai.',
+            code='sub_account_not_found',
+        )
+
+
+def _serialize_sub_account(sub: SubAccount) -> dict:
+    return {
+        'id': sub.id,
+        'provider': sub.provider,
+        'external_id': sub.external_id,
+        'account_number': sub.account_number,
+        'display_name': sub.display_name,
+        'type': sub.type,
+        'is_active': sub.is_active,
+        'broker_config_id': sub.broker_config_id,
+        'last_sync_at': sub.last_sync_at,
+    }
+
+
+def _service_for_sub_account(sub: SubAccount):
+    """Service doc broker cho 1 tieu khoan. Chua lien ket => 400."""
+    config = sub.broker_config
+    if config is None:
+        raise ValidationErrorException(
+            detail='Tieu khoan chua lien ket cau hinh broker.',
+            code='account_not_linked',
+        )
+    return BrokerSyncService.for_config(config)
+
+
+def _position_to_dict(position) -> dict:
+    return {
+        'symbol': position.symbol,
+        'quantity': position.quantity,
+        'avg_price': position.avg_price,
+        'market_price': position.market_price,
+    }
+
+
+def _balance_to_dict(balance) -> dict:
+    return {
+        'cash': balance.cash,
+        'stock_value': balance.stock_value,
+        'debt': balance.debt,
+        'net_equity': balance.net_equity,
+        'buying_power': balance.buying_power,
+    }
+
+
+def _order_to_dict(order) -> dict:
+    return {
+        'order_id': order.order_id,
+        'symbol': order.symbol,
+        'side': order.side,
+        'price': order.price,
+        'quantity': order.quantity,
+        'status': order.status,
+        'placed_at': order.placed_at,
+    }
+
+
+@extend_schema(
+    summary='broker_accounts_api',
+    operation_id='broker_accounts_list',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_accounts_api(request):
+    """B1.6: danh sach tieu khoan broker (scope user + tenant)."""
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        qs = SubAccount.objects.filter(
+            user=request.user, tenant=tenant).order_by('-created_at')
+    else:
+        qs = SubAccount.objects.filter(
+            user=request.user).order_by('-created_at')
+    return envelope([_serialize_sub_account(sub) for sub in qs])
+
+
+@extend_schema(
+    summary='broker_account_detail_api',
+    operation_id='broker_account_retrieve',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_account_detail_api(request, account_id):
+    """B1.6: chi tiet 1 tieu khoan."""
+    tenant = getattr(request, 'tenant', None)
+    sub = _get_sub_account_or_404(account_id, request.user, tenant)
+    return envelope(_serialize_sub_account(sub))
+
+
+@extend_schema(
+    summary='broker_account_positions_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_account_positions_api(request, account_id):
+    """B1.6: vi the truc tiep tu broker (read-only, khong ghi DB)."""
+    tenant = getattr(request, 'tenant', None)
+    sub = _get_sub_account_or_404(account_id, request.user, tenant)
+    service = _service_for_sub_account(sub)
+    account_no = sub.external_id or sub.account_number
+    return envelope(
+        [_position_to_dict(p) for p in service.get_positions(account_no)])
+
+
+@extend_schema(
+    summary='broker_account_balance_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_account_balance_api(request, account_id):
+    """B1.6: so du truc tiep tu broker (read-only, khong ghi DB)."""
+    tenant = getattr(request, 'tenant', None)
+    sub = _get_sub_account_or_404(account_id, request.user, tenant)
+    service = _service_for_sub_account(sub)
+    account_no = sub.external_id or sub.account_number
+    return envelope(_balance_to_dict(service.get_balance(account_no)))
+
+
+@extend_schema(
+    summary='broker_account_orders_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_write')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_account_orders_api(request, account_id):
+    """B1.6: so lenh truc tiep tu broker. Ghi (xem) nen can portfolio_write."""
+    tenant = getattr(request, 'tenant', None)
+    sub = _get_sub_account_or_404(account_id, request.user, tenant)
+    service = _service_for_sub_account(sub)
+    account_no = sub.external_id or sub.account_number
+    return envelope([_order_to_dict(o) for o in service.get_orders(account_no)])
+
+
+@extend_schema(
+    summary='broker_account_sync_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_write')
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_account_sync_api(request, account_id):
+    """B1.6: enqueue sync 1 tieu khoan (position-first, worker). Tra 202."""
+    tenant = getattr(request, 'tenant', None)
+    sub = _get_sub_account_or_404(account_id, request.user, tenant)
+    config = sub.broker_config
+    if config is None:
+        raise ValidationErrorException(
+            detail='Tieu khoan chua lien ket cau hinh broker.',
+            code='account_not_linked',
+        )
+    job = sync_broker_account_task.delay(config.id, sub.id)
+    return envelope(
+        {'ok': True, 'job_id': job.id, 'state': 'pending'},
+        status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(
+    summary='broker_sync_runs_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_sync_runs_api(request):
+    """B1.6: lich su lan dong bo (moi nhat truoc)."""
+    tenant = getattr(request, 'tenant', None)
+    try:
+        limit = max(1, min(int(request.query_params.get('limit', 20)), 100))
+    except (TypeError, ValueError):
+        limit = 20
+    if tenant is not None:
+        qs = BrokerSyncRun.objects.filter(
+            user=request.user, tenant=tenant).order_by('-started_at')[:limit]
+    else:
+        qs = BrokerSyncRun.objects.filter(
+            user=request.user).order_by('-started_at')[:limit]
+    return envelope([{
+        'id': run.id,
+        'provider': run.provider,
+        'status': run.status,
+        'started_at': run.started_at,
+        'finished_at': run.finished_at,
+        'stats': run.stats,
+        'error': run.error,
+    } for run in qs])
+
+
+@extend_schema(
+    summary='broker_sync_issues_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_read')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def broker_sync_issues_api(request):
+    """B1.6: lech chua xu ly truoc (`?resolved=false`, `?severity=`)."""
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        qs = BrokerSyncIssue.objects.filter(
+            tenant=tenant).order_by('-created_at')
+    else:
+        qs = BrokerSyncIssue.objects.filter(
+            run__user=request.user).order_by('-created_at')
+    raw_resolved = request.query_params.get('resolved')
+    if raw_resolved in ('true', '1'):
+        qs = qs.filter(resolved=True)
+    elif raw_resolved in ('false', '0'):
+        qs = qs.filter(resolved=False)
+    severity = (request.query_params.get('severity') or '').strip().lower()
+    if severity in ('info', 'warning', 'error'):
+        qs = qs.filter(severity=severity)
+    return envelope([{
+        'id': issue.id,
+        'severity': issue.severity,
+        'code': issue.code,
+        'payload': issue.payload,
+        'resolved': issue.resolved,
+        'created_at': issue.created_at,
+    } for issue in qs[:100]])
+
+
+@extend_schema(
+    summary='portfolio_broker_bindings_api',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+    },
+)
+@required_workspace_permission('portfolio_write')
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated, WorkspacePermission])
+def portfolio_broker_bindings_api(request, portfolio_id):
+    """B1.6: gop/tach tieu khoan khoi danh muc (explicit, QĐ-C).
+
+    Danh muc `broker_backed` chi giu DUNG 1 tieu khoan — gop them phai doi
+    sang `aggregate` (hoac tach cu). Quy tac nay ngan tron lan cau truc.
+    """
+    from .models import PortfolioBrokerBinding  # noqa: PLC0415 (lazy)
+
+    tenant = getattr(request, 'tenant', None)
+    try:
+        if tenant is not None:
+            portfolio = Portfolio.objects.get(
+                pk=portfolio_id, user=request.user, tenant=tenant)
+        else:
+            portfolio = Portfolio.objects.get(
+                pk=portfolio_id, user=request.user)
+    except (Portfolio.DoesNotExist, ValueError, TypeError):
+        raise NotFoundErrorException(
+            detail='Danh muc khong ton tai.',
+            code='portfolio_not_found',
+        )
+    data = request.data if isinstance(request.data, dict) else {}
+    action = str(data.get('action', '')).strip().lower()
+    sub_account_id = data.get('sub_account_id')
+    sub = _get_sub_account_or_404(sub_account_id, request.user, tenant)
+
+    if action == 'add':
+        if portfolio.kind == 'broker_backed' and PortfolioBrokerBinding.objects.filter(
+                portfolio=portfolio).exclude(sub_account=sub).exists():
+            raise ValidationErrorException(
+                detail='Danh muc broker_backed chi giu 1 tieu khoan. '
+                       'Doi sang aggregate de gop, hoac tach tieu khoan cu.',
+                code='broker_backed_single_account',
+            )
+        binding, _ = PortfolioBrokerBinding.objects.get_or_create(
+            portfolio=portfolio, sub_account=sub,
+            defaults={
+                'tenant': tenant or portfolio.tenant,
+                'role': str(data.get('role') or 'primary'),
+                'is_default': bool(data.get('is_default', False)),
+            },
+        )
+        binding.full_clean()
+        return envelope({
+            'ok': True, 'portfolio_id': portfolio.id,
+            'sub_account_id': sub.id, 'binding_id': binding.id,
+        })
+    if action == 'remove':
+        deleted, _ = PortfolioBrokerBinding.objects.filter(
+            portfolio=portfolio, sub_account=sub).delete()
+        return envelope({
+            'ok': True, 'portfolio_id': portfolio.id,
+            'sub_account_id': sub.id, 'removed': bool(deleted),
+        })
+    raise ValidationErrorException(
+        detail="action phai la 'add' hoac 'remove'.",
+        code='validation_error',
+    )
+
+
+# SAFE-04: xem iews_dnse.py — @api_view khong chep attribute sang class.
 attach_required_permissions(
     broker_config_api,
     broker_test_connection_api,

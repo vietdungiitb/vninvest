@@ -319,6 +319,7 @@ class DnseBrokerAdapter(BrokerAdapter):
                 build_dnse_client,
                 fetch_account_balance,
                 fetch_order_history,
+                fetch_positions,
                 fetch_sub_accounts,
             )
         except ImportError as exc:
@@ -330,6 +331,7 @@ class DnseBrokerAdapter(BrokerAdapter):
             'balance': fetch_account_balance,
             'orders': fetch_order_history,
             'accounts': fetch_sub_accounts,
+            'positions': fetch_positions,
         }
         return self._client
 
@@ -359,8 +361,21 @@ class DnseBrokerAdapter(BrokerAdapter):
         )
 
     def get_positions(self, account_no: str) -> list[BrokerPosition]:
-        # DNSE positions suy từ order history hiện tại chưa có endpoint riêng ở compat
-        raise BrokerAdapterError('DNSE positions chưa hỗ trợ ở pha C (dùng sync holdings)')
+        # B1.2 (Wave 1, P0-4): noi endpoint that `DNSEClient.get_positions`
+        # (market_type STOCK). Comment cu sai — endpoint co san o 3.7.2.
+        client = self._client_or_raise()
+        out = []
+        for item in self._fetch['positions'](client, account_no):
+            symbol = str(item.get('symbol') or '').upper()
+            if not symbol:
+                continue
+            out.append(BrokerPosition(
+                symbol=symbol,
+                quantity=_to_float(item.get('quantity')),
+                avg_price=_to_float(item.get('avg_price')),
+                market_price=_to_float(item.get('market_price')),
+            ))
+        return out
 
     def get_orders(self, account_no: str) -> list[BrokerOrder]:
         from datetime import date, timedelta

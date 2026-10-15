@@ -106,7 +106,10 @@ PATCH /portfolios/<id>/broker-bindings/   gộp/tách tiểu khoản (explicit, 
   B0.1 (0024/0025) · B0.2 (0026) · B0.3 (0027/0028) · B0.4 (0029) · B0.5 (async 202,
   xoá SyncView) · B0.6 (capabilities). Verify as-merged trên dev: **126/126 OK**
   (VPS staging). Không model mới ở B0.5/B0.6 (head **0029**).
-- **Wave 1 — Sync engine đa provider (P0, ~9 ngày, Mode B tuần tự).**
+- **Wave 1 — Sync engine đa provider (P0, Mode B tuần tự, MỘT nhánh wave
+  `feat/mbw1-sync-engine`, commit theo slice, MỘT PR cuối wave).**
+  B1.3 va chạm cùng (portfolio, symbol, ngày) giữa 2 tiểu khoản ⇒ bỏ qua +
+  báo collision (không crash, không ghi sai), unique DB giữ nguyên.
   B1.1 BrokerSyncService interface + registry 3 lane (mock adapter, không I/O thật) ·
   B1.2 nối `get_positions`/`get_holdings` cả 3 lane ở vnbroker **3.7.2** (P0-4;
   DNSE `market_type` bắt buộc, TCBS history giới hạn in-day) · B1.3 position-first

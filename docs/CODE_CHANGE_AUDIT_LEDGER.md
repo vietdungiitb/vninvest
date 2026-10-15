@@ -1,4 +1,35 @@
 
+## Entry 319: Audit doc lap ke hoach Wave 2 theo skill multi-agent-workflow - AGREE (2026-10-15)
+
+- **Claim**: `audit-wave2` (in-progress -> done o commit nay). Auditor Task doc lap (khac agent), read-only tru 1 file output; supervisor giu vai tro con lai. Khong worktree rieng cho auditor (ly do ghi REPORT_FINAL).
+- **Vong 1**: NEED_REVISION - 9 objections (O1-O2 blocker: thieu AC Given/When/Then + thieu bang baseline; O3-O5 major: file Chung i18n/soc, sidebar/holdings chua chot, payload thieu provider join; O6-O9 minor) + 7 contradictions (sai vung dong, thieu route status/, dem 61 unique/70 luot, ADR path, phan cong artifact, comment stale). So lieu plan dung ca 5 (9 endpoint, 10 adapter, 24 test, 61, catalog 1483 - co lenh tai tao).
+- **Sua vong 1**: §9 AC1-AC9 GWT + §6 baseline (tsc 0, build PASS, i18n:scan 0, nen 1324.3 KB, BE PASS-tuong-duong qua diff exit 0) + tach prefix i18n/soc-1-chu + sidebar/holdings/main refs + join rule + freeze status/drift-30 + ngoai le routes.broker + SCOPE/LIMIT/Non-goals. Chay that de lay so: i18n:scan:strict exit 0, measure-route 1324.3 KB, git-diff-quiet exit 0.
+- **Vong 2**: AGREE + reservations (O1-O9 dong toan bo; O10 minor audit-trail truncated - dong bang xac nhan, khong sua vong 1; R2 baseline tai tao 1 phan - owner Wave-2 Pha 3). Confidence High/Medium.
+- **Gate**: TEST_REPORT toan PASS/CHUA-CHAY-chap-nhan (check-multi-agent 0 + tsc 0 chay lai). 0 blocker/major. Doi lech skill (no-worktree, gop nhanh PR #147) co ly do trong REPORT_FINAL. Khong migration, khong deny-list, khong code.
+- **Tiep**: thuc thi Wave 2 theo plan (cho Owner duyet) - mo claim mbw2-hub/mbw2-data.
+
+## Entry 318: Ke hoach thuc thi Wave 2 Broker Hub UI - mot chu trinh khep kin (2026-10-15)
+
+- **Loai**: doc-only (khong code). Tong hop PLAN muc 4 + HANDOFF_MBW1 + bang chung file:line doc that.
+- **Lessons ap dung**: L-001, L-002, L-003, L-006, L-008, L-A01, L-G01, L-G02, L-G03, L-G04, L-G07, L-V02, L-V03, L-F01, L-F03, L-F08, L-F09, L-F10, L-T01, L-T02.
+- **Quyet dinh PM (khoa)**: 1 nhanh `feat/mbw2-broker-hub` + 1 PR cuoi wave (khong slice nho) · 2 agent phan theo BE MAT (HUB: B2.1/B2.2/B2.6; DATA: B2.3/B2.4/B2.5 + adapter) · contract adapter/route/i18n dong bang Pha 0 · Wave 2 FE-only (thieu API BE => STOP mo ticket) · verify FE LOCAL + regression BE VPS 1 lan (FE tren VPS chua tung chung minh duoc - ep chay la vi pham L-006/L-007) · khong migration · giu chuan Bloomberg.
+- **Bang chung neo ke hoach**: `broker.js:1-39` (thieu 9 endpoint hub) · `urls.py` 9 route hub B1.6 · `PortfoliosBrokerPage.tsx:1-54` + `DNSEConnectionPanel.js` (da i18n) · `routeCatalog.js:146-155` (schema 8 truong + contract 2 chieu) · `pageRegistry.js:223-224` · `vi.js:6767+`/`en.js:6741+` (`dnsePanel.*`). Sidebar nav **CHUA XAC MINH** - Pha 0 dinh vi.
+- **Tien trinh**: Pha 0 (claim + fail-before + control) · Pha 1 (song song, luat sat hook/searchParams/status) · Pha 2 (B2.7 + cross-review + do bundle tinh + grep link chet) · Pha 3 (rebase->migration->gate + regression VPS + 1 PR).
+- **CHUA CHAY**: toan bo Wave 2 (ke hoach, chua thuc thi).
+
+## Entry 317: Wave 1 B1.2-B1.6 DONE + Wave 1 DONG - Sync engine da provider (2026-10-15)
+
+- **Nhanh**: `feat/mbw1-sync-engine` -> `dev` - claim `mbw1-wave`. 1 agent duy nhat (Mode B tuan tu, 1 nhanh wave, commit theo slice, 1 PR cuoi wave), khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03. TDD fail-before (23/26 do tren base).
+- **Viec lam**: B1.2 noi `get_positions`/`get_holdings` 3 lane 3.7.2 + mapping camelCase DNSE (stub client, khong mang) · B1.3 `broker/position_sync.py` append-only skip-compare + va cham legacy NULL · B1.4 `broker/sync_guard.py` + fan-out task + beat 30m · B1.5 `broker/drift.py` drift -> BrokerSyncIssue · B1.6 `views_broker.py` 9 endpoint + bindings + routes. Khong migration (head giu 0029).
+- **Sua thiet ke khi implement**: patch `for_config` tren class (khong qua namespace tasks); khoa `_beat_in_quiet_hours=False` trong fanout tests (cua so quiet VN 17:00-08:30 lam test do tuy gio; duong quiet van duoc phu rieng).
+- **TDD (VPS staging, DB tam rieng moi lan, runbook §12)**: beat **9/9** · drift/views/capabilities/guard **30/30** · regression **31/31** => **61/61 xanh**. Dinh chinh: so "15/15, 22/22, 183/183" phien truoc khong khop file (lane 8 test, position 7 test).
+- **Gate**: `makemigrations --check` No changes detected · gate 3.8.0 giu (`requirements.txt:38` van 3.7.2) · `tsc --noEmit` 0 · `npm run build` PASS 45.11s (canh bao eval/chunk co san) · pre-push-gate **22/22 PASS** · system-design regen (catalog 1473->1483).
+- **Su co moi**: MagicMock trong DRF Response => de quy vo han + OOM (chi mock kieu that) · PowerShell nuot quote kep qua SSH (pipe SQL qua stdin).
+- **Don dep VPS**: DROP DB tam + xoa probe file - xong. Con lai worktree `/tmp/wt-w1` + `/tmp/wt-base` (xoa sau merge).
+- **WAVE 1 DONG 6/6**: B1.1 (PR #146) · B1.2 · B1.3 · B1.4 · B1.5 · B1.6. Tiep: Wave 2 Broker Hub UI theo PLAN muc 4.
+- **CHUA CHAY**: full BE suite · FE tren VPS (thieu node_modules) · ruff (chua cai) · REQ-001..005 CHUA GUI.
+
 ## Entry 316: Wave 1 B1.1 DONE - BrokerSyncService interface + registry (2026-10-15)
 
 - **Nhanh**: `feat/mbw1-b11-syncservice` -> `dev` - claim `mbw1-b11`. 1 agent duy nhat, khong cham deny-list.
@@ -10300,6 +10331,9 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 314 | 2026-10-14 | **Wave 0 B0.5 DONE** - sync async 202 + xoa SyncView, 8/8 + 111/111 OK tren VPS, pre-push 22/22. |
 | 315 | 2026-10-15 | **Wave 0 B0.6 DONE + Wave 0 DONG** - capabilities endpoint, 6/6 + 121/121 OK tren VPS, pre-push 22/22. |
 | 316 | 2026-10-15 | **Wave 1 B1.1 DONE** - SyncService + registry, 7/7 + 119/119 OK tren VPS, pre-push 22/22. |
+| 317 | 2026-10-15 | **Wave 1 B1.2-B1.6 DONE + Wave 1 DONG** - sync engine 3 lane, 61/61 OK tren VPS, tsc 0 + build PASS, pre-push 22/22. |
+| 318 | 2026-10-15 | **Ke hoach Wave 2 Broker Hub UI** - 1 chu trinh khep kin, 2 agent theo be mat, FE-only, doc-only. |
+| 319 | 2026-10-15 | **Audit doc lap ke hoach Wave 2** - NEED_REVISION (9 obj) -> sua het -> AGREE, 0 blocker/major, doc-only. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
