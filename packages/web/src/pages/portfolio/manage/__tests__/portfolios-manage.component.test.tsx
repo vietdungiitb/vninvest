@@ -290,5 +290,9 @@ describe("/portfolios/manage — điều hướng", () => {
     expect(screen.queryByText(/Gửi OTP/)).toBeNull();
     // Nhưng vẫn có lối ra tới trang broker.
     expect(screen.getByRole("link", { name: "Kết nối broker" })).toBeTruthy();
+    // Và lối ra tới trang watchlist (nơi thêm mã thủ công).
+    const watchLink = screen.getByRole("link", { name: "Danh mục theo dõi" });
+    expect(watchLink).toBeTruthy();
+    expect(watchLink.getAttribute("href")).toBe("/watchlist");
   });
 });

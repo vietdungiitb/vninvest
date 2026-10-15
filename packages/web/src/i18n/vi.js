@@ -6881,6 +6881,7 @@ noPermission: 'Bạn không có quyền truy cập trang này.',
     eyebrow: 'Danh mục',
     title: 'Quản lý danh mục',
     brokerLink: 'Kết nối broker',
+    watchLink: 'Danh mục theo dõi',
     count: '{shown}/{total} danh mục',
     search: {
       placeholder: 'Lọc theo tên hoặc mô tả',

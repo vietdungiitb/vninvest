@@ -6852,6 +6852,7 @@ const en = {
     eyebrow: 'Portfolios',
     title: 'Manage portfolios',
     brokerLink: 'Broker connection',
+    watchLink: 'Watchlist',
     count: '{shown}/{total} portfolios',
     search: {
       placeholder: 'Filter by name or description',
