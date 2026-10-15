@@ -88,6 +88,17 @@ describe("BrokerConnectForm — schema-driven (B2.2/AC2)", () => {
     expect(screen.queryByPlaceholderText("Client Secret")).toBeNull();
   });
 
+  it("uses soc input styling + safe autocomplete on every field", () => {
+    const { container } = render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
+    const inputs = container.querySelectorAll("input");
+    expect(inputs.length).toBe(SSI_SCHEMA.fields.length);
+    inputs.forEach((input) => {
+      expect(input.getAttribute("autocomplete")).toBe("off");
+      expect(input.getAttribute("spellcheck")).toBe("false");
+      expect(input.className).toContain("fieldInput");
+    });
+  });
+
   it("blocks save when a required field is missing (key brokerHub.hub.*)", async () => {
     render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
     fireEvent.click(screen.getByRole("button", { name: "Lưu kết nối" }));
