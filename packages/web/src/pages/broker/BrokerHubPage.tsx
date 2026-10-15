@@ -47,7 +47,7 @@ export interface BrokerCapabilitiesResponse {
 
 interface BrokerHubAdapter {
   getBrokerProviders: () => Promise<{ providers: BrokerProviderInfo[] }>;
-  coreGet: (path: string) => Promise<BrokerCapabilitiesResponse>;
+  getBrokerCapabilities: () => Promise<BrokerCapabilitiesResponse>;
   getBrokerSchema: (provider: string) => Promise<BrokerConnectSchema>;
 }
 
@@ -55,7 +55,6 @@ interface BrokerHubAdapter {
 const PROVIDER_PARAM_KEY = "provider";
 const DEFAULT_LANE = "dnse";
 const LEGACY_PANEL_LANE = "dnse";
-const CAPABILITIES_PATH = "/broker/capabilities/";
 const hubApi = defaultCoreApiAdapter as unknown as BrokerHubAdapter;
 
 function capabilityBadges(
@@ -133,7 +132,7 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
     let mounted = true;
     setLoading(true);
     setLoadError(null);
-    Promise.all([hubApi.getBrokerProviders(), hubApi.coreGet(CAPABILITIES_PATH)])
+    Promise.all([hubApi.getBrokerProviders(), hubApi.getBrokerCapabilities()])
       .then(([providersRes, capabilitiesRes]) => {
         if (!mounted) return;
         setProviders(providersRes?.providers ?? []);
