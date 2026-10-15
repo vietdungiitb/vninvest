@@ -132,10 +132,11 @@ class SyncAllPositionsTaskTests(TestCase):
 
     def test_fanout_writes_run_and_snapshots(self):
         from user_workspace import tasks as ws_tasks
+        from user_workspace.broker.sync_service import BrokerSyncService
         from user_workspace.models import BrokerSyncRun, PositionSnapshot
         self._config_with_sub()
         with patch.object(
-            ws_tasks.BrokerSyncService, 'for_config',
+            BrokerSyncService, 'for_config',
             return_value=self._fake_service(),
         ):
             result = ws_tasks.sync_all_broker_positions_task.run()
@@ -169,10 +170,11 @@ class SyncAllPositionsTaskTests(TestCase):
 
     def test_fanout_skips_tenantless_config(self):
         from user_workspace import tasks as ws_tasks
+        from user_workspace.broker.sync_service import BrokerSyncService
         from user_workspace.models import BrokerSyncRun
         self._config_with_sub(with_tenant=False)
         with patch.object(
-            ws_tasks.BrokerSyncService, 'for_config',
+            BrokerSyncService, 'for_config',
             return_value=self._fake_service(),
         ):
             result = ws_tasks.sync_all_broker_positions_task.run()
