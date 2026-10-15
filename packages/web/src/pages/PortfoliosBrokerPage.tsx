@@ -1,6 +1,6 @@
 /**
- * `/portfolios/manage/broker` — nơi duy nhất để nhập thông tin broker, đồng bộ
- * tài khoản và **đặt lệnh**.
+ * `/portfolios/manage/broker` — GIỮ LẠI LÀM REDIRECT về `/broker` (B2.6, quyết
+ * định PLAN_WAVE2 §0.6: giữ entry + redirect, không xoá để tránh link chết).
  *
  * Vì sao tách khỏi `/portfolios/manage`:
  * - **Ngữ nghĩa**: trang quản lý danh mục lo danh mục; thao tác tiền thật lo một
@@ -11,44 +11,22 @@
  * - D-36 của `PORTFOLIO_EXEC_PLAN_MASTER_20260927.md:83` đã chốt "Broker Hub tách
  *   riêng" nhưng bản thực thi cũ vẫn nhúng panel vào trang danh mục.
  *
- * `DNSEConnectionPanel` **không sửa một dòng** — giữ nguyên để diff của thay đổi
- * này chỉ nằm ở chỗ dời chỗ. Panel còn chứa ~28 chuỗi hardcode; việc i18n hoá nó
- * là slice riêng, không gộp vào đây để diff đọc được.
+ * C7 (đã sửa 2026-10-15, Wave 2): ghi chú cũ "Panel còn chứa ~28 chuỗi hardcode"
+ * là STALE — `DNSEConnectionPanel.js` đã i18n xong từ claim `pf-manage-rebuild`
+ * (2026-10-13, mọi chuỗi qua `t("dnsePanel.*")`, key có sẵn `vi.js:6770`,
+ * `en.js:6744`). Panel giữ nguyên, render lại ở `BrokerHubPage` (lane `dnse`).
  */
 
-import { Link } from "react-router-dom";
-
-import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
-import { ShellPageChrome } from "../components/ShellPageTemplate.js";
-import { useI18n } from "../context/LangContext.js";
-import "../components/soc/soc.tokens.css";
+import { Navigate } from "react-router-dom";
 
 export interface PortfoliosBrokerPageProps {
   className?: string;
-  /** `DNSEConnectionPanel` bắt buộc prop này — giữ nguyên khi tách route. */
+  /** Giữ prop để entry registry cũ không vỡ — redirect bỏ qua prop này. */
   onConnected?: () => void;
 }
 
-export function PortfoliosBrokerPage({
-  className = "",
-  onConnected,
-}: PortfoliosBrokerPageProps) {
-  const { t } = useI18n();
-
-  return (
-    <ShellPageChrome
-      eyebrow={t("portfoliosManage.broker.eyebrow", { defaultValue: "Broker" })}
-      title={t("portfoliosManage.broker.title", { defaultValue: "Kết nối broker & đặt lệnh" })}
-      className={className}
-    >
-      <p>
-        <Link to="/portfolios/manage">
-          ← {t("portfoliosManage.broker.back", { defaultValue: "Về quản lý danh mục" })}
-        </Link>
-      </p>
-      <DNSEConnectionPanel onConnected={onConnected} />
-    </ShellPageChrome>
-  );
+export function PortfoliosBrokerPage(_props: PortfoliosBrokerPageProps) {
+  return <Navigate to="/broker" replace />;
 }
 
 export default PortfoliosBrokerPage;

@@ -1,4 +1,15 @@
 
+## Entry 320: Wave 2 Broker Hub UI DONE - mot chu trinh khep kin (2026-10-15)
+
+- **Nhanh**: `feat/mbw2-hub` + `feat/mbw2-data` -> `feat/mbw2-broker-hub` -> `dev` (1 PR) - claim `mbw2-hub` + `mbw2-data`. 2 agent song song theo be mat, trail giu (merge, khong squash).
+- **Lessons ap dung**: L-001..L-003, L-006, L-008, L-A01, L-G01..L-G04, L-G07, L-G08, L-V02, L-V03, L-F01, L-F03, L-F08..L-F10, L-T01, L-T02. TDD fail-before + control ca 2 (DO import-fail).
+- **Viec lam**: B2.1 route `/broker` + 3 tile capability · B2.2 connect schema-driven 3 lane · B2.3 Account Manager 4 tab (badge join tu URL, unlinked 0 request) · B2.4 Sync Center (202+poll jobs) · B2.5 holdings badge QĐ-C fail-closed · B2.6 doi 2 be mat + redirect (deprecated+redirectTo) + menu · B2.7 i18n tach prefix + soc-css 1 chu. Adapter +10 ham §2. Khong BE, khong migration.
+- **QĐ PM giua pha**: WIRING-01 (corePatch, owner DATA) · BE-01 (bindings PATCH-only => xoa GET, GAP BE-READ W3) · BE-02 (kind khong expose => fail-closed, GAP W3) · mount tabs vao `/broker/accounts/:accountId`.
+- **Cross-review doc lap 2 vong**: vong 1: 1 blocker (brokerHub trung 2 lan => runtime mat data.*) + 3 major => sua (gop 1 khoi + RUNTIME-12/12) => vong 2: 0 blocker + 0 major chua chap nhan.
+- **Gate**: vitest 46/46 + tsc 0 + build PASS + bundle 1355.1/1350.7 KB (≤1450) + i18n:scan 0 + dead-link 0 sot + regression BE VPS **61/61** (DB mbw2_reg, da don) + pre-push 22/22 (drift moi truong 3 lan, deploy.mjs chinh thong).
+- **Do lech**: 2 nhanh agent rieng (git cam 2 worktree chung 1 branch) · consolidation i18n tren nhanh tich hop (exception coordinator) · claim giu `done` (khong commit le vao dev).
+- **CHUA CHAY**: E2E 2 SubAccount that · FE tren VPS · full BE · ruff. Ticket W3: BE-READ, kind+source, hop nhat BrokerSettingsSection, trung id portfolios-manage, status SSI/TCBS.
+
 ## Entry 319: Audit doc lap ke hoach Wave 2 theo skill multi-agent-workflow - AGREE (2026-10-15)
 
 - **Claim**: `audit-wave2` (in-progress -> done o commit nay). Auditor Task doc lap (khac agent), read-only tru 1 file output; supervisor giu vai tro con lai. Khong worktree rieng cho auditor (ly do ghi REPORT_FINAL).
@@ -10334,6 +10345,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 317 | 2026-10-15 | **Wave 1 B1.2-B1.6 DONE + Wave 1 DONG** - sync engine 3 lane, 61/61 OK tren VPS, tsc 0 + build PASS, pre-push 22/22. |
 | 318 | 2026-10-15 | **Ke hoach Wave 2 Broker Hub UI** - 1 chu trinh khep kin, 2 agent theo be mat, FE-only, doc-only. |
 | 319 | 2026-10-15 | **Audit doc lap ke hoach Wave 2** - NEED_REVISION (9 obj) -> sua het -> AGREE, 0 blocker/major, doc-only. |
+| 320 | 2026-10-15 | **Wave 2 Broker Hub UI DONE** - 2 agent song song, cross-review 2 vong, 46/46 + 61/61 VPS + build PASS, 1 PR. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
