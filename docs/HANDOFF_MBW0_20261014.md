@@ -1,17 +1,17 @@
-# HANDOFF — Wave 0 ĐÓNG (6/6). Phiên tiếp theo: Wave 1 B1.1 (sau B0.6/PR #145)
+# HANDOFF — Wave 1 B1.2 kế tiếp (sau B1.1/PR #146)
 
-- **Ngày:** 2026-10-15 · **Người bàn giao:** PM/Tech Lead (phiên B0.6)
-- **Trạng thái Wave 0:** B0.1–B0.6 DONE (B0.6: PR #145 chờ merge) · **WAVE 0 ĐÓNG**.
-  Không migration mới ở B0.6 (head vẫn **0029**).
+- **Ngày:** 2026-10-15 · **Người bàn giao:** PM/Tech Lead (phiên B1.1)
+- **Trạng thái:** Wave 0 ĐÓNG (6/6 merged) · B1.1 DONE (PR #146 chờ merge) · B1.2+ chưa làm.
+  Migration head sau merge: **0029** (B1.1 không migration).
 
-## 1. Wave 1 B1.1 làm gì (kế tiếp — SyncService đa provider)
+## 1. Wave 1 B1.2 làm gì (kế tiếp — nối lane 3.7.2)
 
-`BrokerSyncService` interface + registry 3 lane (dùng `broker/adapters.py` có sẵn,
-thêm `get_positions` DNSE — P0-4 đã chứng minh có endpoint). Position-first sync →
-`PositionSnapshot(source='broker')` + `AccountSnapshot`, idempotent (2 lần ⇒ 0 row
-trùng). Test trên VPS (DB tạm mới, vd `mbw1_b11`). **Gate 3.8.0 vẫn giữ**: chỉ dùng
-API đã có ở 3.7.2; REQ-001..005 là ticket adopt riêng sau khi vnbroker merge+bump.
-Đọc PLAN mục 4 (Wave 1) + ADR-005/006/007 trước khi khai claim.
+Nối `get_positions`/`get_holdings` cả 3 lane qua `BrokerSyncService` (vnbroker
+**3.7.2**, gate 3.8.0 giữ): DNSE `market_type` bắt buộc (`STOCK`); SSI/TCBS
+`get_holdings`; TCBS history giới hạn in-day + executions (không `get_order_history`
+— đã gỡ). Test với **stub client** (không credential/mạng): DTO chuẩn + mapping
+field phòng thủ. Đọc PLAN mục 4 + ADR-006 trước khi khai claim. DB tạm mới
+(vd `mbw1_b12`).
 
 ## 2. Quy trình VPS đã chứng minh (dùng lại nguyên văn)
 
