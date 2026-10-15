@@ -212,6 +212,9 @@ export function PortfoliosPage({ className = "", adapter }: PortfoliosPageProps)
         <Link to="/portfolios/manage/broker" className="pfm-btn">
           {t("portfoliosManage.brokerLink", { defaultValue: "Kết nối broker" })}
         </Link>
+        <Link to="/watchlist" className="pfm-btn">
+          {t("portfoliosManage.watchLink", { defaultValue: "Danh mục theo dõi" })}
+        </Link>
         <button type="button" className="pfm-btn" onClick={reload} disabled={loading}>
           {t("portfoliosManage.action.reload", { defaultValue: "Tải lại" })}
         </button>
