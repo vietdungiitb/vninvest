@@ -74,7 +74,7 @@ describe("SocBrokerPanel (B2.3)", () => {
       expect(screen.getByText("soc.broker.config_title")).toBeTruthy();
     });
     expect(screen.getByText("soc.broker.health_title")).toBeTruthy();
-    expect(screen.getByText("soc.broker.audit_title")).toBeTruthy();
+    expect(screen.getByText("Nhật ký audit")).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByText("rpm change")).toBeTruthy();
     });
