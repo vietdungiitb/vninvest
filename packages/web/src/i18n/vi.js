@@ -2434,7 +2434,6 @@ const vi = {
   // Mọi chuỗi mới của tab Broker Ops đều qua `t("brokerWave4.*")` + defaultValue đầy đủ dấu.
   brokerWave4: {
     ops: {
-      laneTitle: 'Vận hành lane (24h)',
       lastRun: 'Lần chạy cuối',
       noRuns: 'Chưa có lần chạy nào trong 24h.',
       runs24h: 'Số lần chạy 24h',

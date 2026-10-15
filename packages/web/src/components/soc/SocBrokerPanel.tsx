@@ -209,6 +209,7 @@ export function SocBrokerPanel() {
         message: turningOn
           ? t("brokerWave4.ops.killOnBody", { defaultValue: "BẬT kill-switch: mọi lệnh ghi order/sync sẽ trả 503. Tiếp tục?" })
           : t("brokerWave4.ops.killOffBody", { defaultValue: "TẮT kill-switch: cho phép ghi trở lại. Tiếp tục?" }),
+        confirmText: t("brokerWave4.ops.killConfirm", { defaultValue: "Xác nhận kill-switch" }),
         variant: "destructive",
       });
       if (!ok) return;
@@ -376,14 +377,14 @@ export function SocBrokerPanel() {
               (p.enabled ? "● " : "○ ") + (p.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified"))),
             p.needs_verification ? e("span", null, " ", expiryBadge(p.stale_reason)) : null,
             e("p", { className: styles.metricLabel },
-              `${wv("laneTitle", "Vận hành lane (24h)")}: `,
+              `${wv("lastRun", "Lần chạy cuối")}: `,
               last
                 ? `${last.status || "?"}${last.error ? ` — ${last.error}` : ""}`
                 : wv("noRuns", "Chưa có lần chạy nào trong 24h.")),
             e("div", { className: styles.brokerLaneCard },
               e("div", { className: styles.brokerLaneRow },
                 e("span", null, wv("runs24h", "Số lần chạy 24h")),
-                e("span", null, `${fmtNum(runs.total)} (OK ${fmtNum(runs.succeeded)} / lỗi ${fmtNum(runs.failed)})`)),
+                e("span", null, `${fmtNum(runs.total)} (${wv("succeeded", "Thành công")} ${fmtNum(runs.succeeded)} / ${wv("failed", "Thất bại")} ${fmtNum(runs.failed)})`)),
               e("div", { className: styles.brokerLaneRow },
                 e("span", null, wv("errorRate", "Tỉ lệ lỗi")),
                 e("span", null, fmtPct(lane.error_rate_24h))),

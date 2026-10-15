@@ -3919,12 +3919,6 @@
 
 /* mbw4 Wave 4 — SOC Broker Ops lane cards + expiry badges.
    Class moi vao day (khong vao barrel soc.module.css — chi re-export). */
-.brokerLaneGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
 .brokerLaneCard {
   border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
   border-radius: 8px;
@@ -3960,9 +3954,4 @@
   background: rgba(245, 158, 11, 0.15);
   border: 1px solid rgba(245, 158, 11, 0.4);
   color: #fbbf24;
-}
-.brokerBadgeBad {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #f87171;
 }

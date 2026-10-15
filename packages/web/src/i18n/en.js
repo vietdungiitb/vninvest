@@ -2436,7 +2436,6 @@ const en = {
   // mbw4 Wave 4 — SOC Broker Ops (FE-owned, follows brokerWave3).
   brokerWave4: {
     ops: {
-      laneTitle: 'Lane operations (24h)',
       lastRun: 'Last run',
       noRuns: 'No runs in the last 24h.',
       runs24h: 'Runs (24h)',

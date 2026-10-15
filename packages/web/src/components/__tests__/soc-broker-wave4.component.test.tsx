@@ -103,7 +103,7 @@ describe("SocBrokerPanel wave4 (B4.3)", () => {
   it("renders lane metrics, queue depth and top errors", async () => {
     render(<SocBrokerPanel />);
     await waitFor(() => {
-      expect(screen.getByText("Vận hành lane (24h)", { exact: false })).toBeTruthy();
+      expect(screen.getByText("Lần chạy cuối", { exact: false })).toBeTruthy();
     });
     expect(screen.getByText(/25\.0%/)).toBeTruthy();
     expect(screen.getAllByText(/sync_failed/).length).toBeGreaterThan(0);
