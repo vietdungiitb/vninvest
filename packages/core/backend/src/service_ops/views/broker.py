@@ -14,10 +14,14 @@ Tất cả kế thừa SOCBaseView = [IsAuthenticated, IsAdminUser] (views/base.
 """
 from __future__ import annotations
 
+import csv
 import logging
 import uuid
+from datetime import timedelta
 
 from django.utils import timezone
+from django.db.models import Count
+from django.http import StreamingHttpResponse
 from rest_framework import status
 from vninvest_core.client_ip import get_client_ip
 
@@ -40,6 +44,120 @@ from vninvest_core.api_envelope import envelope_response
 
 
 logger = logging.getLogger(__name__)
+
+# Wave 4 (mbw4) — B4.1/B4.2.
+#: Credential qua han sau 30 ngay khong xac minh (O-3: derived, khong migration).
+CREDENTIAL_STALE_DAYS = 30
+#: Cua so lane metrics (giờ).
+LANE_WINDOW_HOURS = 24
+#: Queue mac dinh cua Celery — broker sync `.delay()` ha xuong day (khong route rieng).
+BROKER_SHARED_QUEUE = 'celery'
+
+
+def _credential_expiry(is_verified: bool, last_verified_at) -> tuple[bool, str]:
+    """Expiry derived tu field co san (O-3). Khong them field, khong migration.
+
+    Tra (needs_verification, stale_reason) voi reason:
+    '' | 'chua_xac_minh' | 'qua_han_30_ngay' | 'chua_cau_hinh'.
+    """
+    if not is_verified or last_verified_at is None:
+        return True, 'chua_xac_minh'
+    try:
+        age = timezone.now() - last_verified_at
+    except Exception:  # noqa: BLE001 — naive/aware lech van fail-closed
+        return True, 'chua_xac_minh'
+    if age > timedelta(days=CREDENTIAL_STALE_DAYS):
+        return True, 'qua_han_30_ngay'
+    return False, ''
+
+
+def _broker_queue_depths() -> dict[str, int]:
+    """Depth queue 'celery' (fail-open → 0). Deferred import tranh circular."""
+    try:
+        from ..tasks import _get_redis_queue_depth
+        return {BROKER_SHARED_QUEUE: int(_get_redis_queue_depth(BROKER_SHARED_QUEUE) or 0)}
+    except Exception:  # noqa: BLE001 — Redis om khong duoc chan health
+        logger.debug('broker health: queue depth unavailable, fail-open 0')
+        return {BROKER_SHARED_QUEUE: 0}
+
+
+def _broker_lane_metrics() -> tuple[dict[str, dict], list[dict]]:
+    """Aggregate BrokerSyncRun/Issue 24h qua theo provider (read-only).
+
+    BrokerSyncIssue KHONG co provider truc tiep — lane dung `run__provider`;
+    issue tao thu cong (run NULL) chi tinh o top_errors toan cuc. Tra
+    (lanes, top_errors_global).
+    """
+    from user_workspace.models import BrokerSyncIssue, BrokerSyncRun
+
+    window_start = timezone.now() - timedelta(hours=LANE_WINDOW_HOURS)
+    lanes: dict[str, dict] = {}
+    for provider_id in SUPPORTED_BROKER_PROVIDERS:
+        runs = list(
+            BrokerSyncRun.objects
+            .filter(provider=provider_id, started_at__gte=window_start)
+            .order_by('-started_at')[:200])
+        counts = {'succeeded': 0, 'failed': 0, 'pending': 0, 'running': 0}
+        for r in runs:
+            if r.status in counts:
+                counts[r.status] += 1
+        total = len(runs)
+        latencies = [
+            (r.finished_at - r.started_at).total_seconds()
+            for r in runs
+            if r.status == 'succeeded' and r.finished_at and r.started_at
+            and (r.finished_at - r.started_at).total_seconds() >= 0
+        ]
+        last = runs[0] if runs else None
+        if last:
+            duration = None
+            if last.finished_at and last.started_at:
+                duration = (last.finished_at - last.started_at).total_seconds()
+            last_run = {
+                'status': last.status,
+                'started_at': last.started_at.isoformat() if last.started_at else None,
+                'finished_at': last.finished_at.isoformat() if last.finished_at else None,
+                'duration_s': duration,
+                'error': last.error or '',
+            }
+        else:
+            last_run = None
+        consecutive = 0
+        for r in runs[:20]:
+            if r.status == 'failed':
+                consecutive += 1
+            else:
+                break
+        sev_rows = (
+            BrokerSyncIssue.objects
+            .filter(run__provider=provider_id, resolved=False)
+            .values('severity'))
+        sev = {'info': 0, 'warning': 0, 'error': 0}
+        for row in sev_rows:
+            if row['severity'] in sev:
+                sev[row['severity']] += 1
+        top_rows = list(
+            BrokerSyncIssue.objects
+            .filter(run__provider=provider_id, resolved=False)
+            .values('code').annotate(n=Count('pk')).order_by('-n')[:5])
+        lanes[provider_id] = {
+            'last_run': last_run,
+            'runs_24h': {**counts, 'total': total},
+            'error_rate_24h': (counts['failed'] / total) if total else 0.0,
+            'avg_latency_s_24h': (sum(latencies) / len(latencies)) if latencies else None,
+            'unresolved_issues': {**sev, 'total': sum(sev.values())},
+            'top_errors': [{'code': r['code'], 'count': r['n']} for r in top_rows],
+            'consecutive_failures': consecutive,
+        }
+    top_global = list(
+        BrokerSyncIssue.objects.filter(resolved=False)
+        .values('code').annotate(n=models_count()).order_by('-n')[:5])
+    return lanes, [{'code': r['code'], 'count': r['n']} for r in top_global]
+
+
+def models_count():
+    from django.db.models import Count
+    return Count('pk')
 
 
 def _get_or_create_service() -> ServiceDefinition:
@@ -101,6 +219,8 @@ def _masked_system_credentials() -> list[dict]:
     from identity_access.models import SystemBrokerCredential
     rows = []
     for cred in SystemBrokerCredential.objects.all().order_by('provider'):
+        needs_verification, stale_reason = _credential_expiry(
+            cred.is_verified, cred.last_verified_at)
         rows.append({
             'provider': cred.provider,
             'allowed_purposes': cred.allowed_purposes or [],
@@ -109,6 +229,8 @@ def _masked_system_credentials() -> list[dict]:
             'last_check': cred.last_check or {},
             'preview': cred.masked_preview(),
             'updated_by': cred.updated_by,
+            'needs_verification': needs_verification,
+            'stale_reason': stale_reason,
         })
     return rows
 
@@ -209,7 +331,10 @@ class BrokerConfigPreviewView(SOCBaseView):
     },
 )
 class BrokerAuditView(SOCBaseView):
-    """GET audit trail (limit ≤ 200)."""
+    """GET audit trail (limit ≤ 200) / ?download=csv (≤ 5000, scope service)."""
+
+    COLUMNS = ['timestamp', 'action', 'actor', 'actor_ip', 'change_summary', 'request_id']
+    CSV_MAX_ROWS = 5000
 
     def get(self, request):
         try:
@@ -218,12 +343,36 @@ class BrokerAuditView(SOCBaseView):
             limit = 50
         service = _get_or_create_service()
         rows = ConfigChangeAudit.objects.filter(service=service).order_by('-timestamp')[:limit]
+        if (request.query_params.get('download') or '').strip() == 'csv':
+            full_qs = ConfigChangeAudit.objects.filter(service=service).order_by('-timestamp')
+            return self._csv_response(full_qs)
         return envelope({'audits': [
             {'action': r.action, 'actor': r.actor, 'actor_ip': str(r.actor_ip or ''),
              'change_summary': r.change_summary, 'timestamp': r.timestamp,
              'request_id': r.request_id}
             for r in rows
         ]})
+
+    def _csv_response(self, qs):
+        class _Echo:
+            def write(self, value):
+                return value
+
+        writer = csv.writer(_Echo())
+
+        def gen():
+            yield writer.writerow(self.COLUMNS)
+            for r in qs[:self.CSV_MAX_ROWS].iterator(chunk_size=1000):
+                ts = r.timestamp.isoformat() if r.timestamp else ''
+                yield writer.writerow([
+                    ts, r.action or '', r.actor or '', str(r.actor_ip or ''),
+                    (r.change_summary or '').replace('\r', ' ').replace('\n', ' '),
+                    r.request_id or '',
+                ])
+
+        resp = StreamingHttpResponse(gen(), content_type='text/csv')
+        resp['Content-Disposition'] = 'attachment; filename="soc-broker-audit.csv"'
+        return resp
 
 
 @extend_schema(
@@ -243,10 +392,14 @@ class BrokerHealthView(SOCBaseView):
     def get(self, request):
         cfg = BrokerSystemConfig.from_dict(_current_payload())
         creds = {c['provider']: c for c in _masked_system_credentials()}
+        lanes, top_errors = _broker_lane_metrics()
+        queues = _broker_queue_depths()
+        shared_depth = queues.get(BROKER_SHARED_QUEUE, 0)
         providers = []
         for provider_id in SUPPORTED_BROKER_PROVIDERS:
             entry = cfg.entries.get(provider_id)
             cred = creds.get(provider_id, {})
+            lane = lanes.get(provider_id, {})
             providers.append({
                 'provider': provider_id,
                 'enabled': bool(entry and entry.enabled),
@@ -255,12 +408,18 @@ class BrokerHealthView(SOCBaseView):
                 'credential_present': bool(cred),
                 'is_verified': bool(cred.get('is_verified')),
                 'last_check': cred.get('last_check') or {},
+                'needs_verification': cred.get('needs_verification', True),
+                'stale_reason': cred.get('stale_reason', 'chua_cau_hinh'),
+                'lane': {**lane, 'retries_configured': entry.max_retries if entry else 3},
+                'queue_depth': shared_depth,
             })
         return envelope({
             'status': 'ok',
             'kill_switch_write': cfg.kill_switch_write,
             'quiet_hours': {'start': cfg.quiet_hours_start, 'end': cfg.quiet_hours_end},
             'providers': providers,
+            'queues': queues,
+            'top_errors': top_errors,
         })
 
 
