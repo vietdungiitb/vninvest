@@ -10,9 +10,14 @@
  *   orders/sync/sync-runs/sync-issues) + PATCH broker-bindings.
  * - Quy tắc badge join (§2): provider lấy từ account detail trong URL, KHÔNG
  *   suy từ dòng — thực thi ở component, adapter chỉ map URL đúng.
- * - `getPortfolioBindings` ĐÃ XOÁ (QĐ PM BE-01): bindings BE là PATCH-only
- *   by design, không có GET — không gọi endpoint không tồn tại. Bindings UI
- *   đọc từ action-response + accounts list (KNOWN GAP: ticket BE-READ Wave 3).
+ * - `getPortfolioBindings` (mbw3 BE-READ, contract §2 đóng băng Wave 3):
+ *   `GET workspace/portfolios/<id>/broker-bindings/` đã tồn tại phía BE —
+ *   khôi phục helper GET (trước đây xoá theo QĐ BE-01 Wave 2 vì BE PATCH-only).
+ *   Bindings UI đọc list từ GET này, không suy từ action-response.
+ * - `getWatchlistsScoped` (mbw3 B3.3, contract §2): `GET /workspace/watchlists/`
+ *   kèm `?provider=&broker_account=` (BE B3.3-BE thêm filter).
+ * - `getDerivedWatchlist` (mbw3 B3.3-FE, contract §2): FE-compute từ positions
+ *   (account + positions song song), read-only, không POST.
  * - `savePortfolioBindings` dùng PATCH (giữ): `corePatch` đã được facade
  *   inject (WIRING-01). Giữ throw rõ ràng khi client dựng thiếu corePatch
  *   (fail-closed, không gọi POST giả).
@@ -131,6 +136,14 @@ export function createBrokerClient({ coreGet, corePost, coreDelete, corePatch })
      * B2.5: gộp/tách tiểu khoản khỏi danh mục (explicit, QĐ-C ADR-005).
      * `data`: `{action: 'add'|'remove', sub_account_id, role?, is_default?}`.
      * BE PATCH-only (QĐ PM BE-01) — không có helper GET tương ứng.
+     *
+     * mbw3 B3.1 (contract §2 đóng băng): thêm đường `convert` TRÊN CÙNG
+     * endpoint PATCH này (`urls.py:117`, không thêm route):
+     * `{action: 'convert', kind: 'manual|broker_backed|aggregate'}`.
+     * BE kiểm bảng chuyển làn trên số binding đếm thật trong transaction
+     * (`broker_backed_single_account`, `convert_requires_empty`,
+     * `convert_needs_binding`) + ghi audit mọi convert. FE gọi qua đúng hàm
+     * này — không thêm helper PATCH thứ hai.
      */
     savePortfolioBindings(portfolioId, data) {
       requireId(portfolioId, "portfolioId");
@@ -138,6 +151,52 @@ export function createBrokerClient({ coreGet, corePost, coreDelete, corePatch })
         throw new Error("savePortfolioBindings cần corePatch (createBrokerClient dựng thiếu corePatch).");
       }
       return corePatch(bindingsPath(portfolioId), data);
+    },
+
+    /**
+     * mbw3 BE-READ (mới, contract §2): đọc bindings 1 danh mục.
+     * `GET workspace/portfolios/<id>/broker-bindings/` →
+     * `envelope([{binding_id, sub_account_id, provider, external_id,
+     * display_name, role, is_default}])`. 404 khi portfolio không thuộc
+     * user/tenant (giống PATCH).
+     */
+    getPortfolioBindings(portfolioId) {
+      requireId(portfolioId, "portfolioId");
+      return coreGet(bindingsPath(portfolioId));
+    },
+
+    /**
+     * mbw3 BE-KIND/B3.3 (mới, contract §2): watchlist thủ công đúng scope.
+     * `GET /workspace/watchlists/?provider=&broker_account=` (BE B3.3-BE thêm
+     * filter; field `source`/`provider`/`broker_account` từ BE-KIND).
+     * Param vắng ⇒ không gửi (lấy toàn bộ, tương đương `getWatchlists` cũ).
+     */
+    getWatchlistsScoped({ provider, brokerAccountId } = {}) {
+      const query = new URLSearchParams();
+      const p = String(provider ?? "").trim();
+      if (p) query.set("provider", p);
+      if (brokerAccountId !== null && brokerAccountId !== undefined && String(brokerAccountId) !== "") {
+        query.set("broker_account", String(brokerAccountId));
+      }
+      const suffix = query.toString();
+      return coreGet(`/workspace/watchlists/${suffix ? `?${suffix}` : ""}`);
+    },
+
+    /**
+     * mbw3 B3.3-FE (mới, contract §2): derived watchlist FE-compute từ
+     * positions, read-only, KHÔNG POST. Trả `{account, items}` — `items` là
+     * các mã đang nắm giữ `[{symbol, quantity, avg_price, market_price}]`,
+     * UI gắn nhãn "Đang nắm giữ @ provider/tiểu khoản" (ADR-007).
+     */
+    getDerivedWatchlist(accountId) {
+      requireId(accountId, "accountId");
+      return Promise.all([
+        coreGet(accountPath(accountId)),
+        coreGet(`${accountPath(accountId)}positions/`),
+      ]).then(([account, positions]) => ({
+        account,
+        items: Array.isArray(positions) ? positions : [],
+      }));
     },
   };
 }

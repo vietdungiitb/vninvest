@@ -7,13 +7,17 @@ xu ly ssi/tcbs) — khong con `not_supported_yet`. Muc do ho tro that nam o
 Mọi I/O tới broker chạy trong Celery (test-connection enqueue + poll) — cấm I/O trong request.
 Secret không bao giờ xuất hiện trong response (chỉ preview mask).
 """
+import logging
+
 from celery.result import AsyncResult
 from django.core.cache import cache
+from django.db import transaction as db_transaction
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from vninvest_core.exceptions import (
+    InternalErrorException,
     NotFoundErrorException,
     RateLimitErrorException,
     ValidationErrorException,
@@ -46,6 +50,8 @@ from vninvest_core.api_envelope import envelope_response
 
 
 SUPPORTED_PROVIDERS = ('dnse', 'ssi', 'tcbs')
+
+logger = logging.getLogger(__name__)
 
 
 def _is_fully_supported(provider: str) -> bool:
@@ -558,6 +564,133 @@ def broker_sync_issues_api(request):
     } for issue in qs[:100]])
 
 
+#: B3.2-BE — audit cho bien doi binding. `AuditEvent.action` chi nhan 6 gia tri
+#: co dinh (`ops_audit/models.py:25`), nen ma nghiep vu nam o
+#: `metadata['operation']`, tuong tu `_AUDIT_OPERATION` cua `views_dnse.py:211`.
+_BINDING_AUDIT_RESOURCE_TYPE = 'portfolio_binding'
+_BINDING_AUDIT_OPERATION_ADD = 'portfolio.binding.add'
+_BINDING_AUDIT_OPERATION_REMOVE = 'portfolio.binding.remove'
+_BINDING_AUDIT_OPERATION_CONVERT = 'portfolio.convert'
+
+#: B3.2-BE — bang chuyen lan `kind` (contract dong bang §2): luat chi phu thuoc
+#: dich (khong phu thuoc nguon), kiem tren so binding dem that trong transaction.
+_CONVERT_TARGETS = ('manual', 'broker_backed', 'aggregate')
+
+
+def _serialize_binding(binding) -> dict:
+    """1 dong binding theo contract BE-READ §2 (khoa dung ten hien co)."""
+    sub = binding.sub_account
+    return {
+        'binding_id': binding.id,
+        'sub_account_id': binding.sub_account_id,
+        'provider': sub.provider,
+        'external_id': sub.external_id,
+        'display_name': sub.display_name,
+        'role': binding.role,
+        'is_default': binding.is_default,
+    }
+
+
+def _audit_binding(request, portfolio, sub, operation, outcome, action, extra=None):
+    """Ghi audit cho bien doi binding. Tra event, hoac None khi ghi hong.
+
+    Import lazy nhu `views_dnse.py` (tranh circular import). `action` phai la
+    1 trong 6 gia tri `AuditEvent.ActionChoices` (cot hep + choices).
+    """
+    try:
+        from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy)
+        metadata = {
+            'operation': operation,
+            'outcome': outcome,
+            'portfolio_id': portfolio.id,
+            'sub_account_id': getattr(sub, 'id', None),
+            **(extra or {}),
+        }
+        return AuditEvent.objects.create(
+            actor_user_id=request.user.id if getattr(
+                request.user, 'is_authenticated', False) else None,
+            actor_label=str(getattr(request.user, 'username', '') or '')[:120],
+            tenant_id=str(getattr(
+                getattr(request, 'tenant', None), 'public_id', '') or '')[:36],
+            action=action,
+            resource_type=_BINDING_AUDIT_RESOURCE_TYPE,
+            resource_id=str(portfolio.id)[:64],
+            request_id=str(getattr(request, 'request_id', '') or '')[:36],
+            metadata=metadata,
+        )
+    except Exception:  # noqa: BLE001 — audit hong khong duoc lam vo request chinh
+        logger.error(
+            'AUDIT-BINDING-UNAVAILABLE operation=%s portfolio=%s',
+            operation, getattr(portfolio, 'id', None), exc_info=True,
+        )
+        return None
+
+
+def _convert_portfolio_kind(request, portfolio, data):
+    """Action `convert` — duong chuyen lan `kind` duy nhat (O-5).
+
+    PATTERN: dem binding that trong transaction (select_for_update khoa
+    portfolio), ap bang chuyen lan §2, doi kind, ghi audit. Moi convert
+    (ke ca no-op cung kind) deu ghi audit; audit hong ⇒ tu choi
+    (`audit_unavailable`, fail-closed nhu luong dat lenh `views_dnse.py:759`).
+    """
+    from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy, lay choices)
+
+    target = str(data.get('kind', '')).strip().lower()
+    if target not in _CONVERT_TARGETS:
+        raise ValidationErrorException(
+            detail="kind phai la 'manual', 'broker_backed' hoac 'aggregate'.",
+            code='validation_error',
+        )
+    with db_transaction.atomic():
+        locked = Portfolio.objects.select_for_update().get(pk=portfolio.pk)
+        count = locked.broker_bindings.count()
+        if target == 'broker_backed' and count != 1:
+            if count == 0:
+                raise ValidationErrorException(
+                    detail='Chuyen sang broker_backed can dung 1 tieu khoan '
+                           'lien ket. Gop tieu khoan truoc.',
+                    code='convert_needs_binding',
+                )
+            raise ValidationErrorException(
+                detail='Danh muc broker_backed chi giu dung 1 tieu khoan. '
+                       'Tach bot hoac chuyen sang aggregate de gop.',
+                code='broker_backed_single_account',
+            )
+        if target == 'aggregate' and count == 0:
+            raise ValidationErrorException(
+                detail='Chuyen sang aggregate can it nhat 1 tieu khoan '
+                       'lien ket. Gop tieu khoan truoc.',
+                code='convert_needs_binding',
+            )
+        if target == 'manual' and count > 0:
+            raise ValidationErrorException(
+                detail='Ve manual phai tach het tieu khoan lien ket truoc.',
+                code='convert_requires_empty',
+            )
+        from_kind = locked.kind
+        if target != from_kind:
+            locked.kind = target
+            locked.save(update_fields=['kind', 'updated_at'])
+        event = _audit_binding(
+            request, locked, None, _BINDING_AUDIT_OPERATION_CONVERT,
+            'accepted', AuditEvent.ActionChoices.UPDATE,
+            {'from_kind': from_kind, 'to_kind': target,
+             'binding_count': count},
+        )
+        if event is None:
+            raise InternalErrorException(
+                detail='Khong ghi duoc audit chuyen loai danh muc nen thao '
+                       'tac bi tu choi. Khong co gi thay doi.',
+                code='audit_unavailable',
+            )
+    return envelope({
+        'ok': True, 'portfolio_id': locked.id, 'kind': target,
+        'from_kind': from_kind, 'binding_count': count,
+        'audit_recorded': True,
+    })
+
+
 @extend_schema(
     summary='portfolio_broker_bindings_api',
     description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
@@ -567,13 +700,17 @@ def broker_sync_issues_api(request):
     },
 )
 @required_workspace_permission('portfolio_write')
-@api_view(['PATCH'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated, WorkspacePermission])
 def portfolio_broker_bindings_api(request, portfolio_id):
     """B1.6: gop/tach tieu khoan khoi danh muc (explicit, QĐ-C).
 
     Danh muc `broker_backed` chi giu DUNG 1 tieu khoan — gop them phai doi
     sang `aggregate` (hoac tach cu). Quy tac nay ngan tron lan cau truc.
+
+    BE-READ (Wave 3): GET tra danh sach binding theo contract §2.
+    B3.2-BE (Wave 3): action `convert` doi `kind` theo bang chuyen lan.
+    GET giu `portfolio_write` nhu PATCH (panel vua doc vua gop/tach).
     """
     from .models import PortfolioBrokerBinding  # noqa: PLC0415 (lazy)
 
@@ -590,8 +727,17 @@ def portfolio_broker_bindings_api(request, portfolio_id):
             detail='Danh muc khong ton tai.',
             code='portfolio_not_found',
         )
+    if request.method == 'GET':
+        bindings = PortfolioBrokerBinding.objects.filter(
+            portfolio=portfolio).select_related('sub_account').order_by(
+            '-created_at')
+        return envelope([_serialize_binding(b) for b in bindings])
+
     data = request.data if isinstance(request.data, dict) else {}
     action = str(data.get('action', '')).strip().lower()
+    if action == 'convert':
+        return _convert_portfolio_kind(request, portfolio, data)
+    from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy, lay choices)
     sub_account_id = data.get('sub_account_id')
     sub = _get_sub_account_or_404(sub_account_id, request.user, tenant)
 
@@ -603,28 +749,46 @@ def portfolio_broker_bindings_api(request, portfolio_id):
                        'Doi sang aggregate de gop, hoac tach tieu khoan cu.',
                 code='broker_backed_single_account',
             )
+        role = str(data.get('role') or 'secondary').strip().lower()
+        if role not in ('primary', 'secondary'):
+            raise ValidationErrorException(
+                detail="role phai la 'primary' hoac 'secondary'.",
+                code='validation_error',
+            )
         binding, _ = PortfolioBrokerBinding.objects.get_or_create(
             portfolio=portfolio, sub_account=sub,
             defaults={
                 'tenant': tenant or portfolio.tenant,
-                'role': str(data.get('role') or 'primary'),
+                'role': role,
                 'is_default': bool(data.get('is_default', False)),
             },
         )
         binding.full_clean()
+        event = _audit_binding(
+            request, portfolio, sub, _BINDING_AUDIT_OPERATION_ADD,
+            'accepted', AuditEvent.ActionChoices.CREATE,
+            {'binding_id': binding.id, 'role': binding.role},
+        )
         return envelope({
             'ok': True, 'portfolio_id': portfolio.id,
             'sub_account_id': sub.id, 'binding_id': binding.id,
+            'audit_recorded': event is not None,
         })
     if action == 'remove':
         deleted, _ = PortfolioBrokerBinding.objects.filter(
             portfolio=portfolio, sub_account=sub).delete()
+        event = _audit_binding(
+            request, portfolio, sub, _BINDING_AUDIT_OPERATION_REMOVE,
+            'accepted', AuditEvent.ActionChoices.DELETE,
+            {'removed': bool(deleted)},
+        )
         return envelope({
             'ok': True, 'portfolio_id': portfolio.id,
             'sub_account_id': sub.id, 'removed': bool(deleted),
+            'audit_recorded': event is not None,
         })
     raise ValidationErrorException(
-        detail="action phai la 'add' hoac 'remove'.",
+        detail="action phai la 'add', 'remove' hoac 'convert'.",
         code='validation_error',
     )
 
