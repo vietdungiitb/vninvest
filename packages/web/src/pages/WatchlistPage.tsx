@@ -5,6 +5,7 @@ import { WatchlistProvider, useWatchlist } from "./watchlist/components/Watchlis
 import { WatchlistSidebar } from "./watchlist/components/WatchlistSidebar";
 import { WatchlistMainWorkspace } from "./watchlist/components/WatchlistMainWorkspace";
 import { WatchlistDetailPanel } from "./watchlist/components/WatchlistDetailPanel";
+import { ScopedWatchlist } from "../components/brokerData/ScopedWatchlist.js";
 import { useI18n } from "../context/LangContext.js";
 
 export interface Identity {
@@ -53,6 +54,9 @@ function WatchlistPageContent({ autoLoad = true }: WatchlistPageProps) {
       createElement(WatchlistSidebar),
       createElement(WatchlistMainWorkspace)
     ),
+    // watchlist-mount: manual theo scope (khong account) + derived khi co
+    // brokerAccountId (o day null nen chi manual). Chi mount, 0 sua DATA.
+    createElement(ScopedWatchlist),
     createElement(WatchlistDetailPanel)
   );
 }

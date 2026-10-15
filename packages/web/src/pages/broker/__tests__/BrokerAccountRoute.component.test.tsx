@@ -24,6 +24,8 @@ const adapterMocks = vi.hoisted(() => ({
   getBrokerJob: vi.fn(),
   getBrokerSyncRuns: vi.fn(),
   getBrokerSyncIssues: vi.fn(),
+  getWatchlistsScoped: vi.fn(),
+  getDerivedWatchlist: vi.fn(),
 }));
 
 vi.mock("../../../adapters/coreApiAdapter.js", async (importOriginal) => {
@@ -37,6 +39,8 @@ vi.mock("../../../adapters/coreApiAdapter.js", async (importOriginal) => {
     getBrokerJob: adapterMocks.getBrokerJob,
     getBrokerSyncRuns: adapterMocks.getBrokerSyncRuns,
     getBrokerSyncIssues: adapterMocks.getBrokerSyncIssues,
+    getWatchlistsScoped: adapterMocks.getWatchlistsScoped,
+    getDerivedWatchlist: adapterMocks.getDerivedWatchlist,
   };
   return {
     ...(actual as Record<string, unknown>),
@@ -111,6 +115,10 @@ function mockLinked() {
   adapterMocks.getBrokerJob.mockResolvedValue({ job_id: "job-1", state: "succeeded" });
   adapterMocks.getBrokerSyncRuns.mockResolvedValue(RUNS);
   adapterMocks.getBrokerSyncIssues.mockResolvedValue(ISSUES);
+  // watchlist-mount: ScopedWatchlist hien mount trong page nen mock phai co
+  // du signature DATA hien tai (B3.3), neu khong TypeError lam do ca suite.
+  adapterMocks.getWatchlistsScoped.mockResolvedValue({ data: [] });
+  adapterMocks.getDerivedWatchlist.mockResolvedValue({ account: null, items: [] });
 }
 
 function renderAtRoute(path, ui) {
