@@ -1,4 +1,14 @@
 
+## Entry 322: Wave 4 SOC Broker Ops DONE - mot chu trinh khep kin (2026-10-15)
+
+- **Nhanh**: `feat/mbw4-be` + `feat/mbw4-fe` -> `feat/mbw4-soc-ops` -> `dev` (1 PR wave, merge giu trail) - claim `mbw4-be` + `mbw4-fe` (+ `mbw4-plan` done Stage 2). 1 operator vai 2 agent tuan tu (BE truoc, FE theo contract), disjoint BE<->FE tuyet doi. Hieu chinh Stage 3 minh bach: plan ghi 2 wt cung checkout 1 nhanh — git cam → 2 nhanh slice theo mau mbw3 (bay #7 HANDOFF_MBW3).
+- **Lessons ap dung**: L-001, L-002, L-003, L-004, L-005, L-006, L-007, L-008, L-A01, L-M01, L-M02, L-T01, L-T02, L-V02, L-V03, L-F03, L-F08, L-F09, L-F10, L-G01, L-G02, L-G08. TDD fail-before ca 2 (BE RED 10 tests failures=2/errors=5; FE RED 4/4 tren panel cu).
+- **Plan + audit**: Stage 1 PLAN_WAVE4 rev 2 (O-1..O-6) + Stage 2 audit 2 vong AGREE (4 commit). Stage 5 audit code doc lap 2 auditors: BE AGREE + 3 MINOR (sua het, loop dong); FE NEED_REVISION 1 MAJOR + 3 MINOR — MAJOR + 2/3 MINOR vo hieu (auditor so baseline sai: doc broker.py wave base thay vi slice BE) + 2 MINOR that (sua het, loop dong). Bai hoc audit: cross-branch audit phai doc dung slice branch doi tac, khong phai base.
+- **Viec lam**: B4.0 runbook §12.3 1 dong + staging-read leftovers **CHUA CHAY** (staging thieu cot provider, 0024-0030 chua apply — drift co san) + `mbw1_wave` orphan xac minh (0 conn, PR #147 merged, DROP Stage 8). B4.1 health lane metrics (last_run/runs_24h/error_rate/latency/retries/consec-fails/unresolved/top_errors) + queues.celery fail-open + top_errors global. B4.2 expiry derived (khong migration) + audit CSV scope service 5000 + kill-switch qua apply (khong route moi). B4.3 lane cards + expiry badges + kill 2-step (preview + destructive confirm) + audit thead + CSV may chu + i18n brokerWave4 32 key + css wave4. B4.4 drill staging: BAT→BrokerWriteDisabled, TAT→allowed, rollback sach (HTTP-path CHUA CHAY — khong staff creds staging).
+- **Gate**: BE VPS 28/28 (DB mbw4_be) + makemigrations sach (leaf 0030) · FE VPS vitest 7/7 + i18n:scan 0 + build 31s + bundle operations-center 2387.5KB vs base 2381.1 (+6.4KB, khong regression; nguong 1450 cua plan do tren /broker, hieu chinh) · tsc 0 · check-multi-agent 0 loi · pre-push 22/22.
+- **CHUA CHAY**: E2E · full BE suite · ruff · B3.4 AlterField (doi staging migrate 0024-0030) · HTTP-path drill that · doi chieu UI staging.
+- **Su co phien nay**: (1) pre-push 4 FAIL gia (transient — rerun 22/22 tren cung tree); (2) worktree thieu node_modules → junction dung chung (khong npm install) + deploy.mjs tung checkout (drift FAIL moi checkout); (3) PowerShell `>` ghi UTF-16 lam hong file — khoi phuc Copy-Item + cam shell-op tren file repo; (4) quote long SSH vo — pattern scp script + chay (tranh `|`/quote trong remote); (5) staging thieu FERNET key → key tam single-use cho test.
+
 ## Entry 321: Wave 3 Co lap & gop danh muc DONE - mot chu trinh khep kin (2026-10-15)
 
 - **Nhanh**: `feat/mbw3-be` + `feat/mbw3-fe` -> `feat/mbw3-isolation` -> `dev` (1 PR #151, merge `2ba62c781`) - claim `mbw3-be` + `mbw3-fe` + `mbw3-sup`. 2 agent song song theo tang (BE/FE disjoint tuyet doi) + sup mount/loop, trail giu (merge, khong squash).
@@ -10359,6 +10369,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 319 | 2026-10-15 | **Audit doc lap ke hoach Wave 2** - NEED_REVISION (9 obj) -> sua het -> AGREE, 0 blocker/major, doc-only. |
 | 320 | 2026-10-15 | **Wave 2 Broker Hub UI DONE** - 2 agent song song, cross-review 2 vong, 46/46 + 61/61 VPS + build PASS, 1 PR. |
 | 321 | 2026-10-15 | **Wave 3 Co lap & gop danh muc DONE** - plan AGREE 3 vong, 2 agent + loop audit, BE 101/101 + FE 37/37 VPS, 1 PR #151. |
+| 322 | 2026-10-15 | **Wave 4 SOC Broker Ops DONE** - plan rev 2 + audit AGREE, BE 28/28 + FE 7/7 VPS, drill rollback sach, 1 PR wave. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
