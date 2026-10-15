@@ -106,8 +106,7 @@ PATCH /portfolios/<id>/broker-bindings/   gộp/tách tiểu khoản (explicit, 
   B0.1 (0024/0025) · B0.2 (0026) · B0.3 (0027/0028) · B0.4 (0029) · B0.5 (async 202,
   xoá SyncView) · B0.6 (capabilities). Verify as-merged trên dev: **126/126 OK**
   (VPS staging). Không model mới ở B0.5/B0.6 (head **0029**).
-- **Wave 1 — Sync engine đa provider (P0, Mode B tuần tự, MỘT nhánh wave
-  `feat/mbw1-sync-engine`, commit theo slice, MỘT PR cuối wave).**
+- **Wave 1 — Sync engine đa provider (P0) — ĐÃ XONG 2026-10-15 (ledger Entry 317, 61/61 xanh VPS; Mode B tuần tự, MỘT PR cuối wave).**
   B1.3 va chạm cùng (portfolio, symbol, ngày) giữa 2 tiểu khoản ⇒ bỏ qua +
   báo collision (không crash, không ghi sai), unique DB giữ nguyên.
   B1.1 BrokerSyncService interface + registry 3 lane (mock adapter, không I/O thật) ·
@@ -117,15 +116,15 @@ PATCH /portfolios/<id>/broker-bindings/   gộp/tách tiểu khoản (explicit, 
   kill-switch + backoff · B1.5 drift detection → BrokerSyncIssue · B1.6 7 endpoint
   + contract test ≥ 12 BE. **Gate 3.8.0 giữ**: chỉ API đã có ở 3.7.2
   (`requirements.txt` vẫn ghim 3.7.2, đã kiểm 2026-10-15).
-- **Wave 2 — Broker Hub UI (P0/P1, ~9 ngày, 2 agent).**
+- **Wave 2 — Broker Hub UI — ĐÃ XONG 2026-10-15 (PR #149 + #150, Entry 320).**
   B2.1 `/broker`: 3 tile multi-account + badge capability · B2.2 connect schema-driven 3 lane ·
   B2.3 Account Manager 4 tab (Vị thế/Sổ lệnh/Khớp lệnh/Số dư), mọi dòng có badge provider +
   tiểu khoản · B2.4 Sync Center · B2.5 chiều "nguồn" trong holdings workspace · B2.6 hợp nhất
   2 bề mặt broker về `/broker` · B2.7 i18n VI/EN (`i18n:scan` 0 thiếu).
-- **Wave 3 — Cô lập & gộp danh mục (P1, ~5 ngày).**
+- **Wave 3 — Cô lập & gộp danh mục — ĐÃ XONG 2026-10-15 (PR #151 `2ba62c781`, Entry 321).**
   B3.1 UI bind/gộp explicit + confirm · B3.2 `aggregate` chỉ đọc · B3.3 Watchlist scoped
   (chi tiết mục 5) · B3.4 migration contract NULL → NOT NULL khi backfill sạch.
-- **Wave 4 — SOC Broker Ops (P1, ~5 ngày).** Health lane · queue depth · top lỗi · credential
+- **Wave 4 — SOC Broker Ops — ĐÃ XONG 2026-10-15 (PR #152 `e2e4493ac`, Entry 322).** Health lane · queue depth · top lỗi · credential
   expiry · UI kill-switch · audit viewer + CSV.
 
 **Ngoài phạm vi:** đặt lệnh tiền thật SSI/TCBS (`trade: False` cả 3 lane) — ticket riêng

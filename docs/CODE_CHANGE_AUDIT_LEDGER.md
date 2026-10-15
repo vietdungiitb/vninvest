@@ -1,4 +1,13 @@
 
+## Entry 324: Tai lieu tong ket hien trang dong bo code + system-design (2026-10-15)
+
+- **Nguon**: Owner yeu cau tong ket + ghi tai lieu. Claim `doc-tongket` (DOC-ONLY).
+- **Viec lam**: TAO MOI `docs/TONGKET_HIENTRANG_20261015.md` (da lam/dang do/huong phat trien, kem file:line + muc tin cay + lenh tai tao) · SUA `13.01` §1 (them dong Wave 0-4 + triet de, PR #149-#155) · SUA `13.02` (them N-003 prose lech may do + N-004 claim chet, du 4 cot) · SUA `PLAN_MULTI_BROKER_SYNC_20261014.md` §4 (Wave 1-4 → DA XONG kem PR/Entry). Khong code, khong migration, khong package.json.
+- **Lessons ap dung**: L-002, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G02.
+- **Gate**: `check-system-design --check` SACH exit 0 (43 file, 6 claims khop, 1483 route, 110 model) · check-multi-agent 0 loi.
+- **Su co phien nay**: suy doan file plan mojibake tu output console cp1252 — kiem byte that (UTF-8 sach) truoc khi ket luan, tu sua tai lieu tong ket (L-V02). So tay con so may do duoc la sai quy trinh 00.03 → ghi N-003 thay vi viet tay de so lech (1473→1483).
+- **CHUA CHAY**: full BE suite · ruff · E2E.
+
 ## Entry 323: Triet de watchlist/holdings/broker tren staging (Owner chot 2026-10-15)
 
 - **Goc**: user bao anh chup van la chuc nang cu (`/manage` + `/portfolios/manage/broker` full form). Audit chi ra 2 lop: (1) staging deploy cuoi 2026-10-13 (rev fd8b3f64d, PR #121) trong khi Wave 1-4 merge 2026-10-15 — anh 2 khop tung chu voi `PortfoliosBrokerPage` ban 33fd9a346 (da doi thanh redirect ve `/broker` o B2.6); (2) `ScopedWatchlist` co code+test nhung 0 noi mount + holdings thieu per-row `source` (fail-closed null).
