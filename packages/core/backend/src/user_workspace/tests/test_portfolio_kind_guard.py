@@ -32,9 +32,11 @@ from user_workspace.tests.envelope import unwrapped_json
 
 PORTFOLIO_URL = '/core/v1/workspace/portfolios/{pid}/'
 TXN_URL = '/core/v1/workspace/portfolios/{pid}/transactions/'
+TXN_DETAIL_URL = '/core/v1/workspace/transactions/{tid}/'
 BINDINGS_URL = '/core/v1/workspace/portfolios/{pid}/broker-bindings/'
 WATCHLISTS_URL = '/core/v1/workspace/watchlists/'
 SUBACCOUNT_URL = '/core/v1/portfolio/subaccounts/{pk}/'
+SUBACCOUNT_TXN_URL = '/core/v1/portfolio/subaccounts/{pk}/transactions/'
 
 TXN_BODY = {
     'symbol': 'VCB', 'transaction_type': 'BUY', 'date': '2026-10-01',
@@ -189,6 +191,68 @@ class AggregateGuardTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.aggregate.refresh_from_db()
         self.assertEqual(self.aggregate.name, 'DM tong hop 2')
+
+
+class AggregateGuardLoopTests(TestCase):
+    """Loop audit Stage 5 (F1): 3 write path cung ban chat bi sot."""
+
+    def setUp(self):
+        self.user, self.tenant, self.client = _owner_client('ploop')
+        self.manual = Portfolio.objects.create(
+            user=self.user, tenant=self.tenant, name='DM tay loop',
+            kind='manual')
+        self.aggregate = Portfolio.objects.create(
+            user=self.user, tenant=self.tenant, name='DM tong hop loop',
+            kind='aggregate')
+        self.txn_manual = self._post_txn(self.manual.id)
+        self.txn_agg = self._post_txn_forced(self.aggregate.id)
+
+    def _post_txn(self, pid):
+        from user_workspace.models import Transaction
+        resp = self.client.post(
+            TXN_URL.format(pid=pid), TXN_BODY, format='json')
+        self.assertEqual(resp.status_code, 201)
+        return Transaction.objects.get(
+            pk=unwrapped_json(resp)['id'])
+
+    def _post_txn_forced(self, pid):
+        from datetime import date
+        from decimal import Decimal
+        from user_workspace.models import Transaction
+        return Transaction.objects.create(
+            portfolio_id=pid, tenant=self.tenant,
+            symbol='VCB', transaction_type='BUY', date=date(2026, 10, 1),
+            price=Decimal('100000'), quantity=10)
+
+    def test_patch_transaction_of_aggregate_rejected(self):
+        resp = self.client.patch(
+            TXN_DETAIL_URL.format(tid=self.txn_agg.id),
+            {'quantity': 20}, format='json')
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json().get('code'), 'aggregate_read_only')
+
+    def test_delete_transaction_of_aggregate_rejected(self):
+        resp = self.client.delete(TXN_DETAIL_URL.format(tid=self.txn_agg.id))
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json().get('code'), 'aggregate_read_only')
+
+    def test_patch_delete_transaction_of_manual_allowed_control(self):
+        resp = self.client.patch(
+            TXN_DETAIL_URL.format(tid=self.txn_manual.id),
+            {'quantity': 20}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.delete(
+            TXN_DETAIL_URL.format(tid=self.txn_manual.id))
+        self.assertEqual(resp.status_code, 204)
+
+    def test_post_transaction_via_subaccount_of_aggregate_rejected(self):
+        sub = _mk_sub(
+            self.user, self.tenant, self.aggregate, 'DNSE', 'TK loop',
+            '0099', 'dnse', 'E99')
+        resp = self.client.post(
+            SUBACCOUNT_TXN_URL.format(pk=sub.id), TXN_BODY, format='json')
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json().get('code'), 'aggregate_read_only')
 
 
 class ConvertActionTests(TestCase):

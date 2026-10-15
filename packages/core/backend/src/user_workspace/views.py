@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
-from vninvest_core.exceptions import PermissionErrorException
+from vninvest_core.exceptions import PermissionErrorException, ValidationErrorException
 
 from .envelope import envelope, paginated_envelope
 
@@ -353,6 +353,14 @@ class TransactionDetailView(APIView):
     def patch(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
         transaction = _get_transaction_or_404(request.user, transaction_id, tenant)
+        # B3.2-BE loop audit F1: danh muc `aggregate` chi doc — chan sua
+        # giao dich truc tiep (cung ban chat voi POST o tren).
+        if transaction.portfolio.kind == Portfolio.KindChoices.AGGREGATE:
+            raise PermissionErrorException(
+                detail='Danh muc tong hop chi doc, khong sua giao dich truc '
+                       'tiep. Gop tieu khoan qua lien ket broker.',
+                code='aggregate_read_only',
+            )
         serializer = TransactionSerializer(transaction, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -372,6 +380,14 @@ class TransactionDetailView(APIView):
     def delete(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
         transaction = _get_transaction_or_404(request.user, transaction_id, tenant)
+        # B3.2-BE loop audit F1: danh muc `aggregate` chi doc — chan xoa
+        # giao dich truc tiep.
+        if transaction.portfolio.kind == Portfolio.KindChoices.AGGREGATE:
+            raise PermissionErrorException(
+                detail='Danh muc tong hop chi doc, khong xoa giao dich truc '
+                       'tiep. Gop tieu khoan qua lien ket broker.',
+                code='aggregate_read_only',
+            )
         transaction.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -410,9 +426,11 @@ class WatchlistListCreateView(APIView):
             try:
                 broker_account_id = int(broker_account)
             except (TypeError, ValueError):
-                return Response(
-                    {'detail': 'broker_account phai la id so.'},
-                    status=status.HTTP_400_BAD_REQUEST)
+                # Loop audit F2: loi phai co envelope + code (khong 400 tran).
+                raise ValidationErrorException(
+                    detail='broker_account phai la id so.',
+                    code='invalid_broker_account',
+                )
             watchlists = watchlists.filter(broker_account_id=broker_account_id)
 
         # Apply pagination
@@ -788,6 +806,14 @@ class SubAccountTransactionsAPIView(APIView):
         portfolio = sub_account.portfolio
         if not portfolio:
             return Response({'detail': 'Tiểu khoản này chưa liên kết với danh mục.'}, status=status.HTTP_400_BAD_REQUEST)
+        # B3.2-BE loop audit F1: danh muc `aggregate` chi doc — chan ghi
+        # giao dich qua tieu khoan.
+        if portfolio.kind == Portfolio.KindChoices.AGGREGATE:
+            raise PermissionErrorException(
+                detail='Danh muc tong hop chi doc, khong ghi giao dich truc '
+                       'tiep. Gop tieu khoan qua lien ket broker.',
+                code='aggregate_read_only',
+            )
 
         serializer = TransactionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

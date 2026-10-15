@@ -20,7 +20,8 @@ import { useI18n } from "../../context/LangContext.js";
  * - Render `BrokerAccountManager` (4 tab Vị thế/Sổ lệnh/Khớp lệnh/Số dư) +
  *   `BrokerSyncCenter` (DATA viết, HUB chỉ mount — 0 dòng sửa file DATA) +
  *   `BindingsPanel` (B3.1-mount: section "Gộp danh mục", picker-mode, accountId
- *   preselect — chưa chọn danh mục thì 0 request bindings).
+ *   preselect — chưa chọn danh mục thì chỉ 1 request `getPortfolios` cho
+ *   picker, 0 request bindings; GET idempotent nên double-invoke vô hại).
  * - Dùng đúng adapter DATA qua `defaultCoreApiAdapter` (cast quy ước, cùng họ
  *   `BrokerHubPage`), KHÔNG gọi coreGet trực tiếp.
  * - Badge provider join theo §2 PLAN_WAVE2: provider lấy từ account trong URL

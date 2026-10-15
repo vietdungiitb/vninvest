@@ -42,7 +42,9 @@ def backfill_dnse_broker_backed(apps, schema_editor):
             home = Portfolio.objects.filter(
                 pk=sub.portfolio_id, kind='broker_backed').first()
         if home is None:
-            name = f'DNSE — {_identifier(sub)}'
+            # Loop audit F3: Portfolio.name max_length=100 — cat ngan de
+            # khong DataError giua migrate khi identifier dai.
+            name = f'DNSE — {_identifier(sub)}'[:100]
             if Portfolio.objects.filter(
                     user_id=sub.user_id, tenant_id=sub.tenant_id,
                     name=name).exists():
