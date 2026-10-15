@@ -1,4 +1,13 @@
 
+## Entry 327: Lien ket cheo /manage -> /watchlist (2026-10-16)
+
+- **Goc**: Owner khong thay cho add ma watchlist / sync holdings tren `/manage`. Kha pha that: nut "Them ma" nam o `/watchlist` (`WatchlistMainWorkspace.tsx:253-294` qua `addWatchlistItem`, `workspace.js:135`, BE POST `urls.py:74`); sync holdings nam o `/broker/accounts/:id` (SyncCenter) — `/manage` theo thiet ke chi CRUD (D-36). Van de that la kha nang phat hien, khong phai thieu tinh nang.
+- **Nhanh**: `feat/manage-crosslinks` -> `dev` (PR #162, merge giu trail). Claim `manage-crosslinks`.
+- **Viec lam**: them `Link` "Danh muc theo doi" → `/watchlist` tren toolbar `/manage` (canh `brokerLink`) + key `portfoliosManage.watchLink` vi/en + test href. 9 dong them, 0 sua logic.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-V02, L-T01, L-T02, L-G02.
+- **Gate**: FE manage suite 10/10 + tsc 0 + i18n:strict 0 moi · pre-push PASS · check-multi-agent 0 loi.
+- **CHUA CHAY**: doi chieu mat tren staging sau redeploy · E2E them ma that · full BE · ruff.
+
 ## Entry 326: Thong nhat dinh dang 3 lane Broker Hub (2026-10-15)
 
 - **Goc**: Owner: 3 broker 3 dinh dang (DNSE nut xanh to full-width; SSI/TCBS nut nho + chu tran; o API Key trang bech do autofill). Audit code + anh that.
