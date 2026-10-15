@@ -19,8 +19,13 @@ class WatchlistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Watchlist
-        fields = ['id', 'name', 'description', 'is_default', 'items', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'description', 'is_default', 'items',
+                  # BE-KIND (Wave 3): expose pham vi + nguon, read-only
+                  # (khong doi write path — tao watchlist scoped qua API
+                  # la ticket rieng).
+                  'source', 'provider', 'broker_account', 'created_at']
+        read_only_fields = ['id', 'source', 'provider', 'broker_account',
+                            'created_at']
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -97,23 +102,43 @@ class PortfolioSerializer(serializers.ModelSerializer):
         model = Portfolio
         fields = [
             'id', 'name', 'description', 'is_default',
+            # BE-KIND (Wave 3): expose loai + archive, read-only.
+            # `kind` CHI doc duoc o day — duong chuyen lan duy nhat la
+            # action `convert` tren endpoint broker-bindings (O-5).
+            'kind', 'is_archived',
             'opening_balance', 'opening_balance_source', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'kind', 'is_archived', 'created_at']
 
 
 class SubAccountSerializer(serializers.ModelSerializer):
     portfolio_name = serializers.CharField(source='portfolio.name', read_only=True)
     type_display = serializers.CharField(source='get_type_display', read_only=True)
 
+    def validate(self, attrs):
+        # B3.4 (Wave 3, partial): DB giu nullable (chua co so lieu prod de
+        # AlterField NOT NULL) nen chan ghi ro rang "chua phan loai" tu API:
+        # provider gui len ma rong la loi, con THIEU han thi giu '' de tuong
+        # thich nguoc (dong bo worker tu dien qua backfill 0025).
+        provider = attrs.get('provider', None)
+        if provider is not None and str(provider).strip() == '':
+            raise serializers.ValidationError({
+                'provider': 'Phai phan loai nha moi gioi (dnse/ssi/tcbs).',
+            })
+        return attrs
+
     class Meta:
         model = SubAccount
         fields = [
             'id', 'broker', 'account_number', 'name', 'display_name',
             'type', 'type_display', 'portfolio', 'portfolio_name', 'is_active', 
-            'external_id', 'broker_source', 'sync_status', 'created_at'
+            'external_id', 'broker_source', 'sync_status',
+            # BE-KIND (Wave 3): expose phan loai + lien ket + dong bo cuoi.
+            # `broker_config` (id) + `last_sync_at` read-only (khong mo duong
+            # gan credential tu API — tranh lien ket nham tenant).
+            'provider', 'broker_config', 'last_sync_at', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'broker_config', 'last_sync_at', 'created_at']
 
 
 class DNSECredentialSerializer(serializers.ModelSerializer):
