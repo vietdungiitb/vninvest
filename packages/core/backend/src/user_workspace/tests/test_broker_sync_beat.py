@@ -131,6 +131,8 @@ class SyncAllPositionsTaskTests(TestCase):
         return BrokerSyncService(Stub())
 
     def test_fanout_writes_run_and_snapshots(self):
+        # Khoa gio VN de xac dinh (17:00-08:30 la quiet): neu khong, test
+        # do hay hong tuy gio chay that.
         from user_workspace import tasks as ws_tasks
         from user_workspace.broker.sync_service import BrokerSyncService
         from user_workspace.models import BrokerSyncRun, PositionSnapshot
@@ -138,6 +140,8 @@ class SyncAllPositionsTaskTests(TestCase):
         with patch.object(
             BrokerSyncService, 'for_config',
             return_value=self._fake_service(),
+        ), patch(
+            'user_workspace.tasks._beat_in_quiet_hours', return_value=False,
         ):
             result = ws_tasks.sync_all_broker_positions_task.run()
         self.assertTrue(result['ok'])
@@ -176,6 +180,8 @@ class SyncAllPositionsTaskTests(TestCase):
         with patch.object(
             BrokerSyncService, 'for_config',
             return_value=self._fake_service(),
+        ), patch(
+            'user_workspace.tasks._beat_in_quiet_hours', return_value=False,
         ):
             result = ws_tasks.sync_all_broker_positions_task.run()
         self.assertTrue(result['ok'])
