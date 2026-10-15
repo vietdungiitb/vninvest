@@ -11,6 +11,7 @@ import {
   type BrokerSyncAdapter,
 } from "../../components/brokerData/BrokerSyncCenter.js";
 import { BindingsPanel } from "./BindingsPanel.js";
+import { ScopedWatchlist } from "../../components/brokerData/ScopedWatchlist.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 
@@ -27,6 +28,9 @@ import { useI18n } from "../../context/LangContext.js";
  * - Badge provider join theo §2 PLAN_WAVE2: provider lấy từ account trong URL
  *   (thực thi BÊN TRONG component DATA); page chỉ truyền `accountId` xuyên suốt.
  * - Thiếu `:accountId` ⇒ fail-closed (alert hub.*, 0 request adapter).
+ * - `ScopedWatchlist` (watchlist-mount): manual theo scope + derived
+ *   "Đang nắm giữ @ ..." của đúng tiểu khoản trong URL (chỉ mount, 0 dòng
+ *   sửa file DATA).
  */
 
 /** Cấp module (L-F10): adapter cast quy ước + type giao nhau DATA. */
@@ -75,6 +79,7 @@ export function BrokerAccountPage({
       <BrokerAccountManager accountId={accountId} adapter={accountApi} />
       <BrokerSyncCenter accountId={accountId} adapter={accountApi} pollIntervalMs={pollIntervalMs} />
       <BindingsPanel accountId={accountId} />
+      <ScopedWatchlist brokerAccountId={accountId} />
     </>,
   );
 }
