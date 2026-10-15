@@ -48,10 +48,13 @@ export interface PortfolioOption {
 }
 
 export interface BindingsPanelAdapter {
-  getPortfolioBindings: (portfolioId: string | number) => Promise<unknown>;
+  // Loop Stage 6 (mount crash): 3 ham doc la optional — adapter khuyet
+  // (mock test, facade cu) khong duoc lam crash ca trang. Thieu ham doc
+  // nao thi danh sach do rong. Ham ghi giu bat buoc (write can adapter du).
+  getPortfolioBindings?: (portfolioId: string | number) => Promise<unknown>;
   savePortfolioBindings: (portfolioId: string | number, data: Record<string, unknown>) => Promise<unknown>;
-  getBrokerAccounts: () => Promise<unknown>;
-  getPortfolios: () => Promise<unknown>;
+  getBrokerAccounts?: () => Promise<unknown>;
+  getPortfolios?: () => Promise<unknown>;
 }
 
 /** Cấp module (L-F10): type union ổn định cho convert select. */
@@ -119,9 +122,15 @@ export function BindingsPanel({
     setError(null);
     try {
       const [bRaw, aRaw, pRaw] = await Promise.all([
-        api.getPortfolioBindings(effectiveId),
-        api.getBrokerAccounts().catch(() => []),
-        api.getPortfolios().catch(() => []),
+        typeof api.getPortfolioBindings === "function"
+          ? api.getPortfolioBindings(effectiveId)
+          : [],
+        typeof api.getBrokerAccounts === "function"
+          ? api.getBrokerAccounts().catch(() => [])
+          : [],
+        typeof api.getPortfolios === "function"
+          ? api.getPortfolios().catch(() => [])
+          : [],
       ]);
       setBindings(asList(bRaw) as unknown as BindingRow[]);
       setAccounts(asList(aRaw) as unknown as BrokerAccountOption[]);
@@ -138,7 +147,11 @@ export function BindingsPanel({
 
   useEffect(() => {
     // Portfolio picker (khi không truyền portfolioId): tải danh sách 1 lần.
-    if (portfolioId === null || portfolioId === undefined) {
+    // Guard typeof: adapter khuyet getPortfolios thi picker rong, khong crash.
+    if (
+      (portfolioId === null || portfolioId === undefined) &&
+      typeof api.getPortfolios === "function"
+    ) {
       api
         .getPortfolios()
         .then((raw) => setPortfolios(asList(raw) as unknown as PortfolioOption[]))
