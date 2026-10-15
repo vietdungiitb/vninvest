@@ -37,6 +37,24 @@ ERR_TENANT_NOT_ALLOWED = 'tenant_not_allowed'
 ERR_TENANT_NOT_FOUND = 'tenant_not_found'
 
 
+def _beat_check_kill_switch(*, provider=None, tenant=None) -> None:
+    """Wrapper de test patch TAI `user_workspace.tasks` (khong cham service_ops)."""
+    from service_ops.broker_runtime import check_kill_switch  # noqa: PLC0415 (lazy)
+
+    check_kill_switch('global')
+    if tenant is not None:
+        check_kill_switch('tenant', tenant=tenant)
+    if provider:
+        check_kill_switch('provider', provider=provider)
+
+
+def _beat_in_quiet_hours(now=None) -> bool:
+    """Wrapper de test patch TAI `user_workspace.tasks` (khong cham service_ops)."""
+    from service_ops.broker_runtime import in_quiet_hours  # noqa: PLC0415 (lazy)
+
+    return bool(in_quiet_hours(now=now))
+
+
 def _resolve_tenant_for_user(user, tenant_id=None):
     """Trả `(tenant, error_code)`. `error_code` là None khi resolve thành công.
 
@@ -436,5 +454,133 @@ def test_broker_connection_task(self, config_id: int, tenant_id: int | None = No
     else:
         config.status = UserBrokerConfig.StatusChoices.ERROR
         config.last_error = str(result.get('error', 'unknown'))[:500]
-    config.save(update_fields=['status', 'last_verified_at', 'last_error', 'updated_at'])
+    config.save(update_fields=['status', 'last_error', 'updated_at'])
     return result
+
+
+@shared_task(name='user_workspace.sync_all_broker_positions_task')
+def sync_all_broker_positions_task():
+    """Wave 1 B1.4: fan-out position-first sync moi credential co secrets.
+
+    Moi config: 1 BrokerSyncRun (running -> succeeded/failed) + sync tung
+    SubAccount da lien ket (B1.3). Config thieu tenant => skip (khong doan).
+    Guard: kill-switch global + quiet-hours (fail-closed, khong ghi gi).
+    """
+    from service_ops.broker_runtime import BrokerWriteDisabled  # noqa: PLC0415
+
+    try:
+        _beat_check_kill_switch()
+    except BrokerWriteDisabled as exc:
+        logger.warning('kill-switch chan fan-out broker positions: %s', exc)
+        return {'ok': False, 'error': 'broker_writes_disabled'}
+    if _beat_in_quiet_hours():
+        return {'ok': True, 'triggered_count': 0, 'skipped': 'quiet_hours'}
+
+    from .broker.position_sync import sync_account_positions  # noqa: PLC0415
+    from .broker.sync_service import BrokerSyncService  # noqa: PLC0415
+    from .models import (  # noqa: PLC0415 (tranh circular import luc load)
+        BrokerSyncRun,
+        SubAccount,
+        UserBrokerConfig,
+    )
+
+    triggered = 0
+    failed = 0
+    skipped_no_tenant = 0
+    for config in UserBrokerConfig.objects.all().order_by('id'):
+        if not config.has_secrets():
+            continue
+        if config.tenant_id is None:
+            skipped_no_tenant += 1
+            continue
+        run = BrokerSyncRun.objects.create(
+            user=config.user, tenant_id=config.tenant_id,
+            provider=config.provider, status='running')
+        try:
+            service = BrokerSyncService.for_config(config)
+            merged = {'positions_written': 0, 'collisions': []}
+            for sub in SubAccount.objects.filter(
+                    broker_config=config).order_by('id'):
+                stats = sync_account_positions(service, sub)
+                merged['positions_written'] += stats['positions_written']
+                merged['collisions'].extend(stats['collisions'])
+            run.status = BrokerSyncRun.StatusChoices.SUCCEEDED
+            run.stats = merged
+        except Exception as exc:  # noqa: BLE001 — 1 config hong khong chan config khac
+            logger.warning(
+                'sync_all_broker_positions: config %s loi — %s',
+                config.id, type(exc).__name__,
+            )
+            run.status = BrokerSyncRun.StatusChoices.FAILED
+            run.error = str(exc)[:500]
+            failed += 1
+        finally:
+            run.finished_at = timezone.now()
+            run.save()
+        triggered += 1
+    return {
+        'ok': True,
+        'triggered_count': triggered,
+        'failed': failed,
+        'skipped_no_tenant': skipped_no_tenant,
+    }
+
+
+@shared_task(name='user_workspace.sync_broker_account_task', bind=True, max_retries=3)
+def sync_broker_account_task(self, config_id: int, sub_account_id: int):
+    """Wave 1 B1.6: sync 1 tieu khoan (position-first) trong worker.
+
+    Ghi 1 BrokerSyncRun. Fail-closed: config/sub khong ton tai hoac lech
+    tenant => loi ro, khong ghi gi. View POST .../sync/ enqueue task nay.
+    """
+    from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch  # noqa: PLC0415
+
+    try:
+        check_kill_switch('global')
+    except BrokerWriteDisabled as exc:
+        logger.warning(
+            'kill-switch chan task %s (config=%s, sub=%s): %s',
+            'sync_broker_account_task', config_id, sub_account_id, exc,
+        )
+        return {'ok': False, 'error': 'broker_writes_disabled'}
+
+    from .broker.position_sync import sync_account_positions  # noqa: PLC0415
+    from .broker.sync_service import BrokerSyncService  # noqa: PLC0415
+    from .models import (  # noqa: PLC0415
+        BrokerSyncRun,
+        SubAccount,
+        UserBrokerConfig,
+    )
+
+    try:
+        config = UserBrokerConfig.objects.select_related('user').get(id=config_id)
+        sub = SubAccount.objects.get(id=sub_account_id)
+    except (UserBrokerConfig.DoesNotExist, SubAccount.DoesNotExist):
+        return {'ok': False, 'error': 'not_found'}
+    if sub.broker_config_id != config.id:
+        return {'ok': False, 'error': 'account_not_linked'}
+    if (config.tenant_id is None or sub.tenant_id != config.tenant_id
+            or sub.user_id != config.user_id):
+        return {'ok': False, 'error': 'tenant_mismatch'}
+
+    run = BrokerSyncRun.objects.create(
+        user=config.user, tenant_id=config.tenant_id,
+        provider=config.provider, status='running')
+    try:
+        service = BrokerSyncService.for_config(config)
+        stats = sync_account_positions(service, sub)
+        run.status = BrokerSyncRun.StatusChoices.SUCCEEDED
+        run.stats = stats
+    except Exception as exc:  # noqa: BLE001 — that bai ghi run, khong no worker
+        logger.warning(
+            'sync_broker_account_task: config %s sub %s loi — %s',
+            config_id, sub_account_id, type(exc).__name__,
+        )
+        run.status = BrokerSyncRun.StatusChoices.FAILED
+        run.error = str(exc)[:500]
+        stats = {'ok': False, 'error': 'sync_failed'}
+    finally:
+        run.finished_at = timezone.now()
+        run.save()
+    stats['run_id'] = run.id
+    return stats

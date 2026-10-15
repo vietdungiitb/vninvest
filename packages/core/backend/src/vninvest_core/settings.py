@@ -857,6 +857,13 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 300.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('screener-scheduled-run-5m', 'manual_on_demand')},
     },
+    # Wave 1 B1.4: position-first sync da broker (read-only). Task tu kiem
+    # quiet-hours/kill-switch luc chay (fail-closed) nen beat cu chay deu 30m.
+    'broker-sync-positions-30m': {
+        'task': 'user_workspace.sync_all_broker_positions_task',
+        'schedule': 1800.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('broker-sync-positions-30m', 'manual_on_demand')},
+    },
 }
 
 # BL-15: resolve log format safely (unknown values fall back, never crash boot).
