@@ -356,6 +356,7 @@ def _order_to_dict(order) -> dict:
 
 @extend_schema(
     summary='broker_accounts_api',
+    operation_id='broker_accounts_list',
     description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
     request=OpenApiTypes.OBJECT,
     responses={
@@ -379,6 +380,7 @@ def broker_accounts_api(request):
 
 @extend_schema(
     summary='broker_account_detail_api',
+    operation_id='broker_account_retrieve',
     description='Declared so drf-spectacular stops reporting an unguessable serializer; payload shape is verified by the envelope invariant tests.',
     request=OpenApiTypes.OBJECT,
     responses={
