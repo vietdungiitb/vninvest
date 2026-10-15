@@ -1,4 +1,13 @@
 
+## Entry 325: Refactor Broker Hub UI/UX theo anh chup that (2026-10-15)
+
+- **Goc**: Owner gui anh `/broker` moi (da deploy Wave 2): tile DNSE vua "CHUA KET NOI" vua "DA XAC MINH DAY DU" (mau thuan) + 2 form chong nhau (generic schema + legacy DNSE) + input/button khong style + copy "Ket noi dnse." viet thuong. Audit theo web-interface-guidelines + frontend-design + baseline local.
+- **Nhanh**: `feat/broker-hub-uiux` -> `dev` (PR #158, merge giu trail). Claim `broker-hub-uiux`.
+- **Viec lam**: (1) lane dnse chi render legacy `DNSEConnectionPanel` (bo form chung, kem skip fetch schema lane legacy); form chung chi ssi/tcbs. (2) Badge verified → "Hop dong da kiem chung" / "Cho kiem chung hop dong" (noi ve hop dong, khong phai ket noi) — ca vi.js + en.js. (3) Tiles grid 3 cot (1 cot mobile) + tile selected/focus-visible + form/input/button dung class soc (`fieldInput`, `actionBtn`, `brokerTileGrid`, `brokerForm*`, `actionBtnPrimary` MOI trong `soc.components.css`, 0 sua rule cu). (4) Tieu de lane viet hoa ("Ket noi SSI."); input `autocomplete=off` + `spellcheck=false`. Khong cham DNSE panel, khong migration, khong package.json.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-F03, L-F08, L-F09, L-F10, L-V02, L-T01, L-T02, L-G02.
+- **Gate**: FE 51/51 (12 file broker) + tsc 0 + i18n:scan:strict 0 + build 0 · pre-push PASS luc push · check-multi-agent 0 loi.
+- **CHUA CHAY**: doi chieu UI bang mat tren staging sau redeploy · E2E dang nhap/ket noi that · full BE · ruff.
+
 ## Entry 324: Tai lieu tong ket hien trang dong bo code + system-design (2026-10-15)
 
 - **Nguon**: Owner yeu cau tong ket + ghi tai lieu. Claim `doc-tongket` (DOC-ONLY).
