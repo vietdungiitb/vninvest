@@ -474,17 +474,51 @@ cd /opt/vninvest && git worktree remove --force /tmp/wt-<slice> \
 > chạy đúng code nhánh. Slice nào đổi dependency (`requirements.txt` — deny-list) thì
 > phải build image test riêng, không dùng image staging.
 
-### 12.4 Quy trình FE trên VPS (CHƯA KIỂM CHỨNG — lần đầu ở Wave 2)
+### 12.4 Quy trình FE trên VPS (ĐÃ KIỂM CHỨNG 2026-10-15 — VPS-FE-PROBE mbw3-fe, xem `docs/evidence/mbw3/vps-fe-probe.md`)
+
+> Thực tế VPS `14.225.255.47`: có node (`/usr/bin/node`, v22.22.1) nhưng
+> **KHÔNG có `npm`** trên PATH (đã tìm `/usr/bin`, `/usr/local/bin`, nvm,
+> `npm-cli.js` — không thấy; image `vninvest-staging-frontend` là nginx-only,
+> không có toolchain). PATH rỗng trong ssh non-interactive nên mọi lệnh dưới
+> dùng đường dẫn tuyệt đối `/usr/bin/corepack`.
 
 ```bash
-# Một lần duy nhất (giữ node_modules trên VPS, không commit vào repo)
-cd /opt/vninvest/packages/web && npm ci
-# Mỗi lần test:
-npm run test:components -- <file>   # hoặc npm run test -- <pattern>
+# 0. Push nhánh slice lên origin (từ máy local)
+git push origin feat/<slice>
+
+# 1. Cài npm QUA COREPACK (một lần, giữ nguyên sau đó; cần mạng registry.npmjs.org)
+#    Đã kiểm chứng: corepack prepare npm@11.18.0 --activate
+/usr/bin/corepack prepare npm@11.18.0 --activate
+/usr/bin/corepack npm --version   # kiểm tra: phải in 11.18.0
+
+# 2. Trên VPS: worktree tạm (KHÔNG checkout đè /opt/vninvest đang chạy staging)
+cd /opt/vninvest && git fetch origin feat/<slice> \
+  && git worktree add /tmp/wt-<slice> origin/feat/<slice>
+
+# 3. node_modules trên VPS (KHÔNG commit; KHÔNG copy bản Windows-local lên —
+#    binary @esbuild khác platform). Nếu package-lock.json trùng với lần chạy
+#    trước (diff -q) thì tái dùng node_modules Linux có sẵn, ngược lại chạy:
+cd /tmp/wt-<slice>/packages/web && /usr/bin/corepack npm ci
+
+# 4. Mỗi lần test/build (suite CHÍNH THỨC ở đây — chạy local rồi báo PASS = vi phạm):
+/usr/bin/corepack npm run test:components -- <file>   # hoặc npm run test -- <pattern>
+/usr/bin/corepack npm run i18n:scan:strict
+/usr/bin/corepack npm run build                        # tsc && vite build (RAM-heavy)
+/usr/bin/corepack npm --prefix /tmp/wt-<slice>/packages/web run <script>
+node scripts/measure-route-graph.mjs <RouteEntry>      # đo bundle trên dist/ VPS
+
+# 5. Dọn worktree sau khi lấy log (BẮT BUỘC trước merge; node_modules có thể giữ
+#    cho lần sau NẾU lock không đổi — ghi rõ đường dẫn giữ lại vào evidence)
+cd /opt/vninvest && git worktree remove --force /tmp/wt-<slice> \
+  && git worktree prune
 ```
 
-> Chưa có `node_modules` trên VPS (kiểm 2026-10-14) nên đường này **chưa từng chạy**.
-> Slice FE đầu tiên phải chạy thử + sửa § này theo thực tế, không đoán.
+> Đã chạy thật 2026-10-15 (mbw3-fe, worktree `/tmp/wt-mbw3-fe-vps`):
+> `npm ci` exit 0 · vitest 5 files/20 tests exit 0 · control 1 file/5 tests exit 0 ·
+> fail-before tại commit test exit 1 (5/5 files failed) · `i18n:scan:strict` exit 0 ·
+> `build` exit 0 (31.99 s) · bundle `/broker` 1361.0 KB, `/broker/accounts/:id`
+> 1356.5 KB (≤1450). Bẫy đã gặp: `worktree remove` TRƯỚC khi dời `node_modules`
+> ra ⇒ mất 733 MB, phải `npm ci` lại — luôn dời/tái dùng trước khi remove.
 
 ### 12.5 Báo cáo
 
