@@ -10,8 +10,9 @@
 - [x] Stage 0/0.5: SCOPE + LIMIT + artifact names (git ls-files: trống) + tree sạch
 - [ ] Stage 2: auditor độc lập → PLAN_AUDIT + verdict (Gate 1→2)
 - [ ] Stage 3: claim `audit-wave2` (trước mọi edit)
-- [ ] Stage 4: sửa plan theo verdict (nếu NEED_REVISION, ≤3 vòng)
-- [ ] Stage 5: tái-verify objections đóng hết (0 blocker/major)
+- [x] Stage 2 vòng 1: NEED_REVISION (O1-O9) — file PLAN_AUDIT Voyage
+- [x] Stage 4 vòng 1: sửa plan (baseline O2 + AC Given/When/Then O1 + tách prefix i18n/soc-1-chủ O3 + sidebar/holdings/main O4 + join rule O5 + refs O6 + freeze status/drift O7 + prefix routes O8 + labels/budget/log O9 + C1-C7)
+- [ ] Stage 5: tái audit vòng 2 — verify O1-O9 đóng (0 blocker/major)
 - [ ] Stage 6: TEST_REPORT gates doc
 - [ ] Stage 7: push + PR + claim done + ledger Entry (Gate 6→7)
 - [ ] Stage 8: retrospective trong REPORT_FINAL
