@@ -450,7 +450,7 @@ cd /opt/vninvest && git fetch origin feat/<slice> \
   && git worktree add /tmp/wt-<slice> origin/feat/<slice>
 
 # 2. DB tạm riêng trên vninvest-core-db (lấy pass từ compose.staging.env, KHÔNG in ra)
-PW=$(grep -E '^POSTGRES_PASSWORD=' /opt/vninvest/compose.staging.env | cut -d= -f2-)
+PW=$(grep -E '^CORE_DB_PASSWORD=' /opt/vninvest/compose.staging.env | cut -d= -f2-)
 docker exec vninvest-core-db psql -U vninvest -d vninvest_core \
   -c "CREATE DATABASE <db_tam>;"   # vd db_tam=mbw0_b01
 
