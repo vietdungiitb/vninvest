@@ -168,7 +168,12 @@ function App() {
           // Thu tu KHONG duoc doi: phai khai `manage/broker` TRUOC `manage`,
           // neu khong React Router se gan `manage/broker` vao param cua
           // `portfolios/:portfolioId/...` va mo sai trang.
-          createElement(Route, { path: 'portfolios/manage/broker', element: createElement(resolvePageComponent('portfolios-manage-broker')) }),
+          // B2.6 (Wave 2 Broker Hub): URL cũ redirect về `/broker` (quyết định
+          // PLAN §0.6) — giữ query/hash qua `RedirectPreserveQuery`.
+          createElement(Route, { path: 'portfolios/manage/broker', element: createElement(RedirectPreserveQuery, { to: '/broker' }) }),
+          // B2.1: Broker Hub — route `/broker` (catalog id `broker` ↔ registry
+          // `broker`, không qua lớp ánh xạ).
+          createElement(Route, { path: 'broker', element: createElement(resolvePageComponent('broker')) }),
         // S-11: 5 man hinh danh muc, moi URL rieng de deep-link + F5 giu dung
         // tab. Cung tro toi MOT entry `portfolio-workspace`; tab lay tu path.
         createElement(Route, { path: 'portfolios/:portfolioId/overview', element: createElement(resolvePageComponent('portfolio-overview')) }),

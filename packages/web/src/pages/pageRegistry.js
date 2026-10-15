@@ -220,6 +220,10 @@ export const pageRegistry = Object.freeze([
     import("./DashboardPage.tsx").then((module) => module.default)),
   makePageEntry("core-portfolios", "core", () =>
     import("./PortfoliosPage.tsx").then((module) => module.PortfoliosPage)),
+  // B2.1 (Wave 2 Broker Hub): entry `/broker`. Entry `portfolios-broker` GIỮ LẠI —
+  // component của nó redirect về `/broker` (quyết định PLAN §0.6).
+  makePageEntry("broker", "new", () =>
+    import("./broker/BrokerHubPage.tsx").then((module) => module.BrokerHubPage)),
   // /portfolios/manage/broker - panel broker tach khoi trang quan ly danh muc.
   makePageEntry("portfolios-broker", "core", () =>
     import("./PortfoliosBrokerPage.tsx").then((module) => module.PortfoliosBrokerPage)),
