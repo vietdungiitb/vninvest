@@ -164,7 +164,9 @@ describe("BindingsPanel (B3.1, contract §2)", () => {
     });
     wrap(adapter);
     await screen.findByText("DNSE — 0001");
-    expect(screen.getByText(/không rõ/i)).toBeTruthy();
+    // Trạng thái unknown render 2 chuỗi ("Không rõ" ở nhãn loại + ghi chú
+    // unknownKindNote) — assert hiện diện, không assert duy nhất.
+    expect(screen.getAllByText(/không rõ/i).length).toBeGreaterThan(0);
     expect(
       (screen.getByRole("button", { name: /chuyển loại/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
