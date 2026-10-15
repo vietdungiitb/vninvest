@@ -106,6 +106,39 @@ def fetch_account_balance(client, account_number: str) -> dict:
     }
 
 
+def fetch_positions(client, account_number: str, market_type: str = "STOCK") -> list[dict]:
+    """B1.2 (Wave 1): vi the DNSE — nguon that cho position-first sync.
+
+    `market_type` mac dinh STOCK (vnbroker 3.7.2 chi nhan STOCK/DERIVATIVE;
+    sai nem DNSEValidationError — khong retry mu nhu ban cu).
+    """
+    raw = client.get_positions(
+        account_no=account_number,
+        market_type=market_type,
+        raw=False,
+    )
+    normalized = []
+    for item in _coerce_list(raw):
+        symbol = item.get("symbol") or item.get("ticker")
+        if not symbol:
+            continue
+        normalized.append(
+            {
+                "symbol": str(symbol).upper(),
+                "quantity": _to_float(item.get("quantity") or item.get("volume")),
+                "avg_price": _to_float(
+                    item.get("avg_price")
+                    or item.get("average_price")
+                    or item.get("cost_price")
+                ),
+                "market_price": _to_float(
+                    item.get("market_price") or item.get("current_price")
+                ),
+            }
+        )
+    return normalized
+
+
 def fetch_order_history(client, account_number: str, from_date: str, to_date: str) -> list[dict]:
     last_error = None
     raw = None
