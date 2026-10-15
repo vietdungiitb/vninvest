@@ -3916,3 +3916,53 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* mbw4 Wave 4 — SOC Broker Ops lane cards + expiry badges.
+   Class moi vao day (khong vao barrel soc.module.css — chi re-export). */
+.brokerLaneGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.brokerLaneCard {
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  border-radius: 8px;
+  padding: 0.625rem 0.75rem;
+  background: rgba(var(--soc-rgb-0f172a) / 0.25);
+  font-size: 0.75rem;
+}
+.brokerLaneRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  color: var(--text-primary, #f1f5f9);
+  font-variant-numeric: tabular-nums;
+}
+.brokerLaneRow span:first-child {
+  color: var(--text-muted, #94a3b8);
+}
+.brokerBadge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.brokerBadgeOk {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+.brokerBadgeWarn {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+.brokerBadgeBad {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
