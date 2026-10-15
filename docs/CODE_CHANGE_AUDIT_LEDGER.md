@@ -1,4 +1,16 @@
 
+## Entry 316: Wave 1 B1.1 DONE - BrokerSyncService interface + registry (2026-10-15)
+
+- **Nhanh**: `feat/mbw1-b11-syncservice` -> `dev` - claim `mbw1-b11`. 1 agent duy nhat, khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03. TDD fail-before.
+- **Rà soat mo dau phien**: PR #145 merged; dev dong bo; Wave 0 as-merged verify **126/126 OK** (VPS); vnbroker van 3.7.2 (gate 3.8.0 giu); staging health OK. Hieu chinh PLAN (Wave 0 actuals + Wave 1 Mode B + 3.7.2-only).
+- **Viec lam**: `BrokerSyncService` (wrap adapter inject, `provider_id`, uy thac read 4 method) + `for_config`/`for_user` (giai UserBrokerConfig -> credentials; thieu => `BrokerConfigMissingError` code `broker_config_missing`; la => `broker_config_invalid`) + registry `get_broker_adapter` 3 lane. Khong migration, khong model, khong I/O that.
+- **Sua thiet ke khi implement**: `for_user` label default phai `'Mặc định'` (khop helper models), khong phai ASCII; `isinstance` check truoc khi doc provider.
+- **TDD (VPS staging, DB tam mbw1_b11, runbook §12)**: fail-before 6 errors ImportError tren base (1 registry test pass ca 2 ben — characterization) => pass **7/7**; regression **119/119 OK**.
+- **Gate**: `makemigrations --check` exit 0 · py_compile 0 · pre-push-gate **22/22 PASS** · khong regen system-design (khong route/model moi).
+- **Don dep VPS**: DROP DB + 2 worktree + log - xong.
+- **CHUA CHAY**: full BE suite · FE · ruff (chua cai) · REQ-001..005 CHUA GUI.
+
 ## Entry 315: Wave 0 B0.6 DONE + Wave 0 DONG (2026-10-15)
 
 - **Nhanh**: `feat/mbw0-b06-capabilities` -> `dev` - claim `mbw0-b06`. 1 agent duy nhat, khong cham deny-list.
@@ -10287,6 +10299,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 313 | 2026-10-14 | **Wave 0 B0.4 DONE** - SyncRun + SyncIssue, 6/6 + 21/21 + 111/111 OK tren VPS, pre-push 22/22. |
 | 314 | 2026-10-14 | **Wave 0 B0.5 DONE** - sync async 202 + xoa SyncView, 8/8 + 111/111 OK tren VPS, pre-push 22/22. |
 | 315 | 2026-10-15 | **Wave 0 B0.6 DONE + Wave 0 DONG** - capabilities endpoint, 6/6 + 121/121 OK tren VPS, pre-push 22/22. |
+| 316 | 2026-10-15 | **Wave 1 B1.1 DONE** - SyncService + registry, 7/7 + 119/119 OK tren VPS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
