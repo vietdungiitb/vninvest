@@ -1,4 +1,13 @@
 
+## Entry 326: Thong nhat dinh dang 3 lane Broker Hub (2026-10-15)
+
+- **Goc**: Owner: 3 broker 3 dinh dang (DNSE nut xanh to full-width; SSI/TCBS nut nho + chu tran; o API Key trang bech do autofill). Audit code + anh that.
+- **Nhanh**: `feat/broker-form-unify` -> `dev` (PR #160, merge giu trail). Claim `broker-form-unify`.
+- **Viec lam**: (1) `actionBtnPrimary` ve xanh dac #2563eb/hover #1d4ed8 (giong DNSE `--dnse-c2/c3/c4`) + `actionBtnSecondary` vien mo + `actionBtnBlock` full-width — form chung: Luu = primary block, Kiem tra = secondary block (cung nhip DNSE). (2) Fix `:-webkit-autofill` trang thanh nen/chu theme (scoped `.brokerForm`). (3) Test khoa ngon ngu nut. Khong cham DNSE panel/css, khong i18n moi, khong migration.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-F03, L-F05, L-F08, L-V02, L-T01, L-T02, L-G02.
+- **Gate**: FE 49/49 (11 file broker) + build 0 (tsc chay trong build) + i18n:strict 0 warn cu · pre-push PASS luc push · check-multi-agent 0 loi.
+- **CHUA CHAY**: doi chieu mat tren staging sau redeploy · E2E ket noi that · full BE · ruff.
+
 ## Entry 325: Refactor Broker Hub UI/UX theo anh chup that (2026-10-15)
 
 - **Goc**: Owner gui anh `/broker` moi (da deploy Wave 2): tile DNSE vua "CHUA KET NOI" vua "DA XAC MINH DAY DU" (mau thuan) + 2 form chong nhau (generic schema + legacy DNSE) + input/button khong style + copy "Ket noi dnse." viet thuong. Audit theo web-interface-guidelines + frontend-design + baseline local.
