@@ -93,6 +93,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   const brokerClient = createBrokerClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
+    corePatch: transport.corePatch,
     coreDelete: transport.coreDelete,
   });
 

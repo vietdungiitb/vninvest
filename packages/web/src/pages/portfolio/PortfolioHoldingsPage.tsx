@@ -16,6 +16,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useI18n } from "../../context/LangContext";
+import { SourceBadge } from "../../components/brokerData/sourceBadge";
 import { usePortfolioResource, asRows, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
 import { useUrlState, stringCodec, boolCodec, type UrlStateCodec } from "../../hooks/useUrlState";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -35,6 +36,12 @@ export interface HoldingRow {
   price_change_pct?: number | null;
   price_missing_reason?: string | null;
   stale?: boolean;
+  /**
+   * mbw2-data B2.5: nguồn QĐ-C (ADR-005) `manual|broker_backed|aggregate`.
+   * BE hiện chưa trả per-row (ticket BE-02, xem SUMMARY_mbw2-data) —
+   * thiếu ⇒ `SourceBadge` render null, KHÔNG bịa badge.
+   */
+  source?: string | null;
 }
 
 const DASH = "—";
@@ -232,7 +239,13 @@ export function PortfolioHoldingsPage({
             const pnl = num(r.unrealized_pnl);
             return (
               <tr key={String(r.symbol)} data-stale={r.stale ? "true" : undefined}>
-                <th scope="row">{r.symbol ?? DASH}</th>
+                {/* mbw2-data B2.5: badge ke sat (khong chen space literal) de
+                    textContent symbol KHONG doi ("BIG", khong phai "BIG ") —
+                    khoang cach do CSS `th .bdata-badge` lo. */}
+                <th scope="row">
+                  {r.symbol ?? DASH}
+                  <SourceBadge source={r.source} />
+                </th>
                 <td>{r.company_name || DASH}</td>
                 <td>{fmtMoney(r.quantity)}</td>
                 <td>{fmtMoney(r.avg_cost)}</td>
