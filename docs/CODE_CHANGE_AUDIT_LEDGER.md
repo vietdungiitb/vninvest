@@ -1,4 +1,17 @@
 
+## Entry 317: Wave 1 B1.2-B1.6 DONE + Wave 1 DONG - Sync engine da provider (2026-10-15)
+
+- **Nhanh**: `feat/mbw1-sync-engine` -> `dev` - claim `mbw1-wave`. 1 agent duy nhat (Mode B tuan tu, 1 nhanh wave, commit theo slice, 1 PR cuoi wave), khong cham deny-list.
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-G01, L-G02, L-T01, L-T02, L-V02, L-V03. TDD fail-before (23/26 do tren base).
+- **Viec lam**: B1.2 noi `get_positions`/`get_holdings` 3 lane 3.7.2 + mapping camelCase DNSE (stub client, khong mang) · B1.3 `broker/position_sync.py` append-only skip-compare + va cham legacy NULL · B1.4 `broker/sync_guard.py` + fan-out task + beat 30m · B1.5 `broker/drift.py` drift -> BrokerSyncIssue · B1.6 `views_broker.py` 9 endpoint + bindings + routes. Khong migration (head giu 0029).
+- **Sua thiet ke khi implement**: patch `for_config` tren class (khong qua namespace tasks); khoa `_beat_in_quiet_hours=False` trong fanout tests (cua so quiet VN 17:00-08:30 lam test do tuy gio; duong quiet van duoc phu rieng).
+- **TDD (VPS staging, DB tam rieng moi lan, runbook §12)**: beat **9/9** · drift/views/capabilities/guard **30/30** · regression **31/31** => **61/61 xanh**. Dinh chinh: so "15/15, 22/22, 183/183" phien truoc khong khop file (lane 8 test, position 7 test).
+- **Gate**: `makemigrations --check` No changes detected · gate 3.8.0 giu (`requirements.txt:38` van 3.7.2) · `tsc --noEmit` 0 · `npm run build` PASS 45.11s (canh bao eval/chunk co san) · pre-push-gate **22/22 PASS** · system-design regen (catalog 1473->1483).
+- **Su co moi**: MagicMock trong DRF Response => de quy vo han + OOM (chi mock kieu that) · PowerShell nuot quote kep qua SSH (pipe SQL qua stdin).
+- **Don dep VPS**: DROP DB tam + xoa probe file - xong. Con lai worktree `/tmp/wt-w1` + `/tmp/wt-base` (xoa sau merge).
+- **WAVE 1 DONG 6/6**: B1.1 (PR #146) · B1.2 · B1.3 · B1.4 · B1.5 · B1.6. Tiep: Wave 2 Broker Hub UI theo PLAN muc 4.
+- **CHUA CHAY**: full BE suite · FE tren VPS (thieu node_modules) · ruff (chua cai) · REQ-001..005 CHUA GUI.
+
 ## Entry 316: Wave 1 B1.1 DONE - BrokerSyncService interface + registry (2026-10-15)
 
 - **Nhanh**: `feat/mbw1-b11-syncservice` -> `dev` - claim `mbw1-b11`. 1 agent duy nhat, khong cham deny-list.
@@ -10300,6 +10313,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 314 | 2026-10-14 | **Wave 0 B0.5 DONE** - sync async 202 + xoa SyncView, 8/8 + 111/111 OK tren VPS, pre-push 22/22. |
 | 315 | 2026-10-15 | **Wave 0 B0.6 DONE + Wave 0 DONG** - capabilities endpoint, 6/6 + 121/121 OK tren VPS, pre-push 22/22. |
 | 316 | 2026-10-15 | **Wave 1 B1.1 DONE** - SyncService + registry, 7/7 + 119/119 OK tren VPS, pre-push 22/22. |
+| 317 | 2026-10-15 | **Wave 1 B1.2-B1.6 DONE + Wave 1 DONG** - sync engine 3 lane, 61/61 OK tren VPS, tsc 0 + build PASS, pre-push 22/22. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
