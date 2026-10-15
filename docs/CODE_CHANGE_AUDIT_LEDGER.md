@@ -1,4 +1,16 @@
 
+## Entry 321: Wave 3 Co lap & gop danh muc DONE - mot chu trinh khep kin (2026-10-15)
+
+- **Nhanh**: `feat/mbw3-be` + `feat/mbw3-fe` -> `feat/mbw3-isolation` -> `dev` (1 PR #151, merge `2ba62c781`) - claim `mbw3-be` + `mbw3-fe` + `mbw3-sup`. 2 agent song song theo tang (BE/FE disjoint tuyet doi) + sup mount/loop, trail giu (merge, khong squash).
+- **Lessons ap dung**: L-001, L-002, L-003, L-004, L-006, L-007, L-008, L-A01, L-M01, L-M02, L-M03, L-V02, L-V03, L-F03, L-F08, L-F09, L-F10, L-T01. TDD fail-before + control ca 2 (BE RED-base / FE 5/5 RED + 5/5 control, PM ky).
+- **Plan + audit**: Stage 1 PLAN_WAVE3 (SCOPE/LIMIT/AC/contract dong bang). Stage 2 doc lap 3 vong: NEED_REVISION (O-1 runbook VPS + O-2 DUPID + O-3 chuyen lan kind + O-4 backfill 0025 + F-05) -> NEED_REVISION (O-5 convert endpoint) -> AGREE.
+- **Viec lam**: BE-READ (GET bindings) · BE-KIND (kind/is_archived/provider/broker_config/source + filter, kind read-only serializer) · B3.2-BE (guard aggregate_read_only 5 write path + action convert 3 codes + audit) · B3.4 (0030 backfill DNSE broker_backed + counters, NOT NULL partial) · B3.1 BindingsPanel (confirm 2 buoc + convert) · B3.2-FE banner/khoa (unknown fail-closed) · B3.3 watchlist scoped + derived (ADR-007) · FE-MERGE · FE-DUPID (grep == 1) · FE-STATUS · i18n brokerWave3 61/61 · VPS-FE-PROBE + runbook §12.4.
+- **Audit code doc lap**: 0 blocker + 1 major (F1 guard sot 3 write path) -> loop sup sua + 4 test -> re-audit DONG (0/0, medium) + 5 minor (F2 envelope, F3 [:100], F4 be-gates, F5 NOTA, F6 fail-closed giu). Waivers W1-W4 o REPORT_FINAL.
+- **Su co Stage 6**: mount sup lam do 4 test route (`api.getPortfolios is not a function` — loi that, adapter khuyet crash trang) -> optional-read guard + rerun xanh. Lesson: mount file ngoai scope phai chay test cua chinh file do.
+- **Su co claim**: sua claim bang PowerShell Get-Content|Set-Content -NoNewline gop CLAIMS.md thanh 1 dong (L-F04 y he) -> khoi phuc byte-exact `git show HEAD: > file` (cmd, tranh PowerShell encoding) -> lam lai bang edit tool. Lesson: KHONG bao gio sua file repo bang shell string-op.
+- **Gate**: BE VPS 101/101 (12 labels, DB mbw3_reg, da don) + guard 22/22 · FE VPS 37/37 + i18n:scan 0 + build 32.85s + bundle 1361.0/1363.3 KB (≤1450) · tsc 0 · makemigrations sach (leaf 0030→0029) · check-multi-agent 0 loi · pre-push 22/22 (drift deploy.mjs, 0 file repo).
+- **CHUA CHAY**: E2E 2 SubAccount that (TEST-E2E) · full BE · ruff · B3.4 leftovers staging-read (doi sau deploy). Migration head: **0030**. `vnbroker==3.7.2` (gate 3.8.0 giu).
+
 ## Entry 320: Wave 2 Broker Hub UI DONE - mot chu trinh khep kin (2026-10-15)
 
 - **Nhanh**: `feat/mbw2-hub` + `feat/mbw2-data` -> `feat/mbw2-broker-hub` -> `dev` (1 PR) - claim `mbw2-hub` + `mbw2-data`. 2 agent song song theo be mat, trail giu (merge, khong squash).
@@ -10346,6 +10358,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 318 | 2026-10-15 | **Ke hoach Wave 2 Broker Hub UI** - 1 chu trinh khep kin, 2 agent theo be mat, FE-only, doc-only. |
 | 319 | 2026-10-15 | **Audit doc lap ke hoach Wave 2** - NEED_REVISION (9 obj) -> sua het -> AGREE, 0 blocker/major, doc-only. |
 | 320 | 2026-10-15 | **Wave 2 Broker Hub UI DONE** - 2 agent song song, cross-review 2 vong, 46/46 + 61/61 VPS + build PASS, 1 PR. |
+| 321 | 2026-10-15 | **Wave 3 Co lap & gop danh muc DONE** - plan AGREE 3 vong, 2 agent + loop audit, BE 101/101 + FE 37/37 VPS, 1 PR #151. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`
