@@ -57,3 +57,26 @@ Không sửa: `CLAIMS.md`, BE, `coreApiAdapter.js`, mọi file HUB (`routeCatalo
 
 - Rủi ro: BE status lệnh là pass-through (mỗi broker một tập status) ⇒ filter Khớp lệnh `{FILLED, MATCHED}` có thể thiếu trạng thái khớp của SSI/TCBS — cần PM xác nhận tập status sau khi có dữ liệu thật.
 - Ngoài-scope (không đụng): `PortfolioSerializer` thiếu `kind` (BE-02); `soc.components.css` không có class badge dùng chung cho broker (DATA tự làm `bdata-*`, HUB có thể hợp nhất ở cross-review B2.7); `window.location.search` trong test MemoryRouter (đã dùng SearchProbe theo mẫu WAVE 9).
+
+## 7. Follow-up QĐ PM (2026-10-15, commit riêng trên `feat/mbw2-data`)
+
+- **WIRING-01 — XONG:** `coreApiAdapter.js:93-97` đã wiring `corePatch: transport.corePatch`
+  vào `createBrokerClient({...})` (1 dòng duy nhất ngoài-claim, PM chỉ định owner = DATA).
+  Signature `createBrokerClient` đã có `corePatch` từ commit trước (`broker.js:18`) — không đổi thêm.
+  `savePortfolioBindings` giữ throw fail-closed khi client dựng thiếu `corePatch`.
+- **BE-01 — XONG:** endpoint bindings BE PATCH-only by design (không có GET) ⇒ **ĐÃ XOÁ**
+  helper `getPortfolioBindings` khỏi adapter (không gọi endpoint không tồn tại). Giữ
+  `savePortfolioBindings` (PATCH add/remove). Bindings UI đọc từ action-response + accounts list.
+  **KNOWN GAP — ticket BE-READ (Wave 3):** thiếu read-endpoint riêng cho bindings.
+- **BE-02 — XONG (giữ fail-closed):** `kind` không expose ở bất kỳ response nào (chỉ có trong
+  migration) — KHÔNG đoán source. `SourceBadge` giữ fail-closed (unknown/null ⇒ render null,
+  `sourceBadge.tsx:25-27`; test `portfolioHoldingsSourceBadge` vẫn xanh).
+  **KNOWN GAP — ticket Wave 3:** expose `kind` + per-row `source` từ BE.
+- **MỚI — `getBrokerCapabilities()`:** `broker.js` thêm `GET /broker/capabilities/` (endpoint có sẵn,
+  Wave 0 B0.6; contract §2 PLAN_WAVE2). Test mới xanh (`brokerHubDataAdapter` 12/12).
+  **Báo HUB qua đây:** khi HUB gọi capability cho 3 tile thì dùng
+  `adapter.getBrokerCapabilities()`, KHÔNG gọi `coreGet("/broker/capabilities/")` trực tiếp —
+  HUB refactor ở cross-review B2.7 (DATA không sửa file HUB).
+
+Gates follow-up: `npx vitest run src/adapters/core/__tests__/brokerHubDataAdapter.component.test.js`
+→ 12/12 exit 0 · `npx tsc --noEmit` → exit 0.

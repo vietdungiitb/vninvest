@@ -1,5 +1,6 @@
 /**
- * mbw2-data — TDD fail-before cho +10 adapter broker hub (§2 contract).
+ * mbw2-data — TDD fail-before cho +10 adapter broker hub (§2 contract +
+ * QĐ PM follow-up: BE-01 xoá GET-bindings, thêm getBrokerCapabilities).
  *
  * Quy ước stub: `vi.fn` trả fixture thật (L-V02: không đoán shape BE —
  * shape lấy từ `views_broker.py` `_serialize_sub_account`/`_position_to_dict`/
@@ -92,10 +93,10 @@ describe("broker hub data adapter (mbw2-data, contract §2)", () => {
     expect(core.coreGet).toHaveBeenCalledWith("/broker/sync-issues/?resolved=false&severity=warning");
   });
 
-  test("getPortfolioBindings -> GET .../broker-bindings/", async () => {
+  test("getBrokerCapabilities -> GET /broker/capabilities/ (HUB tiles)", async () => {
     const core = makeCore();
-    await createBrokerClient(core).getPortfolioBindings(3);
-    expect(core.coreGet).toHaveBeenCalledWith("/workspace/portfolios/3/broker-bindings/");
+    await createBrokerClient(core).getBrokerCapabilities();
+    expect(core.coreGet).toHaveBeenCalledWith("/broker/capabilities/");
   });
 
   test("savePortfolioBindings -> PATCH .../broker-bindings/ voi action", async () => {

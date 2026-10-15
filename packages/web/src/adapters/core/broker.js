@@ -5,15 +5,20 @@
  * workspace.js giữ các method DNSE trading cũ (sync/order/OTP) — chỉ trỏ sang đây
  * cho phần config; dnse.js giữ backfill + identity credential lane.
  *
- * mbw2-data (Wave 2 B2.3/B2.4/B2.5, contract §2 đóng băng): +10 hàm đọc hub.
+ * mbw2-data (Wave 2 B2.3/B2.4/B2.5, contract §2 đóng băng + QĐ PM follow-up):
  * - 9 endpoint hub: `urls.py:109-117` (accounts/detail/positions/balance/
- *   orders/sync/sync-runs/sync-issues/broker-bindings).
+ *   orders/sync/sync-runs/sync-issues) + PATCH broker-bindings.
  * - Quy tắc badge join (§2): provider lấy từ account detail trong URL, KHÔNG
  *   suy từ dòng — thực thi ở component, adapter chỉ map URL đúng.
- * - `savePortfolioBindings` cần PATCH: `corePatch` là tham số TÙY CHỌN vì
- *   `coreApiAdapter.js` (facade, ngoài claim DATA) hiện chỉ inject
- *   coreGet/corePost/coreDelete cho brokerClient. Thiếu corePatch ⇒ throw rõ
- *   ràng thay vì gọi POST giả (ticket wiring cho PM, xem SUMMARY_mbw2-data).
+ * - `getPortfolioBindings` ĐÃ XOÁ (QĐ PM BE-01): bindings BE là PATCH-only
+ *   by design, không có GET — không gọi endpoint không tồn tại. Bindings UI
+ *   đọc từ action-response + accounts list (KNOWN GAP: ticket BE-READ Wave 3).
+ * - `savePortfolioBindings` dùng PATCH (giữ): `corePatch` đã được facade
+ *   inject (WIRING-01). Giữ throw rõ ràng khi client dựng thiếu corePatch
+ *   (fail-closed, không gọi POST giả).
+ * - `getBrokerCapabilities` dùng endpoint có sẵn `GET /broker/capabilities/`
+ *   (Wave 0 B0.6) — HUB refactor sang hàm này ở cross-review, không gọi
+ *   coreGet trực tiếp.
  */
 export function createBrokerClient({ coreGet, corePost, coreDelete, corePatch }) {
   const path = (provider) => `/broker/${encodeURIComponent(provider)}/config/`;
@@ -28,6 +33,14 @@ export function createBrokerClient({ coreGet, corePost, coreDelete, corePatch })
   return {
     getBrokerProviders() {
       return coreGet("/broker/providers/");
+    },
+
+    /**
+     * Capability matrix 3 lane (Wave 0 B0.6) — HUB tiles dùng hàm này,
+     * không gọi coreGet trực tiếp (refactor ở cross-review B2.7).
+     */
+    getBrokerCapabilities() {
+      return coreGet("/broker/capabilities/");
     },
 
     getBrokerSchema(provider) {
@@ -115,26 +128,14 @@ export function createBrokerClient({ coreGet, corePost, coreDelete, corePatch })
     },
 
     /**
-     * B2.5: đọc binding tiểu khoản của danh mục.
-     * LƯU Ý BE: `views_broker.py:portfolio_broker_bindings_api` hiện chỉ cho
-     * `@api_view(['PATCH'])` (GET ⇒ 405). Adapter giữ đúng path contract để
-     * BE bổ sung GET không phải đổi FE (ticket BE-01, xem SUMMARY).
-     */
-    getPortfolioBindings(portfolioId) {
-      requireId(portfolioId, "portfolioId");
-      return coreGet(bindingsPath(portfolioId));
-    },
-
-    /**
      * B2.5: gộp/tách tiểu khoản khỏi danh mục (explicit, QĐ-C ADR-005).
      * `data`: `{action: 'add'|'remove', sub_account_id, role?, is_default?}`.
+     * BE PATCH-only (QĐ PM BE-01) — không có helper GET tương ứng.
      */
     savePortfolioBindings(portfolioId, data) {
       requireId(portfolioId, "portfolioId");
       if (typeof corePatch !== "function") {
-        throw new Error(
-          "savePortfolioBindings cần corePatch (facade chưa inject cho brokerClient — ticket wiring cho PM).",
-        );
+        throw new Error("savePortfolioBindings cần corePatch (createBrokerClient dựng thiếu corePatch).");
       }
       return corePatch(bindingsPath(portfolioId), data);
     },
