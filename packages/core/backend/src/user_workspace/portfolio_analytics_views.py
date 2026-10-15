@@ -182,10 +182,13 @@ def _allocation_rows(values, profiles):
     return rows
 
 
-def _build_holdings_payload(holdings, price_map, profiles):
+def _build_holdings_payload(holdings, price_map, profiles, source=None):
     """Payload holdings đã enrich — thuần, không chạm DB.
 
     `profiles` = output của `_industry_profile_map`: `{symbol: (company_name, industry)}`.
+    `source` = `Portfolio.kind` (`manual|broker_backed|aggregate`) — moi dong deu
+    thuoc cung 1 danh muc nen chia se cung nguon; FE dung de render `SourceBadge`
+    (thieu ⇒ badge fail-closed ve null). Khong doi shape: chi THEM field.
 
     Ràng buộc không được phá (S-00c):
     - Mã thiếu giá ⇒ `market_value`/`unrealized_pnl`/`weight_pct`/`price_change_pct`
@@ -223,6 +226,7 @@ def _build_holdings_payload(holdings, price_map, profiles):
             # làm 2 test `NoFabricatedZeroInViewTests` đỏ — đã bắt bằng
             # `python manage.py test user_workspace` (delta so với baseline).
             'price_missing_reason': None if current_price is not None else 'no_quote_for_today',
+            'source': source,
             'stale': snap.stale if snap else True,
             'price_change_pct': (None if snap is None or snap.price_change_pct is None
                                  else round(float(snap.price_change_pct), 2)),
@@ -266,7 +270,8 @@ class PortfolioHoldingsView(APIView):
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         price_map = {s.symbol: s for s in snaps}
         profiles = _industry_profile_map(symbols)
-        payload = _build_holdings_payload(holdings, price_map, profiles)
+        kind = getattr(portfolio, 'kind', None) or 'manual'
+        payload = _build_holdings_payload(holdings, price_map, profiles, source=kind)
         # S-00c: `data` GIỮ NGUYÊN là list phẳng — 3 consumer đang chạy đọc
         # shape này (`useCoreDashboardData.js:133`, `WatchlistContext.tsx:253`,
         # `useWhaleAdvisoryData.js:223`, tất cả qua `normalizeHoldingsList`).
@@ -282,6 +287,7 @@ class PortfolioHoldingsView(APIView):
             'unpriced_symbols': unpriced_symbols,
             'weight_covers_all_holdings': not unpriced_symbols,
             'count': len(payload),
+            'kind': kind,
         })
 
 
