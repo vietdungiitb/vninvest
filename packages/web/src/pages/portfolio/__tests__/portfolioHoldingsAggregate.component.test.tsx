@@ -52,13 +52,12 @@ describe("holdings aggregate banner (B3.2-FE, AC3)", () => {
     wrap({}, "aggregate");
     expect(await screen.findByText(/chỉ đọc/i)).toBeTruthy();
     await screen.findByText("VCB");
-    const buttons = screen.getAllByRole("button");
-    const writeButtons = buttons.filter(
-      (b) => !/sắp xếp|tìm|mã|giá trị|lãi/i.test(b.textContent || ""),
-    );
-    for (const b of writeButtons) {
-      expect((b as HTMLButtonElement).disabled).toBe(true);
-    }
+    // Trang holdings không có nút ghi khả dụng: nút hành động duy nhất ở cột
+    // Thao tác ("Chi tiết") luôn disabled; banner là observable khóa.
+    // (Tinh chỉnh selector sau fail-before: bản đầu lọc nút sort bằng regex,
+    // sót 3 nút sort — nguyên nhân đỏ vẫn là "thiếu banner", không đổi.)
+    const actionBtn = screen.getByRole("button", { name: /chi tiết/i });
+    expect((actionBtn as HTMLButtonElement).disabled).toBe(true);
   });
 
   test("kind vắng (BE chưa deploy) ⇒ banner unknown fail-closed", async () => {

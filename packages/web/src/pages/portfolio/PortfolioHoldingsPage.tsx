@@ -14,7 +14,7 @@
  * "900.000" mà so chuỗi thì sai).
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../context/LangContext";
 import { SourceBadge } from "../../components/brokerData/sourceBadge";
 import { usePortfolioResource, asRows, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
@@ -86,10 +86,16 @@ const sortKeyCodec: UrlStateCodec<SortKey> = {
 };
 
 export function PortfolioHoldingsPage({
-  portfolioId, adapter,
+  portfolioId, adapter, kind: kindProp,
 }: {
   portfolioId: string | number | null;
   adapter?: PortfolioAdapter;
+  /**
+   * mbw3 B3.2-FE: `kind` do cha truyền (BE-KIND read-only). `undefined` ⇒ tự
+   * suy từ `getPortfolios` (giống app thật qua PortfolioWorkspace); vẫn vắng
+   * ⇒ `null` = unknown, banner unknown fail-closed (khóa write để an toàn).
+   */
+  kind?: string | null;
 }) {
   const { t } = useI18n();
   // B0: `adapter` la prop TUY CHON de test inject duoc. Trong app that
@@ -121,6 +127,44 @@ export function PortfolioHoldingsPage({
     [api],
   );
   const res = usePortfolioResource<unknown>(portfolioId, fetchHoldings, () => "no_holdings");
+
+  /**
+   * mbw3 B3.2-FE: phân giải `kind` khi cha không truyền. `undefined` = đang
+   * chờ (chưa banner để khỏi nháy); `null` = unknown ⇒ banner unknown
+   * fail-closed. Chỉ 3 giá trị BE-KIND công nhận, còn lại đều unknown.
+   */
+  const [resolvedKind, setResolvedKind] = useState<string | null | undefined>(
+    kindProp === undefined ? undefined : (kindProp ?? null),
+  );
+  useEffect(() => {
+    if (kindProp !== undefined) {
+      setResolvedKind(kindProp ?? null);
+      return;
+    }
+    let cancelled = false;
+    setResolvedKind(undefined);
+    if (typeof api.getPortfolios !== "function") {
+      setResolvedKind(null);
+      return;
+    }
+    api
+      .getPortfolios()
+      .then((raw) => {
+        if (cancelled) return;
+        const rows = asRows(raw) as Array<Record<string, unknown>>;
+        const self = rows.find((r) => String(r.id ?? r.pk) === String(portfolioId));
+        const k = self?.kind;
+        setResolvedKind(k === "manual" || k === "broker_backed" || k === "aggregate" ? k : null);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedKind(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, kindProp, portfolioId]);
+
+  const kindState = kindProp !== undefined ? (kindProp ?? null) : resolvedKind;
 
   const all = useMemo<HoldingRow[]>(() => asRows(res.data) as HoldingRow[], [res.data]);
 
@@ -190,6 +234,32 @@ export function PortfolioHoldingsPage({
 
   return (
     <div className="pf-holdings">
+      {/* mbw3 B3.2-FE (AC3 phía FE): aggregate ⇒ banner chỉ-đọc; kind vắng
+          (BE chưa deploy BE-KIND) ⇒ banner unknown fail-closed. Trang holdings
+          vốn đã read-only (nút "Chi tiết" luôn disabled, không POST/PATCH nào)
+          nên banner là observable khóa — giữ nguyên 13 cột. */}
+      {kindState === "aggregate" ? (
+        <p role="note">
+          <strong>
+            {t("brokerWave3.holdings.aggregateTitle", { defaultValue: "Danh mục tổng hợp — chỉ đọc" })}
+          </strong>{" "}
+          {t("brokerWave3.holdings.aggregateBody", {
+            defaultValue:
+              "Số liệu gộp từ các tiểu khoản môi giới. Không nhập giao dịch trực tiếp hay sửa số dư đầu kỳ ở đây.",
+          })}
+        </p>
+      ) : kindState !== undefined &&
+        kindState !== "manual" &&
+        kindState !== "broker_backed" ? (
+        <p role="note">
+          <strong>
+            {t("brokerWave3.holdings.unknownTitle", { defaultValue: "Không rõ loại danh mục" })}
+          </strong>{" "}
+          {t("brokerWave3.holdings.unknownBody", {
+            defaultValue: "Máy chủ chưa trả loại danh mục (kind) — thao tác ghi bị khóa để an toàn.",
+          })}
+        </p>
+      ) : null}
       <div className="pf-filters" role="search">
         <label>
           {t("portfolioWorkspace.holdings.search", { defaultValue: "Tìm mã hoặc tên" })}
