@@ -20,6 +20,8 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
+from vninvest_core.exceptions import PermissionErrorException
+
 from .envelope import envelope, paginated_envelope
 
 class TransactionCursorPagination(CoreCursorPagination):
@@ -186,6 +188,18 @@ class PortfolioDetailView(APIView):
     def patch(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
+        # B3.2-BE (Wave 3): danh muc `aggregate` chi doc — chan sua so du
+        # mo dau truc tiep (doi ten/xoa van cho phep nhu cu).
+        # `request.data` la dict (JSON) hoac QueryDict (form) — ca hai deu
+        # ho tro `in`.
+        if portfolio.kind == Portfolio.KindChoices.AGGREGATE and any(
+                key in request.data for key in
+                ('opening_balance', 'opening_balance_source')):
+            raise PermissionErrorException(
+                detail='Danh muc tong hop chi doc, khong sua so du truc '
+                       'tiep. Gop tieu khoan qua lien ket broker.',
+                code='aggregate_read_only',
+            )
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -301,6 +315,15 @@ class TransactionListCreateView(APIView):
     def post(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
+        # B3.2-BE (Wave 3): danh muc `aggregate` chi doc — chan ghi giao dich
+        # truc tiep. Ledger tu sinh tu giao dich (signal `signals.py:114`) nen
+        # chan o day la chan ca duong "POST transaction/ledger" cua contract.
+        if portfolio.kind == Portfolio.KindChoices.AGGREGATE:
+            raise PermissionErrorException(
+                detail='Danh muc tong hop chi doc, khong ghi giao dich truc '
+                       'tiep. Gop tieu khoan qua lien ket broker.',
+                code='aggregate_read_only',
+            )
         serializer = TransactionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -377,7 +400,21 @@ class WatchlistListCreateView(APIView):
             watchlists = Watchlist.objects.filter(user=request.user, tenant=tenant).exclude(is_default=True).order_by('name')
         else:
             watchlists = Watchlist.objects.filter(user=request.user).exclude(is_default=True).order_by('name')
-        
+
+        # BE-KIND (Wave 3): loc theo pham vi broker/tieu khoan (ADR-007).
+        provider = (request.query_params.get('provider') or '').strip().lower()
+        if provider:
+            watchlists = watchlists.filter(provider=provider)
+        broker_account = request.query_params.get('broker_account')
+        if broker_account not in (None, ''):
+            try:
+                broker_account_id = int(broker_account)
+            except (TypeError, ValueError):
+                return Response(
+                    {'detail': 'broker_account phai la id so.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            watchlists = watchlists.filter(broker_account_id=broker_account_id)
+
         # Apply pagination
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(watchlists, request)
