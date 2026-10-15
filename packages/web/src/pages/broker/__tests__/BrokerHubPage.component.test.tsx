@@ -12,7 +12,7 @@ import { BrokerHubPage } from "../BrokerHubPage.js";
 
 const adapterMocks = vi.hoisted(() => ({
   getBrokerProviders: vi.fn(),
-  coreGet: vi.fn(),
+  getBrokerCapabilities: vi.fn(),
   getBrokerSchema: vi.fn(),
   getDNSEConfig: vi.fn(),
 }));
@@ -20,13 +20,13 @@ const adapterMocks = vi.hoisted(() => ({
 vi.mock("../../../adapters/coreApiAdapter.js", () => ({
   defaultCoreApiAdapter: {
     getBrokerProviders: adapterMocks.getBrokerProviders,
-    coreGet: adapterMocks.coreGet,
+    getBrokerCapabilities: adapterMocks.getBrokerCapabilities,
     getBrokerSchema: adapterMocks.getBrokerSchema,
     getDNSEConfig: adapterMocks.getDNSEConfig,
   },
   coreApiAdapter: {
     getBrokerProviders: adapterMocks.getBrokerProviders,
-    coreGet: adapterMocks.coreGet,
+    getBrokerCapabilities: adapterMocks.getBrokerCapabilities,
     getBrokerSchema: adapterMocks.getBrokerSchema,
     getDNSEConfig: adapterMocks.getDNSEConfig,
   },
@@ -113,10 +113,7 @@ const SSI_SCHEMA = {
 
 function mockLoaded() {
   adapterMocks.getBrokerProviders.mockResolvedValue(PROVIDERS);
-  adapterMocks.coreGet.mockImplementation(async (path: string) => {
-    if (path === "/broker/capabilities/") return CAPABILITIES;
-    throw new Error(`unexpected GET ${path}`);
-  });
+  adapterMocks.getBrokerCapabilities.mockResolvedValue(CAPABILITIES);
   adapterMocks.getBrokerSchema.mockImplementation(async (provider: string) =>
     provider === "ssi" ? SSI_SCHEMA : DNSE_SCHEMA,
   );
@@ -142,7 +139,7 @@ describe("BrokerHubPage — tiles + capability badges (B2.1/AC1)", () => {
   it("renders one tile per provider with badge text from capabilities", async () => {
     renderPage();
     await waitFor(() => {
-      expect(adapterMocks.coreGet).toHaveBeenCalledWith("/broker/capabilities/");
+      expect(adapterMocks.getBrokerCapabilities).toHaveBeenCalled();
     });
     // 3 tile theo đúng provider BE trả về.
     expect(screen.getByText("DNSE")).toBeTruthy();
