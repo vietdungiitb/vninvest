@@ -233,6 +233,19 @@ export const routeCatalog = Object.freeze([
     adapter: "core",
     status: "new",
   },
+  // Follow-up mount: route con chi tiết tiểu khoản — AccountManager 4 tab +
+  // SyncCenter (DATA). `titleKey` tái dùng `routes.broker` (ngoại lệ HUB duy
+  // nhất, không thêm key `routes.*` mới); title trang do page đặt qua hub.*.
+  {
+    id: "broker-account",
+    path: "/broker/accounts/:accountId",
+    titleKey: "routes.broker",
+    group: "workspace",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["workspace.portfolios.manage"],
+    adapter: "core",
+    status: "new",
+  },
   {
     id: "portfolios-manage-broker",
     path: "/portfolios/manage/broker",
