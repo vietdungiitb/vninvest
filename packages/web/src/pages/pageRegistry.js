@@ -224,6 +224,10 @@ export const pageRegistry = Object.freeze([
   // component của nó redirect về `/broker` (quyết định PLAN §0.6).
   makePageEntry("broker", "new", () =>
     import("./broker/BrokerHubPage.tsx").then((module) => module.BrokerHubPage)),
+  // Follow-up mount: route con `/broker/accounts/:accountId` — AccountManager
+  // 4 tab + SyncCenter (DATA) qua `BrokerAccountPage` (HUB).
+  makePageEntry("broker-account", "new", () =>
+    import("./broker/BrokerAccountPage.tsx").then((module) => module.BrokerAccountPage)),
   // /portfolios/manage/broker - panel broker tach khoi trang quan ly danh muc.
   makePageEntry("portfolios-broker", "core", () =>
     import("./PortfoliosBrokerPage.tsx").then((module) => module.PortfoliosBrokerPage)),

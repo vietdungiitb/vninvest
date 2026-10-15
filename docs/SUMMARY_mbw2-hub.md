@@ -102,3 +102,39 @@ vs `i18n/index.js:47-52`) ⇒ thêm `formatHubMessage` (no-op ở app thật).
   capabilities + URL state + panel DNSE nhúng. Đề xuất PM: ticket hợp nhất ở Pha 2
   cross-review (không refactor trong wave này).
 - `routeCatalog.js` duplicate `portfolios-manage` (mục 3 rủi ro trên).
+
+## Follow-up mount DATA → `/broker` (2026-10-15)
+
+- **Lessons áp dụng:** [L-001, L-002, L-006, L-008, L-A01, L-F09, L-F10, L-G02, L-G08, L-V02, L-V03]
+  (claim `mbw2-hub` còn `in-progress` — scope đã bao gồm `pages/broker/*` tạo mới +
+  route files, nên không khai claim mới; file DATA checkout verbatim, 0 sửa).
+- **GAP đã đóng:** `BrokerAccountManager` + `BrokerSyncCenter` (DATA viết) trước đây
+  chỉ xanh ở cấp component; nay đã mount vào route `/broker` (observable qua URL).
+- **Cấu trúc route đã chọn:** giữ `/broker` = tiles + connect (không đụng —
+  test AC1/AC2 cũ nguyên vẹn); thêm route con `/broker/accounts/:accountId` =
+  `BrokerAccountPage` (HUB, mới) render `BrokerAccountManager` 4 tab + `SyncCenter`
+  nối tiếp, back-link về `/broker`. Không làm tab layout (giữ URL `?tab=` deep-link
+  của DATA qua `useUrlState`), không thêm mục menu (detail là sub-route), redirect
+  cũ + menu giữ nguyên. Không thêm key `routes.*` mới — catalog tái dùng
+  `routes.broker` (ngoại lệ HUB duy nhất); label trang qua 4 key `brokerHub.hub.*`
+  mới (`accountEyebrow/accountTitle/backToHub/errors.accountMissing`, VI+EN).
+- **Tiêu thụ adapter DATA, 0 sửa:** page cast `defaultCoreApiAdapter` as unknown as
+  `BrokerAccountAdapter & BrokerSyncAdapter` (cùng họ `BrokerHubPage`); không gọi
+  `coreGet` trực tiếp. Badge join §2 giữ nguyên bên trong component DATA
+  (provider từ account trong URL; unlinked ⇒ 0 request đọc — test mount chứng minh).
+- **File DATA vào nhánh verbatim:** 6 path checkout từ `feat/mbw2-data`
+  (`brokerData/*.tsx|css` ×4 + `adapters/core/broker.js` + 1 dòng `corePatch`
+  trong `adapters/coreApiAdapter.js`), `git diff feat/mbw2-data -- <6 path>`
+  rỗng. Cố ý KHÔNG mang `brokerData/__tests__/` (DATA sở hữu) và KHÔNG đụng
+  `PortfoliosBrokerPage.tsx` của DATA (giữ bản redirect HUB). i18n `data.*` chưa
+  merge (component fallback `defaultValue` VI đầy dấu) — hợp nhất ở wave merge.
+- **TDD:** test mount viết trước → ĐỎ import fail (exit 1); sau code → 5/5 xanh.
+  Lỗi giữa đường (đã sửa, không giảm test): mock module `coreApiAdapter.js` làm
+  `PortfolioProvider` mất `authTokenStorage` ⇒ chuyển sang `importOriginal` spread.
+- **Gates (lệnh + exit code):** `npx tsc --noEmit` exit 0 ·
+  `npx vitest run src/pages/broker src/components/broker` 5 files / 22 passed exit 0 ·
+  contract 2 chiều 3/3 exit 0 · `i18n:scan:strict` exit 0 (warning có sẵn) ·
+  eslint scope 0 errors / 4 warnings (`jsx-no-literals`, cùng họ codebase) ·
+  `check-multi-agent` PASS (0 lỗi, 0 trùng migration).
+- **CHƯA CHẠY:** regression BE VPS · FE trên VPS · `npm run build` full (ngoài yêu
+  cầu follow-up: chỉ yêu cầu vitest scope + tsc) · bundle `/broker/accounts/*`.
