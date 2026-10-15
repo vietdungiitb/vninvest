@@ -146,10 +146,12 @@ describe("BrokerHubPage — tiles + capability badges (B2.1/AC1)", () => {
     expect(screen.getByText("SSI")).toBeTruthy();
     expect(screen.getByText("TCBS")).toBeTruthy();
     // Badge chữ từ matrix capabilities, không suy từ tên provider.
+    // Copy nói về HỢP ĐỒNG (không phải kết nối) để khỏi đọc nhầm
+    // "đã xác minh = đã nối" khi tile báo "Chưa kết nối".
     await waitFor(() => {
-      expect(screen.getByText("Đã xác minh đầy đủ")).toBeTruthy();
+      expect(screen.getByText("Hợp đồng đã kiểm chứng")).toBeTruthy();
     });
-    expect(screen.getAllByText("Chờ xác minh").length).toBe(2);
+    expect(screen.getAllByText("Chờ kiểm chứng hợp đồng").length).toBe(2);
     expect(screen.getAllByText("Chỉ đọc").length).toBe(3);
     expect(screen.getAllByText("Yêu cầu OTP").length).toBe(2);
   });
@@ -178,6 +180,18 @@ describe("BrokerHubPage — tiles + capability badges (B2.1/AC1)", () => {
       expect(screen.getByPlaceholderText("SSI API Key")).toBeTruthy();
     });
     expect(screen.queryByText("Kết nối DNSE LightSpeed API")).toBeNull();
+    // Tiêu đề lane viết hoa tên provider.
+    expect(screen.getByText("Kết nối SSI.")).toBeTruthy();
+  });
+
+  it("dnse lane renders ONLY the legacy panel (no duplicate generic form)", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText("Kết nối DNSE LightSpeed API")).toBeTruthy();
+    });
+    // Form chung schema-driven không render cho lane legacy — 1 lane = 1 form.
+    expect(screen.queryByPlaceholderText("EntradeX Client ID")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Lưu kết nối" })).toBeNull();
   });
 
   it("switching tile updates the URL provider param", async () => {

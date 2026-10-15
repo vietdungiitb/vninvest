@@ -16,9 +16,13 @@ import styles from "../../components/soc/soc.module.css";
  *
  * - Badge chữ đọc từ `GET /broker/capabilities/` (matrix versioned, BE
  *   `broker/base.py`) — KHÔNG bao giờ suy trạng thái hỗ trợ từ tên provider.
+ *   Badge "kiểm chứng hợp đồng" nói về HỢP ĐỒNG với BE, KHÔNG phải trạng thái
+ *   kết nối (tránh đọc nhầm "đã xác minh = đã nối").
  * - Trạng thái đã nối đọc từ `getBrokerProviders` (adapter do DATA sở hữu —
  *   HUB chỉ tiêu thụ đúng signature, không tự viết adapter).
- * - Lane `dnse` render lại `DNSEConnectionPanel` NGUYÊN VĂN (không sửa 1 dòng).
+ * - Lane `dnse` render lại `DNSEConnectionPanel` NGUYÊN VĂN (không sửa 1 dòng)
+ *   và KHÔNG render form chung (tránh 2 form chồng nhau cùng lưu credential).
+ *   Form chung chỉ cho lane schema-driven (`ssi`/`tcbs`).
  * - Chọn lane qua `?provider=` — 1 handler = 1 patch `setSearchParams`
  *   full-state (L-F09). Mọi hằng option ở cấp module (L-F10).
  */
@@ -67,8 +71,8 @@ function capabilityBadges(
   const badges: Array<{ text: string; toneClass: string }> = [];
   badges.push({
     text: entry.verified_contract
-      ? msg("brokerHub.hub.badgeVerified", "Đã xác minh đầy đủ")
-      : msg("brokerHub.hub.badgePending", "Chờ xác minh"),
+      ? msg("brokerHub.hub.badgeVerified", "Hợp đồng đã kiểm chứng")
+      : msg("brokerHub.hub.badgePending", "Chờ kiểm chứng hợp đồng"),
     toneClass: entry.verified_contract ? styles.statusBadgeOk : styles.statusBadgeOff,
   });
   if (!entry.trade) {
@@ -104,6 +108,10 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
   );
 
   const selectedProvider = searchParams.get(PROVIDER_PARAM_KEY) ?? DEFAULT_LANE;
+  /** Tên hiển thị lane (viết hoa) — tin nhắn API giữ nguyên id lane. */
+  const displayProvider = selectedProvider.toUpperCase();
+  /** Lane legacy có panel riêng đầy đủ — không cần form chung. */
+  const isLegacyLane = selectedProvider === LEGACY_PANEL_LANE;
 
   /** Một patch duy nhất ghi TOÀN BỘ state URL (L-F09). */
   const handleSelectProvider = useCallback(
@@ -159,6 +167,10 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
     let mounted = true;
     setSchema(null);
     setSchemaError(null);
+    if (isLegacyLane) {
+      setSchemaLoading(false);
+      return undefined;
+    }
     setSchemaLoading(true);
     hubApi
       .getBrokerSchema(selectedProvider)
@@ -178,7 +190,7 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
     return () => {
       mounted = false;
     };
-  }, [selectedProvider, t]);
+  }, [selectedProvider, isLegacyLane, t]);
 
   return (
     <ShellPageChrome
@@ -196,7 +208,7 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
         </p>
       ) : null}
       {!loading && !loadError ? (
-        <div style={{ display: "grid", gap: "0.75rem" }}>
+        <div className={styles.brokerTileGrid}>
           {(providers ?? []).map((lane) => {
             const badges = capabilityBadges(capabilities, lane.id, msg);
             const active = lane.id === selectedProvider;
@@ -207,11 +219,10 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
                 aria-pressed={active}
                 data-testid={`broker-tile-${lane.id}`}
                 onClick={() => handleSelectProvider(lane.id)}
-                className={styles.sectionCard}
-                style={{ textAlign: "left", cursor: "pointer" }}
+                className={`${styles.sectionCard} ${styles.brokerTile}`}
               >
                 <span className={styles.sectionCardTitle}>{lane.id.toUpperCase()}</span>
-                <span style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                <span className={styles.brokerTileBadges}>
                   <span
                     data-testid={`broker-tile-status-${lane.id}`}
                     className={`${styles.statusBadge} ${
@@ -234,16 +245,18 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
         </div>
       ) : null}
       {!loading && !loadError ? (
-        <div className={styles.glassPanel} style={{ marginTop: "1rem" }}>
-          <BrokerConnectForm
-            provider={selectedProvider}
-            schema={schema}
-            schemaLoading={schemaLoading}
-            schemaError={schemaError}
-          />
-          {selectedProvider === LEGACY_PANEL_LANE ? (
+        <div className={`${styles.glassPanel} ${styles.brokerPanel}`}>
+          {isLegacyLane ? (
             <DNSEConnectionPanel onConnected={handleDnseConnected} />
-          ) : null}
+          ) : (
+            <BrokerConnectForm
+              provider={selectedProvider}
+              displayProvider={displayProvider}
+              schema={schema}
+              schemaLoading={schemaLoading}
+              schemaError={schemaError}
+            />
+          )}
         </div>
       ) : null}
     </ShellPageChrome>

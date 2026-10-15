@@ -3955,3 +3955,79 @@
   border: 1px solid rgba(245, 158, 11, 0.4);
   color: #fbbf24;
 }
+
+/* Broker Hub (refactor 2026-10-15: het inline style + het form chong lane dnse).
+ * Chi THEM class — khong sua rule cu (L-F05: giu nguyen transition goc). */
+.brokerTileGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+  .brokerTileGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.brokerTile {
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.brokerTile[aria-pressed="true"] {
+  border-color: var(--accent-cyan, var(--soc-c-22d3ee));
+}
+
+.brokerTile:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+.brokerTileBadges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.brokerPanel {
+  margin-top: 1rem;
+}
+
+.brokerForm {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.brokerFormField {
+  display: block;
+  margin: 0;
+}
+
+.brokerFormField > span {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.brokerFormField input {
+  width: 100%;
+}
+
+.brokerFormActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.actionBtnPrimary {
+  background: rgba(var(--soc-rgb-00b4d8) / 0.2);
+  color: var(--soc-c-f1f5f9);
+  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.5);
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: rgba(var(--soc-rgb-00b4d8) / 0.32);
+}

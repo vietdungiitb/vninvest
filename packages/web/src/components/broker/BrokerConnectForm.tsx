@@ -30,6 +30,8 @@ export interface BrokerConnectSchema {
 
 export interface BrokerConnectFormProps {
   provider: string;
+  /** Tên hiển thị lane (viết hoa: "DNSE") — id lane giữ nguyên cho API. */
+  displayProvider?: string;
   schema: BrokerConnectSchema | null;
   schemaLoading?: boolean;
   schemaError?: string | null;
@@ -97,11 +99,13 @@ export function formatHubMessage(
 
 export function BrokerConnectForm({
   provider,
+  displayProvider,
   schema,
   schemaLoading = false,
   schemaError = null,
   onSaved,
 }: BrokerConnectFormProps) {
+  const providerLabel = displayProvider ?? provider;
   const { t } = useI18n();
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"save" | "test" | null>(null);
@@ -226,14 +230,19 @@ export function BrokerConnectForm({
 
   return (
     <section
-      aria-label={translate("brokerHub.hub.connectTitle", "Kết nối {provider}.", { provider })}
+      aria-label={translate("brokerHub.hub.connectTitle", "Kết nối {provider}.", {
+        provider: providerLabel,
+      })}
+      className={styles.brokerForm}
     >
       <h3 className={styles.sectionCardTitle}>
-        {translate("brokerHub.hub.connectTitle", "Kết nối {provider}.", { provider })}
+        {translate("brokerHub.hub.connectTitle", "Kết nối {provider}.", {
+          provider: providerLabel,
+        })}
       </h3>
       {schema.fields.map((field) => (
-        <label key={field.key} style={{ display: "block", marginBottom: "0.75rem" }}>
-          <span style={{ display: "block", marginBottom: "0.25rem" }}>
+        <label key={field.key} className={styles.brokerFormField}>
+          <span>
             {t(field.label_i18n ?? `brokerHub.hub.field.${field.key}`, {
               defaultValue: field.placeholder ?? field.key,
             })}
@@ -245,6 +254,9 @@ export function BrokerConnectForm({
             value={values[field.key] ?? ""}
             placeholder={field.placeholder ?? field.key}
             required={field.required}
+            autoComplete="off"
+            spellCheck={false}
+            className={styles.fieldInput}
             onChange={(event) => handleFieldChange(field.key, event.target.value)}
           />
         </label>
@@ -257,13 +269,23 @@ export function BrokerConnectForm({
           {notice.text}
         </p>
       ) : null}
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <button type="button" onClick={handleSave} disabled={busy !== null}>
+      <div className={styles.brokerFormActions}>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={busy !== null}
+          className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+        >
           {busy === "save"
             ? t("brokerHub.hub.saving", { defaultValue: "Đang lưu…" })
             : t("brokerHub.hub.save", { defaultValue: "Lưu kết nối" })}
         </button>
-        <button type="button" onClick={handleTest} disabled={busy !== null}>
+        <button
+          type="button"
+          onClick={handleTest}
+          disabled={busy !== null}
+          className={styles.actionBtn}
+        >
           {busy === "test"
             ? t("brokerHub.hub.testing", { defaultValue: "Đang kiểm tra…" })
             : t("brokerHub.hub.testConnection", { defaultValue: "Kiểm tra kết nối" })}
