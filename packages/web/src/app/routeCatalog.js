@@ -220,6 +220,19 @@ export const routeCatalog = Object.freeze([
     adapter: "core",
     status: "new",
   },
+  // B2.1 (Wave 2 Broker Hub): route `/broker` thay `/portfolios/manage/broker`.
+  // Entry cũ GIỮ LẠI + redirect về `/broker` (quyết định PLAN §0.6) — không xoá
+  // để tránh link chết + giữ history.
+  {
+    id: "broker",
+    path: "/broker",
+    titleKey: "routes.broker",
+    group: "workspace",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["workspace.portfolios.manage"],
+    adapter: "core",
+    status: "new",
+  },
   {
     id: "portfolios-manage-broker",
     path: "/portfolios/manage/broker",
@@ -229,6 +242,8 @@ export const routeCatalog = Object.freeze([
     requiredCapabilities: ["workspace.portfolios.manage"],
     adapter: "core",
     status: "new",
+    deprecated: true,
+    redirectTo: "/broker",
   },
   {
     id: "support",

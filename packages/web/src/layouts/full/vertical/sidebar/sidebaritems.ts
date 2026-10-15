@@ -16,6 +16,9 @@ export const sidebarItems: NavGroup[] = [
     items: [
       { labelKey: 'layout.nav.transactions', path: '/transactions', icon: 'ArrowUpDown' },
       { labelKey: 'layout.nav.portfolios', path: '/portfolios', icon: 'Briefcase' },
+      // B2.1 (Wave 2 Broker Hub): mục `/broker`. `labelKey` dùng key
+      // `routes.broker` (HUB sở hữu) — Sidebar render qua `t(labelKey)`.
+      { labelKey: 'routes.broker', path: '/broker', icon: 'Radio' },
     ],
   },
   // Signals group — single Alert Center entry (legacy alias redirects to /alert-center)
