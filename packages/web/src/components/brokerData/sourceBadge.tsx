@@ -65,13 +65,21 @@ export function ProviderBadge({
 }
 
 /**
- * Tab "Khớp lệnh" = orders đã khớp, lọc client-side vì BE không có endpoint
- * fills riêng (§2 contract). BE pass-through status của broker (không có
- * enum chuẩn — `adapters.py` chỉ `_first(item, 'status', ...)`), nên tập khớp
- * giữ tối thiểu {FILLED, MATCHED} + ghi rõ giới hạn ở UI (AC3).
+ * mbw3 FE-STATUS (AC8 phía FE) — tab "Khớp lệnh" = orders đã khớp, lọc
+ * client-side vì BE không có endpoint fills riêng (§2 contract). BE
+ * pass-through status thô của broker, KHÔNG có enum chuẩn (`adapters.py:393`
+ * DNSE, `:479` SSI, `:625` TCBS đều `_first(item, 'status', ...)`), nên tập
+ * khớp giữ tối thiểu {FILLED, MATCHED} — 2 giá trị đã verify — + ghi rõ giới
+ * hạn ở UI (tab Sổ lệnh luôn hiện đủ lệnh với status thô nên không rớt
+ * silently). Mở rộng tập này khi và chỉ khi BE công bố enum thật SSI/TCBS
+ * (ticket follow-up BE); `matchedOrderStatus.component.test.tsx` khóa tập để
+ * mọi lần mở đều là diff có chủ ý.
  * Cấp module (L-F10) để identity ổn định.
  */
 const MATCHED_ORDER_STATUSES: ReadonlySet<string> = new Set(["FILLED", "MATCHED"]);
+
+/** Danh sách hiển thị/ghi chú giới hạn ở UI — thứ tự ổn định. */
+export const MATCHED_ORDER_STATUS_LIST: readonly string[] = ["FILLED", "MATCHED"];
 
 export function isMatchedOrder(status: unknown): boolean {
   return MATCHED_ORDER_STATUSES.has(String(status ?? "").trim().toUpperCase());

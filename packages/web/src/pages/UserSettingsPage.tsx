@@ -1,8 +1,8 @@
 import { createElement, ChangeEvent, FormEvent, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
-import { BrokerSettingsSection } from "../components/BrokerSettingsSection.js";
 import "./UserSettingsPage.css";
 
 const e = createElement;
@@ -250,6 +250,16 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       )
     ),
     e("hr", { className: "core-divider" }),
-    e(BrokerSettingsSection, { className: "core-dnse-block" })
+    // mbw3 FE-MERGE: bề mặt cấu hình broker cũ hợp nhất về `/broker` (một bề
+    // mặt duy nhất). Giữ khối dẫn link (không xoá link, không còn form thứ 2).
+    // Redirect `/portfolios/manage/broker` → `/broker` trong main.tsx giữ nguyên.
+    e("section", { className: "core-dnse-block" },
+      e("h2", null, t("brokerWave3.settings.movedTitle", { defaultValue: "Cấu hình broker đã chuyển chỗ" })),
+      e("p", null, t("brokerWave3.settings.movedBody", {
+        defaultValue: "Kết nối và quản lý tài khoản chứng khoán đa-nhà giờ nằm ở Broker Hub (một bề mặt duy nhất).",
+      })),
+      e(Link, { to: "/broker" },
+        t("brokerWave3.settings.goToBroker", { defaultValue: "Mở Broker Hub" }))
+    )
   );
 }

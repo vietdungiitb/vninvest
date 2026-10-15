@@ -1,3 +1,13 @@
+/**
+ * mbw3 FE-MERGE: bề mặt cấu hình broker cũ (form DNSE/SSI/TCBS tại chỗ).
+ *
+ * Kể từ Wave 3, cấu hình broker hợp nhất về `/broker` (Broker Hub — một bề
+ * mặt duy nhất); `UserSettingsPage` chỉ còn khối dẫn link
+ * (`brokerWave3.settings.*`), không còn form thứ 2. Component này GIỮ NGUYÊN
+ * hành vi (không xoá — test `BrokerSettingsSection.component.test.tsx` khoá)
+ * và không còn được mount ở route app nào; redirect cũ
+ * `/portfolios/manage/broker` → `/broker` giữ trong `main.tsx`.
+ */
 import { ChangeEvent, FormEvent, createElement, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./aiSettings.module.css";
 
