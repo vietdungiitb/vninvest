@@ -36,6 +36,8 @@ def sync_account_positions(service, sub_account, *, as_of_date=None) -> dict:
     today = as_of_date or timezone.now().date()
     stats: dict = {
         'positions_written': 0,
+        'positions_unchanged': 0,
+        'changed_skipped': [],
         'collisions': [],
         'skipped_no_portfolio': [],
         'balance_written': False,
@@ -56,37 +58,56 @@ def sync_account_positions(service, sub_account, *, as_of_date=None) -> dict:
         symbol = str(getattr(position, 'symbol', '') or '').upper()
         if not symbol:
             continue
-        existing = PositionSnapshot.objects.filter(
-            portfolio=portfolio, symbol=symbol, as_of_date=today,
-        ).exclude(broker_account__isnull=True).first()
-        if existing is not None and existing.broker_account_id != sub_account.pk:
-            stats['collisions'].append({
-                'symbol': symbol,
-                'kept_sub_account_id': existing.broker_account_id,
-                'skipped_sub_account_id': sub_account.pk,
-            })
-            continue
         market_price = _money(getattr(position, 'market_price', 0))
         quantity = Decimal(str(getattr(position, 'quantity', 0) or 0))
+        avg_cost = _money(getattr(position, 'avg_price', 0)) or Decimal('0')
         market_value = (
             None if market_price is None
             else (market_price * quantity).quantize(Decimal('0.01'))
         )
-        # Lookup gioi han dung hang cua CHINH tieu khoan nay: hang computed
-        # (broker_account NULL) hay cua TK khac duoc giu nguyen, khong bao gio
-        # MultipleObjectsReturned.
-        PositionSnapshot.objects.update_or_create(
+        # PositionSnapshot la append-only (mixin + trigger DB 0023): KHONG
+        # update_or_create. Cung (portfolio, symbol, ngay):
+        # - hang cua CHINH TK nay + gia tri giong het => bo qua (idempotent);
+        # - hang cua CHINH TK nay + gia tri khac => BAO changed, giu cu;
+        # - hang cua TK khac (ke ca computed NULL) => BAO collision, giu cu.
+        mine = PositionSnapshot.objects.filter(
             portfolio=portfolio, symbol=symbol, as_of_date=today,
             broker_account=sub_account,
-            defaults={
-                'tenant': sub_account.tenant,
-                'quantity': quantity,
-                'avg_cost': _money(getattr(position, 'avg_price', 0)) or Decimal('0'),
-                'current_price': market_price,
-                'market_value': market_value,
-                'source': 'broker',
-                'calculation_version': CALCULATION_VERSION,
-            },
+        ).first()
+        if mine is not None:
+            if (mine.quantity == quantity and mine.avg_cost == avg_cost
+                    and mine.current_price == market_price
+                    and mine.market_value == market_value):
+                stats['positions_unchanged'] += 1
+            else:
+                stats['changed_skipped'].append({
+                    'symbol': symbol,
+                    'kept_quantity': str(mine.quantity),
+                    'incoming_quantity': str(quantity),
+                })
+            continue
+        other = PositionSnapshot.objects.filter(
+            portfolio=portfolio, symbol=symbol, as_of_date=today,
+        ).first()
+        if other is not None:
+            stats['collisions'].append({
+                'symbol': symbol,
+                'kept_sub_account_id': other.broker_account_id,
+                'skipped_sub_account_id': sub_account.pk,
+            })
+            continue
+        PositionSnapshot.objects.create(
+            tenant=sub_account.tenant,
+            portfolio=portfolio,
+            symbol=symbol,
+            as_of_date=today,
+            broker_account=sub_account,
+            quantity=quantity,
+            avg_cost=avg_cost,
+            current_price=market_price,
+            market_value=market_value,
+            source='broker',
+            calculation_version=CALCULATION_VERSION,
         )
         stats['positions_written'] += 1
 

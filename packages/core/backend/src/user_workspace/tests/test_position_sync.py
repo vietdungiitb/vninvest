@@ -92,6 +92,25 @@ class PositionSyncTests(TestCase):
         self.assertEqual(float(bal.net_equity), 2000.0)
 
     def test_sync_is_idempotent(self):
+        # Append-only: chay lai DU LIEU GIONG HET => khong ghi them.
+        from user_workspace.broker.position_sync import sync_account_positions
+        same = [BrokerPosition(
+            symbol='VCB', quantity=10.0, avg_price=90.0, market_price=100.0)]
+        first = sync_account_positions(
+            self._service(positions=same), self.sub, as_of_date=self.as_of)
+        second = sync_account_positions(
+            self._service(positions=same), self.sub, as_of_date=self.as_of)
+        self.assertEqual(first['positions_written'], 1)
+        self.assertEqual(second['positions_written'], 0)
+        self.assertEqual(second['positions_unchanged'], 1)
+        self.assertEqual(
+            PositionSnapshot.objects.filter(
+                portfolio=self.portfolio, symbol='VCB',
+                as_of_date=self.as_of).count(), 1)
+
+    def test_changed_data_same_day_reported_not_overwritten(self):
+        # Append-only + unique (portfolio, symbol, ngay): du lieu DOI trong
+        # ngay => BAO changed_skipped, GIU so cu. Khong update, khong crash.
         from user_workspace.broker.position_sync import sync_account_positions
         first = [BrokerPosition(
             symbol='VCB', quantity=10.0, avg_price=90.0, market_price=100.0)]
@@ -101,14 +120,11 @@ class PositionSyncTests(TestCase):
             self._service(positions=first), self.sub, as_of_date=self.as_of)
         stats = sync_account_positions(
             self._service(positions=changed), self.sub, as_of_date=self.as_of)
-        self.assertEqual(stats['positions_written'], 1)
-        self.assertEqual(
-            PositionSnapshot.objects.filter(
-                portfolio=self.portfolio, symbol='VCB',
-                as_of_date=self.as_of).count(), 1)
+        self.assertEqual(stats['positions_written'], 0)
+        self.assertEqual(len(stats['changed_skipped']), 1)
         snap = PositionSnapshot.objects.get(
             portfolio=self.portfolio, symbol='VCB', as_of_date=self.as_of)
-        self.assertEqual(float(snap.quantity), 12.0)
+        self.assertEqual(float(snap.quantity), 10.0)
 
     def test_collision_skipped_and_reported(self):
         # Cung (portfolio, symbol, ngay) nhung tieu khoan khac => skip + bao,
@@ -132,6 +148,21 @@ class PositionSyncTests(TestCase):
             portfolio=self.portfolio, symbol='VCB', as_of_date=self.as_of)
         self.assertEqual(kept.broker_account_id, other.id)
         self.assertEqual(float(kept.quantity), 5.0)
+
+    def test_legacy_null_row_causes_collision_not_crash(self):
+        # Hang computed cu (broker_account NULL) cung (portfolio, symbol, ngay):
+        # unique DB cam hang thu 2 => skip + bao, KHONG IntegrityError.
+        from user_workspace.broker.position_sync import sync_account_positions
+        PositionSnapshot.objects.create(
+            tenant=self.tenant, portfolio=self.portfolio, symbol='VCB',
+            as_of_date=self.as_of, quantity=3, avg_cost=70,
+            calculation_version='legacy', source='computed')
+        svc = self._service(positions=[BrokerPosition(
+            symbol='VCB', quantity=10.0, avg_price=90.0, market_price=100.0)])
+        stats = sync_account_positions(svc, self.sub, as_of_date=self.as_of)
+        self.assertEqual(stats['positions_written'], 0)
+        self.assertEqual(len(stats['collisions']), 1)
+        self.assertIsNone(stats['collisions'][0]['kept_sub_account_id'])
 
     def test_missing_portfolio_skipped(self):
         from user_workspace.broker.position_sync import sync_account_positions
