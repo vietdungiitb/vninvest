@@ -125,14 +125,24 @@ def fetch_positions(client, account_number: str, market_type: str = "STOCK") -> 
         normalized.append(
             {
                 "symbol": str(symbol).upper(),
-                "quantity": _to_float(item.get("quantity") or item.get("volume")),
+                "quantity": _to_float(
+                    item.get("quantity")
+                    or item.get("volume")
+                    or item.get("totalVol")
+                ),
                 "avg_price": _to_float(
                     item.get("avg_price")
+                    or item.get("avgPrice")
                     or item.get("average_price")
+                    or item.get("averagePrice")
                     or item.get("cost_price")
+                    or item.get("costPrice")
                 ),
                 "market_price": _to_float(
-                    item.get("market_price") or item.get("current_price")
+                    item.get("market_price")
+                    or item.get("marketPrice")
+                    or item.get("current_price")
+                    or item.get("currentPrice")
                 ),
             }
         )
