@@ -5,7 +5,7 @@ import { routeCatalog } from "../../app/routeCatalog.js";
  * mbw3 FE-DUPID — gate thật cho trùng id `portfolios-manage` (F-05).
  *
  * Contract test 2 chiều mù với trùng id: trùng hiện tại vẫn xanh. Gate thật
- * là grep `id: "portfolios-manage"` == 1 toàn repo. Entry giữ lại duy nhất:
+ * là đếm entry trùng id trong catalog == 1 (F-05). Entry giữ lại duy nhất:
  * path `/portfolios/manage` + titleKey `portfoliosManage.title` (đúng trang
  * đang render `PortfoliosPage.tsx:189`).
  */
