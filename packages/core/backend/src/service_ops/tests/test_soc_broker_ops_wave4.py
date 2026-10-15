@@ -108,9 +108,12 @@ class SocBrokerOpsWave4Tests(TestCase):
         self.assertEqual(lane['consecutive_failures'], 1)
         self.assertEqual(self._providers(body)['dnse']['queue_depth'], 4)
         self.assertEqual(body['queues'], {'celery': 4})
-        # issue da resolve khong tinh
+        # issue run NULL van tinh o top toan cuc (khong gan lane) — so sanh
+        # khong phu thuoc thu tu khi dong count (order_by -n).
         self.assertEqual(
-            body['top_errors'], [{'code': 'sync_failed', 'count': 1}])
+            sorted(body['top_errors'], key=lambda r: r['code']),
+            [{'code': 'position_drift', 'count': 1},
+             {'code': 'sync_failed', 'count': 1}])
 
     def test_health_queue_depth_fail_open(self):
         with patch('service_ops.tasks._get_redis_queue_depth',
