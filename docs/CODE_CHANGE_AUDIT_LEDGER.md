@@ -1,4 +1,13 @@
 
+## Entry 319: Audit doc lap ke hoach Wave 2 theo skill multi-agent-workflow - AGREE (2026-10-15)
+
+- **Claim**: `audit-wave2` (in-progress -> done o commit nay). Auditor Task doc lap (khac agent), read-only tru 1 file output; supervisor giu vai tro con lai. Khong worktree rieng cho auditor (ly do ghi REPORT_FINAL).
+- **Vong 1**: NEED_REVISION - 9 objections (O1-O2 blocker: thieu AC Given/When/Then + thieu bang baseline; O3-O5 major: file Chung i18n/soc, sidebar/holdings chua chot, payload thieu provider join; O6-O9 minor) + 7 contradictions (sai vung dong, thieu route status/, dem 61 unique/70 luot, ADR path, phan cong artifact, comment stale). So lieu plan dung ca 5 (9 endpoint, 10 adapter, 24 test, 61, catalog 1483 - co lenh tai tao).
+- **Sua vong 1**: §9 AC1-AC9 GWT + §6 baseline (tsc 0, build PASS, i18n:scan 0, nen 1324.3 KB, BE PASS-tuong-duong qua diff exit 0) + tach prefix i18n/soc-1-chu + sidebar/holdings/main refs + join rule + freeze status/drift-30 + ngoai le routes.broker + SCOPE/LIMIT/Non-goals. Chay that de lay so: i18n:scan:strict exit 0, measure-route 1324.3 KB, git-diff-quiet exit 0.
+- **Vong 2**: AGREE + reservations (O1-O9 dong toan bo; O10 minor audit-trail truncated - dong bang xac nhan, khong sua vong 1; R2 baseline tai tao 1 phan - owner Wave-2 Pha 3). Confidence High/Medium.
+- **Gate**: TEST_REPORT toan PASS/CHUA-CHAY-chap-nhan (check-multi-agent 0 + tsc 0 chay lai). 0 blocker/major. Doi lech skill (no-worktree, gop nhanh PR #147) co ly do trong REPORT_FINAL. Khong migration, khong deny-list, khong code.
+- **Tiep**: thuc thi Wave 2 theo plan (cho Owner duyet) - mo claim mbw2-hub/mbw2-data.
+
 ## Entry 318: Ke hoach thuc thi Wave 2 Broker Hub UI - mot chu trinh khep kin (2026-10-15)
 
 - **Loai**: doc-only (khong code). Tong hop PLAN muc 4 + HANDOFF_MBW1 + bang chung file:line doc that.
@@ -10324,6 +10333,7 @@ list file nay nhung status = `released` — chi L277 moi chan. Phai doc
 | 316 | 2026-10-15 | **Wave 1 B1.1 DONE** - SyncService + registry, 7/7 + 119/119 OK tren VPS, pre-push 22/22. |
 | 317 | 2026-10-15 | **Wave 1 B1.2-B1.6 DONE + Wave 1 DONG** - sync engine 3 lane, 61/61 OK tren VPS, tsc 0 + build PASS, pre-push 22/22. |
 | 318 | 2026-10-15 | **Ke hoach Wave 2 Broker Hub UI** - 1 chu trinh khep kin, 2 agent theo be mat, FE-only, doc-only. |
+| 319 | 2026-10-15 | **Audit doc lap ke hoach Wave 2** - NEED_REVISION (9 obj) -> sua het -> AGREE, 0 blocker/major, doc-only. |
 
 - **Nhanh**: `feat/rescue-admin-uncommitted` -> `dev`
 - **Claim**: `coordinator-rescue`

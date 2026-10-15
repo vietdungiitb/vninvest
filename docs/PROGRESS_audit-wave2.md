@@ -12,10 +12,10 @@
 - [ ] Stage 3: claim `audit-wave2` (trước mọi edit)
 - [x] Stage 2 vòng 1: NEED_REVISION (O1-O9) — file PLAN_AUDIT Voyage
 - [x] Stage 4 vòng 1: sửa plan (baseline O2 + AC Given/When/Then O1 + tách prefix i18n/soc-1-chủ O3 + sidebar/holdings/main O4 + join rule O5 + refs O6 + freeze status/drift O7 + prefix routes O8 + labels/budget/log O9 + C1-C7)
-- [ ] Stage 5: tái audit vòng 2 — verify O1-O9 đóng (0 blocker/major)
-- [ ] Stage 6: TEST_REPORT gates doc
-- [ ] Stage 7: push + PR + claim done + ledger Entry (Gate 6→7)
-- [ ] Stage 8: retrospective trong REPORT_FINAL
+- [x] Stage 5 vòng 2: AGREE + reservations (O1-O9 đóng, O10 minor audit-trail, confidence High/Medium)
+- [x] Stage 6: TEST_REPORT (check-multi-agent 0, tsc 0, Gate 1→2/4→5 PASS, BE PASS-tương-đương có ghi rõ)
+- [ ] Stage 7: push + claim done + ledger Entry (Gate 6→7) — PR #147 đã mở, không tạo PR mới
+- [ ] Stage 8: retrospective trong REPORT_FINAL — xong (1 process lesson)
 
 ## Decisions
 
