@@ -1,4 +1,14 @@
 
+## Entry 323: Triet de watchlist/holdings/broker tren staging (Owner chot 2026-10-15)
+
+- **Goc**: user bao anh chup van la chuc nang cu (`/manage` + `/portfolios/manage/broker` full form). Audit chi ra 2 lop: (1) staging deploy cuoi 2026-10-13 (rev fd8b3f64d, PR #121) trong khi Wave 1-4 merge 2026-10-15 — anh 2 khop tung chu voi `PortfoliosBrokerPage` ban 33fd9a346 (da doi thanh redirect ve `/broker` o B2.6); (2) `ScopedWatchlist` co code+test nhung 0 noi mount + holdings thieu per-row `source` (fail-closed null).
+- **Nhanh**: `feat/holdings-source` -> `dev` (PR #154) + `feat/watchlist-mount` -> `dev` (PR #153), merge giu trail. Claim `be-holdings-source` + `fe-watchlist-mount` + `ops-staging-redeploy` (VPS-only). Tuan tu 1 operator, disjoint BE<->FE.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-M01, L-M02, L-M03, L-S02, L-V02, L-V03, L-F10, L-G01, L-G02, L-G08, L-T01, L-T02. TDD fail-before ca 2 (BE RED 3 failures; FE RED 1).
+- **Viec lam**: OPS — backup staging DB 318MB → FERNET server-side append (thieu that, chi bao ten) → deploy lan 1 (dev c43f27a0b, migrate 0023→0030 theo entrypoint, makemigrations sach) → deploy lan 2 sau merge (47ad6f630). BE — per-row `source` tu `portfolio.kind` + `meta.kind` (`portfolio_analytics_views.py:185,229,274,290`), khong migration, khong doi shape `data`. FE — mount `ScopedWatchlist` vao `BrokerAccountPage` (full manual+derived theo accountId) + `WatchlistPage` (manual, khong account); mock signature B3.3 cho test cu.
+- **Gate**: BE VPS 40 tests OK (11 holdings/source + 29 kind/guard) · FE 18/18 + tsc 0 + i18n:scan:strict 0 + build 38s · pre-push 22/22 (luc push) · check-multi-agent 0 loi · staging: bundle co `BrokerHubPage` + `ScopedWatchlist` chunk, public `/broker` 200, BE deploy co `'source': source`, leaf 0030.
+- **CHUA CHAY**: E2E dang nhap that + tao watchlist/ket noi broker that (khong staff creds) · full BE suite · ruff · doi chieu UI bang mat tren staging.
+- **Su co phien nay**: (1) hook-mode FAIL gia do cay dirty — probe `git commit` that cuon ca file staged (L-G08, chung minh bang stash: dirty FAIL 1/8, sach PASS 8/8); (2) quen claim 1 file test → hook chan commit (sua claim truoc PR, trung thuc); (3) Edit tool + PowerShell `>` lam UTF-16/filehong — khoi phuc byte-exact tu blob (`git cat-file`, khong redirect shell) + `normalize-eol.mjs`; (4) quote long SSH vo — scp script + bash; (5) encoding gate bat BOM do file UTF-16 tam — ve UTF-8 goc la xanh (khong them allowlist de gia xanh).
+
 ## Entry 322: Wave 4 SOC Broker Ops DONE - mot chu trinh khep kin (2026-10-15)
 
 - **Nhanh**: `feat/mbw4-be` + `feat/mbw4-fe` -> `feat/mbw4-soc-ops` -> `dev` (1 PR wave, merge giu trail) - claim `mbw4-be` + `mbw4-fe` (+ `mbw4-plan` done Stage 2). 1 operator vai 2 agent tuan tu (BE truoc, FE theo contract), disjoint BE<->FE tuyet doi. Hieu chinh Stage 3 minh bach: plan ghi 2 wt cung checkout 1 nhanh — git cam → 2 nhanh slice theo mau mbw3 (bay #7 HANDOFF_MBW3).
