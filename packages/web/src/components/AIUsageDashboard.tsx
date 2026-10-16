@@ -226,7 +226,7 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
     return { agg, rec, summary };
   }, [days, page, pageSize, modelFilter, statusFilter, usageClient]);
 
-  const { data, loading: fetchLoading, error: fetchError, execute: loadData, retry: retryLoadData } = useRetryableAsync(fetchData, 2);
+  const { data, loading: fetchLoading, error: fetchError, execute: loadData } = useRetryableAsync(fetchData, 2);
 
   const aggregate = data?.agg ?? null;
   const records = data?.rec?.results ?? [];
@@ -316,7 +316,7 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
         ),
         e("button", {
           className: `${styles.btn} ${styles.btnSm}`,
-          onClick: () => { loadData(); retryLoadData(); },
+          onClick: () => { loadData(); },
           disabled: fetchLoading,
         }, t("aiUsageAnalytics.refresh")),
         e("button", {
