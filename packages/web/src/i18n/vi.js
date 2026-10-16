@@ -5465,6 +5465,10 @@ const vi = {
     loadError: 'Không tải được cấu hình AI. Vui lòng thử lại sau.',
     refreshIntervalValue: '{hours} giờ/lần',
     customModel: 'Mô hình tùy chỉnh...',
+    refreshList: 'Làm mới danh sách',
+    exportCsv: 'Xuất CSV',
+    exportedCount: 'Đã xuất {count} dòng',
+    exportTruncated: 'Đã xuất 5000 dòng (đã cắt bớt)',
   },
   aiAgentFederation: {
     title: 'Quản lý Agent AI',
