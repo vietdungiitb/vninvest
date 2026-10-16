@@ -61,6 +61,40 @@ def _is_fully_supported(provider: str) -> bool:
 TEST_CONN_LIMIT = 5
 TEST_CONN_WINDOW_SECONDS = 60
 
+# conn-hardening (F-BE-02): map job_id -> (user, tenant) de poll khong thanh
+# oracle cross-user. Thieu map (job cu truoc deploy) -> cho qua nhu cu.
+JOB_OWNER_TTL_SECONDS = 600
+
+
+def _job_owner_key(job_id: str) -> str:
+    return f'broker:jobowner:{job_id}'
+
+
+def _remember_job_owner(job_id: str, user_id: int, tenant_id) -> None:
+    try:
+        cache.set(
+            _job_owner_key(str(job_id)),
+            {'user_id': user_id, 'tenant_id': tenant_id},
+            JOB_OWNER_TTL_SECONDS,
+        )
+    except Exception:  # noqa: BLE001 — cache hong khong duoc chan enqueue
+        logger.warning('broker job owner map unavailable')
+
+
+def _job_owner_mismatch(request, job_id: str) -> bool:
+    """True = job co chu nhung khong phai nguoi dang hoi (404, khong lo ton tai)."""
+    try:
+        entry = cache.get(_job_owner_key(str(job_id)))
+    except Exception:  # noqa: BLE001
+        return False
+    if not isinstance(entry, dict):
+        return False
+    tenant = getattr(request, 'tenant', None)
+    return (
+        entry.get('user_id') != getattr(request.user, 'id', None)
+        or entry.get('tenant_id') != getattr(tenant, 'id', None)
+    )
+
 
 def _require_provider(provider: str) -> str:
     normalized = str(provider or '').strip().lower()
@@ -259,6 +293,7 @@ def broker_test_connection_api(request, provider):
         config.id,
         tenant_id=getattr(tenant, 'id', None),
     )
+    _remember_job_owner(job.id, user.id, getattr(tenant, 'id', None))
     return envelope(
         {'job_id': job.id, 'state': 'pending'}, status=status.HTTP_202_ACCEPTED)
 
@@ -275,6 +310,11 @@ def broker_test_connection_api(request, provider):
 @permission_classes([IsAuthenticated])
 def broker_job_status_api(request, job_id):
     """Poll trạng thái job test-connection. job_id UUID không đoán được."""
+    if _job_owner_mismatch(request, str(job_id)):
+        raise NotFoundErrorException(
+            detail='Không tìm thấy tác vụ.',
+            code='job_not_found',
+        )
     try:
         result = AsyncResult(str(job_id))
         state = result.state

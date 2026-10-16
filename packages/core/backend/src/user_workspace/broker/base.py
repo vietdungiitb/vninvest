@@ -20,6 +20,47 @@ PROVIDER_SECRET_KEYS: dict[str, frozenset[str]] = {
 PREVIEW_VISIBLE_CHARS = 4
 
 # ---------------------------------------------------------------------------
+# conn-hardening: fail-fast HÌNH DẠNG secret (không thay thế xác minh live).
+# ---------------------------------------------------------------------------
+# Vì sao chỉ max + charset, KHÔNG min-length: chưa từng thấy credential thật
+# của broker (Owner cấp sau) nên mọi min-length đều là đoán mò (L-V02). Min
+# thật lấy từ tài liệu từng broker rồi bổ sung sau (xem
+# `docs/CREDENTIAL_CHECKLIST_BROKER_20261016.md`).
+# Quy tắc này bắt: paste nhầm (2000 ký tự), binary/control-char lọt vào,
+# whitespace-only đã strip (required báo 'required', shape bỏ qua rỗng).
+SECRET_MAX_LENGTH: dict[str, int] = {
+    'client_id': 128,
+    'client_secret': 512,
+    'api_key': 256,
+    'api_secret': 1024,
+    'private_key': 8192,  # PEM RSA ~1-2KB + biên an toàn
+    'custody_code': 64,
+}
+
+# Điều khiển nhị phân (trừ \t\n\r cho PEM) không bao giờ là credential hợp lệ.
+_CONTROL_CHARS = frozenset(chr(c) for c in list(range(0x00, 0x20)) + [0x7F])
+_CONTROL_CHARS_ALLOWED = frozenset({'\t', '\n', '\r'})
+
+
+def check_secret_shape(key: str, value: object) -> str | None:
+    """Trả về error code cố định hoặc None (= qua). Không log, không echo value.
+
+    Codes: 'too_long' | 'invalid_characters'. Rỗng/None → None (rule
+    'required' của từng lane sở hữu trường hợp đó). Key lạ → None (không
+    chặn field tương lai).
+    """
+    text = str(value or '')
+    if not text.strip():
+        return None
+    limit = SECRET_MAX_LENGTH.get(str(key or ''))
+    if limit is not None and len(text) > limit:
+        return 'too_long'
+    for char in text:
+        if char in _CONTROL_CHARS and char not in _CONTROL_CHARS_ALLOWED:
+            return 'invalid_characters'
+    return None
+
+# ---------------------------------------------------------------------------
 # C-04: capability matrix là DỮ LIỆU VERSIONED, không phải hằng trong view
 # ---------------------------------------------------------------------------
 # Vì sao: `views_broker.py` hardcode `FULLY_SUPPORTED = {'dnse','ssi','tcbs'}` trong khi
