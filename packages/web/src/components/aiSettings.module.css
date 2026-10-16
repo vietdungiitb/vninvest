@@ -48,7 +48,11 @@
   --ais-c-b9f6e4: #065f46;
 }
 
-.page {
+/* R1.1: 13 token --ai-* o :root de moi route (ke ca hub khong co to tien
+   .page, vd AICommandCenterPage dung var(--ai-border) o inline style) deu
+   resolve duoc. KHONG them styles.page vao hub: no keo min-height:100vh +
+   padding + gradient de len padding cua AppShell -> layout dut. */
+:root {
   --ai-ink: var(--text-primary, #e6f3ff);
   --ai-muted: var(--text-muted, #6d86a8);
   --ai-secondary: var(--text-secondary, #9cb2d1);
@@ -62,7 +66,9 @@
   --ai-success: var(--accent-emerald, #16d7a0);
   --ai-danger: var(--accent-rose, #ff5e7e);
   --ai-warning: var(--accent-amber, #ffbf4d);
+}
 
+.page {
   background:
     radial-gradient(
       circle at top right,
