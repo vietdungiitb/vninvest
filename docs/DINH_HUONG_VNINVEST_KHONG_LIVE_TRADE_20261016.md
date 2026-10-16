@@ -1,6 +1,8 @@
 # Định Hướng VNINVEST: Hệ Thống Theo Dõi — Đánh Giá — Tư Vấn AI, Không Sàn, Không Lệnh Live
 
-> Ngày: 2026-10-16 · Trạng thái: ĐÃ CHỐT (Owner) · ADR: `docs/adr/ADR-008-khong-san-khong-lenh-live.md`.
+> Ngày: 2026-10-16 · Trạng thái: ĐÃ CHỐT (Owner) · ADR quản trị (xương sống):
+> `docs/system-design/00-GOVERNANCE/adr/ADR-005-khong-san-khong-lenh-live.md`
+> · Bản domain: `docs/adr/ADR-008-khong-san-khong-lenh-live.md`.
 > Mọi quyết định đầu tư và lệnh live trade KHÔNG thực hiện trên vninvest,
 > trừ khi có hợp đồng phát triển riêng với tính pháp lý rõ ràng.
 

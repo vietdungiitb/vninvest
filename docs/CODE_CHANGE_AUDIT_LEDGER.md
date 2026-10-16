@@ -1,4 +1,13 @@
 
+## Entry 332: Neo dinh huong khong-live vao system-design (2026-10-16)
+
+- **Nhanh**: `feat/dinh-huong-spine` -> `dev` (PR, merge giu trail). Claim `dinh-huong-spine` (DOC-ONLY).
+- **Viec lam**: (1) TAO MOI `00-GOVERNANCE/adr/ADR-005-khong-san-khong-lenh-live.md` (format Ngu canh → Quyet dinh → Ly do → He qua, tro ban day du + ADR-008). (2) SuA bang muc luc ADR (thay placeholder bang ADR-001..005, tieu de doi chieu tung file). (3) `01.01` §3 them dinh huong kim chi nam. (4) `04.01` dong broker: capability → doc + paper-gated, tin cay → ✅ (khoa boi `test_order_safety.py`). (5) `13.01` §2 tro ADR-005. (6) Dinh huong doc tro nguoc ADR-005.
+- **Hieu chinh**: README ADR hien UTF-8 sach (mojibake truoc do la console cp1252) — sua binh thuong bang Edit tool.
+- **Gate**: system-design --check (write+check) · check-multi-agent 0 loi · pre-push PASS.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G02.
+- **CHUA CHAY**: full BE · FE full · ruff · E2E.
+
 ## Entry 331: Dinh huong VNINVEST khong san, khong lenh live (2026-10-16)
 
 - **Goc**: Owner chot dinh huong (khong san giao dich, khong live trade; chi tiep nhan thong tin de theo doi, danh gia, tu van AI; ngoai tru hop dong rieng). Claim `dinh-huong` (DOC-ONLY).

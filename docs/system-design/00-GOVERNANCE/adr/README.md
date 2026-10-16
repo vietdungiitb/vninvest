@@ -15,4 +15,8 @@
 
 | ADR | Quyết định | Ngày |
 |---|---|---|
-| *(chưa có)* | Slice tiếp theo rà soát các quyết định lớn đã chốt (D-01 routeId, D-17 ledger 7 năm, envelope contract…) và ghi ADR hồi tố | — |
+| [ADR-001](ADR-001-route-id-theo-catalog.md) | RouteId theo `routeCatalog` (D-01) | 2026-10-13 |
+| [ADR-002](ADR-002-so-cai-append-only.md) | Sổ cái append-only | 2026-10-14 |
+| [ADR-003](ADR-003-envelope-contract.md) | Envelope contract | 2026-10-14 |
+| [ADR-004](ADR-004-cach-ly-tenant.md) | Cách ly tenant | 2026-10-14 |
+| [ADR-005](ADR-005-khong-san-khong-lenh-live.md) | Không phải sàn, không đặt lệnh live (trừ hợp đồng riêng) | 2026-10-16 |

@@ -80,7 +80,7 @@ nối vào `scripts/pre-push-gate.mjs` (khối có guard, chỉ chặn khi drift
 | **Công nghệ** | Django + DRF + PostgreSQL (bắt buộc) · React 19 + Vite · xem [08.01](08-TECH-STACK/08.01-cong-nghe-va-ky-thuat.md) |
 | Quy mô BE | 15 Django app nghiệp vụ · 110 model · 121 migration |
 | Vận hành | 10 compose stack · 42 lịch Celery beat |
-| Quy mô tài liệu | 43 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
+| Quy mô tài liệu | 44 file trong bộ hồ sơ · toàn cây `docs/` xem [00.04](00-GOVERNANCE/00.04-ban-do-chu-de.md) |
 
 ---
 
