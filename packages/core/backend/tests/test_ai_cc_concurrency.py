@@ -23,6 +23,7 @@ django.setup()
 from django.contrib.auth.models import User  # noqa: E402
 from django.test import TestCase  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
+from user_workspace.tests.tenant_test_helpers import grant_tenant  # noqa: E402
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
 
@@ -30,6 +31,7 @@ CC_URL = '/core/v1/workspace/ai-command-center/'
 class ConcurrencyTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='r19-u', password='x')
+        grant_tenant(self.user, role='editor', tenant_code='r19-tenant')
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
