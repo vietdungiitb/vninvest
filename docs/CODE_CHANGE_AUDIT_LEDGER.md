@@ -1,3 +1,13 @@
+## Entry 345: AI R1.6 chart token + bang so (2026-10-16)
+
+- **Nhanh**: `feat/ai-r16-chart` -> `dev`. Claim `ai-r16`. TDD: test moi RED 5 AC -> GREEN 5/5.
+- **Viec lam**: chartToken(computed+fallback) + STATUS_TONE union + usd4 4dp + formatDateTime + aria-hidden/srOnly + viewer/historyRow css + check-ai-cc AC7 (allowlist block, self-test 8/8).
+- **Deviate co ly do**: quota width inline giu (dynamic %), root :213 de R1.8, fallback hex allowlist (SVG attr khong hieu var).
+- **Gate**: vitest moi + hoi quy + tsc/eslint/check-ai-cc/build PASS. Evidence `docs/evidence/ai-cc/r16-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: anh light/dark + contrast pixels + full BE + ruff + E2E + staging.
+- **Tiep**: R1.7 (useRetryableAsync) -> R1.8 -> R1.9..R1.11.
+
 ## Entry 344: AI R1.5 usage filters nhat quan (2026-10-16)
 
 - **Nhanh**: `feat/ai-r15-usagefilter` -> `dev`. Claim `ai-r15`. TDD: BE RED FEF.F -> GREEN 5/5 (VPS Postgres that); FE AC6 RED -> GREEN (stash).
