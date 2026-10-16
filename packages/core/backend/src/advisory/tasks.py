@@ -166,7 +166,6 @@ def reset_daily_token_budgets():
     return "noop: enforcement date-scoped in views.py"
 
 
-@shared_task(name="advisory.generate_advisory_task")
 def _write_advisory_usage_record(
     *,
     user,
@@ -207,6 +206,7 @@ def _write_advisory_usage_record(
         logger.exception('AI usage record write failed (non-blocking)')
 
 
+@shared_task(name="advisory.generate_advisory_task")
 def generate_advisory_task(record_id: str, effective_context: dict, symbol: str):
     """
     Asynchronously runs the advisory Multi-Agent orchestrator using the effective
