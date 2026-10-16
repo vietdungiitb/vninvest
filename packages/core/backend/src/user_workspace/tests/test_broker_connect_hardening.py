@@ -137,7 +137,12 @@ class JobOwnershipTests(TestCase):
         job_id = self._enqueue()
         resp = self.client_b.get(f'{BASE}/jobs/{job_id}/')
         self.assertEqual(resp.status_code, 404)
-        self.assertNotIn('job-owner-1', resp.content.decode())
+        # Khong oracle: job cua nguoi khac tra Y HET nhu job khong ton tai
+        # (`instance` echo lai URL request — hanh vi chung cua envelope).
+        ghost = self.client_b.get(f'{BASE}/jobs/no-such-job-zzz/')
+        self.assertEqual(ghost.status_code, 404)
+        for key in ('title', 'status', 'code', 'detail'):
+            self.assertEqual(resp.json()[key], ghost.json()[key])
 
     def test_unknown_job_without_map_passthrough(self):
         resp = self.client_a.get(f'{BASE}/jobs/no-such-job-xyz/')
