@@ -140,15 +140,16 @@ class R01UserModelTests(TestCase):
         )
 
     def _refresh_ctx(self):
-        with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
-            mock_run.return_value = {
-                'advisory_text': 'x', 'ai_model': 'm', 'tokens_used': 1,
-            }
-            with patch('advisory.views.generate_advisory_task.delay'):
-                resp = self.client.post(
-                    '/core/v1/advisory/refresh/FPT/', {}, format='json')
+        # views import task lazy trong ham (`from advisory.tasks import ...`)
+        # nen patch attribute tren module tasks; delay tra SimpleNamespace
+        # (khong MagicMock — tranh de quy vo han khi serialize response).
+        from types import SimpleNamespace
+        with patch('advisory.tasks.generate_advisory_task') as mock_task:
+            mock_task.delay.return_value = SimpleNamespace(id='job-r01')
+            resp = self.client.post(
+                '/core/v1/advisory/refresh/FPT/', {}, format='json')
             self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-            return mock_run.call_args[0][0]
+            return mock_task.delay.call_args[0][1]
 
     def test_user_model_wins_over_system(self):
         UserAICredential.objects.create(

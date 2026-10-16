@@ -118,8 +118,11 @@ class PromptConfigHistoryTests(TestCase):
         self.assertEqual(cred.prompt_config_history[-1]['source'], 'rollback')
         self.assertEqual(cred.prompt_config_history[-1]['config'], cfg1)
 
+        # R0.2: GET chuan hoa day du — so sanh source whale, khong full-equality.
         g = self.client.get(CC_URL)
-        self.assertEqual(unwrapped(g)['ai_prompt_config']['sources'], cfg1['sources'])
+        self.assertEqual(
+            unwrapped(g)['ai_prompt_config']['sources']['whale'],
+            cfg1['sources']['whale'])
 
     def test_f_ac7e_history_capped_at_limit(self):
         """Appends past PROMPT_CONFIG_HISTORY_LIMIT drop oldest (F7 cap 20)."""
@@ -154,8 +157,8 @@ class PromptConfigHistoryTests(TestCase):
         g_b = client_b.get(CC_URL)
         self.assertEqual(len(unwrapped(g_a)['ai_prompt_config_history']), 1)
         self.assertEqual(len(unwrapped(g_b)['ai_prompt_config_history']), 1)
-        self.assertEqual(unwrapped(g_a)['ai_prompt_config_history'][0]['config']['whale']['lookback'], 30)
-        self.assertEqual(unwrapped(g_b)['ai_prompt_config_history'][0]['config']['whale']['lookback'], 7)
+        self.assertEqual(unwrapped(g_a)['ai_prompt_config_history'][0]['config']['sources']['whale']['lookback'], 30)
+        self.assertEqual(unwrapped(g_b)['ai_prompt_config_history'][0]['config']['sources']['whale']['lookback'], 7)
 
         cred_a = UserAICredential.objects.get(user=self.user)
         cred_b = UserAICredential.objects.get(user=user_b)
