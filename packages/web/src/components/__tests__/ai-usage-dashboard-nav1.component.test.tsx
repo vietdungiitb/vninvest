@@ -43,6 +43,10 @@ vi.mock("../../context/LangContext.js", () => ({
       if (k === "aiUsageAnalytics.showing") return "{shown}/{total}";
       return k;
     },
+    // R1.6: dashboard dùng formatCurrency/formatDateTime/formatNumber — mock đủ shape useI18n.
+    formatNumber: (n: unknown) => String(n ?? ""),
+    formatCurrency: (n: unknown) => String(n ?? ""),
+    formatDateTime: (dt: unknown) => String(dt ?? ""),
   }),
 }));
 
