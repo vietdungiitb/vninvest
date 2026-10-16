@@ -1,3 +1,13 @@
+## Entry 348: AI R1.9 diff preview + 409 optimistic lock (2026-10-16)
+
+- **Nhanh**: `feat/ai-r19-concurrency` -> `dev`. Claim `ai-r19`. TDD: BE RED (thieu token + ghi de) -> GREEN 3/3 (VPS); FE RED 5/5 -> GREEN 5/5.
+- **Viec lam**: BE config_updated_at GET/PUT + PUT expected -> 409 code ai_config_conflict (dung code thay error_code theo transport) + FE preview modal + conflict 2 lua chon + 8 key i18n + sua 2 test cu qua modal.
+- **Vung safe04-pav**: claim in-progress tu 2026-10-06 nhung 0 commit + branch mat + Owner da hoi (L985) -> lam tren vung PUT rieng biet, khong cham capability.
+- **Gate**: BE moi + policy 9/9 + mgmt 30/30 (VPS) + FE moi + r14/page/form + tsc/eslint/check-ai-cc/build PASS. Evidence `docs/evidence/ai-cc/r19-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: anh modal + full BE + ruff + E2E + staging deploy.
+- **Tiep**: R1.10 (quota) -> R1.11 (agent panel). Don VPS sau merge.
+
 ## Entry 347: AI R1.8 AiHubNav + 1 he token (2026-10-16)
 
 - **Nhanh**: `feat/ai-r18-hubnav` -> `dev`. Claim `ai-r18`. TDD: test moi RED 4/4 (stash) -> GREEN 4/4.

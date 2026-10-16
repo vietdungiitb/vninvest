@@ -5375,6 +5375,14 @@ const en = {
     exportCsv: 'Export CSV',
     exportedCount: 'Exported {count} rows',
     exportTruncated: 'Exported 5000 rows (truncated)',
+    previewTitle: 'Review changes before saving',
+    previewConfirm: 'Confirm save',
+    previewCancel: 'Cancel',
+    conflictTitle: 'Config changed elsewhere',
+    conflictDesc: 'Someone saved a newer config after you loaded. Reload then overwrite, or cancel to keep yours.',
+    conflictReload: 'Reload & overwrite',
+    conflictCancel: 'Cancel, keep mine',
+    noChanges: 'No changes.',
   },
   // DEPRECATED 1 sprint sau B.4 (Entry 201) — call sites đã migrate sang aiUsageAnalytics/aiAgentFederation. Không xóa trước grep 0-hit + 1 sprint.
   usage: {

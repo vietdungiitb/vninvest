@@ -972,7 +972,10 @@ class PortfolioAICommandCenterView(APIView):
         prompt_config = _parse_prompt_config(
             metadata.get('ai_prompt_config'))
 
-        # Read user credential (BYOK SSOT)
+        # Read user credential (BYOK SSOT). Giữ read-only (không get-or-create):
+        # user legacy chưa có cred vẫn đọc được prefs cũ ở nhánh else bên dưới.
+        # config_updated_at=None với user mới là bình thường — PUT đầu (không
+        # kèm expected) tạo row và trả token mới (R1.9).
         try:
             user_cred = UserAICredential.objects.get(user=request.user)
         except UserAICredential.DoesNotExist:
@@ -1086,6 +1089,10 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_remaining': fallback_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
+            # R1.9: optimistic-lock token — client gửi lại ở PUT (expected_updated_at).
+            'config_updated_at': (
+                user_cred.updated_at.isoformat() if user_cred and user_cred.updated_at else None
+            ),
         }
         if is_operator:
             response_data['system_prompt_template'] = config.prompt_template or ''
@@ -1148,6 +1155,35 @@ class PortfolioAICommandCenterView(APIView):
             'advisory_max_tokens_per_day': int(before_max_tokens),
             'temperature': float(before_temp),
         })
+
+        # R1.9: optimistic lock — client gửi expected_updated_at lấy từ GET
+        # (config_updated_at). Lệch ⇒ 409 để client tải bản mới / ghi đè có
+        # chủ đích, thay vì ghi đè âm thầm. Vắng mặt ⇒ hành vi cũ (AC3).
+        expected_updated_at = payload.get('expected_updated_at')
+        if expected_updated_at is not None and str(expected_updated_at).strip() != '':
+            from datetime import datetime as _dt
+            from django.utils import timezone as _tz
+            try:
+                _expected = _dt.fromisoformat(str(expected_updated_at).strip())
+            except (TypeError, ValueError):
+                raise ValidationError({
+                    'expected_updated_at': 'Dinh dang thoi gian khong hop le (ISO 8601).',
+                })
+            if _expected.tzinfo is None:
+                _expected = _expected.replace(tzinfo=_tz.utc)
+            _current = user_cred.updated_at
+            # So sánh tuyệt đối (không dung sai): DB timestamptz giữ microsecond,
+            # isoformat đi-về chính xác — dung sai sẽ mở lại cửa sổ mất update.
+            if _current is None or _current != _expected:
+                return Response(
+                    {
+                        'detail': 'Cau hinh da doi tu luc ban doc. Tai ban moi roi thu lai.',
+                        'code': 'ai_config_conflict',
+                        'current_updated_at': _current.isoformat() if _current else None,
+                        'current': before_snapshot,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         if 'ai_provider' in payload:
             _raw_provider = str(payload.get('ai_provider') or '').strip().lower()
@@ -1353,6 +1389,10 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_remaining': user_cred.fallback_quota_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
+            # R1.9: token mới sau mỗi lần lưu — client dùng cho PUT kế tiếp.
+            'config_updated_at': (
+                user_cred.updated_at.isoformat() if user_cred.updated_at else None
+            ),
         }
         if is_operator_put:
             response_data['system_prompt_template'] = config.prompt_template or ''

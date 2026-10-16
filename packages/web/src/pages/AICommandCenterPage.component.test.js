@@ -210,6 +210,10 @@ describe("AICommandCenterPage", () => {
     await act(async () => {
       fireEvent.click(saveBtn);
     });
+    // R1.9 AC4: xác nhận preview mới gửi PUT.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("preview-confirm"));
+    });
 
     await waitFor(() => {
       expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
@@ -289,6 +293,7 @@ describe("AICommandCenterPage", () => {
       expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
     // R1.4 AC2: nút Lưu disabled khi sạch — sửa 1 field để bật nút (không mở drawer).
+    // R1.9 AC4: Lưu mở preview trước — xác nhận mới gửi PUT.
     const intervalInput = screen
       .getAllByRole("spinbutton")
       .find((el) => el.placeholder === "24");
@@ -297,6 +302,9 @@ describe("AICommandCenterPage", () => {
     const saveBtn = screen.getByRole("button", { name: /lưu cấu hình/i });
     await act(async () => {
       fireEvent.click(saveBtn);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("preview-confirm"));
     });
     await waitFor(() => {
       expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
