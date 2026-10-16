@@ -11,6 +11,42 @@ from drf_spectacular.openapi import OpenApiTypes
 from vninvest_core.api_envelope import envelope_response
 
 
+def _scope_to_requester(queryset, request):
+    """Hẹp queryset theo user, trừ staff/superuser thấy tất cả (R0.7)."""
+    if not request.user.is_staff and not request.user.is_superuser:
+        queryset = queryset.filter(user=request.user)
+    return queryset
+
+
+def _apply_common_filters(queryset, request):
+    """R1.5: 1 helper lọc chung model/status/action cho cả 3 view."""
+    action = request.query_params.get('action', '').strip()
+    if action:
+        queryset = queryset.filter(action=action)
+
+    model_filter = request.query_params.get('model', '').strip()
+    if model_filter:
+        queryset = queryset.filter(model=model_filter)
+
+    status_filter = request.query_params.get('status', '').strip()
+    if status_filter:
+        queryset = queryset.filter(status=status_filter)
+
+    return queryset
+
+
+def _parse_int(value, default, minimum=None, maximum=None):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+    if minimum is not None:
+        number = max(number, minimum)
+    if maximum is not None:
+        number = min(number, maximum)
+    return number
+
+
 
 @extend_schema(
     summary='AIUsageRecordListView',
@@ -30,26 +66,10 @@ class AIUsageRecordListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def _base_queryset(self, request):
-        queryset = AIUsageRecord.objects.all()
-        if not request.user.is_staff and not request.user.is_superuser:
-            queryset = queryset.filter(user=request.user)
-        return queryset
+        return _scope_to_requester(AIUsageRecord.objects.all(), request)
 
     def get(self, request):
-        queryset = self._base_queryset(request)
-
-        action = request.query_params.get('action', '').strip()
-        if action:
-            queryset = queryset.filter(action=action)
-
-        # F2: server-side model / status filters
-        model_filter = request.query_params.get('model', '').strip()
-        if model_filter:
-            queryset = queryset.filter(model=model_filter)
-
-        status_filter = request.query_params.get('status', '').strip()
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
+        queryset = _apply_common_filters(self._base_queryset(request), request)
 
         days = request.query_params.get('days', '').strip()
         if days:
@@ -63,14 +83,8 @@ class AIUsageRecordListView(APIView):
         if user_id and (request.user.is_staff or request.user.is_superuser):
             queryset = queryset.filter(user_id=user_id)
 
-        try:
-            limit = min(int(request.query_params.get('limit', 20)), 100)
-        except (TypeError, ValueError):
-            limit = 20
-        try:
-            offset = max(int(request.query_params.get('offset', 0)), 0)
-        except (TypeError, ValueError):
-            offset = 0
+        limit = _parse_int(request.query_params.get('limit', 20), 20, maximum=100)
+        offset = _parse_int(request.query_params.get('offset', 0), 0, minimum=0)
 
         total = queryset.count()
         records = queryset[offset:offset + limit]
@@ -107,9 +121,7 @@ class AIUsageSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        queryset = AIUsageSummary.objects.all()
-        if not request.user.is_staff and not request.user.is_superuser:
-            queryset = queryset.filter(user=request.user)
+        queryset = _scope_to_requester(AIUsageSummary.objects.all(), request)
 
         days = request.query_params.get('days', '').strip()
         if days:
@@ -119,12 +131,15 @@ class AIUsageSummaryView(APIView):
             except (TypeError, ValueError):
                 pass
 
-        action = request.query_params.get('action', '').strip()
-        if action:
-            queryset = queryset.filter(action=action)
+        queryset = _apply_common_filters(queryset, request)
 
-        serializer = AIUsageSummarySerializer(queryset, many=True)
-        return Response({'results': serializer.data})
+        limit = _parse_int(request.query_params.get('limit', 20), 20, maximum=100)
+        offset = _parse_int(request.query_params.get('offset', 0), 0, minimum=0)
+
+        total = queryset.count()
+        rows = queryset[offset:offset + limit]
+        serializer = AIUsageSummarySerializer(rows, many=True)
+        return Response({'results': serializer.data, 'total': total, 'limit': limit, 'offset': offset})
 
 
 @extend_schema(
@@ -142,9 +157,7 @@ class AIUsageAggregateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        queryset = AIUsageRecord.objects.all()
-        if not request.user.is_staff and not request.user.is_superuser:
-            queryset = queryset.filter(user=request.user)
+        queryset = _scope_to_requester(AIUsageRecord.objects.all(), request)
 
         days = request.query_params.get('days', '').strip()
         if days:
@@ -153,6 +166,8 @@ class AIUsageAggregateView(APIView):
                 queryset = queryset.filter(created_at__gte=cutoff)
             except (TypeError, ValueError):
                 pass
+
+        queryset = _apply_common_filters(queryset, request)
 
         pipeline = queryset.aggregate(
             total_requests=Count('id'),

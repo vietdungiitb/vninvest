@@ -43,6 +43,10 @@ class AIUsageSummary(models.Model):
     date = models.DateField(db_index=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=32, db_index=True, verbose_name='Hành động')
+    # R1.5: grain mở rộng (date, user, action, model, status) để summary lọc
+    # được theo model/status như records. Staging 0 row nên không cần backfill.
+    model = models.CharField(max_length=64, default='', db_index=True, verbose_name='Mô hình')
+    status = models.CharField(max_length=16, default='success', db_index=True, verbose_name='Trạng thái')
     total_requests = models.IntegerField(default=0)
     total_tokens_in = models.IntegerField(default=0)
     total_tokens_out = models.IntegerField(default=0)
@@ -53,7 +57,7 @@ class AIUsageSummary(models.Model):
     class Meta:
         verbose_name = 'AI Usage Summary'
         verbose_name_plural = 'AI Usage Summaries'
-        unique_together = [['date', 'user', 'action']]
+        unique_together = [['date', 'user', 'action', 'model', 'status']]
         ordering = ['-date']
 
     def __str__(self) -> str:

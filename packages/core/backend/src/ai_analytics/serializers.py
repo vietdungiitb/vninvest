@@ -32,7 +32,10 @@ class AIUsageSummarySerializer(serializers.ModelSerializer):
         model = AIUsageSummary
         fields = [
             'date',
+            'user',
             'action',
+            'model',
+            'status',
             'total_requests',
             'total_tokens_in',
             'total_tokens_out',
