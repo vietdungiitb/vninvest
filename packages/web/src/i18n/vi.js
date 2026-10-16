@@ -5400,7 +5400,6 @@ const vi = {
     tabAudit: 'Nhật ký audit',
     tabAgents: 'Agents',
     tabUsage: 'Usage',
-    backToHub: 'Về trung tâm AI',
     description: 'Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor.',
     loadingConfig: 'Đang tải cấu hình AI...',
     runtimeConfig: 'CẤU HÌNH AI RUNTIME',

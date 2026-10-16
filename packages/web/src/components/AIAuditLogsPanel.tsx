@@ -3,6 +3,7 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import styles from "./aiSettings.module.css";
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec, type UrlStateOptions } from "../hooks/useUrlState";
+import { writeAuditSnapshot } from "./AiHubNav.js";
 
 const e = createElement;
 
@@ -199,6 +200,18 @@ export const AIAuditLogsPanel = forwardRef<AIAuditLogsPanelHandle, AIAuditLogsPa
   const loadLogsRef = useRef(loadLogs);
   loadLogsRef.current = loadLogs;
   useImperativeHandle(ref, () => ({ refresh: () => { loadLogsRef.current(); } }), []);
+
+  // R1.8 AC4: snapshot filter audit để tab Tổng quan khôi phục sau khi qua tab khác.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (action) params.set("action", action);
+    if (actor) params.set("actor", actor);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (page !== 1) params.set("page", String(page));
+    const s = params.toString();
+    writeAuditSnapshot(s ? `?${s}` : "");
+  }, [action, actor, dateFrom, dateTo, page]);
 
   // R1.2 AC3: mount goi ngay; doi filter debounce 300ms (doi select 1 lan chi 1 request).
   const mountedRef = useRef(false);

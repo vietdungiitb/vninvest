@@ -12,6 +12,7 @@ import {
   AICommandCenterTransport,
   PromptConfigHistoryEntry,
 } from "../components/AICommandCenterForm.js";
+import { AiHubNav } from "../components/AiHubNav.js";
 
 const e = createElement;
 
@@ -210,7 +211,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       errorMessage: t("aiCommandCenter.unknownError"),
       retryLabel: t("aiCommandCenter.retryButton")
     },
-    e("div", { className: "shellPage " + className, style: { display: "flex", flexDirection: "column", gap: "20px", maxWidth: 1200, margin: "0 auto" } }, [
+    e("div", { className: `shellPage ${styles.hubPage} ${className}` }, [
       e("header", { className: styles.pageHeader },
         e("div", null, [
           e("span", { key: "eyebrow", className: styles.pageEyebrow }, t("aiCommandCenter.eyebrow")),
@@ -219,7 +220,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
         ])
       ),
 
-      // B rest: hub subnav — in-page anchors + Agents/Usage routes
+      // R1.8: tab route dùng chung AiHubNav; nav anchor giữ riêng cho section trong trang.
+      e(AiHubNav, { key: "hub-tabs" }),
+      // B rest: hub subnav — in-page anchors (route đã có AiHubNav ở trên)
       e("nav", { key: "hub-nav", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [
         e(Link, {
           key: "nav-overview",
@@ -236,16 +239,6 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
           to: { pathname: location.pathname, hash: "#audit" },
           className: styles.hubNavLink + (location.hash === "#audit" ? " " + styles.hubNavLinkActive : ""),
         }, t("aiCommandCenter.tabAudit")),
-        e(Link, {
-          key: "nav-agents",
-          to: "/settings/ai/agents",
-          className: styles.hubNavLink + (location.pathname.startsWith("/settings/ai/agents") ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabAgents")),
-        e(Link, {
-          key: "nav-usage",
-          to: "/settings/ai/usage",
-          className: styles.hubNavLink + (location.pathname.startsWith("/settings/ai/usage") ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabUsage")),
       ]),
 
       // Summary Cards
