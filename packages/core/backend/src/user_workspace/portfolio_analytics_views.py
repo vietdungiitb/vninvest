@@ -71,18 +71,20 @@ class AIEndpointProbeThrottle(BaseThrottle):
         key = self.get_cache_key(request, view)
         self.history = [ts for ts in cache.get(key, []) if ts > now - self.window]
         if len(self.history) >= self.rate:
-            return self.throttled()
+            # R0.6 AC7 (bug that that): DRF `check_throttles` throttle khi va chi khi
+            # `allow_request` tra ve False-y. Ban cu `return self.throttled()` tra ve
+            # mot instance `Throttled` (truthy) nen throttle KHONG BAO GIO kich hoat.
+            return False
         self.history.append(now)
         cache.set(key, self.history, self.window + 5)
         # BaseThrottle.allow_request raises NotImplementedError; a concrete
         # throttle must return True here rather than delegating upwards.
         return True
 
-    def throttled(self):
-        from rest_framework.exceptions import Throttled
-
+    def wait(self):
+        # DRF goi `wait()` de dien `Retry-After` khi `allow_request` tra False.
         oldest = min(self.history) if self.history else _monotonic()
-        return Throttled(wait=max(1, int(self.window - (_monotonic() - oldest))))
+        return max(1, int(self.window - (_monotonic() - oldest)))
 
 
 def _monotonic() -> float:
