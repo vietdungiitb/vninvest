@@ -264,7 +264,7 @@ export function WhaleAdvisoryCommandPanel({
                     onClick={() => setDialog('order')}
                     className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
                   >
-                    {t('aiAdvisory.order.open', { defaultValue: 'Đặt lệnh' })}
+                    {t('aiAdvisory.order.open', { defaultValue: 'Lệnh thử nghiệm' })}
                   </button>
                 </>
               ) : null}
