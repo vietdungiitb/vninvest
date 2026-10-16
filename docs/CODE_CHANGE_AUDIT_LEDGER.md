@@ -1,3 +1,13 @@
+## Entry 339: Khép R0 — gộp #177→#178→#179 + deploy/verify staging (2026-10-16)
+
+- **Lộ trình**: handoff `docs/evidence/ai-cc/R0-HANDOFF_20261016.md`. Cả 3 PR base=`dev` (stack bằng commit, không phải branch-on-branch) — gộp #177 (merge `86deadde`) → #178 thu hẹp còn 6 commit/21 file, CLEAN → gộp (`97609d59`) → #179 thu hẹp còn 7 commit/20 file, CLEAN → gộp (`d227d9bf`). Không `--no-verify` (merge, không push trực tiếp dev — L-008).
+- **Verify lại trước gộp (L-V02, không tin handoff)**: state 3 PR bằng `gh` (OPEN+CLEAN cả 3) · full diff 39 file: 0 deny-list · migration advisory 0013 (deps 0012 + identity_access 9000, cả hai có trên dev) + ai_analytics 0002 (deps 0001) — đơn leaf, do `makemigrations` sinh.
+- **Gate sau gộp (trên `dev`)**: `git status` sạch · `check-multi-agent` exit 0 (0 lỗi, 0 trùng migration) · `makemigrations --check --dry-run` No changes exit 0 (có RuntimeWarning check history do DB local không chạy — staging migrate là gate thật).
+- **Staging** (`14.225.255.47`, `/opt/vninvest` dev): `deploy-staging.sh` rebuild (image mới) + entrypoint migrate **advisory.0013 OK + ai_analytics.0002 OK**, không Conflicting · `--verify` sau deploy: **all [ ok ], 0 FAIL** (config, /api/health 2xx, 0 container chết, 4 worker + beat chạy, 0 restart).
+- **Lessons áp dụng**: L-003, L-004, L-006, L-008, L-V02, L-V03.
+- **CHƯA CHẠY (ghi trung thực)**: full BE (chỉ scope AI qua các slice) · ruff · E2E UI · đối chiếu mắt staging (cần browser, endpoint policy/ staff-only chưa smoke-test với credential thật) · beat rollup (chưa nối schedule).
+- **Follow-up (ticket riêng, không thuộc R0)**: beat schedule `rollup_usage_daily` (báo coordinator) · bảng giá AICostRate (R2.x) · bug cp1252 trong 2 script gen-*-catalog (workaround `PYTHONUTF8=1`) · D-03 chờ Owner · **M0 review R0 → mở R1 theo plan Rev.2**.
+- **Dọn sạch**: 3 branch local + remote đã xóa (`feat/ai-r06-ssrf`, `feat/ai-r07-audit`, `feat/ai-r09-policy`); VPS còn 2 file untracked ops cũ (`backups/staging_pre_redeploy_*.dump`, `compose.staging.env.bak.*`) — không đụng.
 
 ## Entry 338: AI R0.9 tach lop A/B + policy (2026-10-16, slice cuoi R0)
 
