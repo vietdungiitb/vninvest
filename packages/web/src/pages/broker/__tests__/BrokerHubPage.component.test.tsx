@@ -194,6 +194,19 @@ describe("BrokerHubPage — tiles + capability badges (B2.1/AC1)", () => {
     expect(screen.queryByRole("button", { name: "Lưu kết nối" })).toBeNull();
   });
 
+  it("switching lane clears the previous lane's secrets (key remount, F-FE-06)", async () => {
+    renderPage(["/broker?provider=ssi"]);
+    const apiKey = await screen.findByPlaceholderText("SSI API Key");
+    fireEvent.change(apiKey, { target: { value: "SECRET-SSI" } });
+    fireEvent.click(screen.getByText("TCBS"));
+    await waitFor(() => {
+      expect(screen.getByText("Kết nối TCBS.")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("SSI"));
+    const apiKeyAgain = await screen.findByPlaceholderText("SSI API Key");
+    expect(apiKeyAgain.getAttribute("value")).toBe("");
+  });
+
   it("switching tile updates the URL provider param", async () => {
     renderPage();
     await waitFor(() => {

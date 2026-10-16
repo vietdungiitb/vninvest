@@ -24,7 +24,8 @@ import styles from "../../components/soc/soc.module.css";
  *   và KHÔNG render form chung (tránh 2 form chồng nhau cùng lưu credential).
  *   Form chung chỉ cho lane schema-driven (`ssi`/`tcbs`).
  * - Chọn lane qua `?provider=` — 1 handler = 1 patch `setSearchParams`
- *   full-state (L-F09). Mọi hằng option ở cấp module (L-F10).
+ *   full-state (L-F09). Form chung có `key={provider}` nên secret không rò
+ *   sang lane khác khi chuyển (F-FE-06). Mọi hằng option ở cấp module (L-F10).
  */
 
 export interface BrokerProviderInfo {
@@ -250,6 +251,7 @@ export function BrokerHubPage({ className = "" }: { className?: string }) {
             <DNSEConnectionPanel onConnected={handleDnseConnected} />
           ) : (
             <BrokerConnectForm
+              key={selectedProvider}
               provider={selectedProvider}
               displayProvider={displayProvider}
               schema={schema}

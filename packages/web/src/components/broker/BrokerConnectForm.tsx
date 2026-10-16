@@ -149,6 +149,8 @@ export function BrokerConnectForm({
     setNotice(null);
     try {
       await brokerConnectApi.saveBrokerConfig(provider, payload);
+      // conn-hardening (F-FE-01): secret khong nam lai trong state/DOM sau luu.
+      setValues({});
       setNotice({
         kind: "success",
         text: translate("brokerHub.hub.saveOk", "Đã lưu kết nối {provider}.", { provider }),
@@ -240,33 +242,46 @@ export function BrokerConnectForm({
           provider: providerLabel,
         })}
       </h3>
-      {schema.fields.map((field) => (
-        <label key={field.key} className={styles.brokerFormField}>
-          <span>
-            {t(field.label_i18n ?? `brokerHub.hub.field.${field.key}`, {
-              defaultValue: field.placeholder ?? field.key,
-            })}
-            {field.required ? " *" : ""}
-          </span>
-          <input
-            type={inputTypeFor(field)}
-            name={field.key}
-            value={values[field.key] ?? ""}
-            placeholder={field.placeholder ?? field.key}
-            required={field.required}
-            autoComplete="off"
-            spellCheck={false}
-            className={styles.fieldInput}
-            onChange={(event) => handleFieldChange(field.key, event.target.value)}
-          />
-        </label>
-      ))}
+      {schema.fields.map((field) => {
+        const fieldId = `broker-connect-${provider}-${field.key}`;
+        return (
+          <label key={field.key} className={styles.brokerFormField} htmlFor={fieldId}>
+            <span>
+              {t(field.label_i18n ?? `brokerHub.hub.field.${field.key}`, {
+                defaultValue: field.placeholder ?? field.key,
+              })}
+              {field.required ? " *" : ""}
+            </span>
+            <input
+              id={fieldId}
+              type={inputTypeFor(field)}
+              name={field.key}
+              value={values[field.key] ?? ""}
+              placeholder={field.placeholder ?? field.key}
+              required={field.required}
+              autoComplete={field.secret ? "new-password" : "off"}
+              spellCheck={false}
+              className={styles.fieldInput}
+              onChange={(event) => handleFieldChange(field.key, event.target.value)}
+            />
+          </label>
+        );
+      })}
       {notice ? (
         <p
           role={notice.kind === "error" ? "alert" : "status"}
           className={notice.kind === "error" ? styles.bannerError : styles.bannerNotice}
         >
           {notice.text}
+        </p>
+      ) : null}
+      {!notice &&
+      schema.fields.some((field) => (values[field.key] ?? "").trim() !== "") ? (
+        <p role="note">
+          {translate(
+            "brokerHub.hub.testNeedsSave",
+            "Kiểm tra dùng cấu hình đã lưu — bấm Lưu kết nối trước.",
+          )}
         </p>
       ) : null}
       <div className={styles.brokerFormActions}>
