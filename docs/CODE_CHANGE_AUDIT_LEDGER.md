@@ -1,4 +1,14 @@
 
+## Entry 335: AI R0.4 + R0.5 + R0.8-gate (2026-10-16)
+
+- **Nhanh**: `feat/ai-r04-r09` -> `dev` (PR #175, merge giu trail). Claim `ai-r04` (1 agent tuan tu). TDD fail-before.
+- **Viec lam**: R0.4 `ai_readiness` {ready, reason_code, checked_at, ttl 300} tren CC GET+PUT (giu `ai_ready`; 3 reason codes; probe that de R2.7) · R0.5 PUT tu choi provider la 400 (copilot/xyz/rong; D-03 tat-claude/go-openclaw can Owner — KHONG lam) · R0.8 `check-ai-cc.mjs` (AC1-AC6 + self-test 7/7 dot bien) noi pre-push guarded (23/23).
+- **R0.8 dieu chinh trung thuc**: KHONG xoa `ShellAiCommandCenterPage` — check-shell + public API + parity test phu thuoc no; xoa la pha gate de lay ten slice. Ghi nhan, Owner co the ghi de.
+- **Gate**: BE VPS moi + hoi quy (RED→GREEN tren staging) · FE AI CC · tsc/i18n/build · makemigrations: khong migration · pre-push 23/23 · check-multi-agent 0 loi.
+- **Lessons ap dung**: L-001..L-008, L-M01, L-M02, L-V02, L-T01, L-T02, L-G01, L-G02.
+- **CHUA CHAY**: E2E UI readiness/provider that · full BE · ruff · doi chieu mat.
+- **Tiep**: R0.6 (SSRF guard) → R0.7 (audit FK, can migration) → R0.9 (tach lop A/B).
+
 ## Entry 334: AI R0.1-R0.3 (D-01 Owner chot SSOT + self-service) (2026-10-16)
 
 - **Nhanh**: `feat/ai-r0-foundation` -> `dev` (PR #173 `cd6e050fc`, merge giu trail). Claim `ai-r0` (1 agent tuan tu, 1 PR). TDD fail-before.
