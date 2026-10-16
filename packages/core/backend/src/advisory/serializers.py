@@ -5,7 +5,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import AdvisoryRecord, SystemAISettings, UserAICredential, AIAuditLog
+from .models import AdvisoryRecord, SystemAISettings, UserAICredential, AIAuditLog, AIDeployment
 from .signal_norm import (
     SIGNAL_UNKNOWN,
     normalize_confidence,
@@ -362,6 +362,27 @@ class UserAICredentialSerializer(serializers.ModelSerializer):
     def get_fallback_quota_max(self, obj) -> int:
         from django.conf import settings as django_settings
         return getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+
+
+class AIDeploymentSerializer(serializers.ModelSerializer):
+    """R2.1: deployment (credential_ref không bao giờ trả secret)."""
+
+    class Meta:
+        model = AIDeployment
+        fields = [
+            'id',
+            'name',
+            'owner_scope',
+            'provider',
+            'model',
+            'weight',
+            'enabled',
+            'health_state',
+            'last_health_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'last_health_at']
 
 
 class AIAuditLogSerializer(serializers.ModelSerializer):

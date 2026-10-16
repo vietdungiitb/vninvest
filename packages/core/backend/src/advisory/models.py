@@ -318,6 +318,16 @@ class UserAICredential(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # R2.1: deployment đang chọn. NULL ⇒ dùng SystemAISettings như hiện tại
+    # (không regression — mọi đường đọc phải coi None là "chưa dùng R2").
+    active_deployment = models.ForeignKey(
+        'advisory.AIDeployment',
+        on_delete=models.SET_NULL,
+        null=True, blank=True, default=None,
+        related_name='active_for_credentials',
+        verbose_name='Deployment đang dùng',
+    )
+
     class Meta:
         verbose_name = 'AI Credential'
         verbose_name_plural = 'AI Credentials'
@@ -359,6 +369,137 @@ class UserAICredential(models.Model):
         )
         self.refresh_from_db()
         return True
+
+
+class AIDeployment(models.Model):
+    """
+    R2.1: một đường đi tới provider (provider + model + credential + trọng số).
+
+    Nền cho failover (R2.9) và routing (R2.6). Chưa có gì đọc health_state ở
+    R2.1 — R2.6 mới dùng. NULL active_deployment ⇒ hành vi cũ, không regression.
+    """
+
+    class HealthChoices(models.TextChoices):
+        HEALTHY = 'healthy', 'Healthy'
+        DEGRADED = 'degraded', 'Degraded'
+        UNHEALTHY = 'unhealthy', 'Unhealthy'
+
+    class OwnerScopeChoices(models.TextChoices):
+        USER = 'user', 'Per user'
+        TENANT = 'tenant', 'Per tenant'
+        SYSTEM = 'system', 'System-wide'
+
+    name = models.CharField(max_length=128, verbose_name='Tên deployment')
+    owner_scope = models.CharField(
+        max_length=16,
+        choices=OwnerScopeChoices.choices,
+        default=OwnerScopeChoices.USER,
+        db_index=True,
+        verbose_name='Phạm vi sở hữu',
+    )
+    owner_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_deployments', verbose_name='User sở hữu',
+    )
+    owner_tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_deployments', verbose_name='Tenant sở hữu',
+    )
+    provider = models.CharField(max_length=32, verbose_name='Nhà cung cấp')
+    model = models.CharField(max_length=64, verbose_name='Mô hình')
+    credential_ref = models.CharField(
+        max_length=128, blank=True, default='',
+        verbose_name='Tham chiếu credential',
+    )
+    weight = models.IntegerField(
+        default=100,
+        verbose_name='Trọng số (0-100)',
+    )
+    enabled = models.BooleanField(default=True, db_index=True, verbose_name='Đang bật')
+    health_state = models.CharField(
+        max_length=16,
+        choices=HealthChoices.choices,
+        default=HealthChoices.HEALTHY,
+        db_index=True,
+        verbose_name='Trạng thái sức khỏe',
+    )
+    last_health_at = models.DateTimeField(null=True, blank=True, verbose_name='Probe gần nhất')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Deployment'
+        verbose_name_plural = 'AI Deployments'
+        constraints = [
+            # NULLS NOT DISTINCT (cần Postgres 15+; dev/staging dùng PG16):
+            # 2 row cùng (name, scope, user) với tenant NULL vẫn tính là trùng.
+            # (Django 5.2: nulls_distinct=False.)
+            models.UniqueConstraint(
+                fields=['name', 'owner_scope', 'owner_user', 'owner_tenant'],
+                name='uniq_aideployment_name_scope_owner',
+                nulls_distinct=False,
+            ),
+            models.CheckConstraint(
+                condition=models.Q(weight__gte=0, weight__lte=100),
+                name='chk_aideployment_weight_0_100',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.provider}/{self.model})'
+
+    def clean(self) -> None:
+        from django.core.exceptions import ValidationError
+        if self.weight is None or not 0 <= self.weight <= 100:
+            raise ValidationError({'weight': 'Trong so phai trong [0, 100].'})
+        if self.owner_scope == self.OwnerScopeChoices.USER and self.owner_user is None:
+            raise ValidationError({'owner_user': 'Scope user bat buoc co owner_user.'})
+        if self.owner_scope == self.OwnerScopeChoices.TENANT and self.owner_tenant is None:
+            raise ValidationError({'owner_tenant': 'Scope tenant bat buoc co owner_tenant.'})
+
+
+class AIFallbackChain(models.Model):
+    """
+    R2.1: thứ tự failover (danh sách deployment id) theo user hoặc tenant.
+    Chain rỗng ⇒ không failover (giữ hành vi cũ).
+    """
+
+    name = models.CharField(max_length=128, verbose_name='Tên chain')
+    owner_scope = models.CharField(
+        max_length=16,
+        choices=AIDeployment.OwnerScopeChoices.choices,
+        default=AIDeployment.OwnerScopeChoices.USER,
+        db_index=True,
+        verbose_name='Phạm vi sở hữu',
+    )
+    owner_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_fallback_chains', verbose_name='User sở hữu',
+    )
+    owner_tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_fallback_chains', verbose_name='Tenant sở hữu',
+    )
+    deployment_ids = models.JSONField(
+        default=list, blank=True,
+        verbose_name='Thứ tự deployment (id)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Fallback Chain'
+        verbose_name_plural = 'AI Fallback Chains'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'owner_scope', 'owner_user', 'owner_tenant'],
+                name='uniq_aifallbackchain_name_scope_owner',
+                nulls_distinct=False,
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.name} ({len(self.deployment_ids or [])} bước)'
 
 
 class AIAuditLog(models.Model):
