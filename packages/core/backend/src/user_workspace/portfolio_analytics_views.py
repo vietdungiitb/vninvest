@@ -1058,6 +1058,12 @@ class PortfolioAICommandCenterView(APIView):
         # R0.2: GET luon tra canonical v2 (legacy phang hien v2, khong persist).
         advisory_prompt = _parse_prompt_config(advisory_prompt)
 
+        # R0.9 lop A/B: truong he thong chi staff thay. User thuong nhan
+        # system_policy.managed_by_platform thay vi noi dung template.
+        is_operator = bool(
+            getattr(request.user, 'is_staff', False)
+            or getattr(request.user, 'is_superuser', False)
+        )
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
@@ -1065,13 +1071,12 @@ class PortfolioAICommandCenterView(APIView):
             'ai_api_key_configured': api_key_configured,
             'ai_readiness': build_ai_readiness(provider, api_key_configured),
             'ai_api_key_masked': api_key_masked,
-            'system_prompt_template': config.prompt_template or '',
+            'system_policy': {'managed_by_platform': True},
             'custom_endpoint': custom_endpoint,
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
-            'ai_config_message': metadata.get('ai_config_message') or 'AI Command Center đang phản ánh cấu hình hiệu lực của hệ thống.',
             'ai_prompt_config': advisory_prompt,
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []) if user_cred else [],
             'advisory_refresh_interval_hours': int(advisory_refresh),
@@ -1082,6 +1087,8 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
         }
+        if is_operator:
+            response_data['system_prompt_template'] = config.prompt_template or ''
         return envelope(response_data)
 
     def put(self, request):
@@ -1307,6 +1314,11 @@ class PortfolioAICommandCenterView(APIView):
             _parse_prompt_config as _parse_pc_put,
             build_ai_readiness as _build_readiness_put,
         )
+        # R0.9 lop A/B (nhu GET): template he thong chi staff thay.
+        is_operator_put = bool(
+            getattr(request.user, 'is_staff', False)
+            or getattr(request.user, 'is_superuser', False)
+        )
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
@@ -1314,13 +1326,12 @@ class PortfolioAICommandCenterView(APIView):
             'ai_api_key_configured': api_key_configured,
             'ai_readiness': _build_readiness_put(provider, api_key_configured),
             'ai_api_key_masked': api_key_masked,
-            'system_prompt_template': config.prompt_template or '',
+            'system_policy': {'managed_by_platform': True},
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
-            'ai_config_message': metadata.get('ai_config_message') or 'Cấu hình AI Command Center đã được cập nhật thành công.',
             'ai_prompt_config': _parse_pc_put(
                 user_cred.prompt_config or metadata.get('ai_prompt_config')),
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
@@ -1343,7 +1354,89 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
         }
+        if is_operator_put:
+            response_data['system_prompt_template'] = config.prompt_template or ''
         return envelope(response_data)
+
+
+@extend_schema(
+    summary='PortfolioAICommandCenterPolicyView (native route)',
+    description='Lop B he thong (R0.9, D-01): chi staff. GET tra cau hinh he thong '
+                '(system prompt template + system model); PUT cho staff sua template.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAICommandCenterPolicyView(APIView):
+    """GET/PUT /workspace/ai-command-center/policy/ — staff-only.
+
+    R0.9 + SAFE-04: `required_workspace_permission` khai tren CLASS de gate
+    AST (`test_capability_matrix_pav.py`) thay; `IsAdminUser` la lop khoa
+    that (staff-only). Ca hai phai xanh — thieu 1 la do hoac hong.
+    """
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission, permissions.IsAdminUser]
+    required_workspace_permission = 'broker_manage'
+
+    def _get_config(self):
+        from advisory.models import SystemAISettings
+
+        config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
+        if config is None:
+            config = SystemAISettings.objects.order_by('-updated_at').first()
+        return config
+
+    def get(self, request):
+        from rest_framework.exceptions import NotFound
+
+        config = self._get_config()
+        if config is None:
+            raise NotFound('Chua co cau hinh AI he thong.')
+        return envelope({
+            'system_prompt_template': config.prompt_template or '',
+            'system_model': config.ai_model or '',
+            'managed_by_platform': True,
+        })
+
+    def put(self, request):
+        from vninvest_core.exceptions import ValidationErrorException
+        from advisory.models import AIAuditLog
+
+        config = self._get_config()
+        if config is None:
+            raise ValidationErrorException(
+                detail='Chua co cau hinh AI he thong.',
+                code='validation_error',
+            )
+        payload = request.data if isinstance(request.data, dict) else {}
+        template = payload.get('system_prompt_template')
+        if template is not None and not isinstance(template, str):
+            raise ValidationErrorException(
+                detail='system_prompt_template phai la chuoi.',
+                code='validation_error',
+            )
+        if template is not None:
+            config.prompt_template = template
+            config.save(update_fields=['prompt_template', 'updated_at'])
+            AIAuditLog.objects.create(
+                action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+                actor=request.user.username,
+                user=request.user,
+                tenant=getattr(request, 'tenant', None),
+                reason='Staff cap nhat system prompt template (policy).',
+                before_json={},
+                after_json={'system_prompt_template_updated': True},
+                diff_summary='policy: system_prompt_template updated by staff',
+            )
+        return envelope({
+            'system_prompt_template': config.prompt_template or '',
+            'system_model': config.ai_model or '',
+            'managed_by_platform': True,
+        })
 
 
 @extend_schema(

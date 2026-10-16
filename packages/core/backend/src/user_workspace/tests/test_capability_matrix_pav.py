@@ -52,6 +52,9 @@ EXPECTED: dict[str, str] = {
     'PortfolioAICommandCenterPromptConfigRollbackView.post': 'portfolio_write',
     # Test connection: gọi provider thật (tiêu token, lộ endpoint).
     'PortfolioAICommandCenterTestView.post': 'broker_manage',
+    # R0.9 policy (lop B he thong): staff-only qua IsAdminUser + khai bao
+    # de gate thay (them endpoint ghi bat buoc cap nhat EXPECTED).
+    'PortfolioAICommandCenterPolicyView.put': 'broker_manage',
     # User config legacy: ghi cấu hình người dùng trong tenant.
     'PortfolioUserConfigLegacyView.patch': 'portfolio_write',
     # Screener rule: cấu hình + chạy bộ lọc tự động.

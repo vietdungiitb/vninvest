@@ -5363,6 +5363,7 @@ const en = {
     systemPromptTitle: 'System prompt template',
     systemPromptDesc: 'System-level system prompt template (read-only).',
     systemPromptEmpty: 'No system prompt template yet.',
+    systemManagedByPlatform: 'System prompt is managed by the platform. Contact an administrator to change it.',
     promptHistoryTitle: 'Prompt history',
     promptHistoryDesc: 'Saved prompt versions that can be restored.',
     promptHistoryEmpty: 'No prompt history yet.',
@@ -5386,7 +5387,6 @@ const en = {
     unknownError: 'Unknown error.',
     retryButton: 'Retry',
     quotaUsed: 'uses',
-    configMessagePrefix: 'Config message:',
   },
   // DEPRECATED 1 sprint sau B.4 (Entry 201) — call sites đã migrate sang aiUsageAnalytics/aiAgentFederation. Không xóa trước grep 0-hit + 1 sprint.
   usage: {
