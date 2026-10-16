@@ -395,7 +395,7 @@ export function AICommandCenterForm({
                 onChange: handleProviderChange,
               },
               PROVIDER_OPTIONS.map((p) =>
-                e("option", { key: p.key, value: p.key }, p.label)
+                e("option", { key: p.key, value: p.key }, t(p.labelKey ?? p.label))
               )
             ),
           ]
@@ -414,7 +414,7 @@ export function AICommandCenterForm({
                 onChange: handleModelChange,
               },
               modelsForSelectedProvider.map((m) =>
-                e("option", { key: m.key, value: m.key }, m.label)
+                e("option", { key: m.key, value: m.key }, t(m.labelKey ?? m.label))
               )
             ),
           ]

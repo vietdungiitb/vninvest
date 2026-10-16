@@ -1,6 +1,8 @@
 export interface ProviderModelOption {
   key: string;
   label: string;
+  /** R1.3: key i18n cho label hiển thị; vắng mặt ⇒ dùng `label` nguyên văn. */
+  labelKey?: string;
 }
 
 export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
@@ -12,7 +14,7 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { key: "o3", label: "o3" },
     { key: "o3-mini", label: "o3-mini" },
     { key: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
+    { key: "custom", label: "custom", labelKey: "aiCommandCenter.customModel" }
   ],
   gemini: [
     // Bằng chứng 2026-09-26: probe thật với key Gemini qua endpoint
@@ -29,18 +31,18 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { key: "gemini-2.5-flash", label: "gemini-2.5-flash" },
     { key: "gemini-2.5-flash-lite", label: "gemini-2.5-flash-lite" },
     { key: "gemini-flash-latest", label: "gemini-flash-latest" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
+    { key: "custom", label: "custom", labelKey: "aiCommandCenter.customModel" }
   ],
   claude: [
     { key: "claude-opus-4", label: "claude-opus-4" },
     { key: "claude-sonnet-4", label: "claude-sonnet-4" },
     { key: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
     { key: "claude-3-haiku", label: "claude-3-haiku" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
+    { key: "custom", label: "custom", labelKey: "aiCommandCenter.customModel" }
   ],
   openclaw: [
     { key: "gpt-4o-mini", label: "gpt-4o-mini" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
+    { key: "custom", label: "custom", labelKey: "aiCommandCenter.customModel" }
   ],
   local: [
     { key: "llama3.2", label: "llama3.2" },
@@ -48,7 +50,7 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { key: "mistral", label: "mistral" },
     { key: "phi4", label: "phi-4" },
     { key: "qwen2.5", label: "qwen2.5" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
+    { key: "custom", label: "custom", labelKey: "aiCommandCenter.customModel" }
   ],
   // `copilot` đã gỡ 2026-09-26. Bằng chứng probe thật: key là GitHub PAT
   // classic, `GET /user` → 200 và scope `copilot` CÓ, nhưng
