@@ -161,12 +161,14 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         self.assertEqual(data.get('ai_api_key_masked'), '••••••••test')
         self.assertNotIn('sk-test', str(data.get('ai_api_key_masked', '')))
 
-    def test_get_exposes_system_prompt_template(self):
-        """F5 — SystemAISettings.prompt_template readable on GET."""
+    def test_get_hides_system_prompt_template_from_non_staff(self):
+        """F5 rework R0.9 (co chu dich): viewer thay system_policy, khong thay
+        template he thong. Staff thay template (khoa o test_ai_cc_policy_gating AC2)."""
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('system_prompt_template', unwrapped(response))
-        self.assertIsInstance(unwrapped(response)['system_prompt_template'], str)
+        data = unwrapped(response)
+        self.assertNotIn('system_prompt_template', data)
+        self.assertTrue(data.get('system_policy', {}).get('managed_by_platform'))
 
     def test_get_local_provider_no_key_needed(self):
         UserAICredential.objects.create(

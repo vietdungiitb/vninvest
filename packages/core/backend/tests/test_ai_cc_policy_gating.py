@@ -48,6 +48,15 @@ class PolicyGatingTests(TestCase):
         )
         grant_tenant(self.user, role='editor', tenant_code='r09-tenant')
         grant_tenant(self.staff, role='admin', tenant_code='r09-tenant')
+        # PolicyView staff doc SystemAISettings that (khong tu tao nhu PUT CC).
+        from advisory.models import SystemAISettings
+
+        SystemAISettings.objects.create(
+            name='r09 policy config',
+            is_active=True,
+            ai_model='gpt-4o-mini',
+            prompt_template='r09 system template {symbol}',
+        )
 
     def _get_cc(self, user):
         client = APIClient()
