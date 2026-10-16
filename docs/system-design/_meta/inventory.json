@@ -42,11 +42,16 @@
     },
     {
       "lines": 19,
+      "path": "docs/system-design/00-GOVERNANCE/adr/ADR-005-khong-san-khong-lenh-live.md",
+      "title": "ADR-005 — VNINVEST Không Phải Sàn, Không Đặt Lệnh Live"
+    },
+    {
+      "lines": 23,
       "path": "docs/system-design/00-GOVERNANCE/adr/README.md",
       "title": "ADR — Sổ Quyết Định Kiến Trúc"
     },
     {
-      "lines": 41,
+      "lines": 45,
       "path": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
       "title": "01.01 — Tóm Tắt Điều Hành"
     },
@@ -121,7 +126,7 @@
       "title": "11.01 — Quy Trình Phát Triển"
     },
     {
-      "lines": 48,
+      "lines": 49,
       "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
       "title": "13.01 — Lộ Trình Phát Triển"
     },
