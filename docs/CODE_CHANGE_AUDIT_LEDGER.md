@@ -1,4 +1,13 @@
 
+## Entry 329: Don sach repo chuan bi viec tiep (2026-10-16)
+
+- **Nhanh**: `feat/repo-cleanup` -> `dev` (PR, merge giu trail). Claim `repo-cleanup` (DOC-ONLY + xoa rac an toan).
+- **Viec lam**: (1) Xoa 18 branch remote + local da merge (16 sysdesign/handoff + system-design-phase1; kiem `merge-base --is-ancestor` tung nhanh truoc khi xoa). Remote con `dev` + `main` (`main` khong cham). (2) Dong 6 claim stale `in-progress` → `superseded` (branch mat local+remote, AGENT_PROTOCOL S3, Owner duyet don sach): sec03, sec02c, cleanup-decisions, cleanup-audit, disc-measure, audit-followup-5q. Registry con 1 `in-progress` (chinh slice nay). (3) Worktree sach (1), untracked 0, VPS worktree sach; /tmp VPS con ~70 script .sh CUA PROJECT KHAC (ac/crm/wbs96/yarn) — KHONG cham.
+- **KHONG lam**: xoa code chay, migration, rewrite history, purge secret, file deny-list.
+- **Gate**: check-multi-agent 0 loi · system-design --check SACH (43 file, 1483 route, 110 model) · git status sach.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-V02, L-T01, L-G02.
+- **CHUA CHAY**: full BE · FE full · ruff · E2E.
+
 ## Entry 328: Ra soat + cung hoa flow ket noi broker (2026-10-16)
 
 - **Goc**: Owner yeu cau chuan chi bao mat, se cap API sau (hien chua noi duoc). Audit doc lap 2 huong (BE 10 findings F-BE-01..10, FE 9 findings F-FE-01..09) — full report trong session, tóm tat o day.
