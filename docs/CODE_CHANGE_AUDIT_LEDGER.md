@@ -1,4 +1,13 @@
 
+## Entry 333: Slice A0 gan nhan PAPER copy dat lenh (2026-10-16)
+
+- **Nhanh**: `feat/paper-copy-a0` -> `dev` (PR #171, merge giu trail). Claim `paper-copy-a0` (mo rong them drawer truoc sua). TDD copy-only.
+- **Viec lam**: 5 diem cham gan nhan PAPER + disclaimer (ADR-005): AdvisoryOrderTicket (title/disclaimer/confirm/done/failed/sideUnknown), Whale panel open, StockDetailHeader keys, drawer broker (bo "/ dat lenh"), vi+en. Phat hien them: disclaimer cu NOI DOI ("lenh that khop tien that") trong khi code chi gui `mode: paper` — da sua thanh mo phong + khong loi khuyen dau tu. Test cap nhat + test khoa PAPER moi.
+- **Rang buoc Owner (moi)**: paper trading sau tich hop `vninvestcharts-widget` — KHONG tu lam tinh nang paper luc nay. Ghi vao lo trinh: Pha B "paper" = tich hop widget, khong phai xay moi.
+- **Gate**: FE 41/41 (5 file lien quan) + tsc 0 + i18n:strict 0 + build 0 · pre-push PASS · check-multi-agent 0 loi.
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-V02, L-T01, L-T02, L-G02.
+- **CHUA CHAY**: doi chieu mat staging sau redeploy · E2E · full BE · ruff.
+
 ## Entry 332: Neo dinh huong khong-live vao system-design (2026-10-16)
 
 - **Nhanh**: `feat/dinh-huong-spine` -> `dev` (PR, merge giu trail). Claim `dinh-huong-spine` (DOC-ONLY).
