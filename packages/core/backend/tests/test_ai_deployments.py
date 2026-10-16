@@ -25,7 +25,7 @@ django.setup()
 
 from django.contrib.auth.models import User  # noqa: E402
 from django.core.exceptions import ValidationError  # noqa: E402
-from django.db import IntegrityError  # noqa: E402
+from django.db import IntegrityError, transaction  # noqa: E402
 from django.test import TestCase  # noqa: E402
 
 from advisory.deployments import (  # noqa: E402
@@ -58,7 +58,8 @@ class DeploymentModelTests(TestCase):
 
     def test_ac4_unique_name_scope_owner(self):
         self._dep(self.a, name='dup')
-        with self.assertRaises(IntegrityError):
+        # IntegrityError làm hỏng transaction TestCase ⇒ bọc savepoint.
+        with transaction.atomic(), self.assertRaises(IntegrityError):
             self._dep(self.a, name='dup')
         # user khác được trùng tên (isolation theo owner)
         self._dep(self.b, name='dup')
