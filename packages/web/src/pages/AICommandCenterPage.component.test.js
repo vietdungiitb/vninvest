@@ -76,6 +76,7 @@ const TRANSLATIONS = {
   "aiCommandCenter.apiKeyPlaceholderConfigured": "Đã có API Key, nhập key mới để thay đổi...",
   "aiCommandCenter.maxTokensLabel": "Định mức Token / ngày",
   "aiCommandCenter.refreshIntervalLabel": "Khoảng làm mới tự động (giờ)",
+  "aiCommandCenter.refreshIntervalValue": "{hours} giờ/lần",
   "aiCommandCenter.temperatureLabel": "Temperature (0.0 - 1.0)",
   "aiCommandCenter.temperatureHelp": "0 = deterministic, 1 = creative. Mặc định 0.3.",
   "aiCommandCenter.saveBtn": "Lưu cấu hình",
@@ -102,7 +103,13 @@ const TRANSLATIONS = {
 const i18nValue = {
   locale: "vi",
   localeTag: "vi-VN",
-  t: (key) => TRANSLATIONS[key] ?? key,
+  t: (key, vars) => {
+    let s = TRANSLATIONS[key] ?? key;
+    if (vars && typeof vars === "object") {
+      for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
+    }
+    return s;
+  },
   formatNumber: (n) => n,
   formatCurrency: (n) => n,
   formatPriceVND: (n) => n,

@@ -8,12 +8,12 @@ import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
 const e = createElement;
 
 const AGENT_TYPES = [
-  { value: "advisory", label: "AI Advisory" },
-  { value: "analyst", label: "Market Analyst" },
-  { value: "screener", label: "Stock Screener" },
-  { value: "whale", label: "Whale Monitor" },
-  { value: "news", label: "News Aggregator" },
-  { value: "custom", label: "Custom Agent" },
+  { value: "advisory", label: "AI Advisory", labelKey: "aiAgentFederation.typeAdvisory" },
+  { value: "analyst", label: "Market Analyst", labelKey: "aiAgentFederation.typeAnalyst" },
+  { value: "screener", label: "Stock Screener", labelKey: "aiAgentFederation.typeScreener" },
+  { value: "whale", label: "Whale Monitor", labelKey: "aiAgentFederation.typeWhale" },
+  { value: "news", label: "News Aggregator", labelKey: "aiAgentFederation.typeNews" },
+  { value: "custom", label: "Custom Agent", labelKey: "aiAgentFederation.typeCustom" },
 ];
 
 interface AgentRecord {
@@ -144,7 +144,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     setFormData((prev) => ({ ...prev, provider, model: firstModel }));
   };
 
-  const typeLabel = (type: string) => AGENT_TYPES.find((a) => a.value === type)?.label || type;
+  const typeLabel = (type: string) => { const a = AGENT_TYPES.find((x) => x.value === type); return a ? t(a.labelKey ?? a.label) : type; };
 
   const btnPrimary = `${styles.btn} ${styles.btnPrimary}`;
   const btnGhost = `${styles.btn} ${styles.btnGhost}`;
@@ -193,7 +193,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
           value: formData.agent_type,
           onChange: handleFieldChange("agent_type"),
         }, ...AGENT_TYPES.map((tp) =>
-          e("option", { key: tp.value, value: tp.value }, tp.label)
+          e("option", { key: tp.value, value: tp.value }, t(tp.labelKey ?? tp.label))
         )),
       ),
       e("div", { className: styles.field },
@@ -203,7 +203,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
           value: formData.provider,
           onChange: handleProviderChange,
         }, ...PROVIDER_OPTIONS.map((p) =>
-          e("option", { key: p.key, value: p.key }, p.label)
+          e("option", { key: p.key, value: p.key }, t(p.labelKey ?? p.label))
         )),
       ),
       e("div", { className: styles.field },
@@ -213,7 +213,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
           value: formData.model,
           onChange: handleFieldChange("model"),
         }, ...(PROVIDER_MODELS[formData.provider] || []).map((m) =>
-          e("option", { key: m.key, value: m.key }, m.label)
+          e("option", { key: m.key, value: m.key }, t(m.labelKey ?? m.label))
         )),
       ),
       e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },

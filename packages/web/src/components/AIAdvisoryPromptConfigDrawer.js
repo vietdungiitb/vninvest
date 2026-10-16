@@ -4,7 +4,6 @@ import styles from "./aiSettings.module.css";
 
 const e = createElement;
 
-const SOURCE_KEYS = ["whale", "darkFlow", "technical", "news", "market", "fundamental", "ownership", "sector"];
 
 const SOURCES_METADATA = {
   whale:       { defaultLookback: 30,  min: 1, max: 180, labelKey: "whale" },
@@ -161,10 +160,10 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
   };
 
   const PRESET_LABELS = {
-    balanced: t("promptConfig.presets.balanced") || "Cân bằng",
-    flow_first: t("promptConfig.presets.flowFirst") || "Ưu tiên dòng tiền",
-    deep_dive: t("promptConfig.presets.deepDive") || "Chuyên sâu",
-    cost_control: t("promptConfig.presets.costControl") || "Tiết kiệm token",
+    balanced: t("promptConfig.presets.balanced"),
+    flow_first: t("promptConfig.presets.flowFirst"),
+    deep_dive: t("promptConfig.presets.deepDive"),
+    cost_control: t("promptConfig.presets.costControl"),
   };
 
   const LOOKBACK_OPTIONS = [7, 14, 30, 60, 90, 180, 365, 730];
@@ -213,8 +212,8 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
         e(
           "div",
           null,
-          e("h2", { className: styles.drawerTitle }, t("promptConfig.title") || "⚙️ Cài đặt Cố vấn AI (Prompt Config)"),
-          e("p", { className: styles.drawerSubtitle }, (t("promptConfig.subtitle") || "Đang bật {sources} nguồn dữ liệu & {indicators} chỉ báo kỹ thuật").replace("{sources}", enabledSources).replace("{indicators}", enabledIndicators))
+          e("h2", { className: styles.drawerTitle }, t("promptConfig.title")),
+          e("p", { className: styles.drawerSubtitle }, (t("promptConfig.subtitle")).replace("{sources}", enabledSources).replace("{indicators}", enabledIndicators))
         ),
         e(
           "button",
@@ -225,7 +224,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
 
       // Preset Bar
       e("div", { key: "preset-bar", className: styles.presetBar },
-        e("span", { className: styles.presetLabel }, t("promptConfig.presetLabel") || "Mẫu cấu hình nhanh:"),
+        e("span", { className: styles.presetLabel }, t("promptConfig.presetLabel")),
         Object.entries(PRESET_LABELS).map(([id, label]) =>
           e("button", {
             key: id,
@@ -263,7 +262,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                   onChange: () => handleSourceToggle(sourceId),
                   className: styles.checkbox,
                 }),
-                e("span", null, t(`promptConfig.sources.${meta.labelKey}`) || meta.labelKey)
+                e("span", null, t(`promptConfig.sources.${meta.labelKey}`, { defaultValue: meta.labelKey }))
               )
             ),
 
@@ -276,8 +275,8 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                 e(
                   "div",
                   { className: styles.indicatorPresets },
-                  e("button", { type: "button", onClick: () => handleTechnicalPreset('full'), className: styles.indicatorPresetBtn }, t("promptConfig.enableAll") || "Bật toàn bộ"),
-                  e("button", { type: "button", onClick: () => handleTechnicalPreset('lean'), className: styles.indicatorPresetBtn }, t("promptConfig.leanSet") || "Bộ gọn")
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('full'), className: styles.indicatorPresetBtn }, t("promptConfig.enableAll")),
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('lean'), className: styles.indicatorPresetBtn }, t("promptConfig.leanSet"))
                 ),
                 e(
                   "div",
@@ -325,7 +324,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                   onChange: (e) => handleLookbackChange(sourceId, e.target.value),
                   className: styles.numberInput,
                 }),
-                e("span", { className: styles.lookbackUnit }, ` ${t("promptConfig.lookbackUnit") || "phiên"}`)
+                e("span", { className: styles.lookbackUnit }, ` ${t("promptConfig.lookbackUnit")}`)
               ),
               e(
                 "select",
@@ -336,7 +335,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                   className: styles.quickSelect,
                 },
                 LOOKBACK_OPTIONS.filter(opt => opt >= meta.min && opt <= meta.max).map(opt =>
-                  e("option", { key: opt, value: opt }, `${opt} ${t("promptConfig.lookbackUnit") || "phiên"}`)
+                  e("option", { key: opt, value: opt }, `${opt} ${t("promptConfig.lookbackUnit")}`)
                 )
               )
             )
@@ -352,7 +351,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
         e(
           "button",
           { className: `${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`, onClick: onClose, type: "button" },
-          t("promptConfig.close") || "Đóng"
+          t("promptConfig.close")
         )
       )
     )

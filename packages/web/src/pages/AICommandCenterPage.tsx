@@ -254,7 +254,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
           ]),
           e("div", { key: "pol-refresh", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval")),
-            e("p", { key: "v", className: styles.metricValue }, `${refreshIntervalDisplay} giờ/lần`),
+            e("p", { key: "v", className: styles.metricValue }, t("aiCommandCenter.refreshIntervalValue", { hours: refreshIntervalDisplay })),
           ]),
           e("div", { key: "pol-auto", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),

@@ -1,3 +1,13 @@
+## Entry 341: AI R1.3 i18n sach (lam truoc R1.2, 2026-10-16)
+
+- **Nhanh**: `feat/ai-r13-i18n` -> `dev` (PR, merge giu trail). Claim `ai-r13`. TDD: test moi RED 5/7 (AC1/AC1b/AC2/AC3/AC5) -> GREEN 7/7.
+- **Viec lam**: them loadError/refreshIntervalValue({hours})/customModel + 6 type* (vi+en) + xoa 22 key chet (vi+en, 9+/22-) + bo 16 fallback t()|| + page gio/lan -> t() + providerModels/AGENT_TYPES labelKey + ErrorBoundary dich theo stored locale + xoa SOURCE_KEYS unused.
+- **Bat song L-V01**: scanner v1 bao 117 key chet (sai neo block) — test AC2 GREEN bat mau thuan -> scanner v2 + verify doc lap 2 phuong phap -> **22 dung**. Plan ghi "18" la stale. Phat hien them: nut close la "XU+2715" (khong phai "Dóng"), custom entries co 5 (khong phai 4), Edit/Node flip CRLF (redo ve LF), script sua nham 1 dong boundary (bat bang doc diff cuoi, L-G05).
+- **Gate**: vitest moi 7/7 + hoi quy 6 files 29/29 + tsc 0 + eslint 9 files 0 warning + i18n:scan:strict 0 + check-ai-cc SACH + build PASS. Evidence `docs/evidence/ai-cc/r13-gates.md`.
+- **Lessons ap dung**: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04].
+- **CHUA CHAY**: AC5 render EN thay bang source-contract + full BE + ruff + E2E UI + visual staging.
+- **Tiep**: R1.2 (AuditLogsPanel, da mo khoa AC7) -> R1.4 -> ... -> R1.11.
+
 ## Entry 340: AI R1.1 tokens --ai-* ra :root (slice dau R1, 2026-10-16)
 
 - **Nhanh**: `feat/ai-r11-tokens` -> `dev` (PR, merge giu trail). Claim `ai-r11`. TDD fail-before: test moi RED 2/5 (AC1, AC1b) truoc fix, GREEN 5/5 sau.
