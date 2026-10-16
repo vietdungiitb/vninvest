@@ -1438,3 +1438,8 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
 | `ai-r111` | `feat/ai-r111-agentpanel` -> `dev` | AI CC R1.11: nut Luu nhan saving + notice role=status tu tat 4s + nut dong + capabilities util + default form tu PROVIDER_MODELS + provider-change khong clobber custom. Giu type* (khong doi sang agentTypes.* — da ship o R1.3). TDD fail-before. | **SUA**: `packages/web/src/components/AIAgentFederationPanel.tsx`, `packages/web/src/lib/capabilities.ts` (new), `packages/web/src/lib/__tests__/capabilities.component.test.ts` (new), `packages/web/src/components/__tests__/ai-agent-panel-r111.component.test.tsx` (new), `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js`; **GHI**: `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | released | 2026-10-16 | Lessons ap dung: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02]. Phu thuoc R1.3. Khong overlap in-progress. Khong migration/package.json. |
+## 2026-10-16 - AI R1 close-out M1 (11/11 slice)
+
+| agent | branch | scope | files | status | since | note |
+|---|---|---|---|---|---|---|
+| `r1-close` | `docs/r1-close-351` | R1 close-out: M1 exit criteria + handoff R2 (khong sua runtime, chi merge + docs) | `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/R1-HANDOFF_20261016.md` | in-progress | 2026-10-16 | PM tuan tu 1 agent. 11 PR slice + 12 PR chore/release. Lessons: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02]. Khong giu file runtime. |

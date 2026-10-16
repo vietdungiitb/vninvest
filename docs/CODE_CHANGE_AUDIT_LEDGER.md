@@ -1,3 +1,12 @@
+## Entry 351: AI R1 khép kín M1 — 11/11 slice (2026-10-16)
+
+- **Chu trình**: PM tuần tự 1 agent (mô hình R0): claim->branch->TDD RED->code->GREEN->gates->PR->merge->released, lặp 11 lần. PR slice #181..#201 (lẻ) + PR chore (chẵn).
+- **M1 đo thật**: 0 key chết (rescan) + 0 hex TSX + check-ai-cc SẠCH (self-test 11/11) + vitest full PASS + jest 259/268 (9 fail pre-existing, chứng minh bằng worktree pre-R1) + tsc/build/makemigrations/system-design/multi-agent xanh.
+- **CHƯA CHẠY**: WCAG 3x2x2 + ảnh mọi slice (không browser) + full BE + ruff + E2E + staging deploy.
+- **Bài học đắt nhất phiên**: scanner key chết v1 báo 117 (sai neo) — test AC2 GREEN bắt mâu thuẫn; số đúng 22 (sau còn 21 do R1.11 tái sinh saving). Regex i18n không neo block ăn nhầm 2 lần (usage.exporting, BACKUP bằng diff ngay).
+- **Sang R2**: CHƯA MỞ — chờ Owner D-03 (chặn R2.3) + D-03c (R2.5 BLOCKED sẵn) + beat schedule (coordinator) + cp1252 (workaround). Handoff: `docs/evidence/ai-cc/R1-HANDOFF_20261016.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02].
+
 ## Entry 350: AI R1.11 agent panel (slice cuoi R1, 2026-10-16)
 
 - **Nhanh**: `feat/ai-r111-agentpanel` -> `dev`. Claim `ai-r111`. TDD: RED 4 AC -> GREEN.
