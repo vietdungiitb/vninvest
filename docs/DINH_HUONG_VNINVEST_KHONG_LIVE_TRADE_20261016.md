@@ -59,7 +59,8 @@ lại khi chưa có hợp đồng.
 - **Pha A (giữ):** khóa an toàn — secret rotation, E2E read-only, drill rollback.
 - **Pha B (đổi mũi):** AI advisory R0 → Usage có số → paper gắn AI → cảnh báo
   đa điều kiện → nhật ký + báo cáo hiệu suất. Mỗi slice: AC + contract test +
-  audit độc lập (mẫu Wave 0–4).
+  audit độc lập (mẫu Wave 0–4). Ràng buộc Owner 2026-10-16: paper trading sau
+  tích hợp `vninvestcharts-widget` — KHÔNG tự xây tính năng paper lúc này.
 - **Pha C:** mobile production, onboarding < 5 phút tới first-sync, API chỉ-đọc
   cho bên thứ ba.
 - **Pha D (điều kiện):** live-trading CHỈ mở bằng slice riêng khi có hợp đồng
