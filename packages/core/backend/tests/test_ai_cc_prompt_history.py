@@ -65,7 +65,7 @@ class PromptConfigHistoryTests(TestCase):
 
     def test_f_ac7a_save_appends_history(self):
         """Changed prompt_config → one history entry source=save with full config."""
-        cfg1 = {'version': 2, 'sources': {'whale': {'enabled': True, lookback: 30}}}
+        cfg1 = {'version': 2, 'sources': {'whale': {'enabled': True, 'lookback': 30}}}
         r = self._put_config(cfg1)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         history = unwrapped(r).get('ai_prompt_config_history')
@@ -75,7 +75,7 @@ class PromptConfigHistoryTests(TestCase):
         self.assertEqual(history[0]['source'], 'save')
         self.assertEqual(history[0]['config'], cfg1)
 
-        cfg2 = {'version': 2, 'sources': {'whale': {'enabled': False, lookback: 7}}}
+        cfg2 = {'version': 2, 'sources': {'whale': {'enabled': False, 'lookback': 7}}}
         r2 = self._put_config(cfg2)
         self.assertEqual(len(unwrapped(r2)['ai_prompt_config_history']), 2)
         self.assertEqual(unwrapped(r2)['ai_prompt_config_history'][1]['version'], 2)
@@ -83,7 +83,7 @@ class PromptConfigHistoryTests(TestCase):
 
     def test_f_ac7b_same_config_no_duplicate_append(self):
         """Identical prompt_config → history length unchanged."""
-        cfg = {'version': 2, 'sources': {'news': {'enabled': True, lookback: 14}}}
+        cfg = {'version': 2, 'sources': {'news': {'enabled': True, 'lookback': 14}}}
         self._put_config(cfg)
         r = self._put_config(dict(cfg))
         self.assertEqual(r.status_code, status.HTTP_200_OK)
@@ -91,7 +91,7 @@ class PromptConfigHistoryTests(TestCase):
 
     def test_f_ac7c_get_returns_history_for_rollback(self):
         """GET old: history includes full config so FE can inspect before rollback."""
-        cfg1 = {'version': 2, 'sources': {'market': {'enabled': True, lookback: 7}}}
+        cfg1 = {'version': 2, 'sources': {'market': {'enabled': True, 'lookback': 7}}}
         self._put_config(cfg1)
         g = self.client.get(CC_URL)
         self.assertEqual(g.status_code, status.HTTP_200_OK)
@@ -103,8 +103,8 @@ class PromptConfigHistoryTests(TestCase):
 
     def test_f_ac7d_rollback_restores_version(self):
         """POST rollback version 1 after v2 overwrites → prompt_config = v1 config."""
-        cfg1 = {'version': 2, 'sources': {'whale': {'enabled': True, lookback: 90}}}
-        cfg2 = {'version': 2, 'sources': {'whale': {'enabled': True, lookback: 10}}}
+        cfg1 = {'version': 2, 'sources': {'whale': {'enabled': True, 'lookback': 90}}}
+        cfg2 = {'version': 2, 'sources': {'whale': {'enabled': True, 'lookback': 10}}}
         self._put_config(cfg1)
         self._put_config(cfg2)
 
@@ -133,7 +133,7 @@ class PromptConfigHistoryTests(TestCase):
         self.assertEqual(history[-1]['config'], v2sector(PROMPT_CONFIG_HISTORY_LIMIT + 5))
 
     def test_rollback_invalid_version_400(self):
-        self._put_config({'version': 2, 'sources': {'whale': {'enabled': True, lookback: 30}}})
+        self._put_config({'version': 2, 'sources': {'whale': {'enabled': True, 'lookback': 30}}})
         r = self.client.post(ROLLBACK_URL, {'version': 999}, format='json')
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
         r2 = self.client.post(ROLLBACK_URL, {'version': 'abc'}, format='json')
@@ -147,8 +147,8 @@ class PromptConfigHistoryTests(TestCase):
         grant_tenant(user_b, role='editor', tenant_code='f7-history-tenant-b')
         client_b.force_authenticate(user=user_b)
 
-        self._put_config({'version': 2, 'sources': {'whale': {'enabled': True, lookback: 30}}})
-        client_b.put(CC_URL, {'ai_prompt_config': {'version': 2, 'sources': {'whale': {'enabled': False, lookback: 7}}}}, format='json')
+        self._put_config({'version': 2, 'sources': {'whale': {'enabled': True, 'lookback': 30}}})
+        client_b.put(CC_URL, {'ai_prompt_config': {'version': 2, 'sources': {'whale': {'enabled': False, 'lookback': 7}}}}, format='json')
 
         g_a = self.client.get(CC_URL)
         g_b = client_b.get(CC_URL)
