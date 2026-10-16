@@ -26,9 +26,24 @@ Branch: `feat/ai-r06-ssrf` · Claim: `ai-r06` · Khong migration · Khong settin
   (`9000_auth_user_email_ci_unique.py:60`, L-B01) + docker daemon down (khong Postgres local).
   Chay that tren VPS staging (DB tam), xem §3.
 
-## 3. BE VPS staging (RED→GREEN)
+## 3. BE VPS staging (RED→GREEN, chay that 2026-10-16)
 
-(Ghi sau khi chay: lenh + exit code + so test.)
+Moi truong: worktree `/tmp/ai-r06` tai `5f6056ff2`, image `vninvest-core-api:staging`,
+DB tam `ai_r06` (drop sau verify), `DJANGO_DEBUG=1`. Chay qua one-off container
+cung network staging (khong dung staging DB).
+
+- RED (truoc fix throttle, commit `8ebf2df35`): 26 test, **1 FAIL**
+  `test_ac7_21st_probe_returns_429`: `200 != 429`, codes 21×200.
+  → Phat hien bug that: `allow_request` cu `return self.throttled()` tra instance
+  `Throttled` (truthy) nen DRF khong bao gio throttle. Fix: `return False` + `wait()`.
+- GREEN (sau fix, commit `5f6056ff2`):
+  - Moi + SSRF: `test_ai_r06_no_echo_throttle` + `test_ai_endpoint_probe_view` +
+    `test_ai_endpoint_safety` → **26/26 OK** (log co `Too Many Requests` o lan 21).
+  - Hoi quy AI CC: `test_ai_management_center` + `test_ai_cc_config_isolation` +
+    `test_ai_cc_prompt_history` + `test_ai_audit_logs` + `test_ai_cc_r04_r05` +
+    `test_ai_cc_r0_foundation` → **84/84 OK**.
+  - Usage: `ai_analytics.tests.test_usage_permissions` → **12/12 OK**.
+  - Tong: **122/122 OK** tren Postgres that. Don sach: worktree `/tmp/ai-r06` + DB `ai_r06`.
 
 ## 4. Gate khac
 
