@@ -308,6 +308,16 @@ if (existsSync(maGate)) {
   else ok("check-multi-agent", (r.out.match(/PASS.*/) || ["PASS"])[0]);
 } else skip("check-multi-agent", "khong co packages/web/scripts/check-multi-agent.mjs");
 
+// --------------------------------------------------------------- ai-cc gate
+// R0.8: gate tinh cho AI CC R0.1-R0.5 (AC1-AC6) + --self-test 7/7 dot bien.
+// Guarded nhu gate khac: thieu file thi skip, khong bao gio chan oan.
+const aiCcGate = join(REPO, "packages/web/scripts/check-ai-cc.mjs");
+if (existsSync(aiCcGate)) {
+  const r = run(process.execPath, [aiCcGate]);
+  if (r.code !== 0) bad("check-ai-cc", r.out);
+  else ok("check-ai-cc", "SACH (AC1-AC6)");
+} else skip("check-ai-cc", "khong co packages/web/scripts/check-ai-cc.mjs");
+
 // ------------------------------------------------------------- lessons gate
 // ⚠ VÌ SAO GATE NÀY TỒN TẠI (2026-10-10): `docs/LESSONS/` đã có 31 lesson từ lâu
 // nhưng **không có gì kiểm**. Ba quy tắc C1/C2/C3 chỉ nằm trong văn bản — và văn bản
