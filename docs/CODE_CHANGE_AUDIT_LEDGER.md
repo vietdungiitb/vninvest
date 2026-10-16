@@ -1,4 +1,14 @@
 
+## Entry 334: AI R0.1-R0.3 (D-01 Owner chot SSOT + self-service) (2026-10-16)
+
+- **Nhanh**: `feat/ai-r0-foundation` -> `dev` (PR #173 `cd6e050fc`, merge giu trail). Claim `ai-r0` (1 agent tuan tu, 1 PR). TDD fail-before.
+- **D-01 Owner chot 2026-10-16**: AI SSOT (he thong, staff quan) + AI self-service (ca nhan hoa tung user) — khop D-01 khoa trong plan Rev.2 (BYOK self-service + system/policy staff-only).
+- **Viec lam**: R0.1 `effective_context['ai_model']` uu tien `UserAICredential.ai_model` (truoc do luon system — `advisory/views.py:476`) · R0.2 CC GET default + normalize ve canonical v2 (xoa dict phang + key chet `lookback_unit`), PUT tu choi shape phang 400 (`is_canonical_prompt_config` moi), sua test phang theo dung budget (C-AC3/C-AC4 + F7 fixtures → v2) · R0.3 FE chi gui `ai_prompt_config` khi drawer dirty (`shouldSendPromptConfig` + `onPromptConfigEdited`, reset sau save).
+- **Khong lam**: migration moi (khong doi model) · R0.4-R0.9 (slice tiep theo) · D-03 chua Owner confirm.
+- **Gate**: BE VPS 13 moi + hoi quy AI 121 OK · FE AI CC 24 + broker lien quan · tsc 0 + i18n:strict 0 + build 0 · makemigrations: khong migration moi · pre-push PASS · check-multi-agent 0 loi.
+- **Lessons ap dung**: L-001, L-002, L-003, L-004, L-006, L-007, L-008, L-M01, L-M02, L-V02, L-T01, L-T02, L-G01, L-G02.
+- **CHUA CHAY**: E2E dang nhap + doi model that tren UI · full BE · ruff · doi chieu mat staging · quota Gemini that.
+
 ## Entry 333: Slice A0 gan nhan PAPER copy dat lenh (2026-10-16)
 
 - **Nhanh**: `feat/paper-copy-a0` -> `dev` (PR #171, merge giu trail). Claim `paper-copy-a0` (mo rong them drawer truoc sua). TDD copy-only.
