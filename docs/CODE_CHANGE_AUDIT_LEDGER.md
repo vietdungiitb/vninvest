@@ -1,3 +1,13 @@
+## Entry 344: AI R1.5 usage filters nhat quan (2026-10-16)
+
+- **Nhanh**: `feat/ai-r15-usagefilter` -> `dev`. Claim `ai-r15`. TDD: BE RED FEF.F -> GREEN 5/5 (VPS Postgres that); FE AC6 RED -> GREEN (stash).
+- **Viec lam**: helper loc chung 3 view + summary migration 0003 (model/status, unique moi; staging 0 row) + rollup grain moi + summary pagination + serializer +model/status/user + FE summary nhan du filter.
+- **Ha tang BE**: local khong Docker/PG -> pipeline one-off tren VPS (worktree /tmp/ai-r15 + DB ai_r15 + image staging, secret server-side). Da chay: moi 5/5 + R0.7 6/6 + permissions 12/12.
+- **Gate**: makemigrations --check 0 + system-design regen SACH + tsc/eslint/check-ai-cc/build PASS + check-multi-agent 0 loi. Evidence `docs/evidence/ai-cc/r15-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-M01, L-M02, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: anh truoc/sau + full BE + ruff + E2E + staging deploy.
+- **Tiep**: R1.6 (chart token) -> R1.7 (useRetryableAsync) -> R1.8 -> R1.9..R1.11. Don VPS (worktree/DB) sau merge.
+
 ## Entry 343: AI R1.4 Skeleton + isDirty + refresh() imperative (2026-10-16)
 
 - **Nhanh**: `feat/ai-r14-dirty` -> `dev`. Claim `ai-r14`. TDD fail-before THAT (stash code, giu test): 6/6 RED -> GREEN 6/6.

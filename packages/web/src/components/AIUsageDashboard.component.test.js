@@ -146,4 +146,26 @@ describe("AIUsageDashboard", () => {
     });
     expect(coreApiAdapter.getAIUsageSummary).toHaveBeenCalled();
   });
+  it("passes model/status filter params to summary + aggregate APIs (R1.5 AC6)", async () => {
+    await act(async () => {
+      render(createElement(MemoryRouter, null, createElement(AIUsageDashboard, {})));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("filter-model")).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "error" } });
+    });
+
+    await waitFor(() => {
+      const lastSummary = coreApiAdapter.getAIUsageSummary.mock.calls.at(-1);
+      expect(lastSummary[0]).toMatchObject({ status: "error" });
+    });
+    await waitFor(() => {
+      const lastAgg = coreApiAdapter.getAIUsageAggregate.mock.calls.at(-1);
+      expect(lastAgg[0]).toMatchObject({ status: "error" });
+    });
+  });
+
 });

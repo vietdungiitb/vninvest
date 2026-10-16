@@ -27,7 +27,9 @@ def rollup_usage_daily(target_date=None):
 
     groups = (
         AIUsageRecord.objects.filter(created_at__date=target_date)
-        .values('user', 'action')
+        # R1.5: grain (user, action, model, status) — khớp unique_together mới,
+        # để summary lọc được theo model/status như records.
+        .values('user', 'action', 'model', 'status')
         .annotate(
             total_requests=Count('id'),
             total_tokens_in=Sum('tokens_in'),
@@ -42,6 +44,8 @@ def rollup_usage_daily(target_date=None):
             date=target_date,
             user_id=group['user'],
             action=group['action'],
+            model=group['model'],
+            status=group['status'],
             defaults={
                 'total_requests': group['total_requests'] or 0,
                 'total_tokens_in': group['total_tokens_in'] or 0,
