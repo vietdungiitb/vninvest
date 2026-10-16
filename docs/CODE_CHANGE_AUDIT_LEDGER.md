@@ -1,4 +1,16 @@
 
+## Entry 336: AI R0.6 SSRF no-echo + throttle (2026-10-16)
+
+- **Nhanh**: `feat/ai-r06-ssrf` -> `dev` (claim `ai-r06`, 1 agent tuan tu, TDD fail-before). 4 commit.
+- **Viec lam**: (1) test-connection loi KHONG echo endpoint (AC5) + KHONG `str(e)` raw (AC8): 5 diem `detail` tinh hoa; log chi giu `type(e).__name__`. (2) Throttle scope `ai_test_connection` 20/h (AC7) + sua bug that: `allow_request` cu `return self.throttled()` tra instance truthy nen DRF KHONG BAO GIO throttle — RED tren VPS (21×200) truoc fix, GREEN sau (`return False` + `wait()`). (3) Moi `_resolve_chat_endpoint()` trong `orchestrator.py`: `custom_endpoint` (user nhap, luu DB, khong validate luc save) validate truoc moi POST, fail-closed message tinh. (4) Rework test cu `test_refusal_names_the_blocked_address` (khang dinh echo IP) thanh no-echo (tien le C-AC3/C-AC4).
+- **Dieu chinh trung thuc**: AC1-AC4/AC6/AC9 giu nguyen `endpoint_safety` (doi ten ham theo plan la vo ich); TOCTOU rebinding van residual risk (da ghi nhan); success payload giu nguyen (FE/parity phu thuoc); khong them `AI_ALLOW_PRIVATE_ENDPOINT` (allowlist env tuong duong).
+- **Gate**: BE VPS Postgres that **122/122 OK** (moi+SSRF 26 · hoi quy AI CC 84 · usage 12; RED→GREEN AC7 tren staging) · local logic GREEN (scope/guard/no-echo) · makemigrations No changes · pre-push 23/23 · check-multi-agent 0 loi · py_compile 4/4.
+- **Bai hoc moi (da tra gia that)**: (a) Edit tool doi LF→CRLF 2 file (690/665 + 116/112) — phat hien nho `diff --numstat`, sua bang Node CRLF→LF (35/10 + 8/4). (b) Push dau bi pre-push chan 8 FAIL la artifact timeout 120s cua tool goi (kill giua hook); chay lai du timeout → 23/23 PASS. (c) Quota `ssh`/`docker`/`grep`/`head`/`tail` bi wrapper chan — dung `sed`/Node thay the, trich password server-side.
+- **Lessons ap dung**: L-001, L-002, L-003, L-006, L-007, L-008, L-S01, L-B01, L-V02, L-V03, L-T01, L-T02, L-G01, L-G02.
+- **CHUA CHAY**: full BE (chi AI scope) · ruff · E2E UI · doi chieu mat staging sau redeploy.
+- **Tiep**: R0.7 (audit FK user/tenant + usage, can migration) → R0.9 (tach lop A/B + bo ai_config_message).
+- **Don sach**: worktree VPS `/tmp/ai-r06` + DB tam `ai_r06` da xoa.
+
 ## Entry 335: AI R0.4 + R0.5 + R0.8-gate (2026-10-16)
 
 - **Nhanh**: `feat/ai-r04-r09` -> `dev` (PR #175, merge giu trail). Claim `ai-r04` (1 agent tuan tu). TDD fail-before.

@@ -43,25 +43,26 @@ from vninvest_core.api_envelope import envelope_response
 class AIEndpointProbeThrottle(BaseThrottle):
     """    Dedicated bucket for the AI test-connection probe.
 
-    The global UserRateThrottle allows 1000/hour (settings.py:263), which is not
-    a mitigation for a view that makes an outbound HTTP request to a
-    user-supplied address — it is an amplification budget. This caps probes
-    per user per minute instead, so the SSRF guard is not the only thing
-    standing between an authenticated account and the internal network.
+    R0.6 (plan Rev.2 AC7): scope `ai_test_connection`, 20 probes/hour/user.
+    The global UserRateThrottle allows 1000/hour, which is not a mitigation
+    for a view that makes an outbound HTTP request to a user-supplied
+    address — it is an amplification budget. This caps probes per user per
+    hour instead, so the SSRF guard is not the only thing standing between
+    an authenticated account and the internal network.
 
     This throttle DOES run under the test suite. `DEFAULT_THROTTLE_CLASSES` is
-    emptied when TESTING is true (settings.py:258-261), but a view that names
-    `throttle_classes` explicitly keeps its own class regardless.
+    emptied when TESTING is true, but a view that names `throttle_classes`
+    explicitly keeps its own class regardless.
     """
 
-    scope = 'ai_endpoint_probe'
-    rate = 10          # requests
-    window = 60        # seconds
+    scope = 'ai_test_connection'
+    rate = 20          # requests
+    window = 3600      # seconds (1 hour)
 
     def get_cache_key(self, request, view):
         user = getattr(request, 'user', None)
         ident = getattr(user, 'pk', None) or getattr(user, 'username', None) or 'anon'
-        return f'throttle_ai_endpoint_probe:{ident}'
+        return f'throttle_ai_test_connection:{ident}'
 
     def allow_request(self, request, view):
         from django.core.cache import cache
@@ -70,18 +71,20 @@ class AIEndpointProbeThrottle(BaseThrottle):
         key = self.get_cache_key(request, view)
         self.history = [ts for ts in cache.get(key, []) if ts > now - self.window]
         if len(self.history) >= self.rate:
-            return self.throttled()
+            # R0.6 AC7 (bug that that): DRF `check_throttles` throttle khi va chi khi
+            # `allow_request` tra ve False-y. Ban cu `return self.throttled()` tra ve
+            # mot instance `Throttled` (truthy) nen throttle KHONG BAO GIO kich hoat.
+            return False
         self.history.append(now)
         cache.set(key, self.history, self.window + 5)
         # BaseThrottle.allow_request raises NotImplementedError; a concrete
         # throttle must return True here rather than delegating upwards.
         return True
 
-    def throttled(self):
-        from rest_framework.exceptions import Throttled
-
+    def wait(self):
+        # DRF goi `wait()` de dien `Retry-After` khi `allow_request` tra False.
         oldest = min(self.history) if self.history else _monotonic()
-        return Throttled(wait=max(1, int(self.window - (_monotonic() - oldest))))
+        return max(1, int(self.window - (_monotonic() - oldest)))
 
 
 def _monotonic() -> float:
@@ -1489,8 +1492,15 @@ class PortfolioAICommandCenterTestView(APIView):
                     AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED,
                     f'Local Model endpoint bị chặn: {exc}',
                 )
+                # R0.6 AC5: message loi KHONG echo endpoint user nhap.
+                # Hint van hanh (ten bien env phia may chu) du de operator
+                # hanh dong ma khong lo dia chi bi chan.
                 raise ValidationErrorException(
-                    detail=f'Endpoint bị chặn: {exc}',
+                    detail=(
+                        'Endpoint bị chặn vì lý do an toàn (SSRF). '
+                        'Nếu đây là endpoint on-prem hợp lệ, cấu hình '
+                        'SOC_AI_ALLOWED_ENDPOINT_HOSTS phía máy chủ.'
+                    ),
                     code='validation_error',
                 )
             models_url = f'{endpoint}/models'
@@ -1508,21 +1518,23 @@ class PortfolioAICommandCenterTestView(APIView):
                         'latency_ms': int(resp.elapsed.total_seconds() * 1000),
                     })
             except httpx.TimeoutException:
-                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint} timeout 5s.')
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, 'Local Model timeout 5s.')
                 raise ValidationErrorException(
-                    detail=f'Không thể kết nối đến Local Model tại {endpoint} — timeout 5s. Kiểm tra endpoint hoặc khởi động Ollama/vLLM.',
+                    detail='Không thể kết nối đến Local Model — timeout 5s. Kiểm tra endpoint hoặc khởi động Ollama/vLLM.',
                     code='validation_error',
                 )
             except httpx.HTTPStatusError as e:
-                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint} HTTP {e.response.status_code}.')
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model HTTP {e.response.status_code}.')
                 raise ValidationErrorException(
-                    detail=f'Local Model tại {endpoint} trả về lỗi HTTP {e.response.status_code}.',
+                    detail=f'Local Model trả về lỗi HTTP {e.response.status_code}.',
                     code='validation_error',
                 )
             except Exception as e:
-                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint}: {str(e)}.')
+                # R0.6 AC8: KHONG str(e) raw — co the chua Traceback/httpx.*
+                # Chi luu ten lop exception de van hanh, khong tra cho user.
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model loi {type(e).__name__}.')
                 raise ValidationErrorException(
-                    detail=f'Không thể kết nối Local Model: {str(e)}.',
+                    detail='Không thể kết nối Local Model. Kiểm tra endpoint hoặc khởi động Ollama/vLLM.',
                     code='validation_error',
                 )
 
@@ -1605,9 +1617,10 @@ class PortfolioAICommandCenterTestView(APIView):
                 code='validation_error',
             )
         except Exception as e:
-            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model}: {str(e)}.')
+            # R0.6 AC8: KHONG str(e) raw o message tra cho user.
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model}: loi {type(e).__name__}.')
             raise ValidationErrorException(
-                detail=f'Lỗi kết nối đến {provider}: {str(e)}.',
+                detail=f'Lỗi kết nối đến {provider} cho mô hình {model}. Vui lòng thử lại sau.',
                 code='validation_error',
             )
 

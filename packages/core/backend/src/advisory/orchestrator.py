@@ -158,6 +158,39 @@ class AdvisorySynthesisError(Exception):
         }
 
 
+def _resolve_chat_endpoint(provider: str, custom_endpoint: str, ai_model: str = '') -> str:
+    """Resolve + SSRF-guard chat-completions endpoint (R0.6 AC6/orchestrator).
+
+    `custom_endpoint` den tu `UserAICredential` (user nhap, luu DB) — phai
+    validate truoc moi lan POST, giong nhu test-connection view. Fail-closed
+    voi message TINH: khong echo endpoint (AC5), khong str(e) raw (AC8).
+    URL mac dinh cua tung provider la hang so, khong can validate.
+    `local` duoc phep loopback (Ollama/VLLM cung host) nhung van chan
+    metadata cloud + RFC1918 + scheme la — giong view.
+    """
+    if provider == 'local':
+        if custom_endpoint:
+            base = custom_endpoint.rstrip('/')
+            # Lazy import: tranh cycle advisory -> user_workspace luc load module.
+            from user_workspace.endpoint_safety import (
+                UnsafeEndpointError,
+                assert_safe_outbound_url,
+            )
+            try:
+                assert_safe_outbound_url(base, allow_loopback=True)
+            except UnsafeEndpointError:
+                raise ValueError(
+                    'Endpoint AI bị chặn vì lý do an toàn (SSRF). '
+                    'Nếu đây là endpoint on-prem hợp lệ, cấu hình '
+                    'SOC_AI_ALLOWED_ENDPOINT_HOSTS phía máy chủ.'
+                )
+            return base + '/chat/completions'
+        return 'http://localhost:11434/v1/chat/completions'
+    if provider == 'gemini' or (ai_model or '').lower().startswith('gemini'):
+        return 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+    return 'https://api.openai.com/v1/chat/completions'
+
+
 def _coerce_float(raw):
     """Trả float hoặc None. Không bao giờ ném, không bao giờ bịa giá trị."""
     if raw is None or isinstance(raw, bool):
@@ -458,16 +491,8 @@ class AdvisoryOrchestrator:
                     'summary': text
                 }
 
-        # Resolve endpoints
-        if provider == 'local':
-            if custom_endpoint:
-                endpoint = custom_endpoint.rstrip('/') + '/chat/completions'
-            else:
-                endpoint = "http://localhost:11434/v1/chat/completions"
-        elif provider == 'gemini' or ai_model.lower().startswith('gemini'):
-            endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-        else:
-            endpoint = "https://api.openai.com/v1/chat/completions"
+        # Resolve endpoints (R0.6: custom_endpoint user nhap phai qua SSRF guard).
+        endpoint = _resolve_chat_endpoint(provider, custom_endpoint, ai_model)
 
         # Build user prompts for each sub-agent
         tech_user_prompt = f"""

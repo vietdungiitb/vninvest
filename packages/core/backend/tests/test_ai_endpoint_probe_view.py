@@ -89,12 +89,16 @@ class SSRFProbeBlockedTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         client_cls.assert_not_called()
 
-    def test_refusal_names_the_blocked_address(self):
-        # A refusal the operator cannot act on is half a fix.
-        resp = self._post('http://169.254.169.254/latest/meta-data/')
+    def test_refusal_does_not_echo_endpoint(self):
+        # R0.6 AC5 (rework co chu dich, nhu C-AC3/C-AC4 o R0.2): tu choi phai
+        # hanh dong duoc (hint bien env phia may chu) NHUNG khong echo
+        # endpoint/host/ip user nhap vao message loi.
+        endpoint = 'http://169.254.169.254/latest/meta-data/'
+        resp = self._post(endpoint)
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         detail = str(resp.data)
-        self.assertIn('169.254.169.254', detail)
+        self.assertNotIn(endpoint, detail)
+        self.assertNotIn('169.254.169.254', detail)
         self.assertIn('SOC_AI_ALLOWED_ENDPOINT_HOSTS', detail)
 
     def test_loopback_allowed_for_local_provider(self):
