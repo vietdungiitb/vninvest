@@ -1,4 +1,16 @@
 
+## Entry 328: Ra soat + cung hoa flow ket noi broker (2026-10-16)
+
+- **Goc**: Owner yeu cau chuan chi bao mat, se cap API sau (hien chua noi duoc). Audit doc lap 2 huong (BE 10 findings F-BE-01..10, FE 9 findings F-FE-01..09) — full report trong session, tóm tat o day.
+- **Nhanh**: `feat/broker-connect-hardening` -> `dev` (PR #164, merge giu trail). Claim `broker-conn`. TDD mock 100% (khong creds that, khong mang that).
+- **Viec lam (BE)**: (1) `check_secret_shape` chung (`broker/base.py`): max + charset, KHONG min (chua thay creds that — L-V02); noi vao validate 3 lane. (2) Job ownership: map `job_id→(user,tenant)` trong cache luc enqueue + 404 `job_not_found` khi poll lech (F-BE-02). (3) Test: shape/too_long/control/PEM/OTP-khong-persist/isolation/ownership (13 tests).
+- **Viec lam (FE)**: xoa secret sau luu OK (F-FE-01) · `key={provider}` chong ro lane (F-FE-06) · autocomplete theo secret + id/htmlFor (F-FE-08) · hint "kiem tra dung cau hinh da luu" (F-FE-07).
+- **TAO MOI**: `docs/CREDENTIAL_CHECKLIST_BROKER_20261016.md` (ten field + nguon cap theo lane, khong gia tri).
+- **KHONG lam (ghi nhan, co ly do)**: sua DNSE legacy (ngoai scope: xoa 3 store lech F-BE-01, confirm dat lenh F-FE-03, nut Ngat ket noi F-FE-04 — nut Hub se noi doi neu xoa khong sach; can ticket gom store) · EXPIRED worker (tasks.py ngoai scope) · 204-body (doi shape) · min-length (doan mo).
+- **Lessons ap dung**: L-001, L-002, L-006, L-007, L-008, L-S01, L-S02, L-M01, L-V02, L-V03, L-T01, L-T02, L-G01, L-G02.
+- **Gate**: BE VPS 13/13 moi + hoi quy 175 (1 FAIL co san tren dev sach `test_task_ssi_success_marks_connected` — da chung minh bang worktree origin/dev, KHONG do slice nay) · FE 52/52 + tsc 0 + i18n:strict 0 + build 0 · pre-push PASS · check-multi-agent 0 loi.
+- **CHUA CHAY**: live connect bang creds that (doi Owner) · E2E · full BE · ruff · doi chieu mat staging.
+
 ## Entry 327: Lien ket cheo /manage -> /watchlist (2026-10-16)
 
 - **Goc**: Owner khong thay cho add ma watchlist / sync holdings tren `/manage`. Kha pha that: nut "Them ma" nam o `/watchlist` (`WatchlistMainWorkspace.tsx:253-294` qua `addWatchlistItem`, `workspace.js:135`, BE POST `urls.py:74`); sync holdings nam o `/broker/accounts/:id` (SyncCenter) — `/manage` theo thiet ke chi CRUD (D-36). Van de that la kha nang phat hien, khong phai thieu tinh nang.
