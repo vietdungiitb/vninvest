@@ -972,7 +972,10 @@ class PortfolioAICommandCenterView(APIView):
         prompt_config = _parse_prompt_config(
             metadata.get('ai_prompt_config'))
 
-        # Read user credential (BYOK SSOT)
+        # Read user credential (BYOK SSOT). Giữ read-only (không get-or-create):
+        # user legacy chưa có cred vẫn đọc được prefs cũ ở nhánh else bên dưới.
+        # config_updated_at=None với user mới là bình thường — PUT đầu (không
+        # kèm expected) tạo row và trả token mới (R1.9).
         try:
             user_cred = UserAICredential.objects.get(user=request.user)
         except UserAICredential.DoesNotExist:

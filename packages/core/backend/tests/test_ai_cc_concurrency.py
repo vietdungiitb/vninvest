@@ -43,7 +43,13 @@ class ConcurrencyTests(TestCase):
         self.assertTrue(T, 'GET thieu config_updated_at')
         return T
 
+    def _ensure_row(self):
+        # PUT đầu (không expected) tạo cred row cho user mới (R1.9).
+        r = self.client.put(CC_URL, {'advisory_max_tokens_per_day': 1000}, format='json')
+        self.assertEqual(r.status_code, 200)
+
     def test_ac1_stale_write_gets_409(self):
+        self._ensure_row()
         T = self._get_T()
         r1 = self.client.put(CC_URL, {'advisory_max_tokens_per_day': 1000}, format='json')
         self.assertEqual(r1.status_code, 200)
@@ -61,6 +67,7 @@ class ConcurrencyTests(TestCase):
         self.assertNotEqual(T2, T)
 
     def test_ac2_fresh_expected_writes_200(self):
+        self._ensure_row()
         T = self._get_T()
         r1 = self.client.put(
             CC_URL, {'advisory_max_tokens_per_day': 1000, 'expected_updated_at': T}, format='json'
