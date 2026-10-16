@@ -23,6 +23,11 @@ class AIUsageRecord(models.Model):
     cost = models.DecimalField(max_digits=12, decimal_places=6, default=0, verbose_name='Chi phí (USD)')
     latency_ms = models.IntegerField(default=0, verbose_name='Độ trễ (ms)')
     status = models.CharField(max_length=16, default='success', verbose_name='Trạng thái')
+    # R0.7 AC9/AC10: co quan sat duoc, khong bia so lieu. Provider khong tra
+    # usage => tokens 0 + usage_unavailable=True. Chua co bang gia AICostRate
+    # => cost 0 + pricing_available=False.
+    usage_unavailable = models.BooleanField(default=False, verbose_name='Thieu usage that')
+    pricing_available = models.BooleanField(default=False, verbose_name='Co bang gia')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

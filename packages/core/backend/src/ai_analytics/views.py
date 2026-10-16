@@ -84,11 +84,12 @@ class AIUsageRecordListView(APIView):
         })
 
     def post(self, request):
-        serializer = AIUsageRecordSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(user=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # R0.7 AC5: usage record do server tu ghi (instrument o task) —
+        # cho user tu POST so lieu la duong bia du lieu (P0 audit Entry 228).
+        return Response(
+            {'detail': 'Ghi usage truc tiep da tat. So lieu do he thong tu ghi.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
 
 @extend_schema(

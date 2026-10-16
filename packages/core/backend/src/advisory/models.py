@@ -384,6 +384,28 @@ class AIAuditLog(models.Model):
         blank=True, default='',
         verbose_name='Người thực hiện',
     )
+    # R0.7: FK that de scope theo user/tenant (AC1/AC2). actor giu lai cho
+    # tuong thich nguoc + hien thi; backfill actor->user trong migration,
+    # dong khong khop giu user NULL + legacy_unattributed=True (khong doan owner).
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='ai_audit_logs',
+        verbose_name='Người thực hiện (FK)',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='ai_audit_logs',
+        verbose_name='Tenant',
+    )
+    legacy_unattributed = models.BooleanField(
+        default=False,
+        verbose_name='Ban ghi legacy chua gan chu',
+        help_text='True khi backfill khong tim thay User khop voi actor.',
+    )
     reason = models.TextField(blank=True, default='', verbose_name='Lý do')
     before_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái trước')
     after_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái sau')
