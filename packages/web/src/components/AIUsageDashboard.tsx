@@ -183,7 +183,8 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
     const [agg, rec, summary] = await Promise.all([
       usageClient.getAIUsageAggregate(params),
       usageClient.getAIUsageRecords({ ...params, limit, offset }),
-      usageClient.getAIUsageSummary({ days }),
+      // R1.5 AC6: summary cũng nhận đủ filter (model/status) để biểu đồ đổi theo.
+      usageClient.getAIUsageSummary({ ...params }),
     ]);
     return { agg, rec, summary };
   }, [days, page, pageSize, modelFilter, statusFilter, usageClient]);
