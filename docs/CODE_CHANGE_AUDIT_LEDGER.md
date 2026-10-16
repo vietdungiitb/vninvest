@@ -1,4 +1,15 @@
 
+## Entry 338: AI R0.9 tach lop A/B + policy (2026-10-16, slice cuoi R0)
+
+- **Nhanh**: `feat/ai-r09-policy` stack tren ai-r07 (PR #177/#178 chua merge luc lam). Claim `ai-r09`. TDD: wip/r09-red-probe (xoa sau verify) — 8 FAIL/9.
+- **Viec lam**: (1) GET/PUT an `system_prompt_template` voi non-staff, thay `system_policy.managed_by_platform` (staff giu) · (2) moi endpoint `policy/` staff-only (IsAdminUser + WorkspacePermission broker_manage + khai bao tren class cho gate SAFE-04) · (3) helpers mo route ai-command-center cho user + ability `ai.policy.manage` staff-only (giu ability cu vi FE dung) · (4) bo `ai_config_message` BE+FE+fixture+key i18n chet · (5) FE panel theo staff (`usePortfolio`, notice `system-prompt-managed` + key vi/en) · (6) rework C-AC5 + F5 theo contract moi + EXPECTED capability +1 dong (bat buoc, gate dem AST).
+- **Gate chan push 2 lan, ca hai bat loi THAT**: (a) `urls.py` thieu import view moi (openapi-budget do) · (b) SAFE-04 `test_write_endpoint_count_is_unchanged` do `PolicyView.put` moi (them EXPECTED + khai bao). Khong `--no-verify`.
+- **Gate**: BE VPS **96/96** (policy 9 + isolation + mgmt + capability_pav + usage + audit) + **56/56** (r06+r07+endpoint+r04+r0+history) · FE local 19/19 + tsc 0 + i18n sach · makemigrations No changes · pre-push 23/23 (endpoint catalog regen 1483→1484; can PYTHONUTF8=1 — bug latent script gen-*-catalog in tieng Viet crash cp1252, follow-up).
+- **Lessons ap dung**: L-001, L-002, L-003, L-006, L-007, L-008, L-M01, L-M02, L-V02, L-T01, L-T02, L-G01, L-G02, L-F01, L-F02.
+- **CHUA CHAY**: full BE (chi AI scope) · ruff · E2E UI · doi chieu mat staging · beat rollup · merge 3 PR.
+- **R0 KHEP KIN**: R0.1–R0.9 xong (M0 review → R1 theo plan Rev.2).
+- **Don sach**: worktree `/tmp/ai-r09`, `/tmp/ai-r09red` + DB `ai_r09`, `ai_r09red` + branch wip da xoa.
+
 ## Entry 337: AI R0.7 audit FK + usage (2026-10-16)
 
 - **Nhanh**: `feat/ai-r07-audit` stack tren `feat/ai-r06-ssrf` (PR #177 chua merge — gop sau). Claim `ai-r07`. TDD fail-before: VPS 6E+1F (TypeError FK user/tenant ×5 · no tasks module · 201!=405).
