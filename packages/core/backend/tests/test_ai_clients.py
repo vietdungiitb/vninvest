@@ -78,7 +78,10 @@ class FactoryTests(SimpleTestCase):
         src = pathlib.Path(__file__).resolve().parent.parent.joinpath(
             'src', 'advisory', 'orchestrator.py',
         ).read_text(encoding='utf-8')
-        hits = [ln for ln in src.splitlines() if 'if provider ==' in ln]
+        hits = [
+            ln for ln in src.splitlines()
+            if 'if provider ==' in ln and not ln.strip().startswith('#')
+        ]
         self.assertEqual(hits, [])
 
     def test_ac4_unknown_provider_raises_factory_error(self):
