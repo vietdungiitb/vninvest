@@ -110,16 +110,20 @@ class JobOwnershipTests(TestCase):
     def setUp(self):
         self.user_a, self.tenant_a, self.client_a = _tenant_client('connjoba')
         self.user_b, self.tenant_b, self.client_b = _tenant_client('connjobb')
-        set_user_broker_secrets(
-            self.user_a, 'dnse',
-            {'client_id': 'CID-JOB-A', 'client_secret': 'CSEC-JOB-A'})
+        # Credential tao trong _enqueue VOI tenant (khop request context).
+        self.user, self.tenant, self.client = (
+            self.user_a, self.tenant_a, self.client_a)
 
     def _enqueue(self):
+        set_user_broker_secrets(
+            self.user, 'dnse',
+            {'client_id': 'CID-JOB-A', 'client_secret': 'CSEC-JOB-A'},
+            tenant=self.tenant)
         with patch(
             'user_workspace.views_broker.test_broker_connection_task'
         ) as task:
             task.delay.return_value = SimpleNamespace(id='job-owner-1')
-            resp = self.client_a.post(f'{BASE}/dnse/test-connection/')
+            resp = self.client.post(f'{BASE}/dnse/test-connection/')
         self.assertEqual(resp.status_code, 202)
         return unwrapped_json(resp)['job_id']
 
@@ -147,12 +151,15 @@ class UserIsolationTests(TestCase):
         self.user_b, self.tenant_b, self.client_b = _tenant_client('connisob')
         set_user_broker_secrets(
             self.user_a, 'dnse',
-            {'client_id': 'CID-ISO-A', 'client_secret': 'CSEC-ISO-A'})
+            {'client_id': 'CID-ISO-A', 'client_secret': 'CSEC-ISO-A'},
+            tenant=self.tenant_a)
 
     def test_user_b_sees_no_config_of_user_a(self):
         resp = self.client_b.get(f'{BASE}/dnse/config/')
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(unwrapped_json(resp)['is_configured'])
+        own = self.client_a.get(f'{BASE}/dnse/config/')
+        self.assertTrue(unwrapped_json(own)['is_configured'])
 
     def test_user_b_write_does_not_touch_user_a(self):
         resp = self.client_b.post(
