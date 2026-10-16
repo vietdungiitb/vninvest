@@ -83,7 +83,11 @@ export interface AICommandCenterFormProps {
   onError?: (message: string) => void;
   onNotice?: (message: string) => void;
   onPromptConfigChange?: (config: Record<string, unknown> | null) => void;
-  /** Extra PUT fields (e.g. ai_prompt_config owned by parent). */
+  /** R0.3: chi drawer edit goi (load/drawer-mo KHONG goi) — parent danh dau dirty. */
+  onPromptConfigEdited?: (config: Record<string, unknown>) => void;
+  /** Extra PUT fields (e.g. ai_prompt_config owned by parent).
+   * R0.3: drawer edit rieng bao qua onPromptConfigEdited de parent biet
+   * dirty (load thuong qua onPromptConfigChange KHONG danh dau dirty). */
   getExtraPayload?: () => Record<string, unknown>;
   showRefreshButton?: boolean;
   showPromptConfigButton?: boolean;
@@ -109,6 +113,7 @@ export function AICommandCenterForm({
   onError,
   onNotice,
   onPromptConfigChange,
+  onPromptConfigEdited,
   getExtraPayload,
   showRefreshButton = true,
   showPromptConfigButton = true,
@@ -690,6 +695,7 @@ export function AICommandCenterForm({
             onConfigChange: (nextConfig: Record<string, unknown>) => {
               setPromptConfig(nextConfig);
               onPromptConfigChange?.(nextConfig);
+              onPromptConfigEdited?.(nextConfig);
             },
           })
         )
