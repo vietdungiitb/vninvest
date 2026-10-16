@@ -97,6 +97,12 @@ function renderPage(search = "/settings/ai") {
   );
 }
 
+// R1.9: Lưu mở preview trước — xác nhận mới gửi PUT.
+async function confirmPreview() {
+  const confirm = await screen.findByTestId("preview-confirm");
+  fireEvent.click(confirm);
+}
+
 describe("R1.4: skeleton + dirty + refresh imperative", () => {
   beforeEach(() => {
     for (const fn of Object.values(adapterMocks)) (fn as ReturnType<typeof vi.fn>).mockReset();
@@ -122,6 +128,7 @@ describe("R1.4: skeleton + dirty + refresh imperative", () => {
     fireEvent.change(tokens, { target: { value: "6000" } });
     await waitFor(() => expect(saveBtn.disabled).toBe(false));
     fireEvent.click(saveBtn);
+    await confirmPreview();
     await waitFor(() =>
       expect(adapterMocks.updateAICommandCenterConfig).toHaveBeenCalled()
     );
@@ -140,6 +147,7 @@ describe("R1.4: skeleton + dirty + refresh imperative", () => {
       expect(addSpy.mock.calls.some((c) => c[0] === "beforeunload")).toBe(true)
     );
     fireEvent.click(saveBtn);
+    await confirmPreview();
     await waitFor(() =>
       expect(adapterMocks.updateAICommandCenterConfig).toHaveBeenCalled()
     );
@@ -162,6 +170,7 @@ describe("R1.4: skeleton + dirty + refresh imperative", () => {
       fireEvent.change(tokens, { target: { value: "6000" } });
       await waitFor(() => expect(saveBtn.disabled).toBe(false));
       fireEvent.click(saveBtn);
+      await confirmPreview();
       await waitFor(() => expect(saveBtn.disabled).toBe(true));
       // notice đang treo timer 3000ms ⇒ unmount phải clear (không chờ hết 3s thật)
       unmount();
@@ -209,6 +218,7 @@ describe("R1.4: skeleton + dirty + refresh imperative", () => {
     fireEvent.change(tokens, { target: { value: "6000" } });
     await waitFor(() => expect(saveBtn.disabled).toBe(false));
     fireEvent.click(saveBtn);
+    await confirmPreview();
     await waitFor(() =>
       expect(adapterMocks.getAIAuditLogs.mock.calls.length).toBeGreaterThan(before)
     );

@@ -12,6 +12,7 @@ import {
 import { useI18n } from "../context/LangContext.js";
 import styles from "./aiSettings.module.css";
 import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
+import { AiConfigPreviewModal, type AiConfigConflict } from "./AiConfigPreviewModal.js";
 
 const e = createElement;
 
@@ -41,6 +42,7 @@ export interface AISettings {
   effective_ai_provider?: string;
   effective_ai_model?: string;
   ai_ready?: boolean;
+  config_updated_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -150,6 +152,17 @@ export function AICommandCenterForm({
   const [settings, setSettings] = useState<AISettings | null>(null);
   // R1.4 AC2: field nào đổi (so với lần load/save gần nhất) ⇒ dirty ⇒ bật nút Lưu.
   const [fieldsDirty, setFieldsDirty] = useState(false);
+  // R1.9: token optimistic lock (lấy từ GET/lần lưu trước, gửi kèm PUT sau).
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  // R1.9 AC4/AC5: preview trước lưu + màn xung đột 409.
+  interface PreviewEntry {
+    before: Record<string, unknown>;
+    after: Record<string, unknown>;
+    payload: Record<string, unknown>;
+  }
+  const [preview, setPreview] = useState<PreviewEntry | null>(null);
+  const [conflict, setConflict] = useState<AiConfigConflict | null>(null);
+  const [previewSaving, setPreviewSaving] = useState(false);
   useEffect(() => {
     onFieldsDirtyChange?.(fieldsDirty);
   }, [fieldsDirty, onFieldsDirtyChange]);
@@ -169,6 +182,8 @@ export function AICommandCenterForm({
 
   const transportRef = useRef(transport);
   transportRef.current = transport;
+  // R1.9 AC4: snapshot hiệu lực lúc load — preview diff so với bản này.
+  const loadedEffectiveRef = useRef<Record<string, unknown>>({});
 
   const emitError = useCallback(
     (message: string) => {
@@ -216,6 +231,17 @@ export function AICommandCenterForm({
       setAiApiKey("");
       setTestLatency(null);
       setFieldsDirty(false);
+      // Snapshot hiệu lực lúc load — preview diff so với bản này.
+      loadedEffectiveRef.current = {
+        ai_provider: data.ai_provider || "openclaw",
+        ai_model: data.ai_model || "",
+        advisory_max_tokens_per_day: data.advisory_max_tokens_per_day || 5000,
+        advisory_refresh_interval_hours: data.advisory_refresh_interval_hours || 24,
+        temperature: Number(data.temperature ?? 0.3),
+      };
+      if (typeof data.config_updated_at === "string") {
+        setLastUpdatedAt(data.config_updated_at);
+      }
 
       if (data.ai_prompt_config) {
         setPromptConfig(data.ai_prompt_config);
@@ -282,28 +308,31 @@ export function AICommandCenterForm({
     return { finalModel, parsedMaxTokens, parsedRefreshInterval };
   };
 
-  const handleSaveSettings = async (ev: FormEvent) => {
-    if (ev && ev.preventDefault) ev.preventDefault();
+  /** Giá trị hiệu lực hiện trên form (để preview diff với bản đã load). */
+  const currentEffective = () => {
+    const { finalModel, parsedMaxTokens, parsedRefreshInterval } = buildCorePayload();
+    return {
+      ai_provider: aiProvider,
+      ai_model: finalModel,
+      advisory_max_tokens_per_day: Math.max(1, Math.floor(parsedMaxTokens)),
+      advisory_refresh_interval_hours: Math.max(1, Math.floor(parsedRefreshInterval)),
+      temperature: Math.min(1, Math.max(0, Number(temperature) || 0.3)),
+    } as Record<string, unknown>;
+  };
 
-    setSaving(true);
-    setNotice("");
-    setError("");
-
+  const buildValidatedPayload = (): Record<string, unknown> | null => {
     const { finalModel, parsedMaxTokens, parsedRefreshInterval } = buildCorePayload();
     if (!finalModel) {
       emitError(t("aiCommandCenter.errorEmptyModel"));
-      setSaving(false);
-      return;
+      return null;
     }
     if (!Number.isFinite(parsedMaxTokens) || parsedMaxTokens < 1) {
       emitError(t("aiCommandCenter.errorTokensPositive"));
-      setSaving(false);
-      return;
+      return null;
     }
     if (!Number.isFinite(parsedRefreshInterval) || parsedRefreshInterval < 1) {
       emitError(t("aiCommandCenter.errorRefreshPositive"));
-      setSaving(false);
-      return;
+      return null;
     }
 
     const payload: Record<string, unknown> = {
@@ -323,20 +352,76 @@ export function AICommandCenterForm({
     if (getExtraPayload) {
       Object.assign(payload, getExtraPayload());
     }
+    return payload;
+  };
 
+  const doSaveWithExpected = async (
+    payload: Record<string, unknown>,
+    expected: string | null
+  ): Promise<boolean> => {
+    const body: Record<string, unknown> = { ...payload };
+    if (expected) body.expected_updated_at = expected;
+    setSaving(true);
+    setPreviewSaving(true);
+    setNotice("");
+    setError("");
     try {
-      const nextData = await transportRef.current.updateConfig(payload);
+      const nextData = await transportRef.current.updateConfig(body);
       setSettings(nextData);
       setAiApiKey("");
       setFieldsDirty(false);
+      loadedEffectiveRef.current = currentEffective();
+      if (typeof nextData.config_updated_at === "string") {
+        setLastUpdatedAt(nextData.config_updated_at);
+      }
       onSettingsChange?.(nextData);
       onSettingsSaved?.(nextData);
       emitNotice(t("aiCommandCenter.noticeSaved"));
+      setPreview(null);
+      setConflict(null);
+      return true;
     } catch (err: unknown) {
+      const code = (err as { code?: unknown }).code;
+      const statusCode = (err as { status?: unknown }).status;
+      const errPayload = (err as { payload?: unknown }).payload;
+      // R1.9 AC5: 409 xung đột → màn 2 lựa chọn, không lỗi thô.
+      if (code === "ai_config_conflict" || statusCode === 409) {
+        const body2 = (errPayload && typeof errPayload === "object" ? errPayload : {}) as Record<string, unknown>;
+        setConflict({
+          currentUpdatedAt:
+            typeof body2.current_updated_at === "string" ? body2.current_updated_at : null,
+          current:
+            body2.current && typeof body2.current === "object"
+              ? (body2.current as Record<string, unknown>)
+              : {},
+        });
+        return false;
+      }
       emitError(errMsg(err, t("aiCommandCenter.errorSaveConfig")));
+      return false;
     } finally {
       setSaving(false);
+      setPreviewSaving(false);
     }
+  };
+
+  // R1.9 AC4: bấm Lưu → mở preview diff trước, chưa gửi PUT.
+  const handleSaveSettings = (ev: FormEvent) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    const payload = buildValidatedPayload();
+    if (!payload) return;
+    setConflict(null);
+    setPreview({ before: loadedEffectiveRef.current, after: currentEffective(), payload });
+  };
+
+  const confirmPreviewSave = () => {
+    if (!preview) return;
+    void doSaveWithExpected(preview.payload, lastUpdatedAt);
+  };
+
+  const reloadOverwrite = () => {
+    if (!preview || !conflict?.currentUpdatedAt) return;
+    void doSaveWithExpected(preview.payload, conflict.currentUpdatedAt);
   };
 
   const handleClearApiKey = async () => {
@@ -741,6 +826,23 @@ export function AICommandCenterForm({
             },
           })
         )
+      : null,
+
+    // R1.9 AC4/AC5: preview diff + màn xung đột 409.
+    preview
+      ? e(AiConfigPreviewModal, {
+          key: "config-preview-modal",
+          before: preview.before,
+          after: preview.after,
+          conflict,
+          saving: previewSaving,
+          onConfirm: confirmPreviewSave,
+          onCancel: () => {
+            setPreview(null);
+            setConflict(null);
+          },
+          onReloadOverwrite: reloadOverwrite,
+        })
       : null,
 
     // localeTag reserved for future date formatting in form help text
