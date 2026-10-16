@@ -32,6 +32,17 @@ const adapterTransport: AICommandCenterTransport = {
   testConnection: (payload) => (coreApiAdapter as any).testAICommandCenterConnection(payload),
 };
 
+/**
+ * R0.3: chi gui `ai_prompt_config` khi drawer that su dirty — luu thuong
+ * khong mo drawer khong duoc ghi de config am tham (P0-2). Pure de test.
+ */
+export function shouldSendPromptConfig(
+  promptConfig: Record<string, unknown> | null,
+  dirty: boolean,
+): boolean {
+  return dirty && promptConfig != null;
+}
+
 interface AICommandCenterPageProps {
   className?: string;
 }
@@ -57,6 +68,8 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
 
   const [promptHistory, setPromptHistory] = useState<PromptConfigHistoryEntry[]>([]);
   const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(null);
+  // R0.3: chi drawer edit danh dau dirty — load/save echo KHONG gui lai config.
+  const [promptConfigDirty, setPromptConfigDirty] = useState(false);
   const [rollbackBusy, setRollbackBusy] = useState(false);
   const [refreshAuditKey, setRefreshAuditKey] = useState(0);
 
@@ -102,10 +115,15 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const handleFormSaved = useCallback(
     (data: AISettings) => {
       applySettingsToOverview(data);
+      setPromptConfigDirty(false);
       setRefreshAuditKey((k) => k + 1);
     },
     [applySettingsToOverview]
   );
+
+  const handlePromptConfigEdited = useCallback(() => {
+    setPromptConfigDirty(true);
+  }, []);
 
   const handleFormNotice = useCallback((message: string) => {
     setPageNotice(message);
@@ -266,8 +284,11 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             onError: handleFormError,
             onNotice: handleFormNotice,
             onPromptConfigChange: setPromptConfig,
+            onPromptConfigEdited: handlePromptConfigEdited,
             getExtraPayload: () =>
-              promptConfig ? { ai_prompt_config: promptConfig } : {},
+              shouldSendPromptConfig(promptConfig, promptConfigDirty)
+                ? { ai_prompt_config: promptConfig }
+                : {},
           })
         )
       ),

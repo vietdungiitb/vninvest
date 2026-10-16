@@ -82,6 +82,31 @@ def _append_prompt_config_history(user_cred, config, *, source: str = "save") ->
     return history
 
 
+def is_canonical_prompt_config(raw_config: object) -> bool:
+    """R0.2: shape chuan v2 `{version: 2, sources: {...}}`?
+
+    Chi nhan source da biet (khong la), lookback int trong bounds (dung
+    `lookback_unit` chet). Khong log, khong echo value (message co dinh o view).
+    """
+    if not isinstance(raw_config, dict):
+        return False
+    if raw_config.get('version') != 2:
+        return False
+    sources = raw_config.get('sources')
+    if not isinstance(sources, dict) or not sources:
+        return False
+    for key, entry in sources.items():
+        if key not in CANONICAL_SOURCES or not isinstance(entry, dict):
+            return False
+        lookback = entry.get('lookback')
+        if isinstance(lookback, bool) or not isinstance(lookback, int):
+            return False
+        low, high = LOOKBACK_BOUNDS.get(key, (1, 730))
+        if not (low <= lookback <= high):
+            return False
+    return True
+
+
 def _parse_prompt_config(raw_config: dict | None) -> dict:
     """
     Parse and validate raw client configuration against canonical prompt_config v2 defaults.

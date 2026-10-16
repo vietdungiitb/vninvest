@@ -264,6 +264,25 @@ describe("AICommandCenterPage", () => {
     });
   });
 
+  it("R0.3 — save without opening drawer does NOT resend prompt_config", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
+    });
+    const saveBtn = screen.getByRole("button", { name: /lưu cấu hình/i });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+    await waitFor(() => {
+      expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
+    });
+    const payload =
+      coreApiAdapter.updateAICommandCenterConfig.mock.calls[0][0];
+    expect(payload).not.toHaveProperty("ai_prompt_config");
+  });
+
   it("renders system prompt template read-only (F5)", async () => {
     await act(async () => {
       renderPage();

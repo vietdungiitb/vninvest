@@ -109,9 +109,15 @@ class AICommandCenterIsolationTests(TestCase):
         self.assertEqual(cred_b.max_tokens_per_day, 9999)
 
     def test_c_ac3_user_a_prompt_config_isolated_from_user_b(self):
-        """C-AC3: UserA ai_prompt_config ≠ UserB."""
-        prompt_a = {'whale': {'enabled': True, 'lookback': 30}}
-        prompt_b = {'whale': {'enabled': False, 'lookback': 7}}
+        """C-AC3: UserA ai_prompt_config ≠ UserB (R0.2: fixture canonical v2)."""
+        prompt_a = {
+            'version': 2,
+            'sources': {'whale': {'enabled': True, 'lookback': 30}},
+        }
+        prompt_b = {
+            'version': 2,
+            'sources': {'whale': {'enabled': False, 'lookback': 7}},
+        }
 
         r_a = self.client_a.put(CC_URL, {'ai_prompt_config': prompt_a}, format='json')
         self.assertEqual(r_a.status_code, status.HTTP_200_OK)
@@ -120,13 +126,13 @@ class AICommandCenterIsolationTests(TestCase):
 
         g_a = self.client_a.get(CC_URL)
         g_b = self.client_b.get(CC_URL)
-        self.assertEqual(unwrapped(g_a)['ai_prompt_config']['whale']['lookback'], 30)
-        self.assertEqual(unwrapped(g_b)['ai_prompt_config']['whale']['lookback'], 7)
+        self.assertEqual(unwrapped(g_a)['ai_prompt_config']['sources']['whale']['lookback'], 30)
+        self.assertEqual(unwrapped(g_b)['ai_prompt_config']['sources']['whale']['lookback'], 7)
 
         cred_a = UserAICredential.objects.get(user=self.user_a)
         cred_b = UserAICredential.objects.get(user=self.user_b)
-        self.assertEqual(cred_a.prompt_config['whale']['lookback'], 30)
-        self.assertEqual(cred_b.prompt_config['whale']['lookback'], 7)
+        self.assertEqual(cred_a.prompt_config['sources']['whale']['lookback'], 30)
+        self.assertEqual(cred_b.prompt_config['sources']['whale']['lookback'], 7)
 
     def test_c_ac4_put_does_not_mutate_system_ai_settings(self):
         """C-AC4: PUT never writes SystemAISettings temperature/max_tokens/metadata/ai_model."""
@@ -135,12 +141,16 @@ class AICommandCenterIsolationTests(TestCase):
         before_model = self.system.ai_model
         before_meta = dict(self.system.metadata)
 
+        news_off_v2 = {
+            'version': 2,
+            'sources': {'news': {'enabled': False, 'lookback': 14}},
+        }
         r = self.client_a.put(CC_URL, {
             'temperature': 0.77,
             'advisory_max_tokens_per_day': 123,
             'advisory_refresh_interval_hours': 6,
             'advisory_max_auto_refreshes_per_day': 3,
-            'ai_prompt_config': {'news': {'enabled': False}},
+            'ai_prompt_config': news_off_v2,
             'ai_model': 'gpt-4o',
         }, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
@@ -155,7 +165,11 @@ class AICommandCenterIsolationTests(TestCase):
         self.assertAlmostEqual(unwrapped(r)['temperature'], 0.77, places=5)
         self.assertEqual(unwrapped(r)['advisory_max_tokens_per_day'], 123)
         self.assertEqual(unwrapped(r)['advisory_refresh_interval_hours'], 6)
-        self.assertEqual(unwrapped(r)['ai_prompt_config'], {'news': {'enabled': False}})
+        # R0.2: GET chuan hoa ve canonical day du (nguon thieu lay default).
+        echoed = unwrapped(r)['ai_prompt_config']
+        self.assertEqual(echoed['version'], 2)
+        self.assertEqual(echoed['sources']['news'], news_off_v2['sources']['news'])
+        self.assertIn('whale', echoed['sources'])
 
     def test_c_ac5_response_shape_keys_stable(self):
         """C-AC5: GET returns same FE contract keys."""
