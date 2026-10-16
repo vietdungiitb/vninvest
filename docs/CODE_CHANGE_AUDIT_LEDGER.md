@@ -1,4 +1,14 @@
 
+## Entry 331: Dinh huong VNINVEST khong san, khong lenh live (2026-10-16)
+
+- **Goc**: Owner chot dinh huong (khong san giao dich, khong live trade; chi tiep nhan thong tin de theo doi, danh gia, tu van AI; ngoai tru hop dong rieng). Claim `dinh-huong` (DOC-ONLY).
+- **Phat hien chinh (L-V02)**: dinh huong DA DUOC code thuc thi tu truoc — BE chan live (`live_ordering_disabled`, paper⇒dry_run, audit `rejected_live_mode`, `trade: False` 3 lane); thieu la tuyen bo san pham + khoa R3. Khong can sua code cho dinh huong nay.
+- **Viec lam**: TAO MOI `docs/DINH_HUONG_VNINVEST_KHONG_LIVE_TRADE_20261016.md` (dinh huong 1 cau + bang chung code + whitelist 4 nhom + ngoai ranh gioi + 5 diem cham copy can soat + lo trinh A-D + 7 tieu chi audit) · TAO MOI `docs/adr/ADR-008-khong-san-khong-lenh-live.md` · SUA `13.01` (muc dinh huong + R3 chet).
+- **Lo trinh moi**: Pha A khoa an toan (giu) → Pha B doi mui sang AI/paper/canh bao/bao cao (khong live) → Pha C mobile/API-read → Pha D live CHI khi hop dong (mac dinh dong).
+- **Lessons ap dung**: L-001, L-002, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G02.
+- **Gate**: system-design --check (chay truoc PR) · check-multi-agent 0 loi · pre-push PASS.
+- **CHUA CHAY**: full BE · FE full · ruff · E2E.
+
 ## Entry 330: Bao cao BGĐ doi sanh thuong mai + lo trinh (2026-10-16)
 
 - **Nhanh**: `feat/board-report-bgd` -> `dev` (PR #167). Claim `board-report` (DOC-ONLY). 2 subagent song song (benchmark thuong mai + kiem ke codebase) + tong hop viet tay.

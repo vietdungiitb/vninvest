@@ -1,6 +1,6 @@
 # freshness-report — Ảnh Chụp Số Liệu (Máy Sinh, Không Sửa Tay)
 
-> Sinh lúc: 2026-10-15 · Tool: `docs/system-design/_meta/tools/check-system-design.mjs`
+> Sinh lúc: 2026-10-16 · Tool: `docs/system-design/_meta/tools/check-system-design.mjs`
 > So sánh khi `--check`: chuẩn hóa CRLF, bỏ khối VOLATILE, token thời gian.
 
 ## 1. Số liệu kiến trúc (fail-closed)
@@ -22,5 +22,5 @@
 | routes_total | 1473 | Đo 2026-10-14 bằng `docs/architecture/tools/measure_repo.py` (cần Django runtime, không nằm trong gate này) |
 | routes_core_v1 | 615 | Như trên |
 | web_src_tracked | 587 | `git ls-files packages/web/src` lúc sinh báo cáo |
-| docs_md_total | 1848 | Đếm `docs/**.md` lúc sinh báo cáo |
+| docs_md_total | 1852 | Đếm `docs/**.md` lúc sinh báo cáo |
 <!-- VOLATILE-END -->
