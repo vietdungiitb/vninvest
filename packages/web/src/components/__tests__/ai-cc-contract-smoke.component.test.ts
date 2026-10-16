@@ -5,7 +5,9 @@
  */
 import { describe, it, expect } from "vitest";
 
-/** BE GET /workspace/ai-command-center/ response keys (portfolio_analytics_views.py GET). */
+/** BE GET /workspace/ai-command-center/ response keys (portfolio_analytics_views.py GET).
+ * R0.9: `system_prompt_template` chi staff; `system_policy` cho moi user;
+ * `ai_config_message` da bo (AC7). */
 const BE_CC_GET_KEYS = [
   "ai_provider",
   "ai_model",
@@ -13,12 +15,12 @@ const BE_CC_GET_KEYS = [
   "ai_api_key_configured",
   "ai_api_key_masked",
   "system_prompt_template",
+  "system_policy",
   "custom_endpoint",
   "effective_ai_source",
   "effective_ai_provider",
   "effective_ai_model",
   "ai_ready",
-  "ai_config_message",
   "ai_prompt_config",
   "ai_prompt_config_history",
   "advisory_refresh_interval_hours",

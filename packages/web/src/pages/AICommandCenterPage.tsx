@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense, memo, createElement }
 import { Link, useLocation } from "react-router-dom";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { usePortfolio } from "../context/PortfolioContext.js";
 import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
 import { ShellPanel } from "../components/ShellPageTemplate.js";
 import styles from "../components/aiSettings.module.css";
@@ -55,7 +56,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const [pageNotice, setPageNotice] = useState("");
 
   const [aiReady, setAiReady] = useState(false);
-  const [aiConfigMessage, setAiConfigMessage] = useState("");
+  // R0.9 AC8: lop B he thong chi staff thay (pattern AdminAnalyticsPage).
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffViewer = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
   const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
   const [maxTokensDisplay, setMaxTokensDisplay] = useState(5000);
@@ -79,7 +82,6 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
     setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
     setAiReady((data as any).ai_ready ?? false);
-    setAiConfigMessage((data as any).ai_config_message || "");
     setRefreshIntervalDisplay(Number((data as any).advisory_refresh_interval_hours) || 24);
     setMaxAutoRefreshes(Number((data as any).advisory_max_auto_refreshes_per_day) || 24);
     setMaxTokensDisplay(Number((data as any).advisory_max_tokens_per_day) || 5000);
@@ -263,11 +265,6 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             e("p", { key: "v", className: styles.metricValue }, `${maxTokensDisplay}`),
           ]),
         ]),
-        aiConfigMessage
-          ? e("div", { key: "pol-msg", className: styles.helpText },
-              `${t("aiCommandCenter.configMessagePrefix")} ${aiConfigMessage}`
-            )
-          : null
       ),
 
       pageNotice ? e("div", { key: "notice-banner", className: styles.alert + " " + styles.alertSuccess }, pageNotice) : null,
@@ -330,33 +327,37 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
           })()
         : null,
 
-      // System prompt template viewer (F5)
+      // System prompt template viewer (F5) — R0.9 AC8: chi staff thay template;
+      // user thuong thay thong bao "do nen tang quan ly".
       settings
         ? e(ShellPanel, {
             key: "system-prompt-panel",
             title: t("aiCommandCenter.systemPromptTitle"),
             subtitle: t("aiCommandCenter.systemPromptDesc"),
           },
-            settings.system_prompt_template
-              ? e("pre", {
-                  key: "template",
-                  "data-testid": "system-prompt-template",
-                  className: styles.helpText,
-                  style: {
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    maxHeight: 180,
-                    overflow: "auto",
-                    margin: 0,
-                    padding: 12,
-                    borderRadius: 10,
-                    border: "1px solid var(--ai-border)",
-                    background: "rgba(4, 11, 35, 0.45)",
-                  },
-                }, settings.system_prompt_template)
-              : e("p", { key: "empty", className: styles.empty, "data-testid": "system-prompt-empty" },
-                  t("aiCommandCenter.systemPromptEmpty"))
+            isStaffViewer
+              ? (settings.system_prompt_template
+                ? e("pre", {
+                    key: "template",
+                    "data-testid": "system-prompt-template",
+                    className: styles.helpText,
+                    style: {
+                      whiteSpace: "pre-wrap",
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                      maxHeight: 180,
+                      overflow: "auto",
+                      margin: 0,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: "1px solid var(--ai-border)",
+                      background: "rgba(4, 11, 35, 0.45)",
+                    },
+                  }, settings.system_prompt_template)
+                : e("p", { key: "empty", className: styles.empty, "data-testid": "system-prompt-empty" },
+                    t("aiCommandCenter.systemPromptEmpty")))
+              : e("p", { key: "managed", className: styles.helpText, "data-testid": "system-prompt-managed" },
+                  t("aiCommandCenter.systemManagedByPlatform"))
           )
         : null,
 

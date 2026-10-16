@@ -5456,6 +5456,7 @@ const vi = {
     systemPromptTitle: 'System prompt template',
     systemPromptDesc: 'Template system prompt cấp hệ thống (chỉ đọc).',
     systemPromptEmpty: 'Chưa có system prompt template.',
+    systemManagedByPlatform: 'System prompt do nền tảng quản lý. Liên hệ quản trị viên nếu cần thay đổi.',
     promptHistoryTitle: 'Lịch sử prompt',
     promptHistoryDesc: 'Các phiên bản prompt đã lưu, có thể khôi phục.',
     promptHistoryEmpty: 'Chưa có lịch sử prompt.',
@@ -5479,7 +5480,6 @@ const vi = {
     unknownError: 'Lỗi không xác định.',
     retryButton: 'Thử lại',
     quotaUsed: 'lượt',
-    configMessagePrefix: 'Thông điệp cấu hình:',
   },
   aiAgentFederation: {
     title: 'Quản lý Agent AI',

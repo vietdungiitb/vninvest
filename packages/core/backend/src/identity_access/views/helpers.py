@@ -153,6 +153,8 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         abilities.extend([
             {'action': 'read', 'subject': 'admin.operator.read'},
             {'action': 'manage', 'subject': 'system.ai_command_center.manage'},
+            # R0.9 AC6: quan tri policy he thong AI (lop B) — staff-only.
+            {'action': 'manage', 'subject': 'ai.policy.manage'},
             {'action': 'read', 'subject': 'ServiceOpsCenter'},
             # Operator admin panel subjects used by ProtectedRoute in frontend App.jsx
             {'action': 'read', 'subject': 'AdminOps'},
@@ -180,7 +182,9 @@ def _build_navigation(user, tenant: CoreTenant) -> dict:
     # Menu 2026-09-22: đồng bộ với FE sidebaritems.ts (5 nhóm / 13 mục + flag).
     # 'whale-alerts' giữ để tương thích client cũ (FE redirect về 'alert-center').
     groups = ['workspace', 'signals', 'system']
-    routes = ['dashboard', 'watchlist', 'screener', 'support', 'settings', 'upgrade']
+    # R0.9 AC5: ai-command-center la self-service cho moi user (khop menu FE),
+    # khong phai dac quyen staff. Quyen doc/ghi cau hinh ca nhan khong doi.
+    routes = ['dashboard', 'watchlist', 'screener', 'support', 'settings', 'upgrade', 'ai-command-center']
 
     if tenant.plan != CoreTenant.PlanChoices.FREE:
         routes.extend(['ai-advisory', 'whale-alerts', 'alert-center', 'transactions', 'portfolios'])
@@ -190,7 +194,6 @@ def _build_navigation(user, tenant: CoreTenant) -> dict:
         routes.extend([
             'operations-center',
             'operations-center-mail-config',
-            'ai-command-center',
             'admin-crawl-control',
             'tenant-admin',
             'commercial-billing-center',

@@ -172,11 +172,15 @@ class AICommandCenterIsolationTests(TestCase):
         self.assertIn('whale', echoed['sources'])
 
     def test_c_ac5_response_shape_keys_stable(self):
-        """C-AC5: GET returns same FE contract keys."""
+        """C-AC5: GET returns same FE contract keys.
+
+        R0.9 rework (co chu dich, nhu C-AC3/C-AC4 o R0.2): `ai_config_message`
+        bi loai khoi contract; them `system_policy` (managed_by_platform).
+        """
         required = {
             'ai_provider', 'ai_model', 'ai_api_key', 'ai_api_key_configured',
             'custom_endpoint', 'effective_ai_source', 'effective_ai_provider',
-            'effective_ai_model', 'ai_ready', 'ai_config_message',
+            'effective_ai_model', 'ai_ready', 'system_policy',
             'ai_prompt_config', 'advisory_refresh_interval_hours',
             'advisory_max_auto_refreshes_per_day', 'advisory_max_tokens_per_day',
             'temperature', 'fallback_quota_remaining', 'fallback_quota_max',

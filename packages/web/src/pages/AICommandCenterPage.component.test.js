@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AICommandCenterPage } from "./AICommandCenterPage";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
+import * as PortfolioContext from "../context/PortfolioContext.js";
 
 const renderPage = () =>
   render(createElement(MemoryRouter, null, createElement(AICommandCenterPage, {})));
@@ -95,6 +96,7 @@ const TRANSLATIONS = {
   "aiCommandCenter.systemPromptTitle": "System prompt template",
   "aiCommandCenter.systemPromptDesc": "Template system prompt cấp hệ thống (chỉ đọc).",
   "aiCommandCenter.systemPromptEmpty": "Chưa có system prompt template.",
+  "aiCommandCenter.systemManagedByPlatform": "System prompt do nền tảng quản lý.",
 };
 
 const i18nValue = {
@@ -112,12 +114,20 @@ const i18nValue = {
   formatDateTime: (dt) => dt,
 };
 
+// R0.9 AC8: mac dinh non-staff (user thuong thay thong bao managed).
+const mockStaff = (staff) => {
+  vi.spyOn(PortfolioContext, "usePortfolio").mockReturnValue({
+    userIdentity: { isStaff: staff, isSuperuser: false },
+  });
+};
+
 beforeEach(() => {
   vi.spyOn(coreApiAdapter, "getAICommandCenterConfig").mockResolvedValue({ ...baseSettings });
   vi.spyOn(coreApiAdapter, "getUserConfig").mockResolvedValue({ ...baseSettings });
   vi.spyOn(coreApiAdapter, "updateAICommandCenterConfig").mockResolvedValue({ ...baseSettings });
   vi.spyOn(coreApiAdapter, "updateUserConfig").mockResolvedValue({ advisory_whale_signal_enabled: true });
   vi.spyOn(LangContext, "useI18n").mockReturnValue(i18nValue);
+  mockStaff(false);
 });
 
 afterEach(() => {
@@ -283,7 +293,14 @@ describe("AICommandCenterPage", () => {
     expect(payload).not.toHaveProperty("ai_prompt_config");
   });
 
-  it("renders system prompt template read-only (F5)", async () => {
+  it("R0.9 AC8 — staff sees system prompt template read-only (F5)", async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(coreApiAdapter, "getAICommandCenterConfig").mockResolvedValue({ ...baseSettings });
+    vi.spyOn(coreApiAdapter, "getUserConfig").mockResolvedValue({ ...baseSettings });
+    vi.spyOn(coreApiAdapter, "updateAICommandCenterConfig").mockResolvedValue({ ...baseSettings });
+    vi.spyOn(coreApiAdapter, "updateUserConfig").mockResolvedValue({ advisory_whale_signal_enabled: true });
+    vi.spyOn(LangContext, "useI18n").mockReturnValue(i18nValue);
+    mockStaff(true);
     await act(async () => {
       renderPage();
     });
@@ -291,5 +308,20 @@ describe("AICommandCenterPage", () => {
       expect(screen.getByTestId("system-prompt-template")).toBeTruthy();
     });
     expect(screen.getByTestId("system-prompt-template").textContent).toBe("System for {symbol}");
+    expect(screen.queryByTestId("system-prompt-managed")).toBeNull();
+  });
+
+  it("R0.9 AC8 — non-staff sees managed notice, never the template", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("system-prompt-managed")).toBeTruthy();
+    });
+    expect(screen.getByTestId("system-prompt-managed").textContent).toContain(
+      "System prompt do nền tảng quản lý."
+    );
+    expect(screen.queryByTestId("system-prompt-template")).toBeNull();
+    expect(screen.queryByText("System for {symbol}")).toBeNull();
   });
 });

@@ -41,7 +41,6 @@ export interface AISettings {
   effective_ai_provider?: string;
   effective_ai_model?: string;
   ai_ready?: boolean;
-  ai_config_message?: string;
   [key: string]: unknown;
 }
 
