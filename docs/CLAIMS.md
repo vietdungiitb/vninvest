@@ -1337,3 +1337,8 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
 | `repo-cleanup` | `feat/repo-cleanup` -> `dev` | DOC-ONLY + xoa rac an toan: dong 6 claim stale (branch mat, theo AGENT_PROTOCOL S3, Owner dong y don sach) + xoa file tam untracked + bao cao gate nen (check-multi-agent, system-design --check, worktree/branch/DB/tmp). KHONG xoa code chay, KHONG migration, KHONG package.json, KHONG rewrite history. | **SUA**: `docs/CLAIMS.md` (6 dong, doi 1 tu trang thai); **XOA**: file tam untracked neu co; **GHI**: `docs/CODE_CHANGE_AUDIT_LEDGER.md` | done | 2026-10-16 | Lessons ap dung: L-001, L-002, L-006, L-008, L-V02, L-T01, L-T02, L-G02. | RELEASED qua PR.
+## 2026-10-16 - Bao cao BGĐ: doi sanh thuong mai + lo trinh (Owner trinh phe duyet)
+
+| agent | branch | scope | files | status | since | note |
+|---|---|---|---|---|---|---|
+| `board-report` | `feat/board-report-bgd` -> `dev` | DOC-ONLY: bao cao trinh BGĐ — audit codebase + system-design + benchmark san pham thuong mai VN (SSI/TCBS/DNSE/VPS/VNDirect), xac dinh lam tot/dang do/tuong lai, lo trinh theo phase den muc slice + gate + uoc luong. Subagent nghien cuu song song, tong hop viet tay kem file:line. | **TAO MOI**: `docs/BAOCAO_BGD_DOISANH_LOTRINH_20261016.md`; **GHI**: `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | in-progress | 2026-10-16 | Lessons ap dung: L-001, L-002, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G02. DOC-ONLY: khong code, khong migration, khong package.json. |
