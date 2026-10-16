@@ -52,6 +52,18 @@ const CHECKS = [
     file: "packages/core/backend/src/user_workspace/portfolio_analytics_views.py",
     patterns: ["build_ai_readiness(provider, api_key_configured)"],
   },
+  {
+    // R1.6 AC1: chart khong hex/rgba cung — ngoai tru fallback trong
+    // CHART_TOKEN_FALLBACK (allowlist tuong minh: SVG attribute khong hieu var()).
+    id: "AC7-chart-tokens",
+    file: "packages/web/src/components/AIUsageDashboard.tsx",
+    patterns: ["chartToken(", "CHART_TOKEN_FALLBACK"],
+    absentExcept: [{
+      pattern: "#[0-9a-fA-F]{3,8}\\b|rgba?\\(",
+      allow: "chartToken(",
+      allowBlock: { start: "CHART_TOKEN_FALLBACK", end: "};" },
+    }],
+  },
 ];
 
 function checkOne(root, check) {
@@ -65,6 +77,24 @@ function checkOne(root, check) {
       (line) => line.includes(a) && !line.trim().startsWith("#") && !line.trim().startsWith("//") && !line.trim().startsWith("*")
     );
     if (hits.length > 0) return `con chuoi cam: ${a} (${hits.length} dong code)`;
+  }
+  for (const rule of check.absentExcept || []) {
+    const re = new RegExp(rule.pattern);
+    // Allowlist theo block: hex/rgba chi duoc nam trong block khai bao
+    // (vd CHART_TOKEN_FALLBACK) hoac tren dong co chuoi allow.
+    let start = -1;
+    let end = -1;
+    if (rule.allowBlock) {
+      start = text.indexOf(rule.allowBlock.start);
+      end = start >= 0 ? text.indexOf(rule.allowBlock.end, start) : -1;
+    }
+    const hits = text.split("\n").filter((line) => {
+      if (!re.test(line) || line.includes(rule.allow)) return false;
+      if (start < 0 || end < 0) return true;
+      const at = text.indexOf(line);
+      return at < start || at > end;
+    });
+    if (hits.length > 0) return `con mau cung ngoai allowlist: ${hits.length} dong (vd: ${hits[0].trim().slice(0, 60)})`;
   }
   return null;
 }

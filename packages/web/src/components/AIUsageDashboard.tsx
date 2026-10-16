@@ -1,4 +1,4 @@
-import { formatNumber } from "../i18n";
+import { formatNumber, formatDateTime, formatCurrency } from "../i18n";
 import { useState, useEffect, useCallback, createElement } from "react";
 import {
   Bar,
@@ -16,6 +16,39 @@ import { useRetryableAsync } from "../hooks/useRetryableAsync.js";
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../hooks/useUrlState";
 
 const e = createElement;
+
+/**
+ * R1.6: màu chart đọc từ token --ai-* qua computed style (attribute SVG không
+ * hiểu var()). Fallback là hằng số cũ — allowlist tường minh cho gate check-ai-cc
+ * (CHART_TOKEN_FALLBACK). jsdom trả rỗng ⇒ fallback, test không vỡ.
+ */
+const CHART_TOKEN_FALLBACK: Record<string, string> = {
+  "--ai-border": "rgba(148,163,184,0.15)",
+  "--ai-muted": "#94a3b8",
+  "--ai-surface": "rgba(15,23,42,0.95)",
+  "--ai-ink": "#f1f5f9",
+  "--ai-accent": "#12c7e8",
+};
+export function chartToken(name: string): string {
+  try {
+    if (typeof document === "undefined" || typeof getComputedStyle === "undefined") {
+      return CHART_TOKEN_FALLBACK[name] ?? "";
+    }
+    return (
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+      CHART_TOKEN_FALLBACK[name] ||
+      ""
+    );
+  } catch {
+    return CHART_TOKEN_FALLBACK[name] ?? "";
+  }
+}
+
+/** R1.6 AC4: union thay ternary inline cho màu trạng thái. */
+const STATUS_TONE: Record<string, "statusSuccess" | "statusError" | "statusDefault"> = {
+  success: "statusSuccess",
+  error: "statusError",
+};
 
 interface AggregateData {
   total_requests: number;
@@ -129,13 +162,13 @@ function toCsv(records: UsageRecord[], localeTag: string, t: (key: string) => st
   };
   const headers = CSV_HEADER_KEYS.map((k) => t(k));
   const rows = records.map((rec) => [
-    new Date(rec.created_at).toLocaleString(localeTag),
+    formatDateTime(rec.created_at, localeTag),
     rec.action,
     rec.provider,
     rec.model,
     rec.tokens_in,
     rec.tokens_out,
-    `$${parseFloat(rec.cost || "0").toFixed(6)}`,
+    formatCurrency(rec.cost ?? 0, localeTag, "USD", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
     `${rec.latency_ms}ms`,
     rec.status,
   ].map(escape).join(","));
@@ -156,7 +189,7 @@ function buildChartData(summary: UsageSummaryRow[] | null): Array<{ date: string
 }
 
 export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
-  const { t, localeTag } = useI18n();
+  const { t, localeTag, formatCurrency } = useI18n();
   const [days, setDays] = useState("7");
   // WAVE 10 / NAV-1: phan trang + kich thuoc trang + 2 bo loc nam trong RAM nen
   // gui link cho nguoi khac thi ho thay man hinh CHUA loc. `useUrlState` (patch)
@@ -167,6 +200,10 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
   );
   const setPage = useCallback((v: number) => setUrlState({ page: v }), [setUrlState]);
   const [exporting, setExporting] = useState(false);
+
+  // R1.6 AC6: USD 1 chỗ tròn số duy nhất — 4 chữ số thập phân.
+  const usd4 = (value: unknown): string =>
+    formatCurrency(Number(value ?? 0), "USD", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
   const usageClient = coreApiAdapter as unknown as {
     getAIUsageAggregate: (p: Record<string, string>) => Promise<AggregateData>;
@@ -259,7 +296,7 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
   const summaryCards = [
     { label: t("aiUsageAnalytics.totalRequests"), value: formatNumber(aggregate?.total_requests ?? 0), key: "requests" },
     { label: t("aiUsageAnalytics.totalTokens"), value: formatNumber((aggregate?.total_tokens_in || 0) + (aggregate?.total_tokens_out || 0)), key: "tokens" },
-    { label: t("aiUsageAnalytics.totalCost"), value: `$${parseFloat(aggregate?.total_cost || "0").toFixed(4)}`, key: "cost" },
+    { label: t("aiUsageAnalytics.totalCost"), value: usd4(aggregate?.total_cost), key: "cost" },
     { label: t("aiUsageAnalytics.avgLatency"), value: aggregate?.avg_latency ? `${Math.round(aggregate.avg_latency)}ms` : "0ms", key: "latency" },
   ];
 
@@ -340,28 +377,42 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
       )
     ),
 
-    !fetchLoading && e("div", { className: styles.chartWrap, "data-testid": "usage-chart" },
+    !fetchLoading && e("div", { className: styles.chartWrap, "data-testid": "usage-chart", "aria-hidden": true },
       chartData.length === 0
         ? e("p", { className: styles.empty }, t("aiUsageAnalytics.chartEmpty"))
         : e(ResponsiveContainer as React.ComponentType<{ width?: string | number; height?: string | number; children?: React.ReactNode }>, { width: "100%", height: "100%" },
             e(BarChart as React.ComponentType<{ data?: unknown; margin?: Record<string, number>; children?: React.ReactNode }>, { data: chartData, margin: { top: 8, right: 8, left: 0, bottom: 0 } },
-              e(CartesianGrid as React.ComponentType<Record<string, unknown>>, { strokeDasharray: "3 3", stroke: "rgba(148,163,184,0.15)" }),
-              e(XAxis as React.ComponentType<Record<string, unknown>>, { dataKey: "date", tick: { fontSize: 11, fill: "#94a3b8" }, axisLine: false, tickLine: false }),
-              e(YAxis as React.ComponentType<Record<string, unknown>>, { tick: { fontSize: 11, fill: "#94a3b8" }, axisLine: false, tickLine: false }),
+              e(CartesianGrid as React.ComponentType<Record<string, unknown>>, { strokeDasharray: "3 3", stroke: chartToken("--ai-border") }),
+              e(XAxis as React.ComponentType<Record<string, unknown>>, { dataKey: "date", tick: { fontSize: 11, fill: chartToken("--ai-muted") }, axisLine: false, tickLine: false }),
+              e(YAxis as React.ComponentType<Record<string, unknown>>, { tick: { fontSize: 11, fill: chartToken("--ai-muted") }, axisLine: false, tickLine: false }),
               e(Tooltip as React.ComponentType<Record<string, unknown>>, {
                 contentStyle: {
-                  background: "rgba(15,23,42,0.95)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--ai-surface)",
+                  border: "1px solid var(--ai-border)",
                   borderRadius: 12,
                   fontSize: 12,
-                  color: "#f1f5f9",
+                  color: "var(--ai-ink)",
                 },
                 labelFormatter: (label: string) => `${t("aiUsageAnalytics.chartTitle")}: ${label}`,
               }),
-              e(Bar as unknown as React.ComponentType<Record<string, unknown>>, { dataKey: "tokensIn", name: t("aiUsageAnalytics.chartTokensIn"), fill: "#12c7e8", radius: [4, 4, 0, 0] })
+              e(Bar as unknown as React.ComponentType<Record<string, unknown>>, { dataKey: "tokensIn", name: t("aiUsageAnalytics.chartTokensIn"), fill: chartToken("--ai-accent"), radius: [4, 4, 0, 0] })
             )
           )
       ),
+
+    // R1.6 AC3: bảng số thay thế cho chart (screen reader) — cùng số liệu chartData.
+    !fetchLoading && chartData.length > 0
+      ? e("table", { key: "chart-data-table", className: styles.srOnly },
+          e("tbody", null,
+            chartData.map((row) =>
+              e("tr", { key: row.date },
+                e("td", null, row.date),
+                e("td", null, String(row.tokensIn))
+              )
+            )
+          )
+        )
+      : null,
 
     !fetchLoading && e("div", null,
       records.length === 0
@@ -381,17 +432,17 @@ export function AIUsageDashboard({ className = "" }: AIUsageDashboardProps) {
                   key: rec.id,
                   className: styles.tr,
                 },
-                  e("td", { className: styles.td }, new Date(rec.created_at).toLocaleString(localeTag)),
+                  e("td", { className: styles.td }, formatDateTime(rec.created_at, localeTag)),
                   e("td", { className: styles.td }, rec.action),
                   e("td", { className: styles.td }, rec.provider),
                   e("td", { className: styles.td }, rec.model),
                   e("td", { className: styles.td }, formatNumber(rec.tokens_in, localeTag)),
                   e("td", { className: styles.td }, formatNumber(rec.tokens_out, localeTag)),
-                  e("td", { className: styles.td }, `$${parseFloat(rec.cost || "0").toFixed(6)}`),
+                  e("td", { className: styles.td }, usd4(rec.cost)),
                   e("td", { className: styles.td }, `${rec.latency_ms}ms`),
                   e("td", { className: styles.td },
                     e("span", {
-                      className: rec.status === "success" ? styles.statusSuccess : styles.statusError,
+                      className: styles[STATUS_TONE[rec.status] ?? "statusDefault"],
                     }, rec.status),
                   ),
                 )

@@ -1125,3 +1125,39 @@
   color: var(--ai-muted);
 }
 /* /R1.2 */
+
+/* R1.6 chart: viewer/history/sr-only/status — chỉ dùng token --ai-*, không màu cứng. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.promptViewer {
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 12px;
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+  color: var(--ai-ink);
+}
+.historyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ai-border);
+}
+.statusDefault { color: var(--ai-muted); }
+/* /R1.6 */
