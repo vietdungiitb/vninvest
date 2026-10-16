@@ -1,3 +1,14 @@
+## Entry 352: AI R2.1 deployments (mo R2, 2026-10-17)
+
+- **Nhanh**: `feat/ai-r21-deployments` -> `dev`. Claim `ai-r21`. TDD: ImportError tren dev -> GREEN 5/5 (VPS).
+- **Viec lam**: AIDeployment + AIFallbackChain + active_deployment + resolver + admin + serial + migration 0014 (1 file).
+- **Deviate**: unique per-owner (khong nhu plan) + nulls_distinct=False (PG16) + COPILOT van go (R2.4 them lai).
+- **Gate**: moi 5/5 + config_isolation 9/9 + makemigrations/system-design/multi-agent xanh. Evidence `docs/evidence/ai-cc/r21-gates.md`.
+- **Quyet dinh PM**: R2 mo toan bo; R2.3/R2.5 lam theo huong an toan (tat mac dinh + fail-closed), khong cho Owner.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02, L-M01, L-M02].
+- **CHUA CHAY**: full BE + ruff + E2E + staging.
+- **Tiep**: R2.2 factory.
+
 ## Entry 351: AI R1 khép kín M1 — 11/11 slice (2026-10-16)
 
 - **Chu trình**: PM tuần tự 1 agent (mô hình R0): claim->branch->TDD RED->code->GREEN->gates->PR->merge->released, lặp 11 lần. PR slice #181..#201 (lẻ) + PR chore (chẵn).

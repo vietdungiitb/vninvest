@@ -2,7 +2,15 @@ from django.contrib import admin
 
 from vninvest_core.admin_ui import VNAdminMixin, badge_for, decimal_vi
 
-from .models import AdvisoryComponent, AdvisoryRecord, AdvisorySession, SystemAISettings, UserAICredential
+from .models import (
+    AdvisoryComponent,
+    AdvisoryRecord,
+    AdvisorySession,
+    AIDeployment,
+    AIFallbackChain,
+    SystemAISettings,
+    UserAICredential,
+)
 
 
 class AdvisoryComponentInline(admin.TabularInline):
@@ -112,3 +120,25 @@ class AIAuditLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     ordering = ('-created_at',)
     date_hierarchy = 'created_at'
     list_per_page = 100
+
+
+@admin.register(AIDeployment)
+class AIDeploymentAdmin(VNAdminMixin, admin.ModelAdmin):
+    """R2.1: deployment provider/model/credential."""
+
+    list_display = ('name', 'owner_scope', 'provider', 'model', 'weight', 'enabled', 'health_state', 'updated_at')
+    list_filter = ('owner_scope', 'provider', 'enabled', 'health_state')
+    search_fields = ('name', 'model')
+    readonly_fields = ('created_at', 'updated_at', 'last_health_at')
+    ordering = ('name',)
+
+
+@admin.register(AIFallbackChain)
+class AIFallbackChainAdmin(VNAdminMixin, admin.ModelAdmin):
+    """R2.1: thứ tự failover."""
+
+    list_display = ('name', 'owner_scope', 'updated_at')
+    list_filter = ('owner_scope',)
+    search_fields = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('name',)
