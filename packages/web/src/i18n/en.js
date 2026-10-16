@@ -5383,6 +5383,10 @@ const en = {
     conflictReload: 'Reload & overwrite',
     conflictCancel: 'Cancel, keep mine',
     noChanges: 'No changes.',
+    quotaLine: '{remaining}/{max} left · used {used}',
+    quotaResetIn: 'resets in {h}h {m}m',
+    quotaSourcePersonal: 'personal key',
+    quotaSourceSystem: 'system',
   },
   // DEPRECATED 1 sprint sau B.4 (Entry 201) — call sites đã migrate sang aiUsageAnalytics/aiAgentFederation. Không xóa trước grep 0-hit + 1 sprint.
   usage: {

@@ -66,6 +66,10 @@ const TRANSLATIONS = {
   "aiCommandCenter.loadingConfig": "Đang tải cấu hình AI...",
   "aiCommandCenter.errorLoadConfig": "Lỗi khi tải cấu hình AI.",
   "aiCommandCenter.retryButton": "Thử lại",
+  "aiCommandCenter.quotaLine": "Còn {remaining}/{max} lượt · đã dùng {used}",
+  "aiCommandCenter.quotaResetIn": "reset sau {h}h {m}m",
+  "aiCommandCenter.quotaSourcePersonal": "khóa cá nhân",
+  "aiCommandCenter.quotaSourceSystem": "hệ thống",
   "aiCommandCenter.unknownError": "Lỗi không xác định.",
   "aiCommandCenter.errorBoundaryTitle": "Lỗi Trung tâm điều hành AI",
   "aiCommandCenter.runtimeConfig": "CẤU HÌNH AI RUNTIME",
@@ -179,7 +183,30 @@ describe("AICommandCenterPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
-    expect(screen.getByText(/0\s*lượt\s*\/\s*5\s*lượt/)).toBeTruthy();
+    // R1.10 AC2: nhãn đúng nghĩa "Còn 0/5 lượt · đã dùng 5" (không "0 lượt / 5 lượt").
+    // R1.10 AC5: nguồn mặc định là hệ thống khi thiếu field — cùng 1 dòng quota.
+    expect(screen.getByText(/Còn 0\/5 lượt · đã dùng 5.*hệ thống/)).toBeTruthy();
+    expect(screen.getByText(/reset sau \d+h \d+m/)).toBeTruthy();
+  });
+
+  it("R1.10 AC4/AC5 — 0/5 hiện cảnh báo đỏ + nguồn khóa cá nhân", async () => {
+    coreApiAdapter.getAICommandCenterConfig.mockResolvedValue({
+      ...baseSettings,
+      fallback_quota_max: 5,
+      fallback_quota_remaining: 0,
+      fallback_quota_used_today: 5,
+      fallback_quota_source: "personal_key",
+      fallback_quota_reset: undefined,
+      ai_provider: "openai",
+    });
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Còn 0\/5 lượt · đã dùng 5/)).toBeTruthy();
+    });
+    expect(screen.getByText(/khóa cá nhân/)).toBeTruthy();
+    expect(screen.getByText("aiCommandCenter.fallbackExhausted")).toBeTruthy();
   });
 
   it("updates policy display after save without reload (Slice A G-10)", async () => {

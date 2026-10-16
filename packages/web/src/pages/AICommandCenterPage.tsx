@@ -316,6 +316,21 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
         ? (() => {
             const quotaRemaining = settings.fallback_quota_remaining ?? 0;
             const quotaMax = settings.fallback_quota_max || 1;
+            // R1.10 AC2: nhãn đúng nghĩa — còn lại / đã dùng (không "5 lượt / 5 lượt").
+            const quotaUsedToday = (settings as any).fallback_quota_used_today
+              ?? Math.max(0, quotaMax - quotaRemaining);
+            const quotaSource = (settings as any).fallback_quota_source === "personal_key"
+              ? t("aiCommandCenter.quotaSourcePersonal")
+              : t("aiCommandCenter.quotaSourceSystem");
+            // R1.10 AC3: đếm ngược tới nửa đêm (reset quota ngày).
+            const now = new Date();
+            const midnight = new Date(now);
+            midnight.setHours(24, 0, 0, 0);
+            const msLeft = Math.max(0, midnight.getTime() - now.getTime());
+            const resetIn = t("aiCommandCenter.quotaResetIn", {
+              h: Math.floor(msLeft / 3600000),
+              m: Math.floor((msLeft % 3600000) / 60000),
+            });
             return e(ShellPanel, { key: "quota", title: t("aiCommandCenter.fallbackTitle") },
             e("div", { className: styles.toolbar }, [
               e("div", {
@@ -332,7 +347,11 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
                 })
               ]),
               e("span", { className: styles.metricLabel },
-                `${quotaRemaining} ${t("aiCommandCenter.quotaUsed")} / ${quotaMax} ${t("aiCommandCenter.quotaUsed")}`
+                `${t("aiCommandCenter.quotaLine", {
+                  remaining: quotaRemaining,
+                  max: quotaMax,
+                  used: quotaUsedToday,
+                })} · ${resetIn} · ${quotaSource}`
               )
             ]),
             settings.fallback_quota_reset

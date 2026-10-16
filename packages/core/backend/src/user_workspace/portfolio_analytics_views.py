@@ -1089,6 +1089,9 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_remaining': fallback_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
+            # R1.10 AC1: nhãn đúng nghĩa + nguồn quota.
+            'fallback_quota_used_today': user_cred.fallback_quota_used_today if user_cred else 0,
+            'fallback_quota_source': 'personal_key' if api_key_configured else 'system',
             # R1.9: optimistic-lock token — client gửi lại ở PUT (expected_updated_at).
             'config_updated_at': (
                 user_cred.updated_at.isoformat() if user_cred and user_cred.updated_at else None
@@ -1389,6 +1392,9 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_remaining': user_cred.fallback_quota_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
+            # R1.10 AC1: nhãn đúng nghĩa + nguồn quota.
+            'fallback_quota_used_today': user_cred.fallback_quota_used_today,
+            'fallback_quota_source': 'personal_key' if api_key_configured else 'system',
             # R1.9: token mới sau mỗi lần lưu — client dùng cho PUT kế tiếp.
             'config_updated_at': (
                 user_cred.updated_at.isoformat() if user_cred.updated_at else None

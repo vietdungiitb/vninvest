@@ -5476,6 +5476,10 @@ const vi = {
     conflictReload: 'Tải bản mới & ghi đè',
     conflictCancel: 'Hủy, giữ bản của tôi',
     noChanges: 'Không có thay đổi.',
+    quotaLine: 'Còn {remaining}/{max} lượt · đã dùng {used}',
+    quotaResetIn: 'reset sau {h}h {m}m',
+    quotaSourcePersonal: 'khóa cá nhân',
+    quotaSourceSystem: 'hệ thống',
   },
   aiAgentFederation: {
     title: 'Quản lý Agent AI',
