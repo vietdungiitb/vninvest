@@ -1,3 +1,13 @@
+## Entry 347: AI R1.8 AiHubNav + 1 he token (2026-10-16)
+
+- **Nhanh**: `feat/ai-r18-hubnav` -> `dev`. Claim `ai-r18`. TDD: test moi RED 4/4 (stash) -> GREEN 4/4.
+- **Viec lam**: AiHubNav 3 tabs + snapshot filter audit + sub h1/p + bo inline root + xoa backToHub + css hubPage/bridge-comment + gate AC8a/b/c.
+- **Bug thiet ke bat o AC4**: tab mang ?page= cross-grain -> Tong quan snapshot-only, Usage khong mang page.
+- **Gate**: vitest moi 4/4 + hoi quy + tsc/eslint/check-ai-cc (self-test 11/11)/build PASS. Evidence `docs/evidence/ai-cc/r18-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: anh 3x2 + contrast + full BE + ruff + E2E + staging.
+- **Tiep**: R1.9 (diff 409) -> R1.10 (quota) -> R1.11 (agent panel).
+
 ## Entry 346: AI R1.7 useRetryableAsync abort + requestId + cleanup (2026-10-16)
 
 - **Nhanh**: `feat/ai-r17-retry` -> `dev`. Claim `ai-r17`. TDD: test moi RED 5/5 -> GREEN 5/5.
