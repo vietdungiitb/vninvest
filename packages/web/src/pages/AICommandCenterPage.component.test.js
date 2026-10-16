@@ -288,6 +288,12 @@ describe("AICommandCenterPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
+    // R1.4 AC2: nút Lưu disabled khi sạch — sửa 1 field để bật nút (không mở drawer).
+    const intervalInput = screen
+      .getAllByRole("spinbutton")
+      .find((el) => el.placeholder === "24");
+    expect(intervalInput).toBeTruthy();
+    fireEvent.change(intervalInput, { target: { value: "12" } });
     const saveBtn = screen.getByRole("button", { name: /lưu cấu hình/i });
     await act(async () => {
       fireEvent.click(saveBtn);

@@ -1,3 +1,13 @@
+## Entry 343: AI R1.4 Skeleton + isDirty + refresh() imperative (2026-10-16)
+
+- **Nhanh**: `feat/ai-r14-dirty` -> `dev`. Claim `ai-r14`. TDD fail-before THAT (stash code, giu test): 6/6 RED -> GREEN 6/6.
+- **Viec lam**: metric null-init + aria-busy (het so gia) + fieldsDirty/enable Luu + beforeunload + timeout cleanup + audit refresh() giu filter/page/expanded (bo remount reset page).
+- **Sua test cu**: page R0.3 click Luu khi sach (hanh vi cu) -> them buoc sua field; R1.4 AC2 thay the co chu dich.
+- **Gate**: vitest moi 6/6 + hoi quy day du + tsc 0 + eslint 0 + check-ai-cc SACH + build PASS. Evidence `docs/evidence/ai-cc/r14-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: video thao tac + visual + full BE + ruff + E2E + staging.
+- **Tiep**: R1.5 (usage filters BE+FE, phu thuoc R0.7) -> R1.6..R1.11.
+
 ## Entry 342: AI R1.2 AuditLogsPanel token + a11y + CSV (2026-10-16)
 
 - **Nhanh**: `feat/ai-r12-auditpanel` -> `dev`. Claim `ai-r12`. TDD: test moi RED 8/8 -> GREEN 8/8.

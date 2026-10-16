@@ -1,4 +1,4 @@
-import { useState, useEffect, createElement, useCallback, useRef } from "react";
+import { useState, useEffect, createElement, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import styles from "./aiSettings.module.css";
@@ -132,7 +132,13 @@ interface AIAuditLogsPanelProps {
   refreshKey?: number;
 }
 
-export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
+/** R1.4 AC5: cha gọi refresh() imperative — panel tải lại mà KHÔNG reset page/filter. */
+export interface AIAuditLogsPanelHandle {
+  refresh: () => void;
+}
+
+export const AIAuditLogsPanel = forwardRef<AIAuditLogsPanelHandle, AIAuditLogsPanelProps>(
+  function AIAuditLogsPanel({ refreshKey = 0 }, ref) {
   const { t, localeTag } = useI18n();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -188,6 +194,11 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
   // nghĩa bản cũ (loadLogs cũ cũng deps refreshKey).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, action, actor, dateFrom, dateTo, refreshKey, t]);
+
+  // R1.4 AC5: refresh imperative — cha (page) gọi sau khi lưu, giữ nguyên page/filter.
+  const loadLogsRef = useRef(loadLogs);
+  loadLogsRef.current = loadLogs;
+  useImperativeHandle(ref, () => ({ refresh: () => { loadLogsRef.current(); } }), []);
 
   // R1.2 AC3: mount goi ngay; doi filter debounce 300ms (doi select 1 lan chi 1 request).
   const mountedRef = useRef(false);
@@ -444,4 +455,5 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
         ])
       : null
   ]);
-}
+  }
+);

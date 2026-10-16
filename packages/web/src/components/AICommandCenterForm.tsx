@@ -90,6 +90,10 @@ export interface AICommandCenterFormProps {
   getExtraPayload?: () => Record<string, unknown>;
   showRefreshButton?: boolean;
   showPromptConfigButton?: boolean;
+  /** R1.4 AC2: dirty từ cha (vd promptConfig của page) cũng bật nút Lưu. */
+  externalDirty?: boolean;
+  /** R1.4 AC3: báo dirty của field về cha để đăng ký beforeunload. */
+  onFieldsDirtyChange?: (dirty: boolean) => void;
 }
 
 function errMsg(err: unknown, fallback: string): string {
@@ -116,6 +120,8 @@ export function AICommandCenterForm({
   getExtraPayload,
   showRefreshButton = true,
   showPromptConfigButton = true,
+  externalDirty = false,
+  onFieldsDirtyChange,
 }: AICommandCenterFormProps) {
   const i18n = useI18n();
   const t = tProp ?? i18n.t;
@@ -142,6 +148,20 @@ export function AICommandCenterForm({
   const [temperature, setTemperature] = useState(0.3);
 
   const [settings, setSettings] = useState<AISettings | null>(null);
+  // R1.4 AC2: field nào đổi (so với lần load/save gần nhất) ⇒ dirty ⇒ bật nút Lưu.
+  const [fieldsDirty, setFieldsDirty] = useState(false);
+  useEffect(() => {
+    onFieldsDirtyChange?.(fieldsDirty);
+  }, [fieldsDirty, onFieldsDirtyChange]);
+  // R1.4 AC4/AC6: timer notice có cleanup khi unmount.
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
+  const scheduleNoticeClear = useCallback(() => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(""), 3000);
+  }, []);
   const [promptConfigOpen, setPromptConfigOpen] = useState(false);
   const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(
     null
@@ -162,9 +182,9 @@ export function AICommandCenterForm({
     (message: string) => {
       setNotice(message);
       onNotice?.(message);
-      setTimeout(() => setNotice(""), 3000);
+      scheduleNoticeClear();
     },
-    [onNotice]
+    [onNotice, scheduleNoticeClear]
   );
 
   const applySettings = useCallback(
@@ -195,6 +215,7 @@ export function AICommandCenterForm({
       setTemperature(Number(data.temperature ?? 0.3));
       setAiApiKey("");
       setTestLatency(null);
+      setFieldsDirty(false);
 
       if (data.ai_prompt_config) {
         setPromptConfig(data.ai_prompt_config);
@@ -231,6 +252,7 @@ export function AICommandCenterForm({
   const handleProviderChange = (ev: ChangeEvent<HTMLSelectElement>) => {
     const provider = ev.target.value;
     setAiProvider(provider);
+    setFieldsDirty(true);
     setShowCustomEndpoint(provider === "local");
 
     const models = PROVIDER_MODELS[provider] || [];
@@ -249,6 +271,7 @@ export function AICommandCenterForm({
   const handleModelChange = (ev: ChangeEvent<HTMLSelectElement>) => {
     const val = ev.target.value;
     setAiModel(val);
+    setFieldsDirty(true);
     setShowCustomModel(val === "custom");
   };
 
@@ -305,6 +328,7 @@ export function AICommandCenterForm({
       const nextData = await transportRef.current.updateConfig(payload);
       setSettings(nextData);
       setAiApiKey("");
+      setFieldsDirty(false);
       onSettingsChange?.(nextData);
       onSettingsSaved?.(nextData);
       emitNotice(t("aiCommandCenter.noticeSaved"));
@@ -323,6 +347,7 @@ export function AICommandCenterForm({
       const nextData = await transportRef.current.updateConfig({ ai_api_key: "" });
       setSettings(nextData);
       setAiApiKey("");
+      setFieldsDirty(false);
       onSettingsChange?.(nextData);
       emitNotice(t("aiCommandCenter.apiKeyCleared"));
     } catch (err: unknown) {
@@ -366,9 +391,14 @@ export function AICommandCenterForm({
   };
 
   if (loading) {
+    // R1.4 AC1: skeleton — ẩn mọi giá trị tới khi GET xong (không hiện số giả).
     return e(
       "p",
-      { className: styles.loading + (className ? " " + className : "") },
+      {
+        className: styles.loading + (className ? " " + className : ""),
+        role: "status",
+        "aria-busy": true,
+      },
       t("aiCommandCenter.loadingConfig")
     );
   }
@@ -434,8 +464,10 @@ export function AICommandCenterForm({
                   type: "text",
                   className: styles.input,
                   value: customModel,
-                  onChange: (ev: ChangeEvent<HTMLInputElement>) =>
-                    setCustomModel(ev.target.value),
+                  onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                    setCustomModel(ev.target.value);
+                    setFieldsDirty(true);
+                  },
                   placeholder: t("aiCommandCenter.customModelPlaceholder"),
                   required: true,
                 }),
@@ -461,8 +493,10 @@ export function AICommandCenterForm({
                   type: "text",
                   className: styles.input,
                   value: customEndpoint,
-                  onChange: (ev: ChangeEvent<HTMLInputElement>) =>
-                    setCustomEndpoint(ev.target.value),
+                  onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                    setCustomEndpoint(ev.target.value);
+                    setFieldsDirty(true);
+                  },
                   placeholder: t("aiCommandCenter.customEndpointPlaceholder"),
                   required: false,
                 }),
@@ -516,7 +550,10 @@ export function AICommandCenterForm({
               type: "password",
               className: styles.input,
               value: aiApiKey,
-              onChange: (ev: ChangeEvent<HTMLInputElement>) => setAiApiKey(ev.target.value),
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                setAiApiKey(ev.target.value);
+                setFieldsDirty(true);
+              },
               placeholder: settings?.ai_api_key_configured
                 ? t("aiCommandCenter.apiKeyPlaceholderConfigured")
                 : t("aiCommandCenter.apiKeyPlaceholderNew"),
@@ -535,8 +572,10 @@ export function AICommandCenterForm({
               min: "1",
               className: styles.input,
               value: maxTokens,
-              onChange: (ev: ChangeEvent<HTMLInputElement>) =>
-                setMaxTokens(Number(ev.target.value)),
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                setMaxTokens(Number(ev.target.value));
+                setFieldsDirty(true);
+              },
               placeholder: "5000",
             }),
           ]
@@ -556,8 +595,10 @@ export function AICommandCenterForm({
               min: "1",
               className: styles.input,
               value: refreshInterval,
-              onChange: (ev: ChangeEvent<HTMLInputElement>) =>
-                setRefreshInterval(Number(ev.target.value)),
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                setRefreshInterval(Number(ev.target.value));
+                setFieldsDirty(true);
+              },
               placeholder: "24",
             }),
           ]
@@ -579,8 +620,10 @@ export function AICommandCenterForm({
               step: "0.1",
               className: styles.range,
               value: temperature,
-              onChange: (ev: ChangeEvent<HTMLInputElement>) =>
-                setTemperature(Number(ev.target.value)),
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => {
+                setTemperature(Number(ev.target.value));
+                setFieldsDirty(true);
+              },
             }),
             e("p", { className: styles.helpText }, t("aiCommandCenter.temperatureHelp")),
           ]
@@ -592,7 +635,7 @@ export function AICommandCenterForm({
             {
               key: "save-btn",
               type: "submit",
-              disabled: saving,
+              disabled: saving || (!fieldsDirty && !externalDirty),
               className: styles.btn + " " + styles.btnPrimary,
               "data-testid": "save-config",
             },
