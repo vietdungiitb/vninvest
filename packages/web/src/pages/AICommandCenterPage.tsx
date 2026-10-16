@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense, memo, createElement } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, memo, createElement } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
@@ -59,9 +59,11 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   // R0.9 AC8: lop B he thong chi staff thay (pattern AdminAnalyticsPage).
   const { userIdentity } = usePortfolio() as any;
   const isStaffViewer = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
-  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
-  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
-  const [maxTokensDisplay, setMaxTokensDisplay] = useState(5000);
+  // R1.4 AC1: null = chưa có data (không hiện số giả 24/24/5000); có data mới hiện.
+  const [overviewLoaded, setOverviewLoaded] = useState(false);
+  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState<number | null>(null);
+  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState<number | null>(null);
+  const [maxTokensDisplay, setMaxTokensDisplay] = useState<number | null>(null);
   const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
   const [eventGateSaving, setEventGateSaving] = useState(false);
 
@@ -74,10 +76,33 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   // R0.3: chi drawer edit danh dau dirty — load/save echo KHONG gui lai config.
   const [promptConfigDirty, setPromptConfigDirty] = useState(false);
   const [rollbackBusy, setRollbackBusy] = useState(false);
-  const [refreshAuditKey, setRefreshAuditKey] = useState(0);
+  // R1.4 AC5: refresh audit imperative (giữ filter + page), không remount.
+  const auditRef = useRef<{ refresh: () => void } | null>(null);
+  // R1.4 AC3: dirty từ form (form báo qua onFieldsDirtyChange).
+  const [formFieldsDirty, setFormFieldsDirty] = useState(false);
+  // R1.4 AC4/AC6: timer notice có cleanup khi unmount.
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleNoticeClear = useCallback(() => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setPageNotice(""), 3000);
+  }, []);
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
+
+  // R1.4 AC3: rời trang khi còn thay đổi chưa lưu ⇒ trình duyệt hỏi xác nhận.
+  useEffect(() => {
+    if (!(promptConfigDirty || formFieldsDirty)) return;
+    const handler = (ev: BeforeUnloadEvent) => {
+      ev.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [promptConfigDirty, formFieldsDirty]);
 
   const applySettingsToOverview = useCallback((data: AISettings) => {
     setSettings(data);
+    setOverviewLoaded(true);
     setEffectiveSource((data as any).effective_ai_source || "command_center");
     setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
     setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
@@ -118,7 +143,8 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     (data: AISettings) => {
       applySettingsToOverview(data);
       setPromptConfigDirty(false);
-      setRefreshAuditKey((k) => k + 1);
+      setFormFieldsDirty(false);
+      auditRef.current?.refresh();
     },
     [applySettingsToOverview]
   );
@@ -130,8 +156,8 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const handleFormNotice = useCallback((message: string) => {
     setPageNotice(message);
     setPageError("");
-    setTimeout(() => setPageNotice(""), 3000);
-  }, []);
+    scheduleNoticeClear();
+  }, [scheduleNoticeClear]);
 
   const handleFormError = useCallback((message: string) => {
     setPageError(message);
@@ -164,9 +190,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       const res = await (coreApiAdapter as any).rollbackAICommandCenterPromptConfig(version);
       if (res?.ai_prompt_config) setPromptConfig(res.ai_prompt_config);
       if (Array.isArray(res?.ai_prompt_config_history)) setPromptHistory(res.ai_prompt_config_history);
-      setRefreshAuditKey((k) => k + 1);
       setPageNotice(t("aiCommandCenter.promptHistoryRestored", { version }));
-      setTimeout(() => setPageNotice(""), 3000);
+      scheduleNoticeClear();
+      auditRef.current?.refresh();
     } catch (err: unknown) {
       setPageError(
         (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
@@ -236,7 +262,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
 
       // Policy Section
       e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") },
-        e("div", { className: styles.metricGrid }, [
+        e("div", { className: styles.metricGrid, "aria-busy": !overviewLoaded }, [
           e("div", { key: "pol-gate", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.eventGate")),
             e("label", { key: "v", className: styles.toggleRow },
@@ -254,15 +280,15 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
           ]),
           e("div", { key: "pol-refresh", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval")),
-            e("p", { key: "v", className: styles.metricValue }, t("aiCommandCenter.refreshIntervalValue", { hours: refreshIntervalDisplay })),
+            e("p", { key: "v", className: styles.metricValue }, refreshIntervalDisplay == null ? "—" : t("aiCommandCenter.refreshIntervalValue", { hours: refreshIntervalDisplay })),
           ]),
           e("div", { key: "pol-auto", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, `${maxAutoRefreshes}`),
+            e("p", { key: "v", className: styles.metricValue }, maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
           ]),
           e("div", { key: "pol-tokens", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.tokensPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, `${maxTokensDisplay}`),
+            e("p", { key: "v", className: styles.metricValue }, maxTokensDisplay == null ? "—" : `${maxTokensDisplay}`),
           ]),
         ]),
       ),
@@ -282,6 +308,8 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             onNotice: handleFormNotice,
             onPromptConfigChange: setPromptConfig,
             onPromptConfigEdited: handlePromptConfigEdited,
+            externalDirty: promptConfigDirty,
+            onFieldsDirtyChange: setFormFieldsDirty,
             getExtraPayload: () =>
               shouldSendPromptConfig(promptConfig, promptConfigDirty)
                 ? { ai_prompt_config: promptConfig }
@@ -414,7 +442,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             subtitle: t("aiCommandCenter.auditLogsDesc"),
           },
           e(Suspense, { key: "audit-suspense", fallback: e("p", { className: styles.loading }, t("aiCommandCenter.auditLogsLoading")) },
-            e(LazyAuditLogsPanel, { key: `audit-panel-${refreshAuditKey}`, refreshKey: refreshAuditKey })
+            e(LazyAuditLogsPanel, { key: "audit-panel", ref: auditRef })
           )
         )
       ),
