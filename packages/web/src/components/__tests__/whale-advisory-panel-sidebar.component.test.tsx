@@ -162,12 +162,12 @@ describe("WhaleAdvisoryCommandPanel (R4.1, R4.2, R2.5)", () => {
     expect(document.body.textContent).not.toContain("Bảng điều khiển cá voi");
   });
 
-  it("R1.4 — nút Đặt lệnh chỉ hiện khi có tư vấn", () => {
+  it("R1.4 — nút Lệnh thử nghiệm chỉ hiện khi có tư vấn", () => {
     const { unmount } = renderPanel({ item: null });
-    expect(screen.queryByText("Đặt lệnh")).toBeNull();
+    expect(screen.queryByText("Lệnh thử nghiệm")).toBeNull();
     unmount();
     renderPanel({ item: { symbol: "FPT", side: "BUY", created_at: null } });
-    expect(screen.getByText("Đặt lệnh")).toBeTruthy();
+    expect(screen.getByText("Lệnh thử nghiệm")).toBeTruthy();
   });
 
   it("nút Làm mới gọi onRefresh với mã đang chọn", () => {

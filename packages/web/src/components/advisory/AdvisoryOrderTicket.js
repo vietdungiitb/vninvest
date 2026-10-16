@@ -25,7 +25,7 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
 
   async function handleConfirm() {
     if (!sideResolved) {
-      setError(t('aiAdvisory.order.sideUnknown', { defaultValue: 'Không xác định được chiều lệnh (BUY/SELL) — không cho phép đặt lệnh.' }));
+      setError(t('aiAdvisory.order.sideUnknown', { defaultValue: 'Không xác định được chiều lệnh (BUY/SELL) — không cho phép thử nghiệm.' }));
       return;
     }
     if (!formValid) {
@@ -59,7 +59,7 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
       });
       setDone(res);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || t('aiAdvisory.order.failed', { defaultValue: 'Đặt lệnh thất bại.' }));
+      setError(err?.response?.data?.detail || err?.message || t('aiAdvisory.order.failed', { defaultValue: 'Gửi lệnh thử nghiệm thất bại.' }));
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +71,7 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
     e(
       'div',
       { className: 'w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-4' },
-      e('h3', { className: 'text-sm font-black text-slate-100 uppercase tracking-widest' }, t('aiAdvisory.order.title', { defaultValue: 'Phiếu đặt lệnh' })),
+      e('h3', { className: 'text-sm font-black text-slate-100 uppercase tracking-widest' }, t('aiAdvisory.order.title', { defaultValue: 'Phiếu lệnh thử nghiệm (PAPER)' })),
       e(
         'div',
         { className: 'rounded-2xl bg-slate-950/50 border border-slate-800/60 p-3 text-xs text-slate-400 space-y-1' },
@@ -84,7 +84,7 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
           { className: 'space-y-3' },
           e('label', { className: 'block text-xs text-slate-400' }, t('aiAdvisory.order.price', { defaultValue: 'Giá đặt (VNĐ)' }), e('input', { type: 'number', min: 0, value: price, onChange: (ev) => setPrice(ev.target.value), className: 'mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-slate-100 font-mono' })),
           e('label', { className: 'block text-xs text-slate-400' }, t('aiAdvisory.order.quantity', { defaultValue: 'Số lượng (lô 100)' }), e('input', { type: 'number', min: 100, step: 100, value: quantity, onChange: (ev) => setQuantity(ev.target.value), className: 'mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-slate-100 font-mono' })),
-          e('p', { className: 'text-[11px] text-amber-400/90 italic' }, t('aiAdvisory.order.disclaimer', { defaultValue: 'Rủi ro: lệnh thật khớp tiền thật. Kiểm tra kỹ trước khi xác nhận.' }))
+          e('p', { className: 'text-[11px] text-amber-400/90 italic' }, t('aiAdvisory.order.disclaimer', { defaultValue: 'Mô phỏng thử nghiệm: không tiền thật, không ra thị trường. Đây không phải lời khuyên đầu tư.' }))
         )
         : e(
           'div',
@@ -92,10 +92,10 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
           e('p', { className: 'text-xs text-slate-300' }, t('aiAdvisory.order.review', { symbol: resolvedSymbol, side: side, quantity: qtyNum || 0, price: priceNum || 0, defaultValue: `Xác nhận: ${side} ${qtyNum || 0} ${resolvedSymbol} giá ${priceNum || 0}?` })),
           e('label', { className: 'block text-xs text-slate-400' }, t('aiAdvisory.order.token', { defaultValue: 'Trading token DNSE (không lưu)' }), e('input', { type: 'password', value: token, onChange: (ev) => setToken(ev.target.value), autoComplete: 'off', className: 'mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-slate-100 font-mono' })),
           error ? e('p', { className: 'text-xs text-rose-400' }, error) : null,
-          done ? e('p', { className: 'text-xs text-emerald-300' }, t('aiAdvisory.order.done', { defaultValue: 'Đã gửi lệnh.' })) : null
+          done ? e('p', { className: 'text-xs text-emerald-300' }, t('aiAdvisory.order.done', { defaultValue: 'Đã gửi lệnh thử nghiệm.' })) : null
         ),
       !sideResolved
-        ? e('p', { className: 'text-xs text-rose-400' }, t('aiAdvisory.order.sideUnknown', { defaultValue: 'Không xác định được chiều lệnh (BUY/SELL) — không cho phép đặt lệnh.' }))
+        ? e('p', { className: 'text-xs text-rose-400' }, t('aiAdvisory.order.sideUnknown', { defaultValue: 'Không xác định được chiều lệnh (BUY/SELL) — không cho phép thử nghiệm.' }))
         : null,
       error && !confirming ? e('p', { className: 'text-xs text-rose-400' }, error) : null,
       e(
@@ -104,7 +104,7 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
         e('button', { type: 'button', onClick: onClose, className: 'px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200' }, t('aiAdvisory.order.cancel', { defaultValue: 'Đóng' })),
         !confirming
           ? e('button', { type: 'button', disabled: !formValid, onClick: () => { setError(''); setConfirming(true); }, className: 'px-4 py-2 rounded-xl text-xs font-black bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50' }, t('aiAdvisory.order.reviewAction', { defaultValue: 'Xem lại lệnh' }))
-          : !done && e('button', { type: 'button', disabled: submitting, onClick: handleConfirm, className: 'px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50' }, submitting ? t('aiAdvisory.order.submitting', { defaultValue: 'Đang gửi…' }) : t('aiAdvisory.order.confirm', { defaultValue: 'Xác nhận đặt lệnh' }))
+          : !done && e('button', { type: 'button', disabled: submitting, onClick: handleConfirm, className: 'px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50' }, submitting ? t('aiAdvisory.order.submitting', { defaultValue: 'Đang gửi…' }) : t('aiAdvisory.order.confirm', { defaultValue: 'Xác nhận lệnh thử nghiệm' }))
       )
     )
   );

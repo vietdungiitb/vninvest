@@ -40,6 +40,12 @@ describe("AdvisoryAlertDialog (S14 G4)", () => {
 });
 
 describe("AdvisoryOrderTicket (S14 G5)", () => {
+  it("labels itself PAPER trial, never real orders (ADR-005)", () => {
+    renderWithRouter(createElement(AdvisoryOrderTicket, { advisory, symbol: "FPT", onClose: vi.fn(), placeOrder: vi.fn() }));
+    expect(screen.getByText("Phiếu lệnh thử nghiệm (PAPER)")).toBeTruthy();
+    expect(screen.getByText(/không tiền thật, không ra thị trường/)).toBeTruthy();
+    expect(screen.queryByText(/lệnh thật khớp tiền thật/)).toBeNull();
+  });
   it("prefills symbol/price, never auto-submits, posts only on explicit confirm", async () => {
     const placeOrder = vi.fn(async () => ({ result: { ok: true } }));
     renderWithRouter(createElement(AdvisoryOrderTicket, { advisory, symbol: "FPT", onClose: vi.fn(), placeOrder }));
@@ -49,8 +55,8 @@ describe("AdvisoryOrderTicket (S14 G5)", () => {
     fireEvent.click(screen.getByText("Xem lại lệnh"));
     const token = document.querySelector('input[type="password"]') as HTMLInputElement;
     fireEvent.change(token, { target: { value: "tok-123" } });
-    fireEvent.click(screen.getByText("Xác nhận đặt lệnh"));
-    expect(await screen.findByText("Đã gửi lệnh.")).toBeTruthy();
+    fireEvent.click(screen.getByText("Xác nhận lệnh thử nghiệm"));
+    expect(await screen.findByText("Đã gửi lệnh thử nghiệm.")).toBeTruthy();
     expect(placeOrder).toHaveBeenCalledWith({
       // PA-5: BE fail-closed (SAFE-01) — `mode` bắt buộc trong body, thiếu thì 400
       // `order_mode_required`. Chỉ gửi `paper`; `live` bị từ chối tới khi có
@@ -87,8 +93,8 @@ describe("AdvisoryOrderTicket (S14 G5)", () => {
     fireEvent.click(screen.getByText("Xem lại lệnh"));
     const token = document.querySelector('input[type="password"]') as HTMLInputElement;
     fireEvent.change(token, { target: { value: "tok-456" } });
-    fireEvent.click(screen.getByText("Xác nhận đặt lệnh"));
-    await screen.findByText("Đã gửi lệnh.");
+    fireEvent.click(screen.getByText("Xác nhận lệnh thử nghiệm"));
+    await screen.findByText("Đã gửi lệnh thử nghiệm.");
     expect(placeOrder.mock.calls[0][0].payload.side).toBe("SELL");
   });
 

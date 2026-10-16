@@ -361,7 +361,7 @@ export function PortfolioManageDrawer({
             {t("portfoliosManage.drawer.openWorkspace", { defaultValue: "Mở không gian danh mục" })}
           </Link>
           <Link to="/portfolios/manage/broker">
-            {t("portfoliosManage.drawer.broker", { defaultValue: "Kết nối broker / đặt lệnh" })}
+            {t("portfoliosManage.drawer.broker", { defaultValue: "Kết nối broker" })}
           </Link>
           <button type="button" onClick={onClose}>
             {t("portfoliosManage.drawer.close", { defaultValue: "Đóng" })}
