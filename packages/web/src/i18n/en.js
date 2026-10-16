@@ -5491,6 +5491,8 @@ const en = {
     typeWhale: 'Whale Monitor',
     typeNews: 'News Aggregator',
     typeCustom: 'Custom Agent',
+    saving: 'Saving...',
+    dismissNotice: 'Dismiss notice',
   },
   aiUsageAnalytics: {
     title: 'AI Usage Analytics',

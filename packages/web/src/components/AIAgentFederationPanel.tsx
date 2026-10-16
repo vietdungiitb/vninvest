@@ -1,11 +1,27 @@
-import { useState, useEffect, useCallback, createElement, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, useCallback, useRef, createElement, FormEvent, ChangeEvent } from "react";
 import styles from "./aiSettings.module.css";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { useConfirm } from "./ConfirmModal.js";
 import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
+import { parseCapabilities } from "../lib/capabilities.js";
 
 const e = createElement;
+
+/** R1.11 AC4: default form lấy từ PROVIDER_MODELS (không hardcode openai). */
+function defaultAgentForm(): AgentRecord {
+  const provider = PROVIDER_OPTIONS[0]?.key ?? "openclaw";
+  const model = (PROVIDER_MODELS[provider] || [])[0]?.key ?? "";
+  return {
+    name: "",
+    agent_type: "advisory",
+    provider,
+    model,
+    capabilities: [],
+    system_prompt: "",
+    is_active: true,
+  };
+}
 
 const AGENT_TYPES = [
   { value: "advisory", label: "AI Advisory", labelKey: "aiAgentFederation.typeAdvisory" },
@@ -44,16 +60,18 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<AgentRecord>({
-    name: "",
-    agent_type: "advisory",
-    provider: "openai",
-    model: "gpt-4o-mini",
-    capabilities: [],
-    system_prompt: "",
-    is_active: true,
-  });
+  const [formData, setFormData] = useState<AgentRecord>(defaultAgentForm);
   const [saving, setSaving] = useState(false);
+  // R1.11 AC2: notice tự tắt sau 4s + nút đóng (timer có cleanup).
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
+  const flashNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(""), 4000);
+  }, []);
 
   const agentClient = coreApiAdapter as unknown as {
     getAIAgents: (p?: Record<string, string>) => Promise<{ results: AgentRecord[] }>;
@@ -79,19 +97,18 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     setError("");
     const payload = {
       ...formData,
-      capabilities: typeof formData.capabilities === "string"
-        ? (formData.capabilities as unknown as string).split(",").map((s: string) => s.trim()).filter(Boolean)
-        : formData.capabilities,
+      // R1.11 AC3: parse qua util có test (không split inline nữa).
+      capabilities: parseCapabilities(formData.capabilities),
     };
     const promise = editingId
       ? agentClient.updateAIAgent(editingId, payload)
       : agentClient.createAIAgent(payload);
     promise
       .then(() => {
-        setNotice(editingId ? t("aiAgentFederation.updated") : t("aiAgentFederation.created"));
+        flashNotice(editingId ? t("aiAgentFederation.updated") : t("aiAgentFederation.created"));
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: "", agent_type: "advisory", provider: "openai", model: "gpt-4o-mini", capabilities: [], system_prompt: "", is_active: true });
+        setFormData(defaultAgentForm());
         loadAgents();
       })
       .catch(() => { setError(t("aiAgentFederation.errorSave")); })
@@ -107,7 +124,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     if (!ok) return;
     agentClient.deleteAIAgent(id)
       .then(() => {
-        setNotice(t("aiAgentFederation.deleted"));
+        flashNotice(t("aiAgentFederation.deleted"));
         loadAgents();
       })
       .catch(() => { setError(t("aiAgentFederation.errorDelete")); });
@@ -128,7 +145,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
   };
 
   const openCreate = () => {
-    setFormData({ name: "", agent_type: "advisory", provider: "openai", model: "gpt-4o-mini", capabilities: [], system_prompt: "", is_active: true });
+    setFormData(defaultAgentForm());
     setEditingId(null);
     setShowForm(true);
   };
@@ -140,8 +157,11 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
 
   const handleProviderChange = (ev: ChangeEvent<HTMLSelectElement>) => {
     const provider = ev.target.value;
-    const firstModel = PROVIDER_MODELS[provider]?.[0]?.key || "gpt-4o-mini";
-    setFormData((prev) => ({ ...prev, provider, model: firstModel }));
+    const models = PROVIDER_MODELS[provider] || [];
+    // R1.11 AC5: provider chỉ có "custom" (hoặc rỗng) ⇒ GIỮ model cũ,
+    // không tự điền "custom" làm model (form này không có ô nhập custom).
+    const firstReal = models.find((m) => m.key !== "custom")?.key;
+    setFormData((prev) => ({ ...prev, provider, model: firstReal ?? prev.model }));
   };
 
   const typeLabel = (type: string) => { const a = AGENT_TYPES.find((x) => x.value === type); return a ? t(a.labelKey ?? a.label) : type; };
@@ -152,11 +172,20 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
   const btnGhostSm = `${styles.btn} ${styles.btnSm} ${styles.btnGhost}`;
 
   return e("div", { className: `${styles.panel} ${className}` },
+    // R1.11 AC2: role=status + tự tắt 4s + nút đóng (không chỉ click vào notice).
     notice && e("div", {
       className: `${styles.alert} ${styles.alertSuccess}`,
-      style: { cursor: "pointer" },
-      onClick: () => setNotice(""),
-    }, notice),
+      role: "status",
+    }, [
+      e("span", { key: "msg" }, notice),
+      e("button", {
+        key: "close",
+        type: "button",
+        className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`,
+        onClick: () => setNotice(""),
+        "aria-label": t("aiAgentFederation.dismissNotice"),
+      }, "✕"),
+    ]),
 
     e("div", { className: styles.panelHeader },
       e("div", null,
@@ -250,7 +279,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
           type: "submit",
           className: btnPrimary,
           disabled: saving,
-        }, saving ? t("aiAgentFederation.loading") : t("aiAgentFederation.save")),
+        }, saving ? t("aiAgentFederation.saving") : t("aiAgentFederation.save")),
         e("button", {
           type: "button",
           className: btnGhost,

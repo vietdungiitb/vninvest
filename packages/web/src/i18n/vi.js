@@ -5516,6 +5516,8 @@ const vi = {
     typeWhale: 'Giám sát dòng tiền lớn',
     typeNews: 'Tổng hợp tin tức',
     typeCustom: 'Agent tùy chỉnh',
+    saving: 'Đang lưu...',
+    dismissNotice: 'Đóng thông báo',
   },
   aiUsageAnalytics: {
     title: 'Usage AI Analytics',

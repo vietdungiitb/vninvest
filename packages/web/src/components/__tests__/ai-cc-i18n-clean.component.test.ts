@@ -1,8 +1,10 @@
 /**
- * R1.3 — i18n sạch: loadError parity, 22 key chết đã xóa, 0 fallback t()||,
+ * R1.3 — i18n sạch: loadError parity, 21 key chết đã xóa (+saving tái sinh ở R1.11), 0 fallback t()||,
  * 0 chuỗi Việt cứng trong 9 file AI CC, promptConfig parity, preset labels.
  *
- * 22 key chết = leftover R0.9 (configMessage/preset*) + panel audit cũ + saving/close/records
+ * 21 key chết = leftover R0.9 (configMessage/preset*) + panel audit cũ + close/records
+ * (aiAgentFederation.saving đã xóa ở R1.3 nhưng TÁI SINH ở R1.11 AC1 — nút Lưu
+ * cần nhãn "Đang lưu…"; xem r111-gates. Xóa khỏi danh sách để khỏi báo giả.)
  * tenantKeys/...), bronch: sidebar dùng layout.nav.*, catalog dùng routes.*.
  * Verify 2 phương pháp (scanner + git grep từng key mẫu, xem r13-gates).
  */
@@ -25,7 +27,6 @@ const DEAD_KEYS: string[] = [
   "aiCommandCenter.page",
   "aiCommandCenter.of",
   "aiCommandCenter.refresh",
-  "aiAgentFederation.saving",
   "aiAgentFederation.close",
   "aiUsageAnalytics.records",
   "aiUsageAnalytics.noRecords",
@@ -101,7 +102,7 @@ describe("R1.3: i18n sạch AI CC", () => {
     }
   });
 
-  it("AC2: 22 key chết không còn trong vi/en", () => {
+  it("AC2: 21 key chết không còn trong vi/en", () => {
     const viFlat = flattenKeys(viDict);
     const enFlat = flattenKeys(enDict);
     const aliveVi = DEAD_KEYS.filter((k) => viFlat.has(k));
