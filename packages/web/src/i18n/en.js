@@ -5307,7 +5307,6 @@ const en = {
     tabAudit: 'Audit log',
     tabAgents: 'Agents',
     tabUsage: 'Usage',
-    backToHub: 'Back to AI hub',
     description: 'Configure AI provider, model selection and API key for AI Advisor.',
     loadingConfig: 'Loading AI config...',
     runtimeConfig: 'AI RUNTIME CONFIG',

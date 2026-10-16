@@ -1161,3 +1161,22 @@
 }
 .statusDefault { color: var(--ai-muted); }
 /* /R1.6 */
+
+/* R1.8 hub: layout trang hub + chú dẫn token.
+   - BRIDGE (phụ thuộc app shell, theme/tokens.css định nghĩa theo theme):
+     --text-primary/--text-muted/--text-secondary, --accent-cyan(-soft)/--accent-emerald/--accent-rose,
+     --border-default/--border-strong, --bg-panel-soft, --shadow-panel.
+     Đổi theme ở shell tự lan xuống đây qua var() — đó là lý do block :root
+     của R1.1 KHÔNG hardcode màu.
+   - LOCAL (tự chứa trong file này, không đổi theo theme shell):
+     --ais-* (bảng màu audit/settings) + override :root[data-theme="light"].
+   Quy ước: component AI CC chỉ dùng var(--ai-*) / var(--ais-*) / class module;
+   không hex/rgba rời, không Tailwind, không style={{ (trừ giá trị động). */
+.hubPage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+/* /R1.8 */

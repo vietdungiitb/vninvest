@@ -64,6 +64,36 @@ const CHECKS = [
       allowBlock: { start: "CHART_TOKEN_FALLBACK", end: "};" },
     }],
   },
+  {
+    // R1.8 AC5: moi route AI CC chi 1 he token (module css) — khong Tailwind,
+    // khong style={{ (rieng hub: khoi quota width DONG duoc giu).
+    id: "AC8a-hub-one-token-system",
+    file: "packages/web/src/pages/AICommandCenterPage.tsx",
+    patterns: ["AiHubNav"],
+    absentExcept: [{
+      pattern: "(bg|text|border|flex|grid|px|py|mx|my|mt|mb|ml|mr|gap|rounded|shadow|ring|backdrop)-[a-z0-9/\\[\\]]+|style:\\s*\\{",
+      allow: "quota",
+      allowBlock: { start: 'key: "quota-bar"', end: "quotaFillEmpty" },
+    }],
+  },
+  {
+    id: "AC8b-agents-one-token-system",
+    file: "packages/web/src/pages/AIAgentFederationPage.tsx",
+    patterns: ["AiHubNav"],
+    absentExcept: [{
+      pattern: "(bg|text|border|flex|grid|px|py|mx|my|mt|mb|ml|mr|gap|rounded|shadow|ring|backdrop)-[a-z0-9/\\[\\]]+|style:\\s*\\{",
+      allow: "quota-never-matches-anything",
+    }],
+  },
+  {
+    id: "AC8c-usage-one-token-system",
+    file: "packages/web/src/pages/AIUsageAnalyticsPage.tsx",
+    patterns: ["AiHubNav"],
+    absentExcept: [{
+      pattern: "(bg|text|border|flex|grid|px|py|mx|my|mt|mb|ml|mr|gap|rounded|shadow|ring|backdrop)-[a-z0-9/\\[\\]]+|style:\\s*\\{",
+      allow: "quota-never-matches-anything",
+    }],
+  },
 ];
 
 function checkOne(root, check) {
