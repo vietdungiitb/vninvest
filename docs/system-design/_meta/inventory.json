@@ -121,7 +121,7 @@
       "title": "11.01 — Quy Trình Phát Triển"
     },
     {
-      "lines": 42,
+      "lines": 48,
       "path": "docs/system-design/13-ROADMAP/13.01-lo-trinh.md",
       "title": "13.01 — Lộ Trình Phát Triển"
     },
@@ -216,6 +216,6 @@
       "title": "vninvest — Bộ Hồ Sơ Phân Tích & Thiết Kế Hệ Thống"
     }
   ],
-  "generatedAt": "2026-10-15",
+  "generatedAt": "2026-10-16",
   "root": "docs/system-design"
 }
