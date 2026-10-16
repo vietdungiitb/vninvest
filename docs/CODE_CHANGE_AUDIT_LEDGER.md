@@ -1,3 +1,12 @@
+## Entry 350: AI R1.11 agent panel (slice cuoi R1, 2026-10-16)
+
+- **Nhanh**: `feat/ai-r111-agentpanel` -> `dev`. Claim `ai-r111`. TDD: RED 4 AC -> GREEN.
+- **Viec lam**: nut saving + notice status/4s/dong + capabilities util + defaults PROVIDER_MODELS + custom-guard + giu type* (khong agentTypes.*).
+- **Gate**: vitest moi + capabilities + i18n-clean + AISliceE + tsc/eslint/check-ai-cc/build PASS. Evidence `docs/evidence/ai-cc/r111-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: full BE + ruff + E2E + staging.
+- **Tiep**: R1 close-out M1 (exit criteria) -> R2.
+
 ## Entry 349: AI R1.10 quota labels + countdown (2026-10-16)
 
 - **Nhanh**: `feat/ai-r110-quota` -> `dev`. Claim `ai-r110`. TDD: BE RED 2/2 -> GREEN 2/2 (VPS); FE RED (stash) -> GREEN.
