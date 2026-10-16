@@ -368,19 +368,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
                 ? e("pre", {
                     key: "template",
                     "data-testid": "system-prompt-template",
-                    className: styles.helpText,
-                    style: {
-                      whiteSpace: "pre-wrap",
-                      fontFamily: "monospace",
-                      fontSize: 12,
-                      maxHeight: 180,
-                      overflow: "auto",
-                      margin: 0,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: "1px solid var(--ai-border)",
-                      background: "rgba(4, 11, 35, 0.45)",
-                    },
+                    className: styles.promptViewer,
                   }, settings.system_prompt_template)
                 : e("p", { key: "empty", className: styles.empty, "data-testid": "system-prompt-empty" },
                     t("aiCommandCenter.systemPromptEmpty")))
@@ -406,14 +394,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
                   : "";
                 return e("div", {
                   key: String(entry.version),
-                  style: {
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "6px 0",
-                    borderBottom: "1px solid var(--ai-border)",
-                  },
+                  className: styles.historyRow,
                 }, [
                   e("span", { key: "meta" },
                     `${t("aiCommandCenter.promptHistoryVersion", { version: entry.version })}`
