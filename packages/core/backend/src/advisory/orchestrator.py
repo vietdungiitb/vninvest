@@ -191,6 +191,34 @@ def _resolve_chat_endpoint(provider: str, custom_endpoint: str, ai_model: str = 
     return 'https://api.openai.com/v1/chat/completions'
 
 
+def _extract_usage(usage) -> tuple:
+    """(tokens_in, tokens_out, usage_unavailable) tu usage dict THAT cua provider.
+
+    R0.7 AC9: doc `prompt_tokens`/`completion_tokens` that. Thieu hoac khong
+    parse duoc => (0, 0, True), KHONG bia so lieu.
+    """
+    if not isinstance(usage, dict):
+        return 0, 0, True
+    try:
+        prompt = int(usage.get('prompt_tokens') or 0)
+    except (TypeError, ValueError):
+        prompt = 0
+    try:
+        completion = int(usage.get('completion_tokens') or 0)
+    except (TypeError, ValueError):
+        completion = 0
+    if prompt <= 0 and completion <= 0:
+        return 0, 0, True
+    return max(prompt, 0), max(completion, 0), False
+
+
+def _resolve_cost(provider: str, model: str, tokens_total: int) -> tuple:
+    """(cost, pricing_available). R0.7 AC10: chua co bang gia AICostRate
+    => (0, False). Them bang gia sau thi mo rong tai day (1 diem duy nhat)."""
+    from decimal import Decimal
+    return Decimal('0'), False
+
+
 def _coerce_float(raw):
     """Trả float hoặc None. Không bao giờ ném, không bao giờ bịa giá trị."""
     if raw is None or isinstance(raw, bool):
@@ -652,6 +680,10 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
                 )
 
             tokens_used = res_data.get('usage', {}).get('total_tokens', 250)
+            # R0.7 AC6/AC9: giu usage CHI TIET de task ghi AIUsageRecord that.
+            _tokens_in, _tokens_out, _usage_unavailable = _extract_usage(
+                res_data.get('usage')
+            )
 
             # R0.2 — signal là enum nghiêm ngặt, không đoán. Thứ tự: ưu tiên
             # `signal` do model trả, fallback sang `recommendation` (mô hình cũ
@@ -671,6 +703,11 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
                 'advisory_text': parsed_json.get('summary') or parsed_json.get('recommendation') or "",
                 'ai_model': ai_model,
                 'tokens_used': tokens_used,
+                'usage': {
+                    'prompt_tokens': _tokens_in,
+                    'completion_tokens': _tokens_out,
+                    'usage_unavailable': _usage_unavailable,
+                },
                 'metrics': metrics,
                 'input_snapshot': input_snapshot,
                 'feature_attribution': feature_attribution,

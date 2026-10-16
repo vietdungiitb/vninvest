@@ -1,4 +1,15 @@
 
+## Entry 337: AI R0.7 audit FK + usage (2026-10-16)
+
+- **Nhanh**: `feat/ai-r07-audit` stack tren `feat/ai-r06-ssrf` (PR #177 chua merge — gop sau). Claim `ai-r07`. TDD fail-before: VPS 6E+1F (TypeError FK user/tenant ×5 · no tasks module · 201!=405).
+- **Viec lam**: (1) `AIAuditLog` + user/tenant FK null + `legacy_unattributed` (migration 0013 bang makemigrations, backfill actor→username, khong khop giu NULL+co, tenant NULL, khong print ASCII-safe L-B03) · (2) scope audit-logs theo FK + staff theo tenant qua hint X-Tenant-ID/`?tenant=` + SSOT membership (hint la ma khong membership → none) + `?actor=` exact (bo icontains oracle) + `legacy_unattributed_count` · (3) 3 diem create + user/tenant + test source-scan AC3 · (4) POST /ai/usage/ → 405 (FE chi GET) · (5) instrument `generate_advisory_task` (latency that floor 1ms; error path status error) · (6) `_extract_usage`/`_resolve_cost` + field co AC9/AC10 (migration 0002) · (7) `rollup_usage_daily` moi (update_or_create, chua noi beat — bao coordinator).
+- **Bug that do chinh slice gay ra (hoi quy bat duoc)**: helper moi chen giua `@shared_task` va `generate_advisory_task` → cuop decorator (mat `.delay`; production cung crash). 3 test cu `AdvisoryRefreshViewFallbackTests` do → fix 1+/1-. Bai hoc: helper dat TRUOC decorator hoac SAU ham, khong bao gio chen giua.
+- **Gate**: BE VPS Postgres **134/134 OK** (moi 12 · hoi quy 122 gom audit/mgmt/config/history/r04/r0/probe/safety/r06/usage) · makemigrations No changes · check-multi-agent 0 loi · agent-sync dong bo · pre-push 23/23 (system-design regen migration 122→124 + model catalog; can PYTHONUTF8=1 tren cp1252 — bug latent `gen-model-catalog.py`, follow-up).
+- **Lessons ap dung**: L-001, L-002, L-003, L-006, L-007, L-008, L-M01, L-M02, L-M03, L-B01, L-V02, L-V03, L-T01, L-T02, L-G01, L-G02.
+- **CHUA CHAY**: full BE (chi AI scope) · ruff · E2E UI · doi chieu mat staging · beat schedule rollup.
+- **Tiep**: R0.9 (tach lop A/B + bo ai_config_message) — slice cuoi R0.
+- **Don sach**: worktree VPS `/tmp/ai-r07` + DB `ai_r07` da xoa.
+
 ## Entry 336: AI R0.6 SSRF no-echo + throttle (2026-10-16)
 
 - **Nhanh**: `feat/ai-r06-ssrf` -> `dev` (claim `ai-r06`, 1 agent tuan tu, TDD fail-before). 4 commit.

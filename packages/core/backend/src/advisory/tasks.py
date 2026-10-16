@@ -166,17 +166,73 @@ def reset_daily_token_budgets():
     return "noop: enforcement date-scoped in views.py"
 
 
+def _write_advisory_usage_record(
+    *,
+    user,
+    provider: str,
+    model: str,
+    tokens_in: int,
+    tokens_out: int,
+    latency_ms: int,
+    record_status: str,
+    usage_unavailable: bool = False,
+) -> None:
+    """Ghi AIUsageRecord that cho 1 lan goi provider (R0.7 AC6/AC7).
+
+    Khong bao gio bia: thieu so => 0 + co; cost 0 vi chua co bang gia (AC10).
+    Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
+    """
+    try:
+        from ai_analytics.models import AIUsageRecord
+        from advisory.orchestrator import _resolve_cost
+
+        cost, pricing_available = _resolve_cost(
+            provider or '', model or '', (tokens_in or 0) + (tokens_out or 0)
+        )
+        AIUsageRecord.objects.create(
+            action=AIUsageRecord.ActionChoices.ADVISORY,
+            user=user,
+            provider=provider or '',
+            model=model or '',
+            tokens_in=max(int(tokens_in or 0), 0),
+            tokens_out=max(int(tokens_out or 0), 0),
+            cost=cost,
+            latency_ms=max(int(latency_ms or 0), 0),
+            status=record_status,
+            usage_unavailable=bool(usage_unavailable),
+            pricing_available=bool(pricing_available),
+        )
+    except Exception:
+        logger.exception('AI usage record write failed (non-blocking)')
+
+
 @shared_task(name="advisory.generate_advisory_task")
 def generate_advisory_task(record_id: str, effective_context: dict, symbol: str):
     """
     Asynchronously runs the advisory Multi-Agent orchestrator using the effective
     AI context and stores the resulting analysis in the AdvisoryRecord.
     """
+    import time as _time
+
     from advisory.models import AdvisoryRecord
-    from advisory.orchestrator import AdvisoryOrchestrator
+    from advisory.orchestrator import AdvisoryOrchestrator, _extract_usage
     try:
         record = AdvisoryRecord.objects.get(advisory_id=record_id)
+        _start = _time.monotonic()
         orch_res = AdvisoryOrchestrator.run(effective_context, symbol)
+        _latency_ms = max(1, int((_time.monotonic() - _start) * 1000))
+        # R0.7 AC6: moi lan goi provider that (thanh cong) deu de lai 1 record.
+        _tokens_in, _tokens_out, _unavailable = _extract_usage(orch_res.get('usage'))
+        _write_advisory_usage_record(
+            user=record.user,
+            provider=(effective_context or {}).get('ai_provider') or '',
+            model=orch_res.get('ai_model') or (effective_context or {}).get('ai_model') or '',
+            tokens_in=_tokens_in,
+            tokens_out=_tokens_out,
+            latency_ms=_latency_ms,
+            record_status='success',
+            usage_unavailable=_unavailable,
+        )
         record.advisory_text = orch_res.get('advisory_text', '')
         record.tokens_used = orch_res.get('tokens_used', 0)
         record.generated_at = timezone.now()
@@ -291,6 +347,34 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
             )
     except Exception as e:
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
+        # R0.7 AC7: loi provider (401/429/...) la luc can quan sat nhat —
+        # van ghi record voi status='error', tokens 0 (khong bia).
+        try:
+            _failed_ctx = effective_context or {}
+            _failed_user = None
+            try:
+                from advisory.models import AdvisoryRecord as _AR
+
+                _failed_rec = (
+                    _AR.objects.filter(advisory_id=record_id)
+                    .select_related('user')
+                    .first()
+                )
+                _failed_user = _failed_rec.user if _failed_rec else None
+            except Exception:
+                _failed_user = None
+            _write_advisory_usage_record(
+                user=_failed_user,
+                provider=_failed_ctx.get('ai_provider') or '',
+                model=_failed_ctx.get('ai_model') or '',
+                tokens_in=0,
+                tokens_out=0,
+                latency_ms=0,
+                record_status='error',
+                usage_unavailable=True,
+            )
+        except Exception:
+            logger.exception('AI error usage record write failed (non-blocking)')
         try:
             failed_record = AdvisoryRecord.objects.get(advisory_id=record_id)
             _refund_advisory_quota(failed_record)

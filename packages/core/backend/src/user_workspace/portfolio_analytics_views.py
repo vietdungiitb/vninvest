@@ -1279,6 +1279,8 @@ class PortfolioAICommandCenterView(APIView):
         AIAuditLog.objects.create(
             action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
             actor=request.user.username,
+            user=request.user,
+            tenant=getattr(request, 'tenant', None),
             reason=f'Cập nhật cấu hình AI: {"; ".join(diff_parts) if diff_parts else "không có thay đổi"}.',
             before_json=before_snapshot,
             after_json=after_snapshot,
@@ -1399,6 +1401,8 @@ class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
         AIAuditLog.objects.create(
             action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
             actor=request.user.username,
+            user=request.user,
+            tenant=getattr(request, 'tenant', None),
             reason=f'Rollback prompt config về version {version} (source=rollback).',
             before_json=sanitize_sensitive_fields({'prompt_config': None}),
             after_json=sanitize_sensitive_fields({'prompt_config_version': version}),
@@ -1461,6 +1465,8 @@ class PortfolioAICommandCenterTestView(APIView):
             AIAuditLog.objects.create(
                 action=audit_action,
                 actor=request.user.username,
+                user=request.user,
+                tenant=getattr(request, 'tenant', None),
                 reason=message,
                 before_json={},
                 after_json={'ai_provider': provider, 'ai_model': model, 'status': 'success' if 'SUCCESS' in audit_action else 'failed'},
@@ -1647,10 +1653,17 @@ class PortfolioAICommandCenterAuditLogView(APIView):
     cấu hình AI của user khác (bao gồm `before_json`/`after_json` đã mask
     nhưng vẫn lộ metadata cấu hình). Nay scope theo actor, chỉ staff mới
     xem được toàn bộ.
+    R0.7 — scope theo FK that: user thuong chi thay log cua minh (user FK +
+    dong legacy trung actor cua minh); staff loc theo tenant qua hint
+    `X-Tenant-ID`/`?tenant=` (SSOT `resolve_tenant_for_user`, fail-closed:
+    hint ro nhung khong co membership => thay nothing); `?actor=` doi sang
+    exact match (icontains bien `admin` thanh oracle do `administrator`).
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        from django.db.models import Q
+
         from advisory.models import AIAuditLog
         from advisory.serializers import AIAuditLogSerializer
 
@@ -1662,7 +1675,12 @@ class PortfolioAICommandCenterAuditLogView(APIView):
             or getattr(request.user, 'is_staff', False)
         )
         if not is_operator:
-            queryset = queryset.filter(actor=request.user.username)
+            # R0.7 AC1: user FK that + nhin lai dong legacy (user NULL) trung
+            # actor cua minh. Dong legacy cua user khac van khong thay.
+            queryset = queryset.filter(
+                Q(user=request.user)
+                | Q(user__isnull=True, actor=request.user.username)
+            )
 
         action = request.query_params.get('action', '').strip()
         if action:
@@ -1673,9 +1691,16 @@ class PortfolioAICommandCenterAuditLogView(APIView):
             # User không phải operator không được lọc sang actor khác để dò
             # ra log ngoài phạm vi của mình.
             if is_operator or actor == request.user.username:
-                queryset = queryset.filter(actor__icontains=actor)
+                # R0.7 AC4: exact match — icontains bien ?actor=admin thanh
+                # oracle do duoc log cua administrator.
+                queryset = queryset.filter(actor=actor)
             else:
                 queryset = queryset.none()
+
+        if is_operator:
+            # R0.7 AC2: staff loc theo tenant. Hint qua SSOT membership check;
+            # khong hint => giu hanh vi operator toan he thong cu (R0.11).
+            queryset = self._scope_operator_by_tenant(request, queryset)
 
         date_from = request.query_params.get('date_from', '').strip()
         if date_from:
@@ -1695,15 +1720,48 @@ class PortfolioAICommandCenterAuditLogView(APIView):
             offset = 0
 
         total = queryset.count()
+        # R0.7: so ban ghi legacy chua gan chu trong pham vi dang xem —
+        # FE hien thi "N ban ghi (M ban ghi legacy chua gan)".
+        legacy_unattributed_count = queryset.filter(legacy_unattributed=True).count()
         logs = queryset[offset:offset + limit]
         serializer = AIAuditLogSerializer(logs, many=True)
 
         return paginated_envelope({
             'results': serializer.data,
             'total': total,
+            'legacy_unattributed_count': legacy_unattributed_count,
             'limit': limit,
             'offset': offset,
         })
+
+    @staticmethod
+    def _scope_operator_by_tenant(request, queryset):
+        """Scope staff theo tenant qua hint, fail-closed khi hint la (R0.7 AC2).
+
+        Hint tu `X-Tenant-ID` (uu tien) hoac `?tenant=`, di qua SSOT
+        `resolve_tenant_for_user` (membership check, khong tu che resolver).
+        - Hint hop le + co membership => chi log cua tenant do.
+        - Hint ro nhung khong co membership => thay nothing (khong fallback
+          ve toan he thong — do chinh la oracle can dong).
+        - Khong hint => giu hanh vi operator toan he thong cu (R0.11).
+        """
+        from identity_access.utils.resolve_tenant import (
+            is_plausible_tenant_public_id,
+            resolve_tenant_for_user,
+        )
+
+        hint = (
+            request.headers.get('X-Tenant-ID', '').strip()
+            or request.query_params.get('tenant', '').strip()
+        )
+        if not hint:
+            return queryset
+        if not is_plausible_tenant_public_id(hint):
+            return queryset.none()
+        tenant, _role = resolve_tenant_for_user(request.user, hint)
+        if tenant is None:
+            return queryset.none()
+        return queryset.filter(tenant=tenant)
 
 
 @extend_schema(

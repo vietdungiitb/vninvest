@@ -20,6 +20,8 @@ class AIUsageRecordSerializer(serializers.ModelSerializer):
             'cost',
             'latency_ms',
             'status',
+            'usage_unavailable',
+            'pricing_available',
             'created_at',
         ]
         read_only_fields = fields
