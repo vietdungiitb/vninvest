@@ -68,10 +68,21 @@ def validate_secrets(secrets: dict) -> dict[str, str]:
     P1-SEC-01: `base_url` phải qua egress allowlist. Message là CODE cố định, không
     echo giá trị người dùng nhập (giá trị đó có thể chứa host nội bộ/khoá đã rot).
     """
+    from user_workspace.broker.base import check_secret_shape
+
     errors: dict[str, str] = {}
     secrets = secrets or {}
     if not str(secrets.get('api_key', '') or '').strip():
         errors['api_key'] = 'required'
+    else:
+        shape = check_secret_shape('api_key', secrets.get('api_key'))
+        if shape:
+            errors['api_key'] = shape
+    custody = str(secrets.get('custody_code', '') or '').strip()
+    if custody:
+        shape = check_secret_shape('custody_code', custody)
+        if shape:
+            errors['custody_code'] = shape
     try:
         validate_base_url(PROVIDER_ID, secrets.get('base_url'))
     except EgressPolicyError as exc:

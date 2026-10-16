@@ -42,14 +42,20 @@ def get_schema() -> dict:
 
 def validate_secrets(secrets: dict) -> dict[str, str]:
     """Trả về {field: message} — rỗng = hợp lệ. Không log secret."""
+    from user_workspace.broker.base import check_secret_shape
+
     errors: dict[str, str] = {}
     secrets = secrets or {}
     for field in get_schema()['fields']:
-        if not field.get('required'):
-            continue
-        value = str(secrets.get(field['key'], '') or '').strip()
+        key = field['key']
+        value = str(secrets.get(key, '') or '').strip()
         if not value:
-            errors[field['key']] = 'required'
+            if field.get('required'):
+                errors[key] = 'required'
+            continue
+        shape = check_secret_shape(key, value)
+        if shape:
+            errors[key] = shape
     return errors
 
 

@@ -88,14 +88,47 @@ describe("BrokerConnectForm — schema-driven (B2.2/AC2)", () => {
     expect(screen.queryByPlaceholderText("Client Secret")).toBeNull();
   });
 
-  it("uses soc input styling + safe autocomplete on every field", () => {
+  it("uses soc input styling + secret-aware autocomplete on every field", () => {
     const { container } = render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBe(SSI_SCHEMA.fields.length);
     inputs.forEach((input) => {
-      expect(input.getAttribute("autocomplete")).toBe("off");
       expect(input.getAttribute("spellcheck")).toBe("false");
       expect(input.className).toContain("fieldInput");
+      expect(input.getAttribute("id")).toBeTruthy();
+    });
+    // Secret → password manager nhận diện; thường → tắt gợi ý.
+    expect(screen.getByPlaceholderText("SSI API Key").getAttribute("autocomplete")).toBe(
+      "new-password",
+    );
+    expect(screen.getByPlaceholderText("VD: 1234561").getAttribute("autocomplete")).toBe(
+      "off",
+    );
+  });
+
+  it("clears secrets from state after successful save (F-FE-01)", async () => {
+    render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
+    fireEvent.change(screen.getByPlaceholderText("SSI API Key"), {
+      target: { value: "KEY123" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("SSI API Secret"), {
+      target: { value: "SECRET123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu kết nối" }));
+    await waitFor(() => {
+      expect(screen.getByText("Đã lưu kết nối ssi.")).toBeTruthy();
+    });
+    expect(screen.getByPlaceholderText("SSI API Key").getAttribute("value")).toBe("");
+  });
+
+  it("hints that test uses saved config while editing unsaved values", async () => {
+    render(<BrokerConnectForm provider="ssi" schema={SSI_SCHEMA} />);
+    expect(screen.queryByText(/dùng cấu hình đã lưu/)).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("SSI API Key"), {
+      target: { value: "KEY123" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/dùng cấu hình đã lưu/)).toBeTruthy();
     });
   });
 
