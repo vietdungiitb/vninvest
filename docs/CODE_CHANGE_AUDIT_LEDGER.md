@@ -1,3 +1,13 @@
+## Entry 340: AI R1.1 tokens --ai-* ra :root (slice dau R1, 2026-10-16)
+
+- **Nhanh**: `feat/ai-r11-tokens` -> `dev` (PR, merge giu trail). Claim `ai-r11`. TDD fail-before: test moi RED 2/5 (AC1, AC1b) truoc fix, GREEN 5/5 sau.
+- **Viec lam**: 13 token `--ai-*` tu `.page` (aiSettings.module.css:51-64) ra block `:root` moi (gia tri byte-identical) + comment ly do. Diff toi thieu 7+/1- (token lines trung thanh context). Khong sua hub.
+- **Gate chay that**: vitest moi 5/5 + hoi quy AI CC 13/13 + tsc 0 + eslint 0 + check-ai-cc SACH + build PASS 48.68s + check-multi-agent 0 loi. Evidence `docs/evidence/ai-cc/r11-gates.md`.
+- **Phat hien khi verify (L-V02)**: (1) phan bien plan "khong rule ngoai module dung --ai-*" sai nhe — hub :353/:387 dung var(--ai-border) inline ma khong co to tien .page, ra :root chua luon; (2) AC4 GREEN san (hub root shellPage, khong dung styles.page); (3) Edit tool flip LF->CRLF (numstat 1004/998), khoi phuc tu git show HEAD + redo bang Node (L-G05/L-T01).
+- **Lessons ap dung**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: AC5 visual 6 anh (khong browser o may nay) + full BE + ruff + E2E UI.
+- **Tiep**: R1.2 (AIAuditLogsPanel token + a11y, phu thuoc R1.1) -> ... -> R1.11 theo plan Rev.2.
+
 ## Entry 339: Khép R0 — gộp #177→#178→#179 + deploy/verify staging (2026-10-16)
 
 - **Lộ trình**: handoff `docs/evidence/ai-cc/R0-HANDOFF_20261016.md`. Cả 3 PR base=`dev` (stack bằng commit, không phải branch-on-branch) — gộp #177 (merge `86deadde`) → #178 thu hẹp còn 6 commit/21 file, CLEAN → gộp (`97609d59`) → #179 thu hẹp còn 7 commit/20 file, CLEAN → gộp (`d227d9bf`). Không `--no-verify` (merge, không push trực tiếp dev — L-008).
