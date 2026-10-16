@@ -1,3 +1,12 @@
+## Entry 349: AI R1.10 quota labels + countdown (2026-10-16)
+
+- **Nhanh**: `feat/ai-r110-quota` -> `dev`. Claim `ai-r110`. TDD: BE RED 2/2 -> GREEN 2/2 (VPS); FE RED (stash) -> GREEN.
+- **Viec lam**: BE +used_today/+source GET/PUT (khong migration) + FE 1 dong quota + dem nguoc + 4 key i18n + sua test cu.
+- **Gate**: BE moi + policy 9/9 + mgmt 30/30 (VPS) + FE page suite + tsc/eslint/check-ai-cc/build PASS. Evidence `docs/evidence/ai-cc/r110-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: anh quota + full BE + ruff + E2E + staging.
+- **Tiep**: R1.11 (agent panel, slice cuoi R1). Don VPS sau merge.
+
 ## Entry 348: AI R1.9 diff preview + 409 optimistic lock (2026-10-16)
 
 - **Nhanh**: `feat/ai-r19-concurrency` -> `dev`. Claim `ai-r19`. TDD: BE RED (thieu token + ghi de) -> GREEN 3/3 (VPS); FE RED 5/5 -> GREEN 5/5.
