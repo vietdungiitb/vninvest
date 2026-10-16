@@ -1,3 +1,13 @@
+## Entry 342: AI R1.2 AuditLogsPanel token + a11y + CSV (2026-10-16)
+
+- **Nhanh**: `feat/ai-r12-auditpanel` -> `dev`. Claim `ai-r12`. TDD: test moi RED 8/8 -> GREEN 8/8.
+- **Viec lam**: header button aria-expanded + badge/filter sang token (.audit* 23 class, 0 hex) + Refresh/Export CSV (BOM/cap 5000/truncated) + debounce 300ms + bo _r + applyFilters het double-fetch + formatAuditDate guard. Giu nguyen useUrlState (nav1 xanh).
+- **Su co regex**: xoa key dung pattern khong neo block an nham usage.exporting (deprecated) -> khoi phuc verbatim. Bai hoc: moi regex xoa/sua i18n phai neo blockSpan + doc diff ngay.
+- **Gate**: vitest moi 8/8 + hoi quy 42/42 + tsc 0 + eslint 0 + check-ai-cc SACH + build PASS. Evidence `docs/evidence/ai-cc/r12-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02, L-G05].
+- **CHUA CHAY**: visual light/dark + full BE + ruff + E2E UI + staging.
+- **Tiep**: R1.4 (Skeleton + isDirty, phu thuoc R1.2) -> R1.5..R1.11.
+
 ## Entry 341: AI R1.3 i18n sach (lam truoc R1.2, 2026-10-16)
 
 - **Nhanh**: `feat/ai-r13-i18n` -> `dev` (PR, merge giu trail). Claim `ai-r13`. TDD: test moi RED 5/7 (AC1/AC1b/AC2/AC3/AC5) -> GREEN 7/7.
