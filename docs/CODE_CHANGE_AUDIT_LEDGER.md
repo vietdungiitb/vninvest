@@ -1,3 +1,12 @@
+## Entry 346: AI R1.7 useRetryableAsync abort + requestId + cleanup (2026-10-16)
+
+- **Nhanh**: `feat/ai-r17-retry` -> `dev`. Claim `ai-r17`. TDD: test moi RED 5/5 -> GREEN 5/5.
+- **Viec lam**: AbortController/luot + requestId guard + unmount cleanup + asyncFn(signal?) + dashboard Refresh chi loadData (bo kep). Consumer duy nhat dashboard.
+- **Gate**: vitest moi 5/5 + dashboard suite + tsc/eslint/check-ai-cc/build PASS. Evidence `docs/evidence/ai-cc/r17-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: full BE + ruff + E2E + staging.
+- **Tiep**: R1.8 (token systems + AiHubNav) -> R1.9..R1.11.
+
 ## Entry 345: AI R1.6 chart token + bang so (2026-10-16)
 
 - **Nhanh**: `feat/ai-r16-chart` -> `dev`. Claim `ai-r16`. TDD: test moi RED 5 AC -> GREEN 5/5.
