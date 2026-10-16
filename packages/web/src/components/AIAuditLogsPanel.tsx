@@ -1,11 +1,14 @@
 import { useState, useEffect, createElement, useCallback, useRef } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import styles from "./aiSettings.module.css";
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec, type UrlStateOptions } from "../hooks/useUrlState";
 
 const e = createElement;
 
 const AUDIT_PAGE_SIZE = 10;
+const AUDIT_EXPORT_MAX_ROWS = 5000;
+const AUDIT_FILTER_DEBOUNCE_MS = 300;
 
 type AuditUrlState = {
   action: string; actor: string; dateFrom: string; dateTo: string; page: number;
@@ -49,7 +52,7 @@ const AUDIT_URL_DEFAULTS: AuditUrlState = {
 // identity ⇒ `useEffect([..., setPage])` chay LAI moi lan render ⇒ loop.
 const AUDIT_URL_OPTIONS: UrlStateOptions = { replaceKeys: ["actor"] };
 
-interface AuditLogEntry {
+export interface AuditLogEntry {
   id: number;
   action: string;
   actor: string;
@@ -58,6 +61,71 @@ interface AuditLogEntry {
   after_json: Record<string, unknown>;
   diff_summary: string;
   created_at: string;
+}
+
+/** R1.2 AC8: ngày hỏng/ rỗng ⇒ "—", không bao giờ ném. */
+export function formatAuditDate(dateStr: string, localeTag: string): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  try {
+    return d.toLocaleString(localeTag);
+  } catch {
+    return "—";
+  }
+}
+
+const AUDIT_CSV_COLUMNS = ["id", "action", "actor", "reason", "created_at", "diff_summary"] as const;
+
+function aiAuditCsvEscape(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export interface AiAuditCsvOut {
+  header: string;
+  body: string;
+  count: number;
+  truncated: boolean;
+}
+
+/** R1.2 AC4: CSV có BOM ở khâu download, escape, cap 5000 + cờ truncated. */
+export function buildAiAuditCsv(logs: AuditLogEntry[]): AiAuditCsvOut {
+  const items = Array.isArray(logs) ? logs : [];
+  const rows = items.slice(0, AUDIT_EXPORT_MAX_ROWS).map((log) => ({
+    id: log.id ?? '',
+    action: log.action || '',
+    actor: log.actor || '',
+    reason: log.reason || '',
+    created_at: log.created_at || '',
+    diff_summary: log.diff_summary || '',
+  }));
+  const header = [...AUDIT_CSV_COLUMNS].join(',');
+  const body = rows
+    .map((row) => AUDIT_CSV_COLUMNS.map((col) => aiAuditCsvEscape(row[col])).join(','))
+    .join('\n');
+  return { header, body, count: rows.length, truncated: items.length > AUDIT_EXPORT_MAX_ROWS };
+}
+
+/** R1.2 AC4: tải CSV (BOM \uFEFF). Trả số dòng đã xuất; 0 khi môi trường không hỗ trợ. */
+export function downloadAiAuditCsv(out: AiAuditCsvOut, filename: string): number {
+  try {
+    if (typeof document === "undefined") return 0;
+    if (typeof URL === "undefined" || typeof (URL as unknown as { createObjectURL?: unknown }).createObjectURL !== "function") return 0;
+    const blob = new Blob(["\uFEFF" + out.header + "\n" + out.body], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    return out.count;
+  } catch {
+    return 0;
+  }
 }
 
 interface AIAuditLogsPanelProps {
@@ -70,6 +138,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [exportNotice, setExportNotice] = useState('');
 
   // WAVE 10 / NAV-1: 4 bo loc + phan trang nam trong RAM nen gui link cho
   // nguoi khac thi ho thay man hinh CHUA loc. `useUrlState` (patch) thay 5
@@ -95,6 +164,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     setLoading(true);
     setError('');
     try {
+      // R1.2 AC5: refreshKey chỉ reset page, không đính kèm cache-buster vào params.
       const params: Record<string, string | number> = {
         limit: AUDIT_PAGE_SIZE,
         offset: (page - 1) * AUDIT_PAGE_SIZE,
@@ -103,7 +173,6 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
       if (actor) params.actor = actor;
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
-      if (refreshKey) params._r = refreshKey;
 
       const data = await (coreApiAdapter as any).getAIAuditLogs(params);
       setLogs(data.results || []);
@@ -113,10 +182,23 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     } finally {
       setLoading(false);
     }
+  // `refreshKey` trong deps là CHỦ Ý (không phải thừa): khi cha lưu settings,
+  // refreshKey đổi nhưng page có thể vẫn 1 ⇒ không có state nào đổi ⇒ effect
+  // debounce không chạy lại ⇒ phải refetch trực tiếp ở đây. Giữ nguyên ngữ
+  // nghĩa bản cũ (loadLogs cũ cũng deps refreshKey).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, action, actor, dateFrom, dateTo, refreshKey, t]);
 
+  // R1.2 AC3: mount goi ngay; doi filter debounce 300ms (doi select 1 lan chi 1 request).
+  const mountedRef = useRef(false);
   useEffect(() => {
-    loadLogs();
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      loadLogs();
+      return;
+    }
+    const h = setTimeout(loadLogs, AUDIT_FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(h);
   }, [loadLogs]);
 
   // WAVE 10 / NAV-1: bo loc doi da ve trang 1 TRONG CUNG mot patch voi gia tri
@@ -135,7 +217,16 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     }
   }, [refreshKey, setPage]);
 
-  const applyFilters = () => { setPage(1); loadLogs(); };
+  // R1.2 AC3: nút Áp dụng chỉ chốt page (effect debounce lo fetch) — không double-fetch.
+  const applyFilters = () => { setPage(1); };
+  const handleRefresh = () => { loadLogs(); };
+
+  const handleExport = () => {
+    const out = buildAiAuditCsv(logs);
+    const n = downloadAiAuditCsv(out, "ai-audit-logs.csv");
+    void n;
+    setExportNotice(out.truncated ? t("aiCommandCenter.exportTruncated") : t("aiCommandCenter.exportedCount", { count: out.count }));
+  };
 
   const resetFilters = () => {
     // MOT patch cho ca 5 key: `setUrlState` chi ghi key duoc NAM trong patch
@@ -156,10 +247,10 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
   const totalPages = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
 
   const actionBadgeClass = (action: string) => {
-    if (action === 'update_settings') return 'border-cyan-700/60 bg-cyan-950/30 text-cyan-300';
-    if (action === 'test_connection_success') return 'border-emerald-700/60 bg-emerald-950/30 text-emerald-300';
-    if (action === 'test_connection_failed') return 'border-rose-700/60 bg-rose-950/30 text-rose-300';
-    return 'border-slate-700 bg-slate-800/40 text-slate-400';
+    if (action === 'update_settings') return `${styles.auditBadge} ${styles.auditBadgeUpdate}`;
+    if (action === 'test_connection_success') return `${styles.auditBadge} ${styles.auditBadgeSuccess}`;
+    if (action === 'test_connection_failed') return `${styles.auditBadge} ${styles.auditBadgeFail}`;
+    return `${styles.auditBadge} ${styles.auditBadgeDefault}`;
   };
 
   const actionOptions = [
@@ -174,165 +265,180 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     return opt ? opt.label : action;
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleString(localeTag);
-  };
-
-  return e("div", { className: "space-y-4" }, [
+  return e("div", { className: styles.auditWrap }, [
     // Filters
-    e("div", { key: "filters", className: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 rounded-lg border border-slate-800 bg-slate-900/40 p-4" }, [
+    e("div", { key: "filters", className: styles.auditFilters }, [
       // Action filter
       e("div", { key: "filter-action" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.action")),
+        e("label", { className: styles.auditFieldLabel }, t("aiCommandCenter.action")),
         e("select", {
           value: action,
           onChange: (ev: any) => setFilterAction(ev.target.value),
-          className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
+          className: styles.select
         }, actionOptions.map(opt =>
           e("option", { key: opt.value, value: opt.value }, opt.label)
         ))
       ),
       // Actor filter
       e("div", { key: "filter-actor" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.actor")),
+        e("label", { className: styles.auditFieldLabel }, t("aiCommandCenter.actor")),
         e("input", {
           type: "text",
           value: actor,
           onChange: (ev: any) => setFilterActor(ev.target.value),
-          className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500",
+          className: styles.input,
           placeholder: t("aiCommandCenter.actorPlaceholder")
         })
       ),
       // Date from
       e("div", { key: "filter-date-from" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.fromDate")),
+        e("label", { className: styles.auditFieldLabel }, t("aiCommandCenter.fromDate")),
         e("input", {
           type: "date",
           value: dateFrom,
           onChange: (ev: any) => setFilterDateFrom(ev.target.value),
-          className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
+          className: styles.input
         })
       ),
       // Date to
       e("div", { key: "filter-date-to" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.toDate")),
+        e("label", { className: styles.auditFieldLabel }, t("aiCommandCenter.toDate")),
         e("input", {
           type: "date",
           value: dateTo,
           onChange: (ev: any) => setFilterDateTo(ev.target.value),
-          className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
+          className: styles.input
         })
       ),
       // Action buttons
-      e("div", { key: "filter-actions", className: "flex items-end gap-2" },
+      e("div", { key: "filter-actions", className: styles.auditActions }, [
         e("button", {
+          key: "apply",
           type: "button",
           onClick: applyFilters,
           disabled: loading,
-          className: "rounded-md border border-cyan-700 bg-cyan-900/30 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-800/40 disabled:opacity-50"
+          className: `${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`
         }, t("aiCommandCenter.applyFilter")),
         e("button", {
+          key: "refresh",
+          type: "button",
+          onClick: handleRefresh,
+          disabled: loading,
+          className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`
+        }, t("aiCommandCenter.refreshList")),
+        e("button", {
+          key: "reset",
           type: "button",
           onClick: resetFilters,
-          className: "rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200"
-        }, t("aiCommandCenter.resetFilter"))
-      )
+          className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`
+        }, t("aiCommandCenter.resetFilter")),
+        e("button", {
+          key: "export",
+          type: "button",
+          onClick: handleExport,
+          disabled: loading || logs.length === 0,
+          className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`
+        }, t("aiCommandCenter.exportCsv"))
+      ])
     ]),
+
+    // Export notice
+    exportNotice
+      ? e("div", { key: "export-notice", className: styles.auditNotice }, exportNotice)
+      : null,
 
     // Loading
     loading
-      ? e("div", { key: "loading", className: "text-center py-6 text-sm text-slate-500" }, t("aiCommandCenter.loading"))
+      ? e("div", { key: "loading", className: styles.loading }, t("aiCommandCenter.loading"))
       : null,
 
     // Error
     error
-      ? e("div", { key: "error", className: "rounded-lg border border-rose-700/60 bg-rose-900/20 px-3 py-2 text-sm text-rose-200" }, error)
+      ? e("div", { key: "error", className: `${styles.alert} ${styles.alertError}` }, error)
       : null,
 
     // Log list
     !loading && !error && logs.length === 0
-      ? e("div", { key: "empty", className: "text-center py-6 text-sm text-slate-500" }, t("aiCommandCenter.noLogs"))
+      ? e("div", { key: "empty", className: styles.empty }, t("aiCommandCenter.noLogs"))
       : null,
 
     !loading
-      ? e("div", { key: "log-list", className: "space-y-2" },
-          logs.map(log =>
-            e("div", {
+      ? e("div", { key: "log-list", className: styles.auditList },
+          logs.map(log => {
+            const expanded = expandedIds.has(log.id);
+            return e("div", {
               key: log.id,
-              className: "rounded-lg border border-slate-800 bg-slate-900/30 overflow-hidden"
+              className: styles.auditRow
             }, [
-              // Log header row
-              e("div", {
+              // R1.2 AC2: header là <button> với aria-expanded + keyboard native.
+              e("button", {
                 key: "header",
-                className: "flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-800/30",
+                type: "button",
+                className: styles.auditRowHeader,
+                "aria-expanded": expanded,
                 onClick: () => toggleExpand(log.id)
               }, [
-                e("div", { key: "info", className: "flex items-center gap-2 flex-1 min-w-0" },
-                  e("span", {
-                    className: `rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${actionBadgeClass(log.action)}`
-                  }, actionLabel(log.action)),
-                  e("span", { className: "text-xs text-slate-300 truncate" }, log.actor || 'system'),
-                  e("span", { className: "text-[10px] text-slate-500 whitespace-nowrap" }, formatDate(log.created_at))
+                e("div", { key: "info", className: styles.auditRowInfo },
+                  e("span", { className: actionBadgeClass(log.action) }, actionLabel(log.action)),
+                  e("span", { className: styles.auditActor }, log.actor || 'system'),
+                  e("span", { className: styles.auditDate }, formatAuditDate(log.created_at, localeTag))
                 ),
                 log.diff_summary
-                  ? e("span", { className: "text-[10px] text-slate-500 truncate max-w-[200px] hidden sm:block" }, log.diff_summary)
+                  ? e("span", { className: styles.auditSummary }, log.diff_summary)
                   : null,
-                e("span", { className: "text-xs text-slate-600" }, expandedIds.has(log.id) ? '▲' : '▼')
+                e("span", { key: "caret", className: styles.auditCaret, "aria-hidden": true }, expanded ? '▲' : '▼')
               ]),
 
               // Expanded JSON diff
-              expandedIds.has(log.id)
-                ? e("div", { key: "diff", className: "border-t border-slate-800" },
-                    e("div", { className: "grid grid-cols-1 gap-2 p-3 sm:grid-cols-2" }, [
+              expanded
+                ? e("div", { key: "diff", className: styles.auditDiff },
+                    e("div", { className: styles.auditDiffGrid }, [
                       // Before
                       e("div", { key: "before" },
-                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.before")),
-                        e("pre", {
-                          className: "max-h-48 overflow-auto rounded bg-slate-950 p-2 text-[10px] leading-relaxed text-slate-300"
-                        }, JSON.stringify(log.before_json, null, 2))
+                        e("h4", { className: styles.auditFieldLabel }, t("aiCommandCenter.before")),
+                        e("pre", { className: styles.auditPre },
+                          JSON.stringify(log.before_json, null, 2))
                       ),
                       // After
                       e("div", { key: "after" },
-                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.after")),
-                        e("pre", {
-                          className: "max-h-48 overflow-auto rounded bg-slate-950 p-2 text-[10px] leading-relaxed text-slate-300"
-                        }, JSON.stringify(log.after_json, null, 2))
+                        e("h4", { className: styles.auditFieldLabel }, t("aiCommandCenter.after")),
+                        e("pre", { className: styles.auditPre },
+                          JSON.stringify(log.after_json, null, 2))
                       )
                     ]),
                     log.reason
-                      ? e("div", { key: "reason", className: "border-t border-slate-800 px-3 py-2 text-xs text-slate-500" },
+                      ? e("div", { key: "reason", className: styles.auditReason },
                           `${t("aiCommandCenter.reasonPrefix")} ${log.reason}`
                         )
                       : null
                   )
                 : null
-            ])
-          )
+            ]);
+          })
         )
       : null,
 
     // Pagination
     total > AUDIT_PAGE_SIZE
-      ? e("div", { key: "pagination", className: "flex items-center justify-between px-1 py-2 text-xs text-slate-400" }, [
+      ? e("div", { key: "pagination", className: styles.auditPager }, [
           e("span", null, t("aiCommandCenter.auditShowing")
             .replace("{total}", String(total))
             .replace("{page}", String(page))
             .replace("{totalPages}", String(totalPages))),
-          e("div", { className: "flex gap-2" },
+          e("div", { className: styles.auditActions },
             e("button", {
               type: "button",
               // WAVE 10 / NAV-1: setter cua `useUrlState` nhan **gia tri**, khong
               // phai updater lambda ⇒ doc `page` tu state thay vi `p`.
               onClick: () => setPage(Math.max(1, page - 1)),
               disabled: page <= 1,
-              className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`
             }, t("aiCommandCenter.previous")),
             e("button", {
               type: "button",
               onClick: () => setPage(Math.min(totalPages, page + 1)),
               disabled: page >= totalPages,
-              className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              className: `${styles.btn} ${styles.btnGhost} ${styles.btnSm}`
             }, t("aiCommandCenter.next"))
           )
         ])

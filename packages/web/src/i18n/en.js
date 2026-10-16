@@ -5372,6 +5372,10 @@ const en = {
     loadError: 'Could not load AI settings. Please try again later.',
     refreshIntervalValue: 'every {hours} hours',
     customModel: 'Custom model...',
+    refreshList: 'Refresh list',
+    exportCsv: 'Export CSV',
+    exportedCount: 'Exported {count} rows',
+    exportTruncated: 'Exported 5000 rows (truncated)',
   },
   // DEPRECATED 1 sprint sau B.4 (Entry 201) — call sites đã migrate sang aiUsageAnalytics/aiAgentFederation. Không xóa trước grep 0-hit + 1 sprint.
   usage: {
