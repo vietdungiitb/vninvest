@@ -107,6 +107,32 @@ def is_canonical_prompt_config(raw_config: object) -> bool:
     return True
 
 
+# R0.4 (D-04): readiness struct — validate tinh, probe that o R2.7.
+AI_READINESS_TTL_SECONDS = 300
+
+
+def build_ai_readiness(provider: str, api_key_configured: bool) -> dict:
+    """`{ready, reason_code, checked_at, ttl_seconds}`; `ready` khop `ai_ready` cu."""
+    from django.utils import timezone
+
+    provider_key = str(provider or '').strip().lower()
+    if provider_key in ('openclaw', 'local') and not api_key_configured:
+        reason = 'system_default_no_key_needed'
+        ready = True
+    elif api_key_configured:
+        reason = 'ok_configured'
+        ready = True
+    else:
+        reason = 'missing_api_key'
+        ready = False
+    return {
+        'ready': ready,
+        'reason_code': reason,
+        'checked_at': timezone.now().isoformat(),
+        'ttl_seconds': AI_READINESS_TTL_SECONDS,
+    }
+
+
 def _parse_prompt_config(raw_config: dict | None) -> dict:
     """
     Parse and validate raw client configuration against canonical prompt_config v2 defaults.

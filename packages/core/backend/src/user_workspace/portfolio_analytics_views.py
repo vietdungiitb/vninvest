@@ -964,6 +964,7 @@ class PortfolioAICommandCenterView(APIView):
         from advisory.advisory_helpers import (
             _get_default_prompt_config,
             _parse_prompt_config,
+            build_ai_readiness,
         )
         prompt_config = _parse_prompt_config(
             metadata.get('ai_prompt_config'))
@@ -1059,6 +1060,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'ai_readiness': build_ai_readiness(provider, api_key_configured),
             'ai_api_key_masked': api_key_masked,
             'system_prompt_template': config.prompt_template or '',
             'custom_endpoint': custom_endpoint,
@@ -1138,7 +1140,15 @@ class PortfolioAICommandCenterView(APIView):
         })
 
         if 'ai_provider' in payload:
-            user_cred.ai_provider = str(payload.get('ai_provider') or 'openai').strip().lower()
+            _raw_provider = str(payload.get('ai_provider') or '').strip().lower()
+            # R0.5: provider la (copilot da go, xyz, rong) -> 400 truoc khi luu.
+            # D-03 (tat claude/go openclaw khoi UI) can Owner, KHONG lam o day.
+            _known = {c.value for c in UserAICredential.ProviderChoices}
+            if _raw_provider not in _known:
+                raise ValidationError({
+                    'ai_provider': 'Nha cung cap AI khong hop le.',
+                })
+            user_cred.ai_provider = _raw_provider
 
         if 'ai_api_key' in payload:
             api_key = str(payload.get('ai_api_key') or '').strip()
@@ -1288,12 +1298,16 @@ class PortfolioAICommandCenterView(APIView):
                 api_key_masked = '••••••••'
 
         # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
-        from advisory.advisory_helpers import _parse_prompt_config as _parse_pc_put
+        from advisory.advisory_helpers import (
+            _parse_prompt_config as _parse_pc_put,
+            build_ai_readiness as _build_readiness_put,
+        )
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'ai_readiness': _build_readiness_put(provider, api_key_configured),
             'ai_api_key_masked': api_key_masked,
             'system_prompt_template': config.prompt_template or '',
             'custom_endpoint': user_cred.custom_endpoint or '',
