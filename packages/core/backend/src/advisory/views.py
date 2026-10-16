@@ -412,10 +412,13 @@ class AdvisoryRefreshView(APIView):
         provider = 'openai'
         custom_endpoint = ''
 
+        # R0.1 (D-01: self-service): model user chon thang, system lam fallback.
+        user_ai_model = ''
         try:
             user_cred = UserAICredential.objects.get(user=request.user)
             provider = user_cred.ai_provider or 'openai'
             custom_endpoint = user_cred.custom_endpoint or ''
+            user_ai_model = str(user_cred.ai_model or '').strip()
 
             if user_cred.encrypted_api_key:
                 try:
@@ -473,7 +476,7 @@ class AdvisoryRefreshView(APIView):
                 raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
 
         effective_context = {
-            'ai_model': ai_settings.ai_model,
+            'ai_model': user_ai_model or ai_settings.ai_model,
             'max_tokens': ai_settings.max_tokens,
             'temperature': ai_settings.temperature,
             'prompt_template': ai_settings.prompt_template,

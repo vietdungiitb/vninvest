@@ -959,24 +959,14 @@ class PortfolioAICommandCenterView(APIView):
 
         metadata = config.metadata or {}
 
-        # Build prompt config if missing
-        prompt_config = metadata.get('ai_prompt_config')
-        if not prompt_config:
-            prompt_config = {
-                'whale': {'enabled': True, 'lookback': 180, 'lookback_unit': 'ngày'},
-                'dark_flow': {'enabled': True, 'lookback': 90, 'lookback_unit': 'ngày'},
-                'technical': {
-                    'enabled': True,
-                    'lookback': 30,
-                    'lookback_unit': 'phiên',
-                    'indicators': ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot']
-                },
-                'news': {'enabled': True, 'lookback': 14, 'lookback_unit': 'ngày'},
-                'market': {'enabled': True, 'lookback': 7, 'lookback_unit': 'ngày'},
-                'fundamental': {'enabled': False, 'lookback': 1, 'lookback_unit': 'quý'},
-                'ownership': {'enabled': False, 'lookback': 365, 'lookback_unit': 'ngày'},
-                'sector': {'enabled': False, 'lookback': 60, 'lookback_unit': 'phiên'}
-            }
+        # R0.2: default + normalize VE canonical v2 (khong dict phang,
+        # khong key chet `lookback_unit`). Khong persist am tham o GET.
+        from advisory.advisory_helpers import (
+            _get_default_prompt_config,
+            _parse_prompt_config,
+        )
+        prompt_config = _parse_prompt_config(
+            metadata.get('ai_prompt_config'))
 
         # Read user credential (BYOK SSOT)
         try:
@@ -1061,6 +1051,8 @@ class PortfolioAICommandCenterView(APIView):
             advisory_max_tokens = sys_max_tokens
             advisory_temp = sys_temp
             advisory_prompt = sys_prompt
+        # R0.2: GET luon tra canonical v2 (legacy phang hien v2, khong persist).
+        advisory_prompt = _parse_prompt_config(advisory_prompt)
 
         response_data = {
             'ai_provider': provider,
@@ -1181,8 +1173,16 @@ class PortfolioAICommandCenterView(APIView):
         # F7: JSON append history on every effective prompt_config change
         prompt_config_changed = False
         if 'ai_prompt_config' in payload:
+            from advisory.advisory_helpers import is_canonical_prompt_config
             pc = payload.get('ai_prompt_config')
-            new_pc = pc if isinstance(pc, dict) else {}
+            # R0.2: tu choi shape phang — chi nhan canonical v2. Client cu gui
+            # phang se nhan 400 + tu sua theo GET (GET luon tra v2).
+            if not is_canonical_prompt_config(pc):
+                raise ValidationError({
+                    'ai_prompt_config': 'Shape phai la canonical v2 '
+                                        '{version: 2, sources: {...}}.',
+                })
+            new_pc = pc
             old_pc = user_cred.prompt_config if isinstance(user_cred.prompt_config, dict) else {}
             if new_pc != old_pc:
                 prompt_config_changed = True
@@ -1287,6 +1287,8 @@ class PortfolioAICommandCenterView(APIView):
             except Exception:
                 api_key_masked = '••••••••'
 
+        # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
+        from advisory.advisory_helpers import _parse_prompt_config as _parse_pc_put
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
@@ -1300,7 +1302,8 @@ class PortfolioAICommandCenterView(APIView):
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
             'ai_config_message': metadata.get('ai_config_message') or 'Cấu hình AI Command Center đã được cập nhật thành công.',
-            'ai_prompt_config': user_cred.prompt_config or metadata.get('ai_prompt_config'),
+            'ai_prompt_config': _parse_pc_put(
+                user_cred.prompt_config or metadata.get('ai_prompt_config')),
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
             'advisory_refresh_interval_hours': int(
                 user_cred.refresh_interval_hours
