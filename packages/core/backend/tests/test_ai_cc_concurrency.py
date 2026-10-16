@@ -23,6 +23,7 @@ django.setup()
 from django.contrib.auth.models import User  # noqa: E402
 from django.test import TestCase  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
+from advisory.tests.envelope import unwrapped  # noqa: E402
 from user_workspace.tests.tenant_test_helpers import grant_tenant  # noqa: E402
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
@@ -38,7 +39,7 @@ class ConcurrencyTests(TestCase):
     def _get_T(self):
         resp = self.client.get(CC_URL)
         self.assertEqual(resp.status_code, 200)
-        T = resp.data.get('config_updated_at')
+        T = unwrapped(resp).get('config_updated_at')
         self.assertTrue(T, 'GET thieu config_updated_at')
         return T
 
@@ -52,8 +53,9 @@ class ConcurrencyTests(TestCase):
             format='json',
         )
         self.assertEqual(r2.status_code, 409)
-        self.assertEqual(r2.data.get('code'), 'ai_config_conflict')
-        self.assertTrue(r2.data.get('current_updated_at'))
+        body2 = unwrapped(r2)
+        self.assertEqual(body2.get('code'), 'ai_config_conflict')
+        self.assertTrue(body2.get('current_updated_at'))
         # ghi le khong duoc apply
         T2 = self._get_T()
         self.assertNotEqual(T2, T)
@@ -64,7 +66,7 @@ class ConcurrencyTests(TestCase):
             CC_URL, {'advisory_max_tokens_per_day': 1000, 'expected_updated_at': T}, format='json'
         )
         self.assertEqual(r1.status_code, 200)
-        T2 = r1.data.get('config_updated_at')
+        T2 = unwrapped(r1).get('config_updated_at')
         self.assertTrue(T2, 'PUT thieu config_updated_at moi')
         r2 = self.client.put(
             CC_URL, {'advisory_max_tokens_per_day': 2000, 'expected_updated_at': T2}, format='json'
