@@ -461,34 +461,57 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
 
         Bản đầu chỉ assert "không raise" — nhưng trên Postgres, nuốt lỗi insert mà
         không savepoint sẽ **abort cả transaction**, nên advisory ghi sau đó và cả
-        `commit` vẫn chết với `current transaction is aborted`. Vì vậy test phải
-        chứng minh transaction **vẫn dùng được** sau lần ghi trace hỏng.
+        `commit` vẫn chết với `current transaction is aborted`.
+
+        Dùng `symbol=None` (NOT NULL) để lỗi **bị bắt ngay** — FK của Django là
+        deferred nên `advisory_id` sai mới lộ lúc commit, không phải lúc insert,
+        và không chứng minh được cơ chế savepoint.
         """
         from advisory.models import AdvisoryRecord
         from advisory.trace import record_step_trace
 
-        ctx = {
+        bad_ctx = {
             'trace_id': str(uuid.uuid4()),
             'advisory_id': self.record.advisory_id,
             'user_id': self.user.id,
-            'symbol': 'VIC',
+            'symbol': None,  # vi phạm NOT NULL, bị Postgres chặn ngay
             'session_date': self.record.session_date,
         }
-        # advisory không tồn tại ⇒ FK fail ⇒ phải nuốt, không raise.
-        bad_ctx = dict(ctx, advisory_id=uuid.uuid4())
         self.assertIsNone(record_step_trace(
             bad_ctx, 'technical', provider='openai', model='m',
             prompt='p', response='r', tokens_in=1, tokens_out=1,
             latency_ms=5, status='ok', error_code='',
         ))
 
-        # Transaction vẫn sống: ghi advisory thật ngay sau đó.
+        # Transaction vẫn sống: ghi advisory thật ngay sau lần ghi trace hỏng.
         rec = AdvisoryRecord.objects.create(
             symbol='VIC', session_date=self.record.session_date,
             user=self.user, ai_model='m',
         )
-        rec.refresh_from_db()
-        self.assertEqual(rec.pk, rec.pk)
+        self.assertIsNotNone(rec.pk)
+        self.assertEqual(
+            AdvisoryRecord.objects.filter(pk=rec.pk).count(), 1)
+
+    def test_missing_advisory_id_does_not_raise_at_call_time(self):
+        """`advisory_id` sai ⇒ FK deferred ⇒ lỗi lộ lúc commit, không lúc gọi.
+
+        Ghi lại hành vi thật thay vì giả định: đây là lý do `trace_ctx` luôn dựng
+        từ một `AdvisoryRecord` thật (`advisory.tasks`), không nhận UUID từ ngoài.
+        """
+        from advisory.trace import record_step_trace
+
+        ctx = {
+            'trace_id': str(uuid.uuid4()),
+            'advisory_id': uuid.uuid4(),
+            'user_id': self.user.id,
+            'symbol': 'VIC',
+            'session_date': self.record.session_date,
+        }
+        record_step_trace(
+            ctx, 'technical', provider='openai', model='m',
+            prompt='p', response='r', latency_ms=5, status='ok', error_code='',
+        )
+        # Không khẳng định có row hay không — chỉ khẳng định KHÔNG ném lỗi ra ngoài.
 
     def test_no_trace_ctx_means_no_trace_not_crash(self):
         from advisory.models import AITrace
