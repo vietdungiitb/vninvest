@@ -85,12 +85,25 @@ class FactoryTests(SimpleTestCase):
         self.assertEqual(hits, [])
 
     def test_ac4_unknown_provider_raises_factory_error(self):
-        # R2.4 bat lai `copilot`, R2.3 bat lai `claude` => provider thieu client
-        # chi con `openclaw` (R2.5) + provider hoan toan khong ton tai.
+        # Sau R2.5 **cả 6 provider đều có client** (openclaw theo dạng fail-closed
+        # có chủ ý vì D-03c chưa có). Không còn provider nào "chưa có client"
+        # để làm ví dụ — chỉ còn tên không tồn tại.
         with self.assertRaises(FactoryError):
             get_ai_client('khong-ton-tai', api_key='x')
         with self.assertRaises(FactoryError):
-            get_ai_client('openclaw', api_key='x')
+            get_ai_client('', api_key='x')
+
+    def test_ac4_every_known_provider_has_a_client(self):
+        # R2.5 chốt lại: provider trong ProviderChoices mà factory chưa có client
+        # => sẽ rơi vào nhánh else và gọi nhầm OpenAI. Phải bắt được ngay.
+        from advisory.ai_clients import _PROVIDERS
+        from advisory.models import UserAICredential
+
+        declared = {c.value for c in UserAICredential.ProviderChoices}
+        self.assertEqual(
+            declared - set(_PROVIDERS), set(),
+            'moi provider khai trong ProviderChoices phai co client that',
+        )
 
     def test_ac4_copilot_now_has_a_client(self):
         # BCH (2026-10-17): provider thay the luon phai co client that.
