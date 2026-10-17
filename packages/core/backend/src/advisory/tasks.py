@@ -3,6 +3,8 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
+from advisory.ai_clients import FactoryError, get_ai_client
+from advisory.copilot_tokens import CopilotTokenManager
 from advisory.models import AdvisoryComponent, AdvisorySession
 from advisory.orchestrator import (
     SIGNAL_UNPARSEABLE_CODE,
@@ -166,47 +168,121 @@ def reset_daily_token_budgets():
     return "noop: enforcement date-scoped in views.py"
 
 
-def _write_advisory_usage_record(
-    *,
-    user,
-    provider: str,
-    model: str,
-    tokens_in: int,
-    tokens_out: int,
-    latency_ms: int,
-    record_status: str,
-    usage_unavailable: bool = False,
-) -> None:
-    """Ghi AIUsageRecord that cho 1 lan goi provider (R0.7 AC6/AC7).
+# ---------------------------------------------------------------- R2.6 health
 
-    Khong bao gio bia: thieu so => 0 + co; cost 0 + `pricing_available=false`
-    khi chua co bang gia (R2.7 AC1), hoac provider tinh theo han muc (AC6).
-    Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
-    """
+#: Ngưỡng R2.6. Tắt sớm = mất dịch vụ khi provider đang deploy; bật lại sớm =
+#: đẩy traffic vào deployment còn hỏng. Hai ngưỡng khác nhau là chủ ý.
+EVICT_AFTER_CONSECUTIVE_FAILURES = 3
+RESTORE_AFTER_CONSECUTIVE_SUCCESSES = 2
+
+
+def _record_health_audit(action: str, detail: str) -> None:
+    """Audit cho evict/restore. Lỗi audit không được làm hỏng task health."""
     try:
-        from ai_analytics.models import AIUsageRecord
-        from advisory.pricing import pricing_snapshot
+        from advisory.models import AIAuditLog
 
-        snapshot = pricing_snapshot(
-            provider or '', model or '', tokens_in or 0, tokens_out or 0,
-        )
-        AIUsageRecord.objects.create(
-            action=AIUsageRecord.ActionChoices.ADVISORY,
-            user=user,
-            provider=provider or '',
-            model=model or '',
-            tokens_in=max(int(tokens_in or 0), 0),
-            tokens_out=max(int(tokens_out or 0), 0),
-            cost=snapshot['cost'],
-            latency_ms=max(int(latency_ms or 0), 0),
-            status=record_status,
-            usage_unavailable=bool(usage_unavailable),
-            # Snapshot tai thoi diem ghi (R2.7 AC3): doi gia sau khong sua record nay.
-            pricing_available=bool(snapshot['pricing_available']),
-        )
+        AIAuditLog.objects.create(action=action, actor='system', diff_summary=detail[:255])
     except Exception:
-        logger.exception('AI usage record write failed (non-blocking)')
+        logger.exception('AI health audit write failed (non-blocking)')
 
+
+def _apply_health_outcome(deployment, *, ok: bool) -> None:
+    """AC2/AC3: cập nhật chuỗi đếm + health_state. KHÔNG đụng `enabled` -
+    việc bật/tắt do _apply_evict_or_restore quyết định ở MỘT chỗ duy nhất."""
+    from advisory.models import AIDeployment
+
+    deployment.consecutive_failures = 0 if ok else deployment.consecutive_failures + 1
+    deployment.consecutive_successes = deployment.consecutive_successes + 1 if ok else 0
+    if ok:
+        if deployment.consecutive_successes >= RESTORE_AFTER_CONSECUTIVE_SUCCESSES:
+            deployment.health_state = AIDeployment.HealthChoices.HEALTHY
+    elif deployment.health_state != AIDeployment.HealthChoices.UNHEALTHY:
+        # Lần lỗi đầu chỉ hạ cấp xuống degraded, chưa tắt - chống false-positive
+        # khi provider đang deploy (rủi ro plan đã nêu ở R2.6).
+        deployment.health_state = AIDeployment.HealthChoices.DEGRADED
+    deployment.last_health_at = timezone.now()
+    deployment.save(update_fields=[
+        'consecutive_failures', 'consecutive_successes', 'health_state', 'last_health_at',
+    ])
+
+
+def _apply_evict_or_restore(deployment) -> str:
+    """AC2: tắt sau 3 lần thất bại liên tiếp. AC3: bật lại sau 2 lần thành công liên tiếp."""
+    from advisory.models import AIDeployment
+
+    if (
+        deployment.consecutive_failures >= EVICT_AFTER_CONSECUTIVE_FAILURES
+        and deployment.enabled
+    ):
+        deployment.enabled = False
+        deployment.health_state = AIDeployment.HealthChoices.UNHEALTHY
+        deployment.save(update_fields=['enabled', 'health_state'])
+        _record_health_audit(
+            AIDeployment.AuditActionChoices.DEPLOYMENT_EVICTED,
+            f'{deployment.name} bị tắt sau {deployment.consecutive_failures} probe thất bại liên tiếp',
+        )
+        return 'evicted'
+    if (
+        deployment.consecutive_successes >= RESTORE_AFTER_CONSECUTIVE_SUCCESSES
+        and not deployment.enabled
+    ):
+        deployment.enabled = True
+        deployment.health_state = AIDeployment.HealthChoices.HEALTHY
+        deployment.save(update_fields=['enabled', 'health_state'])
+        _record_health_audit(
+            AIDeployment.AuditActionChoices.DEPLOYMENT_RESTORED,
+            f'{deployment.name} được bật lại sau {deployment.consecutive_successes} probe thành công liên tiếp',
+        )
+        return 'restored'
+    return ''
+
+
+@shared_task(name="advisory.probe_deployments_health")
+def probe_deployments_health():
+    """R2.6 AC1: probe mọi deployment `enabled` bằng AiClient.probe().
+
+    AC8: probe **dùng chung** session token copilot (CopilotTokenManager cache ở
+    cấp module) nên 3 deployment copilot không đổi token 3 lần.
+    """
+    import asyncio
+
+    from advisory.models import AIDeployment, AIHealthCheck
+
+    deployments = list(AIDeployment.objects.filter(enabled=True))
+    if not deployments:
+        return {'probed': 0, 'note': 'khong co deployment enabled'}
+
+    summary = {'probed': len(deployments), 'evicted': [], 'restored': []}
+    for deployment in deployments:
+        ok, latency_ms, error_code, detail = False, 0, 'probe_not_run', ''
+        try:
+            client = get_ai_client(
+                deployment.provider, ai_model=deployment.model, timeout=15.0,
+            )
+            result = asyncio.run(client.probe())
+            ok = bool(result.get('ok'))
+            latency_ms = int(result.get('latency_ms') or 0)
+            error_code = str(result.get('error_code') or '')[:48]
+            detail = str(result.get('detail') or '')[:255]
+        except FactoryError as exc:
+            error_code, detail = 'factory_error', str(exc)[:255]
+        except Exception as exc:
+            error_code, detail = 'probe_raised', str(exc)[:255]
+
+        AIHealthCheck.objects.create(
+            deployment=deployment, ok=ok, latency_ms=latency_ms,
+            error_code=error_code, detail=detail,
+        )
+        if ok and latency_ms:
+            deployment.latency_ms = latency_ms
+            deployment.save(update_fields=['latency_ms'])
+        _apply_health_outcome(deployment, ok=ok)
+        action = _apply_evict_or_restore(deployment)
+        if action == 'evicted':
+            summary['evicted'].append(deployment.name)
+        elif action == 'restored':
+            summary['restored'].append(deployment.name)
+    return summary
 
 @shared_task(name="advisory.generate_advisory_task")
 def generate_advisory_task(record_id: str, effective_context: dict, symbol: str):
