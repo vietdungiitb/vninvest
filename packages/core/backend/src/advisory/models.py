@@ -465,6 +465,10 @@ class AIDeployment(models.Model):
     consecutive_successes = models.PositiveIntegerField(
         default=0, verbose_name='Số lần thành công liên tiếp',
     )
+    # R2.6: phân biệt "bị task health TẮT" với "quản trị TẮT TAY".
+    # Không có cờ này thì một deployment bị evict sẽ không bao giờ được probe lại
+    # ⇒ mất dịch vụ vĩnh viễn sau một sự cố nhất thời.
+    auto_evicted = models.BooleanField(default=False, verbose_name='Bị auto-evict')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

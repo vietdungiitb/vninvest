@@ -136,19 +136,21 @@ class RoutingDisabledTests(TestCase):
 
     @override_settings(AI_ROUTING_DISABLED=True)
     def test_ac7_disabled_returns_single_deployment(self):
-        decision = routing_decision([_deployment('only-one', latency_ms=9999)], 'latency')
+        decision = routing_decision(
+            [_deployment('only-one', latency_ms=9999)], strategy='latency')
         self.assertEqual(decision['chosen'], 'only-one')
         self.assertEqual(decision['strategy'], 'disabled')
 
     @override_settings(AI_ROUTING_DISABLED=True)
     def test_ac7_disabled_skips_health_filter(self):
-        decision = routing_decision([_deployment('sick', healthy=False)], 'latency')
+        decision = routing_decision(
+            [_deployment('sick', healthy=False)], strategy='latency')
         self.assertEqual(decision['chosen'], 'sick')
 
     @override_settings(AI_ROUTING_DISABLED=False)
     def test_ac7_enabled_filters_unhealthy(self):
         with self.assertRaises(NoHealthyDeploymentError):
-            routing_decision([_deployment('sick', healthy=False)], 'latency')
+            routing_decision([_deployment('sick', healthy=False)], strategy='latency')
 
 
 class HealthCheckTaskTests(TestCase):
@@ -225,6 +227,7 @@ class HealthCheckTaskTests(TestCase):
 
     def test_ac8_probe_reuses_copilot_token_cache(self):
         from advisory import tasks
+        from advisory.ai_clients import copilot as copilot_module
         from advisory.copilot_tokens import CopilotTokenManager
 
         CopilotTokenManager.clear_cache()
@@ -242,19 +245,41 @@ class HealthCheckTaskTests(TestCase):
             })
 
         transport = httpx.MockTransport(exchange_handler)
-        original_manager = tasks.CopilotTokenManager
+        # Patch tai noi DUNG: copilot.py tao manager, khong phai tasks.py.
+        original_manager = copilot_module.CopilotTokenManager
 
         class _Manager(original_manager):
             def __init__(self, **kwargs):
                 kwargs['transport'] = transport
                 super().__init__(**kwargs)
 
-        tasks.CopilotTokenManager = _Manager
+        copilot_module.CopilotTokenManager = _Manager
         try:
             tasks.probe_deployments_health()
             tasks.probe_deployments_health()
             tasks.probe_deployments_health()
         finally:
-            tasks.CopilotTokenManager = original_manager
+            copilot_module.CopilotTokenManager = original_manager
         self.assertEqual(len(exchanges), 1,
                          '3 lần probe phải dùng chung 1 session token')
+
+    def test_ac2_evicted_deployment_still_probed_for_recovery(self):
+        # Không có `auto_evicted` thì deployment đã tắt không bao giờ được probe
+        # lại => mất dịch vụ vĩnh viễn sau một sự cố nhất thời.
+        from advisory import tasks
+
+        self._probe_results([False])
+        self._probe_results([False])
+        self._probe_results([False])
+        self.assertFalse(self.dep.enabled)
+        self.assertTrue(self.dep.auto_evicted, 'phải đánh dấu auto-evict')
+        self.assertEqual(tasks.probe_deployments_health()['probed'], 1,
+                         'vẫn phải probe deployment đã evict để tìm hồi phục')
+
+    def test_ac2_manually_disabled_deployment_is_not_probed(self):
+        from advisory import tasks
+
+        self.dep.enabled = False
+        self.dep.save(update_fields=['enabled'])
+        self.assertEqual(tasks.probe_deployments_health()['probed'], 0,
+                         'quản trị tắt tay thì task health không đụng tới')
