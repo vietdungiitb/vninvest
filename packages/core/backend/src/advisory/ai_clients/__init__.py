@@ -47,10 +47,9 @@ _PROVIDERS: dict = {
     # R2.3: Anthropic KHONG phai OpenAI-compatible (x-api-key, /v1/messages).
     # `self_endpoint` giong copilot: endpoint do adapter lo, khong resolve bang
     # bang OpenAI/Gemini. Mac dinh TAT (AI_ENABLE_ANTHROPIC) — fail-closed.
-    'claude': (
+'claude': (
         'advisory.ai_clients.anthropic',
-'AnthropicClient',
-    'OpenClawClient',
+        'AnthropicClient',
         {'self_endpoint': True},
     ),
     # R2.5: openclaw - FAIL-CLOSED. D-03c chua co protocol => khong doan.
@@ -118,6 +117,7 @@ __all__ = [
     'OpenAICompatClient',
     'CopilotClient',
     'AnthropicClient',
+    'OpenClawClient',
     'get_ai_client',
     '_resolve_chat_endpoint',
 ]

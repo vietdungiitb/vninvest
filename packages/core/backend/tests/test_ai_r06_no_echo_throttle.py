@@ -86,8 +86,13 @@ class ThrottleTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
-    def test_ac7_21st_probe_returns_429(self):
-        """AC7: 20 probe dau di qua (200 openclaw, khong outbound), lan 21 -> 429."""
+def test_ac7_21st_probe_returns_429(self):
+        """AC7: 20 probe đầu đi qua throttle, lần 21 -> 429.
+
+        R2.5 đổi mã của 20 lần đầu từ 200 → 400: `openclaw` nay **fail-closed**
+        (`openclaw_not_configured`) thay vì trả 200 giả. Test throttle vẫn giữ
+        nguyên ý nghĩa: **không** phải outbound, và lần 21 vẫn phải 429.
+        """
         codes = []
         for _ in range(21):
             resp = self.client.post(
@@ -99,7 +104,9 @@ class ThrottleTests(TestCase):
         self.assertEqual(
             codes[-1], status.HTTP_429_TOO_MANY_REQUESTS, f'codes={codes}'
         )
-        self.assertTrue(all(c == 200 for c in codes[:20]), f'codes={codes}')
+        # 20 lần đầu: KHÔNG phải 429 (tức throttle cho qua) và không phải 200 giả.
+        self.assertTrue(all(c != 429 for c in codes[:20]), f'codes={codes}')
+        self.assertTrue(all(c == 400 for c in codes[:20]), f'codes={codes}')
 
 
 class OrchestratorGuardTests(TestCase):
