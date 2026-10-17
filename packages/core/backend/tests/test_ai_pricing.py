@@ -121,7 +121,7 @@ class SnapshotTests(TestCase):
         self.assertEqual(record.cost, Decimal('0.450000'))
         self.assertEqual(
             resolve_cost('openai', 'gpt-4o-mini', 0, tokens_in=1000, tokens_out=500)[0],
-            Decimal('4.500000'),
+            Decimal('3.000000'),  # gia moi 1.0/1k in + 4.0/1k out
         )
         self.assertEqual(old.usd_per_1k_input, Decimal('0.150000'))
 
@@ -257,10 +257,15 @@ class UsageRecordIntegrationTests(TestCase):
     def test_record_write_swallows_pricing_error(self):
         from unittest import mock
 
+        from advisory.tasks import _write_advisory_usage_record
+        from ai_analytics.models import AIUsageRecord
+
         with mock.patch(
             'advisory.pricing.pricing_snapshot', side_effect=RuntimeError('boom'),
         ):
-            self._write()  # khong nem ra ngoaii - usage ghi that bai (R0.7)
-        from ai_analytics.models import AIUsageRecord
-
+            # Khong nem ra ngoaii - task ghi usage khong bi gia hop lam hong (R0.7).
+            _write_advisory_usage_record(
+                user=None, provider='openai', model='gpt-4o-mini',
+                tokens_in=1000, tokens_out=500, latency_ms=10, record_status='ok',
+            )
         self.assertEqual(AIUsageRecord.objects.count(), 0)
