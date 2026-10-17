@@ -33,6 +33,22 @@ def _text_of(payload):
     return ''
 
 
+def _insert_trace(**fields):
+    """INSERT trong **savepoint**.
+
+    Không có savepoint thì 1 lần insert hỏng sẽ **abort cả transaction** ngoài
+    (Postgres): `record_step_trace` nuốt lỗi, nhưng advisory ghi sau đó và cả
+    `commit` vẫn chết với `current transaction is aborted`. Bọc `atomic()` ⇒ lỗi
+    chỉ rollback tới savepoint, transaction ngoài vẫn dùng được.
+    """
+    from django.db import transaction
+
+    with transaction.atomic():
+        from advisory.models import AITrace
+
+        return AITrace.objects.create(**fields)
+
+
 def record_step_trace(
     trace_ctx,
     step: str,
@@ -57,8 +73,6 @@ def record_step_trace(
     if not trace_ctx:
         return None
     try:
-        from advisory.models import AITrace
-
         advisory_id = trace_ctx.get('advisory_id')
         user_id = trace_ctx.get('user_id')
         if not advisory_id or not user_id:
@@ -67,7 +81,7 @@ def record_step_trace(
 
         usage = response.get('usage') or {} if isinstance(response, dict) else {}
 
-        return AITrace.objects.create(
+        return _insert_trace(
             trace_id=trace_ctx.get('trace_id') or None,
             advisory_id=advisory_id,
             user_id=user_id,

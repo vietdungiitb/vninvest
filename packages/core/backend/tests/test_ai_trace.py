@@ -156,18 +156,29 @@ class AC2NoPlaintextTest(AITraceTestBase):
     """AC2: hash SHA-256, **không** lưu plaintext (PIPL 13/2023)."""
 
     def test_hashes_are_sha256_of_prompt_and_response(self):
+        """Hai hash phải là SHA-256 **thật** (64 ký tự hex).
+
+        Bản đầu của test này có câu `sha256_hex(hash)` — vô nghĩa và **không bao
+        giờ** đúng với hash khác rỗng. Cách kiểm đúng: hash lại một chuỗi đã biết
+        và so (xem `test_response_hash_matches_actual_response` cho phía response).
+        """
         from advisory.models import AITrace
         from advisory.trace import sha256_hex
 
         self.run_orchestrator(FakeClient())
-        for tr in AITrace.objects.all():
-            self.assertEqual(len(tr.prompt_hash), 64)
-            self.assertEqual(len(tr.response_hash), 64)
-            int(tr.prompt_hash, 16)  # hex hợp lệ
+        traces = list(AITrace.objects.all())
+        self.assertEqual(len(traces), 4)
+        for tr in traces:
+            self.assertEqual(len(tr.prompt_hash), 64, tr.step)
+            self.assertEqual(len(tr.response_hash), 64, tr.step)
+            int(tr.prompt_hash, 16)  # hex hợp lệ, raise nếu sai
             int(tr.response_hash, 16)
-        tech = AITrace.objects.get(step='technical')
-        self.assertNotEqual(tech.prompt_hash, '')
-        self.assertEqual(tech.prompt_hash, sha256_hex(tech.prompt_hash))
+
+        canary = 'canary-3.8'
+        self.assertEqual(
+            sha256_hex(canary),
+            hashlib.sha256(canary.encode('utf-8')).hexdigest())
+        self.assertEqual(sha256_hex(''), '')
 
     def test_no_plaintext_prompt_or_response_anywhere(self):
         from advisory.models import AITrace
@@ -446,6 +457,14 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
     """Trace lỗi KHÔNG được làm hỏng advisory (non-blocking)."""
 
     def test_write_failure_does_not_propagate(self):
+        """Trace hỏng KHÔNG được làm hỏng transaction chứa advisory.
+
+        Bản đầu chỉ assert "không raise" — nhưng trên Postgres, nuốt lỗi insert mà
+        không savepoint sẽ **abort cả transaction**, nên advisory ghi sau đó và cả
+        `commit` vẫn chết với `current transaction is aborted`. Vì vậy test phải
+        chứng minh transaction **vẫn dùng được** sau lần ghi trace hỏng.
+        """
+        from advisory.models import AdvisoryRecord
         from advisory.trace import record_step_trace
 
         ctx = {
@@ -457,11 +476,19 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
         }
         # advisory không tồn tại ⇒ FK fail ⇒ phải nuốt, không raise.
         bad_ctx = dict(ctx, advisory_id=uuid.uuid4())
-        record_step_trace(
+        self.assertIsNone(record_step_trace(
             bad_ctx, 'technical', provider='openai', model='m',
             prompt='p', response='r', tokens_in=1, tokens_out=1,
             latency_ms=5, status='ok', error_code='',
+        ))
+
+        # Transaction vẫn sống: ghi advisory thật ngay sau đó.
+        rec = AdvisoryRecord.objects.create(
+            symbol='VIC', session_date=self.record.session_date,
+            user=self.user, ai_model='m',
         )
+        rec.refresh_from_db()
+        self.assertEqual(rec.pk, rec.pk)
 
     def test_no_trace_ctx_means_no_trace_not_crash(self):
         from advisory.models import AITrace
