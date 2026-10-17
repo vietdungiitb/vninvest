@@ -13,17 +13,17 @@
     {
       "id": "C-002",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "116 model",
+      "docQuote": "117 model",
       "fact": "models",
-      "expected": 116,
+      "expected": 117,
       "why": "Model moi doi ERD (D02 s4) va 06.01."
     },
     {
       "id": "C-003",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "132 migration",
+      "docQuote": "133 migration",
       "fact": "migrations",
-      "expected": 132,
+      "expected": 133,
       "why": "Migration moi co the doi so do du lieu va can kiem leaf-conflict."
     },
     {

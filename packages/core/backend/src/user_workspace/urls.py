@@ -22,6 +22,7 @@ from .portfolio_analytics_views import (
     PortfolioAICommandCenterTestView,
     PortfolioAICommandCenterAuditLogView,
     PortfolioAICommandCenterTracesView,
+    PortfolioAICommandCenterTenantPolicyView,
     PortfolioAIProviderCatalogView,
     PortfolioUserConfigLegacyView,
     PortfolioMarketDiscoveryHubView,
@@ -84,6 +85,12 @@ urlpatterns = [
     path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
     # R3.2: đọc trace của chính người gọi (trang "Traces").
     path('workspace/ai-command-center/traces/', PortfolioAICommandCenterTracesView.as_view(), name='workspace-ai-cc-traces'),
+    # R4.1: policy AI cấp tenant (admin tenant ghi; staff chỉ đọc đa tenant).
+    path(
+        'workspace/ai-command-center/tenant-policy/',
+        PortfolioAICommandCenterTenantPolicyView.as_view(),
+        name='workspace-ai-cc-tenant-policy',
+    ),
     # R2.10: danh muc model THAT theo tai khoan (khong hardcode).
     path(
         'workspace/ai-command-center/providers/<str:provider>/models/',

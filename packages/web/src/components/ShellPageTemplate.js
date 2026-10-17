@@ -18,7 +18,7 @@ export function ShellMetric({ label, value }) {
   );
 }
 
-export function ShellField({ label, name, type = "text", value, onChange, placeholder, autoComplete, fieldKey }) {
+export function ShellField({ label, name, type = "text", value, onChange, placeholder, autoComplete, fieldKey, disabled }) {
   return renderElement(
     "label",
     { className: styles.field, htmlFor: name, key: fieldKey || name },
@@ -32,6 +32,9 @@ export function ShellField({ label, name, type = "text", value, onChange, placeh
       onChange,
       placeholder,
       autoComplete,
+      // R4.1: trang policy AI cần khoá form khi user chỉ có quyền đọc. Prop là
+      // tuỳ chọn nên mọi caller cũ không truyền vẫn render y như trước.
+      disabled,
       onClick: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
       onFocus: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
     }),
