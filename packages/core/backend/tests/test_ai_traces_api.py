@@ -18,19 +18,12 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from advisory.tests.envelope import unwrapped
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 User = get_user_model()
 
 TRACES_URL = '/core/v1/workspace/ai-command-center/traces/'
-
-
-def unwrapped(response):
-    """Bóc envelope `data` (nếu có) — cùng cách các test khác trong repo."""
-    body = response.json()
-    if isinstance(body, dict) and 'data' in body and 'status' in body:
-        return body['data']
-    return body
 
 
 class AITraceApiTestBase(TestCase):
