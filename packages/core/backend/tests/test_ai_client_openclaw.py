@@ -68,9 +68,9 @@ class OpenClawNotConfiguredTests(TestCase):
     def test_ac1_missing_base_url_raises_not_configured(self):
         with _NoEnv():
             with self.assertRaises(OpenClawNotConfiguredError) as ctx:
-                OpenClawClient().complete(
+                __import__('asyncio').run(OpenClawClient().complete(
                     'sys', 'user', model='gpt-4o-mini', temperature=0.2, max_tokens=8,
-                )
+                ))
         self.assertEqual(ctx.exception.error_code, ERROR_NOT_CONFIGURED)
         self.assertEqual(ctx.exception.status_code, 503)
 
@@ -102,9 +102,9 @@ class OpenClawSpecMissingTests(TestCase):
     def test_base_url_without_protocol_raises_spec_missing(self):
         with _NoEnv(), patch.dict(os.environ, {'OPENCLAW_BASE_URL': 'http://internal:9000'}):
             with self.assertRaises(OpenClawSpecMissingError) as ctx:
-                OpenClawClient().complete(
+                __import__('asyncio').run(OpenClawClient().complete(
                     'sys', 'user', model='m', temperature=0.2, max_tokens=8,
-                )
+                ))
         self.assertEqual(ctx.exception.error_code, ERROR_SPEC_MISSING)
 
     def test_unknown_protocol_also_refuses(self):
@@ -113,9 +113,16 @@ class OpenClawSpecMissingTests(TestCase):
             'OPENCLAW_PROTOCOL': 'telepathy',
         }):
             with self.assertRaises(OpenClawSpecMissingError):
-                OpenClawClient().complete(
+                __import__('asyncio').run(OpenClawClient().complete(
                     'sys', 'user', model='m', temperature=0.2, max_tokens=8,
-                )
+                ))
+
+    def test_resolve_config_is_synchronous_and_raises(self):
+        from advisory.ai_clients.openclaw import resolve_config
+
+        with _NoEnv(), patch.dict(os.environ, {'OPENCLAW_BASE_URL': 'http://internal:9000'}):
+            with self.assertRaises(OpenClawSpecMissingError):
+                resolve_config()
 
     def test_readiness_is_not_probed_without_base_url(self):
         with _NoEnv():
@@ -205,9 +212,9 @@ class OpenClawUsageRecordTests(TestCase):
             from advisory.ai_clients.openclaw import OpenClawNotConfiguredError
 
             try:
-                OpenClawClient().complete(
+                __import__('asyncio').run(OpenClawClient().complete(
                     'sys', 'user', model='gpt-4o-mini', temperature=0.2, max_tokens=8,
-                )
+                ))
             except OpenClawNotConfiguredError:
                 pass
 
