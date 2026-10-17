@@ -502,6 +502,54 @@ class AIFallbackChain(models.Model):
         return f'{self.name} ({len(self.deployment_ids or [])} bước)'
 
 
+class AICostRate(models.Model):
+    """
+    R2.7: bảng giá token theo (provider, model), hiệu lực từ effective_from.
+
+    Snapshot tại thời điểm ghi: AIUsageRecord.cost sao chép giá trị đã tính,
+    giá cũ KHÔNG ghi đè record đã lưu (AC3) — báo cáo dùng giá của từng record.
+    Riêng provider `copilot`: tính theo hạn mức subscription, KHÔNG theo token
+    của bạn ⇒ cost luôn 0 + pricing_available=False + source copilot_tier (AC6).
+    """
+
+    class PricingSourceChoices(models.TextChoices):
+        MANUAL = 'manual', 'Nhập tay'
+        OPENROUTER = 'openrouter', 'OpenRouter'
+        LITELLM = 'litellm', 'LiteLLM'
+        COPILOT_TIER = 'copilot_tier', 'Hạn mức Copilot'
+
+    provider = models.CharField(max_length=32, db_index=True, verbose_name='Nhà cung cấp')
+    model = models.CharField(max_length=64, db_index=True, verbose_name='Mô hình')
+    usd_per_1k_input = models.DecimalField(
+        max_digits=12, decimal_places=6, default=0, verbose_name='USD/1k input',
+    )
+    usd_per_1k_output = models.DecimalField(
+        max_digits=12, decimal_places=6, default=0, verbose_name='USD/1k output',
+    )
+    effective_from = models.DateTimeField(db_index=True, verbose_name='Hiệu lực từ')
+    pricing_source = models.CharField(
+        max_length=16,
+        choices=PricingSourceChoices.choices,
+        default=PricingSourceChoices.MANUAL,
+        verbose_name='Nguồn giá',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Cost Rate'
+        verbose_name_plural = 'AI Cost Rates'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['model', 'provider', 'effective_from'],
+                name='uniq_aicostrate_model_provider_from',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.provider}/{self.model}@{self.effective_from}'
+
+
 class AIAuditLog(models.Model):
     """
     Audit log cho AI Command Center actions.
