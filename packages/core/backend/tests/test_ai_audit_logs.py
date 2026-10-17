@@ -283,7 +283,7 @@ class AuditLogCreationViaTestConnectionTests(TestCase):
         grant_tenant(self.user, role='admin', tenant_code='test-audit-tenant')
         self.client.force_authenticate(user=self.user)
 
-def test_openclaw_unconfigured_creates_failure_audit_log(self):
+    def test_openclaw_unconfigured_creates_failure_audit_log(self):
         """R2.5 AC4: xoá `test_openclaw_creates_success_audit_log`.
 
         Audit **success** cho provider chưa cấu hình là dấu hiệu "số liệu đẹp vì

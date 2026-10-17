@@ -288,7 +288,7 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
         grant_tenant(self.user, role='admin', tenant_code='test-view-tenant')
         self.client.force_authenticate(user=self.user)
 
-def test_openclaw_not_configured_is_not_reported_as_success(self):
+    def test_openclaw_not_configured_is_not_reported_as_success(self):
         """R2.5 AC4: xoá `test_openclaw_returns_success`.
 
         Test cũ trả 200 + `latency_ms` cho openclaw mà **chưa từng gọi dịch vụ** —
