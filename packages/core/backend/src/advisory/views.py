@@ -499,7 +499,24 @@ class AdvisoryRefreshView(APIView):
 
             if user_cred.encrypted_api_key:
                 try:
-                    decrypted_key = decrypt_user_api_key(user_cred.encrypted_api_key)
+                    # R4.2 AC1: khoá scope `management` (cấp để kiểm tra cấu
+                    # hình) KHÔNG được chạy suy luận — nó sẽ tiêu hao tiền/token
+                    # ngoài ý muốn và ngoài audit dự kiến. Ở đây ta **bỏ khoá** và
+                    # rơi về khoá hệ thống trong hạn mức fallback, thay vì chặn
+                    # cả request: chặn cả request biến một cấu hình sai thành mất
+                    # dịch vụ, còn khoá hệ thống vẫn audit được.
+                    from advisory.key_scope import resolve_user_key_for_inference
+
+                    decrypted_key, scope_reason = resolve_user_key_for_inference(
+                        user_cred, decrypt_user_api_key,
+                    )
+                    if scope_reason == 'key_scope_management':
+                        personal_key_failed = True
+                        personal_key_error = 'Khoá API đang để ở phạm vi "quản trị", không dùng cho suy luận.'
+                        logger.warning(
+                            'R4.2: user=%s có khoá scope=management, bo qua cho suy luan.',
+                            getattr(request.user, 'id', None),
+                        )
                 except Exception as e:
                     personal_key_failed = True
                     personal_key_error = str(e)
