@@ -215,8 +215,9 @@ def _apply_evict_or_restore(deployment) -> str:
         and deployment.enabled
     ):
         deployment.enabled = False
+        deployment.auto_evicted = True
         deployment.health_state = AIDeployment.HealthChoices.UNHEALTHY
-        deployment.save(update_fields=['enabled', 'health_state'])
+        deployment.save(update_fields=['enabled', 'auto_evicted', 'health_state'])
         _record_health_audit(
             AIAuditLog.ActionChoices.DEPLOYMENT_EVICTED,
             f'{deployment.name} bị tắt sau {deployment.consecutive_failures} probe thất bại liên tiếp',
@@ -224,11 +225,13 @@ def _apply_evict_or_restore(deployment) -> str:
         return 'evicted'
     if (
         deployment.consecutive_successes >= RESTORE_AFTER_CONSECUTIVE_SUCCESSES
+        and deployment.auto_evicted
         and not deployment.enabled
     ):
         deployment.enabled = True
+        deployment.auto_evicted = False
         deployment.health_state = AIDeployment.HealthChoices.HEALTHY
-        deployment.save(update_fields=['enabled', 'health_state'])
+        deployment.save(update_fields=['enabled', 'auto_evicted', 'health_state'])
         _record_health_audit(
             AIAuditLog.ActionChoices.DEPLOYMENT_RESTORED,
             f'{deployment.name} được bật lại sau {deployment.consecutive_successes} probe thành công liên tiếp',
@@ -239,18 +242,25 @@ def _apply_evict_or_restore(deployment) -> str:
 
 @shared_task(name="advisory.probe_deployments_health")
 def probe_deployments_health():
-    """R2.6 AC1: probe mọi deployment `enabled` bằng AiClient.probe().
+    """R2.6 AC1: probe mọi deployment cần theo dõi bằng AiClient.probe().
+
+    Theo dõi = `enabled` **hoặc** `auto_evicted`. Bỏ `auto_evicted` thì deployment
+    bị evict không bao giờ được probe lại => mất dịch vụ vĩnh viễn sau một sự cố
+    nhất thời. Deployment quản trị TẮT TAY (`enabled=False`, `auto_evicted=False`)
+    thì không đụng tới - tôn trọng ý quản trị.
 
     AC8: probe **dùng chung** session token copilot (CopilotTokenManager cache ở
-    cấp module) nên 3 deployment copilot không đổi token 3 lần.
+    cấp module) nên N deployment copilot không đổi token N lần.
     """
     import asyncio
 
+    from django.db.models import Q
+
     from advisory.models import AIDeployment, AIHealthCheck
 
-    deployments = list(AIDeployment.objects.filter(enabled=True))
+    deployments = list(AIDeployment.objects.filter(Q(enabled=True) | Q(auto_evicted=True)))
     if not deployments:
-        return {'probed': 0, 'note': 'khong co deployment enabled'}
+        return {'probed': 0, 'note': 'khong co deployment can probe'}
 
     summary = {'probed': len(deployments), 'evicted': [], 'restored': []}
     for deployment in deployments:
