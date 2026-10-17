@@ -501,25 +501,39 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
         self.assertEqual(AdvisoryRecord.objects.filter(pk=rec.pk).count(), 1)
 
     def test_missing_advisory_id_does_not_raise_at_call_time(self):
-        """`advisory_id` sai ⇒ FK deferred ⇒ lỗi lộ lúc commit, không lúc gọi.
+        """Thiếu `advisory_id` ⇒ **bỏ qua**, không insert, không ném lỗi.
 
-        Ghi lại hành vi thật thay vì giả định: đây là lý do `trace_ctx` luôn dựng
-        từ một `AdvisoryRecord` thật (`advisory.tasks`), không nhận UUID từ ngoài.
+        Hành vi thật đã đo (đừng giả định): FK của Django là **deferred**, nên
+        truyền `advisory_id` của một advisory không tồn tại **vẫn insert được**
+        và chỉ lộ `ForeignKeyViolation` lúc `commit` — tức là **không** phải hợp
+        đồng "an toàn". Vì vậy hợp đồng mà ta chọn và kiểm là: thiếu định danh thì
+        **bỏ qua im lặng**; còn `advisory_id` sai thì là vi phạm của người gọi và
+        được chặn ở commit. `advisory.tasks` luôn dựng ctx từ record thật.
         """
+        from advisory.models import AITrace
         from advisory.trace import record_step_trace
 
-        ctx = {
+        base = {
             'trace_id': str(uuid.uuid4()),
-            'advisory_id': uuid.uuid4(),
             'user_id': self.user.id,
             'symbol': 'VIC',
             'session_date': self.record.session_date,
         }
-        record_step_trace(
-            ctx, 'technical', provider='openai', model='m',
-            prompt='p', response='r', latency_ms=5, status='ok', error_code='',
-        )
-        # Không khẳng định có row hay không — chỉ khẳng định KHÔNG ném lỗi ra ngoài.
+        self.assertIsNone(record_step_trace(
+            dict(base, advisory_id=None), 'technical',
+            provider='openai', model='m', prompt='p', response='r',
+            latency_ms=1, status='ok', error_code='',
+        ))
+        self.assertIsNone(record_step_trace(
+            dict(base, user_id=None, advisory_id=self.record.advisory_id),
+            'technical', provider='openai', model='m', prompt='p', response='r',
+            latency_ms=1, status='ok', error_code='',
+        ))
+        self.assertIsNone(record_step_trace(
+            None, 'technical', provider='openai', model='m', prompt='p',
+            response='r', latency_ms=1, status='ok', error_code='',
+        ))
+        self.assertEqual(AITrace.objects.count(), 0)
 
     def test_no_trace_ctx_means_no_trace_not_crash(self):
         from advisory.models import AITrace
