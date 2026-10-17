@@ -1,3 +1,18 @@
+## Entry 364: AI M3 — do lai tren `dev` da merge sau R3.1: 501/501 + pho bien do that bi do sai (2026-10-17)
+
+- **Nhanh**: `chore/ai-m3-closeout` -> `dev`. Claim `ai-m3`. KHONG sua runtime (chi docs). Do tren worktree `/tmp/ai-m3` cua `origin/dev` `5306a2070` — **khong phai nhanh cua slice**.
+- **Ly do co M3**: M2 da chung minh 340 test GREEN tung slice ≠ chay duoc sau merge (3 loi), va R3.1 vua sua **2 P0 o duong that** ⇒ phai do lai tren code da merge.
+- **BE that**: **501/501 OK**, **41 module** tren VPS Postgres (`ai_m3`, container `vninvest-core-api:staging`). Module **tu sinh tu file that** (`ls tests/test_ai*.py tests/test_advisory*.py`) — khong go tay.
+- **PHONG DO BI DO SAI (buc hoc chinh cua M3)**: M2 do **27 module / 340 test**, R3.1 do **31 module / 393 test**, M3 do **41 module / 501 test** ⇒ co **108 test tu 10 module advisory chua tung chay cung nhau**. So "340/340 OK" cua M2 **dung** nhung **danh gia thap do phu**. ⇒ **danh sach test go tay am thanh bao cao phu kem ma van xanh**; phai sinh tu `ls`.
+- **LOI HARNESS CUA CHINH TOI (khong phai loi san pham)**: lan chay dau co `failures=1` — `test_advisory_model_validation.test_dead_models_absent_from_frontend_catalogue` bao *"khong tim thay /web/src/shared/providerModels.ts"*. Da kiem chung: file **co that** trong repo; test resolve `Path(__file__).parents[3]/'web'/...` ⇒ harness chi mount `packages/core/backend`, thieu `packages/web`. **Sua harness** (`-v packages/web:/web:ro`) ⇒ 501/501. **Khong xoa assertion** (L-007).
+- **Migration that**: `migrate` tren DB tam moi ⇒ `advisory.0020_aitrace... OK`; chuoi `advisory` ket thuc `[X] 0020_aitrace` (mot leaf, khong xung dot) · `makemigrations --check` = `No changes detected` · bang `advisory_aitrace` co **18 cot**.
+- **2 P0 cua R2 da that su het tren `dev`**: 2 lop chan regression (`SyncOnlyOperationRegressionTest`, `NameErrorRegressionTest`) nam trong 501 test va **chay duong that** (`run()` → `asyncio.run(run_async)` voi DB that) — khong phai "test xanh" su hoc.
+- **Khoang trong DO DUOC BANG GREP (khong phai tri nho)**: `git grep AITrace` → 7 file, **khong** file nao o `views`/`urls`/`serializers`. ⇒ **Chua co API doc trace**; `AITrace` hien la du lieu **ghi mot chieu**, R3.2 phai tu viet endpoint.
+- **Gate**: BE **501/501** · `migrate` OK · `makemigrations --check` No changes · `tsc` 0 · `build` 0 (`built in 57.42s`) · `check-ai-cc` SACH · DAG 46/61/0 vong/0 dangling/5 goc · `lint` **0 error / 4067 warning — y het M2** ⇒ R3.1 khong dung FE (khop ky vong) · `check-system-design` SACH (116 model/132 migration/45 beat).
+- **CHUA CHAY**: **provider that** (moi test dung client gia; staging van khong co key dung duoc — R2.10 AC8 van mo, `gemini-3.8-flash` con song hay khong **van chua biet**) · **full BE ngoai** advisory+AI · `ruff` · E2E · **`deploy-staging.sh`** ⇒ **chua biet** migration `0020` co chay duoc tren staging that hay khong (chi chay tren DB tam) · trace chua duoc **doc** boi duong nao ⇒ chua co bang chung end-to-end "ghi roi doc lai".
+- **Bai hoc M3**: (1) danh sach test go tay bao cao phu kem ma van xanh — 27→41 module lo 108 test; (2) harness do sai tao "loi san pham" gia (thieu mount `packages/web`); (3) do lai sau merge la **bat buoc** khi sua duong that — 2 P0 da song tu R2.2/R2.6 toi gio.
+- **Tiep**: **R3.2** (trang Traces canh Usage) — tu viet endpoint doc `AITrace`, phan quyen theo user; AC13 cua R2 (link `ghu_`) van chua lam.
+
 ## Entry 363: AI R3.1 `AITrace` + 4 trace moi advisory + sua 2 P0 R2 lam hong advisory (2026-10-17)
 
 - **Nhanh**: `feat/ai-r31-aitrace` -> `dev`. Claim `ai-r31`. Mo R3. TDD: commit RED `18 test · failures=2 · errors=16` (`ModuleNotFoundError: advisory.models.AITrace`) -> GREEN **23/23**.
