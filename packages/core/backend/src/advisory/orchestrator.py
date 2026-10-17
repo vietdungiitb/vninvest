@@ -17,7 +17,7 @@ from .signal_norm import (
 # R2.2: client theo provider qua factory — orchestrator không còn nhánh
 # `if provider ==`. `_resolve_chat_endpoint` re-export từ adapter để test R0.6
 # (`from advisory.orchestrator import _resolve_chat_endpoint`) không phải sửa.
-from advisory.ai_clients.base import ProviderHTTPError
+from advisory.ai_clients.base import ProviderCircuitOpenError, ProviderHTTPError
 from advisory.ai_clients import get_ai_client
 from advisory.ai_clients.openai_compat import _resolve_chat_endpoint
 
@@ -212,32 +212,30 @@ async def call_agent_async(
     temperature: float,
     max_tokens: int
 ) -> str:
-    """Gọi 1 sub-agent qua AiClient (R2.2) — giữ nguyên retry + message cũ."""
-    last_error = None
-    for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
-        try:
-            result = await ai_client.complete(
-                system_prompt, user_prompt,
-                model=ai_model, temperature=temperature,
-                max_tokens=max_tokens, timeout=25.0,
-            )
-            return (result.get('text') or '').strip()
-        except ProviderHTTPError as e:
-            last_error = e
-            status = e.status_code
-            if not _is_retryable_status(status) or attempt == PROVIDER_RETRY_ATTEMPTS:
-                break
-            delay = _retry_delay_seconds(getattr(e, 'response', None), attempt)
-            logger.warning(
-                "Sub-agent %s gặp lỗi tạm thời (status=%s); thử lại lần %s/%s sau %.1fs",
-                agent_name, status, attempt + 1, PROVIDER_RETRY_ATTEMPTS, delay,
-            )
-            await asyncio.sleep(delay)
-        except Exception as e:
-            last_error = e
-            break
-    logger.error(f"LLM request failed for sub-agent {agent_name}: {last_error}")
-    return f"Không thể lấy phân tích từ {agent_name} do lỗi hệ thống: {str(last_error)}"
+    """Gọi 1 sub-agent qua AiClient — retry/backoff/breaker do CLIENT lo (R2.9).
+
+    Vòng retry cũ ở đây đã chuyển xuống `AiClient.complete_resilient()`: 3 sub-agent
+    `asyncio.gather` dùng chung một client nên retry/breaker **không nhân 3** (AC7).
+    """
+    try:
+        result = await ai_client.complete_resilient(
+            system_prompt, user_prompt,
+            model=ai_model, temperature=temperature,
+            max_tokens=max_tokens, timeout=25.0,
+        )
+        return (result.get('text') or '').strip()
+    except ProviderCircuitOpenError:
+        # R2.9 AC4: breaker mở => không gọi provider, không retry vô ích.
+        logger.error('Circuit breaker mở cho sub-agent %s', agent_name)
+        return (
+            'Không thể phân tích từ %s do nhà cung cấp AI đang tạm ngưng '
+            '(circuit mở). Thử lại sau ít phút.' % agent_name
+        )
+    except Exception as e:
+        logger.error(f"LLM request failed for sub-agent {agent_name}: {e}")
+        return (
+            'Không thể phân tích từ %s do lỗi hệ thống: %s' % (agent_name, str(e))
+        )
 
 
 class AdvisoryOrchestrator:
@@ -550,7 +548,7 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
         res_data = None
         for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
             try:
-                synth_result = await ai_client.complete(
+                synth_result = await ai_client.complete_resilient(
                     synth_sys.format(symbol=symbol),
                     synthesis_user_prompt,
                     model=ai_model,
