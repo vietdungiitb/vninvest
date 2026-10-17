@@ -390,6 +390,10 @@ class CopilotCatalogTests(TestCase):
 class CopilotTokenExpiryRetryTests(TestCase):
     """AC12: token het han giua chung -> 1 lan retry voi token moi, khong retry lap."""
 
+    def setUp(self):
+        # Cache token dung chung cap module => xoa de test doc lap.
+        CopilotTokenManager.clear_cache()
+
     def test_ac12_single_401_refreshes_once_then_retries(self):
         import asyncio
 

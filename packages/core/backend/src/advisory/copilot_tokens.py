@@ -1,4 +1,4 @@
-"""R2.4 - quản lý session token của GitHub Copilot (buoc 1 cua 2-buoc).
+r"""R2.4 - quản lý session token của GitHub Copilot (bước 1 của 2-bước).
 
 Copilot KHÔNG dùng thẳng khoá của user. Cần 2 bước:
   1. doi token: \`GET {COPILOT_EXCHANGE_URL}\` voi \`Authorization: token <ghu_>\`
