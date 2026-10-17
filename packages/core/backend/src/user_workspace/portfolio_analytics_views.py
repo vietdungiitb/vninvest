@@ -914,20 +914,6 @@ class PortfolioAIAdvisoryRefreshView(APIView):
         )
 
 
-@extend_schema(
-    summary='PortfolioAICommandCenterView (native route)',
-    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
-    # This class has a PUT alongside the GET, so the REQUEST side must be typed
-    # too; responses= alone still yields the unguessable-serializer error.
-    request=OpenApiTypes.OBJECT,
-    responses={
-        200: envelope_response(),
-        400: OpenApiTypes.OBJECT,
-        401: OpenApiTypes.OBJECT,
-        403: OpenApiTypes.OBJECT,
-        404: OpenApiTypes.OBJECT,
-    },
-)
 def _ai_ready_flag(user_cred) -> bool:
     """Nguon su that DUY NHAT cho `ai_ready` (M2 fix: truoc day co hai noi tinh
     khac nhau nen `ai_ready` va `ai_readiness.ready` tra loi nhau).
@@ -942,7 +928,20 @@ def _ai_ready_flag(user_cred) -> bool:
         api_key_configured=bool(getattr(user_cred, 'encrypted_api_key', '')),
     )['ready'])
 
-
+@extend_schema(
+    summary='PortfolioAICommandCenterView (native route)',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
+    # This class has a PUT alongside the GET, so the REQUEST side must be typed
+    # too; responses= alone still yields the unguessable-serializer error.
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class PortfolioAICommandCenterView(APIView):
     """GET/PUT /api/portfolio/ai-command-center/"""
     permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
