@@ -1,3 +1,12 @@
+## Entry 353: AI R2.2 factory get_ai_client (2026-10-17)
+
+- **Nhanh**: `feat/ai-r22-factory` -> `dev`. Claim `ai-r22`. TDD: ModuleNotFoundError tren dev -> GREEN 6/6 (VPS).
+- **Viec lam**: ai_clients package + factory + orchestrator qua factory (go if/elif, giu retry/error/usage).
+- **Gate**: moi 6/6 + 63 test advisory hoi quy xanh (usage/mgmt/r06/config/policy/r04_r05). Evidence `docs/evidence/ai-cc/r22-gates.md`.
+- **Lessons**: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02].
+- **CHUA CHAY**: full BE + ruff + E2E + staging + probe that.
+- **Tiep**: R2.7 pricing.
+
 ## Entry 352: AI R2.1 deployments (mo R2, 2026-10-17)
 
 - **Nhanh**: `feat/ai-r21-deployments` -> `dev`. Claim `ai-r21`. TDD: ImportError tren dev -> GREEN 5/5 (VPS).
