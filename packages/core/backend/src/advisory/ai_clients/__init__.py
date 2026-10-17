@@ -5,6 +5,7 @@ Thêm provider mới = thêm 1 module trong package này + 1 dòng _PROVIDERS (A
 KHÔNG sửa orchestrator. Provider chưa có client => FactoryError loud (AC4),
 không rơi im lặng về OpenAI.
 """
+from advisory.ai_clients.anthropic import AnthropicClient
 from advisory.ai_clients.base import AiClient, FactoryError, ProviderHTTPError, parse_usage_dict
 from advisory.ai_clients.copilot import CopilotClient
 from advisory.ai_clients.openai_compat import (
@@ -40,6 +41,14 @@ _PROVIDERS: dict = {
     'copilot': (
         'advisory.ai_clients.copilot',
         'CopilotClient',
+        {'self_endpoint': True},
+    ),
+    # R2.3: Anthropic KHONG phai OpenAI-compatible (x-api-key, /v1/messages).
+    # `self_endpoint` giong copilot: endpoint do adapter lo, khong resolve bang
+    # bang OpenAI/Gemini. Mac dinh TAT (AI_ENABLE_ANTHROPIC) — fail-closed.
+    'claude': (
+        'advisory.ai_clients.anthropic',
+        'AnthropicClient',
         {'self_endpoint': True},
     ),
 }
@@ -99,6 +108,7 @@ __all__ = [
     'parse_usage_dict',
     'OpenAICompatClient',
     'CopilotClient',
+    'AnthropicClient',
     'get_ai_client',
     '_resolve_chat_endpoint',
 ]
