@@ -87,6 +87,12 @@ export function AiHubNav({ className = "" }: { className?: string }) {
         labelKey: "aiCommandCenter.tabTraces",
         active: location.pathname.startsWith("/settings/ai/traces"),
       },
+      // R3.3: tab SLO. Không mang filter của tab khác.
+      {
+        to: "/settings/ai/slo",
+        labelKey: "aiCommandCenter.tabSlo",
+        active: location.pathname.startsWith("/settings/ai/slo"),
+      },
     ];
   }, [location.pathname, location.search]);
   return e(

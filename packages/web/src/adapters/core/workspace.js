@@ -771,5 +771,15 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       ).toString();
       return coreGet(`/workspace/ai-command-center/traces/${query ? `?${query}` : ''}`);
     },
+
+    // ── R3.3 · SLO LLM ────────────────────────────────────────────────────
+    // BE chỉ nhận `days` ∈ {7, 30, 90}; gửi ngoài tập đó BE tự rơi về 30.
+
+    getAIUsageSlo(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/slo/${query ? `?${query}` : ''}`);
+    },
   };
 }
