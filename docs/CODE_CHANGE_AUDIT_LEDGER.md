@@ -1,3 +1,13 @@
+## Entry 359: AI R2.10 danh muc model theo tai khoan (2026-10-17)
+
+- **Nhanh**: `feat/ai-r210-catalog` -> `dev`. Claim `ai-r210`. TDD: ModuleNotFoundError `advisory.catalog` + endpoint khong ton tai -> GREEN 19/19.
+- **Viec lam**: `advisory/catalog.py` (`fetch_catalog`/`ttl_seconds_for`/`provider_note`, khoa cache = `provider + sha256(credential)`) + endpoint `GET workspace/ai-command-center/providers/<provider>/models/` + `test-connection` cho provider lech chuan chay qua `client.probe()` (**dong no R2.4**) + `_resolve_retry_policy` noi `RetryPolicy.from_deployment` (**dong no R2.9**).
+- **Gate**: 207 test advisory xanh (19 moi + 188 hoi quy) · check 0 · makemigrations --check 0 · pre-push 23/23 · openapi-budget NO CON Errors=32 ( dung baseline ). Evidence `docs/evidence/ai-cc/r210-gates.md`.
+- **AC8 CHUA CHAY (co bang chung)**: staging khong co key env; 1 dong `UserAICredential` trong DB co khoa nhung **Fernet cua container staging giai ma that bai** ("chu ky Fernet khong hop le"); khong co token `ghu_` nen khong doi duoc sang Copilot session token. Cau hoi audit "gemini-3.8-flash chua ai probe" **van mo**. Phat hien phu: staging co 1 credential chet ma khong ai duoc bao - can luong phat hien credential hong (ngoai pham vi).
+- **AC4 + AC9 CHUA LAM**: AC4 la FE; AC9 co **co che BE** (`provider_note()` + 3 test) nhung chua co noi goi vi can ket qua AC8.
+- **BAY**: (1) lop moi chen sai cho **nuot `@extend_schema`** cua lop ke — `manage.py check` van xanh, chi `openapi-budget` bat; (2) `git checkout -- <file>` chi revert ve HEAD ma HEAD da chua ban sai => **hai lop trung ten**, phai `git checkout origin/dev -- <file>`; (3) regex `node -e` xoa mat tham so ham Python - dung `edit`.
+- **Tiep**: R2.3 anthropic, R2.5 openclaw fail-closed, no FE con, M2, R3.
+
 ## Entry 358: AI R2.6 health check + auto-evict + routing (2026-10-17)
 
 - **Nhanh**: `feat/ai-r26-routing` -> `dev`. Claim `ai-r26`. TDD: ModuleNotFoundError tren VPS (worktree tai `99e3a634f`) -> GREEN 22/22.

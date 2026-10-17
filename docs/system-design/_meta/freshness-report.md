@@ -22,5 +22,5 @@
 | routes_total | 1473 | Đo 2026-10-14 bằng `docs/architecture/tools/measure_repo.py` (cần Django runtime, không nằm trong gate này) |
 | routes_core_v1 | 615 | Như trên |
 | web_src_tracked | 601 | `git ls-files packages/web/src` lúc sinh báo cáo |
-| docs_md_total | 1875 | Đếm `docs/**.md` lúc sinh báo cáo |
+| docs_md_total | 1876 | Đếm `docs/**.md` lúc sinh báo cáo |
 <!-- VOLATILE-END -->

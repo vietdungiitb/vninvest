@@ -1406,6 +1406,69 @@ class PortfolioAICommandCenterView(APIView):
 
 
 @extend_schema(
+    summary='Danh mục model thật theo tài khoản (R2.10)',
+    description='GET /workspace/ai-command-center/providers/<provider>/models/ — gọi '
+                'AiClient.catalog() của provider. Rỗng/lỗi trả models=[] + '
+                'catalog_source="unavailable"; không trả danh sách hardcode vì danh mục '
+                'gating theo tài khoản (Copilot). Cache theo provider + credential, TTL '
+                'copilot 25 phút, provider khác 24h.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        401: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAIProviderCatalogView(APIView):
+    """GET /workspace/ai-command-center/providers/<provider>/models/ — R2.10.
+
+    Danh mục model **thật** của tài khoản người gọi. Hardcode danh sách là cách
+    chắc chắn sai với provider gating theo tài khoản (Copilot): user sẽ thấy model
+    họ không có quyền rồi mới nhận 404/403 sau khi chọn.
+
+    - Rỗng / lỗi / thiếu key ⇒ `models: []` + `catalog_source: "unavailable"`.
+      **Không** trả danh sách tự chế ra.
+    - Cache theo `provider + sha256(credential)`, TTL copilot 25 phút / khác 24h.
+    - **Không** bao giờ trả API key trong response.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, provider):
+        from advisory.catalog import fetch_catalog
+        from advisory.models import UserAICredential
+
+        provider_key = str(provider or '').strip().lower()
+
+        # Khoá: ưu tiên khoá user gửi kèm, sau đó khoá đã lưu. Không trả về.
+        api_key = str(request.query_params.get('ai_api_key') or '').strip()
+        custom_endpoint = str(request.query_params.get('custom_endpoint') or '').strip()
+        if not api_key:
+            try:
+                cred = UserAICredential.objects.filter(user=request.user).first()
+                if cred is not None:
+                    custom_endpoint = custom_endpoint or (cred.custom_endpoint or '')
+                    if cred.encrypted_api_key:
+                        from identity_access.security import decrypt_user_api_key
+
+                        api_key = decrypt_user_api_key(cred.encrypted_api_key) or ''
+            except Exception:
+                # Khoá giải mã thất bại ⇒ danh mục unavailable, không làm lỗi
+                # endpoint (user vẫn mở được trang cấu hình).
+                pass
+
+        result = fetch_catalog(
+            provider_key, api_key=api_key, custom_endpoint=custom_endpoint,
+        )
+        return envelope({
+            'provider': provider_key,
+            'models': result['models'],
+            'catalog_source': result['catalog_source'],
+            'cached': result.get('cached', False),
+            'ttl_seconds': result.get('ttl_seconds', 0),
+        })
+
+
+@extend_schema(
     summary='PortfolioAICommandCenterPolicyView (native route)',
     description='Lop B he thong (R0.9, D-01): chi staff. GET tra cau hinh he thong '
                 '(system prompt template + system model); PUT cho staff sua template.',
@@ -1710,6 +1773,54 @@ class PortfolioAICommandCenterTestView(APIView):
             raise ValidationErrorException(
                 detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cho mô hình {model}. Vui lòng cấu hình API Key trong AI Command Center.',
                 code='validation_error',
+            )
+
+# R2.10: provider KHÔNG phải OpenAI-compatible thì probe qua client thật.
+        # Trước đây `copilot` rơi vào nhánh `else` bên dưới ⇒ gửi token GitHub tới
+        # api.openai.com ⇒ luôn 401 và thông điệp sai ("API key không hợp lệ").
+        # openai/gemini giữ nguyên đường chat-completions (probe mạnh hơn GET /models).
+        if provider not in ('openai', 'gemini'):
+            import asyncio as _asyncio
+
+            from advisory.ai_clients import FactoryError as _FactoryError
+            from advisory.ai_clients import get_ai_client as _get_ai_client
+
+            try:
+                _client = _get_ai_client(
+                    provider, api_key=resolved_key,
+                    custom_endpoint=custom_endpoint, ai_model=model,
+                )
+            except _FactoryError as _exc:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, str(_exc))
+                raise ValidationErrorException(
+                    detail=f'Provider {provider} chưa được hỗ trợ: {str(_exc)[:150]}',
+                    code='validation_error',
+                )
+            _probe = _asyncio.run(_client.probe())
+            _ok = bool(_probe.get('ok'))
+            _code = str(_probe.get('error_code') or '')
+            _detail = str(_probe.get('detail') or '')[:200]
+            _latency = int(_probe.get('latency_ms') or 0)
+            if _ok:
+                _log_test(
+                    AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS,
+                    f'{provider}/{model} kết nối thành công ({_latency}ms).',
+                )
+                return envelope({
+                    'message': (
+                        f'Kiểm tra kết nối thành công: {provider} / {model} '
+                        f'phản hồi trong {_latency}ms.'
+                    ),
+                    'latency_ms': _latency,
+                    'error_code': '',
+                })
+            _log_test(
+                AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED,
+                f'{provider}/{model} probe lỗi {_code}.',
+            )
+            raise ValidationErrorException(
+                detail=_detail or f'Không kết nối được {provider}. Kiểm tra lại cấu hình.',
+                code=_code or 'validation_error',
             )
 
         # Determine endpoint
