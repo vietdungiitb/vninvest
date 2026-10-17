@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from celery import shared_task
 from django.utils import timezone
 
@@ -240,6 +241,19 @@ def _apply_evict_or_restore(deployment) -> str:
     return ''
 
 
+@shared_task(name="advisory.purge_ai_traces")
+def purge_ai_traces(days: int = None):
+    """R3.1 AC6: xoá `AITrace` cũ hơn 90 ngày.
+
+    Retention phải **có lịch chạy** — task không được beat là code chết. Đăng ký
+    trong `settings.CELERY_BEAT_SCHEDULE['purge-ai-traces']` (xem `queue_policy.py`).
+    """
+    from advisory.trace import TRACE_RETENTION_DAYS, purge_traces_older_than
+
+    return purge_traces_older_than(
+        days=TRACE_RETENTION_DAYS if days is None else days)
+
+
 @shared_task(name="advisory.probe_deployments_health")
 def probe_deployments_health():
     """R2.6 AC1: probe mọi deployment cần theo dõi bằng AiClient.probe().
@@ -349,7 +363,17 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
     try:
         record = AdvisoryRecord.objects.get(advisory_id=record_id)
         _start = _time.monotonic()
-        orch_res = AdvisoryOrchestrator.run(effective_context, symbol)
+        # R3.1: context 4-trace. `AdvisoryRecord` **đã có sẵn** ở đây (views.py tạo
+        # trước rồi mới `.delay()`) ⇒ FK không cần nullable, không cần backfill.
+        trace_ctx = {
+            'trace_id': str(uuid.uuid4()),
+            'advisory_id': record.advisory_id,
+            'user_id': record.user_id,
+            'symbol': record.symbol,
+            'session_date': record.session_date,
+        }
+        orch_res = AdvisoryOrchestrator.run(
+            effective_context, symbol, trace_ctx=trace_ctx)
         _latency_ms = max(1, int((_time.monotonic() - _start) * 1000))
         # R0.7 AC6: moi lan goi provider that (thanh cong) deu de lai 1 record.
         _tokens_in, _tokens_out, _unavailable = _extract_usage(orch_res.get('usage'))

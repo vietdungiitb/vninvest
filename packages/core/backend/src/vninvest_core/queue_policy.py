@@ -39,6 +39,8 @@ QUEUE_DOMAIN_MATRIX = {
             'ops_audit.tasks.aggregate_api_call_rollup',
             # R2.6: probe sức khoẻ deployment + auto-evict / khôi phục.
             'advisory.tasks.probe_deployments_health',
+            # R3.1 AC6: retention AITrace (>90 ngày).
+            'advisory.tasks.purge_ai_traces',
         ),
         'periodic_tasks': (
             'flush-quota-counters',
@@ -50,6 +52,8 @@ QUEUE_DOMAIN_MATRIX = {
             # R2.6 - 5 phút: đủ nhanh để phát hiện provider chết, đủ chậm để
             # không probe lãng phí (AC2 cần 3 lần liên tiếp mới tắt).
             'probe-ai-deployments-health',
+            # R3.1 AC6: 24h — retention 90 ngày không cần chính xác từng giờ.
+            'purge-ai-traces',
             'prune-email-verification-tokens-hourly',
             'flush-pat-audit-log',
             'cross-ref-pat-audit-events',

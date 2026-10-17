@@ -20,6 +20,9 @@ from .signal_norm import (
 from advisory.ai_clients.base import ProviderCircuitOpenError, ProviderHTTPError
 from advisory.ai_clients import get_ai_client
 from advisory.ai_clients.openai_compat import _resolve_chat_endpoint
+# R3.1: trace helper import ở module level — `trace.py` chỉ import model **bên trong**
+# hàm nên không gây vòng import ngược với `advisory.models`.
+from advisory.trace import record_step_trace
 
 logger = logging.getLogger(__name__)
 
@@ -259,6 +262,8 @@ async def call_agent_async(
     temperature: float,
     max_tokens: int,
     policy=None,
+    trace_ctx=None,
+    routing_decision=None,
 ) -> str:
     """Gọi 1 sub-agent qua AiClient — retry/backoff/breaker do CLIENT lo (R2.9).
 
@@ -266,7 +271,13 @@ async def call_agent_async(
     `asyncio.gather` dùng chung một client nên retry/breaker **không nhân 3** (AC7).
     `policy` = `RetryPolicy` theo deployment được route tới (R2.10 nối
     `RetryPolicy.from_deployment`; `None` ⇒ policy mặc định từ settings).
+
+    R3.1: đây là **funnel duy nhất** của cả 3 sub-agent ⇒ đúng một chỗ ghi trace.
+    Lỗi bị nuốt (trả chuỗi thông báo) nhưng **vẫn** ghi `status='error'` (AC4).
     """
+    import time as _trace_time
+
+    _t0 = _trace_time.monotonic()
     try:
         result = await ai_client.complete_resilient(
             system_prompt, user_prompt,
@@ -274,27 +285,67 @@ async def call_agent_async(
             max_tokens=max_tokens, timeout=25.0,
             policy=policy,
         )
-        return (result.get('text') or '').strip()
-    except ProviderCircuitOpenError:
+        _text = (result.get('text') or '').strip()
+        # Truyền nguyên `result` (dict) để `trace.py` lấy `text` **và** `usage`;
+        # chỉ hash phần text, không đụng `raw` (chứa payload server trả về).
+        record_step_trace(
+            trace_ctx, agent_name,
+            provider=getattr(ai_client, 'provider', '') or '',
+            model=ai_model,
+            prompt=f"{system_prompt}\n\n{user_prompt}",
+            response=result,
+            latency_ms=int((_trace_time.monotonic() - _t0) * 1000),
+            status='ok', error_code='',
+            routing_decision=routing_decision,
+        )
+        return _text
+    except ProviderCircuitOpenError as _e:
         # R2.9 AC4: breaker mở => không gọi provider, không retry vô ích.
         logger.error('Circuit breaker mở cho sub-agent %s', agent_name)
+        record_step_trace(
+            trace_ctx, agent_name,
+            provider=getattr(ai_client, 'provider', '') or '', model=ai_model,
+            prompt=f"{system_prompt}\n\n{user_prompt}",
+            latency_ms=int((_trace_time.monotonic() - _t0) * 1000),
+            status='error', error_code='provider_circuit_open',
+            routing_decision=routing_decision,
+        )
         return (
             'Không thể phân tích từ %s do nhà cung cấp AI đang tạm ngưng '
             '(circuit mở). Thử lại sau ít phút.' % agent_name
         )
     except Exception as e:
         logger.error(f"LLM request failed for sub-agent {agent_name}: {e}")
+        record_step_trace(
+            trace_ctx, agent_name,
+            provider=getattr(ai_client, 'provider', '') or '', model=ai_model,
+            prompt=f"{system_prompt}\n\n{user_prompt}",
+            latency_ms=int((_trace_time.monotonic() - _t0) * 1000),
+            status='error', error_code=_error_code_of(e),
+            routing_decision=routing_decision,
+        )
         return (
             'Không thể phân tích từ %s do lỗi hệ thống: %s' % (agent_name, str(e))
         )
 
 
+def _error_code_of(exc) -> str:
+    """Mã lỗi ngắn cho trace. ProviderHTTPError đã có `status_code`; lỗi lạ thì theo class."""
+    status = getattr(exc, 'status_code', None)
+    if status:
+        return f'provider_http_{status}'
+    return exc.__class__.__name__[:64] or 'unknown_error'
+
+
 class AdvisoryOrchestrator:
     @classmethod
-    def run(cls, effective_context: dict, symbol: str) -> dict:
+    def run(cls, effective_context: dict, symbol: str, trace_ctx=None) -> dict:
         """
         Coordinates Technical, Flow, and Sentiment agents in parallel,
         incorporating historical lookback context and dynamic source routing configurations.
+
+        `trace_ctx` (R3.1) là context `AITrace` do `advisory.tasks` dựng; `None` ⇒
+        không ghi trace (đường gọi cũ) và **không** đổi hành vi.
         """
         symbol = symbol.strip().upper()
         # Parse and resolve prompt configuration
@@ -419,10 +470,17 @@ class AdvisoryOrchestrator:
             'is_stale': snapshot_is_stale or facts_is_stale,
         })
 
-        return asyncio.run(cls.run_async(effective_context, symbol, db_data))
+        return asyncio.run(cls.run_async(
+            effective_context, symbol, db_data, trace_ctx=trace_ctx))
 
     @classmethod
-    async def run_async(cls, effective_context: dict, symbol: str, db_data: dict) -> dict:
+    async def run_async(
+        cls,
+        effective_context: dict,
+        symbol: str,
+        db_data: dict,
+        trace_ctx=None,
+    ) -> dict:
         symbol = symbol.strip().upper()
         ai_model = effective_context.get('ai_model') or 'gpt-4o-mini'
         api_key = effective_context.get('api_key')
@@ -566,18 +624,32 @@ Analyze the retail and institutional sentiment for symbol {symbol}:
 Based on these metrics, write a sentiment analysis block in {"Vietnamese" if language == 'vi' else "English"}.
 """
 
+        # R3.1: `routing_decision` ghi kèm vào trace từng bước — đóng nợ R2.6
+        # ("chưa biết bước này đi qua deployment/chiến lược nào").
+        _routing_decision = {
+            'strategy': (routing or {}).get('strategy', ''),
+            'deployment_id': getattr(
+                (routing or {}).get('deployment'), 'id', None),
+            'deployment_name': getattr(
+                (routing or {}).get('deployment'), 'name', ''),
+            'model': ai_model,
+        }
+
         # Call sub-agents concurrently
         tech_task = call_agent_async(
             ai_client, "technical", tech_sys.format(symbol=symbol), tech_user_prompt,
-            ai_model, temperature, 400, policy=retry_policy
+            ai_model, temperature, 400, policy=retry_policy,
+            trace_ctx=trace_ctx, routing_decision=_routing_decision,
         )
         flow_task = call_agent_async(
             ai_client, "flow", flow_sys.format(symbol=symbol), flow_user_prompt,
-            ai_model, temperature, 400, policy=retry_policy
+            ai_model, temperature, 400, policy=retry_policy,
+            trace_ctx=trace_ctx, routing_decision=_routing_decision,
         )
         sent_task = call_agent_async(
             ai_client, "sentiment", sent_sys.format(symbol=symbol), sent_user_prompt,
-            ai_model, temperature, 300, policy=retry_policy
+            ai_model, temperature, 300, policy=retry_policy,
+            trace_ctx=trace_ctx, routing_decision=_routing_decision,
         )
 
         # Await all sub-agents
@@ -611,6 +683,15 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
         synth_code = None
         synth_message = None
         res_data = None
+        # R3.1: khởi tạo trước vòng lặp — attempt đầu có thể raise trước khi
+        # gán `choice`/`synth_result`, và trace vẫn phải ghi được (AC4).
+        choice = ''
+        synth_result = None
+        # R3.1: đo 1 lần cho cả vòng retry — AC1 đòi **đúng 4** trace mỗi refresh,
+        # nên không ghi theo từng `attempt` (số lần retry do breaker R2.9 đếm).
+        import time as _synth_time
+        _synth_t0 = _synth_time.monotonic()
+        _synth_prompt = f"{synth_sys.format(symbol=symbol)}\n\n{synthesis_user_prompt}"
         for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
             try:
                 synth_result = await ai_client.complete_resilient(
@@ -670,6 +751,25 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
                     synth_status, attempt + 1, PROVIDER_RETRY_ATTEMPTS, delay,
                 )
                 await asyncio.sleep(delay)
+        # R3.1: 1 trace cho synthesis, ghi TRƯỚC mọi `raise` phía dưới — AC4 đòi lỗi
+        # provider vẫn để lại dấu vết. `synth_code`/`synth_error` đã quyết định
+        # thông điệp trả về cho FE, trace dùng **chính** hai biến đó ⇒ không lệch.
+        _synth_failed = synth_code is not None or synth_error is not None
+        record_step_trace(
+            trace_ctx, 'synthesis',
+            provider=getattr(ai_client, 'provider', '') or '',
+            model=ai_model,
+            prompt=_synth_prompt,
+            response=synth_result if synth_result is not None else '',
+            latency_ms=int((_synth_time.monotonic() - _synth_t0) * 1000),
+            status='error' if _synth_failed else 'ok',
+            error_code=(
+                synth_code or (
+                    f'provider_http_{synth_status}' if _synth_failed else ''
+                )
+            ) or '',
+            routing_decision=_routing_decision,
+        )
         # N2 — ưu tiên mã lỗi có sẵn. Trước đây nhánh `synth_error is not
         # None` đứng trước nên nuốt mất `synth_code`/`synth_message`, khiến
         # cả 3 ca (truncated / invalid / hết hạn mức) đều rơi về thông điệp
