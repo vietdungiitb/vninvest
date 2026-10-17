@@ -225,7 +225,8 @@ class SLOIsolationTests(SLOTestBase):
 
 class SLOUrlTests(TestCase):
     def test_url_is_named(self):
+        """Có namespace (`vninvest_core/urls.py:72`) ⇒ `reverse()` cần tiền tố."""
         from django.urls import reverse
 
-        url = reverse('ai-usage-slo')
+        url = reverse('ai_analytics:ai-usage-slo')
         self.assertTrue(url.endswith('ai/usage/slo/'), url)
