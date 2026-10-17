@@ -21,6 +21,7 @@ from .portfolio_analytics_views import (
     PortfolioAICommandCenterPromptConfigRollbackView,
     PortfolioAICommandCenterTestView,
     PortfolioAICommandCenterAuditLogView,
+    PortfolioAICommandCenterTracesView,
     PortfolioAIProviderCatalogView,
     PortfolioUserConfigLegacyView,
     PortfolioMarketDiscoveryHubView,
@@ -81,6 +82,8 @@ urlpatterns = [
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
     path('workspace/ai-command-center/prompt-config/rollback/', PortfolioAICommandCenterPromptConfigRollbackView.as_view(), name='workspace-ai-cc-prompt-rollback'),
     path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
+    # R3.2: đọc trace của chính người gọi (trang "Traces").
+    path('workspace/ai-command-center/traces/', PortfolioAICommandCenterTracesView.as_view(), name='workspace-ai-cc-traces'),
     # R2.10: danh muc model THAT theo tai khoan (khong hardcode).
     path(
         'workspace/ai-command-center/providers/<str:provider>/models/',

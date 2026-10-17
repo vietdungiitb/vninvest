@@ -317,6 +317,17 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
+    // R3.2: trang Traces (4 bước AI mỗi lần tư vấn).
+    id: "ai-traces",
+    path: "/settings/ai/traces",
+    titleKey: "routes.aiTraces",
+    group: "system",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["system.ai_command_center.manage"],
+    adapter: "core",
+    status: "baseline",
+  },
+  {
     id: "upgrade",
     path: "/upgrade",
     titleKey: "layout.nav.upgrade",

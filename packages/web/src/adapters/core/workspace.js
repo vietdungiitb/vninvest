@@ -759,5 +759,17 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       ).toString();
       return coreGet(`/ai/usage/aggregate/${query ? `?${query}` : ''}`);
     },
+
+    // ── R3.2 · AI Traces API ─────────────────────────────────────────────
+    // BE chỉ trả trace của chính người gọi (`filter(user=request.user)`), nên
+    // adapter không có tham số user/tenant — thêm vào sẽ bị server bỏ qua và
+    // tạo cảm giác sai rằng có thể lọc người khác.
+
+    getAITraces(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/workspace/ai-command-center/traces/${query ? `?${query}` : ''}`);
+    },
   };
 }

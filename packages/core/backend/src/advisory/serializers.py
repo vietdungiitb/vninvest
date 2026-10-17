@@ -5,7 +5,14 @@ import re
 
 from rest_framework import serializers
 
-from .models import AdvisoryRecord, SystemAISettings, UserAICredential, AIAuditLog, AIDeployment
+from .models import (
+    AdvisoryRecord,
+    SystemAISettings,
+    UserAICredential,
+    AIAuditLog,
+    AIDeployment,
+    AITrace,
+)
 from .signal_norm import (
     SIGNAL_UNKNOWN,
     normalize_confidence,
@@ -383,6 +390,45 @@ class AIDeploymentSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at', 'last_health_at']
+
+
+class AITraceSerializer(serializers.ModelSerializer):
+    """R3.2 — trả metadata của 1 bước trace cho trang "Traces".
+
+    **Không** có `prompt`/`response` thô (AC3): model vốn chỉ lưu SHA-256 (PIPL
+    13/2023). `routing_decision` là JSONField — đi qua `sanitize_sensitive_fields`
+    để không lỡ tay rò khóa/token nếu sau này ai đó nhét vào đó.
+    """
+
+    class Meta:
+        model = AITrace
+        fields = [
+            'id',
+            'trace_id',
+            'advisory_id',
+            'symbol',
+            'session_date',
+            'step',
+            'provider',
+            'model',
+            'prompt_hash',
+            'response_hash',
+            'tokens_in',
+            'tokens_out',
+            'latency_ms',
+            'status',
+            'error_code',
+            'routing_decision',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if isinstance(data.get('routing_decision'), dict):
+            data['routing_decision'] = sanitize_sensitive_fields(
+                data['routing_decision'])
+        return data
 
 
 class AIAuditLogSerializer(serializers.ModelSerializer):

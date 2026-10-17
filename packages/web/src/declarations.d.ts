@@ -14,6 +14,18 @@ declare module "./adapters/coreApiAdapter" {
     updateAICommandCenterConfig: (data: any) => Promise<any>;
     testAICommandCenterConnection: (data?: any) => Promise<any>;
     rollbackAICommandCenterPromptConfig: (version: number) => Promise<any>;
+    // R3.2: đọc trace 4 bước. BE chỉ trả trace của chính người gọi ⇒ không có
+    // tham số user/tenant (thêm vào sẽ bị server bỏ qua và gây hiểu nhầm).
+    getAITraces: (params?: {
+      symbol?: string;
+      model?: string;
+      status?: string;
+      step?: string;
+      date_from?: string;
+      date_to?: string;
+      limit?: number;
+      offset?: number;
+    }) => Promise<any>;
 
     // Alert Center
     getAlertCenterFeed: (params: any) => Promise<any>;

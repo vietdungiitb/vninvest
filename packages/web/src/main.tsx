@@ -195,6 +195,9 @@ function App() {
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
         createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),
         createElement(Route, { path: 'settings/ai/usage', element: createElement(resolvePageComponent('ai-usage-analytics')) }),
+    // R3.2: trang Traces — phải khai TRƯỚC `settings/ai/*` khác? không có route
+    // anh em nào cạnh tranh, nhưng nhất quán: đặt cạnh hai route AI kia.
+    createElement(Route, { path: 'settings/ai/traces', element: createElement(resolvePageComponent('ai-traces')) }),
         createElement(Route, { path: 'ai-command-center', element: createElement(RedirectPreserveQuery, { to: '/settings/ai' }) }),
         createElement(Route, { path: 'operations-center', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center'))) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center-mail-config'))) }),
