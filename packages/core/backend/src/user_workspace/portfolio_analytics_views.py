@@ -1418,6 +1418,55 @@ class PortfolioAICommandCenterView(APIView):
         404: OpenApiTypes.OBJECT,
     },
 )
+class PortfolioAIProviderCatalogView(APIView):
+    """GET /workspace/ai-command-center/providers/<provider>/models/ — R2.10.
+
+    Danh mục model **thật** của tài khoản người gọi. Hardcode danh sách là cách
+    chắc chắn sai với provider gating theo tài khoản (Copilot): user sẽ thấy model
+    họ không có quyền rồi mới nhận 404/403 sau khi chọn.
+
+    - Rỗng / lỗi / thiếu key ⇒ `models: []` + `catalog_source: "unavailable"`.
+      **Không** trả danh sách tự chế ra.
+    - Cache theo `provider + sha256(credential)`, TTL copilot 25 phút / khác 24h.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, provider):
+        from advisory.catalog import fetch_catalog
+        from advisory.models import UserAICredential
+        from identity_access.security import decrypt_user_api_key
+
+        provider_key = str(provider or '').strip().lower()
+
+        # Khoá API key: uu tien khoá user trong request (test-connection), sau do
+        # khoá da luu. Khong bao gio trong response.
+        api_key = str((request.query_params.get('ai_api_key') or '')).strip()
+        custom_endpoint = str(request.query_params.get('custom_endpoint') or '').strip()
+        if not api_key:
+            try:
+                cred = UserAICredential.objects.filter(user=request.user).first()
+                if cred is not None:
+                    custom_endpoint = custom_endpoint or (cred.custom_endpoint or '')
+                    if cred.encrypted_api_key:
+                        api_key = decrypt_user_api_key(cred.encrypted_api_key) or ''
+            except Exception:
+                # Khoa giai ma that bai => danh muc unavailable, khong lam loi
+                # endpoint danh muc (user van duoc mo trang cau hinh).
+                pass
+
+        result = fetch_catalog(
+            provider_key, api_key=api_key, custom_endpoint=custom_endpoint,
+        )
+        return envelope({
+            'provider': provider_key,
+            'models': result['models'],
+            'catalog_source': result['catalog_source'],
+            'cached': result.get('cached', False),
+            'ttl_seconds': result.get('ttl_seconds', 0),
+        })
+
+
 class PortfolioAICommandCenterPolicyView(APIView):
     """GET/PUT /workspace/ai-command-center/policy/ — staff-only.
 

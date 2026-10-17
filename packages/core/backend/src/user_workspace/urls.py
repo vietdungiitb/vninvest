@@ -21,6 +21,7 @@ from .portfolio_analytics_views import (
     PortfolioAICommandCenterPromptConfigRollbackView,
     PortfolioAICommandCenterTestView,
     PortfolioAICommandCenterAuditLogView,
+    PortfolioAIProviderCatalogView,
     PortfolioUserConfigLegacyView,
     PortfolioMarketDiscoveryHubView,
     PortfolioWhaleAnalyticsView,
@@ -80,6 +81,12 @@ urlpatterns = [
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
     path('workspace/ai-command-center/prompt-config/rollback/', PortfolioAICommandCenterPromptConfigRollbackView.as_view(), name='workspace-ai-cc-prompt-rollback'),
     path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
+    # R2.10: danh muc model THAT theo tai khoan (khong hardcode).
+    path(
+        'workspace/ai-command-center/providers/<str:provider>/models/',
+        PortfolioAIProviderCatalogView.as_view(),
+        name='workspace-ai-cc-provider-models',
+    ),
     path('workspace/userconfig/', PortfolioUserConfigLegacyView.as_view(), name='workspace-userconfig'),
 
     # Legacy compat: portfolio ai-advisory routes (proxy for legacy frontend client.js calls)
