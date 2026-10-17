@@ -58,6 +58,7 @@ def _ok_handler(calls, *, status=200, usage=None, text='xin chao'):
     return handler
 
 
+@override_settings(AI_ENABLE_ANTHROPIC=True)
 class AnthropicHeaderTests(TestCase):
     """AC1/AC3: header đúng chuẩn Anthropic, URL đúng, KHÔNG Authorization."""
 
@@ -94,6 +95,7 @@ class AnthropicHeaderTests(TestCase):
         self.assertEqual(payload['messages'], [{'role': 'user', 'content': 'user prompt'}])
 
 
+@override_settings(AI_ENABLE_ANTHROPIC=True)
 class AnthropicUsageTests(TestCase):
     """AC2: usage đọc từ `input_tokens`/`output_tokens` (KHÔNG phải OpenAI shape)."""
 
@@ -137,6 +139,7 @@ class AnthropicUsageTests(TestCase):
         self.assertEqual(result['text'], 'AB')
 
 
+@override_settings(AI_ENABLE_ANTHROPIC=True)
 class AnthropicAuthErrorTests(TestCase):
     """AC4: 401/403 => provider_auth_failed (KHÔNG phải 404 như khi model lỗi)."""
 
@@ -195,7 +198,12 @@ class AnthropicModelChoiceTests(TestCase):
         from django.contrib.auth.models import User
         from rest_framework.test import APIClient
 
+        from user_workspace.tests.tenant_test_helpers import grant_tenant
+
         user = User.objects.create_user(username='r23-user', password='p')
+        # Endpoint có `WorkspacePermission`: không thuộc tenant thì 403 trước khi
+        # tới kiểm tra payload (rút kinh nghiệm từ test config-isolation).
+        grant_tenant(user, role='editor', tenant_code='r23-tenant')
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.put(
@@ -205,7 +213,24 @@ class AnthropicModelChoiceTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data.get('error_code'), 'provider_model_mismatch')
 
+    def test_ac5_api_accepts_valid_claude_model(self):
+        from django.contrib.auth.models import User
+        from rest_framework.test import APIClient
 
+        from user_workspace.tests.tenant_test_helpers import grant_tenant
+
+        user = User.objects.create_user(username='r23-ok', password='p')
+        grant_tenant(user, role='editor', tenant_code='r23-ok-tenant')
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.put(
+            '/core/v1/workspace/ai-command-center/',
+            {'ai_provider': 'claude', 'ai_model': 'claude-sonnet-4'}, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+
+
+@override_settings(AI_ENABLE_ANTHROPIC=True)
 class AnthropicProbeTests(TestCase):
     """AC6: probe() tối thiểu 1 request, trả latency."""
 
