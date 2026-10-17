@@ -103,13 +103,18 @@ def _tenant_user_ids(tenant) -> 'set':
     return user_ids
 
 
-def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None) -> dict:
-    """Tong theo chieu trong chu ky: {'tokens', 'cost', 'requests'}."""
-    """Tong theo chieu trong chu ky. Tra (tokens, cost, requests)."""
+def _usage_totals(user, tenant, row: AIBudget, now=None) -> dict:
+    """Tong theo chieu trong chu ky cua `row`: {'tokens', 'cost', 'requests'}.
+
+    Pham vi dem do **dong ngan sach** quyet dinh (model/provider cua `row`), KHONG
+    phai model cua len goi. Nghia la hang muc tang user khong ghim model van chon
+    toan bo chi phi cua user do - neu dem theo model cua len goi thi doi model
+    la lot (AC7).
+    """
     from ai_analytics.models import AIUsageRecord
     from django.db.models import Sum
 
-    qs = AIUsageRecord.objects.filter(created_at__gte=period_start(period, now))
+    qs = AIUsageRecord.objects.filter(created_at__gte=period_start(row.period, now))
     if user is not None:
         user_ids = [user.pk]
     elif tenant is not None:
@@ -120,10 +125,10 @@ def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None
         user_ids = None
     if user_ids is not None:
         qs = qs.filter(user_id__in=user_ids)
-    if model:
-        qs = qs.filter(model__iexact=model)
-    if provider:
-        qs = qs.filter(provider__iexact=provider)
+    if row.model:
+        qs = qs.filter(model__iexact=row.model)
+    if row.provider:
+        qs = qs.filter(provider__iexact=row.provider)
 
     agg = qs.aggregate(
         tokens_in=Sum('tokens_in'), tokens_out=Sum('tokens_out'), cost=Sum('cost'),
@@ -172,7 +177,7 @@ def resolve_budget(
     best = None
     best_key = None
     for row in candidates:
-        usage = _usage_totals(user, tenant, model, provider, row.period, now)
+        usage = _usage_totals(user, tenant, row, now)
         used = _dimension_value(row.dimension, usage)
         limit = Decimal(row.limit_value or 0)
         pct = float(used) / float(limit) * 100 if limit > 0 else 100.0
@@ -182,17 +187,13 @@ def resolve_budget(
             best_key, best = key, (row, used, limit, pct, source)
 
     row, used, limit, pct, source = best
-    if isinstance(used, Decimal):
-        used_out, limit_out = used, limit
-    else:
-        used_out, limit_out = used, limit
     soft_ratio = Decimal(row.soft_ratio if row.soft_ratio is not None else Decimal('0.8'))
     soft_threshold = limit * soft_ratio
     return {
         'matched': True,
         'dimension': row.dimension,
-        'used': used_out,
-        'limit': limit_out,
+        'used': used,
+        'limit': limit,
         'pct': round(pct, 1),
         'source': source,
         'budget_id': row.pk,
