@@ -271,6 +271,18 @@ class UserAICredential(models.Model):
         # subscription cho client của GitHub (VS Code, github.com), không có
         # endpoint chính thức cho ứng dụng bên thứ ba. Không có URL thay thế
         # nào hợp lệ, và không đoán.
+        #
+        # ---- BẬT LẠI `copilot` (R2.4, 2026-10-17) ----
+        # Bằng chứng gỡ trên **vẫn đúng** (PAT thường ⇒ 404) — nên lỗi giữ
+        # nguyên, chỉ đổi *cách dùng*: `CopilotClient` (advisory/ai_clients/copilot.py)
+        # đổi token **2 bước** và báo riêng `copilot_token_exchange_failed` kèm
+        # hướng dẫn lấy token `ghu_` — thay vì rơi vào `else` của orchestrator
+        # rồi gửi tên model tới OpenAI.
+        COPILOT = 'copilot', 'GitHub Copilot'
+        # Token phải là GitHub **OAuth** (`ghu_`), không phải PAT. PAT cho
+        # `copilot_internal/v2/token` trả 404 → xem `CopilotTokenExchangeError`.
+        # Nhánh dự phòng `github_models` (PAT trực tiếp, ít model hơn): đặt
+        # `AI_COPILOT_TRANSPORT=github_models`.
 
     user = models.OneToOneField(
         User,

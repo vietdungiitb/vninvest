@@ -13,10 +13,11 @@ OPENAI_PREFIXES = ('gpt-', 'gpt3', 'gpt4', 'o1', 'o3', 'o4', 'chatgpt-')
 GEMINI_PREFIXES = ('gemini',)
 CLAUDE_PREFIXES = ('claude',)
 # local/openclaw: model do hạ tầng quyết định -> không ràng buộc.
-# `copilot` đã gỡ 2026-09-26 (bằng chứng probe + giải thích ở
-# `UserAICredential.ProviderChoices`): PAT classic trả 404 ở
-# `copilot_internal/v2/token`, và không có endpoint chính thức cho bên thứ ba.
-FREEFORM_PROVIDERS = ('local', 'openclaw')
+# `copilot` (R2.4, 2026-10-17): là **gateway nhiều nhà cung cấp** (OpenAI +
+# Anthropic + Google + xAI dùng chung 1 session token) nên không thể ép prefix.
+# Vẫn có client thật (2 bước) nên khác `local`/`openclaw` — ở đây "freeporm" chỉ
+# nghĩa là *không ép prefix*; danh mục model thật lấy từ `/models` (AC9).
+FREEFORM_PROVIDERS = ('local', 'openclaw', 'copilot')
 
 PROVIDER_MODEL_PREFIXES = {
     'openai': OPENAI_PREFIXES,
@@ -43,6 +44,7 @@ PROVIDER_LABELS = {
     'claude': 'Anthropic Claude',
     'local': 'Local',
     'openclaw': 'OpenClaw',
+    'copilot': 'GitHub Copilot',
 }
 
 

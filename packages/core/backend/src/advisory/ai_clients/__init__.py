@@ -6,6 +6,7 @@ KHÔNG sửa orchestrator. Provider chưa có client => FactoryError loud (AC4),
 không rơi im lặng về OpenAI.
 """
 from advisory.ai_clients.base import AiClient, FactoryError, ProviderHTTPError, parse_usage_dict
+from advisory.ai_clients.copilot import CopilotClient
 from advisory.ai_clients.openai_compat import (
     GEMINI_BASE_URL,
     LOCAL_BASE_URL,
@@ -32,6 +33,14 @@ _PROVIDERS: dict = {
         'advisory.ai_clients.openai_compat',
         'OpenAICompatClient',
         {'base_url': LOCAL_BASE_URL, 'provider_kind': 'local', 'json_mode': False},
+    ),
+    # R2.4: Copilot - KHONG phai OpenAI-compatible voi key cua user.
+    # `self_endpoint`: endpoint lay tu token response (`endpoints.api`) nen
+    # KHONG resolve theo bang OpenAI/Gemini.
+    'copilot': (
+        'advisory.ai_clients.copilot',
+        'CopilotClient',
+        {'self_endpoint': True},
     ),
 }
 
@@ -64,9 +73,15 @@ def get_ai_client(
     """Factory duy nhất orchestrator dùng (R2.2 AC3: không còn `if provider ==`)."""
     normalized = (provider or '').strip().lower()
     cls, defaults = _load_client_class(normalized)
-    endpoint = _resolve_chat_endpoint(normalized, custom_endpoint or '', ai_model or '')
-    base_url = _base_url_for(normalized, custom_endpoint or '', ai_model or '')
-    extra = {k: v for k, v in defaults.items() if k != 'base_url'}
+    if defaults.get('self_endpoint'):
+        # Provider tu lo endpoint (copilot: tu token response). Khong resolve
+        # theo bang OpenAI/Gemini - se goi sai host.
+        endpoint = ''
+        base_url = ''
+    else:
+        endpoint = _resolve_chat_endpoint(normalized, custom_endpoint or '', ai_model or '')
+        base_url = _base_url_for(normalized, custom_endpoint or '', ai_model or '')
+    extra = {k: v for k, v in defaults.items() if k not in ('base_url', 'self_endpoint')}
     return cls(
         api_key=api_key or "",
         base_url=base_url,
@@ -83,6 +98,7 @@ __all__ = [
     'ProviderHTTPError',
     'parse_usage_dict',
     'OpenAICompatClient',
+    'CopilotClient',
     'get_ai_client',
     '_resolve_chat_endpoint',
 ]
