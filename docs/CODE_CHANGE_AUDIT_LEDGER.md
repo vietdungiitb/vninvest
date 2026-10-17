@@ -1,3 +1,14 @@
+## Entry 356: AI R2.4 adapter copilot (2026-10-17)
+
+- **Nhanh**: `feat/ai-r24-copilot` -> `dev`. Claim `ai-r24`. TDD: ModuleNotFoundError tren VPS -> GREEN 25/25.
+- **Viec lam**: `advisory/copilot_tokens.py` (cache sha256 + refresh 60s + lock theo key) + `advisory/ai_clients/copilot.py` (Bearer session + `Copilot-Integration-Id`, endpoint tu `endpoints.api`, catalog loc policy, retry 1 lan khi 401) + `ProviderChoices.COPILOT` bat lai + `FREEFORM_PROVIDERS` + registry co co `self_endpoint`.
+- **Gate**: 146 test advisory xanh (25 moi + 121 hoi quy) · check 0 · makemigrations --check 0 · pre-push 23/23. Evidence `docs/evidence/ai-cc/r24-gates.md`.
+- **Quyet dinh**: token raw KHONG log (khoa cache = sha256, `__repr__` khong in token) · fallback raw token **chi cho catalog**, `complete()` khong fallback · 404/401/403/malformed -> `CopilotTokenExchangeError` rieng, khong dung 401 chung.
+- **Sua test cua slice khac**: `test_ai_clients.py` AC4 lay `copilot` lam vi du "chua co client"; doi thanh provider that + them case chieu nghich.
+- **Bay moi**: **CRLF khi sua file → pre-commit chan VA lam self-test `hook-mode` FAIL voi thong bao sai lech** (khong phai loi trailer). Luon chay `node scripts/normalize-eol.mjs --fix` truoc commit. Cache token cap module → test phai `clear_cache()` o setUp.
+- **CHUA CHAY** (ghi ro, khong tinh la xong): **AC13 (FE nut 4 trang thai + link `ghu_`)**, `providerModels.ts`, i18n 6 key x2, `test-connection` trong `portfolio_analytics_views.py` chua di qua `CopilotClient` (van goi OpenAI), nhanh `AI_COPILOT_TRANSPORT=github_models`, full BE, ruff, E2E, staging.
+- **Tiep**: noi `test-connection` qua client (R2.6/R2.10), R2.9, R2.3, R2.10, R2.5.
+
 ## Entry 355: AI R2.8 AIBudget 4 tang x 3 chieu (2026-10-17)
 
 - **Nhanh**: `feat/ai-r28-budget` -> `dev`. Claim `ai-r28`. TDD: module/model chua co -> GREEN 21/21.
