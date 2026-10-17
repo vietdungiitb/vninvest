@@ -31,6 +31,7 @@ from advisory.ai_clients.base import (
     RetryPolicy,
     parse_retry_after,
 )
+from advisory.ai_clients.base import reset_circuit_breakers
 from advisory.health import CircuitBreaker
 
 
@@ -67,6 +68,8 @@ class RetryTests(TestCase):
     """AC1-AC3: retry dung loi, khong retry loi xac thuc, backoff tang dan."""
 
     def setUp(self):
+        # Breaker dung chung cap module (dung production) => xoa moi test.
+        reset_circuit_breakers()
         self.slept = _SleepRecorder()
 
     def _run(self, client, policy=None, **kwargs):
@@ -146,6 +149,8 @@ class DeadlineTests(TestCase):
     """AC6: tong thoi gian <= deadline."""
 
     def setUp(self):
+        # Breaker dung chung cap module (dung production) => xoa moi test.
+        reset_circuit_breakers()
         self.slept = _SleepRecorder()
 
     def test_ac6_deadline_stops_retrying(self):
@@ -178,6 +183,8 @@ class CircuitBreakerTests(TestCase):
     """AC4-AC5: breaker mo sau N loi lien tiep, dong lai sau cooldown."""
 
     def setUp(self):
+        # Breaker dung chung cap module (dung production) => xoa moi test.
+        reset_circuit_breakers()
         self.now = [0.0]
         self.slept = _SleepRecorder()
         self.breaker = CircuitBreaker(

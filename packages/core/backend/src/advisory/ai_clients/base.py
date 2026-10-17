@@ -16,6 +16,7 @@ sub-agent `asyncio.gather` **dùng chung** một client nên retry/breaker khôn
 """
 import asyncio
 import logging
+import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -34,6 +35,31 @@ logger = logging.getLogger(__name__)
 
 #: Breaker theo provider (xem `AiClient.breaker`) — process-level, có lock.
 _BREAKERS: dict = {}
+_BREAKERS_LOCK = threading.Lock()
+
+
+def reset_circuit_breakers() -> int:
+    """Xoá mọi breaker đang lưu (test + đóng sau khi sự cố provider hết).
+
+    Trả số breaker bị xoá.
+    """
+    with _BREAKERS_LOCK:
+        count = len(_BREAKERS)
+        _BREAKERS.clear()
+    return count
+
+
+def get_circuit_breaker(key, *, failure_threshold: int, cooldown_seconds: float) -> CircuitBreaker:
+    with _BREAKERS_LOCK:
+        breaker = _BREAKERS.get(key)
+        if breaker is None:
+            breaker = CircuitBreaker(
+                failure_threshold=failure_threshold,
+                cooldown_seconds=cooldown_seconds,
+                name=key[0],
+            )
+            _BREAKERS[key] = breaker
+        return breaker
 
 #: Chỉ retry lỗi **tạm thời**. 401/403/400 là lỗi cấu hình/tín dụng — retry chỉ
 #: đốt hạn mức rồi vẫn hỏng (R2.9 AC2).
@@ -231,17 +257,12 @@ class AiClient(ABC):
         ở đây thì breaker sẽ bị nhân 3 và AC7 hỏng, nên lưu theo provider key.
         """
         policy = policy or RetryPolicy.from_settings()
-        key = (self.provider or self.__class__.__name__,
-               policy.failure_threshold, policy.cooldown_seconds)
-        breaker = _BREAKERS.get(key)
-        if breaker is None:
-            breaker = CircuitBreaker(
-                failure_threshold=policy.failure_threshold,
-                cooldown_seconds=policy.cooldown_seconds,
-                name=key[0],
-            )
-            _BREAKERS[key] = breaker
-        return breaker
+        return get_circuit_breaker(
+            (self.provider or self.__class__.__name__,
+             policy.failure_threshold, policy.cooldown_seconds),
+            failure_threshold=policy.failure_threshold,
+            cooldown_seconds=policy.cooldown_seconds,
+        )
 
     async def complete_resilient(
         self,
