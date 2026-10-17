@@ -1,7 +1,6 @@
 import logging
 import json
 import asyncio
-import httpx
 from django.conf import settings
 from market_serving.models import SymbolSnapshot, SessionFacts
 from .advisory_helpers import (
@@ -15,6 +14,12 @@ from .signal_norm import (
     normalize_risk_level,
     normalize_signal,
 )
+# R2.2: client theo provider qua factory — orchestrator không còn nhánh
+# `if provider ==`. `_resolve_chat_endpoint` re-export từ adapter để test R0.6
+# (`from advisory.orchestrator import _resolve_chat_endpoint`) không phải sửa.
+from advisory.ai_clients.base import ProviderHTTPError
+from advisory.ai_clients import get_ai_client
+from advisory.ai_clients.openai_compat import _resolve_chat_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -159,57 +164,17 @@ class AdvisorySynthesisError(Exception):
 
 
 def _resolve_chat_endpoint(provider: str, custom_endpoint: str, ai_model: str = '') -> str:
-    """Resolve + SSRF-guard chat-completions endpoint (R0.6 AC6/orchestrator).
+    """Re-export từ adapter (R2.2) — giữ đường import cũ cho test R0.6."""
+    from advisory.ai_clients.openai_compat import _resolve_chat_endpoint as _impl
 
-    `custom_endpoint` den tu `UserAICredential` (user nhap, luu DB) — phai
-    validate truoc moi lan POST, giong nhu test-connection view. Fail-closed
-    voi message TINH: khong echo endpoint (AC5), khong str(e) raw (AC8).
-    URL mac dinh cua tung provider la hang so, khong can validate.
-    `local` duoc phep loopback (Ollama/VLLM cung host) nhung van chan
-    metadata cloud + RFC1918 + scheme la — giong view.
-    """
-    if provider == 'local':
-        if custom_endpoint:
-            base = custom_endpoint.rstrip('/')
-            # Lazy import: tranh cycle advisory -> user_workspace luc load module.
-            from user_workspace.endpoint_safety import (
-                UnsafeEndpointError,
-                assert_safe_outbound_url,
-            )
-            try:
-                assert_safe_outbound_url(base, allow_loopback=True)
-            except UnsafeEndpointError:
-                raise ValueError(
-                    'Endpoint AI bị chặn vì lý do an toàn (SSRF). '
-                    'Nếu đây là endpoint on-prem hợp lệ, cấu hình '
-                    'SOC_AI_ALLOWED_ENDPOINT_HOSTS phía máy chủ.'
-                )
-            return base + '/chat/completions'
-        return 'http://localhost:11434/v1/chat/completions'
-    if provider == 'gemini' or (ai_model or '').lower().startswith('gemini'):
-        return 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-    return 'https://api.openai.com/v1/chat/completions'
+    return _impl(provider, custom_endpoint, ai_model)
 
 
 def _extract_usage(usage) -> tuple:
-    """(tokens_in, tokens_out, usage_unavailable) tu usage dict THAT cua provider.
+    """Alias giữ tương thích (R0.7 test import từ đây). Canonical ở base."""
+    from advisory.ai_clients.base import parse_usage_dict
 
-    R0.7 AC9: doc `prompt_tokens`/`completion_tokens` that. Thieu hoac khong
-    parse duoc => (0, 0, True), KHONG bia so lieu.
-    """
-    if not isinstance(usage, dict):
-        return 0, 0, True
-    try:
-        prompt = int(usage.get('prompt_tokens') or 0)
-    except (TypeError, ValueError):
-        prompt = 0
-    try:
-        completion = int(usage.get('completion_tokens') or 0)
-    except (TypeError, ValueError):
-        completion = 0
-    if prompt <= 0 and completion <= 0:
-        return 0, 0, True
-    return max(prompt, 0), max(completion, 0), False
+    return parse_usage_dict(usage)
 
 
 def _resolve_cost(provider: str, model: str, tokens_total: int) -> tuple:
@@ -239,43 +204,27 @@ def _coerce_float(raw):
 
 
 async def call_agent_async(
-    client: httpx.AsyncClient,
+    ai_client,
     agent_name: str,
     system_prompt: str,
     user_prompt: str,
-    api_key: str,
     ai_model: str,
     temperature: float,
-    max_tokens: int,
-    endpoint: str
+    max_tokens: int
 ) -> str:
-    """Helper to asynchronously invoke the LLM for a specific sub-agent."""
-    headers = {
-        "Content-Type": "application/json"
-    }
-    if api_key and api_key != 'no-key-needed':
-        headers["Authorization"] = f"Bearer {api_key}"
-    payload = {
-        "model": ai_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
-    logger.info(f"Triggering async LLM request for sub-agent: {agent_name}")
+    """Gọi 1 sub-agent qua AiClient (R2.2) — giữ nguyên retry + message cũ."""
     last_error = None
     for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
         try:
-            response = await client.post(endpoint, headers=headers, json=payload, timeout=25.0)
-            response.raise_for_status()
-            res_data = response.json()
-            choice = res_data['choices'][0]['message']['content']
-            return choice.strip()
-        except Exception as e:
+            result = await ai_client.complete(
+                system_prompt, user_prompt,
+                model=ai_model, temperature=temperature,
+                max_tokens=max_tokens, timeout=25.0,
+            )
+            return (result.get('text') or '').strip()
+        except ProviderHTTPError as e:
             last_error = e
-            status = getattr(getattr(e, 'response', None), 'status_code', None)
+            status = e.status_code
             if not _is_retryable_status(status) or attempt == PROVIDER_RETRY_ATTEMPTS:
                 break
             delay = _retry_delay_seconds(getattr(e, 'response', None), attempt)
@@ -284,6 +233,9 @@ async def call_agent_async(
                 agent_name, status, attempt + 1, PROVIDER_RETRY_ATTEMPTS, delay,
             )
             await asyncio.sleep(delay)
+        except Exception as e:
+            last_error = e
+            break
     logger.error(f"LLM request failed for sub-agent {agent_name}: {last_error}")
     return f"Không thể lấy phân tích từ {agent_name} do lỗi hệ thống: {str(last_error)}"
 
@@ -464,11 +416,6 @@ class AdvisoryOrchestrator:
         provider = effective_context.get('ai_provider', 'openai')
         custom_endpoint = effective_context.get('custom_endpoint', '')
 
-        # Local provider: allow empty API key
-        is_local = provider == 'local'
-        if is_local:
-            api_key = api_key or 'no-key-needed'
-
         # Check if we should use simulated fallback
         is_mock = (not api_key or api_key.lower() in ('mock', 'mock_key') or api_key.startswith('mock_'))
         if is_mock:
@@ -522,6 +469,12 @@ class AdvisoryOrchestrator:
         # Resolve endpoints (R0.6: custom_endpoint user nhap phai qua SSRF guard).
         endpoint = _resolve_chat_endpoint(provider, custom_endpoint, ai_model)
 
+        # R2.2: mọi gọi provider đi qua factory — không còn nhánh if provider ==.
+        # api_key rỗng/local: adapter tự bỏ Authorization header (như cũ).
+        ai_client = get_ai_client(
+            provider, api_key=api_key or '', endpoint=endpoint, ai_model=ai_model,
+        )
+
         # Build user prompts for each sub-agent
         tech_user_prompt = f"""
 Analyze the technical posture for symbol {symbol}:
@@ -551,25 +504,24 @@ Based on these metrics, write a sentiment analysis block in {"Vietnamese" if lan
 """
 
         # Call sub-agents concurrently
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            tech_task = call_agent_async(
-                client, "technical", tech_sys.format(symbol=symbol), tech_user_prompt,
-                api_key, ai_model, temperature, 400, endpoint
-            )
-            flow_task = call_agent_async(
-                client, "flow", flow_sys.format(symbol=symbol), flow_user_prompt,
-                api_key, ai_model, temperature, 400, endpoint
-            )
-            sent_task = call_agent_async(
-                client, "sentiment", sent_sys.format(symbol=symbol), sentiment_user_prompt,
-                api_key, ai_model, temperature, 300, endpoint
-            )
+        tech_task = call_agent_async(
+            ai_client, "technical", tech_sys.format(symbol=symbol), tech_user_prompt,
+            ai_model, temperature, 400
+        )
+        flow_task = call_agent_async(
+            ai_client, "flow", flow_sys.format(symbol=symbol), flow_user_prompt,
+            ai_model, temperature, 400
+        )
+        sent_task = call_agent_async(
+            ai_client, "sentiment", sent_sys.format(symbol=symbol), sent_user_prompt,
+            ai_model, temperature, 300
+        )
 
-            # Await all sub-agents
-            tech_res, flow_res, sent_res = await asyncio.gather(tech_task, flow_task, sent_task)
+        # Await all sub-agents
+        tech_res, flow_res, sent_res = await asyncio.gather(tech_task, flow_task, sent_task)
 
-            # Synthesis Prompt
-            synthesis_user_prompt = f"""
+        # Synthesis Prompt
+        synthesis_user_prompt = f"""
 You are the Lead Analyst. Review and synthesize the following sub-agent inputs for {symbol}:
 - Technical Analysis: {tech_res}
 - Flow Analysis: {flow_res}
@@ -587,141 +539,128 @@ The output JSON keys must be:
 
 Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
 """
-            
-            # Call Synthesis Agent
-            synth_headers = {
-                "Content-Type": "application/json"
-            }
-            if api_key and api_key != 'no-key-needed':
-                synth_headers["Authorization"] = f"Bearer {api_key}"
-                
-            # Sàn token: JSON 6 key tiếng Việt cần ~2000 token. Dùng `max_tokens`
-            # của người dùng (mặc định 1000) làm response bị cắt và JSON hỏng.
-            synth_payload = {
-                "model": ai_model,
-                "messages": [
-                    {"role": "system", "content": synth_sys.format(symbol=symbol)},
-                    {"role": "user", "content": synthesis_user_prompt}
-                ],
-                "temperature": temperature,
-                "max_tokens": max(int(max_tokens or 0), SYNTHESIS_MAX_TOKENS_FLOOR),
-            }
-            if provider != 'local':
-                synth_payload["response_format"] = {"type": "json_object"}
-
-            logger.info("Triggering LLM request for Synthesis Agent")
-            synth_error = None
-            synth_status = None
-            synth_code = None
-            synth_message = None
-            for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
-                try:
-                    response = await client.post(endpoint, headers=synth_headers, json=synth_payload, timeout=25.0)
-                    response.raise_for_status()
-                    res_data = response.json()
-                    choice = res_data['choices'][0]['message']['content']
-                    finish_reason = (res_data['choices'][0] or {}).get('finish_reason')
-                    try:
-                        parsed_json = json.loads(choice.strip())
-                    except (ValueError, TypeError) as parse_error:
-                        # HTTP 200 nhưng nội dung hỏng. Phân biệt "bị cắt cụt"
-                        # với "JSON sai định dạng" để thông điệp hành động chính xác.
-                        if finish_reason == 'length':
-                            synth_code, synth_message = TRUNCATED_RESPONSE_CODE, TRUNCATED_RESPONSE_MESSAGE
-                        else:
-                            synth_code, synth_message = INVALID_RESPONSE_CODE, INVALID_RESPONSE_MESSAGE
-                        logger.error(
-                            "Synthesis JSON khong parse: finish_reason=%s len=%s err=%s",
-                            finish_reason, len(choice or ''), parse_error,
-                        )
-                        break
-                    synth_error = None
-                    break
-                except Exception as _e:
-                    synth_error = _e
-                    _resp = getattr(_e, 'response', None)
-                    synth_status = getattr(_resp, 'status_code', None)
-                    # N2 — hết hạn mức tài khoản KHÔNG phải lỗi tạm thời.
-                    # Retry chỉ tốn thêm thời gian rồi vẫn 429. Phân biệt ngay
-                    # để trả đúng mã lỗi có hành động (nạp tiền/đổi gói) thay vì
-                    # bắt người dùng "thử lại sau ít phút" vô hạn.
-                    if synth_status == 429:
-                        _body = ''
-                        try:
-                            _body = _resp.text or ''
-                        except Exception:
-                            _body = str(_e) or ''
-                        if _is_quota_exhausted(_body):
-                            logger.error(
-                                "Synthesis gap 429 HET HAN MUC (khong phai loi tam thoi); "
-                                "dung retry. status=%s",
-                                synth_status,
-                            )
-                            synth_code, synth_message = QUOTA_EXHAUSTED_CODE, QUOTA_EXHAUSTED_MESSAGE
-                            break
-                    if not _is_retryable_status(synth_status) or attempt == PROVIDER_RETRY_ATTEMPTS:
-                        break
-                    delay = _retry_delay_seconds(_resp, attempt)
-                    logger.warning(
-                        "Synthesis gap loi tam thoi (status=%s); thu lai lan %s/%s sau %.1fs",
-                        synth_status, attempt + 1, PROVIDER_RETRY_ATTEMPTS, delay,
-                    )
-                    await asyncio.sleep(delay)
-            # N2 — ưu tiên mã lỗi có sẵn. Trước đây nhánh `synth_error is not
-            # None` đứng trước nên nuốt mất `synth_code`/`synth_message`, khiến
-            # cả 3 ca (truncated / invalid / hết hạn mức) đều rơi về thông điệp
-            # HTTP chung. Đảo thứ tự để thông điệp hành động luôn tới nơi.
-            if synth_code is not None:
-                raise AdvisorySynthesisError(200, '', code=synth_code, message=synth_message)
-            if synth_error is not None:
-                raise AdvisorySynthesisError(
-                    synth_status or 500,
-                    str(synth_error)[:500],
+        
+        # Call Synthesis Agent (R2.2: qua AiClient — adapter tự quyết
+        # response_format theo khả năng của nó, orchestrator không nhánh.
+        logger.info("Triggering LLM request for Synthesis Agent")
+        synth_error = None
+        synth_status = None
+        synth_code = None
+        synth_message = None
+        res_data = None
+        for attempt in range(1, PROVIDER_RETRY_ATTEMPTS + 1):
+            try:
+                synth_result = await ai_client.complete(
+                    synth_sys.format(symbol=symbol),
+                    synthesis_user_prompt,
+                    model=ai_model,
+                    temperature=temperature,
+                    max_tokens=max(int(max_tokens or 0), SYNTHESIS_MAX_TOKENS_FLOOR),
+                    timeout=25.0,
+                    response_format="json",
                 )
-
-            tokens_used = res_data.get('usage', {}).get('total_tokens', 250)
-            # R0.7 AC6/AC9: giu usage CHI TIET de task ghi AIUsageRecord that.
-            _tokens_in, _tokens_out, _usage_unavailable = _extract_usage(
-                res_data.get('usage')
+                res_data = synth_result['raw']
+                choice = synth_result['text']
+                finish_reason = synth_result.get('finish_reason')
+                try:
+                    parsed_json = json.loads(choice.strip())
+                except (ValueError, TypeError) as parse_error:
+                    # HTTP 200 nhưng nội dung hỏng. Phân biệt "bị cắt cụt"
+                    # với "JSON sai định dạng" để thông điệp hành động chính xác.
+                    if finish_reason == 'length':
+                        synth_code, synth_message = TRUNCATED_RESPONSE_CODE, TRUNCATED_RESPONSE_MESSAGE
+                    else:
+                        synth_code, synth_message = INVALID_RESPONSE_CODE, INVALID_RESPONSE_MESSAGE
+                    logger.error(
+                        "Synthesis JSON khong parse: finish_reason=%s len=%s err=%s",
+                        finish_reason, len(choice or ''), parse_error,
+                    )
+                    break
+                synth_error = None
+                break
+            except ProviderHTTPError as _e:
+                synth_error = _e
+                synth_status = _e.status_code
+                # Adapter báo shape hỏng (thiếu choices) ≅ response không đọc được.
+                if 'bad_shape' in (_e.body_text or '') or 'invalid_json' in (_e.body_text or ''):
+                    synth_code, synth_message = INVALID_RESPONSE_CODE, INVALID_RESPONSE_MESSAGE
+                # N2 — hết hạn mức tài khoản KHÔNG phải lỗi tạm thời.
+                # Retry chỉ tốn thêm thời gian rồi vẫn 429. Phân biệt ngay
+                # để trả đúng mã lỗi có hành động (nạp tiền/đổi gói) thay vì
+                # bắt người dùng "thử lại sau ít phút" vô hạn.
+                if synth_status == 429:
+                    _body = _e.body_text or ''
+                    if _is_quota_exhausted(_body):
+                        logger.error(
+                            "Synthesis gap 429 HET HAN MUC (khong phai loi tam thoi); "
+                            "dung retry. status=%s",
+                            synth_status,
+                        )
+                        synth_code, synth_message = QUOTA_EXHAUSTED_CODE, QUOTA_EXHAUSTED_MESSAGE
+                        break
+                if not _is_retryable_status(synth_status) or attempt == PROVIDER_RETRY_ATTEMPTS:
+                    break
+                delay = _retry_delay_seconds(getattr(_e, 'response', None), attempt)
+                logger.warning(
+                    "Synthesis gap loi tam thoi (status=%s); thu lai lan %s/%s sau %.1fs",
+                    synth_status, attempt + 1, PROVIDER_RETRY_ATTEMPTS, delay,
+                )
+                await asyncio.sleep(delay)
+        # N2 — ưu tiên mã lỗi có sẵn. Trước đây nhánh `synth_error is not
+        # None` đứng trước nên nuốt mất `synth_code`/`synth_message`, khiến
+        # cả 3 ca (truncated / invalid / hết hạn mức) đều rơi về thông điệp
+        # HTTP chung. Đảo thứ tự để thông điệp hành động luôn tới nơi.
+        if synth_code is not None:
+            raise AdvisorySynthesisError(200, '', code=synth_code, message=synth_message)
+        if synth_error is not None:
+            raise AdvisorySynthesisError(
+                synth_status or 500,
+                str(synth_error)[:500],
             )
 
-            # R0.2 — signal là enum nghiêm ngặt, không đoán. Thứ tự: ưu tiên
-            # `signal` do model trả, fallback sang `recommendation` (mô hình cũ
-            # chỉ trả key này), cuối cùng mới fail-closed.
-            raw_signal = parsed_json.get('signal')
-            raw_recommendation = parsed_json.get('recommendation')
-            signal = normalize_signal(raw_signal)
-            if signal == SIGNAL_UNKNOWN:
-                signal = normalize_signal(raw_recommendation)
+        tokens_used = res_data.get('usage', {}).get('total_tokens', 250)
+        # R0.7 AC6/AC9: giu usage CHI TIET de task ghi AIUsageRecord that.
+        _tokens_in, _tokens_out, _usage_unavailable = _extract_usage(
+            res_data.get('usage')
+        )
 
-            target_price = _coerce_float(parsed_json.get('target_price'))
-            confidence = normalize_confidence(
-                parsed_json.get('confidence_score', parsed_json.get('confidence'))
-            )
+        # R0.2 — signal là enum nghiêm ngặt, không đoán. Thứ tự: ưu tiên
+        # `signal` do model trả, fallback sang `recommendation` (mô hình cũ
+        # chỉ trả key này), cuối cùng mới fail-closed.
+        raw_signal = parsed_json.get('signal')
+        raw_recommendation = parsed_json.get('recommendation')
+        signal = normalize_signal(raw_signal)
+        if signal == SIGNAL_UNKNOWN:
+            signal = normalize_signal(raw_recommendation)
 
-            return {
-                'advisory_text': parsed_json.get('summary') or parsed_json.get('recommendation') or "",
-                'ai_model': ai_model,
-                'tokens_used': tokens_used,
-                'usage': {
-                    'prompt_tokens': _tokens_in,
-                    'completion_tokens': _tokens_out,
-                    'usage_unavailable': _usage_unavailable,
-                },
-                'metrics': metrics,
-                'input_snapshot': input_snapshot,
-                'feature_attribution': feature_attribution,
-                'is_stale': is_stale,
-                'technical_analysis': tech_res,
-                'whale_analysis': flow_res,
-                'sentiment_analysis': sent_res,
-                'recommendation': raw_recommendation or "",
-                'summary': parsed_json.get('summary') or "",
-                'signal': signal,
-                'signal_raw': raw_signal or '',
-                'confidence_score': confidence,
-                'rationale': parsed_json.get('rationale') or '',
-                'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
-                'target_price': target_price,
-            }
+        target_price = _coerce_float(parsed_json.get('target_price'))
+        confidence = normalize_confidence(
+            parsed_json.get('confidence_score', parsed_json.get('confidence'))
+        )
+
+        return {
+            'advisory_text': parsed_json.get('summary') or parsed_json.get('recommendation') or "",
+            'ai_model': ai_model,
+            'tokens_used': tokens_used,
+            'usage': {
+                'prompt_tokens': _tokens_in,
+                'completion_tokens': _tokens_out,
+                'usage_unavailable': _usage_unavailable,
+            },
+            'metrics': metrics,
+            'input_snapshot': input_snapshot,
+            'feature_attribution': feature_attribution,
+            'is_stale': is_stale,
+            'technical_analysis': tech_res,
+            'whale_analysis': flow_res,
+            'sentiment_analysis': sent_res,
+            'recommendation': raw_recommendation or "",
+            'summary': parsed_json.get('summary') or "",
+            'signal': signal,
+            'signal_raw': raw_signal or '',
+            'confidence_score': confidence,
+            'rationale': parsed_json.get('rationale') or '',
+            'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
+            'target_price': target_price,
+        }
 
