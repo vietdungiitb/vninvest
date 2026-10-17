@@ -9,6 +9,7 @@ from .models import (
     AIDeployment,
     AIFallbackChain,
     AICostRate,
+    AIBudget,
     SystemAISettings,
     UserAICredential,
 )
@@ -157,3 +158,17 @@ class AICostRateAdmin(VNAdminMixin, admin.ModelAdmin):
     search_fields = ('model', 'provider')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('provider', 'model', '-effective_from')
+
+
+@admin.register(AIBudget)
+class AIBudgetAdmin(VNAdminMixin, admin.ModelAdmin):
+    """R2.8: 1 dong = 1 han muc tren 1 chieu, 4 tang."""
+
+    list_display = (
+        'user', 'tenant', 'provider', 'model', 'period', 'dimension',
+        'limit_value', 'soft_ratio', 'is_active',
+    )
+    list_filter = ('period', 'dimension', 'is_active', 'provider')
+    search_fields = ('model', 'provider', 'user__username', 'tenant__tenant_code')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('period', 'dimension', 'provider', 'model')

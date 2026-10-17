@@ -1,3 +1,13 @@
+## Entry 355: AI R2.8 AIBudget 4 tang x 3 chieu (2026-10-17)
+
+- **Nhanh**: `feat/ai-r28-budget` -> `dev`. Claim `ai-r28`. TDD: module/model chua co -> GREEN 21/21.
+- **Viec lam**: model `AIBudget` + migration 0016, module `advisory/budget.py`, noi `_advisory_budget_state(tenant, model, provider)`, 429 + `error_code=ai_budget_exhausted` + `budget{used,limit,pct,source}`, admin.
+- **Gate**: 104 test advisory xanh (21 moi + 83 hoi quy) · check 0 · makemigrations --check 0 · pre-push 23/23. Evidence `docs/evidence/ai-cc/r28-gates.md`.
+- **Quyet dinh ghi ro**: (1) "muc chat nhat" = **pct cao nhat**, khong phai thu tu uu tien - neu lay theo thu tu thi budget model vo hieu hoa user/tenant va AC7 that bai. (2) **Pham vi dem usage do dong ngan sach quyet dinh**, khong theo model cua len goi (AC7 fail truoc khi sua). (3) `AIUsageRecord` khong co FK tenant => chi so tang tenant = hop user thuoc tenant; user nhieu tenant bi tinh o moi tang (thieu nghiem, khong lo) - **deviation**. (4) AC8: ngan sach cost cua copilot giu lai ung vien (pct 0, khong chặn) vi loai han se bien "chi co cost budget" thanh *khong gioi han*.
+- **Bay moi**: regen system-design can `PYTHONUTF8=1`; themi model/admin => regen 06.02 + 07.02 + claims C-002/C-003 + 01.01 **truoc khi push**, khong doi cho bao loi.
+- **CHUA CHAY**: full BE, ruff, E2E, staging.
+- **Tiep**: R2.4 copilot adapter (14 AC).
+
 ## Entry 354: AI R2.7 AICostRate + snapshot gia (2026-10-17)
 
 - **Nhanh**: `feat/ai-r27-pricing` -> `dev`. Claim `ai-r27`. TDD: ModuleNotFoundError tren VPS (commit RED 8546284bf) -> GREEN 22/22.

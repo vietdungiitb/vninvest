@@ -8,6 +8,7 @@ Endpoints:
 """
 import logging
 import re
+from decimal import Decimal
 from calendar import monthrange
 from datetime import date as _date, timedelta
 
@@ -166,12 +167,33 @@ def _resolve_advisory_token_budget(user) -> tuple[int, str]:
     return max(1, system_budget), 'system'
 
 
-def _advisory_budget_state(user, session_date: _date) -> dict:
+def _advisory_budget_state(user, session_date: _date, tenant=None, model: str = '', provider: str = '') -> dict:
     """
     F3: compute today's token usage vs effective budget.
     soft_warning when used >= 80% of budget (and < budget);
     hard_exceeded when used >= budget (block trigger).
+
+    R2.8: neu co dong `AIBudget` khop (4 tang x 3 chieu) thi **do hoa chinh**.
+    Khong co dong nao khop => giu nguyen han vi cu (AC9 - migration khong backfill).
     """
+    ai_budget = _resolve_ai_budget(user, tenant=tenant, model=model, provider=provider)
+    if ai_budget['matched']:
+        return {
+            'tokens_used': int(ai_budget['used']) if ai_budget['dimension'] == 'tokens' else 0,
+            'token_budget': int(ai_budget['limit']) if ai_budget['dimension'] == 'tokens' else 0,
+            'budget_source': ai_budget['source'],
+            'remaining': _budget_remaining(ai_budget),
+            'pct_used': ai_budget['pct'],
+            'soft_threshold': 0,
+            'soft_warning': ai_budget['soft_warning'],
+            'hard_exceeded': ai_budget['hard_exceeded'],
+            # R2.8 - chi tiet cho client (AC3): used/limit/pct/source/dimension
+            'dimension': ai_budget['dimension'],
+            'used': ai_budget['used'],
+            'limit': ai_budget['limit'],
+            'budget_period': ai_budget['period'],
+        }
+
     budget, source = _resolve_advisory_token_budget(user)
     total_tokens = AdvisorySession.objects.filter(user=user, session_date=session_date).aggregate(total=models.Sum('tokens_used'))['total'] or 0
     soft_threshold = int(budget * 0.8)
@@ -187,6 +209,57 @@ def _advisory_budget_state(user, session_date: _date) -> dict:
         'soft_threshold': soft_threshold,
         'soft_warning': soft_warning,
         'hard_exceeded': hard_exceeded,
+        'dimension': 'tokens',
+        'used': int(total_tokens),
+        'limit': int(budget),
+        'budget_period': 'daily',
+    }
+
+
+def _resolve_ai_budget(user, *, tenant=None, model: str = '', provider: str = '') -> dict:
+    """R2.8 - tra trang thai rong neu khong co dong AIBudget nao khop."""
+    try:
+        from advisory.budget import resolve_budget
+
+        return resolve_budget(user=user, tenant=tenant, model=model, provider=provider)
+    except Exception:
+        # Bang han muc khong doc duoc (chua migrate / DB het) => giu han vi cu.
+        logger.exception('resolve AI budget failed; falling back to legacy token budget')
+        return {'matched': False}
+
+
+def _budget_scope(user, tenant=None) -> dict:
+    """R2.8 - pham vi model/provider de tang 'model' va AC8 co y nghia.
+
+    Doc **khong** giai ma khoa: chi can provider + model de chon dung hang muc.
+    """
+    provider, model = '', ''
+    try:
+        from advisory.models import UserAICredential
+
+        cred = UserAICredential.objects.filter(user=user).only('ai_provider', 'ai_model').first()
+        if cred is not None:
+            provider = str(cred.ai_provider or '').strip()
+            model = str(cred.ai_model or '').strip()
+    except Exception:
+        logger.warning('budget scope resolution failed', exc_info=True)
+    return {'tenant': tenant, 'model': model, 'provider': provider}
+
+
+def _budget_remaining(ai_budget: dict):
+    remaining = ai_budget['limit'] - ai_budget['used']
+    return remaining if remaining > 0 else Decimal('0')
+
+
+def _budget_payload(budget_state: dict) -> dict:
+    """R2.8 AC3 - body chuan {used, limit, pct, source, dimension} cho moi response."""
+    return {
+        'used': budget_state.get('used', 0),
+        'limit': budget_state.get('limit', 0),
+        'pct': budget_state.get('pct_used', 0.0),
+        'source': budget_state.get('budget_source'),
+        'dimension': budget_state.get('dimension'),
+        'remaining': budget_state.get('remaining', 0),
     }
 
 
@@ -363,7 +436,9 @@ class AdvisoryRefreshView(APIView):
                 return Response({'detail': f'Vui lòng chờ {retry_after} giây trước khi trigger lại {symbol}.', 'retry_after_seconds': retry_after, 'cooldown_seconds': cooldown_seconds}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         # F3: Token budget check — hard block at 100%; soft warning at 80% rides on 201.
-        budget_state = _advisory_budget_state(request.user, session_date_obj)
+        budget_state = _advisory_budget_state(
+            request.user, session_date_obj, **_budget_scope(request.user, tenant),
+        )
         if budget_state['hard_exceeded']:
             _record_manual_trigger_audit(
                 request=request,
@@ -385,12 +460,14 @@ class AdvisoryRefreshView(APIView):
             cache.delete(_lock_key)
             return Response(
                 {
-                    'detail': f'Token budget ({budget_state["token_budget"]}) đã được sử dụng hết trong ngày hôm nay.',
+                    'detail': f'Ngân sách AI đã dùng hết trong kỳ này.',
+                    'error_code': 'ai_budget_exhausted',
                     'tokens_used': budget_state['tokens_used'],
                     'token_budget': budget_state['token_budget'],
                     'budget_source': budget_state['budget_source'],
                     'budget_hard_exceeded': True,
                     'budget_soft_warning': False,
+                    'budget': _budget_payload(budget_state),
                 },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
@@ -664,6 +741,8 @@ class AdvisoryRefreshView(APIView):
             'remaining': budget_state['remaining'],
             'pct_used': budget_state['pct_used'],
             'soft_threshold': budget_state['soft_threshold'],
+            # R2.8 AC3/AC4 - bo sung khoa chuan de client doc mot noi.
+            **_budget_payload(budget_state),
         }
         response_data['manual_trigger'] = {
             'job_key': 'advisory_refresh',
@@ -749,7 +828,15 @@ class AdvisoryRefreshInfoView(APIView):
     def get(self, request, symbol):
         symbol = _validate_symbol(symbol)
         session_date = timezone.localdate()
-        budget_state = _advisory_budget_state(request.user, session_date)
+        try:
+            from identity_access.utils.resolve_tenant import resolve_tenant
+
+            status_tenant = resolve_tenant(request)
+        except Exception:
+            status_tenant = None
+        budget_state = _advisory_budget_state(
+            request.user, session_date, **_budget_scope(request.user, status_tenant),
+        )
 
         max_auto = 24
         try:
