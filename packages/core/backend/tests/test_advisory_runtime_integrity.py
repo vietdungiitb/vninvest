@@ -96,7 +96,10 @@ class N2DeterministicMetricsTest(TestCase):
 
         captured = {}
 
-        async def fake_run_async(effective_context, sym, db_data):
+        # R3.1: `run()` truyền thêm `trace_ctx`/`routing`/`trace_events` xuống
+        # `run_async`. Double phải nhận `**kwargs` nếu không muốn test hỏng theo
+        # chữ ký — đây là hệ quả trực tiếp của việc đổi chữ ký hàm thật.
+        async def fake_run_async(effective_context, sym, db_data, **kwargs):
             captured.update(db_data)
             return {"advisory_text": "x", "ai_model": "gemini-3.8-flash"}
 

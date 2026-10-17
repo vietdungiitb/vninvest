@@ -534,6 +534,13 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 300.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP['probe-ai-deployments-health']},
     },
+    # R3.1 AC6: retention AITrace >90 ngày. Task có hàm rồi mà không có beat thì
+    # là code chết — dữ liệu sẽ tích lại vô hạn.
+    'purge-ai-traces': {
+        'task': 'advisory.tasks.purge_ai_traces',
+        'schedule': 86400.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['purge-ai-traces']},
+    },
     'flush-quota-counters': {
         'task': 'commercial.tasks.flush_quota_counters',
         'schedule': 60.0,

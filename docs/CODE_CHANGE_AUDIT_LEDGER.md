@@ -1,3 +1,31 @@
+## Entry 363: AI R3.1 `AITrace` + 4 trace moi advisory + sua 2 P0 R2 lam hong advisory (2026-10-17)
+
+- **Nhanh**: `feat/ai-r31-aitrace` -> `dev`. Claim `ai-r31`. Mo R3. TDD: commit RED `18 test · failures=2 · errors=16` (`ModuleNotFoundError: advisory.models.AITrace`) -> GREEN **23/23**.
+- **2 P0 TIEN CO — day la phan quan trong nhat cua slice, KHONG do R3.1 gay ra**:
+  1. **`_resolve_routing()` goi ORM sync trong event loop** (`AIDeployment.objects.all()` tu `run_async`) ⇒ Django nem `SynchronousOnlyOperation` ⇒ **MOI** lan sinh advisory sap. Da **tai hien tren `dev` da merge `209e4c46d`** bang probe doc lap (`asyncio.run(coro_goi__resolve_routing())`) truoc khi sua.
+  2. **Dinh nghia `sentiment_user_prompt` nhung dung `sent_user_prompt`** ⇒ `NameError` tai task sentiment ⇒ `asyncio.gather` no ⇒ advisory hong. `dev`: dinh nghiao dong 560, dung sai dong 579; commit `7caf14059` (R2.2).
+  ⇒ **340 test M2 khong bat duoc cai nao** vi **moi test deu patch `run_async`** — test cua slice nay la bai hoc do thanh code.
+- **Sua**: giai routing o **vung sync** (`run()`) roi truyen xuong `run_async` (`sync_to_async` lam fallback); sua ten bien. 2 lop test chan regression: `SyncOnlyOperationRegressionTest` + `NameErrorRegressionTest`.
+- **Viec lam**: model `AITrace` (`trace_id` UUID · `advisory` FK `to_field='advisory_id'` · `user` · `symbol` · `session_date` · `step` 4 gia tri · `provider` · `model` · `prompt_hash`/`response_hash` SHA-256 · `tokens_in/out` · `latency_ms` · `status` · `error_code` · `routing_decision` · `created_at`; index `(user, session_date)` + `(trace_id)`; UNIQUE `(trace_id, step)`) · module moi `advisory/trace.py` · migration `0020_aitrace` (sinh boi `makemigrations`) · `orchestrator.py`: `trace_ctx` qua `run`/`run_async`/`call_agent_async`, gom trace trong event loop roi **ghi DB sau `asyncio.run`** trong `finally` · `tasks.py`: dung `trace_ctx` tu `AdvisoryRecord` + task `purge_ai_traces` · `settings.py` + `queue_policy.py`: beat `purge-ai-traces` (24h).
+- **Dong no R2.6**: `routing_decision` (strategy + deployment) ghi vao trace tung buoc.
+- **Quyet dinh co danh doi (ghi ro)**:
+  - **1 trace = 1 buoc, KHONG phai 1 lan retry** (AC1 doi dung 4) ⇒ khong thay "retry lan 2 din 429" tu trace, phai doc log.
+  - **Ghi DB sau `asyncio.run`** de trace cung transaction voi advisory. `sync_to_async` se roi sang connection/thread khac ⇒ trace co the commit du advisory rollback.
+  - **Moi insert bo `transaction.atomic()` (savepoint)**: khong co savepoint thi 1 insert hong **abort ca transaction ngoai** tren Postgres — "nuot loi" khong du, phan viec sau do van chet.
+  - **FK `to_field='advisory_id'`** (UUID) chu khong phai pk `id` (bigint): khop moi call site. Da do: FK Django **deferred** ⇒ `advisory_id` sai khong bi bat luc insert, chi lo luc `commit` ⇒ hop dong chon la "thieu dinh danh thi bo qua", co test.
+  - **Chi hash, khong luu plaintext** (PIPL 13/2023) — danh doi co chu dich nhu plan da phan bien.
+- **BAY gap trong slice**:
+  1. `def` cap module chen **giua than class** ⇒ ket thuc class ⇒ `AttributeError: ... has no attribute 'run_async'`. Ham phu phai dat **truoc/sau** class.
+  2. `normalize-eol.mjs` doc file da `git rm` ⇒ hook `pre-commit` chet ENOENT + bao L-T01 **sai**. **Da sua tool** (`scripts/normalize-eol.mjs` bo qua file khong ton tai) — dung chung, da ghi o claim.
+  3. **Ten index Postgres bi cat 63 ky tu** (`advisory_ai_user_id_e7df41_idx`) ⇒ assert theo ten la **fail gia**; phai assert theo **cot** trong `pg_indexes.indexdef`.
+  4. **Postgres khong co cast `bigint -> uuid`** ⇒ migration 2 buoc (0020 bigint → 0021 uuid) **khong chay duoc**; migration chua phat hanh thi **gom** 1 file (L-M01: khong sua migration da dung, nhung file chua merge co the gop).
+  5. Assertion cua toi: `sha256_hex(hash)` — vo nghia, khong bao gio dung; phai hash lai chuoi **da biet** roi so.
+  6. Test double `fake_run_async` cu nhan 3 tham so ⇒ **5 error hoi quy** khi doi chu ky that; da them `**kwargs`.
+- **He qua phu ngoai pham vi (da xu ly vi chan gate)**: `system-design/01.01` + `claims.json` **C-005** 44 → **45** beat (sua **ca** doc lan claim — sua claims rieng la vo nghia gate); regen catalog `116 model · 132 migration`.
+- **Gate chay that (VPS Postgres)**: GREEN `tests.test_ai_trace` **23/23** · **hoi quy 31 module = 393/393 OK** · `migrate` full DB sach OK (`advisory` ket thuc `[X] 0020_aitrace`) · `makemigrations --check` `No changes detected` · `check` 0 issue · pre-push **23/23** · `tsc` 0 · DAG 46/61/0 vong/5 goc · `check-system-design` SACH.
+- **CHUA CHAY**: noi dung trace voi **provider that** (moi test dung client gia; staging khong co key dung duoc — xem R2.10 AC8) · **UI/API doc trace: R3.2** · full BE ngoai advisory · `ruff` · E2E · staging deploy.
+- **Tiep**: nen chay **M3** (do lai sau merge) truoc R3.2, vi R3.1 vua sua 2 P0 o duong that.
+
 ## Entry 362: AI M2 — đo lại sau merge R2, sửa 3 lỗi chỉ lộ khi đo (2026-10-17)
 
 - **Nhanh**: `chore/ai-m2-closeout` -> `dev`. Claim `ai-m2`. Không có slice BE mới —

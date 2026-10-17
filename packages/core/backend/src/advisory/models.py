@@ -758,3 +758,83 @@ class AIAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f'{self.action} by {self.actor or "system"} @ {self.created_at}'
+
+
+# ── R3.1: AITrace ─────────────────────────────────────────────────────────
+
+class AITrace(models.Model):
+    """4 bước AI của 1 advisory: technical · flow · sentiment · synthesis (plan `:1043`).
+
+    **Không lưu plaintext** (AC2 / PIPL 13/2023): chỉ `prompt_hash`/`response_hash`
+    SHA-256. Đánh đổi có chủ đích — không đọc lại được nội dung prompt, nhưng vẫn
+    phát hiện được "prompt nào sinh lỗi" qua hash + `model` + `step`.
+
+    1 trace = 1 quyết định của orchestrator (không phải 1 lần retry): AC1 đòi **đúng 4**
+    mỗi refresh, nên vòng retry của synthesis (R2.9) chỉ để lại trace cuối.
+    """
+
+    class Step(models.TextChoices):
+        TECHNICAL = 'technical', 'Phân tích kỹ thuật'
+        FLOW = 'flow', 'Phân tích dòng tiền'
+        SENTIMENT = 'sentiment', 'Phân tích tâm lý'
+        SYNTHESIS = 'synthesis', 'Tổng hợp'
+
+    class Status(models.TextChoices):
+        OK = 'ok', 'Thành công'
+        ERROR = 'error', 'Lỗi'
+
+    trace_id = models.UUIDField(default=uuid.uuid4, db_index=True, editable=False)
+    # `to_field='advisory_id'`: toàn bộ codebase gọi advisory bằng UUID này
+    # (`generate_advisory_task(record_id)` nhận chính `advisory_id`). Trỏ FK vào
+    # pk `id` sẽ ép phải truyền `record.pk` — lệch với mọi call site khác và
+    # dễ sinh `bigint out of range` khi lỡ truyền nhầm UUID.
+    advisory = models.ForeignKey(
+        AdvisoryRecord,
+        to_field='advisory_id',
+        on_delete=models.CASCADE,
+        related_name='ai_traces',
+        verbose_name='Advisory sinh ra trace',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='ai_traces',
+        verbose_name='Người dùng',
+    )
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    session_date = models.DateField(db_index=True, verbose_name='Ngày phiền')
+    step = models.CharField(max_length=16, choices=Step.choices, verbose_name='Bước')
+    provider = models.CharField(max_length=32, blank=True, default='', verbose_name='Provider')
+    model = models.CharField(max_length=64, blank=True, default='', verbose_name='Model')
+    prompt_hash = models.CharField(max_length=64, blank=True, default='', verbose_name='SHA-256 prompt')
+    response_hash = models.CharField(max_length=64, blank=True, default='', verbose_name='SHA-256 response')
+    tokens_in = models.IntegerField(default=0, verbose_name='Token vào')
+    tokens_out = models.IntegerField(default=0, verbose_name='Token ra')
+    latency_ms = models.IntegerField(default=0, verbose_name='Độ trễ (ms)')
+    status = models.CharField(
+        max_length=8, choices=Status.choices, default=Status.OK,
+        db_index=True, verbose_name='Trạng thái',
+    )
+    error_code = models.CharField(max_length=64, blank=True, default='', verbose_name='Mã lỗi')
+    # R2.6 để nợ "chưa ghi routing_decision" — R3.1 ghi kèm để biết bước này đi
+    # qua deployment nào / chiến lược routing nào.
+    routing_decision = models.JSONField(default=dict, blank=True, verbose_name='Quyết định routing')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm ghi')
+
+    class Meta:
+        verbose_name = 'AI Trace'
+        verbose_name_plural = 'AI Traces'
+        ordering = ['created_at', 'step']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['trace_id', 'step'],
+                name='uniq_aitrace_traceid_step',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'session_date']),
+            models.Index(fields=['trace_id']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.step}@{self.trace_id} {self.symbol} [{self.status}]'
