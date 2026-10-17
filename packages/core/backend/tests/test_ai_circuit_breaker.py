@@ -131,7 +131,7 @@ class RetryTests(TestCase):
         class _Client(_FakeClient):
             async def complete(self, *a, **kw):
                 self.calls += 1
-                raise ProviderHTTPError(429, body_text='x', response=_Resp())
+                raise ProviderHTTPError(429, body='x', response=_Resp())
 
         client = _Client([429])
         with self.assertRaises(ProviderHTTPError):
