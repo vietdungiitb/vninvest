@@ -463,22 +463,31 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
         không savepoint sẽ **abort cả transaction**, nên advisory ghi sau đó và cả
         `commit` vẫn chết với `current transaction is aborted`.
 
-        Dùng `symbol=None` (NOT NULL) để lỗi **bị bắt ngay** — FK của Django là
-        deferred nên `advisory_id` sai mới lộ lúc commit, không phải lúc insert,
-        và không chứng minh được cơ chế savepoint.
+        Dùng vi phạm UNIQUE `(trace_id, step)` vì đó là lỗi **bị bắt ngay**
+        (UNIQUE không deferrable). `symbol=None` không dùng được: helper chuẩn
+        hoá thành `''`. FK thì **deferred** nên `advisory_id` sai mới lộ lúc
+        commit, không chứng minh được cơ chế savepoint.
         """
         from advisory.models import AdvisoryRecord
         from advisory.trace import record_step_trace
 
-        bad_ctx = {
+        ctx = {
             'trace_id': str(uuid.uuid4()),
             'advisory_id': self.record.advisory_id,
             'user_id': self.user.id,
-            'symbol': None,  # vi phạm NOT NULL, bị Postgres chặn ngay
+            'symbol': 'VIC',
             'session_date': self.record.session_date,
         }
+        first = record_step_trace(
+            ctx, 'technical', provider='openai', model='m',
+            prompt='p', response='r', tokens_in=1, tokens_out=1,
+            latency_ms=5, status='ok', error_code='',
+        )
+        self.assertIsNotNone(first)
+
+        # Ghi lại đúng (trace_id, step) ⇒ UNIQUE vi phạm ngay.
         self.assertIsNone(record_step_trace(
-            bad_ctx, 'technical', provider='openai', model='m',
+            ctx, 'technical', provider='openai', model='m',
             prompt='p', response='r', tokens_in=1, tokens_out=1,
             latency_ms=5, status='ok', error_code='',
         ))
@@ -489,8 +498,7 @@ class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
             user=self.user, ai_model='m',
         )
         self.assertIsNotNone(rec.pk)
-        self.assertEqual(
-            AdvisoryRecord.objects.filter(pk=rec.pk).count(), 1)
+        self.assertEqual(AdvisoryRecord.objects.filter(pk=rec.pk).count(), 1)
 
     def test_missing_advisory_id_does_not_raise_at_call_time(self):
         """`advisory_id` sai ⇒ FK deferred ⇒ lỗi lộ lúc commit, không lúc gọi.
