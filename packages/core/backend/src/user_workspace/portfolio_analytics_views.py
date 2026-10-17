@@ -1223,7 +1223,15 @@ class PortfolioAICommandCenterView(APIView):
             _model = str(user_cred.ai_model or '').strip()
             _is_valid, _model_error = validate_model_for_provider(_provider, _model)
             if not _is_valid:
-                raise ValidationError({'ai_model': _model_error})
+                # R2.3 AC5: client điều khiển bằng `error_code` nên phải có mã riêng,
+                # không để chung `validation_error` (giống hệt việc thiếu
+                # `provider_auth_failed` bị báo nhầm thành 401 chung).
+                from vninvest_core.exceptions import ValidationErrorException
+
+                raise ValidationErrorException(
+                    detail=str(_model_error),
+                    code='provider_model_mismatch',
+                )
 
         if 'custom_endpoint' in payload:
             user_cred.custom_endpoint = str(payload.get('custom_endpoint') or '').strip()
