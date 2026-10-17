@@ -8,6 +8,7 @@ from .models import (
     AdvisorySession,
     AIDeployment,
     AIFallbackChain,
+    AICostRate,
     SystemAISettings,
     UserAICredential,
 )
@@ -142,3 +143,17 @@ class AIFallbackChainAdmin(VNAdminMixin, admin.ModelAdmin):
     search_fields = ('name',)
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('name',)
+
+
+@admin.register(AICostRate)
+class AICostRateAdmin(VNAdminMixin, admin.ModelAdmin):
+    """R2.7: bang gia token. Doc lai - bao cao da snapshot gia cua no."""
+
+    list_display = (
+        'provider', 'model', 'usd_per_1k_input', 'usd_per_1k_output',
+        'pricing_source', 'effective_from',
+    )
+    list_filter = ('provider', 'pricing_source')
+    search_fields = ('model', 'provider')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('provider', 'model', '-effective_from')

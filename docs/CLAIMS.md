@@ -1453,3 +1453,8 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
 | `ai-r22` | `feat/ai-r22-factory` -> `dev` | AI R2.2: interface AiClient + base retry/usage + openai_compat (openai/gemini/local) + factory + orchestrator go if/elif + BE test (VPS). | **SUA**: `packages/core/backend/src/advisory/ai_clients/` (new), `packages/core/backend/src/advisory/orchestrator.py`, `packages/core/backend/tests/test_ai_clients.py` (new); **GHI**: `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | released | 2026-10-17 | Lessons: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02, L-M01, L-M02]. Phu thuoc R0.5 (done). Khong migration (khong doi model). Khong package.json (httpx co san). |
+## 2026-10-17 - AI R2.7 pricing AICostRate
+
+| agent | branch | scope | files | status | since | note |
+|---|---|---|---|---|---|---|
+| `ai-r27` | `feat/ai-r27-pricing` -> `dev` | AI R2.7: AICostRate + snapshot gia + pricing_source + _resolve_cost that + import JSON idempotent + UI nhan (FE sau). BE test tren VPS. | **SUA**: `packages/core/backend/src/advisory/models.py`, `packages/core/backend/src/advisory/orchestrator.py`, `packages/core/backend/src/advisory/pricing.py` (new), `packages/core/backend/src/advisory/migrations/`, `packages/core/backend/src/advisory/admin.py`, `packages/core/backend/tests/test_ai_pricing.py` (new); **GHI**: `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | done | 2026-10-17 | Lessons: [L-002, L-003, L-006, L-008, L-V02, L-T01, L-T02, L-G01, L-G02, L-M01, L-M02]. Phu thuoc R0.7 (done). Copilot pricing_source=tier + cost 0 (khong bia gia). Khong overlap in-progress. Migration de makemigrations sinh. Khong package.json. |

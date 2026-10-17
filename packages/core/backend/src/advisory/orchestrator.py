@@ -177,11 +177,11 @@ def _extract_usage(usage) -> tuple:
     return parse_usage_dict(usage)
 
 
-def _resolve_cost(provider: str, model: str, tokens_total: int) -> tuple:
-    """(cost, pricing_available). R0.7 AC10: chua co bang gia AICostRate
-    => (0, False). Them bang gia sau thi mo rong tai day (1 diem duy nhat)."""
-    from decimal import Decimal
-    return Decimal('0'), False
+def _resolve_cost(provider: str, model: str, tokens_total: int, tokens_in=None, tokens_out=None) -> tuple:
+    """Alias giu tuong thich. Canonical o `advisory.pricing.resolve_cost` (R2.7)."""
+    from advisory.pricing import resolve_cost as _impl
+
+    return _impl(provider, model, tokens_total, tokens_in=tokens_in, tokens_out=tokens_out)
 
 
 def _coerce_float(raw):

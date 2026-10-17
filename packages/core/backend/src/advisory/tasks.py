@@ -179,15 +179,16 @@ def _write_advisory_usage_record(
 ) -> None:
     """Ghi AIUsageRecord that cho 1 lan goi provider (R0.7 AC6/AC7).
 
-    Khong bao gio bia: thieu so => 0 + co; cost 0 vi chua co bang gia (AC10).
+    Khong bao gio bia: thieu so => 0 + co; cost 0 + `pricing_available=false`
+    khi chua co bang gia (R2.7 AC1), hoac provider tinh theo han muc (AC6).
     Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
     """
     try:
         from ai_analytics.models import AIUsageRecord
-        from advisory.orchestrator import _resolve_cost
+        from advisory.pricing import pricing_snapshot
 
-        cost, pricing_available = _resolve_cost(
-            provider or '', model or '', (tokens_in or 0) + (tokens_out or 0)
+        snapshot = pricing_snapshot(
+            provider or '', model or '', tokens_in or 0, tokens_out or 0,
         )
         AIUsageRecord.objects.create(
             action=AIUsageRecord.ActionChoices.ADVISORY,
@@ -196,11 +197,12 @@ def _write_advisory_usage_record(
             model=model or '',
             tokens_in=max(int(tokens_in or 0), 0),
             tokens_out=max(int(tokens_out or 0), 0),
-            cost=cost,
+            cost=snapshot['cost'],
             latency_ms=max(int(latency_ms or 0), 0),
             status=record_status,
             usage_unavailable=bool(usage_unavailable),
-            pricing_available=bool(pricing_available),
+            # Snapshot tai thoi diem ghi (R2.7 AC3): doi gia sau khong sua record nay.
+            pricing_available=bool(snapshot['pricing_available']),
         )
     except Exception:
         logger.exception('AI usage record write failed (non-blocking)')
