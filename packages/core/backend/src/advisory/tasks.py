@@ -294,6 +294,48 @@ def probe_deployments_health():
             summary['restored'].append(deployment.name)
     return summary
 
+def _write_advisory_usage_record(
+    *,
+    user,
+    provider: str,
+    model: str,
+    tokens_in: int,
+    tokens_out: int,
+    latency_ms: int,
+    record_status: str,
+    usage_unavailable: bool = False,
+) -> None:
+    """Ghi AIUsageRecord that cho 1 lan goi provider (R0.7 AC6/AC7).
+
+    Khong bao gio bia: thieu so => 0 + co; cost 0 + `pricing_available=false`
+    khi chua co bang gia (R2.7 AC1), hoac provider tinh theo han muc (AC6).
+    Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
+    """
+    try:
+        from ai_analytics.models import AIUsageRecord
+        from advisory.pricing import pricing_snapshot
+
+        snapshot = pricing_snapshot(
+            provider or '', model or '', tokens_in or 0, tokens_out or 0,
+        )
+        AIUsageRecord.objects.create(
+            action=AIUsageRecord.ActionChoices.ADVISORY,
+            user=user,
+            provider=provider or '',
+            model=model or '',
+            tokens_in=max(int(tokens_in or 0), 0),
+            tokens_out=max(int(tokens_out or 0), 0),
+            cost=snapshot['cost'],
+            latency_ms=max(int(latency_ms or 0), 0),
+            status=record_status,
+            usage_unavailable=bool(usage_unavailable),
+            # Snapshot tai thoi diem ghi (R2.7 AC3): doi gia sau khong sua record nay.
+            pricing_available=bool(snapshot['pricing_available']),
+        )
+    except Exception:
+        logger.exception('AI usage record write failed (non-blocking)')
+
+
 @shared_task(name="advisory.generate_advisory_task")
 def generate_advisory_task(record_id: str, effective_context: dict, symbol: str):
     """
