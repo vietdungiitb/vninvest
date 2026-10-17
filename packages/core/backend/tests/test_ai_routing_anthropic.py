@@ -211,7 +211,9 @@ class AnthropicModelChoiceTests(TestCase):
             {'ai_provider': 'claude', 'ai_model': 'gpt-4o-mini'}, format='json',
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data.get('error_code'), 'provider_model_mismatch')
+        # Repo dung key `code` trong envelope loi (khong phai `error_code` như
+        # plan viet) — xem `StandardErrorEnvelope` trong `vninvest_core/exceptions.py`.
+        self.assertEqual(response.data.get('code'), 'provider_model_mismatch')
 
     def test_ac5_api_accepts_valid_claude_model(self):
         from django.contrib.auth.models import User

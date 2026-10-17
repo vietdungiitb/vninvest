@@ -161,7 +161,15 @@ class AnthropicClient(AiClient):
                 json=self._payload(system, user, model, temperature, max_tokens),
                 headers=self._headers(),
             )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            # Hợp đồng của `AiClient`: lỗi HTTP phải là `ProviderHTTPError` để tầng
+            # retry R2.9 phân loại được (401 không retry, 429/5xx thì retry).
+            # `httpx.HTTPStatusError` sẽ lọt qua và bị coi là lỗi lạ ⇒ fail ngay.
+            raise ProviderHTTPError(
+                response.status_code,
+                body=response.text[:500],
+                response=response,
+            )
         payload = response.json()
 
         # Nhiều khối text; bỏ các khối kiểu khác (thinking/tool_use).
