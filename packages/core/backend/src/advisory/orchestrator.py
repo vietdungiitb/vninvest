@@ -338,6 +338,20 @@ def _append_trace_event(trace_events, **payload) -> None:
     trace_events.append(payload)
 
 
+def _flush_traces(trace_ctx, trace_events) -> None:
+    """Ghi các sự kiện trace đã gom xuống DB. Chạy ở VÙNG SYNC (sau `asyncio.run`).
+
+    Đặt ở **module level**, không phải giữa thân class: một `def` cấp module chen
+    giữa class body sẽ kết thúc class ⇒ `run_async` mất thuộc tính và
+    `AttributeError: type object 'AdvisoryOrchestrator' has no attribute 'run_async'`.
+    """
+    if not trace_ctx or not trace_events:
+        return
+    for event in trace_events:
+        step = event.pop('step', '')
+        record_step_trace(trace_ctx, step, **event)
+
+
 def _error_code_of(exc) -> str:
     """Mã lỗi ngắn cho trace. ProviderHTTPError đã có `status_code`; lỗi lạ thì theo class."""
     status = getattr(exc, 'status_code', None)
@@ -496,15 +510,6 @@ class AdvisoryOrchestrator:
                 trace_events=trace_events))
         finally:
             _flush_traces(trace_ctx, trace_events)
-
-
-def _flush_traces(trace_ctx, trace_events) -> None:
-    """Ghi các sự kiện trace đã gom xuống DB. Chạy ở VÙNG SYNC (sau `asyncio.run`)."""
-    if not trace_ctx or not trace_events:
-        return
-    for event in trace_events:
-        step = event.pop('step', '')
-        record_step_trace(trace_ctx, step, **event)
 
     @classmethod
     async def run_async(
