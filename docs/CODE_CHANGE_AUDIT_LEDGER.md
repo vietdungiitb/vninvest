@@ -1,3 +1,22 @@
+## Entry 365: AI R3.2 — endpoint doc `AITrace` + trang "Traces" (7 AC) (2026-10-17)
+
+- **Nhanh**: `feat/ai-r32-traces-page` -> `dev`. Claim `ai-r32`. TDD: commit RED `15 test · failures=4 · errors=11` (404 — endpoint chua co) -> GREEN **15/15** BE + **11/11** FE.
+- **Ly do slice gom ca BE va FE**: M3 (Entry 364) **do bang grep** — `AITrace` co o 7 file, **khong** file nao o `views`/`urls`/`serializers` ⇒ du lieu ghi mot chieu, khong ai doc lai duoc. R3.2 viet endpoint tu dau.
+- **SAI LECH PLAN vs CODE (ghi ra, KHONG sua code de chay theo plan)**: plan `:1069` noi *"tab thu 6 trong `AiHubNav`"* nhung `AiHubNav.tsx` thuc te chi co **3 tab** ⇒ Traces la **tab thu 4**. Lam theo chu "thu 6" thi phai bia them 2 tab khong ton tai.
+- **Viec lam**: BE view `PortfolioAICommandCenterTracesView` (`GET workspace/ai-command-center/traces/`, co `@extend_schema` day du — `openapi-budget` se FAIL neu thieu) + `AITraceSerializer` + `urls.py` (co ten `workspace-ai-cc-traces`) · FE `pages/AICommandTracesPage.tsx` + `pageRegistry.js` + `main.tsx` + `routeCatalog.js` + `AiHubNav.tsx` + `adapters/core/workspace.js` (`getAITraces`) + `declarations.d.ts` + 30 key i18n x 2 locale.
+- **7 AC**: AC1 route+tab · AC2 waterfall 4 buoc latency tung buoc + tong (test 100+150+200+250 = 700) · AC3 metadata **khong** plaintext (ca BE va FE) · AC4 filter `symbol`/`model`/`status`/`step`/ngay + phan trang (`limit` cap 100) · AC5 empty state trung thuc · AC6 cach ly · AC7 skeleton + nut "Thu lai".
+- **Quyet dinh co ly do**:
+  - **Khong co nhanh xem nguoi khac — KE CA STAFF.** AC6 chi doi cach ly, khong AC nao cho quyen xem nguoi khac ⇒ thieu quyen thi khong mo. `AIAuditLog` (R0.11) da tung phai va mot endpoint lo cau hinh cua user khac; khong lap lai.
+  - **Khong endpoint chi tiet** — row da mang du metadata (chi SHA-256) ⇒ `/traces/<id>/` la them round-trip khong them thong tin.
+  - **Khong o "xem noi dung prompt"** — R3.1 chi luu hash (PIPL 13/2023) ⇒ du lieu do khong ton tai; trang hien dong thong bao noi ro thay vi de nguoi dung tim.
+  - **Doi filter ⇒ reset `offset=0`** (khong reset se ket o trang 3 het dong).
+  - Adapter **khong** co tham so user/tenant (BE bo qua; co se gay hieu nham la loc duoc nguoi khac).
+- **BUG DO TEST BAT TRONG LUC VIET (khong phai cua test)**: trang thieu `useEffect(() => { void execute(); }, [execute])`. `useRetryableAsync` **KHONG tu chay** (`hooks/useRetryableAsync.ts:102` chi tra `execute`; mau that o `AIUsageDashboard.tsx:237`) ⇒ API khong bao gio duoc goi, `data` luon `null` ⇒ trang **roi thang vao empty state** — nhin nhu chay nhung khong tai gi. **Dang chu y**: test empty-state **van PASS** khi co bug nay ⇒ chi test co du lieu moi bat duoc.
+- **BAY gap**: `reverse()` thieu namespace (`NoReverseMatch`) — `user_workspace.urls` include voi `namespace='user_workspace'` ⇒ phai `reverse('user_workspace:…')` · tu viet `unwrapped()` ⇒ 13 loi gia, phai dung `advisory.tests.envelope.unwrapped` · them route ⇒ `system-design` FAIL push ⇒ `gen-endpoint-catalog.py --write` · **go class CSS khong ton tai** (`tsc` KHONG bat, UI mat style) ⇒ phai `grep '^\.class'` trong `aiSettings.module.css` truoc.
+- **Gate chay that (VPS Postgres + local FE)**: BE moi **15/15** · BE hoi quy **42 module / 516/516 OK** · FE moi **11/11** · FE hoi quy **86 file / 574/574** · `tsc` 0 · `build` 0 (`56.91s`) · `i18n:scan` 0 · `check-ai-cc` SACH · DAG 46/61/0 vong · `lint` **0 error / 4103 warning** (+36 so voi M3 — **toan bo** la `react/jsx-no-literals` tren `data-testid`, dung false-positive da ghi san trong CLAIMS entry `uiux-w6-soc`) · pre-push **23/23**.
+- **CHUA CHAY**: **chua mo trang tren staging that** (`deploy-staging.sh` chua chay) ⇒ **chua biet** trang hien thi ra sao voi du lieu that · **chua chay E2E Playwright** · **chua co trace that de xem** (staging van khong co key provider — R2.10 AC8 van mo ⇒ waterfall se hien empty state, **dung** nhung chua ai nhin thay nhanh "co du lieu") · full BE ngoai advisory+AI · `ruff` · 36 warning chua don (don bang `eslint-disable` se tao mau moi → ticket rieng).
+- **Tiep**: **R3.3** (dashboard SLO LLM, plan `:1085+`). AC13 cua R2 (link `ghu_`) van chua lam.
+
 ## Entry 364: AI M3 — do lai tren `dev` da merge sau R3.1: 501/501 + pho bien do that bi do sai (2026-10-17)
 
 - **Nhanh**: `chore/ai-m3-closeout` -> `dev`. Claim `ai-m3`. KHONG sua runtime (chi docs). Do tren worktree `/tmp/ai-m3` cua `origin/dev` `5306a2070` — **khong phai nhanh cua slice**.
