@@ -57,6 +57,10 @@ class ReadinessStructTests(TestCase):
         self.assertEqual(readiness['ready'], body['ai_ready'])
         self.assertIn(readiness['reason_code'], {
             'ok_configured', 'missing_api_key', 'system_default_no_key_needed',
+            # R2.5 (2026-10-17) them `not_probed`: `openclaw` thieu cau hinh thi
+            # `ready=False` thay vi "luon san sang". User legacy khong co
+            # `UserAICredential` rơi vao nhanh nay nen allow-list cu da het dung.
+            'not_probed',
         })
         self.assertIn('checked_at', readiness)
         self.assertEqual(readiness['ttl_seconds'], 300)
