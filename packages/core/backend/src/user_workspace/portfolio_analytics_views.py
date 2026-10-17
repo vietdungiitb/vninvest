@@ -1038,7 +1038,12 @@ class PortfolioAICommandCenterView(APIView):
                 except Exception:
                     api_key_masked = '••••••••'
 
-        ai_ready = api_key_configured or (provider == 'openclaw') or (provider == 'local')
+        # M2: `ai_ready` lay tu `build_ai_readiness` — cong thuc rieng o day
+        # (`api_key_configured or provider in ('openclaw','local')`) lech voi
+        # readiness struct sau R2.5 (openclaw fail-closed), nen GET/PUT tra loi
+        # `ai_readiness.ready` va `ai_ready` nguoc nhau. Tinh MOT LAN, dung lai.
+        readiness = build_ai_readiness(provider, api_key_configured)
+        ai_ready = readiness['ready']
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
 
@@ -1086,7 +1091,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
-            'ai_readiness': build_ai_readiness(provider, api_key_configured),
+            'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
             'system_policy': {'managed_by_platform': True},
             'custom_endpoint': custom_endpoint,
@@ -1364,7 +1369,17 @@ class PortfolioAICommandCenterView(APIView):
         provider = user_cred.ai_provider or 'openai'
         model = user_cred.ai_model or config.ai_model
         api_key_configured = bool(user_cred.encrypted_api_key)
-        ai_ready = api_key_configured or (provider in ('openclaw', 'local'))
+        # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
+        from advisory.advisory_helpers import (
+            _parse_prompt_config as _parse_pc_put,
+            build_ai_readiness as _build_readiness_put,
+        )
+        # M2: `ai_ready` lay tu `build_ai_readiness` — truoc day cong thuc rieng
+        # (`api_key_configured or provider in ('openclaw','local')`) lech voi
+        # readiness struct sau R2.5, nen GET/PUT tra loi `ready` va `ai_ready`
+        # nguoc nhau. Tinh MOT LAN va dung lai cho ca hai truong.
+        readiness = _build_readiness_put(provider, api_key_configured)
+        ai_ready = readiness['ready']
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
         api_key_masked = ''
@@ -1376,11 +1391,6 @@ class PortfolioAICommandCenterView(APIView):
             except Exception:
                 api_key_masked = '••••••••'
 
-        # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
-        from advisory.advisory_helpers import (
-            _parse_prompt_config as _parse_pc_put,
-            build_ai_readiness as _build_readiness_put,
-        )
         # R0.9 lop A/B (nhu GET): template he thong chi staff thay.
         is_operator_put = bool(
             getattr(request.user, 'is_staff', False)
@@ -1391,7 +1401,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
-            'ai_readiness': _build_readiness_put(provider, api_key_configured),
+            'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
             'system_policy': {'managed_by_platform': True},
             'custom_endpoint': user_cred.custom_endpoint or '',
