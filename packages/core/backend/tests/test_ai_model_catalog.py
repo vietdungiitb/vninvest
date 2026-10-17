@@ -79,7 +79,9 @@ class CatalogFetchTests(TestCase):
         self.assertEqual(result['catalog_source'], CATALOG_SOURCE_UNAVAILABLE)
 
     def test_ac2_never_fabricates_a_list(self):
-        result = fetch_catalog('openai', api_key='', client=_FakeCatalogClient(MODELS))
+        # Đường thật của endpoint: không có client được inject và không có key
+        # ⇒ không có danh mục nào được xác minh ⇒ unavailable.
+        result = fetch_catalog('openai', api_key='', client=None)
         self.assertEqual(result['models'], [], 'không có key thì không được bịa danh sách')
         self.assertEqual(result['catalog_source'], CATALOG_SOURCE_UNAVAILABLE)
 
@@ -224,10 +226,9 @@ class ProviderNoteTests(TestCase):
 
 
 def _unwrap(response):
-    data = response.data
-    if isinstance(data, dict) and 'data' in data and 'status' in data:
-        return data['data']
-    return data
+    from advisory.tests.envelope import unwrapped
+
+    return unwrapped(response)
 
 
 def _patched_client(client):
