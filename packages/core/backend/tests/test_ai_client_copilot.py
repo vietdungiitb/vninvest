@@ -69,6 +69,8 @@ class CopilotTokenManagerTests(TestCase):
     """AC1-AC4: exchange / cache / refresh sớm / lock chống stampede."""
 
     def setUp(self):
+        # Cache token dung chung cap module (dung production) => xoa moi test.
+        CopilotTokenManager.clear_cache()
         self.calls = []
         self.clock = _Clock()
         self.manager = CopilotTokenManager(
@@ -165,6 +167,8 @@ class CopilotClientHeaderTests(TestCase):
     """AC5-AC7: Bearer session + Integration-Id + endpoint từ token response."""
 
     def setUp(self):
+        # Cache token dung chung cap module (dung production) => xoa moi test.
+        CopilotTokenManager.clear_cache()
         self.calls = []
 
     def _client(self, *, exchange_payload=None, exchange_status=200, api_base_override=''):
@@ -241,6 +245,8 @@ class CopilotTrapTests(TestCase):
     """AC8: PAT -> 404 phai ra loi rieng, KHONG bao loi 401 chung."""
 
     def setUp(self):
+        # Cache token dung chung cap module (dung production) => xoa moi test.
+        CopilotTokenManager.clear_cache()
         self.calls = []
 
     def _client(self):
@@ -287,6 +293,8 @@ class CopilotCatalogTests(TestCase):
     """AC9-AC11: catalog that theo tai khoan + fallback raw token."""
 
     def setUp(self):
+        # Cache token dung chung cap module (dung production) => xoa moi test.
+        CopilotTokenManager.clear_cache()
         self.calls = []
 
     def test_ac9_catalog_returns_enabled_models(self):
@@ -452,6 +460,9 @@ class CopilotTokenExpiryRetryTests(TestCase):
 
 class CopilotRegistrationTests(TestCase):
     """AC14: copilot trong ProviderChoices + registry + factory."""
+
+    def setUp(self):
+        CopilotTokenManager.clear_cache()
 
     def test_ac14_provider_choices_has_copilot(self):
         from advisory.models import UserAICredential
