@@ -116,10 +116,16 @@ class AC1PercentileInDbTests(SLOTestBase):
         self.assertAlmostEqual(rows['slow']['p95_latency_ms'], 900, places=3)
         self.assertAlmostEqual(rows['fast']['p95_latency_ms'], 10, places=3)
 
-    def test_ac1b_sql_actually_uses_window_function(self):
-        """Chốt chặn "tính trong Python": SQL phải có `OVER`.
+    def test_ac1b_percentile_is_computed_by_database_not_python(self):
+        """Chốt chặn "tính trong Python": SQL phải chứa `percentile_cont`.
 
-        Nếu view đổi sang `.values_list()` + tự tính, test này đỏ dù các test
+        Plan `:1093` nói *"window function"*, nhưng đo thật trên container staging:
+        Django 5.2.18 **không có** `PercentileCont`, và Postgres **không cho**
+        percentile dạng window (`WITHIN GROUP` + `OVER` không tồn tại) — đúng
+        construct của Postgres là ordered-set aggregate. Vì vậy test này đòi
+        `percentile_cont` (tức **trong DB**) thay vì đòi chữ `OVER`.
+
+        Nếu view đổi sang `.values_list()` rồi tự tính, test này đỏ dù các test
         so-giá-trị vẫn xanh.
         """
         from django.db import connection
@@ -130,12 +136,16 @@ class AC1PercentileInDbTests(SLOTestBase):
             self.client.get(SLO_URL)
         slo_sql = [
             q['sql'] for q in captured.captured_queries
-            if 'percentile' in q['sql'].lower()
+            if 'ai_analytics_aiusagerecord' in q['sql']
         ]
-        self.assertTrue(slo_sql, 'khong co truy van percentile nao')
+        self.assertTrue(slo_sql, 'khong co truy van nao vao bang usage')
         self.assertTrue(
-            any('OVER' in s.upper() for s in slo_sql),
-            f'percentile phai la WINDOW function (OVER): {slo_sql}')
+            any('percentile_cont' in s.lower() for s in slo_sql),
+            f'percentile phai do DB tinh (PERCENTILE_CONT): {slo_sql}')
+        # Không được kéo nguyên bảng về Python: 1 truy vấn gom nhóm là đủ.
+        self.assertLessEqual(
+            len(slo_sql), 1,
+            f'ky vong 1 truy van gom nhom, thay vi nhieu truy van: {slo_sql}')
 
 
 class AC2NoDataTests(SLOTestBase):

@@ -182,10 +182,11 @@ class AIUsageSloView(APIView):
     ALLOWED_DAYS = (7, 30, 90)
 
     def get(self, request):
-        from django.db.models import Count, FloatField, F, Max, Q, Sum
-        from django.db.models.expressions import Window
-        from django.db.models.functions import PercentileCont
+        from django.db.models import Count, F, Q, Sum
+
         from drf_spectacular.openapi import OpenApiParameter
+
+        from .percentiles import PercentileCont
 
         days = _parse_int(request.query_params.get('days', ''), 30)
         if days not in self.ALLOWED_DAYS:
@@ -196,28 +197,19 @@ class AIUsageSloView(APIView):
         cutoff = timezone.now() - timezone.timedelta(days=days)
         queryset = queryset.filter(created_at__gte=cutoff)
 
-        # AC1 — window function trên DB. `Window(order_by=latency_ms)` + `Max(...)`
-        # ở tầng ngoài để gom theo model mà **không** đổi thứ tự tính percentile.
-        window = Window(order_by=F('latency_ms'))
-        annotated = queryset.annotate(
-            slo_p50=PercentileCont(
-                0.50, output_field=FloatField(), over=window),
-            slo_p95=PercentileCont(
-                0.95, output_field=FloatField(), over=window),
-            slo_p99=PercentileCont(
-                0.99, output_field=FloatField(), over=window),
-        )
-
+        # AC1 — percentile **trên DB**. Xem `ai_analytics/percentiles.py`: Django
+        # không có `PercentileCont` và Postgres không cho percentile dạng window,
+        # nên dùng ordered-set aggregate (đúng construct của Postgres).
         rows = (
-            annotated
+            queryset
             .values('model')
             .annotate(
                 requests=Count('id'),
                 successes=Count('id', filter=Q(status='success')),
                 unpriced=Count('id', filter=Q(pricing_available=False)),
-                p50_latency_ms=Max('slo_p50'),
-                p95_latency_ms=Max('slo_p95'),
-                p99_latency_ms=Max('slo_p99'),
+                p50_latency_ms=PercentileCont(0.50),
+                p95_latency_ms=PercentileCont(0.95),
+                p99_latency_ms=PercentileCont(0.99),
                 tokens_in=Sum('tokens_in'),
                 tokens_out=Sum('tokens_out'),
                 cost_total=Sum('cost'),
