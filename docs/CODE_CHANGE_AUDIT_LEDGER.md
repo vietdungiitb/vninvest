@@ -1,3 +1,15 @@
+## Entry 360: AI R2.3 adapter anthropic (2026-10-17)
+
+- **Nhanh**: `feat/ai-r23-anthropic` -> `dev`. Claim `ai-r23`. TDD: `ModuleNotFoundError: advisory.ai_clients.anthropic` + `get_ai_client('claude')` raise `FactoryError` -> GREEN 22/22.
+- **Viec lam**: `AnthropicClient` native (`POST /v1/messages`, `x-api-key` + `anthropic-version: 2023-06-01`, **khong** Authorization), usage `input_tokens/output_tokens`, `AnthropicDisabledError` fail-closed, registry `claude` + `self_endpoint`, CC PUT tra `provider_model_mismatch`.
+- **Gate**: 230 test advisory xanh (22 moi + 208 hoi quy) · check 0 · pre-push 23/23 · openapi NO CON Errors=32. Evidence `docs/evidence/ai-cc/r23-gates.md`.
+- **Quyet dinh**: khong them SDK `anthropic` (httpx thuan nhu plan phan bien) · **usage co ham rieng** vi `parse_usage_dict` doc `prompt_tokens` → dung nham se lam mọi luot goi Claude bao "khong co usage" · `complete()` raise `ProviderHTTPError` (khong phai `httpx.HTTPStatusError`) vi tang retry R2.9 can `status_code` de biet 401 fail ngay hay 429 retry · `probe()` dung `GET /v1/models` (nhe, khong ton token) · **mac dinh TAT** (`AI_ENABLE_ANTHROPIC` khong khai trong settings ⇒ fail-closed).
+- **CONTRADICTION plan vs code**: plan (Phu luc B) noi loi tra `error_code`; code that dat o key **`code`** (`StandardErrorEnvelope`). Test chot theo code that ⇒ **FE doc `error_code` se khong thay ma nao** - can doi chieu o phan FE.
+- **Ghi chu D-03 muc 3 da CU**: `model_choices.py` da duoc R0.5 noi vao CC PUT, khong con la code chet.
+- **BAY**: test provider tat mac dinh can `@override_settings(AI_ENABLE_ANTHROPIC=True)` · test API can `grant_tenant` (thieu = 403 truoc khi kiem payload) · `httpx.HTTPStatusError` in URL that du request di qua MockTransport - kiem handler, khong doan.
+- **CHUA CHAY**: FE (`providerModels.ts` giu `disabled` - D-03 can Owner), i18n, probe that (khong co `sk-ant-` trong staging) ⇒ AC1-4/AC6 la test hop dong, full BE, ruff, E2E, staging.
+- **Tiep**: R2.5 openclaw fail-closed, no FE, M2, R3.
+
 ## Entry 359: AI R2.10 danh muc model theo tai khoan (2026-10-17)
 
 - **Nhanh**: `feat/ai-r210-catalog` -> `dev`. Claim `ai-r210`. TDD: ModuleNotFoundError `advisory.catalog` + endpoint khong ton tai -> GREEN 19/19.
