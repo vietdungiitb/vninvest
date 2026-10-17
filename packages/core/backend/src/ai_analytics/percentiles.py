@@ -31,7 +31,9 @@ class PercentileCont(Aggregate):
     def as_sql(self, compiler, connection, **extra_context):
         expr, = self.source_expressions
         inner_sql, inner_params = compiler.compile(expr)
-        sql = 'PERCENTILE_CONT(%s) WITHIN GROUP (ORDER BY %s)' % inner_sql
+        # `%%s` để lại một placeholder cho tham số percentile; `%s` bên kia nhận
+        # SQL của biểu thức. Nội suy ngược (`%(...)s`) sẽ nuốt mất placeholder.
+        sql = 'PERCENTILE_CONT(%%s) WITHIN GROUP (ORDER BY %s)' % inner_sql
         return sql, [self.percentile, *inner_params]
 
     def __repr__(self):
