@@ -37,6 +37,8 @@ QUEUE_DOMAIN_MATRIX = {
             'identity_access.tasks.cross_ref_pat_audit_events',
             'identity_access.email_tasks.prune_email_verification_tokens',
             'ops_audit.tasks.aggregate_api_call_rollup',
+            # R2.6: probe sức khoẻ deployment + auto-evict / khôi phục.
+            'advisory.tasks.probe_deployments_health',
         ),
         'periodic_tasks': (
             'flush-quota-counters',
@@ -45,6 +47,9 @@ QUEUE_DOMAIN_MATRIX = {
             'snapshot-quota-history',
             'check-usage-thresholds',
             'manage-subscriptions-lifecycle-hourly',
+            # R2.6 - 5 phút: đủ nhanh để phát hiện provider chết, đủ chậm để
+            # không probe lãng phí (AC2 cần 3 lần liên tiếp mới tắt).
+            'probe-ai-deployments-health',
             'prune-email-verification-tokens-hourly',
             'flush-pat-audit-log',
             'cross-ref-pat-audit-events',
