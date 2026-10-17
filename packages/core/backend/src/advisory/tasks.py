@@ -208,7 +208,7 @@ def _apply_health_outcome(deployment, *, ok: bool) -> None:
 
 def _apply_evict_or_restore(deployment) -> str:
     """AC2: tắt sau 3 lần thất bại liên tiếp. AC3: bật lại sau 2 lần thành công liên tiếp."""
-    from advisory.models import AIDeployment
+    from advisory.models import AIAuditLog, AIDeployment
 
     if (
         deployment.consecutive_failures >= EVICT_AFTER_CONSECUTIVE_FAILURES
@@ -218,7 +218,7 @@ def _apply_evict_or_restore(deployment) -> str:
         deployment.health_state = AIDeployment.HealthChoices.UNHEALTHY
         deployment.save(update_fields=['enabled', 'health_state'])
         _record_health_audit(
-            AIDeployment.AuditActionChoices.DEPLOYMENT_EVICTED,
+            AIAuditLog.ActionChoices.DEPLOYMENT_EVICTED,
             f'{deployment.name} bị tắt sau {deployment.consecutive_failures} probe thất bại liên tiếp',
         )
         return 'evicted'
@@ -230,7 +230,7 @@ def _apply_evict_or_restore(deployment) -> str:
         deployment.health_state = AIDeployment.HealthChoices.HEALTHY
         deployment.save(update_fields=['enabled', 'health_state'])
         _record_health_audit(
-            AIDeployment.AuditActionChoices.DEPLOYMENT_RESTORED,
+            AIAuditLog.ActionChoices.DEPLOYMENT_RESTORED,
             f'{deployment.name} được bật lại sau {deployment.consecutive_successes} probe thành công liên tiếp',
         )
         return 'restored'

@@ -102,11 +102,13 @@ class RoutingDecisionTests(TestCase):
 
     def test_ac5_decision_payload_shape(self):
         decision = routing_decision(self.deployments, strategy='latency')
-        self.assertEqual(set(decision), {'strategy', 'candidates', 'chosen', 'reason'})
+        # Khoa bat buoc phai co; `chosen_deployment_id` la bonus cho trace.
+        self.assertTrue({'strategy', 'candidates', 'chosen', 'reason'} <= set(decision))
         self.assertEqual(decision['strategy'], 'latency')
         self.assertEqual(decision['chosen'], 'b')
         self.assertEqual(len(decision['candidates']), 2)
         self.assertIn('latency', decision['reason'])
+        self.assertEqual(decision['chosen_deployment_id'], self.deployments[1].pk)
 
     def test_ac5_candidates_carry_decision_fields(self):
         decision = routing_decision(self.deployments, strategy='cost')
