@@ -13,9 +13,9 @@
     {
       "id": "C-002",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "112 model",
+      "docQuote": "113 model",
       "fact": "models",
-      "expected": 112,
+      "expected": 113,
       "why": "Model moi doi ERD (D02 s4) va 06.01."
     },
     {
