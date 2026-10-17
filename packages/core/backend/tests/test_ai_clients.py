@@ -85,12 +85,20 @@ class FactoryTests(SimpleTestCase):
         self.assertEqual(hits, [])
 
     def test_ac4_unknown_provider_raises_factory_error(self):
+        # R2.4 bat lai `copilot` (da co client 2-buoc) nen KHONG con la vi du
+        # "chua co client". `claude` (R2.3) + `openclaw` (R2.5) van chua co.
         with self.assertRaises(FactoryError):
-            get_ai_client('copilot', api_key='x')
+            get_ai_client('khong-ton-tai', api_key='x')
         with self.assertRaises(FactoryError):
             get_ai_client('claude', api_key='x')
         with self.assertRaises(FactoryError):
             get_ai_client('openclaw', api_key='x')
+
+    def test_ac4_copilot_now_has_a_client(self):
+        # BCH (2026-10-17): provider thay the luon phai co client that.
+        from advisory.ai_clients.copilot import CopilotClient
+
+        self.assertIsInstance(get_ai_client('copilot', api_key='ghu_x'), CopilotClient)
 
     def test_ac5_per_adapter_timeout(self):
         seen = {}
