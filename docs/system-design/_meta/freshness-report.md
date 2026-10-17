@@ -11,7 +11,7 @@
 | models | 115 | C-002 |
 | migrations | 131 | C-003 |
 | composeStacks | 10 | C-004 |
-| beatEntries | 43 | C-005 |
+| beatEntries | 44 | C-005 |
 | systemDesignFiles | 44 | C-006 |
 
 ## 2. VOLATILE — biến động nhanh (thông tin, không chặn)
