@@ -2050,6 +2050,93 @@ class PortfolioAICommandCenterAuditLogView(APIView):
 
 
 @extend_schema(
+    summary='GET /workspace/ai-command-center/traces/ — trace 4 bước của tôi',
+    description=(
+        'R3.2: đọc `AITrace` của chính người gọi, filter theo symbol/model/status/step/'
+        'khoảng ngày, phân trang `limit` (tối đa 100) + `offset`. '
+        'Không trả plaintext prompt/response — chỉ SHA-256 (PIPL 13/2023). '
+        'Không có nhánh xem người khác: thiếu AC cho quyền đó thì không mở.'
+    ),
+    parameters=[
+        OpenApiParameter('symbol', OpenApiTypes.STR, description='Lọc theo mã'),
+        OpenApiParameter('model', OpenApiTypes.STR, description='Lọc theo model'),
+        OpenApiParameter('status', OpenApiTypes.STR, description='ok | error'),
+        OpenApiParameter('step', OpenApiTypes.STR, description='technical | flow | sentiment | synthesis'),
+        OpenApiParameter('date_from', OpenApiTypes.DATE, description='Từ ngày'),
+        OpenApiParameter('date_to', OpenApiTypes.DATE, description='Đến ngày'),
+        OpenApiParameter('limit', OpenApiTypes.INT, description='Tối đa 100, mặc định 10'),
+        OpenApiParameter('offset', OpenApiTypes.INT, description='Mặc định 0'),
+    ],
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAICommandCenterTracesView(APIView):
+    """GET /workspace/ai-command-center/traces/ — trace của **chính** người gọi.
+
+    AC6 (R3.2): scope `user=request.user` **không có nhánh bypass cho staff**. R0.11
+    đã từng phải vá một endpoint lộ log cấu hình của user khác; ở đây thiếu quyền
+    thì không mở đường mới, kể cả cho người quản trị.
+
+    AC3: không có plaintext trong payload — `AITrace` vốn chỉ lưu SHA-256.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from advisory.models import AITrace
+        from advisory.serializers import AITraceSerializer
+
+        queryset = AITrace.objects.filter(user=request.user)
+
+        symbol = request.query_params.get('symbol', '').strip()
+        if symbol:
+            queryset = queryset.filter(symbol=symbol.upper())
+
+        model = request.query_params.get('model', '').strip()
+        if model:
+            queryset = queryset.filter(model=model)
+
+        status_filter = request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        step = request.query_params.get('step', '').strip()
+        if step:
+            queryset = queryset.filter(step=step)
+
+        date_from = request.query_params.get('date_from', '').strip()
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+
+        date_to = request.query_params.get('date_to', '').strip()
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+
+        try:
+            limit = min(int(request.query_params.get('limit', 10)), 100)
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(limit, 1)
+        try:
+            offset = max(int(request.query_params.get('offset', 0)), 0)
+        except (TypeError, ValueError):
+            offset = 0
+
+        total = queryset.count()
+        rows = queryset.order_by('-created_at', 'step')[offset:offset + limit]
+
+        return paginated_envelope({
+            'results': AITraceSerializer(rows, many=True).data,
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        })
+
+
+@extend_schema(
     summary='PortfolioUserConfigLegacyView (native route)',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
     # This class has a body-carrying method, so the REQUEST side must be typed too;
