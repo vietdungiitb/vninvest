@@ -52,7 +52,7 @@ class _FakeClient(AiClient):
         if status == 'timeout':
             raise httpx.ReadTimeout('slow')
         if isinstance(status, int) and status >= 400:
-            raise ProviderHTTPError(status, body_text='loi', response=None)
+            raise ProviderHTTPError(status, body='loi', response=None)
         return {'text': 'ok', 'usage': None, 'raw': {}, 'finish_reason': 'stop'}
 
 
