@@ -460,6 +460,18 @@ export const routeCatalog = Object.freeze([
     externalEntry: true,
   },
   {
+    // R4.1 AC1: trang Tenant Admin đặt policy AI cấp tenant.
+    id: "tenant-admin-ai-policy",
+    path: "/tenant-admin/ai-policy",
+    titleKey: "routes.tenantAIPolicy",
+    group: "admin",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["admin.operator.read"],
+    adapter: "core",
+    status: "core",
+    externalEntry: true,
+  },
+  {
     id: "tenant-admin-audit-logs",
     path: "/tenant-admin/audit-logs",
     titleKey: "routes.tenantAuditLogs",

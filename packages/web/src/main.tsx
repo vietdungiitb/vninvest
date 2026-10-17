@@ -231,6 +231,8 @@ function App() {
           createElement(Route, { path: 'usage-history', element: createElement(resolvePageComponent('tenant-admin-usage-history')) }),
           createElement(Route, { path: 'billing', element: createElement(resolvePageComponent('tenant-admin-billing')) }),
           createElement(Route, { path: 'capabilities', element: createElement(resolvePageComponent('tenant-admin-capabilities')) }),
+          // R4.1 AC1: policy AI cấp tenant (admin/owner tenant đặt trần).
+          createElement(Route, { path: 'ai-policy', element: createElement(resolvePageComponent('tenant-admin-ai-policy')) }),
           createElement(Route, { path: 'audit-logs', element: createElement(resolvePageComponent('tenant-admin-audit-logs')) }),
           createElement(Route, { path: 'reports', element: createElement(resolvePageComponent('tenant-admin-reports')) }),
           createElement(Route, { path: 'sso', element: createElement(resolvePageComponent('tenant-admin-sso')) }),

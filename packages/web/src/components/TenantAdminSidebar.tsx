@@ -5,7 +5,7 @@ import { usePortfolio } from '@/context/PortfolioContext.js';
 import {
   LayoutDashboard, Users, Key, Fingerprint, Activity, CreditCard,
   ShieldCheck, FileText, ScrollText, Globe, Lock, Webhook, FileSpreadsheet,
-  Settings, ChevronLeft, UserCog,
+  Settings, ChevronLeft, UserCog, Bot,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -31,6 +31,11 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: 'webhooks', labelKey: 'tenantWebhooks.title', icon: Webhook, subject: 'TenantWebhookView' },
   { path: 'settings', labelKey: 'tenantSettings.title', icon: Settings },
   { path: 'roles', labelKey: 'tenantRoles.title', icon: UserCog, subject: 'TenantRoleAdmin' },
+  // R4.1 AC1: policy AI cấp tenant. Cố ý KHÔNG gắn `subject` — `_build_abilities`
+  // (identity_access/views/helpers.py:107) cấp `read` cho **mọi** thành viên
+  // tenant, nên một subject mới cũng không phân biệt được admin với editor. Quyền
+  // ghi thật do BE chặn (`settings:write` = admin/owner), không giả ở menu.
+  { path: 'ai-policy', labelKey: 'tenantAIPolicy.title', icon: Bot },
 ];
 
 const SIDEBAR_CSS = `

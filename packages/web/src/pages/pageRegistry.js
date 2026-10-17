@@ -301,6 +301,9 @@ export const pageRegistry = Object.freeze([
     import("./tenant-admin/TenantAdminBillingPage.tsx").then((module) => module.TenantAdminBillingPage)),
   makePageEntry("tenant-admin-capabilities", "core", () =>
     import("./tenant-admin/TenantAdminCapabilitiesPage.tsx").then((module) => module.TenantAdminCapabilitiesPage)),
+  // R4.1 AC1: trang Tenant Admin đặt policy AI cấp tenant.
+  makePageEntry("tenant-admin-ai-policy", "core", () =>
+    import("./tenant-admin/TenantAdminAIPolicyPage.tsx").then((module) => module.TenantAdminAIPolicyPage)),
   makePageEntry("tenant-admin-audit-logs", "core", () =>
     import("./tenant-admin/TenantAdminAuditLogsPage.tsx").then((module) => module.TenantAdminAuditLogsPage)),
   makePageEntry("tenant-admin-sso", "core", () =>
