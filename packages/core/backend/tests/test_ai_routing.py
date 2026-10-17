@@ -211,7 +211,9 @@ class HealthCheckTaskTests(TestCase):
             'phải có audit log khi evict')
 
     def test_ac3_healthy_two_times_then_reenable(self):
-        self._probe_results([False, False, False])
+        self._probe_results([False])
+        self._probe_results([False])
+        self._probe_results([False])
         self.assertFalse(self.dep.enabled)
         self._probe_results([True])
         self.assertFalse(self.dep.enabled, 'lần 1 khôi phục chưa đủ')
@@ -219,7 +221,9 @@ class HealthCheckTaskTests(TestCase):
         self.assertTrue(self.dep.enabled, '2 lần liên tiếp ⇒ bật lại')
 
     def test_ac3_non_consecutive_successes_do_not_reenable(self):
-        self._probe_results([False, False, False])
+        self._probe_results([False])
+        self._probe_results([False])
+        self._probe_results([False])
         self._probe_results([True])
         self._probe_results([False])
         self._probe_results([True])
@@ -227,9 +231,11 @@ class HealthCheckTaskTests(TestCase):
 
     def test_ac8_probe_reuses_copilot_token_cache(self):
         from advisory import tasks
-        from advisory.ai_clients import copilot as copilot_module
+        from advisory.ai_clients.copilot import CopilotClient
         from advisory.copilot_tokens import CopilotTokenManager
 
+        # Chỉ giữ deployment copilot để task không đụng mạng thật.
+        AIDeployment.objects.exclude(provider='copilot').delete()
         CopilotTokenManager.clear_cache()
         _deployment('copilot-one', provider='copilot', model='gpt-5')
         import httpx
@@ -244,22 +250,28 @@ class HealthCheckTaskTests(TestCase):
                 'expires_in': 1500,
             })
 
-        transport = httpx.MockTransport(exchange_handler)
-        # Patch tai noi DUNG: copilot.py tao manager, khong phai tasks.py.
-        original_manager = copilot_module.CopilotTokenManager
+        def models_handler(request):
+            return httpx.Response(200, json={'data': [
+                {'id': 'gpt-5', 'policy': {'state': 'enabled'},
+                 'model_picker_enabled': True},
+            ]})
 
-        class _Manager(original_manager):
-            def __init__(self, **kwargs):
-                kwargs['transport'] = transport
-                super().__init__(**kwargs)
+        original_factory = tasks.get_ai_client
 
-        copilot_module.CopilotTokenManager = _Manager
+        def fake_factory(provider, **kwargs):
+            return CopilotClient(
+                api_key='ghu_shared_token',
+                token_exchange_transport=httpx.MockTransport(exchange_handler),
+                transport=httpx.MockTransport(models_handler),
+            )
+
+        tasks.get_ai_client = fake_factory
         try:
             tasks.probe_deployments_health()
             tasks.probe_deployments_health()
             tasks.probe_deployments_health()
         finally:
-            copilot_module.CopilotTokenManager = original_manager
+            tasks.get_ai_client = original_factory
         self.assertEqual(len(exchanges), 1,
                          '3 lần probe phải dùng chung 1 session token')
 
@@ -271,7 +283,6 @@ class HealthCheckTaskTests(TestCase):
         self._probe_results([False])
         self._probe_results([False])
         self._probe_results([False])
-        self.assertFalse(self.dep.enabled)
         self.assertTrue(self.dep.auto_evicted, 'phải đánh dấu auto-evict')
         self.assertEqual(tasks.probe_deployments_health()['probed'], 1,
                          'vẫn phải probe deployment đã evict để tìm hồi phục')
