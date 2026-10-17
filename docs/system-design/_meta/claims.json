@@ -21,9 +21,9 @@
     {
       "id": "C-003",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "132 migration",
+      "docQuote": "133 migration",
       "fact": "migrations",
-      "expected": 132,
+      "expected": 133,
       "why": "Migration moi co the doi so do du lieu va can kiem leaf-conflict."
     },
     {

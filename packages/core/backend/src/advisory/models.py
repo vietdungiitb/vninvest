@@ -784,8 +784,13 @@ class AITrace(models.Model):
         ERROR = 'error', 'Lỗi'
 
     trace_id = models.UUIDField(default=uuid.uuid4, db_index=True, editable=False)
+    # `to_field='advisory_id'`: toàn bộ codebase gọi advisory bằng UUID này
+    # (`generate_advisory_task(record_id)` nhận chính `advisory_id`). Trỏ FK vào
+    # pk `id` sẽ ép phải truyền `record.pk` — lệch với mọi call site khác và
+    # dễ sinh `bigint out of range` khi lỡ truyền nhầm UUID.
     advisory = models.ForeignKey(
         AdvisoryRecord,
+        to_field='advisory_id',
         on_delete=models.CASCADE,
         related_name='ai_traces',
         verbose_name='Advisory sinh ra trace',
