@@ -527,6 +527,13 @@ from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP, TASK_ROUTES
 CELERY_TASK_ROUTES = TASK_ROUTES
 
 CELERY_BEAT_SCHEDULE = {
+    # R2.6: probe sức khoẻ deployment định kỳ. AC2 yêu cầu 3 lần thất bại liên
+    # tiếp mới tắt ⇒ chu kỳ 5 phút nghĩa là phải hỏng liên tục ~15 phút.
+    'probe-ai-deployments-health': {
+        'task': 'advisory.tasks.probe_deployments_health',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['probe-ai-deployments-health']},
+    },
     'flush-quota-counters': {
         'task': 'commercial.tasks.flush_quota_counters',
         'schedule': 60.0,

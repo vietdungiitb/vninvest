@@ -3,6 +3,8 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
+from advisory.ai_clients import FactoryError, get_ai_client
+from advisory.copilot_tokens import CopilotTokenManager
 from advisory.models import AdvisoryComponent, AdvisorySession
 from advisory.orchestrator import (
     SIGNAL_UNPARSEABLE_CODE,
@@ -165,6 +167,132 @@ def reset_daily_token_budgets():
     logger.info("reset_daily_token_budgets: no-op (enforcement date-scoped in views.py)")
     return "noop: enforcement date-scoped in views.py"
 
+
+# ---------------------------------------------------------------- R2.6 health
+
+#: Ngưỡng R2.6. Tắt sớm = mất dịch vụ khi provider đang deploy; bật lại sớm =
+#: đẩy traffic vào deployment còn hỏng. Hai ngưỡng khác nhau là chủ ý.
+EVICT_AFTER_CONSECUTIVE_FAILURES = 3
+RESTORE_AFTER_CONSECUTIVE_SUCCESSES = 2
+
+
+def _record_health_audit(action: str, detail: str) -> None:
+    """Audit cho evict/restore. Lỗi audit không được làm hỏng task health."""
+    try:
+        from advisory.models import AIAuditLog
+
+        AIAuditLog.objects.create(action=action, actor='system', diff_summary=detail[:255])
+    except Exception:
+        logger.exception('AI health audit write failed (non-blocking)')
+
+
+def _apply_health_outcome(deployment, *, ok: bool) -> None:
+    """AC2/AC3: cập nhật chuỗi đếm + health_state. KHÔNG đụng `enabled` -
+    việc bật/tắt do _apply_evict_or_restore quyết định ở MỘT chỗ duy nhất."""
+    from advisory.models import AIDeployment
+
+    deployment.consecutive_failures = 0 if ok else deployment.consecutive_failures + 1
+    deployment.consecutive_successes = deployment.consecutive_successes + 1 if ok else 0
+    if ok:
+        if deployment.consecutive_successes >= RESTORE_AFTER_CONSECUTIVE_SUCCESSES:
+            deployment.health_state = AIDeployment.HealthChoices.HEALTHY
+    elif deployment.health_state != AIDeployment.HealthChoices.UNHEALTHY:
+        # Lần lỗi đầu chỉ hạ cấp xuống degraded, chưa tắt - chống false-positive
+        # khi provider đang deploy (rủi ro plan đã nêu ở R2.6).
+        deployment.health_state = AIDeployment.HealthChoices.DEGRADED
+    deployment.last_health_at = timezone.now()
+    deployment.save(update_fields=[
+        'consecutive_failures', 'consecutive_successes', 'health_state', 'last_health_at',
+    ])
+
+
+def _apply_evict_or_restore(deployment) -> str:
+    """AC2: tắt sau 3 lần thất bại liên tiếp. AC3: bật lại sau 2 lần thành công liên tiếp."""
+    from advisory.models import AIAuditLog, AIDeployment
+
+    if (
+        deployment.consecutive_failures >= EVICT_AFTER_CONSECUTIVE_FAILURES
+        and deployment.enabled
+    ):
+        deployment.enabled = False
+        deployment.auto_evicted = True
+        deployment.health_state = AIDeployment.HealthChoices.UNHEALTHY
+        deployment.save(update_fields=['enabled', 'auto_evicted', 'health_state'])
+        _record_health_audit(
+            AIAuditLog.ActionChoices.DEPLOYMENT_EVICTED,
+            f'{deployment.name} bị tắt sau {deployment.consecutive_failures} probe thất bại liên tiếp',
+        )
+        return 'evicted'
+    if (
+        deployment.consecutive_successes >= RESTORE_AFTER_CONSECUTIVE_SUCCESSES
+        and deployment.auto_evicted
+        and not deployment.enabled
+    ):
+        deployment.enabled = True
+        deployment.auto_evicted = False
+        deployment.health_state = AIDeployment.HealthChoices.HEALTHY
+        deployment.save(update_fields=['enabled', 'auto_evicted', 'health_state'])
+        _record_health_audit(
+            AIAuditLog.ActionChoices.DEPLOYMENT_RESTORED,
+            f'{deployment.name} được bật lại sau {deployment.consecutive_successes} probe thành công liên tiếp',
+        )
+        return 'restored'
+    return ''
+
+
+@shared_task(name="advisory.probe_deployments_health")
+def probe_deployments_health():
+    """R2.6 AC1: probe mọi deployment cần theo dõi bằng AiClient.probe().
+
+    Theo dõi = `enabled` **hoặc** `auto_evicted`. Bỏ `auto_evicted` thì deployment
+    bị evict không bao giờ được probe lại => mất dịch vụ vĩnh viễn sau một sự cố
+    nhất thời. Deployment quản trị TẮT TAY (`enabled=False`, `auto_evicted=False`)
+    thì không đụng tới - tôn trọng ý quản trị.
+
+    AC8: probe **dùng chung** session token copilot (CopilotTokenManager cache ở
+    cấp module) nên N deployment copilot không đổi token N lần.
+    """
+    import asyncio
+
+    from django.db.models import Q
+
+    from advisory.models import AIDeployment, AIHealthCheck
+
+    deployments = list(AIDeployment.objects.filter(Q(enabled=True) | Q(auto_evicted=True)))
+    if not deployments:
+        return {'probed': 0, 'note': 'khong co deployment can probe'}
+
+    summary = {'probed': len(deployments), 'evicted': [], 'restored': []}
+    for deployment in deployments:
+        ok, latency_ms, error_code, detail = False, 0, 'probe_not_run', ''
+        try:
+            client = get_ai_client(
+                deployment.provider, ai_model=deployment.model, timeout=15.0,
+            )
+            result = asyncio.run(client.probe())
+            ok = bool(result.get('ok'))
+            latency_ms = int(result.get('latency_ms') or 0)
+            error_code = str(result.get('error_code') or '')[:48]
+            detail = str(result.get('detail') or '')[:255]
+        except FactoryError as exc:
+            error_code, detail = 'factory_error', str(exc)[:255]
+        except Exception as exc:
+            error_code, detail = 'probe_raised', str(exc)[:255]
+
+        AIHealthCheck.objects.create(
+            deployment=deployment, ok=ok, latency_ms=latency_ms,
+            error_code=error_code, detail=detail,
+        )
+        if ok and latency_ms:
+            deployment.latency_ms = latency_ms
+            deployment.save(update_fields=['latency_ms'])
+        _apply_health_outcome(deployment, ok=ok)
+        action = _apply_evict_or_restore(deployment)
+        if action == 'evicted':
+            summary['evicted'].append(deployment.name)
+        elif action == 'restored':
+            summary['restored'].append(deployment.name)
+    return summary
 
 def _write_advisory_usage_record(
     *,

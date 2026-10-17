@@ -203,6 +203,37 @@ def _coerce_float(raw):
 
 
 
+def _resolve_routing(provider: str = '') -> dict:
+    """R2.6: chọn deployment qua router; trả decision để ghi vào trace (AC5).
+
+    - Không có deployment nào cấu hình ⇒ `{'chosen': None}` ⇒ giữ nguyên hành vi
+      cũ (dùng provider/ai_model đã truyền vào). Không phải lỗi.
+    - Có deployment nhưng không deployment nào khoẻ ⇒ raise
+      `NoHealthyDeploymentError` (503 `no_healthy_deployment`) — AC6.
+    """
+    try:
+        from advisory.models import AIDeployment
+        from advisory.routing import routing_decision
+    except Exception:  # pragma: no cover - import lỗi thì giữ hành vi cũ
+        logger.exception('routing import failed; falling back to direct provider call')
+        return {'chosen': None}
+
+    deployments = list(AIDeployment.objects.all())
+    if not deployments:
+        return {'chosen': None}
+    decision = routing_decision(deployments)
+    chosen_name = decision['chosen']
+    chosen = next((d for d in deployments if d.name == chosen_name), None)
+    if chosen is None:  # pragma: no cover - routing luôn chọn từ trong danh sách
+        return {'chosen': None}
+    return {
+        'chosen': chosen.name,
+        'provider': chosen.provider,
+        'model': chosen.model,
+        'decision': decision,
+    }
+
+
 async def call_agent_async(
     ai_client,
     agent_name: str,
@@ -472,6 +503,16 @@ class AdvisoryOrchestrator:
         ai_client = get_ai_client(
             provider, api_key=api_key or '', endpoint=endpoint, ai_model=ai_model,
         )
+        # R2.6: router chon deployment + ghi quyet dinh vao trace. Khong co
+        # deployment nao khoe => 503 no_healthy_deployment (AC6), khong im lang
+        # roi ve provider dang hong.
+        routing = _resolve_routing(provider)
+        if routing.get('chosen'):
+            provider = routing.get('provider') or provider
+            ai_model = routing.get('model') or ai_model
+            ai_client = get_ai_client(
+                provider, api_key=api_key or '', endpoint=endpoint, ai_model=ai_model,
+            )
 
         # Build user prompts for each sub-agent
         tech_user_prompt = f"""

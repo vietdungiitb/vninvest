@@ -450,6 +450,25 @@ class AIDeployment(models.Model):
         null=True, blank=True, verbose_name='Cooldown breaker (giây)',
         help_text='NULL = lấy AI_PROVIDER_COOLDOWN_SECONDS.',
     )
+    # R2.6: số đo cho routing. `latency_ms` ghi bởi probe định kỳ;
+    # `cost_per_1k` ghi bởi import bảng giá (R2.7). NULL/0 = chưa có số đo.
+    latency_ms = models.IntegerField(
+        null=True, blank=True, default=0, verbose_name='Độ trễ (ms)',
+    )
+    cost_per_1k = models.DecimalField(
+        max_digits=12, decimal_places=6, null=True, blank=True, default=0,
+        verbose_name='USD / 1k token',
+    )
+    consecutive_failures = models.PositiveIntegerField(
+        default=0, verbose_name='Số lần thất bại liên tiếp',
+    )
+    consecutive_successes = models.PositiveIntegerField(
+        default=0, verbose_name='Số lần thành công liên tiếp',
+    )
+    # R2.6: phân biệt "bị task health TẮT" với "quản trị TẮT TAY".
+    # Không có cờ này thì một deployment bị evict sẽ không bao giờ được probe lại
+    # ⇒ mất dịch vụ vĩnh viễn sau một sự cố nhất thời.
+    auto_evicted = models.BooleanField(default=False, verbose_name='Bị auto-evict')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -526,6 +545,36 @@ class AIFallbackChain(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} ({len(self.deployment_ids or [])} bước)'
+
+
+class AIHealthCheck(models.Model):
+    """
+    R2.6: kết quả probe định kỳ của một deployment.
+
+    Mỗi lần probe ghi 1 dòng ⇒ lịch sử đủ để trả lời "vì sao bị evict" mà
+    không cần đoán. `error_code`/`detail` không chứa khoá hay endpoint nội bộ.
+    """
+
+    deployment = models.ForeignKey(
+        AIDeployment, on_delete=models.CASCADE, related_name='health_checks',
+        verbose_name='Deployment',
+    )
+    ok = models.BooleanField(default=False, verbose_name='Thành công')
+    latency_ms = models.IntegerField(default=0, verbose_name='Độ trễ (ms)')
+    error_code = models.CharField(max_length=48, blank=True, default='', verbose_name='Mã lỗi')
+    detail = models.CharField(max_length=255, blank=True, default='', verbose_name='Chi tiết')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm')
+
+    class Meta:
+        verbose_name = 'AI Health Check'
+        verbose_name_plural = 'AI Health Checks'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['deployment', '-created_at'], name='ai_hc_dep_created_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.deployment_id} ok={self.ok} {self.created_at:%Y-%m-%d %H:%M}'
 
 
 class AICostRate(models.Model):
@@ -659,6 +708,9 @@ class AIAuditLog(models.Model):
         UPDATE_SETTINGS = 'update_settings', 'Cập nhật cấu hình'
         TEST_CONNECTION_SUCCESS = 'test_connection_success', 'Test kết nối thành công'
         TEST_CONNECTION_FAILED = 'test_connection_failed', 'Test kết nối thất bại'
+        # R2.6: auto-evict / khôi phục deployment do task health quyết định.
+        DEPLOYMENT_EVICTED = 'deployment_evicted', 'Tắt deployment (health)'
+        DEPLOYMENT_RESTORED = 'deployment_restored', 'Bật lại deployment (health)'
 
     action = models.CharField(
         max_length=32,
