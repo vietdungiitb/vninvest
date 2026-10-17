@@ -328,6 +328,17 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
+    // R3.3: dashboard SLO LLM.
+    id: "ai-slo",
+    path: "/settings/ai/slo",
+    titleKey: "routes.aiSlo",
+    group: "system",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["system.ai_command_center.manage"],
+    adapter: "core",
+    status: "baseline",
+  },
+  {
     id: "upgrade",
     path: "/upgrade",
     titleKey: "layout.nav.upgrade",

@@ -26,6 +26,9 @@ declare module "./adapters/coreApiAdapter" {
       limit?: number;
       offset?: number;
     }) => Promise<any>;
+    // R3.3: SLO LLM. `success_rate`/`p*_latency_ms` có thể `null` (không đủ dữ
+    // liệu) — FE hiện `—`, tuyệt đối không ép về 0.
+    getAIUsageSlo: (params?: { days?: number }) => Promise<any>;
 
     // Alert Center
     getAlertCenterFeed: (params: any) => Promise<any>;
