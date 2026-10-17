@@ -72,44 +72,44 @@ class BudgetTierMatrixTests(TestCase):
         )
 
     def test_ac1_matrix_2x2x2_picks_most_restrictive(self):
-        # 8 to hop (model, user, tenant) co/khong; system luon co.
-        # Moi hang: (co_model, co_user, co_tenant, limit thang nh, limit thang hai,
-        #           pct thang nh, pct thang hai, source ky vong)
-        system = _budget(limit_value=Decimal('1000'))  # 1000 tokens, 0 da dung
-        cases = [
-            (False, False, False, None, None, 0.0, 0.0, BUDGET_SOURCE_SYSTEM),
-            (True, False, False, 50, None, 20.0, 0.0, BUDGET_SOURCE_MODEL),
-            (False, True, False, 50, None, 20.0, 0.0, 'user'),
-            (False, False, True, 50, None, 20.0, 0.0, 'tenant'),
-            # model rong hon user -> user chat hon
-            (True, True, False, 900, 50, 0.1, 20.0, 'user'),
-            # user rong hon tenant -> tenant chat hon
-            (False, True, True, 900, 50, 0.1, 20.0, 'tenant'),
-            # model chat nhat
-            (True, True, True, 10, 50, 80.0, 20.0, BUDGET_SOURCE_MODEL),
-            # ca 3 cung pct -> phai theo scope hep nhat (model) khong phai thu tu DB
-            (True, True, True, 10, 100, 80.0, 8.0, BUDGET_SOURCE_MODEL),
+        # Ma tran 2x2x2 = 8 to hop (co model / co user / co tenant).
+        # System luon co (limit 1000 => 8%). 80 token da dung.
+        # Expected winner: tang co pct cao nhat; bang pct -> scope hep nhat.
+        _ORDER = {'system': 0, 'tenant': 1, 'user': 2, 'model': 3}
+        used = 80.0
+        system = _budget(limit_value=Decimal('1000'))
+        combos = [
+            # (model_limit, user_limit, tenant_limit) -> 2x2x2
+            (None, None, None),   # 000
+            (50, None, None),     # 100
+            (None, 50, None),     # 010
+            (None, None, 50),     # 001
+            (900, 50, None),      # 110 -> user chat hon model
+            (None, 900, 50),      # 011 -> tenant chat hon user
+            (10, 50, 50),         # 111 -> model chat nhat
+            (None, 100, 100),     # 011' -> bang pct, user (scope hep hon tenant)
         ]
-        for (has_model, has_user, has_tenant, model_limit, other_limit,
-             model_pct, other_pct, expected_source) in cases:
-            with self.subTest(model=has_model, user=has_user, tenant=has_tenant):
+        for model_limit, user_limit, tenant_limit in combos:
+            with self.subTest(model=model_limit, user=user_limit, tenant=tenant_limit):
                 AIBudget.objects.exclude(pk=system.pk).delete()
-                _usage(self.user, tokens=80)
-                if has_model:
+                AIUsageRecord.objects.all().delete()
+                _usage(self.user, tokens=int(used))
+                limits = {'system': 1000.0, 'model': model_limit,
+                          'user': user_limit, 'tenant': tenant_limit}
+                pct = {s: (used / v * 100 if v else 0.0) for s, v in limits.items()}
+                expected = max(pct, key=lambda s: (pct[s], _ORDER[s]))
+                if model_limit:
                     _budget(model='gpt-4o-mini', limit_value=Decimal(model_limit))
-                    self.assertAlmostEqual(model_pct, 80.0 / float(model_limit) * 100, 1)
-                if has_user:
-                    _budget(user=self.user, limit_value=Decimal(other_limit))
-                    self.assertAlmostEqual(other_pct, 80.0 / float(other_limit) * 100, 1)
-                if has_tenant:
-                    _budget(tenant=self.tenant, limit_value=Decimal(other_limit))
+                if user_limit:
+                    _budget(user=self.user, limit_value=Decimal(user_limit))
+                if tenant_limit:
+                    _budget(tenant=self.tenant, limit_value=Decimal(tenant_limit))
                 state = resolve_budget(
                     user=self.user, tenant=self.tenant, model='gpt-4o-mini',
                 )
                 self.assertTrue(state['matched'])
-                self.assertEqual(state['source'], expected_source)
-                _usage(self.user, tokens=0).delete()
-                AIUsageRecord.objects.all().delete()
+                self.assertEqual(state['source'], expected)
+                self.assertAlmostEqual(state['pct'], round(pct[expected], 1), 1)
 
     def test_ac1_ties_prefer_narrower_scope_over_wider(self):
         _budget(user=self.user, limit_value=Decimal('100'))      # 80%

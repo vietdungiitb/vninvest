@@ -103,7 +103,8 @@ def _tenant_user_ids(tenant) -> 'set':
     return user_ids
 
 
-def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None):
+def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None) -> dict:
+    """Tong theo chieu trong chu ky: {'tokens', 'cost', 'requests'}."""
     """Tong theo chieu trong chu ky. Tra (tokens, cost, requests)."""
     from ai_analytics.models import AIUsageRecord
     from django.db.models import Sum
@@ -114,7 +115,7 @@ def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None
     elif tenant is not None:
         user_ids = sorted(_tenant_user_ids(tenant))
         if not user_ids:
-            return 0, Decimal('0'), 0
+            return {'tokens': 0, 'cost': Decimal('0'), 'requests': 0}
     else:
         user_ids = None
     if user_ids is not None:
@@ -128,7 +129,7 @@ def _usage_totals(user, tenant, model: str, provider: str, period: str, now=None
         tokens_in=Sum('tokens_in'), tokens_out=Sum('tokens_out'), cost=Sum('cost'),
     )
     tokens = int(agg['tokens_in'] or 0) + int(agg['tokens_out'] or 0)
-    return tokens, Decimal(agg['cost'] or 0), qs.count()
+    return {'tokens': tokens, 'cost': Decimal(agg['cost'] or 0), 'requests': qs.count()}
 
 
 def _dimension_value(dimension: str, usage: dict):
