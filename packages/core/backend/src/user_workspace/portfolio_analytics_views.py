@@ -1086,6 +1086,12 @@ class PortfolioAICommandCenterView(APIView):
             getattr(request.user, 'is_staff', False)
             or getattr(request.user, 'is_superuser', False)
         )
+        # R4.1: tenant policy quyết định user có tự mang khoá được không.
+        from advisory import tenant_policy as _tp
+        _policy_tenant = _tp.resolve_tenant(request)
+        system_policy_block = _tp.system_policy_block(
+            _tp.get_policy(_policy_tenant), tenant=_policy_tenant,
+        )
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
@@ -1093,7 +1099,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_api_key_configured': api_key_configured,
             'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
-            'system_policy': {'managed_by_platform': True},
+            'system_policy': system_policy_block,
             'custom_endpoint': custom_endpoint,
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
@@ -1140,6 +1146,18 @@ class PortfolioAICommandCenterView(APIView):
 
         payload = request.data if isinstance(request.data, dict) else {}
         metadata = dict(config.metadata or {})
+
+        # R4.1 AC3: cấu hình user vượt trần của tenant ⇒ 422 + liệt kê field vượt.
+        # Đặt TRƯỚC mọi ghi để request bị chặn không để lại thay đổi dở dang.
+        from advisory import tenant_policy as _tp
+        from vninvest_core.exceptions import UnprocessableEntityException
+        _policy_errors = _tp.check_user_settings(_tp.resolve_tenant(request), payload)
+        if _policy_errors:
+            raise UnprocessableEntityException(
+                detail='Cau hinh vuot gioi han cua tenant.',
+                code='tenant_policy_exceeded',
+                field_errors=_policy_errors,
+            )
 
         # Save to UserAICredential (BYOK SSOT) — per-user policy lives here only (Slice C)
         user_cred = self._get_or_create_user_credential(request.user)
@@ -1223,6 +1241,17 @@ class PortfolioAICommandCenterView(APIView):
 
         if 'ai_api_key' in payload:
             api_key = str(payload.get('ai_api_key') or '').strip()
+            # R4.1 AC2: tenant admin tắt BYOK ⇒ không cho lưu khoá riêng.
+            # Chặn ở đây (trước khi encrypt) để khoá không bao giờ chạm DB.
+            from advisory import tenant_policy as _tp
+            from vninvest_core.exceptions import UnprocessableEntityException
+            _byok_error = _tp.check_byok(_tp.resolve_tenant(request), api_key)
+            if _byok_error:
+                raise UnprocessableEntityException(
+                    detail='Tenant khong cho phep luu khoa API rieng (BYOK).',
+                    code='byok_not_allowed',
+                    field_errors=_byok_error,
+                )
             if api_key:
                 from identity_access.security import encrypt_user_api_key
                 user_cred.encrypted_api_key = encrypt_user_api_key(api_key)
@@ -1584,6 +1613,183 @@ class PortfolioAICommandCenterPolicyView(APIView):
             'system_model': config.ai_model or '',
             'managed_by_platform': True,
         })
+
+
+@extend_schema(
+    summary='PortfolioAICommandCenterTenantPolicyView (R4.1)',
+    description='Policy AI cấp tenant: allow_byok + allowlist provider/model + trần cấu hình user.',
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: envelope_response(),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAICommandCenterTenantPolicyView(APIView):
+    """GET/PUT `/workspace/ai-command-center/tenant-policy/` — R4.1.
+
+    **Vì sao cần view riêng, không thêm vào `.../policy/`.** `.../policy/`
+    (`:1522`) là cấp **hệ thống**: staff sửa `system_prompt_template`, và
+    `managed_by_platform` bị hardcode `True`. Ghi tenant policy vào đó sẽ trộn hai
+    tầng quyền: một thao tác sẽ vừa đổi template toàn hệ thống vừa đặt giới hạn
+    cho một tenant, và không có cách nào quay lại trạng thái trước.
+
+    Quyền: PUT cần `settings:write` (`required_workspace_permission`) — theo
+    `SYSTEM_ROLE_PERMISSIONS` chỉ `admin`/`owner` có, `editor` chỉ có
+    `settings:read`. Staff đọc được tenant khác bằng `?tenant=<tenant_code>` nhưng
+    **không** ghi được (AC5: staff xem tổng quan đa tenant, read-only).
+    """
+
+    permission_classes = [permissions.IsAuthenticated, WorkspacePermission]
+    # SAFE-04 convention của file này (`:1530`): khai `required_workspace_permission`
+    # trên CLASS, dùng khoá workspace. `broker_manage` -> `settings:write`, mà
+    # theo `SYSTEM_ROLE_PERMISSIONS` chỉ `admin`/`owner` có (editor chỉ `settings:read`).
+    required_workspace_permission = 'broker_manage'
+
+    @staticmethod
+    def _is_operator(request) -> bool:
+        return bool(
+            getattr(request.user, 'is_staff', False)
+            or getattr(request.user, 'is_superuser', False)
+        )
+
+    def _resolve_tenant(self, request):
+        """Tenant đọc/ghi. Không có tenant ⇒ 403, không phải 404.
+
+        Với staff, `?tenant=<tenant_code>` chọn tenant khác (AC5). Với người dùng
+        thường, tenant **luôn** là tenant của chính họ và tham số trong query bị
+        bỏ qua — nếu không, `?tenant=` sẽ là đường đọc policy tenant khác (AC4).
+        """
+        from advisory import tenant_policy as tp
+        from vninvest_core.exceptions import PermissionErrorException
+
+        tenant = tp.resolve_tenant(request, operator_hint=self._is_operator(request))
+        if tenant is None:
+            raise PermissionErrorException(
+                detail='Khong xac dinh duoc tenant cho yeu cau nay.',
+                code='idempotency_tenant_unresolved',
+            )
+        return tenant
+
+    def put(self, request):
+        from advisory import tenant_policy as tp
+        from advisory.models import AIAuditLog, AITenantPolicy
+        from vninvest_core.exceptions import UnprocessableEntityException
+
+        tenant = self._resolve_tenant(request)
+        if self._is_operator(request):
+            # AC5: staff đọc đa tenant, nhưng chỉ admin **tenant** mới đặt policy.
+            # Nếu staff cũng ghi được thì "tầng hệ thống" lại đè xuống tầng tenant,
+            # đúng cái lẫn lộn mà R4.1 sinh ra để chặn.
+            from vninvest_core.exceptions import PermissionErrorException
+
+            raise PermissionErrorException(
+                detail='Chi admin tenant moi duoc thay policy AI cua tenant.',
+                code='permission_error',
+            )
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        field_errors: dict[str, list[str]] = {}
+
+        allow_byok = payload.get('allow_byok')
+        if allow_byok is not None and not isinstance(allow_byok, bool):
+            field_errors['allow_byok'] = ['Phai la true hoac false.']
+
+        max_tokens = payload.get('max_tokens_per_day')
+        if max_tokens is not None:
+            try:
+                max_tokens = int(max_tokens)
+                if max_tokens < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                max_tokens = None
+                field_errors['max_tokens_per_day'] = ['Phai la so nguyen >= 0 (0 = khong tran).']
+
+        max_cost = payload.get('max_cost_per_day', ...)
+        cost_decimal = tp.defaults()['max_cost_per_day']
+        if max_cost is not ...:
+            cost_decimal = tp.cost_decimal(max_cost)
+            if cost_decimal is None and max_cost not in (None, ''):
+                field_errors['max_cost_per_day'] = ['Phai la so >= 0 hoac null.']
+
+        allowlists = {}
+        for field in ('allowed_providers', 'allowed_models'):
+            if field not in payload:
+                continue
+            value = payload.get(field)
+            if not isinstance(value, (list, tuple)):
+                field_errors[field] = ['Phai la danh sach chuoi.']
+                continue
+            allowlists[field] = [str(item).strip().lower() for item in value if str(item).strip()]
+
+        if field_errors:
+            raise UnprocessableEntityException(
+                detail='Payload policy khong hop le.',
+                code='tenant_policy_invalid',
+                field_errors=field_errors,
+            )
+
+        policy, _created = AITenantPolicy.objects.get_or_create(
+            tenant=tenant, defaults={'updated_by': request.user},
+        )
+        before = tp.as_payload(policy, tenant=tenant)
+
+        changed = False
+        if allow_byok is not None and policy.allow_byok != allow_byok:
+            policy.allow_byok = allow_byok
+            changed = True
+        if max_tokens is not None and int(policy.max_tokens_per_day or 0) != max_tokens:
+            policy.max_tokens_per_day = max_tokens
+            changed = True
+        if max_cost is not ...:
+            current_cost = policy.max_cost_per_day
+            if (current_cost is None) != (cost_decimal is None) or (
+                current_cost is not None and cost_decimal is not None
+                and current_cost != cost_decimal
+            ):
+                policy.max_cost_per_day = cost_decimal
+                changed = True
+        for field, value in allowlists.items():
+            if list(policy.allowed_providers if field == 'allowed_providers' else policy.allowed_models or []) != value:
+                if field == 'allowed_providers':
+                    policy.allowed_providers = value
+                else:
+                    policy.allowed_models = value
+                changed = True
+
+        if changed:
+            policy.version = int(policy.version or 0) + 1
+            policy.updated_by = request.user
+            policy.save(update_fields=[
+                'allow_byok', 'allowed_providers', 'allowed_models',
+                'max_tokens_per_day', 'max_cost_per_day', 'version',
+                'updated_by', 'updated_at',
+            ])
+            after = tp.as_payload(policy, tenant=tenant)
+            AIAuditLog.objects.create(
+                action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+                actor=request.user.username,
+                user=request.user,
+                tenant=tenant,
+                reason=f'Tenant admin doi AI tenant policy (v{before["version"]} -> v{after["version"]}).',
+                before_json=before,
+                after_json=after,
+                diff_summary=(
+                    f'tenant policy v{before["version"]} -> v{after["version"]}: '
+                    f'byok={after["allow_byok"]}, '
+                    f'tran={after["max_tokens_per_day"]} token/ngay'
+                ),
+            )
+        return envelope(tp.as_payload(policy, tenant=tenant))
+
+    def get(self, request):
+        from advisory import tenant_policy as tp
+
+        tenant = self._resolve_tenant(request)
+        policy = tp.get_policy(tenant)
+        payload = tp.as_payload(policy, tenant=tenant)
+        payload['read_only'] = self._is_operator(request)
+        return envelope(payload)
 
 
 @extend_schema(

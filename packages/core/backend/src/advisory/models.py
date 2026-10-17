@@ -838,3 +838,59 @@ class AITrace(models.Model):
 
     def __str__(self) -> str:
         return f'{self.step}@{self.trace_id} {self.symbol} [{self.status}]'
+
+
+class AITenantPolicy(models.Model):
+    """R4.1 — policy AI cấp **tenant** (quyền, không phải số).
+
+    Ranh giới SSOT với `AIBudget` (R2.8) là **có chủ đích**, và đây là lý do bảng
+    này không có `cost_per_day`/`tokens_per_day` thật:
+
+    - `AIBudget` giữ **con số** hạn mức (4 tầng × 3 chiều), đã có sẵn FK `tenant`.
+    - `AITenantPolicy` giữ **quyền**: có cho user tự mang khoá (BYOK) không, và
+      provider/model nào được phép.
+
+    Thêm `max_tokens_per_day` ở đây **không** phải hạn mức tiêu thụ — nó là **trần
+    cho cấu hình của user**: user không được tự khai `advisory_max_tokens_per_day`
+    cao hơn trần mà admin tenant đặt. `0` = không đặt trần (đúng nguyên tắc
+    "migration không backfill" của R2.8 AC9).
+
+    `version` tăng **mỗi lần** có thay đổi thực sự, đi kèm một dòng `AIAuditLog`
+    (AC6) — nên đổi policy luôn truy vết được ai đổi gì, lúc nào.
+    """
+
+    tenant = models.OneToOneField(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='ai_tenant_policy',
+        verbose_name='Tenant',
+    )
+    # AC2 — mặc định True để R4.1 không âm thầm chặn BYOK của tenant đang chạy.
+    allow_byok = models.BooleanField(default=True, verbose_name='Cho phép BYOK')
+    # Rỗng = cho phép tất cả (không hardcode danh mục provider vào DB).
+    allowed_providers = models.JSONField(default=list, blank=True, verbose_name='Provider được phép')
+    allowed_models = models.JSONField(default=list, blank=True, verbose_name='Model được phép')
+    max_tokens_per_day = models.PositiveIntegerField(
+        default=0, verbose_name='Trần token/ngày của user',
+        help_text='0 = không đặt trần cho cấu hình user.',
+    )
+    max_cost_per_day = models.DecimalField(
+        max_digits=12, decimal_places=6, null=True, blank=True,
+        verbose_name='Trần chi phí/ngày của user',
+        help_text='NULL = không đặt trần. Số hạn mức thật nằm ở AIBudget.',
+    )
+    version = models.PositiveIntegerField(default=0, verbose_name='Phiên bản')
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ai_tenant_policies_updated', verbose_name='Người sửa',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Tenant Policy'
+        verbose_name_plural = 'AI Tenant Policies'
+        ordering = ['tenant_id']
+
+    def __str__(self) -> str:
+        return f'{self.tenant_id} v{self.version} byok={self.allow_byok}'
