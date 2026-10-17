@@ -69,7 +69,9 @@ class CircuitBreaker:
         """Ghi 1 lần thất bại. Mở breaker khi chạm ngưỡng liên tiếp."""
         with self._lock:
             self._failures += 1
-            if self._failures >= self.failure_threshold and self._opened_at is None:
+            # Đang mở (hoặc half_open) mà lại thất bại => MỞ LẠI với cooldown mới,
+            # nếu không breaker sẽ kẹt ở half_open vĩnh viễn và cứ thử lại mãi.
+            if self._opened_at is not None or self._failures >= self.failure_threshold:
                 self._opened_at = self._now_fn()
                 logger.warning(
                     'Circuit breaker MO cho %s sau %d loi lien tiep (cooldown %.1fs)',
