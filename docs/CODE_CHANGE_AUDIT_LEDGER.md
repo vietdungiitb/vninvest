@@ -1,3 +1,14 @@
+## Entry 357: AI R2.9 retry + circuit breaker o tang client (2026-10-17)
+
+- **Nhanh**: `feat/ai-r29-retry` -> `dev`. Claim `ai-r29`. TDD: module chua co -> GREEN 20/20.
+- **Viec lam**: `advisory/health.py` (`CircuitBreaker` closed/open/half_open) + `RetryPolicy`/`complete_resilient`/`ProviderCircuitOpenError`/`reset_circuit_breakers` trong `ai_clients/base.py` + orchestrator goi `complete_resilient` + `AIDeployment` 3 knob (migration 0017).
+- **Gate**: 131 test advisory xanh (20 moi + 111 hoi quy) · check 0 · makemigrations --check 0 · pre-push 23/23. Evidence `docs/evidence/ai-cc/r29-gates.md`.
+- **Quyet dinh**: `complete()` giu la primitive 1 LAN, retry o `complete_resilient()` · AC7 chong 9 request bang **breaker dung chung theo provider** (`_BREAKERS` + lock), neu tao breaker theo instance thi 3 client = 3 breaker = AC7 hong · 401/403/400 khong retry · `Retry-After` duoc ton trong, thieu thi luuy thua.
+- **Loi thật da sua**: `record_failure` chi mo breaker khi `_opened_at is None` ⇒ `half_open` that bai **ket vinh vien** half_open (sua: dang mo ma that bai ⇒ mo lai voi cooldown moi) · `ProviderHTTPError` nhan `body` khong phai `body_text`.
+- **Bay moi**: (1) state cap module (breaker, token cache) **phai reset o setUp** — thieu la FAIL gia `calls == 0`; (2) **SSH `Connection reset` lam FAIL GIA** — chay lai xac nhan truoc khi sua code; (3) `normalize-eol --fix` truoc commit.
+- **CHUA CHAY**: call site `RetryPolicy.from_deployment` chua noi tu orchestrator (R2.6) · settings AI_PROVIDER_* chua khai (dung `getattr`) · endpoint health · full BE, ruff, E2E, staging.
+- **Tiep**: R2.6 (resolve_active_deployment + health endpoint + noi from_deployment), R2.10, R2.3, R2.5.
+
 ## Entry 356: AI R2.4 adapter copilot (2026-10-17)
 
 - **Nhanh**: `feat/ai-r24-copilot` -> `dev`. Claim `ai-r24`. TDD: ModuleNotFoundError tren VPS -> GREEN 25/25.
