@@ -94,8 +94,13 @@ class AITraceTestBase(TestCase):
             }},
         }
 
-    def run_orchestrator(self, client, **trace_ctx_extra):
-        """Chạy orchestrator thật, chỉ chặn tầng mạng + lookback (không cần DB bars)."""
+    def run_orchestrator(self, client, expect_error=False, **trace_ctx_extra):
+        """Chạy orchestrator thật, chỉ chặn tầng mạng + lookback (không cần DB bars).
+
+        Mặc định **không** nuốt exception: AC1/2/3 phải FAIL kèm traceback gốc nếu
+        orchestrator nổ, nếu không sẽ chỉ thấy "0 != 4" và mất nguyên nhân thật.
+        Chỉ `expect_error=True` (AC4) mới bắt lỗi — đó là lỗi **được kỳ vọng**.
+        """
         from advisory.orchestrator import AdvisoryOrchestrator
 
         trace_ctx = {
@@ -109,11 +114,14 @@ class AITraceTestBase(TestCase):
         with patch('advisory.orchestrator.get_ai_client', return_value=client), \
              patch('advisory.orchestrator.build_ohlcv_lookback_context', return_value=''), \
              patch('advisory.orchestrator.build_cvd_lookback_context', return_value=''):
-            try:
-                result = AdvisoryOrchestrator.run(self.context, 'VIC', trace_ctx=trace_ctx)
-            except Exception as exc:  # synthesis hỏng JSON ⇒ raise ⇒ vẫn phải có trace
-                result = exc
-        return result
+            if expect_error:
+                try:
+                    return AdvisoryOrchestrator.run(
+                        self.context, 'VIC', trace_ctx=trace_ctx)
+                except Exception as exc:  # lỗi synthesis là **kết quả mong đợi**
+                    return exc
+            return AdvisoryOrchestrator.run(
+                self.context, 'VIC', trace_ctx=trace_ctx)
 
 
 class AC1FourTracesTest(AITraceTestBase):
@@ -226,8 +234,12 @@ class AC4ErrorStillTracedTest(AITraceTestBase):
     def test_synthesis_invalid_json_is_traced_as_error(self):
         from advisory.models import AITrace
 
-        result = self.run_orchestrator(FakeClient(bad_synthesis_json=True))
-        self.assertIsNotNone(getattr(result, 'public_payload', None))
+        result = self.run_orchestrator(
+            FakeClient(bad_synthesis_json=True), expect_error=True)
+        self.assertIsNotNone(
+            getattr(result, 'public_payload', None),
+            f'orchestrator khong raise khi synthesis tra JSON hong: {result!r}',
+        )
         synth = AITrace.objects.get(step='synthesis')
         self.assertEqual(synth.status, AITrace.Status.ERROR)
         self.assertNotEqual(synth.error_code, '')
@@ -257,17 +269,28 @@ class AC5IndexesTest(TestCase):
         self.assertIn(('trace_id',), pairs)
 
     def test_indexes_really_exist_in_database(self):
+        """AC5 ở mức DB thật.
+
+        KHÔNG assert theo **tên** index: Postgres cắt tên ở 63 ký tự nên
+        `advisory_aitrace_user_id_session_date_...` thành `advisory_ai_user_id_e7df41_idx`
+        — tên bị cắt mất `session_date`. Phải đọc **cột** trong `indexdef`.
+        """
         from django.db import connection
         from advisory.models import AITrace
 
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT indexname FROM pg_indexes WHERE tablename = %s",
+                "SELECT indexdef FROM pg_indexes WHERE tablename = %s",
                 [AITrace._meta.db_table],
             )
-            names = {r[0] for r in cur.fetchall()}
+            defs = [r[0] for r in cur.fetchall()]
+        composite = [d for d in defs if '(user_id, session_date)' in d]
         self.assertTrue(
-            any('user' in n and 'session_date' in n for n in names), names)
+            composite,
+            f'khong tim thay index (user_id, session_date) trong {defs}')
+        self.assertTrue(
+            any('trace_id' in d for d in defs),
+            f'khong tim thay index theo trace_id trong {defs}')
 
 
 class AC6RetentionTest(TestCase):
@@ -298,15 +321,17 @@ class AC6RetentionTest(TestCase):
         from advisory.models import AITrace
         from advisory.trace import purge_traces_older_than
 
+        # 89 ngày = **trong** ngưỡng (số nguyên). Biên 91 ngày thuộc nhóm xoá —
+        # bản đầu của test này đặt 91 rồi lại kỳ vọng nó sống ⇒ tự mâu thuẫn.
         old = self._make(120)
-        edge = self._make(91)
+        just_inside = self._make(89)
         fresh = self._make(10)
 
         deleted = purge_traces_older_than(days=90)
 
         self.assertEqual(deleted, 1)
         self.assertFalse(AITrace.objects.filter(pk=old.pk).exists())
-        self.assertTrue(AITrace.objects.filter(pk=edge.pk).exists())
+        self.assertTrue(AITrace.objects.filter(pk=just_inside.pk).exists())
         self.assertTrue(AITrace.objects.filter(pk=fresh.pk).exists())
 
     def test_task_is_registered_as_shared_task(self):
