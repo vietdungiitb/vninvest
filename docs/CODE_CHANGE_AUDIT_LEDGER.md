@@ -1,3 +1,61 @@
+## Entry 362: AI M2 — đo lại sau merge R2, sửa 3 lỗi chỉ lộ khi đo (2026-10-17)
+
+- **Nhanh**: `chore/ai-m2-closeout` -> `dev`. Claim `ai-m2`. Không có slice BE mới —
+  M2 là **đo lại** trạng thái sau khi merge 10 slice R2, không tin số liệu từng slice báo.
+- **Ly do co mat M2**: mỗi R2 slice GREEN riêng trên nhánh của nó, nhưng `dev` là hợp của
+  10 nhánh mà **R0.4** (readiness struct) và **R2.5** (openclaw fail-closed) sua **cung mot
+  khai niem** (`ai_ready`). Chay tung slice **khong** bat duoc mau thuan nay.
+- **3 loi that lo ra khi merge** (bang chung 340 test, khong phai doan):
+  1. **`ai_ready` hai noi tinh** — `:1041` (GET) va `:1367` (PUT) van dung cong thuc
+     `api_key_configured or provider in ('openclaw','local')`, trong khi `ai_readiness`
+     goi `build_ai_readiness` (sau R2.5 tra `ready=False` cho openclaw chua cau hinh).
+     `test_get_has_readiness_struct_matching_ready` FAIL `False != True`. **Day la
+     regression do chinh R2.5 cua toi** — `build_ai_readiness` doi ma 2 noi tinh viet
+     tay khong duoc sua theo. Sua: helper `_ai_ready_flag()` + tinh `readiness` **mot lan**
+     roi dung lai cho ca `ai_ready` lan `ai_readiness` (4 cho da sua, het cong thuc cu).
+  2. **Test khoa hanh vi da loi thoi** — `test_put_unknown_provider_400` con khoa `copilot`
+     la provider la (R0.5 da go) trong khi R2.4 da bat lai copilot voi client 2-buoc that
+     ⇒ `200 != 400`. Chuyen `copilot` sang nhom hop le, **khong bo assertion**.
+  3. **Allow-list `reason_code` cu** — `test_ai_cc_r04_r05.py:58` cho phep 3 ma, R2.5 them
+     ma thu 4 `not_probed` ⇒ `AssertionError: 'not_probed' not found`. Them vao allow-list:
+     day la hop dong da chot (plan `:207` liet ke san, `test_ai_client_openclaw.py:131,141`
+     khang dinh 2 lan) — **khong phai** nong loi test.
+- **Do that**: `bash /tmp/vps-m2-test.sh <27 module AI>` tren VPS Postgres thay
+  (`ai_m2` @ `172.19.0.4`, container `vninvest-core-api:staging`) ⇒ **340/340 OK**
+  (truoc fix `failures=2 errors=5`). Day la lan dau **toan bo** test AI chay tren ket qua
+  merge. So lieu tung slice (69/91/104/146/131/206/207/230/273) **khong cong duoc, khong so
+  sanh duoc** — moi lan chay mot danh sach module khac nhau; 340 la baseline cho R3.
+- **`errors=5` ban dau KHONG phai bug**: toi liet ke 5 ten test theo *plan* thay vi ten file
+  that (`ModuleNotFoundError`). Da thay bang danh sach 27 module co that.
+- **Doi hanh vi user-facing (co y)**: user khong co `UserAICredential` di vao nhanh legacy
+  (`:1020`, provider mac dinh `'openclaw'`) chuyen `ai_ready` `true` -> `false` +
+  `reason_code='not_probed'`. Dung y R2.5 (truoc do UI bao "san sang" cho dich vu chua tung
+  duoc goi). FE doc o `AICommandCenterPage.tsx:110`; FE **khong** switch theo `reason_code`
+  (da grep toan `packages/web`) ⇒ **khong sua FE**.
+- **Gate chay that**: BE AI **340/340 OK** - `manage.py check` 0 issue - pre-push
+  **23 PASS / 0 FAIL** (`openapi-budget` `Errors=32` khong doi) - `npx tsc --noEmit` 0 -
+  `npm run build` 0 (`built in 1m 5s`) - `check:ai-cc-dag` PASS 46 nut / 61 canh / 0 vong /
+  0 dangling / 5 nut goc - `check-ai-cc` SACH - `lint` 0 error / 4067 warning.
+- **BAY PHAI NHO (moi trong slice nay)**:
+  1. **Chen code giua `@extend_schema` va `class`** ⇒ mat decorator ⇒ `openapi-budget`
+     FAIL `Errors 32 -> 40`. **`manage.py check` KHONG bat** (decorator hong chi lo khi
+     spectacular dung schema). Phai doc lai `openapi-budget` sau moi lan chen ham vao file view.
+  2. **PowerShell hien thi tieng Viet thanh `?` — GIA**, file UTF-8 dung hoàn toàn.
+     Da suy sua sua nham. Kiem chung bang `read` tool / dem byte, **khong tin** output console.
+  3. **Ten test trong plan khong phai ten file that** — `ls` thu muc test truoc khi dat danh sach.
+  4. `edit` khop **lan xuat hien dau tien** — `oldString` phai du dai (da gap o R2.5).
+- **CHUA CHAY** (khong bao PASS): R2.10 AC8 probe that `gemini-3.8-flash` (staging **khong co**
+  key env; 1 dong `UserAICredential` gemini **khong giai ma duoc** Fernet trong container; khong
+  co token `ghu_`) ⇒ cau hoi "gemini co con dung duoc khong" **van mo** · R2.5 adapter openclaw
+  that cho **D-03c** (5 thong tin Owner) · **phan FE cua R2** (AC4 nut tai danh muc, AC13 4 trang
+  thai + link `ghu_`, `providerModels.ts`, 6 i18n key x 2 locale, FE cua AC5/AC9) ·
+  `routing_decision` R2.6 cho ghi trace (cho R3.1) · `cost_per_1k` chua noi AICostRate → budget ·
+  full BE ngoai advisory · `ruff` · E2E · staging deploy · credential gemini hong **khong co luong
+  nao bao** cho nguoi dung.
+- **R2 chot 10/10 slice** (Entry 352/353/354/355/356/357/358/359/360/361 · 20 PR · 178 test moi).
+  Chi tiet bang 10 slice + bang bay: `docs/evidence/ai-cc/R2-M2-CLOSEOUT.md`.
+- **Tiep**: **R3.1 `AITrace`** — noi `routing_decision` cua R2.6 + nen cho AC13/audit cua R3.
+
 ## Entry 361: AI R2.5 openclaw fail-closed + xoa 2 test khoa hanh vi gia (2026-10-17)
 
 - **Nhanh**: `feat/ai-r25-openclaw` -> `dev`. Claim `ai-r25`. TDD: factory raise `FactoryError` + readiness `ready=True` gia + test-connection 200 gia -> GREEN 16/16.

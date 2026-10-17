@@ -914,6 +914,20 @@ class PortfolioAIAdvisoryRefreshView(APIView):
         )
 
 
+def _ai_ready_flag(user_cred) -> bool:
+    """Nguon su that DUY NHAT cho `ai_ready` (M2 fix: truoc day co hai noi tinh
+    khac nhau nen `ai_ready` va `ai_readiness.ready` tra loi nhau).
+
+    R2.5 doi openclaw sang fail-closed nen 'co key hoac la provider mac dinh'
+    khong con du de ket luan san sang.
+    """
+    from advisory.advisory_helpers import build_ai_readiness
+
+    return bool(build_ai_readiness(
+        getattr(user_cred, 'ai_provider', ''),
+        api_key_configured=bool(getattr(user_cred, 'encrypted_api_key', '')),
+    )['ready'])
+
 @extend_schema(
     summary='PortfolioAICommandCenterView (native route)',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
@@ -1024,7 +1038,12 @@ class PortfolioAICommandCenterView(APIView):
                 except Exception:
                     api_key_masked = '••••••••'
 
-        ai_ready = api_key_configured or (provider == 'openclaw') or (provider == 'local')
+        # M2: `ai_ready` lay tu `build_ai_readiness` — cong thuc rieng o day
+        # (`api_key_configured or provider in ('openclaw','local')`) lech voi
+        # readiness struct sau R2.5 (openclaw fail-closed), nen GET/PUT tra loi
+        # `ai_readiness.ready` va `ai_ready` nguoc nhau. Tinh MOT LAN, dung lai.
+        readiness = build_ai_readiness(provider, api_key_configured)
+        ai_ready = readiness['ready']
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
 
@@ -1072,7 +1091,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
-            'ai_readiness': build_ai_readiness(provider, api_key_configured),
+            'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
             'system_policy': {'managed_by_platform': True},
             'custom_endpoint': custom_endpoint,
@@ -1152,7 +1171,10 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': user_cred.ai_model or config.ai_model,
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
-            'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
+            # R2.5/M2: `ai_ready` PHẢI lấy từ `build_ai_readiness` — trước đây có
+            # hai nguồn sự thật và chỗ này vẫn báo openclaw sẵn sàng, trái với
+            # readiness struct (vi phạm chính hợp đồng R0.4 mà test chốt).
+            'ai_ready': _ai_ready_flag(user_cred),
             'advisory_refresh_interval_hours': int(before_refresh),
             'advisory_max_auto_refreshes_per_day': int(before_max_auto),
             'advisory_max_tokens_per_day': int(before_max_tokens),
@@ -1303,7 +1325,10 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': user_cred.ai_model or config.ai_model,
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
-            'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
+            # R2.5/M2: `ai_ready` PHẢI lấy từ `build_ai_readiness` — trước đây có
+            # hai nguồn sự thật và chỗ này vẫn báo openclaw sẵn sàng, trái với
+            # readiness struct (vi phạm chính hợp đồng R0.4 mà test chốt).
+            'ai_ready': _ai_ready_flag(user_cred),
             'advisory_refresh_interval_hours': int(
                 user_cred.refresh_interval_hours
                 if user_cred.refresh_interval_hours is not None else sys_refresh
@@ -1344,7 +1369,17 @@ class PortfolioAICommandCenterView(APIView):
         provider = user_cred.ai_provider or 'openai'
         model = user_cred.ai_model or config.ai_model
         api_key_configured = bool(user_cred.encrypted_api_key)
-        ai_ready = api_key_configured or (provider in ('openclaw', 'local'))
+        # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
+        from advisory.advisory_helpers import (
+            _parse_prompt_config as _parse_pc_put,
+            build_ai_readiness as _build_readiness_put,
+        )
+        # M2: `ai_ready` lay tu `build_ai_readiness` — truoc day cong thuc rieng
+        # (`api_key_configured or provider in ('openclaw','local')`) lech voi
+        # readiness struct sau R2.5, nen GET/PUT tra loi `ready` va `ai_ready`
+        # nguoc nhau. Tinh MOT LAN va dung lai cho ca hai truong.
+        readiness = _build_readiness_put(provider, api_key_configured)
+        ai_ready = readiness['ready']
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
         api_key_masked = ''
@@ -1356,11 +1391,6 @@ class PortfolioAICommandCenterView(APIView):
             except Exception:
                 api_key_masked = '••••••••'
 
-        # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
-        from advisory.advisory_helpers import (
-            _parse_prompt_config as _parse_pc_put,
-            build_ai_readiness as _build_readiness_put,
-        )
         # R0.9 lop A/B (nhu GET): template he thong chi staff thay.
         is_operator_put = bool(
             getattr(request.user, 'is_staff', False)
@@ -1371,7 +1401,7 @@ class PortfolioAICommandCenterView(APIView):
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
-            'ai_readiness': _build_readiness_put(provider, api_key_configured),
+            'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
             'system_policy': {'managed_by_platform': True},
             'custom_endpoint': user_cred.custom_endpoint or '',

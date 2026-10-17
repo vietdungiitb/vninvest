@@ -57,6 +57,10 @@ class ReadinessStructTests(TestCase):
         self.assertEqual(readiness['ready'], body['ai_ready'])
         self.assertIn(readiness['reason_code'], {
             'ok_configured', 'missing_api_key', 'system_default_no_key_needed',
+            # R2.5 (2026-10-17) them `not_probed`: `openclaw` thieu cau hinh thi
+            # `ready=False` thay vi "luon san sang". User legacy khong co
+            # `UserAICredential` rơi vao nhanh nay nen allow-list cu da het dung.
+            'not_probed',
         })
         self.assertIn('checked_at', readiness)
         self.assertEqual(readiness['ttl_seconds'], 300)
@@ -88,14 +92,16 @@ class ProviderMembershipTests(TestCase):
         )
 
     def test_put_unknown_provider_400(self):
-        for provider in ('copilot', 'xyz-broker', ''):
+        # R2.4 (2026-10-17) bat lai `copilot` voi client 2-buoc that ⇒ no khong
+        # con la "provider la" nua. R2.5 them `openclaw` client fail-closed.
+        for provider in ('xyz-broker', ''):
             with self.subTest(provider=provider):
                 r = self.client.put(
                     CC_URL, {'ai_provider': provider}, format='json')
                 self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_put_known_providers_accepted(self):
-        for provider in ('openai', 'gemini', 'local', 'openclaw', 'claude'):
+        for provider in ('openai', 'gemini', 'local', 'openclaw', 'claude', 'copilot'):
             with self.subTest(provider=provider):
                 r = self.client.put(
                     CC_URL, {'ai_provider': provider}, format='json')
