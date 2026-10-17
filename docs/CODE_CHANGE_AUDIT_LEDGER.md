@@ -1,3 +1,13 @@
+## Entry 358: AI R2.6 health check + auto-evict + routing (2026-10-17)
+
+- **Nhanh**: `feat/ai-r26-routing` -> `dev`. Claim `ai-r26`. TDD: ModuleNotFoundError tren VPS (worktree tai `99e3a634f`) -> GREEN 22/22.
+- **Viec lam**: `advisory/routing.py` (3 chien luoc deterministic + decision log + `NoHealthyDeploymentError` 503) + `AIHealthCheck` + `AIDeployment` 5 field (`auto_evicted`/latency/cost/2 bo dem) + task `probe_deployments_health` (evict 3 lan, khoi phuc 2 lan) + beat 5 phut + `orchestrator._resolve_routing`. Migration 0018 + 0019.
+- **Gate**: 206 test advisory xanh (22 moi + 184 hoi quy) · check 0 · makemigrations --check 0 · pre-push 23/23. Evidence `docs/evidence/ai-cc/r26-gates.md`.
+- **Quyet dinh**: `auto_evicted` **bat buoc** — loc `enabled=True` se khien deployment bi evict khong bao gio duoc probe lai => mat dich vu vinh vien; gio probe `Q(enabled=True)|Q(auto_evicted=True)` con `enabled=False, auto_evicted=False` ( quan tri tat tay) thi khong dung. Chi bat/tat `enabled` o MOT cho. Chien luoc la -> `ValueError`. Chua so do -> day xuong cuoi.
+- **BAY NGHIEM TRONG** (hoi quu moi bat duoc): **tinh ca XOA MAT `_write_advisory_usage_record`** khi splice block vao `tasks.py` bang marker van ban -> `test_ai_pricing` 4 errors + `usage_instrumentation` 2 failures; khoi phuc tu `git show 726249eab`. **Khong splice file bang marker** - dung `edit` co doi chieu. `git show > file` trong PowerShell ghi UTF-16LE. **Lenh PowerShell parse loi thi KHONG CHAY gi ca** - phai `git grep` xac nhan sau khi patch.
+- **CHUA CHAY**: ghi `routing_decision` vao trace (can R3.1) · `cost_per_1k` chua noi tu `AICostRate` · `AI_ROUTING_STRATEGY` doc qua `getattr` · full BE, ruff, E2E, staging.
+- **Tiep**: R2.10 (catalog endpoint + noi `RetryPolicy.from_deployment`), R2.3, R2.5, M2, R3.
+
 ## Entry 357: AI R2.9 retry + circuit breaker o tang client (2026-10-17)
 
 - **Nhanh**: `feat/ai-r29-retry` -> `dev`. Claim `ai-r29`. TDD: module chua co -> GREEN 20/20.
