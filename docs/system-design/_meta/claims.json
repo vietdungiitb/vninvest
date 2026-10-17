@@ -37,9 +37,9 @@
     {
       "id": "C-005",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "43 lịch Celery beat",
+      "docQuote": "44 lịch Celery beat",
       "fact": "beatEntries",
-      "expected": 43,
+      "expected": 44,
       "why": "Lich beat moi doi hanh vi nen (ingest/warmup) va 05.01."
     },
     {
