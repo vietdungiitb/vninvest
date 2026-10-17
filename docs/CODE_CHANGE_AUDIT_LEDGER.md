@@ -1,3 +1,12 @@
+## Entry 354: AI R2.7 AICostRate + snapshot gia (2026-10-17)
+
+- **Nhanh**: `feat/ai-r27-pricing` -> `dev`. Claim `ai-r27`. TDD: ModuleNotFoundError tren VPS (commit RED 8546284bf) -> GREEN 22/22.
+- **Viec lam**: model `AICostRate` + migration 0015, module `advisory/pricing.py` (snapshot / resolve_cost / import JSON idempotent / format_cost_for_display), tasks ghi cost that, admin.
+- **Gate**: 91 test advisory xanh (22 moi + 69 hoi quy) · makemigrations --check 0 · pre-push 23/23. Evidence `docs/evidence/ai-cc/r27-gates.md`.
+- **Bay moi**: regen system-design **can `PYTHONUTF8=1`** (cp1252 -> gate bao lech gia) · `makemigrations` phai **truoc** regen · import trung `(provider, model, effective_from)` bao `skipped` khong update (AC3).
+- **CHUA CHAY**: AC4 UI, task Celery import pricing file, full BE, ruff, E2E, staging.
+- **Tiep**: R2.8 budget 3 muc.
+
 ## Entry 353: AI R2.2 factory get_ai_client (2026-10-17)
 
 - **Nhanh**: `feat/ai-r22-factory` -> `dev`. Claim `ai-r22`. TDD: ModuleNotFoundError tren dev -> GREEN 6/6 (VPS).
