@@ -283,15 +283,24 @@ class AuditLogCreationViaTestConnectionTests(TestCase):
         grant_tenant(self.user, role='admin', tenant_code='test-audit-tenant')
         self.client.force_authenticate(user=self.user)
 
-    def test_openclaw_creates_success_audit_log(self):
+def test_openclaw_unconfigured_creates_failure_audit_log(self):
+        """R2.5 AC4: xoá `test_openclaw_creates_success_audit_log`.
+
+        Audit **success** cho provider chưa cấu hình là dấu hiệu "số liệu đẹp vì
+        không đo gì cả". Nay phải ghi `test_connection_failed`.
+        """
         response = self.client.post(
             '/core/v1/workspace/ai-command-center/test-connection/',
             {'ai_provider': 'openclaw', 'ai_model': 'gpt-4o-mini'},
-            format='json',
+            format='json'
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        logs = AIAuditLog.objects.filter(action='test_connection_success')
-        self.assertGreaterEqual(logs.count(), 1)
+        self.assertNotEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            AIAuditLog.objects.filter(action='test_connection_failed').exists(),
+        )
+        self.assertFalse(
+            AIAuditLog.objects.filter(action='test_connection_success').exists(),
+        )
 
     def test_missing_key_creates_failure_audit_log(self):
         response = self.client.post(
