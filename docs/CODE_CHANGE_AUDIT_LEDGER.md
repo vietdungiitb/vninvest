@@ -1,3 +1,25 @@
+## Entry 367: Verify staging sau R3 — migration `0020` + 2 endpoint + 2 trang FE co that tren VPS (2026-10-17)
+
+- **Nhanh**: `chore/ai-staging-verify` -> `dev`. Claim `ai-stg`. KHONG sua runtime — chi deploy va do.
+- **Ly do**: R3.1/R3.2/R3.3 deu ket thuc bang dong **"CHUA CHAY"**: *"chua biet migration 0020 co chay duoc tren staging that hay khong"*, *"chua mo trang tren staging"*. AGENTS.md chot VPS la **moi truong thu nghiem mac dinh** ⇒ nợ nay du can cu de dong.
+- **Quy trinh**: `bash scripts/deploy-staging.sh --verify` (truoc, exit 0: 13 container running, health 2xx) ⇒ `bash scripts/deploy-staging.sh` (that) ⇒ `--verify` sau (config hop le · API healthy · health 2px · khong container chet · 4 worker **0 restart**).
+- **DO THAT tren DB staging `vninvest_core`**:
+  - `django_migrations` advisory: **`0020_aitrace`** (tren `0019_aideployment_auto_evicted`) ⇒ **migration chay duoc tren staging thật** — dong no cua M3/R3.1 **DA DONG**.
+  - Bang `advisory_aitrace`: **18 cot** (khop so field cua model).
+  - Index AC5 co that: `advisory_ai_user_id_e7df41_idx … btree (user_id, session_date)` + `advisory_ai_trace_i_852d96_idx … btree (trace_id)` + UNIQUE `uniq_aitrace_traceid_step (trace_id, step)`.
+  - Beat `purge-ai-traces` co trong `settings.CELERY_BEAT_SCHEDULE`; `core-beat` tra loi `celery@…: OK`.
+- **DO THAT tren HTTP (qua nginx staging)**:
+  - `/api/core/v1/workspace/ai-command-center/traces/` ⇒ **401** (R3.2) — route **da song**, chan dung.
+  - `/api/core/v1/ai/usage/slo/` ⇒ **401** (R3.3) — route **da song**, chan dung.
+  - `/api/core/v1/ai/usage/aggregate/` (route cu, doi chieu) ⇒ 401 **giong het** ⇒ 401 la do **auth**, khong phai route hong.
+- **DO THAT artifact FE trong container** (khong tin log build): `AICommandTracesPage-xMXWUjNt.js` chua `aiCommandCenter.emptyTraces` · `AISloDashboardPage-C_mYqUMC.js` chua `aiCommandCenter.sloEmpty` · `index-B102loMI.js` + `AiHubNav-CQzJByp2.js` chua `settings/ai/traces` va `settings/ai/slo` ⇒ ca 2 route + 2 tab **co that trong `dist` dang serve**.
+- **BAY PHAI NHO (da gay su co that, khong lien quan code dang viet)**:
+  1. **KHONG pipe output gate vao `Select-Object -First`** — self-test `tools/opencode-global/verify-shim.mjs` **co y rename** file canonical (`agent-preflight.mjs` → `.agent-preflight.hidden.mjs`) roi khoi phuc trong `finally`; bi kill giua chung ⇒ file nam lai dang an ⇒ **6 gate FAIL cung luc** (`secret-scan` ENOENT, `preflight-selftest` 0/26, `hook-mode`, `shim-delegate`, `preflight-trailer`, `global-config-drift`). De xay mau FAIL **khong lien quan** ⇒ rat de ket luan nham la loi cua minh.
+  2. Khoi phuc file bang PowerShell `Out-File -Encoding utf8` tao **BOM** + lech **426 dong** du noi dung giong het ⇒ phai khoi phuc byte-exact bang `git show HEAD:<path>` + `writeFileSync` (`git checkout --` bi cam — L-A01).
+  3. `global-config-drift` FAIL vi ban deployed `~/.opencode/scripts/agent-preflight.mjs` bi **CRLF** (426 byte = 426 CR, 427 dong noi dung khop) ⇒ sua dung file do.
+  4. Ten DB staging **khong phai** `POSTGRES_DB` trong env — phai do `psql -l` moi thay `vninvest_core`.
+- **VAN MO (khong dong duoc bang phien nay)**: **probe provider that** — staging **khong co** key dung duoc ⇒ `AIUsageRecord` rong va `advisory_aitrace` co **0 dong** ⇒ 2 trang moi se hien empty state (dung nhu da ghi, nhung **chua ai nhin thay** nhanh "co du lieu"; no phu thuoc Owner) · **E2E Playwright** tren staging · **hieu nang percentile** tren tap du lieu thuc (test 1000 dong; backlog **R3.3b**) · full BE ngoai advisory+AI · `ruff`.
+
 ## Entry 366: AI R3.3 — dashboard SLO LLM: p50/p95/p99 tinh **trong DB** + rang buoc AC1 sua theo hien thuc (2026-10-17)
 
 - **Nhanh**: `feat/ai-r33-slo-dashboard` -> `dev`. Claim `ai-r33`. TDD: RED `17 test · failures=2 · errors=16` -> GREEN **17/17** BE + **10/10** FE.
