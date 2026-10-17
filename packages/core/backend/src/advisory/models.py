@@ -7,6 +7,7 @@ SystemAISettings: runtime AI configuration (model, token budget, prompt template
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
 import uuid
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.db import models
@@ -548,6 +549,78 @@ class AICostRate(models.Model):
 
     def __str__(self) -> str:
         return f'{self.provider}/{self.model}@{self.effective_from}'
+
+
+class AIBudget(models.Model):
+    """
+    R2.8: han muc AI theo 4 tang x 3 chieu, soft_ratio / hard 100%.
+
+    **1 dong = 1 han muc tren 1 chieu.** So sanh "muc chặt nhat" giua USD voi
+    token khong co nghia => `dimension` tach rieng. `user`/`tenant`/`model`/
+    `provider` de NULL/rong = ap dung cho moi (tang `system`).
+
+    Chieu `cost` **khong ap dung** cho provider tinh theo han muc (copilot):
+    cost luon 0 nen ngan sach do khong bao gio binding (AC8) - dung `requests`.
+    """
+
+    class PeriodChoices(models.TextChoices):
+        DAILY = 'daily', 'Ngày'
+        WEEKLY = 'weekly', 'Tuần'
+        MONTHLY = 'monthly', 'Tháng'
+
+    class DimensionChoices(models.TextChoices):
+        COST = 'cost', 'Chi phí (USD)'
+        TOKENS = 'tokens', 'Token'
+        REQUESTS = 'requests', 'Số request'
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_budgets', verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ai_budgets', verbose_name='Tenant',
+    )
+    provider = models.CharField(
+        max_length=32, default='', blank=True, verbose_name='Nhà cung cấp',
+        help_text='Rỗng = mọi provider.',
+    )
+    model = models.CharField(
+        max_length=64, default='', blank=True, verbose_name='Mô hình',
+        help_text='Rỗng = mọi mô hình.',
+    )
+    period = models.CharField(
+        max_length=8, choices=PeriodChoices.choices, default=PeriodChoices.DAILY,
+        db_index=True, verbose_name='Chu kỳ',
+    )
+    dimension = models.CharField(
+        max_length=8, choices=DimensionChoices.choices,
+        default=DimensionChoices.TOKENS, db_index=True, verbose_name='Chiều',
+    )
+    limit_value = models.DecimalField(
+        max_digits=12, decimal_places=6, verbose_name='Hạn mức',
+    )
+    soft_ratio = models.DecimalField(
+        max_digits=4, decimal_places=2, default=Decimal('0.80'),
+        verbose_name='Ngưỡng cảnh báo',
+    )
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Đang bật')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Budget'
+        verbose_name_plural = 'AI Budgets'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'tenant', 'provider', 'model', 'period', 'dimension'],
+                name='uniq_aibudget_scope_period_dimension',
+                nulls_distinct=False,
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.get_dimension_display()} ≤ {self.limit_value} ({self.get_period_display()})'
 
 
 class AIAuditLog(models.Model):
