@@ -77,7 +77,7 @@ function" trong plan là cách nói **không hiện thực được** với perc
 ## CHƯA CHẠY (không báo PASS)
 
 - **Chưa mở trên staging thật** ⇒ chưa biết dashboard hiển thị ra sao với dữ liệu thật.
-- **Chưa chạy E2E Playwright** (đổi range �� đổi tab ⇒ chart đổi).
+- **Chưa chạy E2E Playwright** (đổi range rồi đổi tab ⇒ chart đổi theo).
 - **Staging chưa có dữ liệu usage** (không có key provider — R2.10 AC8 vẫn mở từ M2) ⇒
   sẽ thấy empty state. Đúng, nhưng chưa ai nhìn thấy nhánh "có số liệu".
 - Chưa đo hiệu năng trên tập dữ liệu lớn — test dùng 1000 bản ghi. Backlog R3.3b của
