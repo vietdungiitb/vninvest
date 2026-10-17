@@ -25,7 +25,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 const FIX = process.argv.includes("--fix");
 
@@ -66,6 +66,10 @@ function headEol(file) {
 }
 
 function worktreeEol(file) {
+  // File da bi `git rm` (co trong index, khong con tren dia) ⇒ skip. Khong co
+  // guard nay, hook `pre-commit` chet voi ENOENT **moi khi xoa file**, va thong
+  // bao L-T01 sai lam nguoi doc tu cho la file do lech line-ending.
+  if (!existsSync(file)) return "none";
   const buf = readFileSync(file);
   let crlf = 0;
   let lf = 0;
@@ -93,6 +97,11 @@ const targets = changedFiles();
 const mismatched = [];
 
 for (const file of targets) {
+  // File da bi xoa (`git rm`): van con trong index nhung khong con tren dia.
+  // Khong co noi dung de chuan hoa ⇒ bo qua. Khong co guard nay, hook
+  // `pre-commit` chet voi ENOENT **moi khi xoa file**, va thong bao L-T01
+  // sai lam nguoi doc tu cho la file do lech line-ending.
+  if (!existsSync(file)) continue;
   const want = headEol(file);
   const have = worktreeEol(file);
   if (want === "new" || want === "none") continue;

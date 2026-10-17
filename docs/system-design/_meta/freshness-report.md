@@ -9,7 +9,7 @@
 |---|---|---|
 | djangoApps | 15 | C-001 |
 | models | 116 | C-002 |
-| migrations | 133 | C-003 |
+| migrations | 132 | C-003 |
 | composeStacks | 10 | C-004 |
 | beatEntries | 45 | C-005 |
 | systemDesignFiles | 44 | C-006 |
