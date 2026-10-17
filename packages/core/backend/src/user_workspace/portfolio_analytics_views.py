@@ -1683,13 +1683,10 @@ class PortfolioAICommandCenterTestView(APIView):
                 diff_summary=f'Test connection {provider}/{model}: {message}',
             )
 
-        # openclaw: system default, luôn ready
-        if provider == 'openclaw':
-            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, 'OpenClaw mặc định luôn sẵn sàng.')
-            return envelope({
-                'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.',
-                'latency_ms': 0,
-            })
+        # R2.5 AC4: XOÁ nhánh "openclaw luôn sẵn sàng".
+        # Trước đây trả 200 + latency 0 **chưa từng gọi dịch vụ** — audit success
+        # cho một provider chưa cấu hình. Nay openclaw đi qua client thật và trả
+        # `openclaw_not_configured` / `openclaw_spec_missing` (503).
 
         # local: active probe đến endpoint Ollama/vLLM
         if provider == 'local':

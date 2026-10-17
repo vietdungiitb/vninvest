@@ -226,6 +226,6 @@ class OpenClawUsageRecordTests(TestCase):
 
         # openclaw chưa có bảng giá => cost 0 + pricing_available False.
         cost, available = resolve_cost('openclaw', 'gpt-4o-mini', 1000)
-        self.assertEqual(str(cost), '0')
+        self.assertEqual(cost, 0)
         self.assertFalse(available)
         self.assertFalse(is_tiered_provider('openclaw'))
