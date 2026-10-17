@@ -351,6 +351,55 @@ class AC6RetentionTest(TestCase):
         self.assertIn('schedule', entry)
 
 
+class SyncOnlyOperationRegressionTest(AITraceTestBase):
+    """Chặn regression cho P0 tiền có của R2.6 — lỗi này **không do R3.1 gây ra**.
+
+    `_resolve_routing` đọc `AIDeployment.objects.all()` (DB). Gọi nó bên trong
+    event loop ⇒ Django ném `SynchronousOnlyOperation`. Vì `run()` bọc
+    `asyncio.run(run_async(...))` nên **mọi** lần sinh advisory từ R2.6 đều sập ở
+    đó — mà 340 test của M2 vẫn xanh vì không test nào chạy `run_async` thật.
+
+    Đã tái hiện trên `dev` đã merge (`209e4c46d`) bằng probe độc lập trước khi sửa.
+    """
+
+    def test_real_run_path_does_not_raise_sync_only_operation(self):
+        """Đường thật (`run()` → `asyncio.run(run_async)`) phải chạy được.
+
+        AC1 chỉ assert **đếm trace**, nên lỗi này sẽ hiện ra dưới dạng "0 != 4"
+        và che mất nguyên nhân. Test này assert đúng tên exception đã bị xoá.
+        """
+        from django.core.exceptions import SynchronousOnlyOperation
+
+        from advisory.orchestrator import AdvisoryOrchestrator
+
+        with patch('advisory.orchestrator.get_ai_client', return_value=FakeClient()), \
+             patch('advisory.orchestrator.build_ohlcv_lookback_context', return_value=''), \
+             patch('advisory.orchestrator.build_cvd_lookback_context', return_value=''):
+            try:
+                AdvisoryOrchestrator.run(self.context, 'VIC')
+            except SynchronousOnlyOperation as exc:
+                self.fail(
+                    'P0 R2.6 con song: _resolve_routing goi ORM trong event loop '
+                    f'({exc}) — moi lan sinh advisory deu sập.')
+
+    def test_run_passes_routing_from_sync_land(self):
+        """`run()` phải giải routing TRƯỚC khi vào event loop."""
+        import inspect
+
+        from advisory.orchestrator import AdvisoryOrchestrator
+
+        run_src = inspect.getsource(AdvisoryOrchestrator.run)
+        self.assertIn(
+            '_resolve_routing', run_src,
+            'run() phai goi _resolve_routing o vung sync truoc asyncio.run')
+        async_run_src = inspect.getsource(AdvisoryOrchestrator.run_async)
+        # Trong run_async, `_resolve_routing` chỉ được nằm sau `sync_to_async`.
+        self.assertNotIn(
+            'routing = _resolve_routing(provider)', async_run_src,
+            'run_async van goi _resolve_routing truc tiep => SynchronousOnlyOperation')
+        self.assertIn('sync_to_async', async_run_src)
+
+
 class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
     """Trace lỗi KHÔNG được làm hỏng advisory (non-blocking)."""
 

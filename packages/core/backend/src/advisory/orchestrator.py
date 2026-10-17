@@ -470,8 +470,14 @@ class AdvisoryOrchestrator:
             'is_stale': snapshot_is_stale or facts_is_stale,
         })
 
+        # R3.1 FIX P0 cua R2.6: `_resolve_routing` doc DB — goi no o day (VUNG SYNC,
+        # truoc `asyncio.run`) roi truyen xuống `run_async`. Trong event loop,
+        # Django nem `SynchronousOnlyOperation` ⇒ moi lan sinh advisory sập.
+        _routing_decision_sync = _resolve_routing(
+            str(effective_context.get('ai_provider') or '').strip().lower())
         return asyncio.run(cls.run_async(
-            effective_context, symbol, db_data, trace_ctx=trace_ctx))
+            effective_context, symbol, db_data,
+            trace_ctx=trace_ctx, routing=_routing_decision_sync))
 
     @classmethod
     async def run_async(
@@ -480,6 +486,7 @@ class AdvisoryOrchestrator:
         symbol: str,
         db_data: dict,
         trace_ctx=None,
+        routing: dict = None,
     ) -> dict:
         symbol = symbol.strip().upper()
         ai_model = effective_context.get('ai_model') or 'gpt-4o-mini'
@@ -584,7 +591,17 @@ class AdvisoryOrchestrator:
         # R2.6: router chon deployment + ghi quyet dinh vao trace. Khong co
         # deployment nao khoe => 503 no_healthy_deployment (AC6), khong im lang
         # roi ve provider dang hong.
-        routing = _resolve_routing(provider)
+        #
+        # R3.1 FIX P0 (bug tiem co cua R2.6): ham nay doc DB
+        # (`AIDeployment.objects.all()`) nen **khong** duoc goi tu trong event
+        # loop — Django nem `SynchronousOnlyOperation`. Do `run()` boi
+        # `asyncio.run(run_async(...))`, moi lan sinh advisory deu sập ở đây.
+        # Nay giai o vung SYNC (trong `run()`) va truyền kết quả xuống; nếu ai
+        # goi thẳng `run_async` thì tự bọc `sync_to_async` để không tái lập lỗi.
+        if routing is None:
+            from asgiref.sync import sync_to_async
+
+            routing = await sync_to_async(_resolve_routing)(provider)
         if routing.get('chosen'):
             provider = routing.get('provider') or provider
             ai_model = routing.get('model') or ai_model
