@@ -8,8 +8,8 @@
 | Fact | Đo được | Claims khớp |
 |---|---|---|
 | djangoApps | 15 | C-001 |
-| models | 116 | C-002 |
-| migrations | 132 | C-003 |
+| models | 117 | C-002 |
+| migrations | 133 | C-003 |
 | composeStacks | 10 | C-004 |
 | beatEntries | 45 | C-005 |
 | systemDesignFiles | 44 | C-006 |
@@ -21,6 +21,6 @@
 |---|---|---|
 | routes_total | 1473 | Đo 2026-10-14 bằng `docs/architecture/tools/measure_repo.py` (cần Django runtime, không nằm trong gate này) |
 | routes_core_v1 | 615 | Như trên |
-| web_src_tracked | 603 | `git ls-files packages/web/src` lúc sinh báo cáo |
-| docs_md_total | 1883 | Đếm `docs/**.md` lúc sinh báo cáo |
+| web_src_tracked | 607 | `git ls-files packages/web/src` lúc sinh báo cáo |
+| docs_md_total | 1886 | Đếm `docs/**.md` lúc sinh báo cáo |
 <!-- VOLATILE-END -->
