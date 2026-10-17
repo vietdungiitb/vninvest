@@ -80,6 +80,13 @@ export function AiHubNav({ className = "" }: { className?: string }) {
         labelKey: "aiCommandCenter.tabUsage",
         active: location.pathname.startsWith("/settings/ai/usage"),
       },
+      // R3.2: tab Traces. KHÔNG mang theo filter của tab khác (giống Usage) —
+      // `?symbol=` của trang này là tham số riêng, đem sang tab khác sẽ rác URL.
+      {
+        to: "/settings/ai/traces",
+        labelKey: "aiCommandCenter.tabTraces",
+        active: location.pathname.startsWith("/settings/ai/traces"),
+      },
     ];
   }, [location.pathname, location.search]);
   return e(

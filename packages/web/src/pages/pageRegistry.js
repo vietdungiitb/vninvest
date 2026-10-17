@@ -186,6 +186,9 @@ export const pageRegistry = Object.freeze([
     import("./AIAgentFederationPage.tsx").then((module) => module.AIAgentFederationPage)),
   makePageEntry("ai-usage-analytics", "baseline", () =>
     import("./AIUsageAnalyticsPage.tsx").then((module) => module.AIUsageAnalyticsPage)),
+    // R3.2: trang "Traces" — 4 bước AI của mỗi lần tư vấn.
+    makePageEntry("ai-traces", "baseline", () =>
+    import("./AICommandTracesPage.tsx").then((module) => module.AICommandTracesPage)),
   makePageEntry("dashboard", "baseline", () =>
     import("./workspace/ShellDashboardPage.tsx").then((module) => module.ShellDashboardPage)),
   makePageEntry("transactions", "baseline", () =>
