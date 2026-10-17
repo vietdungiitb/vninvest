@@ -664,7 +664,7 @@ Based on these metrics, write a sentiment analysis block in {"Vietnamese" if lan
             trace_ctx=trace_ctx, routing_decision=_routing_decision,
         )
         sent_task = call_agent_async(
-            ai_client, "sentiment", sent_sys.format(symbol=symbol), sent_user_prompt,
+            ai_client, "sentiment", sent_sys.format(symbol=symbol), sentiment_user_prompt,
             ai_model, temperature, 300, policy=retry_policy,
             trace_ctx=trace_ctx, routing_decision=_routing_decision,
         )

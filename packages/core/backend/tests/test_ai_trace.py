@@ -400,6 +400,48 @@ class SyncOnlyOperationRegressionTest(AITraceTestBase):
         self.assertIn('sync_to_async', async_run_src)
 
 
+class NameErrorRegressionTest(TestCase):
+    """Chặn regression P0 #2 tiền có của R2 (đưa vào bởi `7caf14059` R2.2).
+
+    `run_async` **định nghĩa** `sentiment_user_prompt` nhưng lại **dùng**
+    `sent_user_prompt` ⇒ `NameError` ngay khi tạo task sentiment. Vì
+    `asyncio.gather` nhận coroutine nên lỗi nổ ra **khi gather**, tức mọi lần sinh
+    advisory đều hỏng. Cả hai P0 này đều **không bị 340 test của M2 bắt** vì không
+    test nào chạy `run_async` thật với DB thật.
+
+    Đã xác nhận trên `dev` đã merge `209e4c46d`: định nghĩa ở dòng 560, dùng sai ở 579.
+    """
+
+    def test_sentiment_subagent_uses_the_defined_variable_name(self):
+        import inspect
+
+        from advisory.orchestrator import AdvisoryOrchestrator
+
+        src = inspect.getsource(AdvisoryOrchestrator.run_async)
+        self.assertNotIn(
+            'sent_user_prompt', src,
+            'run_async dung bien `sent_user_prompt` trong khi khai bao '
+            '`sentiment_user_prompt` => NameError khi goi sub-agent sentiment')
+
+    def test_all_three_subagent_prompt_variables_are_defined_before_use(self):
+        import inspect
+
+        from advisory.orchestrator import AdvisoryOrchestrator
+
+        src = inspect.getsource(AdvisoryOrchestrator.run_async)
+        for var in ('tech_user_prompt', 'flow_user_prompt', 'sentiment_user_prompt'):
+            self.assertIn(
+                f'{var} = f', src, f'thai bien {var} chua duoc gan')
+        # Mọi tên biến dùng trong lời gọi `call_agent_async` phải được gán trước đó.
+        call_pos = src.find('tech_task = call_agent_async(')
+        self.assertGreater(call_pos, 0)
+        before = src[:call_pos]
+        for var in ('tech_user_prompt', 'flow_user_prompt', 'sentiment_user_prompt'):
+            self.assertLess(
+                before.find(f'{var} = f'), call_pos,
+                f'{var} chua gan truoc khi goi sub-agent')
+
+
 class TraceNeverBreaksAdvisoryTest(AITraceTestBase):
     """Trace lỗi KHÔNG được làm hỏng advisory (non-blocking)."""
 
