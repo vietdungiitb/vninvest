@@ -1775,6 +1775,54 @@ class PortfolioAICommandCenterTestView(APIView):
                 code='validation_error',
             )
 
+# R2.10: provider KHÔNG phải OpenAI-compatible thì probe qua client thật.
+        # Trước đây `copilot` rơi vào nhánh `else` bên dưới ⇒ gửi token GitHub tới
+        # api.openai.com ⇒ luôn 401 và thông điệp sai ("API key không hợp lệ").
+        # openai/gemini giữ nguyên đường chat-completions (probe mạnh hơn GET /models).
+        if provider not in ('openai', 'gemini'):
+            import asyncio as _asyncio
+
+            from advisory.ai_clients import FactoryError as _FactoryError
+            from advisory.ai_clients import get_ai_client as _get_ai_client
+
+            try:
+                _client = _get_ai_client(
+                    provider, api_key=resolved_key,
+                    custom_endpoint=custom_endpoint, ai_model=model,
+                )
+            except _FactoryError as _exc:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, str(_exc))
+                raise ValidationErrorException(
+                    detail=f'Provider {provider} chưa được hỗ trợ: {str(_exc)[:150]}',
+                    code='validation_error',
+                )
+            _probe = _asyncio.run(_client.probe())
+            _ok = bool(_probe.get('ok'))
+            _code = str(_probe.get('error_code') or '')
+            _detail = str(_probe.get('detail') or '')[:200]
+            _latency = int(_probe.get('latency_ms') or 0)
+            if _ok:
+                _log_test(
+                    AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS,
+                    f'{provider}/{model} kết nối thành công ({_latency}ms).',
+                )
+                return envelope({
+                    'message': (
+                        f'Kiểm tra kết nối thành công: {provider} / {model} '
+                        f'phản hồi trong {_latency}ms.'
+                    ),
+                    'latency_ms': _latency,
+                    'error_code': '',
+                })
+            _log_test(
+                AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED,
+                f'{provider}/{model} probe lỗi {_code}.',
+            )
+            raise ValidationErrorException(
+                detail=_detail or f'Không kết nối được {provider}. Kiểm tra lại cấu hình.',
+                code=_code or 'validation_error',
+            )
+
         # Determine endpoint
         if provider == 'gemini':
             endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"

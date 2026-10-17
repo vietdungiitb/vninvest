@@ -230,8 +230,24 @@ def _resolve_routing(provider: str = '') -> dict:
         'chosen': chosen.name,
         'provider': chosen.provider,
         'model': chosen.model,
+        'deployment': chosen,
         'decision': decision,
     }
+
+
+def _resolve_retry_policy(deployment=None):
+    """R2.9: policy retry theo deployment duoc route toi; thieu thi lay settings.
+
+    Dong no nay la call site cho `RetryPolicy.from_deployment()` — truoc do ham co
+    san + test nhung khong ai goi, nen knob tren `AIDeployment` vo dung.
+    """
+    from advisory.ai_clients.base import RetryPolicy
+
+    try:
+        return RetryPolicy.from_deployment(deployment)
+    except Exception:
+        logger.exception('resolve retry policy failed; using defaults')
+        return RetryPolicy()
 
 
 async def call_agent_async(
@@ -241,18 +257,22 @@ async def call_agent_async(
     user_prompt: str,
     ai_model: str,
     temperature: float,
-    max_tokens: int
+    max_tokens: int,
+    policy=None,
 ) -> str:
     """Gọi 1 sub-agent qua AiClient — retry/backoff/breaker do CLIENT lo (R2.9).
 
     Vòng retry cũ ở đây đã chuyển xuống `AiClient.complete_resilient()`: 3 sub-agent
     `asyncio.gather` dùng chung một client nên retry/breaker **không nhân 3** (AC7).
+    `policy` = `RetryPolicy` theo deployment được route tới (R2.10 nối
+    `RetryPolicy.from_deployment`; `None` ⇒ policy mặc định từ settings).
     """
     try:
         result = await ai_client.complete_resilient(
             system_prompt, user_prompt,
             model=ai_model, temperature=temperature,
             max_tokens=max_tokens, timeout=25.0,
+            policy=policy,
         )
         return (result.get('text') or '').strip()
     except ProviderCircuitOpenError:
@@ -514,6 +534,10 @@ class AdvisoryOrchestrator:
                 provider, api_key=api_key or '', endpoint=endpoint, ai_model=ai_model,
             )
 
+        # R2.9/R2.10: retry/backoff theo deployment đã được route tới (nếu có).
+        # Không có deployment => policy mặc định từ settings.
+        retry_policy = _resolve_retry_policy(routing.get('deployment'))
+
         # Build user prompts for each sub-agent
         tech_user_prompt = f"""
 Analyze the technical posture for symbol {symbol}:
@@ -545,15 +569,15 @@ Based on these metrics, write a sentiment analysis block in {"Vietnamese" if lan
         # Call sub-agents concurrently
         tech_task = call_agent_async(
             ai_client, "technical", tech_sys.format(symbol=symbol), tech_user_prompt,
-            ai_model, temperature, 400
+            ai_model, temperature, 400, policy=retry_policy
         )
         flow_task = call_agent_async(
             ai_client, "flow", flow_sys.format(symbol=symbol), flow_user_prompt,
-            ai_model, temperature, 400
+            ai_model, temperature, 400, policy=retry_policy
         )
         sent_task = call_agent_async(
             ai_client, "sentiment", sent_sys.format(symbol=symbol), sent_user_prompt,
-            ai_model, temperature, 300
+            ai_model, temperature, 300, policy=retry_policy
         )
 
         # Await all sub-agents
@@ -597,6 +621,7 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
                     max_tokens=max(int(max_tokens or 0), SYNTHESIS_MAX_TOKENS_FLOOR),
                     timeout=25.0,
                     response_format="json",
+                    policy=retry_policy,
                 )
                 res_data = synth_result['raw']
                 choice = synth_result['text']
