@@ -62,7 +62,7 @@ class ProviderCircuitOpenError(ProviderHTTPError):
     status_code = None
 
     def __init__(self, body: str = ''):
-        super().__init__(None, body_text=body or 'circuit breaker dang mo')
+        super().__init__(None, body=body or 'circuit breaker dang mo')
         self.status_code = None
 
     def __str__(self) -> str:
@@ -85,8 +85,12 @@ def parse_retry_after(response: Any) -> Optional[float]:
 
     Bằng chứng: Gemini **không** gửi `Retry-After` khi 429 hạn mức (probe
     2026-09-26) — nên phải có backoff tăng dần khi thiếu header.
+
+    Nhận cả response httpx (có `.headers`) lẫn mapping thẳng — gọi chỗ nào cũng được.
     """
     headers = getattr(response, 'headers', None)
+    if headers is None and isinstance(response, dict):
+        headers = response
     if not headers:
         return None
     raw = headers.get('retry-after') or headers.get('Retry-After')
