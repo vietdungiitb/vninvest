@@ -288,15 +288,22 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
         grant_tenant(self.user, role='admin', tenant_code='test-view-tenant')
         self.client.force_authenticate(user=self.user)
 
-    def test_openclaw_returns_success(self):
+    def test_openclaw_not_configured_is_not_reported_as_success(self):
+        """R2.5 AC4: xoá `test_openclaw_returns_success`.
+
+        Test cũ trả 200 + `latency_ms` cho openclaw mà **chưa từng gọi dịch vụ** —
+        khoá hành vi giả. Nay chưa cấu hình thì phải lỗi rõ, không phải "thành công".
+        """
         response = self.client.post(
             '/core/v1/workspace/ai-command-center/test-connection/',
             {'ai_provider': 'openclaw', 'ai_model': 'gpt-4o-mini'},
-            format='json',
+            format='json'
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('message', unwrapped(response))
-        self.assertIn('latency_ms', unwrapped(response))
+        self.assertNotEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(
+            response.data.get('code'),
+            ('openclaw_not_configured', 'openclaw_spec_missing', 'validation_error'),
+        )
 
     def test_missing_provider_returns_validation_error(self):
         response = self.client.post(

@@ -8,6 +8,7 @@ không rơi im lặng về OpenAI.
 from advisory.ai_clients.anthropic import AnthropicClient
 from advisory.ai_clients.base import AiClient, FactoryError, ProviderHTTPError, parse_usage_dict
 from advisory.ai_clients.copilot import CopilotClient
+from advisory.ai_clients.openclaw import OpenClawClient
 from advisory.ai_clients.openai_compat import (
     GEMINI_BASE_URL,
     LOCAL_BASE_URL,
@@ -46,9 +47,16 @@ _PROVIDERS: dict = {
     # R2.3: Anthropic KHONG phai OpenAI-compatible (x-api-key, /v1/messages).
     # `self_endpoint` giong copilot: endpoint do adapter lo, khong resolve bang
     # bang OpenAI/Gemini. Mac dinh TAT (AI_ENABLE_ANTHROPIC) — fail-closed.
-    'claude': (
+'claude': (
         'advisory.ai_clients.anthropic',
         'AnthropicClient',
+        {'self_endpoint': True},
+    ),
+    # R2.5: openclaw - FAIL-CLOSED. D-03c chua co protocol => khong doan.
+    # Client ton tai de loi sai/noi ro ra, khong phai de gia lap goi dịch vu.
+    'openclaw': (
+        'advisory.ai_clients.openclaw',
+        'OpenClawClient',
         {'self_endpoint': True},
     ),
 }
@@ -109,6 +117,7 @@ __all__ = [
     'OpenAICompatClient',
     'CopilotClient',
     'AnthropicClient',
+    'OpenClawClient',
     'get_ai_client',
     '_resolve_chat_endpoint',
 ]

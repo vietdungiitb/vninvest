@@ -1,3 +1,14 @@
+## Entry 361: AI R2.5 openclaw fail-closed + xoa 2 test khoa hanh vi gia (2026-10-17)
+
+- **Nhanh**: `feat/ai-r25-openclaw` -> `dev`. Claim `ai-r25`. TDD: factory raise `FactoryError` + readiness `ready=True` gia + test-connection 200 gia -> GREEN 16/16.
+- **Viec lam**: `advisory/ai_clients/openclaw.py` (`OpenClawClient`, `resolve_config`, `OpenClawNotConfiguredError`/`OpenClawSpecMissingError` 503), `SUPPORTED_PROTOCOLS = ()` co y khong doan, registry `openclaw`, `build_ai_readiness` tra `not_probed`, **xoa nhanh test-connection "luon san sang"**.
+- **Gate**: 273 test advisory xanh (16 moi + 257 hoi quy) · check 0 · pre-push 23/23 · openapi NO CON Errors=32. Evidence `docs/evidence/ai-cc/r25-gates.md`.
+- **Vi sao fail-closed**: STOP condition §3.4-6 — thieu 5 muc D-03c (base URL / protocol / auth / nguon danh muc / SLA) thi BLOCKED, **khong doan**. Repo khong co trace nao cua protocol openclaw. Hop dong loi giu nguyen khi Owner cap D-03c (chi can khai protocol + viet nhanh).
+- **AC4**: xoa `test_openclaw_returns_success` + `test_openclaw_creates_success_audit_log`; test moi con them chot `test_connection_success` **khong** duoc ghi. Sua them `test_ai_r06` (20 lan dau 200 -> 400) va `test_ai_clients` AC4 (them `ProviderChoices - factory = ∅` — chan goc rẻ cua F-06: khai provider ma khong co client).
+- **BAY NGHIEM TRONG**: (1) `edit` khop **LAN XUAT HIEN DAU TIEN** — them `'OpenClawClient'` vao `__all__` nhay chuoi do xuat hien lan dau o **registry** ⇒ tuple `claude` thanh **4 phan tu** ⇒ `ValueError: too many values to unpack` ⇒ **MOI** `get_ai_client()` hong; chi hoi quy moi bat. **Luon dua ngu canh du dai vao `oldString` khi sua Python.** (2) `edit` lam mat thut le khi thay ham trong class ⇒ `IndentationError` lam hong 2 file test lon, ma `manage.py check` **khong** bat (test file khong duoc import luc check). (3) goi ham `async` khong `await` ⇒ than ham khong chay ⇒ `assertRaises` khong bat duoc loi.
+- **CHUA CHAY**: D-03c (5 thong tin — can Owner) · danh muc openclaw (D-03c#4) · no FE con · full BE, ruff, E2E, staging.
+- **Tiep**: **M2** (dong R2: 10/10 slice) roi R3.
+
 ## Entry 360: AI R2.3 adapter anthropic (2026-10-17)
 
 - **Nhanh**: `feat/ai-r23-anthropic` -> `dev`. Claim `ai-r23`. TDD: `ModuleNotFoundError: advisory.ai_clients.anthropic` + `get_ai_client('claude')` raise `FactoryError` -> GREEN 22/22.

@@ -112,11 +112,25 @@ AI_READINESS_TTL_SECONDS = 300
 
 
 def build_ai_readiness(provider: str, api_key_configured: bool) -> dict:
-    """`{ready, reason_code, checked_at, ttl_seconds}`; `ready` khop `ai_ready` cu."""
+    """`{ready, reason_code, checked_at, ttl_seconds}`; `ready` khớp `ai_ready` cũ.
+
+    R2.5 AC3: `openclaw` **không** còn "luôn sẵn sàng". Trước đây provider này được
+    đánh dấu `ready=True` với `system_default_no_key_needed` dù chưa từng gọi dịch
+    vụ — đúng loại "hiển thị sai rồi mới biết". Giờ thiếu cấu hình ⇒ `not_probed`.
+    """
     from django.utils import timezone
 
     provider_key = str(provider or '').strip().lower()
-    if provider_key in ('openclaw', 'local') and not api_key_configured:
+    if provider_key == 'openclaw':
+        from advisory.ai_clients.openclaw import openclaw_base_url
+
+        if not openclaw_base_url():
+            reason = 'not_probed'
+            ready = False
+        else:
+            reason = 'ok_configured'
+            ready = True
+    elif provider_key == 'local' and not api_key_configured:
         reason = 'system_default_no_key_needed'
         ready = True
     elif api_key_configured:
