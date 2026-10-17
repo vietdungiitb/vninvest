@@ -9,9 +9,35 @@ R2.2: client hạ tầng chung cho mọi AI provider.
   thích cho test R0.7 (`from advisory.orchestrator import _extract_usage`).
 - KHÔNG retry ở đây (orchestrator giữ vòng retry hiện tại để không đổi hành vi;
   R2.9 mới đưa retry/backoff vào tầng client).
+
+R2.9 bổ sung: `RetryPolicy` + `AiClient.complete_resilient()` (retry + backoff +
+circuit breaker + deadline). `complete()` giữ là **primitive một lần** — nhờ vậy 3
+sub-agent `asyncio.gather` **dùng chung** một client nên retry/breaker không nhân 3.
 """
+import asyncio
+import logging
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
+
+from django.conf import settings as django_settings
+
+from advisory.health import (
+    DEFAULT_COOLDOWN_SECONDS,
+    DEFAULT_FAILURE_THRESHOLD,
+    ERROR_PROVIDER_CIRCUIT_OPEN,
+    CircuitBreaker,
+)
+
+logger = logging.getLogger(__name__)
+
+#: Breaker theo provider (xem `AiClient.breaker`) — process-level, có lock.
+_BREAKERS: dict = {}
+
+#: Chỉ retry lỗi **tạm thời**. 401/403/400 là lỗi cấu hình/tín dụng — retry chỉ
+#: đốt hạn mức rồi vẫn hỏng (R2.9 AC2).
+RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504, 529})
 
 
 class FactoryError(ValueError):
@@ -27,6 +53,99 @@ class ProviderHTTPError(Exception):
         # Response httpx gốc (có headers Retry-After) — None khi lỗi mạng.
         self.response = response
         super().__init__(f"provider_http_{status or 'unknown'}: {self.body_text[:200]}")
+
+
+class ProviderCircuitOpenError(ProviderHTTPError):
+    """Breaker đang mở — KHÔNG gọi provider, trả `provider_circuit_open` (R2.9 AC4)."""
+
+    error_code = ERROR_PROVIDER_CIRCUIT_OPEN
+    status_code = None
+
+    def __init__(self, body: str = ''):
+        super().__init__(None, body_text=body or 'circuit breaker dang mo')
+        self.status_code = None
+
+    def __str__(self) -> str:
+        return f'{self.error_code}: {self.body_text}'
+
+
+def is_retryable_error(error: BaseException) -> bool:
+    """Lỗi nào đáng retry: lỗi mạng + status tạm thời. KHÔNG retry lỗi cấu hình."""
+    if isinstance(error, ProviderCircuitOpenError):
+        return False
+    if isinstance(error, ProviderHTTPError):
+        return error.status_code in RETRYABLE_STATUS
+    import httpx
+
+    return isinstance(error, (httpx.TimeoutException, httpx.NetworkError))
+
+
+def parse_retry_after(response: Any) -> Optional[float]:
+    """`Retry-After` giây (nếu có). Không parse được => None (dùng backoff luỹ thừa).
+
+    Bằng chứng: Gemini **không** gửi `Retry-After` khi 429 hạn mức (probe
+    2026-09-26) — nên phải có backoff tăng dần khi thiếu header.
+    """
+    headers = getattr(response, 'headers', None)
+    if not headers:
+        return None
+    raw = headers.get('retry-after') or headers.get('Retry-After')
+    if raw is None:
+        return None
+    try:
+        value = float(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 else None
+
+
+@dataclass
+class RetryPolicy:
+    """Tham số retry/breaker. Nguồn: `AIDeployment` > settings > mặc định."""
+
+    num_retries: int = 2
+    backoff_base_ms: float = 500.0
+    cooldown_seconds: float = 30.0
+    deadline_seconds: float = 120.0
+    failure_threshold: int = DEFAULT_FAILURE_THRESHOLD
+
+    def __post_init__(self):
+        self.num_retries = max(int(self.num_retries), 0)
+        self.backoff_base_ms = max(float(self.backoff_base_ms), 0.0)
+        self.cooldown_seconds = max(float(self.cooldown_seconds), 0.0)
+        self.deadline_seconds = max(float(self.deadline_seconds), 0.0)
+        self.failure_threshold = max(int(self.failure_threshold), 1)
+
+    def delay_seconds(self, attempt: int, response: Any = None) -> float:
+        """Lần thứ `attempt` (1-based): tôn trọng `Retry-After`, không thì luỹ thừa."""
+        retry_after = parse_retry_after(response)
+        if retry_after is not None:
+            return retry_after
+        return (self.backoff_base_ms * (2 ** max(attempt - 1, 0))) / 1000.0
+
+    @classmethod
+    def from_settings(cls) -> 'RetryPolicy':
+        return cls(
+            num_retries=getattr(django_settings, 'AI_PROVIDER_NUM_RETRIES', 2),
+            backoff_base_ms=getattr(django_settings, 'AI_PROVIDER_BACKOFF_BASE_MS', 500),
+            cooldown_seconds=getattr(django_settings, 'AI_PROVIDER_COOLDOWN_SECONDS', 30),
+            deadline_seconds=getattr(django_settings, 'AI_ADVISORY_DEADLINE_SECONDS', 120),
+            failure_threshold=getattr(django_settings, 'AI_PROVIDER_FAILURE_THRESHOLD',
+                                      DEFAULT_FAILURE_THRESHOLD),
+        )
+
+    @classmethod
+    def from_deployment(cls, deployment=None) -> 'RetryPolicy':
+        """R2.9: mỗi deployment có thể đặt riêng; thiếu thì lấy settings."""
+        policy = cls.from_settings()
+        if deployment is None:
+            return policy
+        for field in ('num_retries', 'backoff_base_ms', 'cooldown_seconds'):
+            value = getattr(deployment, field, None)
+            if value is not None:
+                setattr(policy, field, value)
+        policy.__post_init__()
+        return policy
 
 
 def parse_usage_dict(usage: Any) -> tuple:
@@ -98,3 +217,94 @@ class AiClient(ABC):
     async def catalog(self) -> Optional[list]:
         """Danh mục model provider trả (chuẩn R2.10); None = không hỗ trợ."""
         return None
+
+    # ---------------------------------------------------- R2.9 retry/breaker
+
+    def breaker(self, policy: Optional[RetryPolicy] = None) -> CircuitBreaker:
+        """Breaker **dùng chung theo provider**, không theo instance.
+
+        3 sub-agent `asyncio.gather` cùng 1 client ⇒ 1 breaker. Tạo instance mới
+        ở đây thì breaker sẽ bị nhân 3 và AC7 hỏng, nên lưu theo provider key.
+        """
+        policy = policy or RetryPolicy.from_settings()
+        key = (self.provider or self.__class__.__name__,
+               policy.failure_threshold, policy.cooldown_seconds)
+        breaker = _BREAKERS.get(key)
+        if breaker is None:
+            breaker = CircuitBreaker(
+                failure_threshold=policy.failure_threshold,
+                cooldown_seconds=policy.cooldown_seconds,
+                name=key[0],
+            )
+            _BREAKERS[key] = breaker
+        return breaker
+
+    async def complete_resilient(
+        self,
+        system: str,
+        user: str,
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        timeout: Optional[float] = None,
+        response_format: Optional[str] = None,
+        policy: Optional[RetryPolicy] = None,
+        breaker: Optional[CircuitBreaker] = None,
+        sleep: Optional[Callable[[float], Any]] = None,
+        clock: Optional[Callable[[], float]] = None,
+    ) -> dict:
+        """`complete()` + retry/backoff + circuit breaker + deadline (R2.9).
+
+        - Chỉ retry lỗi tạm thời (`is_retryable_error`): 401/403/400/lỗi cấu hình
+          fail ngay, không đốt hạn mức.
+        - Breaker mở ⇒ raise `ProviderCircuitOpenError` **không** gọi provider.
+        - `clock`/`sleep` injectable để test dùng đồng hồ giả (AC3/AC6).
+        """
+        policy = policy or RetryPolicy.from_settings()
+        breaker = breaker if breaker is not None else self.breaker(policy)
+        sleep_fn = sleep or asyncio.sleep
+        clock_fn = clock or time.monotonic
+        started = clock_fn()
+
+        last_error: Optional[BaseException] = None
+        for attempt in range(1, policy.num_retries + 2):
+            if not breaker.allow():
+                raise ProviderCircuitOpenError(
+                    f'provider {self.provider!r} đang trong circuit open'
+                )
+            try:
+                result = await self.complete(
+                    system, user, model=model, temperature=temperature,
+                    max_tokens=max_tokens, timeout=timeout,
+                    response_format=response_format,
+                )
+            except BaseException as exc:  # noqa: BLE001 - phân loại bên dưới
+                last_error = exc
+                if not is_retryable_error(exc):
+                    breaker.record_failure()
+                    raise
+                if attempt > policy.num_retries:
+                    breaker.record_failure()
+                    raise
+                delay = policy.delay_seconds(attempt, getattr(exc, 'response', None))
+                if policy.deadline_seconds and (
+                    clock_fn() - started + delay > policy.deadline_seconds
+                ):
+                    logger.warning(
+                        'Bo qua retry %d: vuot deadline %.1fs', attempt, policy.deadline_seconds,
+                    )
+                    breaker.record_failure()
+                    raise
+                logger.warning(
+                    'provider %s loi tam thoi (attempt %d/%d); cho %.2fs',
+                    self.provider, attempt, policy.num_retries, delay,
+                )
+                breaker.record_failure()
+                await sleep_fn(delay)
+                continue
+            breaker.record_success()
+            return result
+
+        # Vòng lặp chỉ thoát bằng return/raise ở trên.
+        raise last_error if last_error else ProviderHTTPError(None, 'khong co ket qua')

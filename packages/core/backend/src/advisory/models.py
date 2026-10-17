@@ -437,6 +437,19 @@ class AIDeployment(models.Model):
         verbose_name='Trạng thái sức khỏe',
     )
     last_health_at = models.DateTimeField(null=True, blank=True, verbose_name='Probe gần nhất')
+    # R2.9: tham số retry/breaker riêng cho từng deployment. NULL = lấy settings.
+    num_retries = models.IntegerField(
+        null=True, blank=True, verbose_name='Số lần retry',
+        help_text='NULL = lấy AI_PROVIDER_NUM_RETRIES. Chỉ retry lỗi tạm thời.',
+    )
+    backoff_base_ms = models.IntegerField(
+        null=True, blank=True, verbose_name='Backoff cơ sở (ms)',
+        help_text='NULL = lấy AI_PROVIDER_BACKOFF_BASE_MS; luỹ thừa theo số lần.',
+    )
+    cooldown_seconds = models.IntegerField(
+        null=True, blank=True, verbose_name='Cooldown breaker (giây)',
+        help_text='NULL = lấy AI_PROVIDER_COOLDOWN_SECONDS.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
