@@ -183,6 +183,11 @@ class TracesIsolationTests(AITraceApiTestBase):
 
 class TracesUrlTests(TestCase):
     def test_url_is_named(self):
-        """Route phải có tên để `reverse()` dùng được — đừng chỉ hardcode chuỗi."""
-        self.assertTrue(reverse('workspace-ai-cc-traces').endswith(
-            'workspace/ai-command-center/traces/'))
+        """Route phải có tên để `reverse()` dùng được — đừng chỉ hardcode chuỗi.
+
+        `user_workspace.urls` được include với `namespace='user_workspace'`
+        (`vninvest_core/urls.py:66`) nên tên phải kèm namespace.
+        """
+        url = reverse('user_workspace:workspace-ai-cc-traces')
+        self.assertTrue(
+            url.endswith('workspace/ai-command-center/traces/'), url)
