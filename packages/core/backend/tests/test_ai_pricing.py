@@ -55,15 +55,28 @@ class CostArithmeticTests(TestCase):
     """AC2: cost dung 6 chu so thap phan."""
 
     def test_ac2_input_and_output_weighted(self):
-        _rate('openai', 'gpt-4o-mini', 0.15, 0.6)
+        rate = _rate('openai', 'gpt-4o-mini', 0.15, 0.6)
         snapshot = pricing_snapshot('openai', 'gpt-4o-mini', 1000, 500)
-        self.assertEqual(snapshot, {
-            'cost': Decimal('0.450000'),
-            'pricing_available': True,
-            'source': AICostRate.PricingSourceChoices.MANUAL,
-            'effective_from': AICostRate.objects.get().effective_from,
-        })
+        self.assertEqual(snapshot['cost'], Decimal('0.450000'))
+        self.assertTrue(snapshot['pricing_available'])
+        self.assertEqual(snapshot['source'], AICostRate.PricingSourceChoices.MANUAL)
+        self.assertEqual(snapshot['effective_from'], rate.effective_from)
+        self.assertEqual(snapshot['rate_id'], rate.id)
+        self.assertFalse(snapshot['tiered'])
+
+    def test_ac2_total_tokens_fallback_counts_all_as_input(self):
+        # Tuong thich 2 chu so R0.7: goi chi co `tokens_total` => tinh theo
+        # bang input. Duong tinh that do tasks.py dung bang tach input/output.
+        _rate('openai', 'gpt-4o-mini', 0.15, 0.6)
         cost, available = resolve_cost('openai', 'gpt-4o-mini', 1500)
+        self.assertEqual(cost, Decimal('0.225000'))
+        self.assertTrue(available)
+
+    def test_ac2_split_matches_snapshot(self):
+        _rate('openai', 'gpt-4o-mini', 0.15, 0.6)
+        cost, available = resolve_cost(
+            'openai', 'gpt-4o-mini', 0, tokens_in=1000, tokens_out=500,
+        )
         self.assertEqual(cost, Decimal('0.450000'))
         self.assertTrue(available)
 
@@ -106,7 +119,10 @@ class SnapshotTests(TestCase):
         _rate('openai', 'gpt-4o-mini', 1.0, 4.0, days=0)
         record.refresh_from_db()
         self.assertEqual(record.cost, Decimal('0.450000'))
-        self.assertEqual(resolve_cost('openai', 'gpt-4o-mini', 1500)[0], Decimal('4.500000'))
+        self.assertEqual(
+            resolve_cost('openai', 'gpt-4o-mini', 0, tokens_in=1000, tokens_out=500)[0],
+            Decimal('4.500000'),
+        )
         self.assertEqual(old.usd_per_1k_input, Decimal('0.150000'))
 
     def test_ac3_latest_effective_from_wins(self):
@@ -131,7 +147,7 @@ class CopilotTierTests(TestCase):
 
     def test_ac6_copilot_label_is_tier_not_dollar(self):
         label = format_cost_for_display('copilot', 'gpt-5', 1000, 0, False)
-        self.assertIn(PRICING_PROVIDER_TIERED, label)
+        self.assertIn(PRICING_PROVIDER_TIERED['copilot'], label)
         self.assertNotIn('$', label)
 
 
@@ -181,3 +197,70 @@ class ImportFileTests(TestCase):
     def test_ac5_missing_file_raises_readable(self):
         with self.assertRaises(FileNotFoundError):
             import_pricing_file('/nonexistent/pricing.json')
+
+
+class UsageRecordIntegrationTests(TestCase):
+    """Duong ghi that cua R0.7 (`tasks._write_advisory_usage_record`) lay gia tu day."""
+
+    def _write(self, **kwargs):
+        from advisory.tasks import _write_advisory_usage_record
+
+        payload = dict(
+            user=None, provider='openai', model='gpt-4o-mini',
+            tokens_in=1000, tokens_out=500, latency_ms=120,
+            record_status='ok',
+        )
+        payload.update(kwargs)
+        _write_advisory_usage_record(**payload)
+        from ai_analytics.models import AIUsageRecord
+
+        return AIUsageRecord.objects.get()
+
+    def test_record_cost_uses_split_input_output(self):
+        _rate('openai', 'gpt-4o-mini', 0.15, 0.6)
+        record = self._write()
+        self.assertEqual(record.cost, Decimal('0.450000'))
+        self.assertTrue(record.pricing_available)
+
+    def test_record_without_rate_is_zero_and_flagged(self):
+        record = self._write()
+        self.assertEqual(record.cost, Decimal('0'))
+        self.assertFalse(record.pricing_available)
+
+    def test_record_copilot_zero_not_dollar(self):
+        _rate('copilot', 'gpt-5', 12.0, 12.0, source=AICostRate.PricingSourceChoices.COPILOT_TIER)
+        record = self._write(provider='copilot', model='gpt-5', tokens_in=5000, tokens_out=5000)
+        self.assertEqual(record.cost, Decimal('0'))
+        self.assertFalse(record.pricing_available)
+
+    def test_record_pricing_failure_does_not_break_task(self):
+        # Bang gia hong (chua migrate / DB het) => usage van duoc ghi voi cost 0,
+        # co se khong lam task ghi usage no.
+        from unittest import mock
+
+        import advisory.pricing as pricing_module
+
+        class _BrokenObjects:
+            @staticmethod
+            def filter(*args, **kwargs):
+                raise RuntimeError('db down')
+
+        class _BrokenRates:
+            objects = _BrokenObjects()
+            PricingSourceChoices = AICostRate.PricingSourceChoices
+
+        with mock.patch.object(pricing_module, 'AICostRate', _BrokenRates):
+            snapshot = pricing_module.pricing_snapshot('openai', 'gpt-4o-mini', 1000, 500)
+        self.assertEqual(snapshot['cost'], Decimal('0.000000'))
+        self.assertFalse(snapshot['pricing_available'])
+
+    def test_record_write_swallows_pricing_error(self):
+        from unittest import mock
+
+        with mock.patch(
+            'advisory.pricing.pricing_snapshot', side_effect=RuntimeError('boom'),
+        ):
+            self._write()  # khong nem ra ngoaii - usage ghi that bai (R0.7)
+        from ai_analytics.models import AIUsageRecord
+
+        self.assertEqual(AIUsageRecord.objects.count(), 0)
