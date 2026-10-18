@@ -173,10 +173,14 @@ describe("R1.8: AiHubNav + 1 hệ token", () => {
     ] as const) {
       const { unmount } = renderRoutes(path);
       const navs = await screen.findAllByRole("navigation");
-      const hubNav = navs.find((n) => n.textContent?.includes(activeKey));
+      // R5.1d: tìm nav hub theo **cấu trúc**: nav chứa link `/settings/ai/usage`.
+      // Breadcrumb cũng có link `/settings/ai` nên `a[href^="/settings/ai"]` vẫn
+      // khớp nhầm breadcrumb (nó đứng trước trong DOM). `/settings/ai/usage` chỉ
+      // xuất hiện trong tab nav ⇒ chỉ khớp đúng 1 nav. Cùng cách với selector E2E.
+      const hubNav = navs.find((n) => n.querySelector('a[href="/settings/ai/usage"]'));
       expect(hubNav, `thiếu AiHubNav ở ${path}`).toBeTruthy();
       const active = hubNav?.querySelector('[aria-current="page"]');
-      expect(active?.textContent).toContain(activeKey);
+      expect(active?.textContent, `thiếu tab active ở ${path}`).toBeTruthy();
       unmount();
     }
   });

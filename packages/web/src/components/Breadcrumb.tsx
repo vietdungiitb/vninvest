@@ -50,6 +50,20 @@ const I18N_MAP: Record<string, string> = {
   ai: 'userSettings.aiGroup.title',
 };
 
+// R5.1d: nhan breadcrumb cua cac route AI con lai. `Breadcrumb.tsx` tra cuu theo
+// **segment** nen `usage` bi dung chung voi `tenantUsage.title` (nhan trang tenant)
+// va `audit`/`traces`/`slo` roi ve **chuoi tho** — người dùng thay "audit".
+// Chi ap dung khi duong dan bat dau `/settings/ai`, nen `/tenant-admin/usage`
+// giu nguyen nhan cu. Khoa dung **cung khoa** nhu `AiHubNav` (nguyen tac R4.4:
+// hai noi go cung mot ten).
+const AI_ROUTE_LABELS: Record<string, string> = {
+  usage: 'aiCommandCenter.tabUsage',
+  traces: 'aiCommandCenter.tabTraces',
+  slo: 'aiCommandCenter.tabSlo',
+  audit: 'aiCommandCenter.tabAudit',
+};
+const AI_ROOT = '/settings/ai';
+
 export function Breadcrumb({ labelMap }: { labelMap?: Record<string, string> }) {
   const { t } = useI18n();
   const location = useLocation();
@@ -63,7 +77,9 @@ export function Breadcrumb({ labelMap }: { labelMap?: Record<string, string> }) 
 
   for (const segment of segments) {
     accumulated += '/' + segment;
-    const raw = map[segment] || DEFAULT_MAP[segment] || segment;
+    // R5.1d: uu tien nhan route AI khi duong dan nam duoi `/settings/ai`.
+    const aiLabel = accumulated.startsWith(AI_ROOT) ? AI_ROUTE_LABELS[segment] : undefined;
+    const raw = aiLabel || map[segment] || DEFAULT_MAP[segment] || segment;
     // R4.4: coi `raw` là **khoá i18n** khi nó có dấu chấm (khoá dạng `a.b.c`) hoặc
     // bắt đầu bằng `tenant`/`shell`. Trước đây chỉ nhận `tenant*`/`shell*`, nên mọi
     // ánh xạ dạng `userSettings.title` rơi về in ra **tên khoá** thay vì nhãn.

@@ -5395,9 +5395,9 @@ aiUsageAnalytics: 'Usage AI',
     tabOverview: 'Tổng quan',
     tabRuntime: 'Runtime',
     tabAudit: 'Nhật ký audit',
-    tabUsage: 'Usage',
+    tabUsage: 'Usage AI',
     // R3.2 — trang Traces
-    tabTraces: 'Traces',
+    tabTraces: 'Dấu vết AI',
     titleTraces: 'Dấu vết AI',
     descriptionTraces: '4 bước AI của mỗi lần tư vấn: độ trễ từng bước, trạng thái và lỗi.',
     loadingTraces: 'Đang tải dấu vết...',
@@ -5425,7 +5425,7 @@ aiUsageAnalytics: 'Usage AI',
     detailsLabel: 'Chi tiết bước',
     pageInfo: 'Trang {page} · {total} bản ghi',
     // R3.3 — dashboard SLO LLM
-    tabSlo: 'SLO',
+    tabSlo: 'SLO AI',
     titleSlo: 'SLO mô hình AI',
     // R4.5 — tab "Nhat ky kiem toan" (chi staff). `tabAudit` da ton tai tu R0.7 va
     // duoc dung lai: tao khoa thu hai cho cung mot nhan la hai cho se lech nhau.

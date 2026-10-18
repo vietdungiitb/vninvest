@@ -1005,6 +1005,36 @@
 
 /* R1.2 audit: panel rows/badges/filter — chỉ dùng token --ai-*, không màu cứng. */
 .auditWrap { display: flex; flex-direction: column; gap: 16px; }
+/* R5.1d: `AIAuditPage.tsx` dung `styles.auditTable` nhung class nay CHUA TON TAI
+   => `styles.auditTable === undefined` => `<table>` khong co class nao => cac
+   `<th>` dinh lien nhau ("Thoi diemHan dongNguoi thuc hien"). Loi chi thay duoc
+   khi **mo anh** ra xem (ledger Entry 377). Trang khong gan class len
+   `<th>/<td>` nen khoang cach phai dat o descendant, khong dua vao `.th`/`.td`
+   (2 class do AIUsageDashboard dung). */
+.auditTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.auditTable th,
+.auditTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ai-border);
+  text-align: left;
+  vertical-align: top;
+}
+.auditTable th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ai-muted);
+}
+.auditTable td {
+  font-size: 13px;
+  color: var(--ai-ink);
+}
+.auditTable tbody tr:hover td {
+  background: var(--ai-surface-translucent);
+}
 .auditFilters {
   display: grid;
   gap: 12px;
