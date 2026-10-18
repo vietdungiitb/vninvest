@@ -27,7 +27,6 @@ const DEAD_KEYS: string[] = [
   "aiCommandCenter.page",
   "aiCommandCenter.of",
   "aiCommandCenter.refresh",
-  "aiAgentFederation.close",
   "aiUsageAnalytics.records",
   "aiUsageAnalytics.noRecords",
 ];
@@ -78,29 +77,20 @@ describe("R1.3: i18n sạch AI CC", () => {
     expect(en.has("aiCommandCenter.loadError")).toBe(true);
   });
 
-  it("AC1b: refreshIntervalValue/customModel/type* có ở vi + en", () => {
-    for (const ns of ["aiCommandCenter", "aiAgentFederation"] as const) {
-      const vi = nsKeys(viDict, ns);
-      const en = nsKeys(enDict, ns);
-      const want =
-        ns === "aiCommandCenter"
-          ? ["aiCommandCenter.refreshIntervalValue", "aiCommandCenter.customModel"]
-          : [
-              "aiAgentFederation.typeAdvisory",
-              "aiAgentFederation.typeAnalyst",
-              "aiAgentFederation.typeScreener",
-              "aiAgentFederation.typeWhale",
-              "aiAgentFederation.typeNews",
-              "aiAgentFederation.typeCustom",
-            ];
-      for (const k of want) {
-        expect(vi.has(k), `vi thiếu ${k}`).toBe(true);
-        expect(en.has(k), `en thiếu ${k}`).toBe(true);
-      }
+  it("AC1b: refreshIntervalValue/customModel có ở vi + en", () => {
+    // R5.1b: nhánh `aiAgentFederation` (typeAdvisory/…/typeCustom) đã bị gỡ cùng
+    // trang Agents. Giữ lại sẽ là test đỏ vì key không còn tồn tại — đã xoá, không
+    // phải "cho qua" (xem ai-dead-keys-r51b.component.test.ts khoá trạng thái mới).
+    const want = ["aiCommandCenter.refreshIntervalValue", "aiCommandCenter.customModel"];
+    const vi = nsKeys(viDict, "aiCommandCenter");
+    const en = nsKeys(enDict, "aiCommandCenter");
+    for (const k of want) {
+      expect(vi.has(k), `vi thiếu ${k}`).toBe(true);
+      expect(en.has(k), `en thiếu ${k}`).toBe(true);
     }
   });
 
-  it("AC2: 21 key chết không còn trong vi/en", () => {
+  it("AC2: key chết không còn trong vi/en", () => {
     const viFlat = flattenKeys(viDict);
     const enFlat = flattenKeys(enDict);
     const aliveVi = DEAD_KEYS.filter((k) => viFlat.has(k));
