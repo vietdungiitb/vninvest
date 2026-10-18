@@ -1,3 +1,17 @@
+## Entry 373: AI R4.5 — tab "Nhat ky kiem toan" (chi staff) + route guard that; AC1 stale, AC2/3 phai HOI OWNER (2026-10-18)
+
+- **Nhanh**: `feat/ai-r45-audit-tab` -> `dev`. Claim `ai-r45`. Plan `:1237-1248`. 4 AC.
+- **AC1 TRONG PLAN STALE**: plan go "6 tab (them Traces)" nhung **Traces da co tu R3.2**; do that co **5 tab** khop 5 route `/settings/ai{,/agents,/usage,/traces,/slo}`. De AC1 dung nghia, tab thu 6 lay cho trong that: **Nhat ky kiem toan** — BE **da co san** endpoint audit (`portfolio_analytics_views.py:2162`) + export CSV cua R4.3.
+- **AC2/AC3 KHONG CO DU LIEU trong plan**: trong hub **khong tab nao staff-only o tang BE** (audit log user thuong van xem log cua chinh minh — R0.11) ⇒ **da HOI OWNER**, Owner chon "them tab Audit + chi staff thay". Ghi lai vi day la lan thu hai trong ngay AC phai **hỏi** chu khong phai **đoán** (R4.4 AC3 cung tuong tu).
+- **AC3 "route guard, khong chi an UI"** ⇒ route `/settings/ai/audit` boc **`StaffRoute` co san** (`StaffRoute.tsx:14`), khong tu che guard moi; BE cung da tu scope nen khong co duong vong. Test kiem **ca hai lop**: doc `main.tsx` xac nhan route co `StaffRoute` **va** render `StaffRoute` voi non-staff ⇒ bi dua ve `/dashboard`.
+- **Co staff lay tu `userIdentity`** — cung nguon voi `StaffRoute`. Neu nav doc `localStorage` rieng thi co **hai cau chuyen ve quyen** va chung se lech (cung lop loi voi `resolve_tenant`).
+- **`requiredCapabilities` trong `routeCatalog` KHONG phai guard**: ca 5 route AI khai `system.ai_command_center.manage`; route audit khai **giong het** cho nhat quan, va ghi ro trong catalog rang ranh gioi staff nam o `StaffRoute`. Bia mot capability "staff-only" trong catalog la **khoa gia** khong ai kiem.
+- **Export CSV dung the `<a download>`**, khong `fetch` + tai tay: response co BOM va co `truncated` **nam o header HTTP**; doc bang `fetch` se phai expose header qua CORS chi de hien mot con so.
+- **HOI QUI do chinh toi gay ra (da sua)**: them `usePortfolio()` vao `AiHubNav` lam **21 test R3.2/R3.3 do** (`ai-traces`, `ai-slo-dashboard`) lo loi `usePortfolio must be used inside PortfolioProvider` — cac test do mock adapter nhung **khong** co `PortfolioProvider`. Da them `vi.mock` ca 2 file va ghi ro trong comment: thieu no lam **moi** test trong file chet, ke ca test von xanh. Sau sua: **60 file / 385 test xanh**.
+- **LOI CONG CU TOI TU GAY RA (da hoan tac)**: lenh PowerShell `Replace` + gop dong trong toan cuc sua **14.538 dong** o `i18n/vi.js` va `en.js`. Phat hien qua `git diff --numstat` (**7274/7264**) → `git checkout --` ca hai roi chen lai bang Node byte-exact (17 + 16 dong). ⇒ Voi file lon, **khong dung `Replace` toan cuc**; luon kiem `--numstat` sau khi sua (cung lop voi `tooling-traps.md` L-T01).
+- **Gates**: FE moi **13/13** (fail-before 6 do / 7 xanh) · FE hoi quy 60 file **385/385** · `tsc` exit 0 (phai bo sung khai bao `getAIAuditLogs` vao `.d.ts` — runtime co tu R0.7 nhung **thieu type**) · `build` exit 0 · `eslint` 0 err/18 warn · `i18n:scan` exit 0 · `check-system-design` SACH. Bang chung: `docs/evidence/ai-cc/r45-gates.md`.
+- **VAN MO**: chua chup anh E2E cho tab Audit (AC R4.5 khong yeu cau anh) · chua do tren staging · trang Audit chua dua bo loc ngay/actor len UI (endpoint da co).
+
 ## Entry 372: AI R4.4 — `/settings/ai` trong UserSettingsPage + breadcrumb 3 muc; va AC3 "xanh 3 lan, anh vo dung" (2026-10-18)
 
 - **Nhanh**: `feat/ai-r44-settings-ai-nav` -> `dev`. Claim `ai-r44`. PR #245 (`0bcb015bd`). Plan `:1225-1235`. 3 AC.
