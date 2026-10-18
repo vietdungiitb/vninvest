@@ -77,9 +77,13 @@ Deploy `dev` @ `cbafa4b47` → chạy lại `ai-hub-nav-r51`: **4 passed (37.3s)
 
 ## Còn mở
 
-- **Quan sát mới** (chưa kết luận là lỗi): hai khối "CÀU HÌNH AI RUNTIME" và "Nhật ký audit
-  Command Center" vẫn hiện **"Đang tải …"** ở **cả hai** lần chụp, ở hai thời điểm khác nhau.
-  Chưa đo thời điểm hoàn tất ⇒ **không** kết luận là lỗi tải; cần đo riêng.
+- ~~Quan sát "Đang tải …"~~ → **ĐÃ ĐO, KHÔNG PHẢI LỖI.** Probe Playwright (đã xoá sau khi
+  đo) trên staging: sau khi `.loading-subtext` ẩn, hai khối đó **biến mất ngay**; quét
+  `body` ở t=0/2/4/6s đều **sạch**, không còn chuỗi "Đang tải" nào. Nguyên nhân: ảnh được
+  chụp **giữa lúc tải**, không phải kẹt loading. Đo kèm: hub chỉ phát **2 XHR**
+  (`GET /core/v1/auth/me/`, `GET /core/v1/identity/profile/`) — **không** gọi API AI nào,
+  nên các thẻ cấu hình hiện trạng thái chưa cấu hình. **CHƯA** kết luận việc không gọi API AI
+  là đúng hay sai — cần đọc code trang, chưa đo.
 - Nav phụ trong card hub vẫn có nhãn **tiếng Anh** `Runtime` (thuộc component khác, không
   nằm trong `AiHubNav`) — chưa đo khoá của nó.
 - Ô nhập "Lọc theo hành động" có placeholder bị **cắt** (`vd: t…`) — nghi vấn do bề rộng ô
