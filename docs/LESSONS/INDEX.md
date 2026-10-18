@@ -20,6 +20,7 @@
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append` | [`tooling-traps.md`](./tooling-traps.md) | `Get-Content|Set-Content` gộp file, `$LASTEXITCODE` sau pipeline sai, **ghi file = đổi line-ending**, **citation đúng dòng nhưng sai file**. |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `fernet` | [`security.md`](./security.md) | Bảo mật, secret trong repo, ignore, quy trình revoke/rotate/purge history. |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate` | [`verification.md`](./verification.md) | **Sai lầm không báo lỗi**: script đo sai vẫn ra số hợp lý, kiểm tra tồn tại bằng stdout, verify nhầm artifact, gốc rễ kế thừa phải có phản chứng, chạy test làm bẩn working tree. |
+| `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite` | [`false-green.md`](./false-green.md) | **Xanh gia khong kiem tra gi**: suite xanh khi **so test giam**, `resolve()` bi `legacy_proxy_view` che, phai do bang **HTTP that**. |
 
 ## 1.2. Hướng dẫn dùng (Tag-based selection)
 
@@ -128,9 +129,10 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
-| [`verification.md`](./verification.md) | 6 | `L-V01`…`L-V06` |
+| [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
+| [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 42 lesson / 9 file**
+**Tổng: 43 lesson / 10 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

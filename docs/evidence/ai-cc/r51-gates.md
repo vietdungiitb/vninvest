@@ -9,7 +9,7 @@
 | # | Điều kiện | Bằng chứng | AC |
 |---|---|---|---|
 | AC1 | grep `AgentRegistry` chỉ còn migration lịch sử | Chỉ còn `ai_agents/migrations/0001_initial.py` | ✅ |
-| AC2 | Route `/settings/ai/agents` → 404 | Đã bỏ `include` ở `vninvest_core/urls.py:71` + bỏ route ở `main.tsx` (sẽ đo lại trên staging) | ✅ |
+| AC2 | Route `/settings/ai/agents` → 404 | Đã bỏ `include` ở `vninvest_core/urls.py:71` + bỏ route ở `main.tsx` — **đã đo HTTP thật trên staging**, xem §Staging | ✅ |
 | AC3 | Menu bỏ tab | `AiHubNav.tsx` không còn entry Agents | ✅ |
 | AC4 | Tab count 6 → 5 | `ai-audit-tab.component.test.tsx` cập nhật: staff **5** tab, member **4** tab (không có Audit) | ✅ |
 | AC5 | `check-ai-cc` xanh | `check:ai-cc-dag` PASS (46 nodes/61 edges/0 cycle) | ✅ |
@@ -78,13 +78,43 @@ và tên test đã xoá: checker quét **mọi token có dấu chấm phẩy tro
 giải theo gốc BE `packages/core/backend/src`. Phải viết đường dẫn **đầy đủ kèm app**
 (`ai_agents/migrations/0003_...py`) và **không** nhắc tên file đã xoá trong doc.
 
+## Staging — đo thật sau deploy (2026-10-18, `dev` @ `d56a95741`)
+
+Deploy `scripts/deploy-staging.sh` → tất cả container `healthy`.
+
+| Đo | Kết quả |
+|---|---|
+| `grep ai_agents` trong `vninvest_core/urls.py` | **không còn include** |
+| `GET /api/core/v1/ai/agents/` | **404** |
+| `GET /api/core/v1/ai/usage/summary/` | **401** (route còn sống) |
+| `information_schema.tables` `ai_agents_agentregistry` | **0** — migration `0003_delete_agentregistry` đã **drop bảng thật** |
+| FE bundle `dist/assets` | không còn chuỗi `settings/ai/agents` |
+
+**Vì sao phải có dòng 401 đi kèm dòng 404:** 404 một mình không chứng minh gì — nếu cả
+prefix `/api/core/v1/ai/` đã hỏng thì cũng ra 404. Có `401` ở `/ai/usage/summary/` mới chứng
+minh 404 ở `/ai/agents/` là **do route bị gỡ**, không phải do deploy hỏng chung.
+
+## ⚠ Bẫy đo: `resolve()` **không chứng minh route còn hay mất**
+
+Lần đo đầu tôi chạy `django.urls.resolve()` trong container và nhận:
+
+```
+/api/core/v1/ai/agents/   -> RESOLVED <function legacy_proxy_view>
+/api/core/v1/ai/audit/    -> RESOLVED <function legacy_proxy_view>
+/api/core/v1/ai/usage/summary/ -> RESOLVED <function legacy_proxy_view>
+```
+
+**Cả 3 route đều "resolve được"**, kể cả route đã gỡ ⇒ `resolve()` bị một
+`legacy_proxy_view` bắt-tất-cả che, trả về 200 cho mọi đường dẫn. Nếu tôi dừng ở đó và
+ghi "AC2 đạt" thì đó là **bằng chứng giả**. Phải dùng **HTTP thật** (`curl`) mới đo được
+404/401 — xem lesson L-V07.
+
 ## Còn mở
 
-- **Chưa deploy staging để đo AC2 (route 404)** — cần `bash scripts/deploy-staging.sh` rồi
-  `curl /api/core/v1/ai/agents/` ⇒ 404. Hiện mới xác nhận bằng source + test FE.
-- Migration `0003_delete_agentregistry` **chưa chạy** trên staging ⇒ bảng còn nguyên 1 dòng
-  cho tới lúc deploy.
+- Tab Agents **không còn trong FE bundle** trên staging, nhưng **chưa chụp màn hình** xác nhận
+  nav hiện đủ 5 tab (Overview/Usage/Traces/SLO/Audit) với phiên đã đăng nhập — cần chạy
+  Playwright có `storageState` như R4.4. **CHƯA CHẠY.**
 - Khoá i18n `aiAgentFederation.*` còn trong `vi.js`/`en.js` nhưng **không còn nơi dùng**;
-  chưa gỡ vì `i18n:scan` và các test parity có thể khoá danh sách — **CHƯA CHẠY** phần dọn này.
+  chưa gỡ vì `i18n:scan` và test parity có thể khoá danh sách — để wave dọn nợ.
 - `ai-cc-i18n-clean.component.test.ts` vẫn liệt kê một số khoá `aiAgentFederation.*` trong
   danh sách kiểm parity; cần rà lại ở wave dọn nợ tiếp.
