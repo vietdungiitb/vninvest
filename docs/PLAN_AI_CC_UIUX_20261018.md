@@ -25,14 +25,22 @@
 |---|---|
 | `packages/web/src/pages/AICommandCenterPage.tsx` | S1, S2, S3, S4 |
 | `packages/web/src/components/AICommandCenterForm.tsx` | S0, S2 |
+| `packages/web/src/pages/UserSettingsPage.tsx` | S4 (Q2 — link nhãn ngắn, `UserSettingsPage.tsx:275-276`) |
+| `packages/web/src/components/Breadcrumb.tsx` | S4 (Q2 — `AI_ROUTE_LABELS`) |
 | `packages/web/src/shared/providerModels.ts` | S3 |
-| `packages/web/src/i18n/vi.js` | S3, S4 (**chỉ thêm key mới** — xem OVERLAP) |
+| `packages/web/src/i18n/vi.js` | S3, S4 (**chỉ thêm key mới**) |
 | `packages/web/src/i18n/en.js` | S3, S4 (**chỉ thêm key mới**) |
-| `packages/web/src/components/Breadcrumb.tsx` | S4 (đọc + sửa 1 dòng map) |
-| `packages/web/src/components/AiHubNav.tsx` | S4 (**chỉ nếu** AC4.2 buộc phải) |
-| `packages/web/src/components/aiSettings.module.css` | S1 (**chỉ** nếu AC1.3 giữ anchor nav), S5 |
 | `packages/web/scripts/check-ai-cc.mjs` | S5 (**KHÔNG** nối vào `package.json` — deny-list) |
+| `packages/web/src/pages/AICommandCenterPage.component.test.js` | S4 (Q3 — 3 dòng `:37,:159,:167` tham chiếu `aiCommandCenter.eyebrow`) |
+| `packages/web/src/pages/__tests__/ai-hub-breadcrumb.component.test.tsx` | S4 (AC4.2 thêm case) |
 | `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | mọi slice |
+
+**KHÔNG sửa** (đã khai ở bản v1 nhưng không AC nào đụng — bỏ khỏi SCOPE để không vi phạm `LIMIT`):
+
+| File | Vì sao không sửa |
+|---|---|
+| `packages/web/src/components/AiHubNav.tsx` | Q1 xoá nav ở **page**, không đụng `AiHubNav`. Hệ 5 tab giữ nguyên. |
+| `packages/web/src/components/aiSettings.module.css` | Q1 **không** xoá class `.hubNav*` — `AiHubNav.tsx:117` vẫn là consumer. Không cần sửa CSS cho 4 quyết định. |
 
 **TẠO MỚI** (test đi kèm từng slice — không tính vào giới hạn file sửa):
 
@@ -88,7 +96,7 @@ Skill `improve-ui` §5 giới hạn **3 findings** sau khi đã sàng lọc. M�
 | **Contract** | Trong **cùng một tác vụ**, trang render **hai** thanh tab dùng **cùng một bộ class CSS** và **trùng nhãn ở 2/3 mục**, trỏ tới **3 mục tiêu khác nhau**. Đây là mâu thuẫn trực tiếp trong nội dung hiển thị của cùng tác vụ. |
 | **Runtime** | `AICommandCenterPage.tsx:227` → `AiHubNav` (5 tab route: Tổng quan · Usage AI · Dấu vết AI · SLO AI · Nhật ký audit). `AICommandCenterPage.tsx:229-245` → `<nav className={styles.hubNav}>` thứ 2 (3 anchor: Tổng quan · Runtime · Nhật ký audit). Cả hai dùng `styles.hubNav`/`hubNavLink`/`hubNavLinkActive` — `aiSettings.module.css:132,145,169` — **không có modifier nào phân biệt**. Cả hai nhận **cùng** `aria-label: t("aiCommandCenter.title")` (`:229` vs `AiHubNav.tsx:117`). `AiHubNav` được gọi **không truyền `className`** ⇒ không ghi đè được (`AiHubNav.tsx:60` default `""`). |
 | **Cơ chế 2 ô "Tổng quan" cùng sáng** | `AiHubNav.tsx:79` `active: location.pathname === "/settings/ai"` **ĐÚNG** khi vừa tải. `AICommandCenterPage.tsx:233` `location.hash === "#overview" \|\| (!location.hash && location.pathname === "/settings/ai")` **ĐÚNG** khi vừa tải. ⇒ **Không có hash nào thì CẢ HAI ô "Tổng quan" đều active cùng lúc.** Xác minh bằng đọc mã, không phải suy luẫn. |
-| **Nhãn trùng là cùng khoá i18n** | `tabOverview` = `"Tổng quan"` (`vi.js:5412`) dùng cho **cả** tab route (`:234`) và anchor (`:230`). `tabAudit` = `"Nhật ký audit"` (`vi.js:5414`) dùng cho **cả** tab route (`AiHubNav.tsx:110`) và anchor (`:241`). Anchor `"Nhật ký audit"` → `#audit` (panel trong trang), tab route `"Nhật ký audit"` → `/settings/ai/audit` (**một route riêng**). |
+| **Nhãn trùng là cùng khoá i18n** | `tabOverview` = `"Tổng quan"` (`vi.js:5412`) dùng cho **cả** anchor (`AICommandCenterPage.tsx:234`) và tab route (`AiHubNav.tsx:78`). `tabAudit` = `"Nhật ký audit"` (`vi.js:5414`) dùng cho **cả** anchor (`AICommandCenterPage.tsx:244`) và tab route (`AiHubNav.tsx:109`). Anchor `"Nhật ký audit"` → `#audit` (panel trong trang), tab route `"Nhật ký audit"` → `/settings/ai/audit` (**một route riêng**). |
 | **Correction** | **Xoá `<nav>` anchor thứ 2** khỏi `AICommandCenterPage.tsx:229-245`. Lý do đủ để xoá: `#overview` = đầu trang (đã là nơi đổ bậy), `#audit` **trùng nghiệp vụ** với route `/settings/ai/audit` đã tồn tại, `#runtime` = panel thứ 3 trong cùng trang. Sau khi xoá: **1 hệ điều hướng duy nhất**. |
 | **Confidence** | **high** — đọc trực tiếp 2 file mã + 1 file CSS, không suy luận. |
 
@@ -141,7 +149,7 @@ Không phải 3 finding trên, nhưng đều có bằng chứng và **có trong 
 | B3 | `entry.source` lộ vào "Lịch sử prompt" | `AICommandCenterPage.tsx:416` |
 | B4 | 4 tên gọi khác nhau cho **cùng 1 trang** | Sidebar `sidebaritems.ts:39` → "Trung tâm AI" (`vi.js:98`) · Breadcrumb `Breadcrumb.tsx:50` → "Trí tuệ nhân tạo" (`vi.js:2490`) · H1 `AICommandCenterPage.tsx:219` → "Trung tâm điều hành AI" (`vi.js:5409`) · Link từ `/settings` `UserSettingsPage.tsx:276` → "Mở trung tâm AI" (`vi.js:2492`). Thêm nữa eyebrow `vi.js:5410` = "Cài đặt" — trùng khái niệm với crumb 1 "Cài đặt tài khoản" trên cùng màn hình. ⚠ Số dòng nhãn ở `en.js` **lệch** so với `vi.js` (ví dụ `title`: `vi.js:5409` ↔ `en.js:5342`) — luôn tra đúng file khi sửa. |
 | B5 | `SUB_AGENT_PROMPT_FIELDS` khai trong thân component, thiếu dep | `AICommandCenterForm.tsx:181-186` khai 4 hằng số **bên trong** thân hàm component ⇒ mất identity mỗi render; `:305` `useCallback` (`applySettings`) thiếu dep ⇒ **`npm run lint` exit 1** (xem §3). |
-| B6 | `--ai-accent-soft` **không bao giờ resolve** (cả 2 theme) | `aiSettings.module.css:60` khai `--ai-accent-soft: var(--accent-cyan-soft, rgba(18,199,232,.22))`. Quét đệ quy **21 file `.css`** trong `packages/web/src` (script Node, `@ 96cc87e12`): `--accent-cyan-soft` có **0 định nghĩa**, **1** `var()` sử dụng ⇒ **luôn** rơi về fallback hardcode. ⚠ **Đính chính (v2):** bản plan v1 nói `--ai-border-strong` (`:62`) cũng không resolve — **sai**, `--border-strong` **có** 2 định nghĩa: `soc.tokens.css:11` (dark) và `soc.tokens.css:123` (light). Chỉ `--accent-cyan-soft` là lỗi thật. |
+| B6 | `--ai-accent-soft` **không bao giờ resolve** (cả 2 theme) | `aiSettings.module.css:60` khai `--ai-accent-soft: var(--accent-cyan-soft, rgba(18,199,232,.22))`. Quét đệ quy **21 file `.css`** trong `packages/web/src` (script Node, `@ 96cc87e12`): `--accent-cyan-soft` có **0 định nghĩa**, **2** `var()` sử dụng — `aiSettings.module.css:60` (có fallback) và **`pages/WatchlistPage.css:407`** `background: var(--accent-cyan-soft);` (**không fallback** ⇒ nền trong suốt). ⚠ **Đính chính 2 lần:** (a) bản v1 nói `--ai-border-strong` (`:62`) cũng không resolve — **sai**, `--border-strong` **có** 2 định nghĩa `soc.tokens.css:11,123`; (b) bản v2 nói **1** `var()` sử dụng — **sai**, thật là **2**, và file thứ hai nằm **ngoài SCOPE** (objection N9). |
 | B7 | 15 nhãn VI viết **không dấu** | `vi.js:5449-5463` — bao gồm `titleAudit` = `"Nhat ky kiem toan AI"` và 6 nhãn cột bảng audit hiển thị trực tiếp cho staff. Vi phạm quy ước "Vietnamese labels full dấu" (`AGENTS.md` §Constraints). |
 
 ---
@@ -222,14 +230,15 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
   *Tái tạo:* test mới assert `container.querySelectorAll('[aria-current="page"]').length === 1`.
 
 - **AC1.3 — Given** đã xoá nav anchor.
-  **When** chạy script dòng class mồ côi (xem lệnh bên dưới).
-  **Then** in ra **rỗng** — không còn class nào trong `aiSettings.module.css` bị khai mà không file nào dùng tới, **trong phạm vi 2 file của S1**.
+  **When** chạy script kiểm 3 class `.hubNav*`.
+  **Then** in `PASS` — cả 3 class **vẫn phải còn** và **vẫn còn consumer**.
+  ⚠ **ĐÍNH CHÍNH (objection N4 vòng 2):** bản v2 viết Then là *"không còn class mồ côi nào"* — đó là **AC rỗng**: lệnh in `PASS` **ngay bây giờ, trước khi sửa**, nên AC xanh trước **và** sau ⇒ không bao giờ đỏ. Đã đổi thành kiểm đúng thứ liên quan tới S1.
   *Lệnh (PowerShell, byte-exact):*
   ```powershell
-  node -e "const fs=require('fs');const c=fs.readFileSync('src/components/aiSettings.module.css','utf8');const used=['src/pages/AICommandCenterPage.tsx','src/components/AiHubNav.tsx'].map(f=>fs.readFileSync(f,'utf8')).join('');let n=0;for(const m of c.matchAll(/^\.(hubNav\w*)\s*\{/gm)){if(!used.includes('styles.'+m[1])){console.log('ORPHAN .'+m[1]);n++}}console.log(n===0?'PASS: 0 class mo coi':'FAIL: '+n)"
+  node -e "const fs=require('fs');const c=fs.readFileSync('src/components/aiSettings.module.css','utf8');const used=['src/pages/AICommandCenterPage.tsx','src/components/AiHubNav.tsx'].map(f=>fs.readFileSync(f,'utf8')).join('');const need=['.hubNav','.hubNavLink','.hubNavLinkActive'];const miss=need.filter(x=>!c.includes(x+'{')||!used.includes('styles.'+x.slice(1)));console.log(miss.length?'FAIL thieu: '+miss.join(', '):'PASS: 3/3 class .hubNav* con va con consumer')"
   ```
-  ⚠ **Giải quyết mâu thuẫn tiềm ẩn với AC1.4 (objection O13):** AC1.3 và AC1.4 là **hai kiểm tra khác nhau**, chạy ở **hai thời điểm khác nhau**. AC1.4 chạy **trên bản tiền-sửa** (file còn nguyên nav thứ 2) để chứng minh test đỏ trước; AC1.3 chạy **sau khi sửa xong**. Không tranh nhau. Nếu AC1.4 trả xanh ⇒ test không có tác dụng ⇒ **dừng**, sửa test.
-  *Nếu `.hubNav`/`hubNavLink` còn consumer khác ngoài 2 file này:* xác minh bằng `node -e` quét đệ quy `src/**/*.tsx|jsx` tìm `styles.hubNav` **trước khi** xoá class. Không xoá class khi chưa có bằng chứng 0 consumer.
+  **Kết luận đã đo trước (Q1):** sau khi xoá nav anchor, `AiHubNav.tsx:117` **vẫn** dùng `styles.hubNav` ⇒ **KHÔNG xoá** 3 class này. Việc dọn **6 class mồ côi thật** (`.hubBackLink:175` `.panelActions:239` `.textarea:467` `.alertInfo:558` `.statusSuccess:620` `.statusDefault:1192` — đo bằng script quét đệ quy 125 class × 17 importer) **KHÔNG** thuộc Q1–Q4 ⇒ đưa sang **N10**, không làm ở đây.
+  ⚠ **Giải quyết mâu thuẫn tiềm ẫn với AC1.4 (objection O13):** AC1.3 và AC1.4 là **hai kiểm tra khác nhau**, chạy ở **hai thời điểm khác nhau**. AC1.4 chạy **trên bản tiền-sửa** (file còn nguyên nav thứ 2) để chứng minh test đỏ trước; AC1.3 chạy **sau khi sửa xong**. Nếu AC1.4 trả xanh ⇒ test không có tác dụng ⇒ **dừng**, sửa test.
 
 - **AC1.4 — Given** cần test hồi quy chứng minh **fail-before**.
   **When** chạy trình tự 5 bước dưới đây trên PowerShell.
@@ -303,19 +312,53 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
 
 **File:** `packages/web/src/shared/providerModels.ts`, `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js`, `packages/web/src/pages/AICommandCenterPage.tsx`
 
-**Khoá i18n mới — thêm ở CUỐI khối `aiCommandCenter` (`vi.js` sau dòng 5558, `en.js` sau dòng 5491), KHÔNG sửa dòng cũ nào:**
+**Khoá i18n mới — BẮT BUỘC khai dạng OBJECT LỒNG, không được khai phẳng.**
 
-| Khoá | VI | EN |
-|---|---|---|
-| `provider.openclaw` | `OpenClaw (mặc định hệ thống)` | `OpenClaw (system default)` |
-| `provider.openai` | `OpenAI (ChatGPT)` | `OpenAI (ChatGPT)` |
-| `provider.gemini` | `Google Gemini` | `Google Gemini` |
-| `provider.claude` | `Anthropic (Claude)` | `Anthropic (Claude)` |
-| `provider.local` | `Mô hình cục bộ (Ollama/vLLM)` | `Local model (Ollama/vLLM)` |
-| `source.commandCenter` | `Cấu hình trung tâm AI` | `AI command center config` |
-| `source.native` | `Cấu hình dữ liệu gốc` | `Native data config` |
-| `source.unknown` | `Không xác định` | `Unknown` |
-| `readOnlyBadge` | `Chỉ đọc` | `Read-only` |
+⚠⚠ **BẪY ĐÃ ĐO (objection N3 vòng 2) — sửa theo đúng chữ bảng này sẽ tạo đúng bug AC3.2/AC3.4 sinh ra để sửa.**
+`packages/web/src/i18n/index.js:12-16` `getNestedValue()` **tách key theo `.`** rồi đi từng cấp:
+```js
+function getNestedValue(source, path) {
+  return String(path || '').split('.')
+    .reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), source);
+}
+```
+Khối `aiCommandCenter` có **186 khoá phẳng ở depth-1** + **1** object lồng duy nhất (`subAgent`, `vi.js:5352`). Mô phỏng trên chính hàm đó:
+- khoá **phẳng** `"aiCommandCenter.provider.gemini": "Google Gemini"` ⇒ `t()` tra `dict.aiCommandCenter['provider']['gemini']` ⇒ **`undefined`** ⇒ UI in ra **chuỗi khoá**.
+- **object lồng** ⇒ resolve đúng.
+
+⇒ **Sửa đúng hình dạng sau** (thêm ở CUỐI khối `aiCommandCenter`, ngay sau `subAgent` ở `vi.js:5368` / `en.js:5300`, **không sửa dòng cũ nào**):
+
+```js
+  // S3 — nhãn enum + badge chỉ đọc. PHẢI là object lồng: getNestedValue tách key
+  // theo "." (i18n/index.js:12-16); khoá phẳng có dấu chấm sẽ không resolve.
+  provider: {
+    openclaw: "OpenClaw (mặc định hệ thống)",
+    openai: "OpenAI (ChatGPT)",
+    gemini: "Google Gemini",
+    claude: "Anthropic (Claude)",
+    local: "Mô hình cục bộ (Ollama/vLLM)",
+  },
+  source: {
+    commandCenter: "Cấu hình trung tâm AI",
+    native: "Cấu hình dữ liệu gốc",
+    unknown: "Không xác định",
+  },
+  readOnlyBadge: "Chỉ đọc",
+```
+
+Bản `en.js` **cùng hình dạng**, giá trị:
+
+| Khoá | EN |
+|---|---|
+| `provider.openclaw` | `OpenClaw (system default)` |
+| `provider.openai` | `OpenAI (ChatGPT)` |
+| `provider.gemini` | `Google Gemini` |
+| `provider.claude` | `Anthropic (Claude)` |
+| `provider.local` | `Local model (Ollama/vLLM)` |
+| `source.commandCenter` | `AI command center config` |
+| `source.native` | `Native data config` |
+| `source.unknown` | `Unknown` |
+| `readOnlyBadge` | `Read-only` |
 
 - **AC3.1 — Given** `PROVIDER_OPTIONS` (`providerModels.ts:67-73`).
   **When** thêm `labelKey` cho **cả 5** provider theo bảng trên.
@@ -347,11 +390,12 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
   *Fail-before:* ảnh chụp màn hình thật của staging cho thấy ô này hiện `gemini`.
 
 - **AC3.5 — Given** 15 nhãn không dấu ở `vi.js:5449-5463`.
-  **When** thay bằng bản có dấu đầy đủ.
-  **Then** lệnh dưới đây in `PASS`.
-  *Lệnh tái tạo (viết đầy đủ, không dùng placeholder `node -e "..."` — objection O14):*
+  **When** thay bằng bản có dấu đầy đủ, khớp **cả 15 khoá** với bảng bên dưới.
+  **Then** lệnh dưới in `PASS 15/15`.
+  ⚠ **ĐÍNH CHÍNH (objection N5 vòng 2):** bản v2 assert 9 chuỗi, trong đó **5 chuỗi đã tồn tại ở nơi khác** trong `vi.js` (`Xuất CSV` 12 hit, `Thời điểm` 13, `Hành động` 36, `Người thực hiện` 12, `Lý do` 28) ⇒ kiểm chúng là **vô nghĩa**; và **6/15 dòng không dấu bị bỏ sót**. Lệnh mới khớp theo **tên khoá + giá trị** nên không trùng chuỗi ở nơi khác.
+  *Lệnh tái tạo (viết đầy đủ, không placeholder — objection O14):*
   ```powershell
-  node -e "const s=require('fs').readFileSync('packages/web/src/i18n/vi.js','utf8');const need=['Nhật ký kiểm toán AI','Mọi thay đổi cấu hình AI','Trang này chỉ dành cho quản trị viên','Lọc nhật ký','Xuất CSV','Thời điểm','Hành động','Người thực hiện','Lý do'];const miss=need.filter(x=>!s.includes(x));console.log(miss.length?'FAIL thieu: '+miss.join(' | '):'PASS')"
+  node -e "const s=require('fs').readFileSync('packages/web/src/i18n/vi.js','utf8');const want=[['titleAudit','Nhật ký kiểm toán AI'],['descriptionAudit','Mọi thay đổi cấu hình AI đều được ghi lại theo thời gian và người thực hiện.'],['auditStaffOnly','Trang này chỉ dành cho quản trị viên.'],['auditFilter','Lọc nhật ký'],['auditActionPlaceholder','Lọc theo hành động'],['auditExport','Xuất CSV nhật ký'],['auditTotal','Tổng số dòng:'],['auditLegacy','dòng chưa gán người thực hiện.'],['auditLoading','Đang tải nhật ký...'],['auditEmpty','Chưa có dòng nhật ký nào.'],['auditPager','Phân trang nhật ký'],['auditColWhen','Thời điểm'],['auditColAction','Hành động'],['auditColActor','Người thực hiện'],['auditColReason','Lý do']];const miss=want.filter(([k,v])=>!new RegExp(k+String.fromCharCode(9)+String.fromCharCode(34)+v.replace(/[.*+?^$()|[\]\\\\]/g,String.fromCharCode(92)+String.fromCharCode(36))).test(s));console.log(miss.length?'FAIL '+miss.length+'/15: '+miss.map(x=>x[0]).join(', '):'PASS 15/15')"
   ```
   ⚠ **Chỉ sửa 15 dòng đó.** Không đụng dòng nào khác trong `vi.js` (file 7233 dòng).
   *Kiểm byte:* `git diff --numstat packages/web/src/i18n/vi.js` ⇒ phải **bằng số dòng thực sự sửa**; lệch ⇒ dừng (L-T01).
@@ -389,14 +433,15 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
   *Tái tạo:* `packages/web/src/pages/__tests__/ai-hub-breadcrumb.component.test.tsx` (file đã tồn tại) — thêm case.
 
 - **AC4.3 — Given** eyebrow.
-  **When** xoá `aiCommandCenter.eyebrow` và node render nó (`AICommandCenterPage.tsx:218`).
-  **Then** lệnh quét đệ quy dưới đây in `PASS` (0 hit) — đã xoá cả ở `vi.js` + `en.js`, tránh key chết.
+  **When** xoá `aiCommandCenter.eyebrow` và node render nó (`AICommandCenterPage.tsx:218`), **và** sửa 3 dòng tham chiếu trong `AICommandCenterPage.component.test.js` (`:37` dict mock, `:159` tên test, `:167` assertion).
+  **Then** lệnh quét đệ quy dưới in `PASS` — **0 hit trong toàn bộ `packages/web/src`**, kể cả file test.
+  ⚠ **ĐÍNH CHÍNH (objection N1 vòng 2 — lỗi CHẶN):** bản v2 chỉ xoá node ở `.tsx` nhưng lệnh kiểm **quét cả `__tests__`** — mà file thật chứa literal lại **không nằm trong `__tests__`** mà nằm cạnh page. Chạy lệnh bản v2 hôm nay in **2 HIT**; sau khi xoá node vẫn còn **1 HIT** trong test ⇒ AC **không bao giờ xanh**. Đã đưa `AICommandCenterPage.component.test.js` vào SCOPE và AC nay bắt sửa cả 3 dòng đó.
   *Lệnh tái tạo (**không** dùng `grep -rn` — `grep` không tồn tại trên máy này, objection O3):*
   ```powershell
-  node -e "const fs=require('fs'),p=require('path');(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())w(f);else if(/\.(ts|tsx|js|jsx)$/.test(e.name)){const s=fs.readFileSync(f,'utf8');if(s.includes('aiCommandCenter.eyebrow'))console.log('HIT '+f)}}})('packages/web/src')"
+  node -e "const fs=require('fs'),p=require('path');let n=0;(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const f=p.join(d,e.name);if(e.isDirectory())w(f);else if(/\.(ts|tsx|js|jsx)$/.test(e.name)){const s=fs.readFileSync(f,'utf8');if(s.includes('aiCommandCenter.eyebrow')){n++;console.log('HIT '+f)}}}})('packages/web/src');console.log(n?'FAIL: '+n+' hit':'PASS: 0 hit')"
   ```
-  ⇒ phải in **rỗng**. Lưu ý lệnh này **cố ý quét cả `i18n/`** — nếu chỉ quét `src` mà bỏ `i18n` thì key chết sẽ lọt.
-  ⚠ Kiểm tra trước: quét `packages/web/src/**/__tests__` cho chữ `eyebrow` — nếu test cũ đang assert h1+eyebrow thì **sửa test**, không hồi sinh key.
+  ⇒ phải in **`PASS: 0 hit`**. Lệnh này **cố ý quét cả `i18n/` và cả file test cạnh page** — thu hẹp phạm vi quét là cách làm AC này xanh giả.
+  ⚠ `AICommandCenterPage.component.test.js:159` tên test là *"renders translated eyebrow and overview without raw i18n keys (Slice A)"* — sau khi xoá eyebrow, **đổi tên** thành *"renders overview without raw i18n keys (Slice A)"**, **không** xoá cả test (nó còn assert phần `overview`).
 
 - **AC4.4 — Given** S4 xong.
   **When** `npx tsc --noEmit` · `npm run i18n:scan:strict` · `npm run test:components`.
@@ -418,8 +463,8 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
 - **AC5.2 — Given** rule mới.
   **When** chạy `node ./scripts/check-ai-cc.mjs --self-test`.
   **Then** có **≥ 1** case **phủ định** mà tác giả **không** viết: ví dụ 2 `nav` khác class nhưng cùng `aria-label` ⇒ vẫn phải FAIL.
-  ⚠ **Đính chính (objection O7):** bản plan v1 yêu cầu self-test "qua hook". Script `check-ai-cc.mjs` **không có hook mode** ⇒ yêu cầu đó **không kiểm chứng được**, đã gỡ. Yêu cầu thật còn lại là: **self-test phải có case paraphrase** mà tác giả không viết (hazard 12), và self-test phải **không phụ thuộc môi trường gọi** — strip biến `GIT_*` khỏi `process.env` trước khi `spawnSync` (hazard 17).
-  *Tái tạo:* `node ./scripts/check-ai-cc.mjs --self-test; echo $LASTEXITCODE`
+  ⚠ **Đính chính (objection O7 + N6 vòng 2):** bản plan v1 yêu cầu self-test "qua hook", bản v2 yêu cầu "strip `GIT_*` trước `spawnSync`" — **cả hai đều không kiểm chứng được**. Đo `check-ai-cc.mjs`: `spawnSync|child_process|GIT_` = **0 hit**; self-test chạy **in-process** qua `process.argv.includes("--self-test")` tại `:147`. Đã **gỡ cả hai vế**, chỉ giữ đúng 1 yêu cầu có referent thật: **self-test phải có 1 case paraphrase mà tác giả không viết** (hazard 12).
+  *Tái tạo:* `node ./scripts/check-ai-cc.mjs --self-test; echo $LASTEXITCODE` — baseline `96cc87e12`: in `SELF-TEST PASS: 11/11`, exit **0**.
 
 - **AC5.3 — Given** rule mới.
   **When** chạy `node ./scripts/check-ai-cc.mjs` trên `dev` sạch.
@@ -466,17 +511,22 @@ S0 (gỡ lint)  →  S1 (nav)  →  S2 (tách lớp)  →  S3 (i18n)  →  S4 (t
 | N7 | Sửa `AIAuditLogsPanel.tsx:407` (`'system'` hardcode) và `AIAuditPage.tsx:146` (`row.action` thô) | Ngoài `/settings/ai` (thuộc `/settings/ai/audit`). Ghi backlog. |
 | N8 | `packages/web/package.json` (thêm `check-ai-cc` vào scripts) | **DENY-LIST §2**. Chỉ ghi claim + báo coordinator. |
 | N9 | Mobile / viewport hẹp | Không có `@media max-width` nào trong `aiSettings.module.css`; **không có thiết bị đo** ⇒ `CHƯA CHẠY`, không AC nào đòi. |
+| N10 | Dọn **6 class mồ côi thật** trong `aiSettings.module.css` | Đo bằng script quét đệ quy (125 class khai × 17 importer, tất cả đều alias `styles`): `.hubBackLink:175` · `.panelActions:239` `.textarea:467` · `.alertInfo:558` · `.statusSuccess:620` · `.statusDefault:1192`. Không thuộc Q1–Q4; dọn nó là **việc cosmetic riêng**, kèm rủi ro regression style. **BÁO CÁO** trong `SUMMARY`. |
 
 ---
 
-## 7. Câu hỏi cần Owner chốt trước khi S1 code
+## 7. Quyết định của Owner (2026-10-19) — ĐÃ CHỐT, không còn là câu hỏi
 
-| # | Câu hỏi | Khuyến nghị của tôi (PM) | Vì sao cần Owner |
+Owner phê duyệt **toàn bộ khuyến nghị**. Bốn quyết định dưới đây là **ý đồ sản phẩm do Owner quyết**, không phải suy đoán của agent (`improve-ui` §3.3 cho phép dùng khi có quyết định tường minh).
+
+| # | Câu hỏi | **QUYẾT ĐỊNH** | Hệ quả bắt buộc cho code |
 |---|---|---|---|
-| Q1 | Xoá hẳn nav anchor, hay giữ dưới dạng sub-tab của hệ SOC (`.subTabBar`) + đổi 3 nhãn? | **Xoá hẳn** ở đợt này. 2/3 mục của nó đã có nơi khác (`#overview` = đầu trang, `#audit` = route riêng). Thêm lại sau khi có **3 section dài thật sự**. | Đây là quyết định phân bổ chức nội dung; tôi có thể đề xuất nhưng không tự quyết danh tính sản phẩm. |
-| Q2 | Tên chuẩn của trang: "Trung tâm AI" hay "Trung tâm điều hành AI"? | **"Trung tâm AI"** cho cả 4 nơi (khớp sidebar + `routes.aiCommandCenter` sẵn có). Cân nhắc giữ "Trung tâm điều hành AI" làm **H1** vì mô tả đúng hơn, còn sidebar/breadcrumb dùng bản ngắn. | Tên hiển thị là **ý đồ sản phẩm**, `improve-ui` §3.3 cấm tôi tự bịa. |
-| Q3 | Có xoá eyebrow "Cài đặt" không? | **Xoá** — trùng khái niệm với breadcrumb "Cài đặt tài khoản" ngay trên màn hình đó. | Ảnh hưởng mọi sub-route dùng chung `AiHubNav`. |
-| Q4 | Ô "Auto refresh/ngày" — gắn nhãn "Chỉ đọc", hay mở ticket thêm field? | **Gắn nhãn "Chỉ đọc"** ngay (rẻ, chặn hiểu nhầm). Mở ticket BE riêng cho field. | BE contract chưa verify (N6). |
+| **Q1** | Xoá hẳn nav anchor hay giữ dạng sub-tab SOC? | **XOÁ HẲN** nav anchor thứ 2 | Xoá `AICommandCenterPage.tsx:229-245` + node `styles.hubNav` không còn consumer thì xoá class. **KHÔNG** dùng `.subTabBar`. |
+| **Q2** | Tên chuẩn của trang? | **Tên ngắn cho vị trí hẹp, tên dài cho H1**: sidebar + breadcrumb = **"Trung tâm AI"**; H1 = **"Trung tâm điều hành AI"** (giữ nguyên `aiCommandCenter.title`); link từ `/settings` = **"Trung tâm AI"** (bỏ hậu tố "Mở") | `Breadcrumb.tsx:50` → trỏ `routes.aiCommandCenter` thay vì `userSettings.aiGroup.title`. Link `UserSettingsPage.tsx:276` dùng chung nhãn ngắn. |
+| **Q3** | Xoá eyebrow "Cài đặt"? | **XOÁ** | Xoá node `AICommandCenterPage.tsx:218` + key `aiCommandCenter.eyebrow` ở **cả** `vi.js` + `en.js` (tránh key chết). |
+| **Q4** | "Auto refresh/ngày"? | **Gắn nhãn "Chỉ đọc"** ngay; ticket BE để thêm ô nhập để sau | Thêm khoá `aiCommandCenter.readOnlyBadge` + render badge cạnh ô đó. |
+
+**Ngoài ra Owner chốt:** làm theo khuyến nghị để UI/UX **thật sự chuyên nghiệp** ⇒ ưu tiên **độ rõ ràng của thị giác và tính nhất quán nhãn**, không chỉ dừng ở "không còn lỗi kỹ thuật".
 
 ---
 
