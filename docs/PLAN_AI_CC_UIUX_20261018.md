@@ -288,7 +288,7 @@ Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần s�
 
 - **AC2.4 — Given** ô "Auto refresh/ngày" còn lại.
   **When** render.
-  **Then** nó **có** nhãn phụ nói rõ chỉ đọc (dùng khoá i18n mới `aiCommandCenter.readOnlyBadge` — xem S3), vì **không có** `<input>` nào cho nó (grep 3 hit: `AICommandCenterForm.tsx:31`, `AICommandCenterPage.tsx:113`, `AICommandCenterPage.component.test.js:226`).
+  **Then** nó **có** nhãn phụ nói rõ chỉ đọc (dùng khoá i18n mới `aiCommandCenter.readOnlyBadge` — xem S3), vì **không có** ô nhập nào cho nó: quét đệ quy 581 file `.ts/.tsx/.js/.jsx` trong `packages/web/src` (script Node) cho `advisory_max_auto_refreshes_per_day` ra **10 hit**, trong đó chỉ **2 file production** (`AICommandCenterForm.tsx:31` khai type, `AICommandCenterPage.tsx:113` chỗ đọc); 8 hit còn lại là test + `pages/signals/WhaleAdvisoryPage.tsx:28,548` (trang khác). **Không hit nào tạo `<input>`/`<select>` ghi field này.**
   *Tái tạo:* test mới assert phần tử đó chứa text khoá mới.
 
 - **AC2.5 — Given** S2 xong.
