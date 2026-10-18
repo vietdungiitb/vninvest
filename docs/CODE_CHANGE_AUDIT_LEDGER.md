@@ -7,7 +7,8 @@
 - **FAIL-BEFORE**: test breadcrumb moi do 4 do, in ra dung `"audit"` / `"traces"` / `"slo"` — khop anh.
 - **MOT TEST CU TOI PHAI SUA THEO (va vi sao do dung)**: `ai-hub-nav-r18.component.test.tsx` AC2 tim nav hub bang **text khoa i18n**; sau khi breadcrumb render khoa (khi `t()` tra ve chinh khoa) thi `find()` bat **nham breadcrumb** ⇒ test do **vi ly do sai**. Sua sang loc theo **cau truc** `nav:has(a[href="/settings/ai/usage"])`. **Thu `a[href^="/settings/ai"]` truoc VAN SAI** vi breadcrumb co link `/settings/ai` va dung truoc trong DOM — cung L-V04 o tang **test**.
 - **AC + Gates**: AC1 4 nhan breadcrumb da dich · AC2 khong pha nhan tenant · AC3 nhan VI 3 tab · AC4 `.auditTable` ton tai (do lai: "Khong thieu class nao") · AC5 hoi quy **455** test (truoc 450, **+5** = dung 5 test moi, **khong mat test nao**) · AC6 `tsc` exit 0 + `build` exit 0.
-- **CHUA CHAY**: E2E lai tren staging + chup lai 2 anh va xac nhan bang mat (can deploy truoc).
+- **VERIFY SAU KHI SUA (deploy `dev` @ `cbafa4b47`)**: chay lai `ai-hub-nav-r51` = **4 passed (37.3s)**; **da mo 2 anh moi xem bang mat** — nhan tab het tieng Viet (`Usage AI · Dấu vết AI · SLO AI`) · breadcrumb `Nhật ký audit` (het chuoi tho `audit`) · bang audit co **4 cot roi nhau** + duong ke ngang. Ca 3 loi xac nhan da het.
+- **QUAN SAT MOI (chua ket luan la loi)**: 2 khoi "CÀU HÌNH AI RUNTIME" + "Nhật ký audit Command Center" van hien **"Đang tải …"** o **ca hai** lan chup o hai thoi diem khac nhau · nav phu trong card hub con nhan tieng Anh `Runtime` (component khac khong phai `AiHubNav`) · placeholder "Lọc theo hành động" bi cat (`vd: t…`).
 
 ## Entry 377: E2E nav AI tren staging — **5 tab, 0 link Agents** xac nhan bang anh that; va **mo anh ra xem bat duoc 3 loi khong test nao bat** (2026-10-18)
 
