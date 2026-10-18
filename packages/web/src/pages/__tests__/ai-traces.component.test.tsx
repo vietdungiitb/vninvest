@@ -16,6 +16,14 @@ import type { ReactElement } from "react";
 import { AICommandTracesPage } from "../AICommandTracesPage";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
+// R4.5: `AiHubNav` doc `usePortfolio()` de an tab staff-only; trang render nav
+// nen can PortfolioContext trong test. Thieu mock => "usePortfolio must be used
+// inside PortfolioProvider" va **moi** test trong file do chet, ke ca test da xanh truoc R4.5.
+vi.mock("../../context/PortfolioContext.js", () => ({
+  usePortfolio: () => ({ userIdentity: { isStaff: true, isSuperuser: false } }),
+  PortfolioProvider: ({ children }: any) => children,
+}));
+
 vi.mock("../../context/LangContext.js", () => ({
   useI18n: () => ({ t: (key: string, vars?: Record<string, unknown>) =>
     vars ? `${key}:${JSON.stringify(vars)}` : key, locale: "vi" }),
