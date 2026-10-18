@@ -828,6 +828,11 @@ class AITrace(models.Model):
     provider = models.CharField(max_length=32, blank=True, default='', verbose_name='Provider')
     model = models.CharField(max_length=64, blank=True, default='', verbose_name='Model')
     prompt_hash = models.CharField(max_length=64, blank=True, default='', verbose_name='SHA-256 prompt')
+    # R5.3 AC3: version cua bo 4 sub-agent prompt dang hieu luc. `prompt_hash` cho
+    # ta "prompt nao", con version cho ta "phien ban nao" — doc duoc bang mat.
+    # Staff moi lam tang version (xem endpoint AI CC); trace cu ghi version cu.
+    prompt_template_version = models.IntegerField(
+        default=0, verbose_name='Phien ban prompt he thong')
     response_hash = models.CharField(max_length=64, blank=True, default='', verbose_name='SHA-256 response')
     tokens_in = models.IntegerField(default=0, verbose_name='Token vào')
     tokens_out = models.IntegerField(default=0, verbose_name='Token ra')
