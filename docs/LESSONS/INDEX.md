@@ -128,9 +128,9 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
-| [`verification.md`](./verification.md) | 4 | `L-V01`…`L-V04` |
+| [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 
-**Tổng: 40 lesson / 9 file**
+**Tổng: 41 lesson / 9 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

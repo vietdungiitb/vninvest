@@ -1,3 +1,20 @@
+## Entry 372: AI R4.4 — `/settings/ai` trong UserSettingsPage + breadcrumb 3 muc; va AC3 "xanh 3 lan, anh vo dung" (2026-10-18)
+
+- **Nhanh**: `feat/ai-r44-settings-ai-nav` -> `dev`. Claim `ai-r44`. PR #245 (`0bcb015bd`). Plan `:1225-1235`. 3 AC.
+- **AC2 ho ra la THIEU, khong phai sai nhan**: grep 5 trang AI CC — **khong trang nao** render `Breadcrumb`. `Breadcrumb.tsx` (93 dong) **da co** logic dung crumb tu duong dan; thieu 2 thu: anh xa `settings`/`ai` trong `I18N_MAP` va dieu kien nhan dien khoa i18n (cu chi nhan khoa bat dau bang `tenant`/`shell`, nen moi khoa `a.b.c` bi **in ra ten khoa** thay vi nhan). Da mo rong thanh "co dau cham **hoac** bat dau `tenant`/`shell`" — tuong thich nguoc vi `TenantAdminLayout` la nguoi dung hien tai duy nhat cua `Breadcrumb`.
+- **Dung MOT khoa** `userSettings.aiGroup.title` cho ca nhom trong `/settings` lan crumb `ai`: `aiCommandCenter.title` la *"Trung tam dieu hanh AI"* ⇒ de breadcrumb goi mot ten, menu goi ten khac la bug nhan, khong phai khac biet vo hai.
+- **AC3 TON 3 LAN CHUP — ca 3 lan deu PASS trong khi anh vo dung.** Day la phan dang ghi nhat cua slice:
+  1. Lan 1 chup ngay sau `waitForSelector` ⇒ anh chi co dong *"Dang tai cai dat tai khoan..."*; test xanh vi **assert chay sau anh**.
+  2. Lan 2 chuyen assert **truoc** anh ⇒ anh van bi overlay lazy-load (`.loading-subtext`, "Route … dang duoc nap dong") **phu len**; test van xanh.
+  3. Lan 3 cho `data-testid="user-settings-ai-group"` va **bo** selector `a[href="/settings/ai"]` ⇒ anh moi dung.
+- **HAI nguyen nhan goc, deu la dang loi da co lesson nhung chua duoc ap**:
+  - **Chup truoc khi noi dung co** ⇒ anh la bang chung cua trang thai *dang tai*. Sua: cho noi dung → chup → assert.
+  - **`a[href="/settings/ai"]` khop ca link dieu huong toan cuc tren layout** ⇒ selector "dung duong dan" nhung **sai cho**, van xanh khi trang chua render. Day la `L-V04` o dang hinh anh: *dung duong dan ≠ dung cho*. Sua: dung `data-testid` chi danh cho khoi trong trang.
+  - ⇒ Day la lan thu hai trong ngay tu phat hien **xanh gia do selector/dieu kien** (lan dau la URL sai o R4.2) ⇒ du de coi la dau hieu he thong: **phai mo anh ra xem**, khong tin exit code.
+- **HAI bay test (loi cua test, khong phai cua code)**: (1) `LangProvider` goi `usePortfolio()` va **nem** thieu provider (`LangContext.js:31`) ⇒ ca 2 file test **throw truoc khi render**, moi assert do vi ly do sai; (2) mock `coreApiAdapter` sai **ten ham** — trang dung `getUserProfile`/`updateUserProfile`/`changeUserPassword` (`UserSettingsPage.tsx:68,131,158`) ⇒ crash; (3) trang nap bang `useEffect` ⇒ assert **dong bo** thay trang thai "dang tai", phai `waitFor`.
+- **Gates**: FE moi `user-settings-ai-link` **3/3** + `ai-hub-breadcrumb` **5/5** (fail-before 8/8 do) · FE hoi quy 59 file **372/372** · `tsc` exit 0 · `build` exit 0 · `eslint` 0 err/60 warn · `i18n:scan` exit 0 · Playwright `ai-settings-nav` tren **staging sau deploy** **4 passed**. Anh: `docs/evidence/ai-r44/visual/{01-settings,02-ai-hub,03-ai-slo-tab}.png`; bang chung: `docs/evidence/ai-cc/r44-gates.md`.
+- **VAN MO**: **R4.5** con nguyen (phan quyen hien thi tab trong `AiHubNav`; hien chi 2/5 trang AI dung `AiHubNav`, Agents/Usage la trang legacy) · `/settings/ai` o muc 2 la crumb cuoi (dung hanh vi breadcrumb).
+
 ## Entry 371: AI R4.3 — audit append-only (co TEST quet source) + retention 365 ngay + export CSV (2026-10-18)
 
 - **Nhanh**: `feat/ai-r43-audit-export` -> `dev`. Claim `ai-r43`. Plan `:1212-1223`. 4 AC.
