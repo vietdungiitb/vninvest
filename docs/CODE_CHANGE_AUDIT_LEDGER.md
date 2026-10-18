@@ -1,3 +1,12 @@
+## Entry 374: AI R5.2 — nhom `ai_agents` trong audit rollup **CHUA BAO GIO** duoc ghi (2026-10-18)
+
+- **Nhanh**: `fix/ai-r52-ops-audit-group` -> `dev`. Claim `ai-r52`. Plan `:1274-1277`.
+- **KHONG CHI SAI CHUOI — NHANH CHET**: route **that** la `/core/v1/ai/agents/` (`ai_agents/urls.py:6`), con bang map (`ops_audit/tasks.py:140`) khai `/core/v1/ai-agents/` = **khong ton tai**. Te hon, prefix tong quat `'/core/v1/ai/'` nam o dong **135**, **TRUOC** dong 140; `dict` giu thu tu chen va vong lap dung `startswith` theo thu tu do ⇒ request that khop generic va bhi ghi nhom **`ai`**. ⇒ nhanh `ai_agents` **chua bao gio chay**, audit trail **chua bao gio** ghi `ai_agents` — dung thu AC R5.2 doi.
+- **Cach sua**: dat prefix **cu the hon len truoc** prefix tong quat (khong doi chuoi roi hy vong thu tu dict).
+- **BAY TEST CUA CHINH TOI**: ban dau `test_stale_prefix_is_gone` **assert nguoc loi voi docstring cua no** (docstring: "dung giu de trong co map"; assert: `== 'ai_agents'`) ⇒ test **bao ve** mot dong chet ⇒ bug quay lai ma khong ai thay. Da sua thanh `other` (duong dan khong phai route thi roi ve `other` la dung).
+- **Gates**: BE moi **4/4** (fail-before `'ai' != 'ai_agents'`) · BE hoi quy 48 module **588 test — 587 OK**. Bang chung: `docs/evidence/ai-cc/r52-gates.md`.
+- **CHUA CHAY / CON MO**: (1) AC "audit trail ghi `ai_agents` cho **request that**" — test moi goi thang `_endpoint_group`; chung minh end-to-end can request HTTP that + doc rollup, staging khong co du lieu audit ⇒ **CHUA CHAY**; (2) du lieu **lich su** da ghi nham `ai` se tra 0 dong — quyet dinh backfill la **viec can Owner duyet**, khong tu lam; (3) **R5.1** (so phan `AgentRegistry`) chua lam — do dat nghieng ve phuong an **B (go)** nhung la **xoa tinh nang** ⇒ cho Owner duyet.
+
 ## Entry 373: AI R4.5 — tab "Nhat ky kiem toan" (chi staff) + route guard that; AC1 stale, AC2/3 phai HOI OWNER (2026-10-18)
 
 - **Nhanh**: `feat/ai-r45-audit-tab` -> `dev`. Claim `ai-r45`. Plan `:1237-1248`. 4 AC.
