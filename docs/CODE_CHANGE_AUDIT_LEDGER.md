@@ -1,3 +1,12 @@
+## Entry 381: AI R5.3e — verify staging bang **HTTP that** + **mo anh xac nhan bang mat**; probe APIClient hong vi `DisallowedHost` (khong phai loi san pham) (2026-10-18)
+
+- **Nhanh**: `docs/ai-r53e-evidence` -> `dev`. Claim `ai-r53e`. Deploy `dev` @ `a73c27a2c`.
+- **DO BANG HTTP THAT** (L-V07): `showmigrations advisory` = `[X] 0023_aitrace_prompt_template_version` · cot DB `prompt_template_version | integer | NO` (default 0) · `GET` AI CC (staff) tra **`sub_agent_prompts` day 4 khoa** · `PUT` 1 prompt = **HTTP 200** + version **0 → 1** · `PUT` khoa la = **HTTP 400** · audit id 9 `before.technical='' -> after.technical='PROBE R5.3 staging'`. Da **don probe** ve rong.
+- **LOI CUA PROBE (khong phai loi san pham)**: dung `APIClient` trong container ⇒ `DisallowedHost: testserver` ⇒ **400 cho ca GET lan PUT**. Neu dung nguyen ket qua do de ket luan "API hong" thi sai hoan toan. Phai doi sang `curl` + token that tu `POST /api/core/v1/auth/login`.
+- **DA MO ANH XEM (L-V05)**: `docs/evidence/ai-r53/visual/01-sub-agent-prompts.png` — thay khoi "PROMPT SUB-AGENT HE THONG · PHIEN BAN HIEN TAI: 0" va **4 o** nhan tieng Viet (`CHUYEN GIA KY THUAT` / `CHUYEN GIA DONG TIEN` / `CHUYEN GIA TAM LY THI TRUONG` / `GIAM DOC TONG HOP`) co placeholder `{symbol}`; panel audit ben duoi hien `technical_agent_prompt ← PROBE R5.3 sta…` ⇒ **duong ghi hien ra dung tren moi truong that**.
+- **QUAN SAT PHU (chua ket luan la loi)**: 4 o xep doc, o 4 co thanh cuon nho ⇒ chieu cao o khong deu nhau.
+- **CON MO**: lich su phien ban trong **UI** chua rang rieng cho 4 prompt (doc chung o tab Audit cua R4.5).
+
 ## Entry 380: AI R5.3 (FE) — UI 4 sub-agent prompt lay **co staff tu payload BE** (khong them context); va `styles.section/hint/fieldLabel` **khong ton tai** — doan sai nhu loi `.auditTable` (2026-10-18)
 
 - **Nhanh**: `feat/ai-r53` -> `dev`. Claim `ai-r53`. Tiep phan BE (Entry 379).

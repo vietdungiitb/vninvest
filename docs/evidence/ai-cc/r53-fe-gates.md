@@ -44,9 +44,39 @@ Tôi viết `styles.section` / `styles.hint` / `styles.fieldLabel` theo trí nh�
 `.auditTable` ở R5.1d). Đã đổi sang class có thật (`indicatorsSection`, `helpText`, `label`) và
 chạy lại script ⇒ 19/19 class trong form đều tồn tại.
 
+## VERIFY TRÊN STAGING — HTTP thật + **đã mở ảnh xem**
+
+Deploy `dev` @ `a73c27a2c` → container healthy.
+
+**Đo bằng HTTP thật** (L-V07). Lần đầu tôi dùng `APIClient` trong container ⇒
+`DisallowedHost: testserver` — đó là **lỗi của probe**, không phải của sản phẩm; phải đổi
+sang `curl` + token thật.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `showmigrations advisory` | `[X] 0023_aitrace_prompt_template_version` |
+| Cột DB | `prompt_template_version | integer | NO` (default 0) |
+| `GET` AI CC (staff) | `sub_agent_prompts` **có**, đủ 4 khoá |
+| `PUT` 1 prompt | **HTTP 200**, version **0 → 1** |
+| `PUT` khoá lạ | **HTTP 400** |
+| Audit sau PUT | id 9: `before.technical=''` → `after.technical='PROBE R5.3 staging'` |
+
+Đã **dọn probe**: `metadata` trả về rỗng sau khi đo.
+
+## Ảnh — mở ra xác nhận bằng mắt
+
+`docs/evidence/ai-r53/visual/01-sub-agent-prompts.png`
+
+Thấy trong ảnh: khối **"PROMPT SUB-AGENT HỆ THỐNG · PHIÊN BẢN HIỆN TẠI: 0"**, mô tả
+tiếng Việt, và **4 ô** nhãn `CHUYÊN GIA KỸ THUẬT` · `CHUYÊN GIA DÒNG TIỀN` ·
+`CHUYÊN GIA TÂM LÝ THỊ TRƯỜNG` · `GIÁM ĐỐC TỔNG HỢP`, placeholder có `{symbol}`.
+Bên dưới, panel audit hiện `technical_agent_prompt ← PROBE R5.3 sta…` ⇒ **các đường ghi
+hiện ra đúng** trên môi trường thật.
+
+Quan sát phụ (chưa kết luận là lỗi): 4 ô xếp dọc, ô 4 có thanh cuộn nhỏ ⇒ chiều cao ô
+không đều nhau.
+
 ## Còn mở
 
-- **CHƯA deploy staging**: UI mới + migration `0023` chưa chạy trên môi trường thật.
-- **CHƯA chụp ảnh** xác nhận bằng mắt (L-V05) — sẽ làm sau khi deploy.
-- Chưa có lịch sử phiên bản **trong UI** (đọc từ `AIAuditLog` qua tab Audit của R4.5 —
-  chưa ràng vào riêng 4 prompt này).
+- Lịch sử phiên bản trong **UI** chưa ràng riêng cho 4 prompt (đọc chung ở tab Audit của R4.5).
+- Chiều cao 4 ô không đều — **chưa** đo, chưa sửa.
