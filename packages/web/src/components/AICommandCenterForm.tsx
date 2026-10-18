@@ -35,6 +35,15 @@ export interface AISettings {
   fallback_quota_reset?: string;
   ai_api_key_configured?: boolean;
   ai_api_key_masked?: string;
+  // R4.2 AC5: chỉ mốc thời gian + scope, không bao giờ chứa bản mã.
+  ai_key_rotation?: {
+    key_scope?: string;
+    key_rotated_at?: string | null;
+    grace_until?: string | null;
+    within_grace?: boolean;
+    days_until_grace_end?: number | null;
+    next_rotation_at?: string | null;
+  };
   system_prompt_template?: string;
   ai_prompt_config?: Record<string, unknown> | null;
   ai_prompt_config_history?: PromptConfigHistoryEntry[];
@@ -629,6 +638,27 @@ export function AICommandCenterForm({
                       t("aiCommandCenter.clearApiKey")
                     ),
                   ]
+                )
+              : null,
+            // R4.2 AC5: hiện phạm vi khoá + mốc xoay kế tiếp. Dùng **mốc thời
+            // gian BE tính sẵn**, không tự suy luận ở FE — hai bên cùng đoán
+            // "90 ngày" thì lệch nhau mà không ai thấy.
+            settings?.ai_key_rotation
+              ? e(
+                  "div",
+                  {
+                    key: "key-rotation-row",
+                    className: styles.helpText,
+                    "data-testid": "key-rotation-info",
+                    style: { marginBottom: 8 },
+                  },
+                  `${t("aiCommandCenter.keyScopeLabel")}: ${settings.ai_key_rotation.key_scope} · ${t(
+                    "aiCommandCenter.nextRotationLabel",
+                  )}: ${
+                    settings.ai_key_rotation.next_rotation_at
+                      ? new Date(settings.ai_key_rotation.next_rotation_at).toLocaleDateString()
+                      : t("aiCommandCenter.neverRotated")
+                  }`,
                 )
               : null,
             e("input", {
