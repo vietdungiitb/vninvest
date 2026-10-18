@@ -1092,11 +1092,15 @@ class PortfolioAICommandCenterView(APIView):
         system_policy_block = _tp.system_policy_block(
             _tp.get_policy(_policy_tenant), tenant=_policy_tenant,
         )
+        from advisory import key_scope as _key_scope
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            # R4.2 AC5: mốc xoay khoá để UI hiện "lần xoay kế tiếp". Chỉ **mốc
+            # thời gian**, không kèm ciphertext hay bản mã nào.
+            'ai_key_rotation': _key_scope.rotation_status(user_cred) if user_cred else {},
             'ai_readiness': readiness,
             'ai_api_key_masked': api_key_masked,
             'system_policy': system_policy_block,
@@ -1253,8 +1257,15 @@ class PortfolioAICommandCenterView(APIView):
                     field_errors=_byok_error,
                 )
             if api_key:
+                from django.utils import timezone
+
                 from identity_access.security import encrypt_user_api_key
                 user_cred.encrypted_api_key = encrypt_user_api_key(api_key)
+                # R4.2 AC5: đổi khoá = một lần xoay của **người dùng**. Đóng dấu
+                # mốc để UI hiện được "lần xoay kế tiếp"; không có nó thì UI mãi
+                # hiện "chưa từng xoay" dù khoá đã thay nhiều lần.
+                user_cred.key_rotated_at = timezone.now()
+                user_cred.grace_until = None
             else:
                 # F4 clear: drop stored key for BYOK providers; keep local/openclaw as-is
                 if user_cred.ai_provider not in ('local', 'openclaw'):
@@ -1262,6 +1273,21 @@ class PortfolioAICommandCenterView(APIView):
 
         if 'ai_model' in payload:
             user_cred.ai_model = str(payload.get('ai_model') or '').strip()
+
+        if 'ai_key_scope' in payload:
+            # R4.2 AC1: user tự khai phạm vi khoá của mình. Validate bằng chính
+            # `choices` của model để không tồn tại scope lạ (giống R0.5 làm với
+            # provider) — sau này thêm scope mới mà quên validate thì giá trị rác
+            # sẽ vào DB và bị hiểu nhầm là hợp lệ.
+            from advisory.models import UserAICredential
+
+            _scope = str(payload.get('ai_key_scope') or '').strip().lower()
+            _known_scopes = {c.value for c in UserAICredential.KeyScopeChoices}
+            if _scope not in _known_scopes:
+                raise ValidationError({
+                    'ai_key_scope': 'Pham vi khoa khong hop le.',
+                })
+            user_cred.key_scope = _scope
 
         # R0.5 — validate provider/model SAU khi cả hai đã được gán, để bắt
         # được cả hai chiều: đổi provider (giữ model cũ) và đổi model

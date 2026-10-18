@@ -299,6 +299,27 @@ class UserAICredential(models.Model):
     ai_model = models.CharField(max_length=64, blank=True, default='', verbose_name='Mô hình AI')
     encrypted_api_key = models.TextField(blank=True, default='', verbose_name='API Key (Fernet-encrypted)')
     custom_endpoint = models.CharField(max_length=255, blank=True, default='', verbose_name='Custom Endpoint URL')
+
+    # --- R4.2: scope khoá + mốc xoay khoá -------------------------------
+    # `inference` = dùng cho advisory (tiêu hao tiền/token); `management` = chỉ
+    # dùng để quản trị (probe `test-connection`). Mặc định `inference` để dữ liệu
+    # cũ không bị chặn ngay lúc deploy — xem `advisory/key_scope.py`.
+    class KeyScopeChoices(models.TextChoices):
+        INFERENCE = 'inference', 'Suy luận (advisory)'
+        MANAGEMENT = 'management', 'Quản trị (kiểm tra cấu hình)'
+
+    key_scope = models.CharField(
+        max_length=16, choices=KeyScopeChoices.choices,
+        default=KeyScopeChoices.INFERENCE, db_index=True, verbose_name='Phạm vi khoá',
+    )
+    key_rotated_at = models.DateTimeField(
+        null=True, blank=True, verbose_name='Lần xoay khoá gần nhất',
+        help_text='NULL = khoá chưa từng được xoay qua chính API này.',
+    )
+    grace_until = models.DateTimeField(
+        null=True, blank=True, verbose_name='Hết hạn grace của Fernet key',
+        help_text='Sau mốc này, dữ liệu mã hoá bằng version cũ fail-closed.',
+    )
     is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
     fallback_quota_used_today = models.IntegerField(default=0, verbose_name='Lượt fallback đã dùng hôm nay')
     fallback_quota_date = models.DateField(null=True, blank=True, verbose_name='Ngày fallback quota')
