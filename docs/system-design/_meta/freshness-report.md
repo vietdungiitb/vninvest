@@ -11,7 +11,7 @@
 | models | 117 | C-002 |
 | migrations | 134 | C-003 |
 | composeStacks | 10 | C-004 |
-| beatEntries | 45 | C-005 |
+| beatEntries | 46 | C-005 |
 | systemDesignFiles | 44 | C-006 |
 
 ## 2. VOLATILE — biến động nhanh (thông tin, không chặn)
@@ -22,5 +22,5 @@
 | routes_total | 1473 | Đo 2026-10-14 bằng `docs/architecture/tools/measure_repo.py` (cần Django runtime, không nằm trong gate này) |
 | routes_core_v1 | 615 | Như trên |
 | web_src_tracked | 608 | `git ls-files packages/web/src` lúc sinh báo cáo |
-| docs_md_total | 1887 | Đếm `docs/**.md` lúc sinh báo cáo |
+| docs_md_total | 1888 | Đếm `docs/**.md` lúc sinh báo cáo |
 <!-- VOLATILE-END -->
