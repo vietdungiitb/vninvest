@@ -43,9 +43,9 @@ Skill [`project-lessons`](../../.opencode/skills/project-lessons/SKILL.md) sẽ:
 
 | # | Quy tắc | Lý do |
 |---|---|---|
-| **C1** | Một file lesson **≤ 120 dòng** (không tính dòng trống) → **tách tiếp** | Skill luôn đọc **trên về** 1 file; dưới ngưỡng này không bảo đảm cả luật đọc được trong 1 lần. |
-| **C2** | Tổng số lesson **≤ 40**. Vượt → **gộp lesson trùng lặp**, KHÔNG thêm file | Vượt ngưỡng thường là hiện tượng viết 2 lesson cho cùng một lỗi, hoặc ghi quy tắc chưa từng gây lỗi. |
-| **C3** | `INDEX.md` phải khai **tổng số lesson** và liệt kê **mọi** file lesson | Không khai ⇒ nhánh DRIFT **im lặng**, tức là gate không thấy lệch (đã xảy ra thật). |
+| **C1** | Một file lesson **≤ 120 dòng** (không tính dòng trống) → **tách file mới theo chủ đề**, KHÔNG nhồi thêm vào file cũ | Skill luôn đọc **trên về** 1 file; dưới ngưỡng này không bảo đảm cả luật đọc được trong 1 lần. Đây là cơ chế **chống đọc lướt** — giữ nguyên. |
+| **C2** | Tổng số lesson **≤ 60**. Vượt → **tách file chủ đề mới**, KHÔNG gộp bài học không liên quan; chỉ gộp khi hai entry **thật sự trùng nội dung** (và giữ dòng bản bị gộp trong Proof) | Nới 40 → 60 ngày 2026-10-18 (Owner). Ngưỡng cũ **đã đầy** và biến việc ghi bài học thành rào chặn — phiên 2026-10-17 bỏ sót 3 bài học lớn vì lý do đó. |
+| **C3** | `INDEX.md` phải khai **tổng số lesson** và liệt kê **mọi** file lesson | Không khai ⇒ nhánh DRIFT **im lặng**, tức là gate không thấy lệch (đã xảy ra thật). Ngoài ra mọi `L-XXX` viết trong `INDEX.md` đều bị gate hiểu là **tham chiếu** — văn bản minh hoạ cũng phải đúng, nếu không sẽ báo DRIFT. |
 
 ```bash
 node scripts/check-lessons.mjs                    # C1 + C2 + C3
@@ -56,6 +56,10 @@ Gate đã nối vào `scripts/pre-push-gate.mjs` (mục `lessons`) nên chạy t
 Exit `2` = **không verify được** — tuyệt đối không đọc là PASS.
 
 ## 1.3. Quy tắc ghi lesson mới
+
+**Ghi bài học là việc được KHUYẾN KHÍCH, không cần xin duyệt** (Owner chốt 2026-10-18).
+Nếu bạn vừa mắc một lỗi tốn thời gian/chặn build/lừa người đọc báo cáo thì **viết
+ngay trong phiên đó**, đừng để "chờ có người duyệt" rồi quên.
 
 Chỉ thêm entry mới khi **ĐỒNG THỜI** thỏa cả 4 điều kiện:
 
@@ -68,11 +72,21 @@ Chỉ thêm entry mới khi **ĐỒNG THỜI** thỏa cả 4 điều kiện:
 → thuộc phạm vi quy tắc, không phải bài học. Nếu **đã từng gây lỗi nhiều lần**
 → viết lại dạng checklist ngắn ở đây.
 
-Vượt C1 ⇒ **tách file**, không cắt bớt nội dung. Vượt C2 ⇒ **gộp lesson trùng lặp**,
-không thêm file mới.
+### Khi hết chỗ trong file: **chuyển sang file kế tiếp**, KHÔNG gộp entry
 
-**Liên kết với hệ thống:** `continuous-learning-v2` có thể **đề xuất** entry mới sau session,
-nhưng **cần coordinator phê duyệt** trước khi thêm vào `LESSONS/`.
+- Vượt **C1** (120 dòng) ⇒ **tách file mới theo chủ đề**: `migrations.md` → `migrations-2.md`.
+- **KHÔNG ghi đè / sửa nội dung entry cũ** để lấy chỗ. Entry cũ có thể **đã được
+  diễn giải sai** ở tài liệu hoặc báo cáo khác; xoá nó là mất dấu vết và làm hỏng
+  những chỗ đang trích dẫn nó. Nếu một entry **sai**, sửa bằng entry mới có Proof
+  trỏ tới entry cũ, hoặc thêm dòng "ĐÃ SỬA/ĐÃ GỘP" **bên trong** entry cũ (không xoá).
+- Vượt **C2** (60 lesson) ⇒ **tách file chủ đề mới**, KHÔNG gộp bài học không liên quan.
+  Chỉ gộp khi hai entry thật sự **trùng nội dung** (ví dụ một entry "không báo PASS"
+  nằm ở cả nhóm multi-agent lẫn build-gates) — và bản bị gộp **phải được giữ lại
+  dạng dòng trong Proof** của entry còn lại.
+
+**Liên kết với hệ thống:** `continuous-learning-v2` có thể **đề xuất** entry mới sau
+session. Đề xuất **được tự thêm** nếu thoả cả 4 điều kiện trên — chỉ cần ghi vào
+cùng commit/PR đang làm.
 
 ## 1.4. Format chuẩn của một entry
 
@@ -106,15 +120,15 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 
 | File | Số lesson | ID |
 |---|---|---|
-| [`multi-agent.md`](./multi-agent.md) | 9 | `L-001`…`L-008`, `L-A01` |
+| [`multi-agent.md`](./multi-agent.md) | 7 | `L-001`, `L-002`, `L-003`, `L-005`, `L-007`, `L-008`, `L-A01` |
 | [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
 | [`css-soc.md`](./css-soc.md) | 4 | `L-F03`, `L-F05`, `L-F06`, `L-F08` |
 | [`frontend.md`](./frontend.md) | 4 | `L-F01`, `L-F02`, `L-F09`, `L-F10` |
-| [`migrations.md`](./migrations.md) | 3 | `L-M01`…`L-M03` |
-| [`backend.md`](./backend.md) | 3 | `L-B01`…`L-B03` |
+| [`migrations.md`](./migrations.md) | 3 | `L-M01`, `L-M02`, `L-M04` |
+| [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
-| [`verification.md`](./verification.md) | 3 | `L-V01`, `L-V02`, `L-V03` |
+| [`verification.md`](./verification.md) | 4 | `L-V01`…`L-V04` |
 
 **Tổng: 40 lesson / 9 file**
 
@@ -122,8 +136,11 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)
 - **Đổi cấu trúc 2026-10-10:** `frontend.md` tách thành `frontend.md` (bundle + React hook)
   và `css-soc.md` + `tooling-traps.md`, để chờ C1. ID cũ **giữ nguyên**, không renumber.
-  **Thêm 2026-10-12:** `verification.md` (nhóm bài học **không báo lỗi**) — đã dùng hết
-  chỗ C2 (40/40), muốn thêm phải **gộp** lesson trùng lặp.
+- **C2 nới lên 60 (Owner, 2026-10-18):** bản cũ ghi *"đã dùng hết chỗ C2 (40/40), muốn thêm phải gộp lesson trùng lặp"*. Ngưỡng đó **biến bài học thành thứ phải đi xin phép**, và phiên 2026-10-17 đã bỏ sót 3 bài học lớn (`L-M04`, `L-V04`, `L-B04`) chính vì "đã đầy" mà không có chỗ. Giờ **ghi bài học là việc được khuyến khích**, không cần xin duyệt.
+  - C1 (≤120 dòng/file) **giữ nguyên và siết thêm ý nghĩa**: đó là cơ chế chống agent đọc lướt — file đầy thì **tách file mới theo chủ đề**, KHÔNG gộp entry.
+  - **Khi file đầy: chuyển sang file kế tiếp** (`<chủ đề>-2.md`), KHÔNG ghi đè entry cũ — entry cũ có thể đã được diễn giải sai ở nơi khác, xoá nó là mất dấu vết.
+  - ID mới **không renumber** ID cũ; ID bị bỏ trống sau khi gộp là **có chủ đích**, và
+  entry thay thế ghi rõ bản bị gộp ở dòng **Proof**.
 
 ## 1.6. Lịch sử sự cố escape sequence
 

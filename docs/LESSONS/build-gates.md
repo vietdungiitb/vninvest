@@ -16,7 +16,9 @@
   - [ ] Kết quả gate được báo cáo là từ code **sau rebase**?
 - **Proof:** `AGENTS.md` bảng "Cạm bẫy" dòng "Chạy gate **trước** khi rebase → Báo xanh nhưng code sau rebase khác"; `docs/AGENT_PROTOCOL.md` §10.
 
-## L-G02: KHÔNG báo "PASS" cho thứ chưa chạy - ghi "CHƯA CHẠY"
+## L-G02: KHÔNG báo "PASS" cho thứ chưa chạy (gộp bản `multi-agent.md` L-006 — trùng nội dung)
+
+- **Nguyên nhân:** Báo kết quả dựa trên suy luận ("chắc là được") thay vì thực thi thật.
 
 - **Nguyên nhân:** Báo kết quả dựa trên suy luận/ước đoán ("chắc là được") thay vì thực thi thật.
 - **Hậu quả thật:** False-positive, che lỗi, mất độ tin cậy của quality gates → dễ lọt regression vào PR.
@@ -27,7 +29,8 @@
   - [ ] Không chạy được (thiếu DB/env) → ghi **`CHƯA CHẠY`** kèm lý do ngắn, KHÔNG đổi thành `PASS`?
   - [ ] Đã phân biệt rõ 3 trạng thái: `PASS` | `FAIL` | `CHƯA CHẠY`?
   - [ ] Frontend: `npx tsc --noEmit` sau mỗi sub-step, `npm run build` cuối mỗi step - **chỉ báo PASS khi đã chạy thành công**?
-- **Proof:** `AGENTS.md` "Không báo 'PASS' cho thứ chưa chạy - ghi 'CHƯA CHẠY'"; "Không có môi trường ⇒ không có kết luận".
+  - [ ] Báo cáo cho coordinator có nêu rõ phần **chưa verify** không?
+- **Proof:** `AGENTS.md` "Không báo 'PASS' cho thứ chưa chạy - ghi 'CHƯA CHẠY'"; "Không có môi trường ⇒ không có kết luận"; `docs/AGENT_PROTOCOL.md` §9; bản trùng `docs/LESSONS/multi-agent.md` L-006 đã gộp vào đây.
 
 ## L-G03: Gate trên máy agent KHÔNG đại diện cho máy khác
 

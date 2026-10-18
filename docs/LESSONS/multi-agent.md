@@ -52,19 +52,6 @@
   - [ ] Kết quả gate được báo cáo là từ code **sau rebase**?
 - **Proof:** `AGENTS.md` bảng "Cạm bẫy đã gặp thật 2026-09-26" dòng "Chạy gate **trước** khi rebase"; `docs/AGENT_PROTOCOL.md` §10.
 
-## L-004: Trust số migration đọc trong worktree đơn lẻ
-
-- **Nguyên nhân:** Chỉ nhìn migration trong worktree hiện tại, bỏ qua việc agent khác có thể đã thêm migration **chưa commit**.
-- **Hậu quả thật:** Worktree không thấy việc chưa commit của agent khác (`aicc_r0` 145 vs `vninvest_core` 147) → tạo migration sai số → leaf conflict.
-- **Khi nào gặp:** `tags: [multi-agent, migration, migrations, worktree]`
-- **QUY TẮC:** "KHÔNG tin tuyệt đối số migration đọc trong worktree khi có nhiều agent song song. Đọc head trên base/dev + kiểm tra claim."
-- **CHECKLIST:**
-  - [ ] Đã đọc migration head trên **base/dev** (nguồn sự thật đồng bộ), không chỉ worktree?
-  - [ ] Đã rà `docs/CLAIMS.md` xem agent khác có đang claim app/migration liên quan không?
-  - [ ] Đã kiểm tra `git status` của **main tree** xem có file migration chưa commit không?
-  - [ ] Không chắc chắn → ghi `CHƯA XÁC MINH`, KHÔNG tự đặt số?
-- **Proof:** `AGENTS.md` bảng "Cạm bẫy đã gặp thật 2026-09-26" dòng "Tin số migration đọc trong worktree".
-
 ## L-005: Không tạo worktree mới khi hook chưa commit thay đổi
 
 - **Nguyên nhân:** Tạo worktree mới khi repo còn thay đổi chưa commit / hook state chưa ổn định.
@@ -77,19 +64,6 @@
   - [ ] Đã verify hook thực sự chạy (không phải im lặng)?
   - [ ] Nghi ngờ hook im lặng → verify lại thay vì bỏ qua?
 - **Proof:** `AGENTS.md` bảng "Cạm bẫy đã gặp thật 2026-09-26" dòng "Hook chưa commit khi tạo worktree mới"; `docs/AGENT_PROTOCOL.md` §10.1.
-
-## L-006: KHÔNG báo "PASS" cho thứ chưa chạy
-
-- **Nguyên nhân:** Báo kết quả dựa trên suy luận ("chắc là được") thay vì thực thi thật.
-- **Hậu quả thật:** False-positive, che lỗi thật, mất độ tin cậy của quality gates → regression lọt vào PR.
-- **Khi nào gặp:** `tags: [multi-agent, gate, gates, pass-vs-unrun, build-gates]`
-- **QUY TẮC:** "KHÔNG báo 'PASS' cho thứ chưa chạy. Nếu chưa chạy được, **ghi 'CHƯA CHẠY'** - đừng suy ra 'chắc là được'."
-- **CHECKLIST:**
-  - [ ] Mọi kết luận `PASS` đều có **bằng chứng thực thi** (command + exit code)?
-  - [ ] Chưa chạy được → ghi rõ **`CHƯA CHẠY`** kèm lý do, KHÔNG chuyển thành `PASS`?
-  - [ ] Đã phân biệt rõ 3 trạng thái: `PASS` (đã chạy, thành công) | `FAIL` (đã chạy, lỗi) | `CHƯA CHẠY` (chưa chạy được)?
-  - [ ] Báo cáo cho coordinator có nêu rõ phần **chưa verify** không?
-- **Proof:** `AGENTS.md` "Không báo 'PASS' cho thứ chưa chạy - ghi 'CHƯA CHẠY'"; `docs/AGENT_PROTOCOL.md` §9.
 
 ## L-007: Không có môi trường ⇒ không có kết luận
 

@@ -112,13 +112,42 @@ Sau khi nhận output, plan PHẢI chứa **một trong hai dạng**:
 
 Và **phải tick các mục trong `MANDATORY CHECKLIST`** trước khi coi slice là xong.
 
+## Step 6 — GHI BÀI HỌC MỚI (bắt buộc khi vừa mắc lỗi)
+
+Một lỗi không được ghi thì slice sau sẽ mắc lại — đúng thứ hệ thống này sinh ra để
+chặn. **Ghi ngay trong phiên đang làm, KHÔNG cần xin duyệt ai** (Owner chốt
+2026-10-18; xem `docs/LESSONS/INDEX.md` §1.3).
+
+Đủ cả 4 điều kiện: đã xảy ra thực tế (có commit/ledger/claim) · gây hậu quả rõ
+(tốn thời gian, chặn build, lừa người đọc báo cáo) · có checklist phòng ngừa được ·
+**atomic** (1 entry = 1 lõi sai lầm).
+
+Cách làm:
+
+1. Chọn file theo **chủ đề** (tag), không phải file đang ngẫu nhiên.
+2. **File sắp vượt C1 (120 dòng) ⇒ TÁCH FILE MỚI** (`<chủ đề>-2.md`).
+   **KHÔNG gộp entry cũ, KHÔNG xoá entry cũ** — entry cũ có thể đã được diễn giải
+   sai ở nơi khác; xoá là mất dấu vết. Muốn đính chính entry cũ thì thêm entry
+   mới có Proof trỏ ngược, hoặc thêm dòng "ĐÃ SỬA/ĐÃ GỘP" **bên trong** entry cũ.
+3. Ghi **Proof** trỏ `file:line` hoặm `CODE_CHANGE_AUDIT_LEDGER.md#Entry-N`.
+4. Cập nhật bảng ở `INDEX.md` §1.5 (số lesson + ID của file vừa sửa) — gate C3 bắt lệch.
+5. Chạy `node scripts/check-lessons.mjs` (exit 0) trước khi commit.
+
+Trong output của skill, nhắc lại điều này ở dạng:
+
+```
+GHI LESSON MỚI: <bắt buộc nếu phiên này mắc lỗi đã tốn thời gian / chặn build / lừa người đọc báo cáo>
+```
+
 ## Anti-pattern (KHÔNG làm)
 
 | Sai lầm | Vì sao sai |
 |---|---|
 | Đọc toàn bộ `docs/LESSONS/` | Context bloat, agent skim mất tập trung |
 | Gọi skill nhưng không ghi `Lessons áp dụng` vào plan | Không ai kiểm chứng được → quy tắc không thi hành được |
-| Tự thêm lesson mới vào `docs/LESSONS/` | Cần team leader phê duyệt (xem `INDEX.md` §1.3) |
+| **Mắc lỗi rồi không ghi lesson, để "chờ có người duyệt"** | Chính là lỗi xảy ra 2026-10-17: 3 bài học lớn biến mất vì nghĩ phải xin duyệt |
+| Ghi đè / gộp entry cũ để lấy chỗ | Entry cũ có thể đã được diễn giải sai ở nơi khác → mất dấu vết |
+| Vượt C1 mà nhồi thêm vào file hiện tại | Mất tác dụng chống đọc lướt; phải tách file mới |
 | Suy ra nội dung lesson khi chưa đọc file | Vi phạm nguyên tắc "không đoán" |
 | Bỏ qua fallback `multi-agent.md` vì "task không liên quan" | Đây là nhóm lỗi tần suất cao nhất |
 

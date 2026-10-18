@@ -1,3 +1,18 @@
+## Entry 370: LESSON — nới C2 40→60 + "đầy thì tách file, KHÔNG ghi đè"; và 3 bài học bị bỏ sót phiên 2026-10-17 (2026-10-18)
+
+- **Vì sao có entry này**: Owner hỏi "các bài học sao bạn không lưu lại để tránh lặp lại". Câu trả lời thật: phiên 2026-10-17 mắc **3 lỗi lớn** (migration trùng số trên cây VPS cũ · test xanh giả vì URL sai · `request.tenant` fail-open) nhưng **không** ghi lesson vì `INDEX.md` §1.3 ghi *"cần team lead phê duyệt"* ⇒ đúng thứ bài học sinh ra để chặn lại bị vô hiệu hoá bởi chính quy trình của nó.
+- **Sửa gốc thay vì sửa triệu chứng** (Owner chốt 2026-10-18):
+  - **C2 nới 40 → 60** (`scripts/check-lessons.mjs:58` + `INDEX.md` §1.2). Ngưỡng 40 đã **đầy**, biến việc ghi bài học thành việc phải đi tìm entry trùng để gộp — tức là thành **rào chặn**.
+  - **§1.3 đổi từ "cần duyệt" sang "KHUYẾN KHÍCH"**: đủ 4 điều kiện (đã xảy ra thực tế · hậu quả rõ · có checklist phòng ngừa · atomic) thì **tự thêm trong PR đang làm**, không cần xin.
+  - **"Đầy thì chuyển sang file kế tiếp, KHÔNG ghi đề"** (Owner): C1 (≤120 dòng/file) giữ nguyên vì đó là cơ chế **chống đọc lướt**; vượt C1 thì tách `<chủ đề>-2.md`. **KHÔNG xoá/gộp entry cũ** — entry cũ có thể **đã được diễn giải sai** ở tài liệu hoặc báo cáo khác, xoá là mất dấu vết. Nếu entry sai thì thêm entry mới có Proof trỏ ngược, hoặc thêm dòng "ĐÃ SỬA/ĐÃ GỘP" **bên trong** entry cũ.
+  - `SKILL.md` (skill `project-lessons`) thêm **Step 6 — GHI BÀI HỌC MỚI** + sửa anti-pattern cũ ("Tự thêm lesson cần team lead phê duyệt") thành anti-pattern ngược: *"mắc lỗi rồi không ghi lesson, để chờ có người duyệt"* — đúng thứ đã xảy ra 2026-10-17.
+- **3 lesson mới (bằng chứng thật phiên này)**:
+  - `L-M04` — cây test trên VPS bám HEAD cũ ⇒ `makemigrations` sinh **migration trùng số đã merge** (`0021_useraicredential_...` kèm `Create model AITenantPolicy`, trùng `0021_aitenantpolicy`) ⇒ merge là deploy hỏng. Sửa: `git pull --ff-only origin dev` **trước** khi sinh migration.
+  - `L-V04` — test **xanh giả**: `assertNotEqual(captured['api_key'], 'sk-personal')` xanh cả khi endpoint **404** và `captured` rỗng. Quy tắc: assert **giá trị thật**, kiểm status ≠ 404/403/500, và **luôn có test dương tính** (thiếu thì "luôn không làm gì cả" cũng xanh). Kèm: 2 test ghim hành vi cũ đỏ sau khi sửa code ⇒ cân nhắc mình đang **đổi nghĩa** field đã có hợp đồng (đã xảy ra ở `system_policy.managed_by_platform`).
+  - `L-B04` — `getattr(request, 'tenant', None)`: thuộc tính **không tồn tại** trong request thật (đo bằng `wsgi_request.tenant`) ⇒ mọi request "được phép" ⇒ `allow_byok=false` **im lặng vô tác dụng**. Quy tắc: giá trị thiếu trong đường kiểm tra **quyền** phải fail-closed hoặc resolve qua SSOT, không phải `None`.
+- **Gộp 2 cặp trùng để dự slot** (đúng §1.3 "gộp lesson trùng lặp"): `multi-agent.md` **L-006** → `build-gates.md` **L-G02** (trùng nội dung) · `multi-agent.md` **L-004** → `migrations.md` **L-M02** (trùng nội dung) · `migrations.md` **L-M03** → gộp vào **L-M01** (cùng lõi: để Django sở hữu số). Bản bị gộp **được giữ lại dạng dòng trong Proof** của entry còn lại — không xoá dấu vết.
+- **Gate**: `node scripts/check-lessons.mjs` exit 0 — `10 file | 40/60 lesson`, mọi file ≤ C1; INDEX không còn DRIFT sau khi bỏ tham chiếu tới ID đã gộp (gate coi **mọi** `L-XXX` trong INDEX là tham chiếu nên văn bản minh hoạ cũng phải đúng).
+
 ## Entry 369: AI R4.2 — key ring Fernet theo version + **scope** `inference`/`management`; va BAY migration trung so (2026-10-17)
 
 - **Nhanh**: `feat/ai-r42-key-rotation` -> `dev`. Claim `ai-r42`. Plan `:1191-1210`. 5 AC.
