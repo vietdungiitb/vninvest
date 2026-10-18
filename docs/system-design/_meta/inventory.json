@@ -81,7 +81,7 @@
       "title": "06.01 — Tổng Quan Mô Hình Dữ Liệu"
     },
     {
-      "lines": 1678,
+      "lines": 1681,
       "path": "docs/system-design/06-DATA-ARCHITECTURE/06.02-danh-muc-model.md",
       "title": "06.02 — Danh Mục Model (Máy Sinh, Không Sửa Tay)"
     },
@@ -221,6 +221,6 @@
       "title": "vninvest — Bộ Hồ Sơ Phân Tích & Thiết Kế Hệ Thống"
     }
   ],
-  "generatedAt": "2026-10-17",
+  "generatedAt": "2026-10-18",
   "root": "docs/system-design"
 }
