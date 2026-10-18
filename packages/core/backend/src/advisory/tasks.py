@@ -254,6 +254,28 @@ def purge_ai_traces(days: int = None):
         days=TRACE_RETENTION_DAYS if days is None else days)
 
 
+@shared_task(name="advisory.purge_ai_audit_logs")
+def purge_ai_audit_logs(days: int = None):
+    """R4.3 AC2: xoá `AIAuditLog` cũ hơn `AI_AUDIT_RETENTION_DAYS` (mặc định 365).
+
+    **Cố ý KHÔNG gộp vào `purge_ai_traces`.** Trace là dữ liệu vận hành (xoá sau
+    90 ngày là hợp lý); audit log là **dấu vết kiểm toán**. Gộp chung nghĩa là
+    đặt thời hạn 90 ngày lên cả hai, và "xoá nhầm audit log" là mất khả năng
+    truy vết — thứ không thể hoàn tác bằng cách tạo lại dòng.
+
+    Vì vậy: task **riêng**, beat **riêng**, và ngưỡng đọc từ settings để vận hành
+    chỉnh được không cần sửa code. Task trả về **số dòng đã xoá** để monitor
+    đếm được; trả `None` chỉ khi `days` không hợp lệ (xem `purge_audit_logs_older_than`).
+    """
+    from django.conf import settings
+
+    from advisory.audit_retention import purge_audit_logs_older_than
+
+    if days is None:
+        days = getattr(settings, 'AI_AUDIT_RETENTION_DAYS', 365)
+    return purge_audit_logs_older_than(days=days)
+
+
 @shared_task(name="advisory.probe_deployments_health")
 def probe_deployments_health():
     """R2.6 AC1: probe mọi deployment cần theo dõi bằng AiClient.probe().

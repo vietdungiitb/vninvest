@@ -21,6 +21,7 @@ from .portfolio_analytics_views import (
     PortfolioAICommandCenterPromptConfigRollbackView,
     PortfolioAICommandCenterTestView,
     PortfolioAICommandCenterAuditLogView,
+    PortfolioAICommandCenterAuditExportView,
     PortfolioAICommandCenterTracesView,
     PortfolioAICommandCenterTenantPolicyView,
     PortfolioAIProviderCatalogView,
@@ -83,6 +84,12 @@ urlpatterns = [
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
     path('workspace/ai-command-center/prompt-config/rollback/', PortfolioAICommandCenterPromptConfigRollbackView.as_view(), name='workspace-ai-cc-prompt-rollback'),
     path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
+    # R4.3: export CSV audit log (append-only ⇒ chỉ GET, không có route put/delete).
+    path(
+        'workspace/ai-command-center/audit-logs/export/',
+        PortfolioAICommandCenterAuditExportView.as_view(),
+        name='workspace-ai-cc-audit-export',
+    ),
     # R3.2: đọc trace của chính người gọi (trang "Traces").
     path('workspace/ai-command-center/traces/', PortfolioAICommandCenterTracesView.as_view(), name='workspace-ai-cc-traces'),
     # R4.1: policy AI cấp tenant (admin tenant ghi; staff chỉ đọc đa tenant).

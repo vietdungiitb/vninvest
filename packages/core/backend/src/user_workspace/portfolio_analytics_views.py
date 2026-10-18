@@ -2282,6 +2282,75 @@ class PortfolioAICommandCenterAuditLogView(APIView):
 
 
 @extend_schema(
+    summary='GET /workspace/ai-command-center/audit-logs/export/ — CSV (R4.3)',
+    description=(
+        'R4.3 AC3/AC4: export `AIAuditLog` ra CSV có BOM UTF-8, tối đa 5000 dòng, '
+        'kèm header `X-Audit-Export-Truncated`. Chỉ có **GET** — append-only nghĩa là '
+        'không có đường sửa/xoá qua HTTP.'
+    ),
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+)
+class PortfolioAICommandCenterAuditExportView(APIView):
+    """GET `/workspace/ai-command-center/audit-logs/export/` — R4.3.
+
+    **Tái dùng scope của endpoint đọc** (`PortfolioAICommandCenterAuditLogView`
+    + `_scope_operator_by_tenant`) chứ không viết resolver riêng. Lý do không chỉ
+    là tiết kiệm dòng: R0.11 đã vá một lần vì `AIAuditLog.objects.all()` + `IsAuthenticated`
+    làm **mọi** user đọc được log của user khác. Một endpoint export tự scope
+    riêng là chỗ dễ lọt đúng lỗi đó lần nữa, và lần này nó **mất dữ liệu ra file**.
+
+    Không có `put`/`patch`/`delete` ở đây, và có test quét source canh điều đó.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Q
+        from django.http import HttpResponse
+
+        from advisory.audit_export import rows_to_csv, serialize_logs
+        from advisory.models import AIAuditLog
+
+        queryset = AIAuditLog.objects.select_related('tenant')
+
+        is_operator = bool(
+            getattr(request.user, 'is_superuser', False)
+            or getattr(request.user, 'is_staff', False)
+        )
+        if not is_operator:
+            queryset = queryset.filter(
+                Q(user=request.user)
+                | Q(user__isnull=True, actor=request.user.username)
+            )
+        queryset = PortfolioAICommandCenterAuditLogView._scope_operator_by_tenant(
+            request, queryset,
+        )
+
+        action = str(request.query_params.get('action', '') or '').strip()
+        if action:
+            queryset = queryset.filter(action=action)
+        date_from = str(request.query_params.get('date_from', '') or '').strip()
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+        date_to = str(request.query_params.get('date_to', '') or '').strip()
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+
+        queryset = queryset.order_by('-created_at')
+        rows, truncated = serialize_logs(queryset)
+        response = HttpResponse(rows_to_csv(rows), content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="ai-audit-log.csv"'
+        # Cờ truncated để client **không phải đoán** từ số dòng trong file.
+        response['X-Audit-Export-Truncated'] = 'true' if truncated else 'false'
+        response['X-Audit-Export-Rows'] = str(len(rows))
+        return response
+
+
+@extend_schema(
     summary='GET /workspace/ai-command-center/traces/ — trace 4 bước của tôi',
     description=(
         'R3.2: đọc `AITrace` của chính người gọi, filter theo symbol/model/status/step/'
