@@ -260,6 +260,20 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       })),
       e(Link, { to: "/broker" },
         t("brokerWave3.settings.goToBroker", { defaultValue: "Mở Broker Hub" }))
+    ),
+
+    // R4.4 AC1: nhóm "Trí tuệ nhân tạo" — trước R4.4 người dùng phải tự gõ URL
+    // `/settings/ai`; hub AI có 5 tab (R2–R3) nhưng không có lối vào từ trang cài
+    // đặt. Nhãn dùng **cùng** khoá với breadcrumb (`userSettings.aiGroup.title`)
+    // để hai nơi không gọi một chỗ bằng hai tên khác nhau.
+    e("hr", { className: "core-divider" }),
+    e("section", { className: "core-dnse-block", "data-testid": "user-settings-ai-group" },
+      e("h2", null, t("userSettings.aiGroup.title", { defaultValue: "Trí tuệ nhân tạo" })),
+      e("p", null, t("userSettings.aiGroup.body", {
+        defaultValue: "Cấu hình trợ lý AI, tác tử, mức dùng và nhật ký kiểm toán.",
+      })),
+      e(Link, { to: "/settings/ai" },
+        t("userSettings.aiGroup.goTo", { defaultValue: "Mở trung tâm AI" }))
     )
   );
 }

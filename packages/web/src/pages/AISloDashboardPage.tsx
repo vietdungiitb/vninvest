@@ -26,6 +26,7 @@ import { useI18n } from "../context/LangContext.js";
 import { useRetryableAsync } from "../hooks/useRetryableAsync.js";
 import styles from "../components/aiSettings.module.css";
 import { AiHubNav } from "../components/AiHubNav.tsx";
+import { Breadcrumb } from "../components/Breadcrumb.js";
 import { chartToken } from "../components/AIUsageDashboard.tsx";
 
 const RANGES = [7, 30, 90] as const;
@@ -184,8 +185,10 @@ export function AISloDashboardPage(): JSX.Element {
   };
 
   return (
-    <div className={styles.page} data-testid="ai-slo-page">
-      <h1>{t("aiCommandCenter.titleSlo")}</h1>
+<div className={styles.page} data-testid="ai-slo-page">
+        {/* R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con. */}
+        <Breadcrumb />
+        <h1>{t("aiCommandCenter.titleSlo")}</h1>
       <p>{t("aiCommandCenter.descriptionSlo")}</p>
       <AiHubNav />
       <div className={styles.filterBar} role="group" aria-label={t("aiCommandCenter.sloRange")}>

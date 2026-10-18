@@ -2489,6 +2489,12 @@ aiUsageAnalytics: 'AI Usage',
   },
   userSettings: {
     title: 'Account settings',
+    // R4.4 AC1 + breadcrumb label for `/settings/ai` (same key for both places).
+    aiGroup: {
+      title: 'Artificial Intelligence',
+      body: 'AI assistant settings, agents, usage and audit trail.',
+      goTo: 'Open AI center',
+    },
     loading: 'Loading account settings...',
     loadError: 'Unable to load account info.',
     displayName: 'Display name:',

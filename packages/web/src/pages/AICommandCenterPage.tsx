@@ -13,6 +13,7 @@ import {
   PromptConfigHistoryEntry,
 } from "../components/AICommandCenterForm.js";
 import { AiHubNav } from "../components/AiHubNav.js";
+import { Breadcrumb } from "../components/Breadcrumb.js";
 
 const e = createElement;
 
@@ -220,6 +221,8 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
         ])
       ),
 
+      // R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con.
+      e(Breadcrumb, { key: "breadcrumb" }),
       // R1.8: tab route dùng chung AiHubNav; nav anchor giữ riêng cho section trong trang.
       e(AiHubNav, { key: "hub-tabs" }),
       // B rest: hub subnav — in-page anchors (route đã có AiHubNav ở trên)

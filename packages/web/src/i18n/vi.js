@@ -2485,6 +2485,12 @@ aiUsageAnalytics: 'Usage AI',
   },
   userSettings: {
     title: 'Cài đặt tài khoản',
+    // R4.4 AC1 + nhãn breadcrumb `/settings/ai` (cùng khoá cho hai nơi).
+    aiGroup: {
+      title: 'Trí tuệ nhân tạo',
+      body: 'Cấu hình trợ lý AI, tác tử, mức dùng và nhật ký kiểm toán.',
+      goTo: 'Mở trung tâm AI',
+    },
     loading: 'Đang tải cài đặt tài khoản...',
     loadError: 'Không thể tải thông tin tài khoản.',
     displayName: 'Tên hiển thị:',
