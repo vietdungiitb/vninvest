@@ -124,7 +124,15 @@ ROLLUP_WINDOW_HOURS = 48
 
 
 def _endpoint_group(path: str) -> str:
-    """Map request path to logical endpoint group. Unmatched → 'other'."""
+    """Map request path to logical endpoint group. Unmatched → 'other'.
+
+    R5.2: `/core/v1/ai/agents/` (route thật, `ai_agents/urls.py:6`) trước đây bị ghi
+    nhóm **`ai`** vì prefix tổng quát `'/core/v1/ai/'` đứng trước trong dict; còn
+    `'/core/v1/ai-agents/'` là **route không tồn tại** ⇒ nhánh `ai_agents` chưa bao
+    giờ chạy. `dict` giữ thứ tự chèn và vòng lặp dùng `startswith` theo thứ tự đó,
+    nên cách sửa là đặt prefix **cụ thể hơn lên trước** — không phải đổi chuỗi rồi
+    hy vọng thứ tự.
+    """
     if not path:
         return 'other'
     prefixes = {
@@ -132,12 +140,13 @@ def _endpoint_group(path: str) -> str:
         '/core/v1/identity/': 'identity',
         '/api/core/v1/auth/': 'auth',
         '/core/v1/market-data/': 'market_data',
+        # R5.2: phải khai TRƯỚC `'/core/v1/ai/'` — nếu sau, generic nuốt mất.
+        '/core/v1/ai/agents/': 'ai_agents',
         '/core/v1/ai/': 'ai',
         '/core/v1/data-ingest/': 'data_ingest',
         '/core/v1/advertising/': 'advertising',
         '/core/v1/widget/': 'widget',
         '/core/v1/stock-management/': 'stock_management',
-        '/core/v1/ai-agents/': 'ai_agents',
         '/core/v1/operator/': 'operator',
         '/core/v1/health': 'health',
         '/api/public/': 'public',
