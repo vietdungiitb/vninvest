@@ -91,6 +91,32 @@
   - [ ] Đã chạy `pwsh -File scripts/agent-pr.ps1` để tạo PR đúng quy trình?
 - **Proof:** `AGENTS.md` "Không được: **Không commit thẳng vào `dev`** - tạo `feat/<slice>-<agent>` rồi PR... đã sinh migration trùng số (2026-09-26)"; `docs/AGENT_PROTOCOL.md` §10.0.
 
+## L-M02: Tên branch phải là `feat/<tên-agent>` — lệch 1 chữ là preflight chặn commit của chính mình
+
+- **Nguyên nhân:** `agent-preflight.mjs` nhận diện claim của bạn bằng **hai** điều kiện
+  (`myClaimKeys()`): `tên-agent === short(branch)` (`branch` bỏ tiền tố `feat/|fix/|docs/|chore/|cleanup/`)
+  **hoặc** cột `branch` trong dòng claim **bằng đúng** tên branch. Cột claim trong
+  `docs/CLAIMS.md` của repo lại theo quy ước cũ: `` `feat/<tên>` -> `dev` `` (kèm mũi tên)
+  ⇒ **không** khớp điều kiện thứ hai.
+- **Hậu quả thật (Entry 375 + 376 + 377, cùng tác giả, 3 lần):** đặt branch
+  `feat/ai-r51-remove-agent-registry` cho claim `ai-r51` ⇒ preflight báo
+  `[claimed-in-progress]` + `[claim-identity]: Khong co dong claim nao khop branch` và coi
+  **chính file của bạn** là "agent khác đang giữ". Hệ quả kép: gate `hook-mode` tự đỏ theo
+  (self-test của nó chạy hook thật trên cây đang stage), và nếu không nhận ra sẽ đi tìm
+  claim stale hoặc đòi bypass trailer — **mất thời gian và gây hại registry**.
+- **Khi nào gặp:** `tags: [multi-agent, claim, branch, preflight, hook-mode, gate, denied]`
+- **QUY TẮC:** "Tên branch = `feat/<tên-agent>` **đúng y ký tự**. Không thêm hậu tố mô tả
+  (`feat/ai-r51-remove-agent-registry` cho `ai-r51` là **sai**). Muốn mô tả thì để trong
+  claim/scope. Nếu preflight báo `claim-identity` → kiểm tra **tên branch**, đừng đi tìm
+  nguyên nhân khác."
+- **CHECKLIST:**
+  - [ ] `git branch --show-current` trùng `feat/` + tên agent trong dòng claim?
+  - [ ] Đã chạy `node scripts/agent-preflight.mjs --staged` **trước khi** commit chứ không
+        đợi tới pre-push (lúc đó đã stage xong nên lỗi hiện rõ)?
+  - [ ] Thấy `claim-identity` thì kiểm tra tên branch **trước**, đừng sửa claim của người khác?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 375/376/377 (cùng một lỗi 3 lần);
+  `docs/LESSONS/multi-agent.md` L-002 (khai claim trước).
+
 ## L-A01: `git checkout -- <file>` de hoi quy thi lap - PHA HUY CA VIEC CHUA COMMIT
 
 - **Nguyen nhan:** Dung `git checkout -- <file>` de "undo mot thu nghiem" (doi
