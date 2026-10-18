@@ -5349,6 +5349,23 @@ aiUsageAnalytics: 'Usage AI',
     aiModel: 'Mô hình AI',
   },
   aiCommandCenter: {
+    subAgent: {
+      title: 'Prompt sub-agent hệ thống',
+      desc: 'Prompt hệ thống cho 4 bước phân tích. Để trống thì dùng prompt mặc định của hệ thống.',
+      version: 'Phiên bản hiện tại: {version}',
+      fields: {
+        technical_agent_prompt: 'Chuyên gia kỹ thuật',
+        flow_agent_prompt: 'Chuyên gia dòng tiền',
+        sentiment_agent_prompt: 'Chuyên gia tâm lý thị trường',
+        synthesis_agent_prompt: 'Giám đốc tổng hợp',
+      },
+      placeholders: {
+        technical_agent_prompt: 'Ví dụ: Bạn là chuyên gia phân tích kỹ thuật chứng khoán cho mã {symbol}.',
+        flow_agent_prompt: 'Ví dụ: Bạn là chuyên gia phân tích dòng tiền lớn và dấu vết cá mập cho mã {symbol}.',
+        sentiment_agent_prompt: 'Ví dụ: Bạn là chuyên gia phân tích tâm lý thị trường cho mã {symbol}.',
+        synthesis_agent_prompt: 'Ví dụ: Bạn là Giám đốc Phân tích tổng hợp khuyến nghị cho mã {symbol}.',
+      },
+    },
     effectiveProvider: 'Nhà cung cấp hiệu lực',
     effectiveProviderDesc: 'Nguồn đọc từ AI Command Center.',
     effectiveModel: 'Mô hình hiệu lực',

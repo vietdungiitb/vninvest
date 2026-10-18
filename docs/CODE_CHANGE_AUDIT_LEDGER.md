@@ -1,3 +1,13 @@
+## Entry 380: AI R5.3 (FE) — UI 4 sub-agent prompt lay **co staff tu payload BE** (khong them context); va `styles.section/hint/fieldLabel` **khong ton tai** — doan sai nhu loi `.auditTable` (2026-10-18)
+
+- **Nhanh**: `feat/ai-r53` -> `dev`. Claim `ai-r53`. Tiep phan BE (Entry 379).
+- **QUYET DINH THIET KE**: `AICommandCenterForm` **khong dung `usePortfolio`** (do bang `git grep`). Them no se lam **do** het cac test render form hien co (khong boc `PortfolioProvider`) vi ly do sai. Nay `canEditSubAgentPrompts = settings.sub_agent_prompts != null` — BE **da bo han key** khi user khong phai staff ⇒ **mot noi duy nhat** quyet dinh "ai la staff" (server quyet, client theo); hai noi phan quyet dinh chinh la cai lam nav R4.5 lech.
+- **AC + Gates**: AC1 staff thay **4** o voi gia tri dang luu · AC1 hien version hien hanh (`3`) · AC2 user thuong `queryByTestId` = null · AC4 sua 1 prompt ⇒ payload **dung 4 khoa**, khong co khoa la (di qua `preview-confirm`) · **khong sua gi ⇒ KHONG mo modal + KHONG PUT**. **5/5 test moi · 460 test hoi quy FE — 0 fail** · `tsc` 0 · `build` 0 · `i18n:scan` 0 va khong ghi file.
+- **FAIL-BEFORE THAT**: 4 do truoc khi viet UI — nhung test dau tieu cua toi **render sai** (mock `defaultCoreApiAdapter` trong khi form dung `coreApiAdapter` + `LangProvider` + `MemoryRouter`) ⇒ do **vi ly do sai**; da copy dung pattern tu `ai-cc-r14-dirty.component.test.tsx`.
+- **MOT TEST CUA TOI CO TIEN DE SAI, DA SUA THEO HAN VI THAT**: toi viet "bam Luu khi khong doi gi van PUT nhung khong kem `sub_agent_prompts`". That ra form **khong mo modal** khi khong co diff (R1.9 AC4) va **khong** goi API ⇒ viet lai thanh assert `khong modal + khong PUT` (manh hon ban cu).
+- **`styles.section` / `styles.hint` / `styles.fieldLabel` KHONG TON TAI** — toi viet theo tri nho, do bang script so moi `styles.X` voi class that trong `aiSettings.module.css` moi thay ra (cung loai loi `.auditTable` cua R5.1d). Da doi sang `indicatorsSection` / `helpText` / `label`; chay lai script ⇒ **19/19 class trong form deu ton tai**.
+- **CHUA LAM**: **CHUA deploy staging** (UI moi + migration `0023` chua chay) · **CHUA chup anh** xac nhan bang mat (L-V05) · lich su phien ban trong **UI** chua rang rieng cho 4 prompt (hien doc chung o tab Audit cua R4.5).
+
 ## Entry 379: AI R5.3 (BE) — sua 4 `system sub-agent prompt`: co API ghi staff-only, version trong audit, va `AITrace.prompt_template_version`; va **script Node lam hong file** phai khoi phuc (2026-10-18)
 
 - **Nhanh**: `feat/ai-r53` -> `dev`. Claim `ai-r53`. **Owner chot 2 quyet dinh**: (1) lich su dung lai **`AIAuditLog`** (khong model moi); (2) **them cot** `prompt_template_version` vao `AITrace` (1 migration).

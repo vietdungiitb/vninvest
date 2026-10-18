@@ -47,6 +47,10 @@ export interface AISettings {
   system_prompt_template?: string;
   ai_prompt_config?: Record<string, unknown> | null;
   ai_prompt_config_history?: PromptConfigHistoryEntry[];
+  // R5.3: 4 system sub-agent prompt. BE **bỏ hẳn key** khi user không phải staff
+  // (`response_data.pop(...)`) nên type phải cho phép vắng, không phải null.
+  sub_agent_prompts?: Record<string, string> | null;
+  sub_agent_prompts_version?: number;
   effective_ai_source?: string;
   effective_ai_provider?: string;
   effective_ai_model?: string;
@@ -172,6 +176,36 @@ export function AICommandCenterForm({
   const [preview, setPreview] = useState<PreviewEntry | null>(null);
   const [conflict, setConflict] = useState<AiConfigConflict | null>(null);
   const [previewSaving, setPreviewSaving] = useState(false);
+// R5.3: 4 system sub-agent prompt (technical/flow/sentiment/synthesis). Chỉ staff
+// thấy và sửa — BE cũng chặn 403, UI chặn để user thường không thấy ô trống.
+const SUB_AGENT_PROMPT_FIELDS = [
+  "technical_agent_prompt",
+  "flow_agent_prompt",
+  "sentiment_agent_prompt",
+  "synthesis_agent_prompt",
+] as const;
+const [subAgentPrompts, setSubAgentPrompts] = useState<Record<string, string>>({
+  technical_agent_prompt: "",
+  flow_agent_prompt: "",
+  sentiment_agent_prompt: "",
+  synthesis_agent_prompt: "",
+});
+const [subAgentPromptsVersion, setSubAgentPromptsVersion] = useState(0);
+  // R5.3: bản đã load để so "có đổi không" + làm mốc cho modal diff.
+  const loadedSubAgentPromptsRef = useRef<Record<string, string>>({
+    technical_agent_prompt: "",
+    flow_agent_prompt: "",
+    sentiment_agent_prompt: "",
+    synthesis_agent_prompt: "",
+  });
+  // Cờ staff **lấy từ chính payload của BE**: server bỏ hẳn key khi user không
+  // phải staff (`response_data.pop`). Dùng cờ đó thay vì `usePortfolio()` để
+  // không thêm phụ thuộc context mới (nhiều test render form không bọc
+  // PortfolioProvider) — và tránh hai nơi phản quyết định "ai là staff".
+  const canEditSubAgentPrompts =
+    settings != null &&
+    settings.sub_agent_prompts != null &&
+    settings.sub_agent_prompts !== undefined;
   useEffect(() => {
     onFieldsDirtyChange?.(fieldsDirty);
   }, [fieldsDirty, onFieldsDirtyChange]);
@@ -256,6 +290,17 @@ export function AICommandCenterForm({
         setPromptConfig(data.ai_prompt_config);
         onPromptConfigChange?.(data.ai_prompt_config);
       }
+
+      // R5.3: nạp 4 prompt + version hiện hành. Thiếu key (user thường) ⇒ để rỗng,
+      // và UI tự ẩn (xem `canEditSubAgentPrompts`).
+      const loadedPrompts = data.sub_agent_prompts || {};
+      const nextPrompts: Record<string, string> = {};
+      for (const key of SUB_AGENT_PROMPT_FIELDS) {
+        nextPrompts[key] = String(loadedPrompts[key] ?? "");
+      }
+      setSubAgentPrompts(nextPrompts);
+      setSubAgentPromptsVersion(Number(data.sub_agent_prompts_version ?? 0));
+      loadedSubAgentPromptsRef.current = nextPrompts;
     },
     [onSettingsChange, onPromptConfigChange]
   );
@@ -320,13 +365,18 @@ export function AICommandCenterForm({
   /** Giá trị hiệu lực hiện trên form (để preview diff với bản đã load). */
   const currentEffective = () => {
     const { finalModel, parsedMaxTokens, parsedRefreshInterval } = buildCorePayload();
-    return {
+    const effective: Record<string, unknown> = {
       ai_provider: aiProvider,
       ai_model: finalModel,
       advisory_max_tokens_per_day: Math.max(1, Math.floor(parsedMaxTokens)),
       advisory_refresh_interval_hours: Math.max(1, Math.floor(parsedRefreshInterval)),
       temperature: Math.min(1, Math.max(0, Number(temperature) || 0.3)),
-    } as Record<string, unknown>;
+    };
+    // R5.3: kèm 4 prompt để modal diff (R1.9) hiện chúng khi staff sửa.
+    if (canEditSubAgentPrompts) {
+      for (const key of SUB_AGENT_PROMPT_FIELDS) effective[key] = subAgentPrompts[key] ?? "";
+    }
+    return effective;
   };
 
   const buildValidatedPayload = (): Record<string, unknown> | null => {
@@ -357,6 +407,19 @@ export function AICommandCenterForm({
     }
     if (aiApiKey.trim()) {
       payload.ai_api_key = aiApiKey.trim();
+    }
+    // R5.3: chỉ gửi khi staff VÀ nội dung thật sự đổi so với bản đã load —
+    // BE tăng version mỗi lần nhận giá trị khác, gửi y hệt là vô nghĩa.
+    if (canEditSubAgentPrompts) {
+      const loaded = loadedSubAgentPromptsRef.current;
+      const changed = SUB_AGENT_PROMPT_FIELDS.filter(
+        (key) => (subAgentPrompts[key] ?? "") !== (loaded[key] ?? ""),
+      );
+      if (changed.length > 0) {
+        const next: Record<string, string> = {};
+        for (const key of SUB_AGENT_PROMPT_FIELDS) next[key] = subAgentPrompts[key] ?? "";
+        payload.sub_agent_prompts = next;
+      }
     }
     if (getExtraPayload) {
       Object.assign(payload, getExtraPayload());
@@ -795,6 +858,67 @@ export function AICommandCenterForm({
                   "data-testid": "open-prompt-config",
                 },
                 t("aiCommandCenter.promptConfig")
+              )
+            : null,
+
+          // R5.3: 4 system sub-agent prompt (technical/flow/sentiment/synthesis).
+          // Chỉ hiện khi BE trả `sub_agent_prompts` — tức là **chỉ staff**
+          // (`response_data.pop` bỏ key cho user thường). Không có hai nơi phản
+          // quyết định "ai là staff".
+          canEditSubAgentPrompts
+            ? e(
+                "section",
+                {
+                  key: "sub-agent-prompts",
+                  "data-testid": "sub-agent-prompts",
+                  className: styles.indicatorsSection,
+                  "aria-label": t("aiCommandCenter.subAgent.title"),
+                },
+                [
+                  e(
+                    "h3",
+                    { key: "h", className: styles.sectionTitle },
+                    t("aiCommandCenter.subAgent.title"),
+                    " ",
+                    e(
+                      "span",
+                      { key: "ver", className: styles.helpText },
+                      t("aiCommandCenter.subAgent.version", { version: subAgentPromptsVersion }),
+                    ),
+                  ),
+                  e(
+                    "p",
+                    { key: "desc", className: styles.helpText },
+                    t("aiCommandCenter.subAgent.desc"),
+                  ),
+                  ...SUB_AGENT_PROMPT_FIELDS.map((key) =>
+                    e("label", { key, className: styles.field }, [
+                      e(
+                        "span",
+                        { key: "lb", className: styles.label },
+                        t(`aiCommandCenter.subAgent.fields.${key}`),
+                      ),
+                      e("textarea", {
+                        key: "ta",
+                        "data-testid": `sub-agent-${key}`,
+                        rows: 4,
+                        maxLength: 4000,
+                        value: subAgentPrompts[key] ?? "",
+                        placeholder: t(`aiCommandCenter.subAgent.placeholders.${key}`),
+                        onChange: (ev: ChangeEvent<HTMLTextAreaElement>) => {
+                          const next = { ...subAgentPrompts, [key]: ev.target.value };
+                          setSubAgentPrompts(next);
+                          const loaded = loadedSubAgentPromptsRef.current;
+                          setFieldsDirty(
+                            SUB_AGENT_PROMPT_FIELDS.some(
+                              (k) => (next[k] ?? "") !== (loaded[k] ?? ""),
+                            ),
+                          );
+                        },
+                      }),
+                    ]),
+                  ),
+                ],
               )
             : null,
         ]),
