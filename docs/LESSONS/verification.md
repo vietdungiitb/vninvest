@@ -83,3 +83,22 @@ mới phát hiện được.
   - [ ] Đã có test **dương tính** chứng minh cơ chế *vẫn dùng* khi cấu hình hợp lệ không? (thiếu thì "luôn không làm gì cả" cũng xanh)
   - [ ] Khi thấy 2+ test ghim hành vi cũ **đỏ** sau khi mình đổi code → cân nhắc mình đang **đổi nghĩa** một field đã có hợp đồng, **không** phải test sai. Đọc lại tên field + comment trước khi sửa test.
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 369 §"XANH GIẢ vì URL sai"; `docs/evidence/ai-cc/r42-gates.md` §"Bẫy thật".
+
+## L-V05: Bằng chứng ảnh/screenshot — exit 0 KHÔNG chứng minh được gì, phải mở ảnh ra xem
+
+- **Nguyên nhân:** Hai lỗi độc lập cùng cho ra kết quả "test xanh nhưng tài liệu vô dụng":
+  (a) **chụp trước khi nội dung có** ⇒ ảnh ghi lại trạng thái *đang tải*; (b) **selector
+  khớp nhầm chỗ** — ví dụ `a[href="/settings/ai"]` khớp cả link điều hướng toàn cục
+  trên layout nên vẫn xanh khi trang chưa render nội dung cần kiểm.
+- **Hậu quả thật (Entry 372, R4.4):** AC3 yêu cầu 3 ảnh. **Cả 3 lần chụp đều PASS** và
+  **cả 3 ảnh đều vô dụng** — lần 1 chỉ có dòng "Đang tải…", lần 2 bị overlay lazy-load
+  phủ, lần 3 mới đúng. Chỉ phát hiện được vì **mở ảnh ra xem**, không phải vì đọc log.
+- **Khi nào gặp:** `tags: [screenshot, visual, playwright, evidence, false-green, xanh-gia, selector]`
+- **QUY TẮC:** "Với bằng chứng hình ảnh: **đợi nội dung → chụp → assert**, dùng selector **đúng chỗ** (ưu tiên `data-testid` riêng của khối trong trang), và **luôn mở ảnh ra xem** trước khi báo PASS."
+- **CHECKLIST:**
+  - [ ] Ảnh có được chụp **sau** khi nội dung cần kiểm đã render chưa? (không phải lúc skeleton/overlay)
+  - [ ] Đã chờ overlay/skeleton **biến mất** trước khi chụp?
+  - [ ] Selector có khớp **nhầm phần tử giống nhau ở chỗ khác** không? (link toàn cục, sidebar, header)
+  - [ ] Đã **mở ảnh** xác nhận đúng nội dung, không chỉ tin exit code?
+  - [ ] Ảnh chụp đúng **phiên bản đã deploy**, không phải bản cũ còn trên môi trường?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 372 §"AC3 tốn 3 lần chụp"; `docs/evidence/ai-r44/visual/`.
