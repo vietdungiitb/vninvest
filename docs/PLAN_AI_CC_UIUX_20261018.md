@@ -1,0 +1,434 @@
+# PLAN — Nâng cấp UI/UX `/settings/ai` (AI Command Center)
+
+> **Artifact Stage 1** của skill `multi-agent-workflow` (Mode B — bounded solo loop).
+> **Slice tài liệu, không phải code.** Người thực thi plan này **không có** ngữ cảnh của phiên audit — mọi khẳng định dưới đây đều tự chứa minh chứng.
+
+| | |
+|---|---|
+| **Task** | `ai-cc-uiux` |
+| **Branch** | `feat/ai-cc-uiux` → `dev` |
+| **Baseline đo** | `dev` @ `295dc15d8`, working tree sạch |
+| **HEAD khi lập plan** | `6037303c5` (commit claim, cha = `295dc15d8`) |
+| **Ngày** | 2026-10-18 |
+| **Claim** | `docs/CLAIMS.md:1605-1609`, trạng thái `in-progress` |
+| **Lessons áp dụng** | L-001, L-002, L-003, L-007, L-008, L-M02, L-A01, L-F01, L-F02, L-F03, L-F05, L-F06, L-F08, L-F09, L-F10, L-G01, L-G02, L-G04, L-G05, L-G06, L-G07, L-G08, L-V01, L-V02, L-V03, L-V04, L-V05, L-T01, L-T02 |
+| **Skill** | `ui-skills-root` (router) → `improve-ui` (methodology) → `web-design-guidelines` (checklist) |
+| **Sai lệch quy trình đã biết** | `improve-ui` yêu cầu ghi plan vào `design-plans/`. **Không làm** — `multi-agent-workflow` §0: "repo's own file wins on conflict", và `docs/AGENT_PROTOCOL.md` quy định artifact ở `docs/`. |
+
+---
+
+## 0. SCOPE / LIMIT
+
+### SCOPE — file được phép sửa
+
+| File | Slice nào sửa |
+|---|---|
+| `packages/web/src/pages/AICommandCenterPage.tsx` | S1, S2, S3, S4 |
+| `packages/web/src/components/AICommandCenterForm.tsx` | S0, S2 |
+| `packages/web/src/shared/providerModels.ts` | S3 |
+| `packages/web/src/i18n/vi.js` | S3, S4 (**chỉ thêm key mới** — xem OVERLAP) |
+| `packages/web/src/i18n/en.js` | S3, S4 (**chỉ thêm key mới**) |
+| `packages/web/src/components/Breadcrumb.tsx` | S4 (đọc + sửa 1 dòng map) |
+| `packages/web/src/components/AiHubNav.tsx` | S4 (**chỉ nếu** AC4.2 buộc phải) |
+| `packages/web/src/components/aiSettings.module.css` | S1 (**chỉ** nếu AC1.3 giữ anchor nav), S5 |
+| `packages/web/scripts/check-ai-cc.mjs` | S5 (**KHÔNG** nối vào `package.json` — deny-list) |
+| `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | mọi slice |
+
+### LIMIT
+
+- **5 slice** (S0–S5). Không thêm scope nào ngoài danh sách trên.
+- **Tối đa 3 lần thử** mỗi AC. Lần thứ 3 fail ⇒ ghi `blocker`, **dừng**, trả về trạng thái một phần nêu rõ AC nào đã PASS.
+- **Không migration.** AI CC không đụng Django schema.
+- **Không thêm dependency.** `package.json` nằm trong deny-list (§2 `AGENT_PROTOCOL.md`).
+
+### OVERLAP PHẢI PHỐI HỢP
+
+`pf-manage-rebuild` (`docs/CLAIMS.md:1359`, PR #121, `in-progress`) sửa **cùng** `packages/web/src/i18n/vi.js` + `en.js`.
+→ Chỉ **thêm key mới** (thêm ở cuối khối `aiCommandCenter`), **không** viết lại file, **không** `Get-Content|Set-Content` (L-F04).
+→ Trước khi commit: `git diff --numstat packages/web/src/i18n/vi.js` — mọi dòng khác nghĩa là đã đổi line-ending, **dừng lại** (L-T01).
+
+---
+
+## 1. Design language
+
+| | |
+|---|---|
+| **Audited surface** | Route `/settings/ai` + 4 sub-route `/settings/ai/{usage,traces,slo,audit}`, entry `AICommandCenterPage` |
+| **Design sources** | **KHÔNG có `DESIGN.md`** (glob `**/DESIGN.md` → 0 hit). Nguồn thiết kế thực tế là: `packages/web/src/components/soc/soc.tokens.css` (185 dòng, 140 biến) + `soc.components.css` (4076 dòng) + `packages/web/src/theme/tokens.css`. `AGENTS.md` §Constraints ràng buộc SOC glassmorphism. |
+| **Documented decisions** | `L-F08` — Việt Nam dùng chuẩn Bloomberg: **xanh = tăng, đỏ = giảm**; token `--pf-gain`/`--pf-loss` (Owner chốt 2026-10-07). Plan này **không** đụng màu tăng/giảm. |
+| **Governing owners** | `AiHubNav.tsx` = hệ tab route dùng chung 5 route AI. `ShellPageTemplate.js:69` `ShellPanel` = primitive panel (render `h2` tại `:80`). `providerModels.ts:4-5` = interface `ProviderModelOption` **đã có** field `labelKey?`. |
+| **Explicit exceptions** | **None documented.** |
+| **Ba hệ token cùng sống** | `aiSettings.module.css` khai 13 token `--ai-*` ở `:root` toàn cục (`:55-69`) **và** dùng `var(--ai-surface)` chứ không dùng class của `soc.components.css`. Hai hệ **không dùng chung class nào**. Đây là nợ kiến trúc, **không** thuộc SCOPE plan này (xem §6 Non-goals). |
+
+---
+
+## 2. Findings
+
+Skill `improve-ui` §5 giới hạn **3 findings** sau khi đã sàng lọc. Mỗi finding phải qua đủ 3 phép chứng minh: **Contract** (quy tắc/điểm mâu thuẫn trong chính UI) · **Runtime** (đường chạy thật tới bề mặt) · **Correction** (đúng 1 sửa, không bịa ý đồ sản phẩm).
+
+### F1 — Hai thanh điều hướng chồng nhau, giống hệt nhau, trùng nhãn · **BLOCKER**
+
+| | |
+|---|---|
+| **Contract** | Trong **cùng một tác vụ**, trang render **hai** thanh tab dùng **cùng một bộ class CSS** và **trùng nhãn ở 2/3 mục**, trỏ tới **3 mục tiêu khác nhau**. Đây là mâu thuẫn trực tiếp trong nội dung hiển thị của cùng tác vụ. |
+| **Runtime** | `AICommandCenterPage.tsx:227` → `AiHubNav` (5 tab route: Tổng quan · Usage AI · Dấu vết AI · SLO AI · Nhật ký audit). `AICommandCenterPage.tsx:229-245` → `<nav className={styles.hubNav}>` thứ 2 (3 anchor: Tổng quan · Runtime · Nhật ký audit). Cả hai dùng `styles.hubNav`/`hubNavLink`/`hubNavLinkActive` — `aiSettings.module.css:132,145,169` — **không có modifier nào phân biệt**. Cả hai nhận **cùng** `aria-label: t("aiCommandCenter.title")` (`:229` vs `AiHubNav.tsx:117`). `AiHubNav` được gọi **không truyền `className`** ⇒ không ghi đè được (`AiHubNav.tsx:60` default `""`). |
+| **Cơ chế 2 ô "Tổng quan" cùng sáng** | `AiHubNav.tsx:79` `active: location.pathname === "/settings/ai"` **ĐÚNG** khi vừa tải. `AICommandCenterPage.tsx:233` `location.hash === "#overview" \|\| (!location.hash && location.pathname === "/settings/ai")` **ĐÚNG** khi vừa tải. ⇒ **Không có hash nào thì CẢ HAI ô "Tổng quan" đều active cùng lúc.** Xác minh bằng đọc mã, không phải suy luẫn. |
+| **Nhãn trùng là cùng khoá i18n** | `tabOverview` = `"Tổng quan"` (`vi.js:5412`) dùng cho **cả** tab route (`:234`) và anchor (`:230`). `tabAudit` = `"Nhật ký audit"` (`vi.js:5414`) dùng cho **cả** tab route (`AiHubNav.tsx:110`) và anchor (`:241`). Anchor `"Nhật ký audit"` → `#audit` (panel trong trang), tab route `"Nhật ký audit"` → `/settings/ai/audit` (**một route riêng**). |
+| **Correction** | **Xoá `<nav>` anchor thứ 2** khỏi `AICommandCenterPage.tsx:229-245`. Lý do đủ để xoá: `#overview` = đầu trang (đã là nơi đổ bậy), `#audit` **trùng nghiệp vụ** với route `/settings/ai/audit` đã tồn tại, `#runtime` = panel thứ 3 trong cùng trang. Sau khi xoá: **1 hệ điều hướng duy nhất**. |
+| **Confidence** | **high** — đọc trực tiếp 2 file mã + 1 file CSS, không suy luận. |
+
+> **Đã cố phản chứng và không thất bại:** (a) nav thứ 2 có bị ẩn với non-staff không? — không có điều kiện nào; (b) 2 thanh có khác style không? — cùng class, `AiHubNav` không nhận `className`; (c) đây có phải 2 hệ cố ý không? — không có tài liệu nào ghi như vậy, `docs/audit-uiux/*` chưa từng báo lỗi này.
+
+---
+
+### F2 — Tùy chọn **cá nhân** nằm trong panel **chính sách hệ thống** · **MAJOR**
+
+Đây là **gốc rễ trực tiếp** của nhận xét *"lẫn lộn cài đặt tài khoản và cấu hình trung tâm AI"*.
+
+| | |
+|---|---|
+| **Contract** | Panel tên `operationPolicy` = **"Chính sách vận hành"** (`vi.js:5380`) — ngữ nghĩa **hệ thống**. Ô đầu tiên trong panel là `eventGate` = **"Gate sự kiện"** (`vi.js:5381`) — đây là **tùy chọn cá nhân của user**. Trang đặt tên mình là cấu hình trung tâm AI (`vi.js:5409`) nhưng breadcrumb của nó là **"Cài đặt tài khoản"** (`vi.js:2487` qua `Breadcrumb.tsx:49`). Ba nhãn, ba khái niệm khác nhau trên **cùng một màn hình**. |
+| **Runtime** | `AICommandCenterPage.tsx:119-134` đọc `getUserConfig()` → `userConfig?.preferences.advisory_whale_signal_enabled`. `AICommandCenterPage.tsx:175` ghi `updateUserConfig({ advisory_whale_signal_enabled })`. Đây là **endpoint + kho lưu khác hẳn** AI CC config (`getAICommandCenterConfig`, `AICommandCenterForm.tsx:83`). Render tại `:262-276` trong `ShellPanel` title `operationPolicy` (`:260`). |
+| **Correction** | **Tách `eventGate` ra khỏi panel "Chính sách vận hành"** — chuyển nó sang một panel riêng mang tên đúng bản chất (tùy chọn cá nhân), hoặc bỏ hẳn khỏi trang này nếu đã có nơi khác chứa nó. 1 sửa. |
+| **Confidence** | **high** — đọc trực tiếp 2 nhánh ghi/đọc, xác nhận khác endpoint. |
+
+---
+
+### F3 — 2 giá trị hiển thị hai nơi; 1 giá trị **không sửa được ở bất kỳ đâu** · **MAJOR**
+
+| | |
+|---|---|
+| **Contract** | Panel "Chính sách vận hành" hiện 3 số; ngay bên dưới, form "CẤU HÌNH AI RUNTIME" sửa **2 trong 3** số đó với **tên khác nhau**. Người dùng thấy "24" ở trên (chỉ đọc) và "24" ở dưới (sửa được) — không có tín hiệu nào cho biết chúng là cùng một thứ. |
+| **Runtime — trùng 2 field** | `advisory_refresh_interval_hours`: đọc để hiển thị `AICommandCenterPage.tsx:112` (`refreshIntervalDisplay`) + render `:277-280`; sửa `AICommandCenterForm.tsx:272` (`setRefreshInterval(data.advisory_refresh_interval_hours \|\| 24)`) + input `:764-783`. |
+| | `advisory_max_tokens_per_day`: hiển thị `AICommandCenterPage.tsx:114` + render `:285-288`; sửa `AICommandCenterForm.tsx:271` (`setMaxTokens(...)`) + input `:745-760`. |
+| **Tên khác nhau** | Panel: `refreshInterval` = "Khoảng làm mới" + `refreshIntervalValue` = **"24 giờ/lần"** (`vi.js:5385,5541`). Form: `refreshIntervalLabel` = **"Khoảng làm mới tự động (giờ)"** (`vi.js:5497`). Panel: `tokensPerDay` = "Token/ngày" (`5387`). Form: `maxTokensLabel` = "Định mức Token / ngày" (`5496`). |
+| **Runtime — giá trị mồ côi** | `advisory_max_auto_refreshes_per_day` hiển thị tại `AICommandCenterPage.tsx:113` + render `:281-284` (ô "Auto refresh/ngày"). Grep **toàn bộ FE** (`.ts/.tsx/.js/.jsx`, `@ 6037303c5`) cho chuỗi này chỉ ra **3 hit**: khai báo type `AICommandCenterForm.tsx:31`, chỗ đọc `AICommandCenterPage.tsx:113`, fixture test `AICommandCenterPage.component.test.js:226`. **Không có `<input>` nào.** Người dùng thấy một con số không thể sửa ở bất kỳ đâu. |
+| **Correction** | **Bỏ 2 metric trùng** (`refreshInterval`, `tokensPerDay`) khỏi panel chính sách; giữ lại `autoRefreshPerDay` và **gắn nhãn nó là chỉ đọc** (hoặc thêm field sửa — nhưng đó là scope BE, nêu ở §6 Non-goals). 1 sửa. |
+| **Confidence** | **high** — đọc trực tiếp + grep toàn repo bằng chuỗi đầy đủ, không suy ra từ việc "không nhớ thấy". |
+
+---
+
+### `## Improve first`
+
+**F1 (hai thanh tab chồng nhau).** Vì sao: nó là **điều Owner nhìn thấy đầu tiên và nêu tên**; nó xuất hiện ở **mọi** lần truy cập `/settings/ai` (100% reach); nó là **nguyên nhân vì sao "Cài đặt" (eyebrow `vi.js:5410`) đọc như nhãn của cả trang trong khi breadcrumb nói "Cài đặt tài khoản"**; và nó **rẻ nhất để sửa** (xoá ~17 dòng, 0 migration, 0 dependency). Sửa F1 làm F2 và F4 dễ định vị hơn vì mất đi một lớp nhãn trùng.
+
+---
+
+### Ngoài 3 findings (đã verify, đưa vào backlog S3–S5)
+
+Không phải 3 finding trên, nhưng đều có bằng chứng và **có trong plan**:
+
+| ID | Vấn đề | Bằng chứng |
+|---|---|---|
+| B1 | `effectiveSource` render giá trị thô `command_center` | `AICommandCenterPage.tsx:253` render thẳng `effectiveSource`; state khởi tạo là chuỗi hằng `"command_center"` tại `:72`. BE: `portfolio_analytics_views.py:1176,1301,1492,1580` — `metadata.get('effective_ai_source') or 'command_center'`. Grep toàn backend (7 hit) ⇒ **không chỗ nào ghi** key này ⇒ hôm nay giá trị **luôn** là `command_center`. `effectiveSourceDesc` (`vi.js:5374`) tự viết *"command_center hoặc system fallback"* ⇒ chính bản dịch đã thừa nhận lộ enum. |
+| B2 | `effectiveProvider` render key thô (`gemini`) | `AICommandCenterPage.tsx:251`. `PROVIDER_OPTIONS` (`providerModels.ts:67-73`) **0/5** có `labelKey`, trong khi interface `ProviderModelOption` **đã có** field `labelKey?` (`:4-5`) ⇒ primitive có sẵn, chưa dùng. Render tại `AICommandCenterForm.tsx:584-586` dùng `t(p.labelKey ?? p.label)` ⇒ fallback về chuỗi thô tiếng Anh. |
+| B3 | `entry.source` lộ vào "Lịch sử prompt" | `AICommandCenterPage.tsx:416` |
+| B4 | 4 tên gọi khác nhau cho **cùng 1 trang** | Sidebar `sidebaritems.ts:39` → "Trung tâm AI" (`vi.js:98`) · Breadcrumb `Breadcrumb.tsx:50` → "Trí tuệ nhân tạo" (`vi.js:2490`) · H1 `AICommandCenterPage.tsx:219` → "Trung tâm điều hành AI" (`vi.js:5409`) · Link từ `/settings` `UserSettingsPage.tsx:276` → "Mở trung tâm AI" (`vi.js:2492`). Thêm nữa eyebrow `vi.js:5410` = "Cài đặt" — trùng khái niệm với crumb 1 "Cài đặt tài khoản" trên cùng màn hình. |
+| B5 | `SUB_AGENT_PROMPT_FIELDS` khai trong thân component, thiếu dep | `AICommandCenterForm.tsx:181-186` khai 4 hằng số **bên trong** thân hàm component ⇒ mất identity mỗi render; `:305` `useCallback` (`applySettings`) thiếu dep ⇒ **`npm run lint` exit 1** (xem §3). |
+| B6 | `--ai-accent-soft` và `--ai-border-strong` **không bao giờ resolve** | `aiSettings.module.css:60,62` trỏ `var(--accent-cyan-soft)` / `var(--border-strong)`; grep mọi `.css` trong `packages/web/src`: **0 định nghĩa** ⇒ luôn rơi về fallback hardcode ở **cả 2 theme**. |
+| B7 | 15 nhãn VI viết **không dấu** | `vi.js:5449-5463` — bao gồm `titleAudit` = `"Nhat ky kiem toan AI"` và 6 nhãn cột bảng audit hiển thị trực tiếp cho staff. Vi phạm quy ước "Vietnamese labels full dấu" (`AGENTS.md` §Constraints). |
+
+---
+
+## 3. Baseline gate — đo THẬT trên `dev` sạch
+
+Đo tại `6037303c5`, **không sửa dòng code nào**. Lệnh chạy từ `packages/web/`.
+
+| # | Gate | Lệnh | Exit | Ghi chú |
+|---|---|---|---|---|
+| G1 | Type-check | `npx tsc --noEmit` | **0** ✅ | |
+| G2 | Lint | `npm run lint` | **1** ❌ | **1 error**: `AICommandCenterForm.tsx:305` `react-hooks/exhaustive-deps` thiếu `'SUB_AGENT_PROMPT_FIELDS'`; 4156 warning |
+| G3 | Tokens | `npm run check:tokens` | **1** ❌ | Lỗi **có sẵn, không thuộc surface này** (`src/components/brokerData/brokerData.css: #c4b5fd`) |
+| G4 | Contrast | `npm run check:contrast` | **0** ✅ | Chỉ đo 7 tone pair admin. **KHÔNG phủi `/settings/ai`** ⇒ không dùng làm bằng chứng cho trang này |
+| G5 | i18n strict | `npm run i18n:scan:strict` | **0** ✅ | |
+| G6 | AI CC gate | `node ./scripts/check-ai-cc.mjs` | **0** ✅ | 10/10 PASS |
+| G7 | UI/UX budget | `node ./scripts/check-uiux-budget.mjs` | **1** ❌ | **ĐÃ ĐỎ**: CSS-1 0→4 · CSS-2 46→55 · I18N-1 0→1 · A11Y-9 5→8 · NAV-1 89→37 (giảm) |
+| G8 | Test component | `npm run test:components` | **0** ✅ | 164 file / 1122 test PASS (112.58s) |
+
+### ⚠ Hệ quả bắt buộc (hazard 6 — kế hoạch đòi PASS một gate vốn đang đỏ)
+
+**G2, G3, G7 đang đỏ trên `dev` sạch.** Vì vậy:
+
+- **KHÔNG** viết AC nào đòi `npm run lint` exit 0 **nếu chưa xử lý B5** (chính B5 là error duy nhất của G2).
+- **KHÔNG** viết AC nào đòi `check:tokens` exit 0 — lỗi nằm ở `brokerData.css`, **ngoài SCOPE**. AC chỉ được đòi *"check:tokens không có hit mới trong file thuộc SCOPE"*.
+- **KHÔNG** viết AC nào đòi `check-uiux-budget` exit 0. AC chỉ được đòi **"3 chỉ số CSS-1 / CSS-2 / I18N-1 không tăng thêm so với baseline 4 / 55 / 1"**, và nêu rõ gate tổng vẫn đỏ.
+- Ghi `CHƯA CHẠY` cho mọi thứ không chạy. **KHÔNG** báo `PASS` cho thứ chưa chạy (L-G02).
+
+---
+
+## 4. Slice + Acceptance criteria
+
+Mỗi AC có **lệnh tái tạo** (hazard 13). AC viết **trước** lần sửa đầu tiên (hazard 12).
+
+---
+
+### S0 — Gỡ 1 lỗi lint chặn cả file · **BLOCKER, làm trước mọi thứ**
+
+**Bối cảnh:** `AICommandCenterForm.tsx:305` là lỗi `error` **duy nhất** của toàn bộ `npm run lint`. S2 và S5 đều sửa file này ⇒ không gỡ thì mọi AC "lint sạch" về sau đều không kiểm chứng được.
+
+**File:** `packages/web/src/components/AICommandCenterForm.tsx`
+
+- **AC0.1 — Given** `SUB_AGENT_PROMPT_FIELDS` được dùng ở `:181-186`, `:298`, `:377`, `:415`, `:420`, `:894`.
+  **When** kéo nó ra khỏi thân component, lên **cấp module** (ngay sau `const e = createElement;` tại `:17`), đặt tên giữ nguyên, thêm comment 1 dòng giải thích vì sao phải ở cấp module.
+  **Then** `npm run lint` **không còn** dòng error `react-hooks/exhaustive-deps` trong file này.
+  *Tái tạo:* `npm run lint 2>&1 | Select-String "AICommandCenterForm.tsx" -Context 0,2`
+  *Fail-before:* tại `6037303c5` lệnh trên in `305:5 error React Hook useCallback has a missing dependency: 'SUB_AGENT_PROMPT_FIELDS'`.
+
+- **AC0.2 — Given** hằng đã lên cấp module.
+  **When** chạy `npx tsc --noEmit`.
+  **Then** exit **0**.
+  *Tái tạo:* `npx tsc --noEmit; echo $LASTEXITCODE`
+
+- **AC0.3 — Given** S0 xong.
+  **When** chạy `npm run test:components`.
+  **Then** exit **0** và **≥ 1122** test (không được mất test nào).
+  *Tái tạo:* `npm run test:components`
+  *Baseline:* 164 file / 1122 test PASS tại `6037303c5`.
+
+**Non-goal S0:** không thêm `// eslint-disable-next-line` (hazard 18 — thêm dep để tắt lint đã hỏng 3 test một lần rồi).
+
+---
+
+### S1 — Bỏ thanh điều hướng thứ hai (F1)
+
+**File:** `packages/web/src/pages/AICommandCenterPage.tsx`
+
+- **AC1.1 — Given** trang `/settings/ai` render.
+  **When** đếm phần tử `<nav>` có `aria-label` bằng giá trị của `aiCommandCenter.title`.
+  **Then** kết quả **= 1**, không phải 2.
+  *Tái tạo:* `npx vitest run src/pages/__tests__/ai-cc-single-nav.component.test.tsx` (test mới, xem AC1.4).
+  *Fail-before:* tại `6037303c5` đếm ra **2** (`AICommandCenterPage.tsx:227` + `:229`).
+
+- **AC1.2 — Given** trang `/settings/ai` vừa tải, `location.hash === ""`.
+  **When** render.
+  **Then** **không có phần tử nào** mang `aria-current="page"` trong **cả hai** hệ, và chỉ **một** mục "Tổng quan" mang trạng thái active.
+  *Tại `6037303c5`:* `AiHubNav.tsx:79` (route tab, true) **và** `AICommandCenterPage.tsx:233` (anchor, true) ⇒ 2 mục active cùng lúc.
+  *Tái tạo:* test mới assert `container.querySelectorAll('[aria-current="page"]').length === 1`.
+
+- **AC1.3 — Given** đã xoá nav anchor.
+  **When** xem `aiSettings.module.css`.
+  **Then** `.hubNav` **không còn** bị dùng ở 2 chỗ; nếu `.hubNavLink` còn thì **phải** có `testid`/role phân biệt — nếu không còn consumer nào thì **xoá luôn class**, không để lại class mồ côi (tiền lệ: 6 class mồ côi đã còn trong file này).
+  *Tái tạo:* `node -e "const c=require('fs').readFileSync('src/components/aiSettings.module.css','utf8');const used=require('fs').readFileSync('src/pages/AICommandCenterPage.tsx','utf8')+(require('fs').readFileSync('src/components/AiHubNav.tsx','utf8'));for(const m of c.matchAll(/^\.(hubNav\w*)\s*\{/gm)){if(!used.includes('styles.'+m[1]))console.log('ORPHAN .'+m[1])}"` — **phải in rỗng**.
+
+- **AC1.4 — Given** cần test hồi quy.
+  **When** tạo `packages/web/src/pages/__tests__/ai-cc-single-nav.component.test.tsx` với 3 case: (1) đếm `<nav>` = 1, (2) `aria-current` = 1 khi không hash, (3) cả 5 tab route vẫn còn và dẫn tới đúng `href`.
+  **Then** file **đỏ trước** khi sửa `AICommandCenterPage.tsx`, **xanh sau**.
+  *Fail-before bắt buộc:* copy file ra ngoài trước (`cp` vào `%TEMP%`), dùng `git show 6037303c5:packages/web/src/pages/AICommandCenterPage.tsx > <file>` để tạo bản tiền-sửa, chạy test (kỳ vọng đỏ), **rồi** khôi phục từ `%TEMP%`.
+  ⚠ **KHÔNG** dùng `git checkout -- <file>` (L-A01 — đã mất việc 2 lần trong 1 session).
+  ⚠ Sau mỗi lần ghi file bằng script: `git diff --numstat` (L-T01).
+
+- **AC1.5 — Given** S1 xong.
+  **When** chạy `npx tsc --noEmit` và `npm run test:components`.
+  **Then** cả hai exit **0**, test count **≥ 1122**.
+
+**Nếu Owner muốn giữ điều hướng trong trang:** KHÔNG dùng `.hubNav`. Dùng primitive đã có sẵn của hệ SOC: `.subTabBar` / `.subTabBtn` / `.subTabBtnActive` (`soc.components.css:1442,1460,1482`) — khác hẳn về mặt thị giác, kèm `aria-label` riêng, và **3 nhãn phải khác 3 nhãn của tab route** (ví dụ "Cấu hình runtime" thay vì "Runtime"). Đây là **quyết định của Owner**, xem §7.
+
+---
+
+### S2 — Tách tùy chọn cá nhân khỏi chính sách hệ thống + dọn metric trùng (F2 + F3)
+
+**File:** `packages/web/src/pages/AICommandCenterPage.tsx`
+
+- **AC2.1 — Given** trang render với user **không phải** staff.
+  **When** nhìn panel "Chính sách vận hành".
+  **Then** **không** có ô "Gate sự kiện" trong đó.
+  *Tại `6037303c5`:* `AICommandCenterPage.tsx:262-276` render `eventGate` **bên trong** `ShellPanel` `operationPolicy` (`:260`).
+  *Tái tạo:* test mới — `container` render, query theo text `"Gate sự kiện"`, assert **không** nằm trong panel có `Chính sách vận hành`.
+
+- **AC2.2 — Given** `eventGate` đã tách.
+  **When** bấm checkbox đó.
+  **Then** nó **vẫn** gọi `updateUserConfig` — hành vi không đổi, chỉ đổi chỗ hiển thị.
+  *Tái tạo:* test mới mock `updateUserConfig`, bấm, assert được gọi với `{ advisory_whale_signal_enabled: false }`.
+
+- **AC2.3 — Given** panel chính sách sau khi dọn.
+  **When** đếm các nhãn `refreshInterval` và `tokensPerDay`.
+  **Then** **0** — 2 metric đó chỉ còn trong form (`field-refresh-interval`, `field-max-tokens`).
+  *Tại `6037303c5`:* `AICommandCenterPage.tsx:277-280` + `:285-288` đang render chúng; form sửa chúng ở `AICommandCenterForm.tsx:745-760` và `:764-783`.
+  *Tái tạo:* test mới assert `container.textContent` **không** chứa `"Khoảng làm mới"` và **không** chứa `"Token/ngày"` ở cấp panel chính sách.
+
+- **AC2.4 — Given** ô "Auto refresh/ngày" còn lại.
+  **When** render.
+  **Then** nó **có** nhãn phụ nói rõ chỉ đọc (dùng khoá i18n mới `aiCommandCenter.readOnlyBadge` — xem S3), vì **không có** `<input>` nào cho nó (grep 3 hit: `AICommandCenterForm.tsx:31`, `AICommandCenterPage.tsx:113`, `AICommandCenterPage.component.test.js:226`).
+  *Tái tạo:* test mới assert phần tử đó chứa text khoá mới.
+
+- **AC2.5 — Given** S2 xong.
+  **When** `npx tsc --noEmit` · `npm run lint` · `npm run test:components`.
+  **Then** lần lượt exit **0** · **0** (sau S0) · **0**, test **≥ 1122**.
+
+**Nếu Owner muốn sửa được "Auto refresh/ngày":** cần thêm field vào `AICommandCenterForm` **và** xác nhận BE có nhận `advisory_max_auto_refreshes_per_day` trong PUT (`portfolio_analytics_views.py:1518` liệt kê field được phép — **phải đọc xác nhận**, không đoán). Nằm ngoài SCOPE plan này.
+
+---
+
+### S3 — Enum thô → nhãn dịch (B1, B2, B3, B7)
+
+**File:** `packages/web/src/shared/providerModels.ts`, `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js`, `packages/web/src/pages/AICommandCenterPage.tsx`
+
+**Khoá i18n mới — thêm ở CUỐI khối `aiCommandCenter` (`vi.js` sau dòng 5558, `en.js` sau dòng 5491), KHÔNG sửa dòng cũ nào:**
+
+| Khoá | VI | EN |
+|---|---|---|
+| `provider.openclaw` | `OpenClaw (mặc định hệ thống)` | `OpenClaw (system default)` |
+| `provider.openai` | `OpenAI (ChatGPT)` | `OpenAI (ChatGPT)` |
+| `provider.gemini` | `Google Gemini` | `Google Gemini` |
+| `provider.claude` | `Anthropic (Claude)` | `Anthropic (Claude)` |
+| `provider.local` | `Mô hình cục bộ (Ollama/vLLM)` | `Local model (Ollama/vLLM)` |
+| `source.commandCenter` | `Cấu hình trung tâm AI` | `AI command center config` |
+| `source.native` | `Cấu hình dữ liệu gốc` | `Native data config` |
+| `source.unknown` | `Không xác định` | `Unknown` |
+| `readOnlyBadge` | `Chỉ đọc` | `Read-only` |
+
+- **AC3.1 — Given** `PROVIDER_OPTIONS` (`providerModels.ts:67-73`).
+  **When** thêm `labelKey` cho **cả 5** provider theo bảng trên.
+  **Then** `grep -c "labelKey" packages/web/src/shared/providerModels.ts` ≥ 6 (5 option + 1 interface), và dropdown ở `AICommandCenterForm.tsx:584-586` hiện nhãn tiếng Việt.
+  *Fail-before:* tại `6037303c5` `PROVIDER_OPTIONS` **0/5** có `labelKey` ⇒ `t(p.labelKey ?? p.label)` rơi về chuỗi thõ tiếng Anh.
+
+- **AC3.2 — Given** BE trả `effective_ai_source`.
+  **When** render ô "Nguồn hiệu lực".
+  **Then** **không** bao giờ in chuỗi `command_center` ra UI; giá trị lạ chưa biết rơi về `source.unknown`.
+  *Tại `6037303c5`:* `AICommandCenterPage.tsx:253` render thẳng `effectiveSource`; state `:72` khởi tạo bằng hằng `"command_center"`.
+  *Tái tạo:* test mới — bảng ánh xạ `{command_center: 'aiCommandCenter.source.commandCenter', native: 'aiCommandCenter.source.native'}` + fallback `unknown`; assert không còn chuỗi `_` nào trong text render.
+  **Lưu ý bằng chứng:** grep toàn backend `effective_ai_source` = **7 hit**, **không có chỗ nào GHI** ⇒ hôm nay giá trị luôn là `command_center`; `native` chỉ xuất hiện ở `market_data/stock_mgmt_native_views.py:2634` (endpoint khác, không phải trang này) nhưng vẫn cần khoá để không in thô.
+
+- **AC3.3 — Given** lịch sử prompt có `entry.source`.
+  **When** render dòng lịch sử.
+  **Then** đi qua cùng bảng ánh xạ, không in thô.
+  *Tại `6037303c5`:* `AICommandCenterPage.tsx:416` nội suy thẳng `${entry.source}`.
+
+- **AC3.4 — Given** `effectiveProvider` trả `gemini`.
+  **When** render ô "Nhà cung cấp hiệu lực".
+  **Then** hiện `"Google Gemini"`, không hiện `"gemini"`.
+  *Tại `6037303c5`:* `AICommandCenterPage.tsx:251` render thẳng `effectiveProvider`.
+  *Fail-before:* ảnh chụp màn hình thật của staging cho thấy ô này hiện `gemini`.
+
+- **AC3.5 — Given** 15 nhãn không dấu ở `vi.js:5449-5463`.
+  **When** thay bằng bản có dấu đầy đủ.
+  **Then** `node -e "..."` kiểm `titleAudit` bằng `=== 'Nhật ký kiểm toán AI'` ⇒ **true**.
+  ⚠ **Chỉ sửa 15 dòng đó.** Không đụng dòng nào khác trong `vi.js` (file 7233 dòng, dùng chung với `pf-manage-rebuild`).
+  *Tái tạo:* `git diff --numstat packages/web/src/i18n/vi.js` ⇒ **phải bằng số dòng thực sự sửa**.
+
+- **AC3.6 — Given** S3 xong.
+  **When** `npm run i18n:scan:strict` · `npx tsc --noEmit` · `npm run test:components`.
+  **Then** exit **0** · **0** · **0**, test **≥ 1122**.
+
+---
+
+### S4 — Một trang, một danh tính (B4)
+
+**File:** `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js`, `packages/web/src/components/Breadcrumb.tsx`, `packages/web/src/pages/AICommandCenterPage.tsx`
+
+**Bảng hiện trạng — 4 nơi, 4 tên, 1 trang:**
+
+| Nơi hiển thị | Chuỗi | Nguồn |
+|---|---|---|
+| Sidebar | "Trung tâm AI" | `sidebaritems.ts:39` → `vi.js:98` |
+| Breadcrumb crumb 2 | "Trí tuệ nhân tạo" | `Breadcrumb.tsx:50` → `vi.js:2490` |
+| H1 | "Trung tâm điều hành AI" | `AICommandCenterPage.tsx:219` → `vi.js:5409` |
+| Link từ `/settings` | "Mở trung tâm AI" | `UserSettingsPage.tsx:276` → `vi.js:2492` |
+| Eyebrow | "Cài đặt" | `vi.js:5410` — trùng khái niệm với crumb 1 "Cài đặt tài khoản" |
+
+**Đề xuất (cần Owner chốt — xem §7):** lấy **"Trung tâm AI"** làm tên chuẩn cho cả 4 nơi (ngắn nhất, khớp sidebar + route `routes.aiCommandCenter` `vi.js:131`), và **xoá eyebrow "Cài đặt"** vì nó trùng khái niệm với breadcrumb.
+
+- **AC4.1 — Given** 4 nơi hiển thị tên trang.
+  **When** render `/settings/ai` và trang `/settings`.
+  **Then** **không nơi nào** hiện 2 tên khác nhau cho cùng 1 trang; sidebar và breadcrumb cùng khớp `routes.aiCommandCenter`.
+  *Tái tạo:* test mới — mount `AICommandCenterPage`, đọc `h1.textContent`; assert bằng chuỗi lấy từ `routes.aiCommandCenter` chứ **không** hardcode.
+
+- **AC4.2 — Given** breadcrumb map (`Breadcrumb.tsx:50`).
+  **When** `AI_ROUTE_LABELS` (`Breadcrumb.tsx:59-64`) thêm khoá `ai`.
+  **Then** crumb 2 lấy từ `AI_ROUTE_LABELS` tường minh thay vì rơi xuống fallback `I18N_MAP` 2 tầng.
+  *Tái tạo:* `packages/web/src/pages/__tests__/ai-hub-breadcrumb.component.test.tsx` (file đã tồn tại) — thêm case.
+
+- **AC4.3 — Given** eyebrow.
+  **When** xoá `aiCommandCenter.eyebrow` và node render nó (`AICommandCenterPage.tsx:218`).
+  **Then** `grep -rn "aiCommandCenter.eyebrow" packages/web/src` ⇒ **0 hit** (xoá cả ở `vi.js`/`en.js` — **cùng nhịp**, tránh key chết).
+  ⚠ Kiểm tra trước: `grep -rn "eyebrow" packages/web/src/pages/__tests__` — nếu test cũ đang assert h1+eyebrow thì sửa test, không hồi sinh key.
+
+- **AC4.4 — Given** S4 xong.
+  **When** `npx tsc --noEmit` · `npm run i18n:scan:strict` · `npm run test:components`.
+  **Then** exit **0** · **0** · **0**, test **≥ 1122**.
+
+⚠ **Cảnh báo địa lý:** `/settings/ai` chưa được bọc `StaffRoute` ở `main.tsx:195`, trong khi `/settings/ai/audit` **có** (`:204`). Đây là vấn đề **quyền**, **không** phải UI/UX — `improve-ui` §3 nêu rõ loại. **BÁO CÁO, KHÔNG SỬA** trong plan này. Tách ticket riêng.
+
+---
+
+### S5 — Cơ chế chặn tái phát (hazard 12: viết rule theo **hậu quả**, không theo câu chữ)
+
+**File:** `packages/web/scripts/check-ai-cc.mjs`
+
+- **AC5.1 — Given** rule mới `AC10-single-navigation-system`.
+  **When** quét `AICommandCenterPage.tsx`.
+  **Then** **FAIL** nếu có **≥ 2** phần tử dùng cùng một class `styles.hubNav`, hoặc nếu 2 phần tử dùng cùng một `aria-label` cho 2 `nav`.
+  *Rule phải viết theo hậu quả:* `"2 nav cùng aria-label"` ⇒ tác giả đổi tên class thì **vẫn bắt**. Không viết rule theo chuỗi `"hub-nav"`.
+
+- **AC5.2 — Given** rule mới.
+  **When** chạy `node ./scripts/check-ai-cc.mjs --self-test`.
+  **Then** có **≥ 1** case **phủ định** mà tác giả **không** viết: ví dụ 2 `nav` khác class nhưng cùng `aria-label` ⇒ vẫn phải FAIL.
+  *Bắt buộc:* chạy `--self-test` **cả 2 kiểu** — gõ tay và qua hook (L-G08/hazard 17: script tự-test kế thừa `GIT_*` từ môi trường gọi).
+
+- **AC5.3 — Given** rule mới.
+  **When** chạy `node ./scripts/check-ai-cc.mjs` trên `dev` sạch.
+  **Then** exit **0** với **11/11** PASS (10 hiện có + 1 mới).
+  *Baseline:* `6037303c5` ⇒ **10/10 PASS, exit 0**.
+  ⚠ **KHÔNG** thêm script này vào `packages/web/package.json` — **deny-list §2**. Ghi nhu cầu vào claim + báo coordinator.
+
+- **AC5.4 — Given** gate UI/UX budget đang đỏ (G7).
+  **When** chạy `node ./scripts/check-uiux-budget.mjs` sau tất cả slice.
+  **Then** **CSS-1 ≤ 4**, **CSS-2 ≤ 55**, **I18N-1 ≤ 1** (không tăng so với baseline `6037303c5`). **KHÔNG** đòi exit 0.
+  *Tái tạo:* `node ./scripts/check-uiux-budget.mjs; echo $LASTEXITCODE` — **kỳ vọng vẫn là 1**, ghi rõ trong báo cáo.
+
+---
+
+## 5. Thứ tự + rollback
+
+```
+S0 (gỡ lint)  →  S1 (nav)  →  S2 (tách lớp)  →  S3 (i18n)  →  S4 (tên)  →  S5 (gate)
+```
+
+- Mỗi slice = **1 commit riêng**, branch `feat/ai-cc-uiux`.
+- **Rollback từng slice độc lập:** `git revert <sha-slice>` — không slice nào chạm file của slice trước theo cách làm hỏng nó (S3/S4 cùng sửa `vi.js`/`en.js` ⇒ gộp S3+S4 thành **1 commit** để revert gọn, hoặc giữ tách nhưng ghi rõ thứ tự phụ thuộc).
+- **Đóng phiên đúng thứ tự** (L-G01): `pwsh -File scripts/agent-sync.ps1` (**rebase → check migration → gate**) → claim `done` → push → `pwsh -File scripts/agent-pr.ps1`.
+- **KHÔNG** chạy gate trước rebase rồi báo kết quả đó.
+- Sau mỗi commit: `git diff --numstat` — `deletions` > số dòng sửa ⇒ file bị viết lại toàn bộ ⇒ dừng (L-G05).
+- Merge: **giữ trail từng slice** (merge commit, không squash) để revert được độc lập.
+
+---
+
+## 6. Non-goals — việc ĐÃ thấy nhưng CỐ Ý KHÔNG làm
+
+| # | Việc | Vì sao không làm ở đây |
+|---|---|---|
+| N1 | Hợp nhất 3 hệ token (`--ai-*` toàn cục · `--soc-*` · `--pf-*`) | Nợ kiến trúc, ảnh hưởng mọi trang dùng `aiSettings.module.css`. Cần ticket riêng + gate `check:tokens` đang đỏ sẵn. |
+| N2 | Sửa B6 (`--ai-accent-soft`/`--ai-border-strong` không resolve) | Là sửa token ⇒ đụng `soc.tokens.css` + `theme/tokens.css`, vượt SCOPE. **BÁO CÁO** trong `SUMMARY`, không sửa. |
+| N3 | Thêm `@media (prefers-reduced-motion)` | Đã báo ở `docs/audit-uiux/UIUX_AUDIT_20261007.md` §3.2 (CSS-2) và `HANDOFF_UIUX_REMAINING_20261008.md:218` ghi rõ **"P2, để"**. Không mở lại ở slice này. |
+| N4 | Thêm focus ring cho `.btn` / `.hubNavLink` / `.checkbox` / `.range` | Là **a11y**; `improve-ui` §3 nêu rõ loại trừ khi Owner yêu cầu. **BÁO CÁO**. |
+| N5 | Bọc `StaffRoute` cho `/settings/ai` (`main.tsx:195`) | Vấn đề **quyền truy cập**, không phải UI/UX. **BÁO CÁO**, tách ticket. |
+| N6 | Thêm field sửa `advisory_max_auto_refreshes_per_day` | Cần xác minh BE có nhận field này trong PUT (`portfolio_analytics_views.py:1518`) — **chưa verify**, không đoán. |
+| N7 | Sửa `AIAuditLogsPanel.tsx:407` (`'system'` hardcode) và `AIAuditPage.tsx:146` (`row.action` thô) | Ngoài `/settings/ai` (thuộc `/settings/ai/audit`). Ghi backlog. |
+| N8 | `packages/web/package.json` (thêm `check-ai-cc` vào scripts) | **DENY-LIST §2**. Chỉ ghi claim + báo coordinator. |
+| N9 | Mobile / viewport hẹp | Không có `@media max-width` nào trong `aiSettings.module.css`; **không có thiết bị đo** ⇒ `CHƯA CHẠY`, không AC nào đòi. |
+
+---
+
+## 7. Câu hỏi cần Owner chốt trước khi S1 code
+
+| # | Câu hỏi | Khuyến nghị của tôi (PM) | Vì sao cần Owner |
+|---|---|---|---|
+| Q1 | Xoá hẳn nav anchor, hay giữ dưới dạng sub-tab của hệ SOC (`.subTabBar`) + đổi 3 nhãn? | **Xoá hẳn** ở đợt này. 2/3 mục của nó đã có nơi khác (`#overview` = đầu trang, `#audit` = route riêng). Thêm lại sau khi có **3 section dài thật sự**. | Đây là quyết định phân bổ chức nội dung; tôi có thể đề xuất nhưng không tự quyết danh tính sản phẩm. |
+| Q2 | Tên chuẩn của trang: "Trung tâm AI" hay "Trung tâm điều hành AI"? | **"Trung tâm AI"** cho cả 4 nơi (khớp sidebar + `routes.aiCommandCenter` sẵn có). Cân nhắc giữ "Trung tâm điều hành AI" làm **H1** vì mô tả đúng hơn, còn sidebar/breadcrumb dùng bản ngắn. | Tên hiển thị là **ý đồ sản phẩm**, `improve-ui` §3.3 cấm tôi tự bịa. |
+| Q3 | Có xoá eyebrow "Cài đặt" không? | **Xoá** — trùng khái niệm với breadcrumb "Cài đặt tài khoản" ngay trên màn hình đó. | Ảnh hưởng mọi sub-route dùng chung `AiHubNav`. |
+| Q4 | Ô "Auto refresh/ngày" — gắn nhãn "Chỉ đọc", hay mở ticket thêm field? | **Gắn nhãn "Chỉ đọc"** ngay (rẻ, chặn hiểu nhầm). Mở ticket BE riêng cho field. | BE contract chưa verify (N6). |
+
+---
+
+## 8. Báo cáo bắt buộc khi kết thúc
+
+Ghi `docs/SUMMARY_ai-cc-uiux.md` theo khung skill, mỗi mục kèm **output thật**:
+
+- commit hash từng slice
+- **Baseline** (§3) in lại nguyên văn
+- Gate sau rebase: `G1`-`G8` với exit code thật — mục nào **vẫn đỏ** ghi `ĐỎ (có sẵn)` kèm lý do
+- Mọi `CHƯA CHẠY` nêu rõ lý do
+- Danh sách việc quan sát được nhưng **không** sửa (N1–N9)
+- Ảnh chụp **đã mở ra xem** trước khi báo (L-V05)
+
+Và append **1 `## Entry N`** vào `docs/CODE_CHANGE_AUDIT_LEDGER.md` (KHÔNG cần claim trước — ledger đã gỡ khỏi deny-list 2026-10-03) + 1 dòng index ở bảng cuối file.
