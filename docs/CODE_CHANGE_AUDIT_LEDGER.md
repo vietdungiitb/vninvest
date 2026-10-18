@@ -1,3 +1,15 @@
+## Entry 377: E2E nav AI tren staging — **5 tab, 0 link Agents** xac nhan bang anh that; va **mo anh ra xem bat duoc 3 loi khong test nao bat** (2026-10-18)
+
+- **Nhanh**: `feat/ai-r51c-nav-e2e` -> `dev`. Claim `ai-r51c`. Spec moi `packages/web/tests/visual/ai-hub-nav-r51.spec.ts`.
+- **CHAY THAT tren staging** (da deploy R5.1, user `testuser` id 2 `is_staff=t`): `4 passed (31.8s)` — AC3 `a[href="/settings/ai/agents"]` = **0 tren TOAN trang** · AC4 **5 tab** khop **thu tu** · AC2 route Agents khong render hub · **R4.5 tab Audit E2E lan dau tien** (breadcrumb 3 muc + `aria-current="page"`).
+- **SELECTOR lo dung cho**: `nav:has(a[href="/settings/ai/usage"])`. `a[href="/settings/ai"]` khop **ca link dieu huong toan cuc** tren layout ⇒ xanh du hub chua render (L-V04 dang hinh anh).
+- **BA LOI BAT DUOC NHOI MO ANH RA XEM (L-V05 dung luc)** — assert deu xanh:
+  1. **3 tab hien tieng Anh trong locale VI**: `vi.js` de **nguyen gia tri tieng Anh** cho `aiCommandCenter.tabUsage/tabTraces/tabSlo` (`'Usage'`, `'Traces'`, `'SLO'`) con `tabOverview`/`tabAudit` da dich. Do bang doc truc tiep `vi.js`.
+  2. **breadcrumb hien chuoi tho `audit`**: `Breadcrumb.tsx:66` — `raw = map[segment] || DEFAULT_MAP[segment] || segment`; R4.4 da them anh xa cho `settings`/`ai` nhung **R4.5 them route `audit` ma khong them anh xa**. Te hon: `usage` **da co** anh xa nhung tro sang `tenantUsage.title` (nhan trang tenant) ⇒ `/settings/ai/usage` hien sai ten. *Cung lop bug R4.1 da sua cho `settings`/`ai`, tai dien vi them route khong cap nhat bang anh xa.*
+  3. **header bang audit dinh lien** `Thoi diemHan dongNguoi thuc hien do` — thieu khoang cach, chi thay bang **mat**; assert HTML khong phat hien duoc.
+- **CHUA SUA** ca 3 loi trong slice nay (slice nay chi do) — da tach ticket rieng.
+- **CHUA CHAY**: kiem nav 5 tab tren viewport mobile/tablet; anh `01` co "Dang tai ..." cua 2 khoi du lieu nhung **khong** ket luan la loi tai (chua do thoi diem hoan tat).
+
 ## Entry 376: AI R5.1b — don **126 khoa i18n chet** (63 key × 2 locale) + sua drift parity co san; va **splice nhieu chi so xoa nham** ma `numstat` VAN khop (2026-10-18)
 
 - **Nhanh**: `feat/ai-r51b` -> `dev`. Claim `ai-r51b`. Tiep tuc R5.1 (dã gỡ trang Agents nhung **bo sot toan bo khoa i18n**).
