@@ -13,7 +13,8 @@ import { resolve } from "node:path";
 
 const CSS_PATH = resolve(process.cwd(), "src/components/aiSettings.module.css");
 const HUB_PAGE = resolve(process.cwd(), "src/pages/AICommandCenterPage.tsx");
-const SUB_ROUTE_A = resolve(process.cwd(), "src/pages/AIAgentFederationPage.tsx");
+// R5.1: tab Agents da bi go; sub-route con lai lay lai route Traces.
+const SUB_ROUTE_A = resolve(process.cwd(), "src/pages/AICommandTracesPage.tsx");
 const SUB_ROUTE_B = resolve(process.cwd(), "src/pages/AIUsageAnalyticsPage.tsx");
 
 /** Đúng 13 token theo aiSettings.module.css:52-64. */

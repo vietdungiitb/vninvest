@@ -68,7 +68,7 @@ urlpatterns = [
     path('core/v1/', include(('data_ingest.urls', 'data_ingest'), namespace='data_ingest')),
     path('core/v1/', include(('support.urls', 'support'), namespace='support')),
     path('core/v1/', include(('advertising.urls', 'advertising'), namespace='advertising')),
-    path('core/v1/', include(('ai_agents.urls', 'ai_agents'), namespace='ai_agents')),
+    
     path('core/v1/', include(('ai_analytics.urls', 'ai_analytics'), namespace='ai_analytics')),
     # Native public bootstrap routes owned by core-api domain apps.
     path('api/', include(('commercial.public_urls', 'commercial_public'), namespace='commercial_public')),

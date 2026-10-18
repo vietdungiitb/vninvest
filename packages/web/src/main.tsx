@@ -193,7 +193,6 @@ function App() {
         createElement(Route, { path: 'tenant/usage', element: createElement(TenantRoute, null, createElement(resolvePageComponent('tenant-usage'))) }),
         createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('settings')) }),
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
-        createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),
         createElement(Route, { path: 'settings/ai/usage', element: createElement(resolvePageComponent('ai-usage-analytics')) }),
     // R3.2: trang Traces — phải khai TRƯỚC `settings/ai/*` khác? không có route
     // anh em nào cạnh tranh, nhưng nhất quán: đặt cạnh hai route AI kia.

@@ -1442,7 +1442,7 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
-| `r1-close` | `docs/r1-close-351` | R1 close-out: M1 exit criteria + handoff R2 (khong sua runtime, chi merge + docs) | `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/R1-HANDOFF_20261016.md` | in-progress | 2026-10-16 | PM tuan tu 1 agent. 11 PR slice + 12 PR chore/release. Lessons: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02]. Khong giu file runtime. |
+| `r1-close` | `docs/r1-close-351` | R1 close-out: M1 exit criteria + handoff R2 (khong sua runtime, chi merge + docs) | `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/R1-HANDOFF_20261016.md` | released | 2026-10-16 | PM tuan tu 1 agent. 11 PR slice + 12 PR chore/release. Lessons: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02]. Khong giu file runtime. |
 ## 2026-10-17 - AI R2.1 deployments (mo R2)
 
 | agent | branch | scope | files | status | since | note |

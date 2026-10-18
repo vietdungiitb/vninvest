@@ -81,7 +81,7 @@
       "title": "06.01 — Tổng Quan Mô Hình Dữ Liệu"
     },
     {
-      "lines": 1681,
+      "lines": 1667,
       "path": "docs/system-design/06-DATA-ARCHITECTURE/06.02-danh-muc-model.md",
       "title": "06.02 — Danh Mục Model (Máy Sinh, Không Sửa Tay)"
     },
@@ -91,7 +91,7 @@
       "title": "07.01 — Quy Ước API"
     },
     {
-      "lines": 1533,
+      "lines": 1525,
       "path": "docs/system-design/07-API-SPEC/07.02-danh-muc-api.md",
       "title": "07.02 — Danh Mục API (Máy Sinh, Không Sửa Tay)"
     },
@@ -151,9 +151,9 @@
       "title": "MODULES/advisory — Advisory"
     },
     {
-      "lines": 29,
+      "lines": 44,
       "path": "docs/system-design/MODULES/ai_agents.md",
-      "title": "MODULES/ai_agents — AI Agents Registry"
+      "title": "MODULES/ai_agents — **ĐÃ GỠ (R5.1 phương án B, Owner duyệt 2026-10-18)**"
     },
     {
       "lines": 31,

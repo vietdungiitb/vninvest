@@ -44,7 +44,6 @@ function memberPortfolio() {
 // `t` bị mock trả **key** nen phải so theo `labelKey`, khong phai nhan tieng Viet.
 const TABS = [
   "aiCommandCenter.tabOverview",
-  "aiCommandCenter.tabAgents",
   "aiCommandCenter.tabUsage",
   "aiCommandCenter.tabTraces",
   "aiCommandCenter.tabSlo",
@@ -72,16 +71,16 @@ beforeEach(() => {
   } as any);
 });
 
-describe("R4.5 AC1: 6 tab trong AiHubNav", () => {
-  it("staff thay 6 tab, trong do co 'Nhat ky kiem toan'", () => {
+describe("R4.5 AC1 + R5.1: 5 tab sau khi go Agents", () => {
+  it("staff thay 5 tab, trong do co 'Nhat ky kiem toan'", () => {
     usePortfolioMock.mockReturnValue(staffPortfolio());
     const { container } = renderNav();
     const links = Array.from(container.querySelectorAll("a"));
-    expect(links).toHaveLength(6);
+    // R5.1: 5 tab sau khi go tab Agents (Overview/Usage/Traces/SLO/Audit).
+    expect(links).toHaveLength(5);
     const hrefs = links.map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(expect.arrayContaining([
       "/settings/ai",
-      "/settings/ai/agents",
       "/settings/ai/usage",
       "/settings/ai/traces",
       "/settings/ai/slo",
@@ -94,10 +93,9 @@ describe("R4.5 AC1: 6 tab trong AiHubNav", () => {
     const { container } = renderNav();
     const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
     expect(hrefs[hrefs.length - 1]).toBe("/settings/ai/audit");
-    // 5 tab cu giu nguyen thu tu.
-    expect(hrefs.slice(0, 5)).toEqual([
+    // 4 tab cu giu nguyen thu tu (Agents da bi go o R5.1).
+    expect(hrefs.slice(0, 4)).toEqual([
       expect.stringMatching(/^\/settings\/ai(\?|$)/),
-      "/settings/ai/agents",
       "/settings/ai/usage",
       "/settings/ai/traces",
       "/settings/ai/slo",
@@ -106,11 +104,11 @@ describe("R4.5 AC1: 6 tab trong AiHubNav", () => {
 });
 
 describe("R4.5 AC2: user thuong khong thay tab staff", () => {
-  it("member chi thay 5 tab, khong co tab audit", () => {
+  it("member chi thay 4 tab, khong co tab audit", () => {
     usePortfolioMock.mockReturnValue(memberPortfolio());
     const { container } = renderNav();
     const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-    expect(hrefs).toHaveLength(5);
+    expect(hrefs).toHaveLength(4);
     expect(hrefs).not.toContain("/settings/ai/audit");
     for (const tab of TABS) {
       expect(screen.getByText(tab)).toBeTruthy();
@@ -184,7 +182,6 @@ describe("R4.5 AC3: go URL truc tiep van bi chan (khong chi an UI)", () => {
 describe("R4.5 AC4: active state dung tren 6 route", () => {
   const CASES: Array<[string, string]> = [
     ["/settings/ai", "/settings/ai"],
-    ["/settings/ai/agents", "/settings/ai/agents"],
     ["/settings/ai/usage", "/settings/ai/usage"],
     ["/settings/ai/traces", "/settings/ai/traces"],
     ["/settings/ai/slo", "/settings/ai/slo"],

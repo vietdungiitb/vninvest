@@ -182,8 +182,6 @@ export const pageRegistry = Object.freeze([
     import("../features/advertising/pages/AdvertisingAdminPage.jsx").then((module) => module.default)),
   makePageEntry("ai-command-center", "baseline", () =>
     import("./AICommandCenterPage.tsx").then((module) => module.AICommandCenterPage)),
-  makePageEntry("ai-agent-federation", "baseline", () =>
-    import("./AIAgentFederationPage.tsx").then((module) => module.AIAgentFederationPage)),
   makePageEntry("ai-usage-analytics", "baseline", () =>
     import("./AIUsageAnalyticsPage.tsx").then((module) => module.AIUsageAnalyticsPage)),
     // R3.2: trang "Traces" — 4 bước AI của mỗi lần tư vấn.

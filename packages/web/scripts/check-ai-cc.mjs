@@ -76,14 +76,14 @@ const CHECKS = [
       allowBlock: { start: 'key: "quota-bar"', end: "quotaFillEmpty" },
     }],
   },
+  // R5.1 (phuong an B): trang Agents da bi GO nen AC8b cu (token system tren
+  // trang do) khong con doi tuong. Thay bang AC khoa TINH TRANG: route + tab
+  // khong con ton tai trong AiHubNav (trang/page da xoa o file khac).
   {
-    id: "AC8b-agents-one-token-system",
-    file: "packages/web/src/pages/AIAgentFederationPage.tsx",
+    id: "AC8b-agents-route-and-tab-absent",
+    file: "packages/web/src/components/AiHubNav.tsx",
     patterns: ["AiHubNav"],
-    absentExcept: [{
-      pattern: "(bg|text|border|flex|grid|px|py|mx|my|mt|mb|ml|mr|gap|rounded|shadow|ring|backdrop)-[a-z0-9/\\[\\]]+|style:\\s*\\{",
-      allow: "quota-never-matches-anything",
-    }],
+    absent: ["/settings/ai/agents", "tabAgents"],
   },
   {
     id: "AC8c-usage-one-token-system",

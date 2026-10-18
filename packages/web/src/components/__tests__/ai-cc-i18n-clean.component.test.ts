@@ -41,12 +41,10 @@ const SRC9 = [
   "src/pages/AICommandCenterPage.tsx",
   "src/components/AICommandCenterForm.tsx",
   "src/components/AIAuditLogsPanel.tsx",
-  "src/components/AIAgentFederationPanel.tsx",
   "src/components/AIAdvisoryPromptConfigDrawer.js",
   "src/components/AISettingsErrorBoundary.tsx",
   "src/components/AIUsageDashboard.tsx",
   "src/shared/providerModels.ts",
-  "src/pages/AIAgentFederationPage.tsx",
 ];
 
 function flattenKeys(obj: unknown, prefix = ""): Set<string> {
