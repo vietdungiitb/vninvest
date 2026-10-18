@@ -41,3 +41,17 @@
   - [ ] Đã kiểm tra script chạy được trên Windows console (`cp1252`), không chỉ Linux (`utf-8`)?
   - [ ] Đã test `migrate` end-to-end trên đúng OS/locale của môi trường đích?
 - **Proof:** `AGENTS.md` mục Portfolio Commercial - "`0019:264-272` `print()` tiếng Việt có dấu ⇒ `UnicodeEncodeError` trên cp1252 ⇒ **làm `migrate` thất bại giữa chừng**."
+
+## L-B04: `getattr(request, 'tenant', None)` — thuộc tính không tồn tại ⇒ policy fail-open KHÔNG báo lỗi
+
+- **Nguyên nhân:** Đọc thuộc tính do middleware gắn (`request.tenant`) bằng `getattr(..., None)`, tưởng luôn có. Nhưng nó chỉ tồn tại khi middleware chạy và resolve được — **không phải lúc nào cũng có**.
+- **Hậu quả thật (Entry 368, R4.1):** Đo bằng probe HTTP (`response.wsgi_request.tenant`) ⇒ **không có thuộc tính**, kể cả ở endpoint CC vốn đang chạy tốt. Code đọc `None` ⇒ `get_policy(None)` trả `None` ⇒ **mọi request đều "được phép"**. Tức là `allow_byok=false` của admin tenant **im lặng vô tác dụng**: không đỏ, không log, không ai thấy — loại lỗi tệ nhất.
+- **Khi nào gặp:** `tags: [backend, django, request, tenant, getattr, fail-open, middleware, policy, authorization]`
+- **QUY TẮC:** "Không dùng `getattr(request, X, None)` cho thứ quyết định **quyền**. Giá trị thiếu trong đường kiểm tra quyền phải **fail-closed hoặc resolve qua SSOT**, không phải `None`."
+- **CHECKLIST:**
+  - [ ] Thuộc tính đang đọc có **luôn** tồn tại trong mọi entry point không? Đã probe chưa?
+  - [ ] Nếu nó là `None`, đường kiểm tra đang **bỏ qua** (fail-open) hay **chặn** (fail-closed)?
+  - [ ] Đã có SSOT resolver để gọi thay vì tự đọc thuộc tính? (`resolve_tenant_for_user` / `resolve_tenant` trong module của mình)
+  - [ ] Đã thêm test khẳng định khi tenant = `None` thì policy **vẫn bị áp dụng theo hướng an toàn**?
+  - [ ] Đã log khi không resolve được tenant, để im lặng không thành im lặng?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 368 §"LỖI THẬT — `request.tenant` KHÔNG TỒN TẠI"; `docs/evidence/ai-cc/r41-gates.md`.

@@ -54,8 +54,12 @@ const DEFAULT_DIR = join(REPO, "docs", "LESSONS");
 const INDEX = "INDEX.md";
 
 // Ngưỡng lấy từ `docs/LESSONS/INDEX.md` §1.2 — sửa ở CẢ HAI nơi.
+// C1 (≤120 dòng/file) là cơ chế CHỐNG ĐỌC LƯỚT: file đầy thì tách file mới theo
+// chủ đề, KHÔNG gộp entry. C2 nới 40 → 60 (Owner 2026-10-18): trước đó ngưỡng 40
+// biến việc ghi bài học thành thứ phải đi xin duyệt — phiên 2026-10-17 đã bỏ sót 3
+// bài học lớn vì "đã đầy" mà không có chỗ.
 export const C1_MAX_LINES = 120;
-export const C2_MAX_LESSONS = 40;
+export const C2_MAX_LESSONS = 60;
 
 /**
  * `^## L-(?:[A-Z]+)?\d+` — nhận CẢ `L-001` (multi-agent.md) LẪN `L-F01` (file khác).
@@ -291,9 +295,9 @@ export function selfTest() {
   probe("C1: file 121 dong", { ...good, "a.md": GOOD_A + "x\n".repeat(119) }, "C1");
   probe("C1: INDEX 121 dong", { ...good, [INDEX]: GOOD_INDEX + "x\n".repeat(119) }, "C1");
 
-  const many = { [INDEX]: "# idx\n\n**Tổng: 41 lesson**\n" };
-  for (let i = 1; i <= 41; i += 1) many[`f${i}.md`] = `## L-G${String(i).padStart(2, "0")}: t\n\nx\n`;
-  probe("C2: 41 lesson", many, "C2");
+  const many = { [INDEX]: "# idx\n\n**Tổng: 61 lesson**\n" };
+  for (let i = 1; i <= 61; i += 1) many[`f${i}.md`] = `## L-G${String(i).padStart(2, "0")}: t\n\nx\n`;
+  probe("C2: 61 lesson", many, "C2");
 
   // ID hai kieu deu phai dem: `L-001` va `L-F01`. Bản Python bo sot `L-001`.
   probe(

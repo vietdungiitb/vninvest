@@ -69,3 +69,17 @@ mới phát hiện được.
   - [ ] `git status --short` có **đúng** các file tôi cố ý sửa không?
   - [ ] File phát sinh: **revert** hay review rồi mới giữ? Không bao giờ commit mặc định.
 - **Proof:** ledger Entry 274 §① ("Tác dụng phụ đã bắt + hoàn tác: 10 ảnh PNG").
+
+## L-V04: Test "XANH" vì URL/fixture sai — assert giá trị THẬT, và luôn có test dương tính
+
+- **Nguyên nhân:** Khẳng định được viết theo hướng "không xảy ra" (`assertNotEqual(x, 'sk-personal')`) nên **rỗng cũng đạt**. Endpoint sai URL ⇒ không chạy ⇒ `x` là `None` ⇒ assert vẫn xanh.
+- **Hậu quả thật (Entry 369, R4.2):** `test_advisory_refresh_never_uses_management_scoped_key` gọi `/core/v1/workspace/ai-advisory/VIC/refresh/` — **404 thật** — nhưng báo PASS vì `captured` rỗng. Nếu tin vào nó thì AC1 "đã đạt" trong khi **chưa từng chạy qua** đường sử dụng. Tệ hơn: khi thêm test dương tính thì mới lộ URL thật là `/core/v1/advisory/refresh/<symbol>/` và fixture phải có `plan=PRO` + `QuotaRecord` (không có thì 403).
+- **Khi nào gặp:** `tags: [test, vitest, django, fail-before, false-green, xanh-gia, assertion, fixture]`
+- **QUY TẮC:** "Test chỉ chứng minh được điều gì đó **đã xảy ra**. Assert `None`/rỗng là **không chứng minh gì**. Và mỗi khẳng định phủ định phải có test dương tính đi kèm."
+- **CHECKLIST:**
+  - [ ] Assert của mình có khả năng **đạt khi endpoint/fixture hỏng** không? (rỗng, `None`, `0`, `[]` ⇒ xanh giả)
+  - [ ] Đã assert **giá trị thật** đi tới chỗ cần kiểm (vd `assertIsNotNone(captured['api_key'])` trước khi so sánh)?
+  - [ ] Đã kiểm status code **không phải 404/403/500** trước khi kết luận endpoint chạy?
+  - [ ] Đã có test **dương tính** chứng minh cơ chế *vẫn dùng* khi cấu hình hợp lệ không? (thiếu thì "luôn không làm gì cả" cũng xanh)
+  - [ ] Khi thấy 2+ test ghim hành vi cũ **đỏ** sau khi mình đổi code → cân nhắc mình đang **đổi nghĩa** một field đã có hợp đồng, **không** phải test sai. Đọc lại tên field + comment trước khi sửa test.
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 369 §"XANH GIẢ vì URL sai"; `docs/evidence/ai-cc/r42-gates.md` §"Bẫy thật".
