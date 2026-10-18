@@ -15,6 +15,7 @@ import { useI18n } from "../context/LangContext.js";
 import { useRetryableAsync } from "../hooks/useRetryableAsync.js";
 import styles from "../components/aiSettings.module.css";
 import { AiHubNav } from "../components/AiHubNav.tsx";
+import { Breadcrumb } from "../components/Breadcrumb.js";
 
 interface AITraceRow {
   id: number;
@@ -251,8 +252,10 @@ export function AICommandTracesPage(): JSX.Element {
   };
 
   return (
-    <div className={styles.page} data-testid="ai-traces-page">
-      <h1>{t("aiCommandCenter.titleTraces")}</h1>
+<div className={styles.page} data-testid="ai-traces-page">
+        {/* R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con. */}
+        <Breadcrumb />
+        <h1>{t("aiCommandCenter.titleTraces")}</h1>
       <p>{t("aiCommandCenter.descriptionTraces")}</p>
       <AiHubNav />
       {filters}
