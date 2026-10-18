@@ -5282,6 +5282,23 @@ aiUsageAnalytics: 'AI Usage',
     aiModel: 'AI model',
   },
   aiCommandCenter: {
+    subAgent: {
+      title: 'System sub-agent prompts',
+      desc: 'System prompts for the 4 analysis steps. Leave empty to use the built-in default prompt.',
+      version: 'Current version: {version}',
+      fields: {
+        technical_agent_prompt: 'Technical analyst',
+        flow_agent_prompt: 'Money-flow analyst',
+        sentiment_agent_prompt: 'Market sentiment analyst',
+        synthesis_agent_prompt: 'Head of synthesis',
+      },
+      placeholders: {
+        technical_agent_prompt: 'e.g. You are a technical stock analyst for {symbol}.',
+        flow_agent_prompt: 'e.g. You are an analyst of large money flow and whale traces for {symbol}.',
+        sentiment_agent_prompt: 'e.g. You are a market sentiment analyst for {symbol}.',
+        synthesis_agent_prompt: 'e.g. You are the Head of Synthesis for recommendations on {symbol}.',
+      },
+    },
     effectiveProvider: 'Effective Provider',
     effectiveProviderDesc: 'Source read from AI Command Center.',
     effectiveModel: 'Effective Model',

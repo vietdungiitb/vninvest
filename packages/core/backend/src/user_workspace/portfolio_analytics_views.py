@@ -21,7 +21,11 @@ from drf_spectacular.utils import OpenApiExample, extend_schema
 # BEN TRONG ham `delete` (alias `http_status`) nen o scope module khong
 # ton tai => `NameError` => HTTP 500 thay vi 400 khi payload PUT sai.
 from rest_framework import permissions, status
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import (
+    NotFound,
+    PermissionDenied,
+    ValidationError,
+)
 from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
@@ -928,6 +932,70 @@ def _ai_ready_flag(user_cred) -> bool:
         api_key_configured=bool(getattr(user_cred, 'encrypted_api_key', '')),
     )['ready'])
 
+
+# R5.3: 4 system sub-agent prompt ma `orchestrator.py:558-561` doc.
+#
+# Luu trong `SystemAISettings.metadata`, KHONG phai `UserAICredential`:
+# `prompt_config_history` do F7 them cho user BYOK — khong dung duoc cho prompt he
+# thong (do bang `git grep prompt_config_history`).
+SUB_AGENT_PROMPT_KEYS = (
+    'technical_agent_prompt',
+    'flow_agent_prompt',
+    'sentiment_agent_prompt',
+    'synthesis_agent_prompt',
+)
+SUB_AGENT_PROMPT_MAX_CHARS = 4000
+
+
+def _validate_sub_agent_prompts(value):
+    """Kiem tra shape 4 sub-agent prompt. Tra `(dict, None)` hoac `(None, loi)`.
+
+    R5.3: chi chap nhan 4 khoa da biet, gia tri la chuoi, <= 4000 ky tu. Khoa khong
+    bat buoc (partial update giu nguyen khoa cu).
+    """
+    if not isinstance(value, dict):
+        return None, ['sub_agent_prompts phai la object.']
+    unknown = [k for k in value if k not in SUB_AGENT_PROMPT_KEYS]
+    if unknown:
+        return None, [f'sub_agent_prompts chua khoa la: {", ".join(sorted(unknown))}.']
+    clean = {}
+    for key in SUB_AGENT_PROMPT_KEYS:
+        if key not in value:
+            continue
+        raw = value[key]
+        if raw is None:
+            clean[key] = ''
+            continue
+        if not isinstance(raw, str):
+            return None, [f'{key} phai la chuoi.']
+        if len(raw) > SUB_AGENT_PROMPT_MAX_CHARS:
+            return None, [f'{key} toi da {len(raw)} ky tu (toi da {SUB_AGENT_PROMPT_MAX_CHARS}).']
+        clean[key] = raw.strip()
+    return clean, []
+
+
+def _sub_agent_snapshot(metadata):
+    """4 prompt + version cho audit before/after (luon co, ca khi rong)."""
+    metadata = metadata or {}
+    snap = {k: str(metadata.get(k) or '') for k in SUB_AGENT_PROMPT_KEYS}
+    snap['sub_agent_prompts_version'] = int(metadata.get('sub_agent_prompts_version') or 0)
+    return snap
+
+
+def _sub_agent_prompts_view(metadata, is_staff):
+    """R5.3 AC2: user thuong KHONG thay duoc prompt he thong.
+
+    Tra `({4 khoa prompt}, version)`; user thuong tra `(None, 0)`.
+    """
+    metadata = metadata or {}
+    if not is_staff:
+        return None, 0
+    return (
+        {k: str(metadata.get(k) or '') for k in SUB_AGENT_PROMPT_KEYS},
+        int(metadata.get('sub_agent_prompts_version') or 0),
+    )
+
+
 @extend_schema(
     summary='PortfolioAICommandCenterView (native route)',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. The real payload shape is checked by test_flat_views_are_not_documented_as_envelope.',
@@ -1110,6 +1178,9 @@ class PortfolioAICommandCenterView(APIView):
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
             'ai_prompt_config': advisory_prompt,
+            # R5.3 AC2: chi staff thay prompt he thong (GET cung theo vay).
+            'sub_agent_prompts': _sub_agent_prompts_view(metadata, is_operator)[0],
+            'sub_agent_prompts_version': _sub_agent_prompts_view(metadata, is_operator)[1],
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []) if user_cred else [],
             'advisory_refresh_interval_hours': int(advisory_refresh),
             'advisory_max_auto_refreshes_per_day': int(advisory_max_auto),
@@ -1128,6 +1199,11 @@ class PortfolioAICommandCenterView(APIView):
         }
         if is_operator:
             response_data['system_prompt_template'] = config.prompt_template or ''
+        # R5.3 AC2: field staff-only — BO key khi user khong phai staff (khong tra
+        # `None`: client co the coi nhu "co gia tri" va gui nguoc len).
+        if not is_operator:
+            response_data.pop('sub_agent_prompts', None)
+            response_data.pop('sub_agent_prompts_version', None)
         return envelope(response_data)
 
     def put(self, request):
@@ -1150,6 +1226,36 @@ class PortfolioAICommandCenterView(APIView):
 
         payload = request.data if isinstance(request.data, dict) else {}
         metadata = dict(config.metadata or {})
+
+        # R5.3: chup phien-ban CU **truoc** khi mutate `metadata`. Neu chup sau,
+        # `before_json` se bang `after_json` => audit khong con ghi "truoc/sau"
+        # (AC4 bat duoc khi chay that tren VPS, khong phai do doc).
+        _sap_before = _sub_agent_snapshot(metadata)
+
+        # R5.3 AC1/AC4: 4 sub-agent prompt. Validate TRUOC khi ghi bat ky thu gi
+        # (cung nguyen tat nhu R4.1 AC3: dung truoc moi ghi de request tra loi sai).
+        _is_operator = bool(
+            getattr(request.user, 'is_staff', False)
+            or getattr(request.user, 'is_superuser', False)
+        )
+        if 'sub_agent_prompts' in payload:
+            if not _is_operator:
+                raise PermissionDenied(
+                    detail='Chi staff moi duoc sua sub-agent prompt.',
+                    code='staff_only',
+                )
+            _clean_sap, _sap_errors = _validate_sub_agent_prompts(
+                payload.get('sub_agent_prompts'))
+            if _sap_errors:
+                raise ValidationError({'sub_agent_prompts': _sap_errors})
+            # Chi tang version khi NOI DUNG doi that — luu y hien khong phai doi.
+            _sap_changed = any(metadata.get(k, '') != v for k, v in _clean_sap.items())
+            if _sap_changed:
+                metadata.update(_clean_sap)
+                metadata['sub_agent_prompts_version'] = int(
+                    metadata.get('sub_agent_prompts_version') or 0) + 1
+                config.metadata = metadata
+                config.save(update_fields=['metadata', 'updated_at'])
 
         # R4.1 AC3: cấu hình user vượt trần của tenant ⇒ 422 + liệt kê field vượt.
         # Đặt TRƯỚC mọi ghi để request bị chặn không để lại thay đổi dở dang.
@@ -1201,6 +1307,10 @@ class PortfolioAICommandCenterView(APIView):
             'advisory_max_auto_refreshes_per_day': int(before_max_auto),
             'advisory_max_tokens_per_day': int(before_max_tokens),
             'temperature': float(before_temp),
+            # R5.3 AC1/AC4: 4 sub-agent prompt vao snapshot de `before_json` giu
+            # phien ban CU (chup o dau PUT, truoc khi mutate) — nguon lich su duy
+            # nhat la `AIAuditLog` (Owner chot, khong them model moi).
+            **_sap_before,
         })
 
         # R1.9: optimistic lock — client gửi expected_updated_at lấy từ GET
@@ -1399,12 +1509,19 @@ class PortfolioAICommandCenterView(APIView):
             'temperature': float(
                 user_cred.temperature if user_cred.temperature is not None else sys_temp
             ),
+            # R5.3 AC4: `after_json` phai co 4 prompt. Thieu no thi audit chi giu
+            # mot phia va nhan "doi" ra 4/4 khoa — do duoc khi chay that tren VPS.
+            **_sub_agent_snapshot(metadata),
         })
         diff_parts = []
         for field in [
             'ai_provider', 'ai_model', 'effective_ai_source', 'custom_endpoint',
             'advisory_refresh_interval_hours', 'advisory_max_auto_refreshes_per_day',
             'advisory_max_tokens_per_day', 'temperature',
+            # R5.3 AC4: them 4 prompt + version vao whitelist. Neu khong, doi
+            # prompt khong bao gio lo ra trong audit — dung loai "thay doi bi
+            # nuoi" da gap o R5.1/R5.2.
+            *_sub_agent_snapshot(metadata),
         ]:
             bv = str(before_snapshot.get(field, ''))
             av = str(after_snapshot.get(field, ''))
@@ -1464,8 +1581,11 @@ class PortfolioAICommandCenterView(APIView):
             'effective_ai_provider': provider,
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
-            'ai_prompt_config': _parse_pc_put(
-                user_cred.prompt_config or metadata.get('ai_prompt_config')),
+'ai_prompt_config': _parse_pc_put(
+                    user_cred.prompt_config or metadata.get('ai_prompt_config')),
+                # R5.3 AC2: chi staff thay prompt he thong.
+                'sub_agent_prompts': _sub_agent_prompts_view(metadata, is_operator_put)[0],
+                'sub_agent_prompts_version': _sub_agent_prompts_view(metadata, is_operator_put)[1],
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
             'advisory_refresh_interval_hours': int(
                 user_cred.refresh_interval_hours
@@ -1495,6 +1615,10 @@ class PortfolioAICommandCenterView(APIView):
         }
         if is_operator_put:
             response_data['system_prompt_template'] = config.prompt_template or ''
+        # R5.3 AC2: field staff-only — BO key khi user khong phai staff.
+        if not is_operator_put:
+            response_data.pop('sub_agent_prompts', None)
+            response_data.pop('sub_agent_prompts_version', None)
         return envelope(response_data)
 
 

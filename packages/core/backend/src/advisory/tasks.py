@@ -393,6 +393,11 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
             'user_id': record.user_id,
             'symbol': record.symbol,
             'session_date': record.session_date,
+            # R5.3 AC3: chot phien ban prompt he thong tai **thoi diem chay** de trace
+            # giu dung phien ban da dung, khong phai phien ban moi nhat luc xem lai.
+            'sub_agent_prompts_version': int(
+            ((effective_context or {}).get('metadata') or {}).get(
+            'sub_agent_prompts_version') or 0),
         }
         orch_res = AdvisoryOrchestrator.run(
             effective_context, symbol, trace_ctx=trace_ctx)

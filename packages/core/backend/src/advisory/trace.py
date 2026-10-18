@@ -90,6 +90,10 @@ def record_step_trace(
             step=step,
             provider=(provider or '')[:32],
             model=(model or '')[:64],
+            # R5.3 AC3: version prompt he thong dang hieu luc. Doc tu `trace_ctx`
+            # (tasks.py nap tu `effective_context['metadata']`) de **moi trace**
+            # giu duoc phien ban ma no da chay, khong phai version moi nhat.
+            prompt_template_version=int(trace_ctx.get('sub_agent_prompts_version') or 0),
             prompt_hash=sha256_hex(prompt),
             response_hash=sha256_hex(
                 response if isinstance(response, str) else _text_of(response)),
