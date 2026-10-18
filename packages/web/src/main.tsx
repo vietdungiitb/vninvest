@@ -200,6 +200,9 @@ function App() {
     createElement(Route, { path: 'settings/ai/traces', element: createElement(resolvePageComponent('ai-traces')) }),
     // R3.3: dashboard SLO LLM.
     createElement(Route, { path: 'settings/ai/slo', element: createElement(resolvePageComponent('ai-slo')) }),
+          // R4.5 AC3: tab Nhat ky kiem toan **chi staff** — route boc `StaffRoute`
+          // (guard that, khong phai chi an UI o nav).
+          createElement(Route, { path: 'settings/ai/audit', element: createElement(StaffRoute, null, createElement(resolvePageComponent('ai-audit'))) }),
         createElement(Route, { path: 'ai-command-center', element: createElement(RedirectPreserveQuery, { to: '/settings/ai' }) }),
         createElement(Route, { path: 'operations-center', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center'))) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center-mail-config'))) }),

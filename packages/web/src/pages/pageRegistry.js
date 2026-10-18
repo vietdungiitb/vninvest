@@ -190,8 +190,11 @@ export const pageRegistry = Object.freeze([
     makePageEntry("ai-traces", "baseline", () =>
     import("./AICommandTracesPage.tsx").then((module) => module.AICommandTracesPage)),
     // R3.3: dashboard SLO LLM (p50/p95/p99 + success rate + token/$ theo model).
-    makePageEntry("ai-slo", "baseline", () =>
-    import("./AISloDashboardPage.tsx").then((module) => module.AISloDashboardPage)),
+makePageEntry("ai-slo", "baseline", () =>
+        import("./AISloDashboardPage.tsx").then((module) => module.AISloDashboardPage)),
+      // R4.5: trang Nhat ky kiem toan (tab thu 6, chi staff — route boc StaffRoute).
+      makePageEntry("ai-audit", "baseline", () =>
+        import("./AIAuditPage.tsx").then((module) => module.AIAuditPage)),
   makePageEntry("dashboard", "baseline", () =>
     import("./workspace/ShellDashboardPage.tsx").then((module) => module.ShellDashboardPage)),
   makePageEntry("transactions", "baseline", () =>

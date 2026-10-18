@@ -183,6 +183,9 @@ export interface CoreApiAdapter {
   getOperatorStats: () => Promise<any>;
   getSystemHealth: () => Promise<any>;
   getAuditLogs: (params: any) => Promise<any>;
+  // R4.5 — audit log **của AI Command Center** (khác `getAuditLogs` là audit hệ
+  // thống chung). `workspace.js:699` đã có sẵn; thiếu khai báo type nên TS chặn.
+  getAIAuditLogs: (params?: Record<string, string | number | null>) => Promise<any>;
   
   // Misc
   getSettings: () => Promise<any>;

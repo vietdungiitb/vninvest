@@ -329,15 +329,28 @@ export const routeCatalog = Object.freeze([
   },
   {
     // R3.3: dashboard SLO LLM.
-    id: "ai-slo",
-    path: "/settings/ai/slo",
-    titleKey: "routes.aiSlo",
-    group: "system",
-    buildTargets: ["saas", "vip"],
-    requiredCapabilities: ["system.ai_command_center.manage"],
-    adapter: "core",
-    status: "baseline",
-  },
+id: "ai-slo",
+        path: "/settings/ai/slo",
+        titleKey: "routes.aiSlo",
+        group: "system",
+        buildTargets: ["saas", "vip"],
+        requiredCapabilities: ["system.ai_command_center.manage"],
+        adapter: "core",
+        status: "baseline",
+      },
+      {
+        // R4.5: tab Nhat ky kiem toan (chi staff). Capability khai **gia** nhu 5 route
+        // AI khac; ranh gioi staff o `StaffRoute` (guard that, AC3) chu khong phai o
+        // day — `requiredCapabilities` la khai bao muc dich, khong phai guard.
+        id: "ai-audit",
+        path: "/settings/ai/audit",
+        titleKey: "routes.aiAudit",
+        group: "system",
+        buildTargets: ["saas", "vip"],
+        requiredCapabilities: ["system.ai_command_center.manage"],
+        adapter: "core",
+        status: "baseline",
+      },
   {
     id: "upgrade",
     path: "/upgrade",

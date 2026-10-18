@@ -1,6 +1,7 @@
 import { createElement, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useI18n } from "../context/LangContext.js";
+import { usePortfolio } from "../context/PortfolioContext.js";
 import styles from "./aiSettings.module.css";
 
 const e = createElement;
@@ -48,6 +49,8 @@ interface HubTab {
   to: string;
   labelKey: string;
   active: boolean;
+  /** R4.5 AC2: tab chỉ hiện cho staff. Ẩn **UI** không đủ — route cũng bọc `StaffRoute`. */
+  staffOnly?: boolean;
 }
 
 /**
@@ -57,6 +60,11 @@ interface HubTab {
 export function AiHubNav({ className = "" }: { className?: string }) {
   const { t } = useI18n();
   const location = useLocation();
+  // R4.5 AC2: cờ staff lấy từ **cùng nguồn** với `StaffRoute` (`userIdentity`),
+  // không đọc localStorage/sessionStorage riêng — hai nguồn quyền là hai câu chuyện
+  // khác nhau và sẽ lệch (L-008 về resolver: mỗi chỗ tự chế một bản).
+  const { userIdentity } = usePortfolio() as any;
+  const isStaff = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const tabs: HubTab[] = useMemo(() => {
     // Tab Tổng quan LUÔN dùng snapshot (không pick từ URL hiện tại): ?page=
     // trên route khác là grain khác (usage page ≠ audit page), pick nhầm là leak
@@ -93,8 +101,16 @@ export function AiHubNav({ className = "" }: { className?: string }) {
         labelKey: "aiCommandCenter.tabSlo",
         active: location.pathname.startsWith("/settings/ai/slo"),
       },
-    ];
-  }, [location.pathname, location.search]);
+      // R4.5 AC1/AC2: tab "Nhật ký kiểm toán" — tab thứ 6, **chỉ staff**.
+      // Đặt cuối danh sách để thứ tự 5 tab cũ (đã có từ R1.8–R3.3) không đổi.
+      {
+        to: "/settings/ai/audit",
+        labelKey: "aiCommandCenter.tabAudit",
+        active: location.pathname.startsWith("/settings/ai/audit"),
+        staffOnly: true,
+      },
+    ].filter((tab) => !tab.staffOnly || isStaff);
+  }, [location.pathname, location.search, isStaff]);
   return e(
     "nav",
     { className: `${styles.hubNav} ${className}`, "aria-label": t("aiCommandCenter.title") },
