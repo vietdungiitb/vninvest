@@ -85,7 +85,6 @@ MODEL_LABELS: dict[str, str] = {
     "advisory.AdvisoryRecord": "Kết quả tư vấn",
     "advisory.AdvisoryComponent": "Thành phần tư vấn",
     "advisory.UserAICredential": "Khoá API AI của người dùng",
-    "ai_agents.AgentRegistry": "Danh bạ tác tử AI",
     "ai_analytics.AIUsageRecord": "Bản ghi dùng AI",
     "ai_analytics.AIUsageSummary": "Tổng hợp dùng AI",
     # ── Hỗ trợ ─────────────────────────────────────────────────────────────

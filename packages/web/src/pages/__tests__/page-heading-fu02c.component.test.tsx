@@ -111,7 +111,6 @@ vi.mock("../../context/PortfolioContext.js", async () => {
 // Top-level `await` ⇒ module da san SANG khi vitest collect file nay, nen
 // phai nap KHONG nam trong budget cua tung test.
 const P = {
-  agentFederation: await import("../AIAgentFederationPage"),
   usageAnalytics: await import("../AIUsageAnalyticsPage"),
   adminUsers: await import("../admin/AdminUsersPage"),
   dashboard: await import("../DashboardPage"),
@@ -142,13 +141,6 @@ function wrapRoute(path: string, el: React.ReactElement) {
 // ---------------------------------------------------------------- AC-1
 // 4 trang THIẾU THẬT (đã kiểm chứng từng trang, xem PLAN §2 FU-02c)
 describe("FU-02c — 4 trang thiếu thật", () => {
-  test("AIAgentFederationPage co 1 h1 khong rong", async () => {
-    const { AIAgentFederationPage } = P.agentFederation
-    wrapRoute("/settings/ai/agents", <AIAgentFederationPage />);
-    const h1 = countH1();
-    expect(h1).toHaveLength(1);
-    expect((h1[0].textContent ?? "").trim().length).toBeGreaterThan(0);
-  }, 20000);
 
   test("AIUsageAnalyticsPage co 1 h1 khong rong", async () => {
     const { AIUsageAnalyticsPage } = P.usageAnalytics

@@ -1442,7 +1442,7 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
-| `r1-close` | `docs/r1-close-351` | R1 close-out: M1 exit criteria + handoff R2 (khong sua runtime, chi merge + docs) | `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/R1-HANDOFF_20261016.md` | in-progress | 2026-10-16 | PM tuan tu 1 agent. 11 PR slice + 12 PR chore/release. Lessons: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02]. Khong giu file runtime. |
+| `r1-close` | `docs/r1-close-351` | R1 close-out: M1 exit criteria + handoff R2 (khong sua runtime, chi merge + docs) | `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/R1-HANDOFF_20261016.md` | released | 2026-10-16 | PM tuan tu 1 agent. 11 PR slice + 12 PR chore/release. Lessons: [L-002, L-003, L-006, L-008, L-V01, L-V02, L-T01, L-T02, L-G01, L-G02, L-G04, L-G05, L-M01, L-M02]. Khong giu file runtime. |
 ## 2026-10-17 - AI R2.1 deployments (mo R2)
 
 | agent | branch | scope | files | status | since | note |
@@ -1537,6 +1537,11 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 ## 2026-10-18 - R4.4 (/settings/ai vao UserSettingsPage + breadcrumb 3 muc)
 ## 2026-10-18 - R4.5 (AiHubNav: tab Nhat ky kiem toan + chi staff thay)
 ## 2026-10-18 - R5.2 ( Sua mapping ops_audit: ai-agents -> ai/agents)
+## 2026-10-18 - R5.1 phuong an B (go AgentRegistry)
+
+| agent | branch | scope | files | status | since | note |
+|---|---|---|---|---|---|---|
+| `ai-r51` | `feat/ai-r51-remove-agent-registry` -> `dev` | AI R5.1 (plan `:1256-1272`) **phuong an B** — Owner duyet 2026-10-18 sau khi do. Xoa app CRUD `ai_agents` **chua bao gio duoc doc** + tab Agents. 6 AC. | **XOA**: `packages/core/backend/src/ai_agents/{models,views,serializers,urls,admin}.py`, `ai_agents/tests/`; `packages/web/src/pages/AIAgentFederationPage.tsx`, `packages/web/src/components/AIAgentFederationPanel.tsx`; **SUA**: `packages/core/backend/src/vninvest_core/urls.py` (bo include), `admin_ui/{branding,labels}.py`, `packages/web/src/{main.tsx,pages/pageRegistry.js,app/routeCatalog.js,components/AiHubNav.tsx,lib/capabilities.ts}`, `i18n/{vi,en}.js`, cac test tham chieu Agents; migration `ai_agents/0003_delete_agentregistry.py` (sinh boi makemigrations); **GHI**: `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/evidence/ai-cc/r51-gates.md` | in-progress | 2026-10-18 | Lessons: [L-M01, L-M02, L-V04, L-001, L-002, L-006, L-007, L-008]. **DO CODE THAT — bang chung NGHIENG HANG ve phuong an B**: (1) grep `AgentRegistry` backend — chi co trong chinh app `ai_agents` + `admin_ui/{branding,labels}.py` (nhan hien thi Django admin); **khong noi dung nao doc** (khong orchestrator, khong advisory, khong task). (2) `AGENT_TYPES` ma plan go *"liet ke 6 loai"* **khong ton tai** trong backend ⇒ claim cua plan da loi thoi. (3) **khong co wave R6**; R5.3–R5.5 khong dung `AgentRegistry` (R5.3 la sub-agent prompt trong `SystemAISettings`) ⇒ tieu chi "2 wave toi khong dung agent" chon B. (4) route that `/core/v1/ai/agents/`, tra 401 tren staging (route **song**). **QUAN TRONG — DU LIEU THAT**: staging co **1 dong** trong `ai_agents_agentregistry` (`name='Phân tích ngành'`, `agent_type=advisory`, `provider=gemini`, `model=gemini-3.8-flash`, `created_at=2026-09-25`) — **khong** do migration sinh (migration chi co 0001/0002, khong seed) ⇒ **phai ghi lai evidence TRUOC khi drop**, khong de mat du lieu. (5) `db_router.py:34` + `settings.py:131` van giu app de migration moi chay duoc; chi bo **code** + **include URL**, giu `migrations/` (AC1: "chi con migration lich su"). |
 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|

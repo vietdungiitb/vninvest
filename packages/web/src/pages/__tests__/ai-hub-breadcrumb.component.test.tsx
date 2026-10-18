@@ -30,10 +30,9 @@ vi.mock("../../context/PortfolioContext.js", () => ({
   PortfolioProvider: ({ children }: { children?: unknown }) => children,
 }));
 
-/** 5 trang AI CC tương ứng 5 route trong `main.tsx`. */
+/** 4 trang AI CC tương ứng 4 route còn lại trong `main.tsx` (R5.1 đã gỡ route Agents). */
 const AI_CC_PAGES = [
   "AICommandCenterPage.tsx",      // /settings/ai
-  "AIAgentFederationPage.tsx",    // /settings/ai/agents
   "AIUsageAnalyticsPage.tsx",     // /settings/ai/usage
   "AICommandTracesPage.tsx",      // /settings/ai/traces
   "AISloDashboardPage.tsx",       // /settings/ai/slo
@@ -44,7 +43,7 @@ function readPage(file: string): string {
 }
 
 describe("R4.4 AC2: breadcrumb tren moi route AI CC", () => {
-  it("ca 5 trang AI CC deu render Breadcrumb", () => {
+  it("ca 4 trang AI CC con lai deu render Breadcrumb", () => {
     const missing = AI_CC_PAGES.filter((file) => !readPage(file).includes("Breadcrumb"));
     expect(
       missing, missing.length ? `thieu Breadcrumb: ${missing.join(", ")}` : "",

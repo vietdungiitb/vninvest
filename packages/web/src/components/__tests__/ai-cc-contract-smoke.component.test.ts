@@ -99,7 +99,6 @@ const FE_USAGE_AGGREGATE_FIELDS = [
   "avg_latency",
 ] as const;
 
-/** BE AgentRegistrySerializer fields (ai_agents/serializers.py). */
 const BE_AGENT_KEYS = [
   "id",
   "name",

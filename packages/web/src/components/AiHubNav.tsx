@@ -78,11 +78,12 @@ export function AiHubNav({ className = "" }: { className?: string }) {
         labelKey: "aiCommandCenter.tabOverview",
         active: location.pathname === "/settings/ai",
       },
-      {
-        to: "/settings/ai/agents",
-        labelKey: "aiCommandCenter.tabAgents",
-        active: location.pathname.startsWith("/settings/ai/agents"),
-      },
+      // R5.1 (phương án B, Owner duyệt): tab **Agents** đã bị gỡ — `AgentRegistry`
+      // là bảng CRUD **chưa từng được đọc** bởi orchestrator/advisory/task nào. Giữ
+      // nó là chi phí bảo trì cho tính năng không có tác dụng; dữ liệu seed đã được
+      // lưu lại ở `docs/evidence/ai-cc/r51-agent-registry-rows.md` trước khi drop bảng.
+      // R5.3 (sửa 4 system sub-agent prompt) nằm ở `SystemAISettings.metadata`,
+      // **không** phụ thuộc `AgentRegistry` ⇒ gỡ tab này không chặn R5.3.
       {
         to: `/settings/ai/usage${pickKeys(location.search, USAGE_KEYS)}`,
         labelKey: "aiCommandCenter.tabUsage",

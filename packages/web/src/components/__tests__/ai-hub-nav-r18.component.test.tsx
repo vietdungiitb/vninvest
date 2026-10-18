@@ -23,7 +23,6 @@ vi.mock("../../context/LangContext.js", () => ({
 }));
 
 import { AICommandCenterPage } from "../../pages/AICommandCenterPage.js";
-import { AIAgentFederationPage } from "../../pages/AIAgentFederationPage.js";
 import { AIUsageAnalyticsPage } from "../../pages/AIUsageAnalyticsPage.js";
 import * as PortfolioContext from "../../context/PortfolioContext.js";
 
@@ -33,7 +32,6 @@ const adapterMocks = vi.hoisted(() => ({
   getAIAuditLogs: vi.fn(),
   getUserConfig: vi.fn(),
   updateUserConfig: vi.fn(),
-  getAIAgents: vi.fn(),
   getAIUsageAggregate: vi.fn(),
   getAIUsageSummary: vi.fn(),
   getAIUsageRecords: vi.fn(),
@@ -53,13 +51,10 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
     get getUserConfig() {
       return adapterMocks.getUserConfig;
     },
-    get updateUserConfig() {
-      return adapterMocks.updateUserConfig;
-    },
-    get getAIAgents() {
-      return adapterMocks.getAIAgents;
-    },
-    get getAIUsageAggregate() {
+get updateUserConfig() {
+        return adapterMocks.updateUserConfig;
+      },
+      get getAIUsageAggregate() {
       return adapterMocks.getAIUsageAggregate;
     },
     get getAIUsageSummary() {
@@ -119,7 +114,6 @@ function mockAll() {
   );
   adapterMocks.getUserConfig.mockResolvedValue({ preferences: {} });
   adapterMocks.updateUserConfig.mockResolvedValue({ advisory_whale_signal_enabled: true });
-  adapterMocks.getAIAgents.mockResolvedValue({ results: [] });
   adapterMocks.getAIUsageAggregate.mockResolvedValue({ total_requests: 1 });
   adapterMocks.getAIUsageSummary.mockResolvedValue({ results: [] });
   adapterMocks.getAIUsageRecords.mockResolvedValue({ results: [], total: 0 });
@@ -135,7 +129,6 @@ function renderRoutes(initial: string) {
       { initialEntries: [initial] },
       createElement(Routes, null, [
           createElement(Route, { key: "hub", path: "/settings/ai", element: createElement(AICommandCenterPage, {}) }),
-          createElement(Route, { key: "agents", path: "/settings/ai/agents", element: createElement(AIAgentFederationPage, {}) }),
           createElement(Route, { key: "usage", path: "/settings/ai/usage", element: createElement(AIUsageAnalyticsPage, {}) }),
         ])
       )
@@ -145,7 +138,6 @@ function renderRoutes(initial: string) {
 const HUB = resolve(process.cwd(), "src/pages/AICommandCenterPage.tsx");
 const AI_PAGES = [
   HUB,
-  resolve(process.cwd(), "src/pages/AIAgentFederationPage.tsx"),
   resolve(process.cwd(), "src/pages/AIUsageAnalyticsPage.tsx"),
 ];
 
@@ -177,7 +169,6 @@ describe("R1.8: AiHubNav + 1 hệ token", () => {
   it("AC2: cả 3 route render AiHubNav, active đúng", async () => {
     for (const [path, activeKey] of [
       ["/settings/ai", "aiCommandCenter.tabOverview"],
-      ["/settings/ai/agents", "aiCommandCenter.tabAgents"],
       ["/settings/ai/usage", "aiCommandCenter.tabUsage"],
     ] as const) {
       const { unmount } = renderRoutes(path);

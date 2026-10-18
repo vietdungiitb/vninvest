@@ -102,3 +102,23 @@ mới phát hiện được.
   - [ ] Đã **mở ảnh** xác nhận đúng nội dung, không chỉ tin exit code?
   - [ ] Ảnh chụp đúng **phiên bản đã deploy**, không phải bản cũ còn trên môi trường?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 372 §"AC3 tốn 3 lần chụp"; `docs/evidence/ai-r44/visual/`.
+
+## L-V06: Suite xanh khi **số test GIẢM** = xanh giả — script xoá hàng loạt tự dính test khác
+
+- **Nguyên nhân:** Xoá code bằng script lọc dòng (`.filter(!includes(...))`) trong file test. Khối cần xoá
+  không kết thúc ở dòng có điều kiện ⇒ script nuốt tiếp các khối **kế tiếp**. File vẫn **parse hợp lệ**,
+  suite vẫn chạy, vẫn **PASS** — chỉ là các test bị nuốt **không còn được kiểm**.
+- **Hậu quả thật (Entry 375, R5.1):** xoá test `AIAgentFederationPage` nuốt luôn
+  `AIUsageAnalyticsPage`, `AdminUsersPage`, `AdminUsersPanel` (mất cả fix race W3-4 kèm comment
+  15 dòng). Báo cáo ghi `376/376 OK` — **số test đã giảm** mà không ai để ý. Phải phát hiện khi
+  soi `--numstat`: `-49` dòng trong 1 file test thay vì `-8`.
+- **Khi nào gặp:** `tags: [test, script, delete, remove, false-green, xanh-gia, numstat, refactor]`
+- **QUY TẮC:** "Xoá test bằng script ⇒ **đếm dòng trước/sau**, liệt kê **tên** các test bị xoá,
+  và **so số test** của suite với baseline. **Số test giảm mà không giải thích được từng test là
+  xanh giả.** Xoá khối nhiều dòng: `git checkout HEAD -- <file>` rồi xoá **đúng** số dòng cần."
+- **CHECKLIST:**
+  - [ ] `git diff --numstat` có đúng số dòng **dự kiến xoá** không (toàn file = đổi cả EOL/khối)?
+  - [ ] Đã **liệt kê tên** mọi `test(...)` bị mất, và tự xác nhận từng cái là dư?
+  - [ ] Tổng số test của suite có **tăng/giảm** so với baseline — nếu giảm thì giải thích được chỗ nào?
+  - [ ] Chạy lại **đúng các file bị đụng** (không chỉ file của slice hiện tại) và xác nhận còn test?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 375 §"XOA NHAM 3 TEST"; `docs/evidence/ai-cc/r51-gates.md` §"Năm lỗi tôi mắc".

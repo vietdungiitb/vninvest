@@ -145,7 +145,6 @@ MENU_GROUPS: tuple[dict, ...] = (
             "advisory.AdvisorySession",
             "advisory.AdvisoryRecord",
             "advisory.UserAICredential",
-            "ai_agents.AgentRegistry",
             "ai_analytics.AIUsageRecord",
             "ai_analytics.AIUsageSummary",
             # Nhat ky va giao dich (wave 16)
