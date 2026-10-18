@@ -297,6 +297,12 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
 AI_FALLBACK_DAILY_QUOTA = int(os.environ.get('AI_FALLBACK_DAILY_QUOTA', '5'))
+# R4.3 AC2: retention `AIAuditLog`. Mặc định 365 ngày — audit log là **dấu vết
+# kiểm toán** nên giữ lâu hơn `AITrace` (90 ngày), và vẫn phải có trần vì
+# PIPL/ISO 27001 yêu cầu giới hạn thời gian lưu dữ liệu hành vi.
+# Giá trị vô nghĩa (0/âm) bị chặn ở `advisory/audit_retention.py` — KHÔNG mặc định
+# rơi về "xoá hết".
+AI_AUDIT_RETENTION_DAYS = int(os.environ.get('AI_AUDIT_RETENTION_DAYS', '365'))
 
 # Advertising & Trademark admin feature flag (gradual rollout).
 # Set ADVERTISING_ADMIN_ENABLED=false to hide the admin panel and revoke
@@ -538,6 +544,13 @@ CELERY_BEAT_SCHEDULE = {
     # là code chết — dữ liệu sẽ tích lại vô hạn.
     'purge-ai-traces': {
         'task': 'advisory.tasks.purge_ai_traces',
+        'schedule': 86400.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['purge-ai-traces']},
+    },
+    # R4.3 AC2: retention `AIAuditLog` — task RIÊNG, không gộp với trace, vì xoá
+    # nhầm audit log là mất dấu vết kiểm toán.
+    'purge-ai-audit-logs': {
+        'task': 'advisory.tasks.purge_ai_audit_logs',
         'schedule': 86400.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP['purge-ai-traces']},
     },
