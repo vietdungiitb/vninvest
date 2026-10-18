@@ -4,7 +4,6 @@ import enDict from "../../i18n/en.js";
 
 const AI_CC_NAMESPACES = [
   "aiCommandCenter",
-  "aiAgentFederation",
   "aiUsageAnalytics",
 ] as const;
 

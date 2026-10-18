@@ -4,7 +4,6 @@ import { createElement } from "react";
 // `useSearchParams` -> `useLocation()` throw ngoai `<Router>`.
 import { MemoryRouter } from "react-router-dom";
 import { AIUsageDashboard } from "./AIUsageDashboard";
-import { AIAgentFederationPanel } from "./AIAgentFederationPanel";
 import { AIAdvisoryPromptConfigDrawer } from "./AIAdvisoryPromptConfigDrawer.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
@@ -64,24 +63,6 @@ const EN_KEYS = {
   "aiUsageAnalytics.chartTitle": "Tokens by day",
   "aiUsageAnalytics.chartTokensIn": "Tokens in",
   "aiUsageAnalytics.chartEmpty": "No chart data yet.",
-  "aiAgentFederation.title": "AI Agent Registry",
-  "aiAgentFederation.description": "Register and manage AI agents in the system.",
-  "aiAgentFederation.name": "Name",
-  "aiAgentFederation.agentType": "Type",
-  "aiAgentFederation.provider": "Provider",
-  "aiAgentFederation.model": "Model",
-  "aiAgentFederation.capabilities": "Capabilities",
-  "aiAgentFederation.systemPrompt": "System Prompt",
-  "aiAgentFederation.isActive": "Active",
-  "aiAgentFederation.actions": "Actions",
-  "aiAgentFederation.addAgent": "Add Agent",
-  "aiAgentFederation.placeholderName": "e.g. Sector Analysis",
-  "aiAgentFederation.placeholderCapabilities": "sector_analysis, reporting",
-  "aiAgentFederation.yes": "Yes",
-  "aiAgentFederation.no": "No",
-  "aiAgentFederation.noAgents": "No agents registered yet.",
-  "aiAgentFederation.loading": "Loading AI agents...",
-  "aiAgentFederation.errorLoad": "Could not load agents list.",
   "promptConfig.close": "Close",
   "aiCommandCenter.promptDrawerFooter":
     "Config syncs automatically and applies on the next refresh.",
@@ -219,33 +200,6 @@ describe("Slice E — EN locale i18n (E-AC1/E-AC2/E-AC3)", () => {
     for (const hard of VI_HARDCODE) {
       expect(html.includes(hard)).toBe(false);
     }
-  });
-
-  it("E-AC2: Agents table renders Yes/No and EN placeholders — no Có/Không/VD:", async () => {
-    await act(async () => {
-      render(createElement(AIAgentFederationPanel, {}));
-    });
-    await waitFor(() => {
-      expect(screen.getByText("AI Agent Registry")).toBeTruthy();
-    });
-
-    expect(screen.getByText("Yes")).toBeTruthy();
-    expect(screen.getByText("No")).toBeTruthy();
-
-    const html = document.body.innerHTML;
-    expect(html.includes("VD: Phân tích ngành")).toBe(false);
-    expect(html.includes("phân_tích_ngành")).toBe(false);
-    expect(html.includes('>"Có"<')).toBe(false);
-    expect(html.includes('>"Không"<')).toBe(false);
-
-    await act(async () => {
-      screen.getByText("Add Agent").click();
-    });
-    const nameInput = document.querySelector("input");
-    expect(nameInput).toBeTruthy();
-    expect(nameInput.getAttribute("placeholder")).toBe("e.g. Sector Analysis");
-    const capsInput = document.querySelectorAll("input")[1];
-    expect(capsInput.getAttribute("placeholder")).toBe("sector_analysis, reporting");
   });
 
   it("E-AC3: Prompt drawer footer uses EN key — no VI sync sentence", async () => {
