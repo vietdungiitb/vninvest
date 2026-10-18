@@ -65,10 +65,23 @@ test đỏ **vì lý do sai**.
 tab nav. **Thử `a[href^="/settings/ai"]` trước vẫn sai** vì breadcrumb có link `/settings/ai`
 và đứng trước trong DOM. Đây là cùng bài học L-V04 ở tầng **test**.
 
+## VERIFY SAU KHI SỬA — chạy thật trên staging, **đã mở ảnh xác nhận bằng mắt**
+
+Deploy `dev` @ `cbafa4b47` → chạy lại `ai-hub-nav-r51`: **4 passed (37.3s)**, 2 ảnh chụp lại.
+
+| Lỗi | Trước (ảnh cũ) | Sau (ảnh mới) — xác nhận bằng mắt |
+|---|---|---|
+| 1 nhãn VI | `Tổng quan · Usage · Traces · SLO · Nhật ký audit` | `Tổng quan · **Usage AI** · **Dấu vết AI** · **SLO AI** · Nhật ký audit` |
+| 2 breadcrumb | `Cài đặt tài khoản / Trí tuệ nhân tạo / **audit**` | `Cài đặt tài khoản / Trí tuệ nhân tạo / **Nhật ký audit**` |
+| 3 bảng audit | `Thời điểmHành độngNgười thực hiện đó` (dính liền) | 4 cột rời nhau: `THỜI ĐIỂM │ HÀNH ĐỘNG │ NGƯỜI THỰC HIỆN │ LÝ DO` + đường kẻ ngang |
+
 ## Còn mở
 
-- **CHƯA CHẠY**: E2E lại trên staging để chụp lại 2 ảnh và xác nhận bằng mắt — cần deploy
-  bản này trước (sẽ làm sau khi merge).
-- Ảnh `01` có "Đang tải …" ở 2 khối dữ liệu — chưa đo thời điểm hoàn tất nên **không** kết
-  luận là lỗi tải.
+- **Quan sát mới** (chưa kết luận là lỗi): hai khối "CÀU HÌNH AI RUNTIME" và "Nhật ký audit
+  Command Center" vẫn hiện **"Đang tải …"** ở **cả hai** lần chụp, ở hai thời điểm khác nhau.
+  Chưa đo thời điểm hoàn tất ⇒ **không** kết luận là lỗi tải; cần đo riêng.
+- Nav phụ trong card hub vẫn có nhãn **tiếng Anh** `Runtime` (thuộc component khác, không
+  nằm trong `AiHubNav`) — chưa đo khoá của nó.
+- Ô nhập "Lọc theo hành động" có placeholder bị **cắt** (`vd: t…`) — nghi vấn do bề rộng ô
+  nhập, **chưa** đo, không sửa trong slice này.
 - Chưa kiểm nav 5 tab ở viewport mobile/tablet.
