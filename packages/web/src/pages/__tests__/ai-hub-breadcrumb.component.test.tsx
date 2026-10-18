@@ -99,3 +99,51 @@ describe("R4.4 AC2: breadcrumb tren moi route AI CC", () => {
     expect(existsSync(resolve(process.cwd(), "src/components/Breadcrumb.tsx"))).toBe(true);
   });
 });
+
+// R5.1d — lỗi phát hiện khi **mở ảnh E2E** (ledger Entry 377): breadcrumb rơi về
+// **chuỗi thô** ở các route AI còn lại vì `Breadcrumb.tsx:66` chỉ có ánh xạ cho
+// `settings`/`ai` (R4.4). `usage` còn tệ hơn: bị map sang `tenantUsage.title` —
+// nhãn của trang tenant. Test ở đây chốt **nhãn**, không chốt *sự tồn tại* của crumb
+// (test R4.4 chỉ assert có link `/settings` nên không bắt được lỗi này).
+describe("R5.1d — nhãn breadcrumb của route AI phải dịch, không rơi về chuỗi thô", () => {
+  // (path, nhãn tiếng Việt mong đợi) — lấy từ ảnh E2E `01/02-audit-tab.png`.
+  const CASES: Array<[string, RegExp]> = [
+    ["/settings/ai/audit", /nhật ký audit/i],
+    ["/settings/ai/usage", /usage ai/i],
+    ["/settings/ai/traces", /dấu vết/i],
+    ["/settings/ai/slo", /slo/i],
+  ];
+
+  for (const [path, want] of CASES) {
+    it(`${path}: mục cuối là nhãn đã dịch`, () => {
+      const { container } = render(
+        createElement(
+          MemoryRouter,
+          { initialEntries: [path] },
+          createElement(LangProvider, null, createElement(Breadcrumb, { key: "bc" })),
+        ),
+      );
+      const nav = container.querySelector("nav.breadcrumb");
+      const last = nav?.lastElementChild?.textContent?.trim() ?? "";
+      // Mục cuối không phải link ⇒ text nằm thẳng trong nav.
+      expect(last, `mục cuối = "${last}" (chuỗi thô)`).toMatch(want);
+      expect(last, "không được là tên segment thô").not.toBe(path.split("/").pop());
+    });
+  }
+
+  it("KHÔNG phá nhãn của /tenant-admin/usage (trùng tên segment nhưng khác nghĩa)", () => {
+    const { container } = render(
+      createElement(
+        MemoryRouter,
+        { initialEntries: ["/tenant-admin/usage"] },
+        createElement(LangProvider, null, createElement(Breadcrumb, { key: "bc" })),
+      ),
+    );
+    const nav = container.querySelector("nav.breadcrumb");
+    const last = nav?.lastElementChild?.textContent?.trim() ?? "";
+    // Nhãn thật đo được: `tenantUsage.title` = "Usage và quota thành viên".
+    // Điều cần chặn là: nó **không** bị thay bằng nhãn AI ("Usage AI").
+    expect(last, "nhãn tenant usage phải giữ nguyên").toMatch(/quota thành viên/i);
+    expect(last, "không được dùng nhãn của AI hub").not.toBe("Usage AI");
+  });
+});
