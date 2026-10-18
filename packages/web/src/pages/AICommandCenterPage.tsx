@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, memo, createElement } from "react";
-import { Link, useLocation } from "react-router-dom";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
@@ -52,7 +51,6 @@ interface AICommandCenterPageProps {
 
 export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps) {
   const { t, localeTag } = useI18n();
-  const location = useLocation();
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [pageError, setPageError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
@@ -223,26 +221,16 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
 
       // R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con.
       e(Breadcrumb, { key: "breadcrumb" }),
-      // R1.8: tab route dùng chung AiHubNav; nav anchor giữ riêng cho section trong trang.
+      // R1.8: tab route dùng chung AiHubNav.
+      //
+      // S1 (2026-10-19): trang **không còn** nav anchor thứ 2 (`#overview` / `#runtime` /
+      // `#audit`). Lý do — nó dùng **cùng** bộ class `styles.hubNav` + **cùng**
+      // `aria-label` với `AiHubNav` nên trông **giống hệt**, và lúc vừa tải
+      // (`location.hash === ""`) **hai** ô "Tổng quan" đều tô sáng.
+      // Ba mục đó cũng không bổ sung gì: `#overview` là đầu trang, `#audit` trùng
+      // nghiệp vụ với route `/settings/ai/audit`, `#runtime` là panel thứ 3 cùng trang.
+      // Hệ điều hướng duy nhất của trang là 5 tab route của `AiHubNav`.
       e(AiHubNav, { key: "hub-tabs" }),
-      // B rest: hub subnav — in-page anchors (route đã có AiHubNav ở trên)
-      e("nav", { key: "hub-nav", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [
-        e(Link, {
-          key: "nav-overview",
-          to: { pathname: location.pathname, hash: "#overview" },
-          className: styles.hubNavLink + (location.hash === "#overview" || (!location.hash && location.pathname === "/settings/ai") ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabOverview")),
-        e(Link, {
-          key: "nav-runtime",
-          to: { pathname: location.pathname, hash: "#runtime" },
-          className: styles.hubNavLink + (location.hash === "#runtime" ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabRuntime")),
-        e(Link, {
-          key: "nav-audit",
-          to: { pathname: location.pathname, hash: "#audit" },
-          className: styles.hubNavLink + (location.hash === "#audit" ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabAudit")),
-      ]),
 
       // Summary Cards
       e("div", { key: "overview-anchor", id: "overview" },
