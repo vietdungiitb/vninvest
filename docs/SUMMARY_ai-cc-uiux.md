@@ -112,6 +112,38 @@ Bao `StaffRoute` cho hub se **KHOA user thuong** khoi noi ho dat API key rieng. 
 
 - **Viec that con lai** (can Owner quyet, **khong tu sua**): `/settings/ai` + `/usage` + `/traces` + `/slo` khai `requiredCapabilities: ["system.ai_command_center.manage"]` nhung **khong guard nao** kiem tra capability do ⇒ nguoi dung khong co capability van vao duoc. Do la cau hoi **y do san pham**, khong phai sua 1 dong.
 
+### (4) `requiredCapabilities` co nen siet theo khong — **DO, KHONG SIET**
+
+Owner: *"lam theo khuyen nghi"*. **Khuyen nghia cua toi sau khi do lai: KHONG siet rieng AI CC.** Bang chung quyet dinh:
+
+| Do | Gia tri |
+|---|---|
+| Noi khai `requiredCapabilities` tren toan FE | **76** |
+| Noi **DOC** nó (`.requiredCapabilities` / `["requiredCapabilities"]`) | **0** |
+| Tham chieu o backend | **0** |
+
+=> No la **ky khai mo ta**, khong phai dieu kien truy cap, ** tren toan app** — khong phai rieng AI CC. Siet rieng 5 route AI CC se (a) khong nhất quán voi 76 khai bao con lai, (b) khoa user thuong ra khoi noi dat API key rieng.
+
+Da lam thay the bang cach **ghi su that vao catalog** cho ca 4 route `staffOnly: false` (36 dong comment), de agent sau khong xay tren tien de sai — dung loi gap bao cao cua toi o §3b (2).
+
+**Con lai, can Owner quyet o cap repo (khong phai AI CC):** co nen lam `requiredCapabilities` co gia tri that o khong, hay bo han no di. Tra loi se cham toi 76 route, nen tach ticket rieng.
+
+### (5) Anh chup voi cau hinh that — **XONG, va staging da khoi phuc**
+
+- Vong 1 phat hien `testuser` **co** cau hinh (`openai` / `gpt-4o-mini`) nhung o tong quan van trong — vi **thieu API key** nen `ai_ready` false.
+- Spec `tests/visual/ai-cc-config-screenshot.spec.ts`: tam doi sang `gemini` → luu → chup (`04`, `05`) → **khoi phuc ve baseline cung dinh** `openai` / `gpt-4o-mini`. PASS exit 0.
+- **Da doc lai tu server** sau khi khoi phuc (khong doc `select` ngay sau khi tu dat): `KHOI PHUC XONG (doc lai tu server) = {"provider":"openai","model":"gpt-4o-mini"}`. **Staging sach.**
+- **BAI HOC (tu thu nhan):** teardown ban dau **doi chieu `select` ngay sau khi minh tu dat** ⇒ **xanh gia**; mot lan chay hong giua chung da de lai `gemini` tren staging. Chi phat hien khi lan sau in `CAU HINH LUC VAO = gemini` khac `BASELINE`. Da sua: moc khoi phuc la **hang so**, xac minh bang **`goto` moi** doc tu server.
+
+**2 PHAT HIEN MOI — chi lo ra khi co du lieu that (CHUA sua, ngoai pham vi):**
+
+| # | Van de | Muc |
+|---|---|---|
+| **N7** | Modal *"Xem lai thay doi truoc khi luu"* **khong hien thi diff cua `ai_provider` / `ai_model`** — chi liet ke 4 `*_agent_prompt` gia tri "—". Nguoi dung doi nha cung cap roi bam Luu ma khong thay minh dang doi gi. | **major** |
+| **N8** | Modal dung **ten field ky thuat tho** (`flow_agent_prompt`) thay vi nhan tieng Viet da co (`aiCommandCenter.subAgent.fields.*`). | minor |
+
+Ca hai nam o `AiConfigPreviewModal.tsx` ⇒ **bao cao, khong tu mo rong pham vi**.
+
 ### (3) Don khoa i18n chet — **XONG, xoa bang `edit` co ngu canh**
 
 Quet **391 file production** (khong `i18n/`, khong test) bang script Node de quy:
