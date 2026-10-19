@@ -5311,6 +5311,7 @@ aiUsageAnalytics: 'AI Usage',
       gemini: 'Google Gemini',
       claude: 'Anthropic (Claude)',
       local: 'Local model (Ollama/vLLM)',
+      unknown: 'Other provider',
     },
     source: {
       commandCenter: 'AI command center config',

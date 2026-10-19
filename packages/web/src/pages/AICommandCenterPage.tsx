@@ -241,9 +241,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             e(SummaryCard, {
               key: "card-provider",
               title: t("aiCommandCenter.effectiveProvider"),
-              value: effectiveProvider
-                ? t(providerLabelKey(effectiveProvider) ?? effectiveProvider)
-                : "—",
+              value: effectiveProvider ? t(providerLabelKey(effectiveProvider)) : "—",
               subtitle: t("aiCommandCenter.effectiveProviderDesc"),
             }),
             e(SummaryCard, { key: "card-model", title: t("aiCommandCenter.effectiveModel"), value: effectiveModel || t("aiCommandCenter.needsConfig"), subtitle: t("aiCommandCenter.effectiveModelDesc") }),
@@ -270,12 +268,12 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       //    "Chỉ đọc" để không ai tưởng là sửa được.
       //  - `eventGate` đã chuyển sang panel "Tuỳ chọn cá nhân" phía dưới.
       e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") },
-        e("div", { className: styles.metricGrid, "aria-busy": !overviewLoaded }, [
+        e("div", { className: styles.metricGridAuto, "aria-busy": !overviewLoaded }, [
           e("div", { key: "pol-auto", className: styles.metricCard }, [
             e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
             e("p", { key: "v", className: styles.metricValue, "data-testid": "auto-refresh-value" },
               maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
-            e("p", { key: "badge", className: styles.metricLabel, "data-testid": "auto-refresh-readonly" },
+            e("span", { key: "badge", className: styles.metricBadge, "data-testid": "auto-refresh-readonly" },
               t("aiCommandCenter.readOnlyBadge")),
           ]),
         ]),
@@ -289,7 +287,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
         title: t("aiCommandCenter.personalPrefs"),
         subtitle: t("aiCommandCenter.personalPrefsDesc"),
       },
-        e("div", { className: styles.metricGrid }, [
+        e("div", { className: styles.metricGridAuto }, [
           e("div", { key: "personal-gate", className: styles.metricCard }, [
             // `<label>` bao CẢ nhãn lẫn control: trước đây nhãn nằm ở `<p>` anh em,
             // nên checkbox chỉ có accessible name là trạng thái ("Bật"/"Tắt") — mọi

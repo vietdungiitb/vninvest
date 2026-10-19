@@ -5380,6 +5380,7 @@ aiUsageAnalytics: 'Usage AI',
       gemini: 'Google Gemini',
       claude: 'Anthropic (Claude)',
       local: 'Mô hình cục bộ (Ollama/vLLM)',
+      unknown: 'Nhà cung cấp khác',
     },
     source: {
       commandCenter: 'Cấu hình trung tâm AI',

@@ -313,6 +313,20 @@
   }
 }
 
+/*
+ * S4 (2026-10-19) — lưới co theo nội dung.
+ *
+ * `.metricGrid` khoá 4 cột ở >=1024px. Panel chỉ còn MỘT card (sau khi S2 bỏ 2 số
+ * trùng với form) thì card chiếm 1/4 bề ngang và 3/4 là rãnh trống — tỉ lệ
+ * "không gian / thông tin" xấu nhất trang. `auto-fit` cho 1 card chiếm hết hàng,
+ * 2 card đứng cạnh nhau, 3-4 card vẫn xuống hàng như cũ.
+ */
+.metricGridAuto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
 .metricCard {
   background: var(--ai-surface);
   border: 1px solid var(--ai-border);
@@ -330,6 +344,28 @@
   font-size: var(--fs-2xl, 1.375rem);
   font-weight: 700;
   color: var(--ai-ink);
+}
+
+/*
+ * S4 (2026-10-19) — badge trạng thái, KHÔNG phải nhãn thứ hai.
+ *
+ * Badge "Chỉ đọc" trước đây dùng chính class `.metricLabel` ⇒ cùng 13px, cùng màu
+ * muted, cùng `margin-bottom` với dòng nhãn ngay phía trên ⇒ người đọc hiểu là
+ * "Auto refresh/ngày / Chỉ đọc" là HAI nhãn, không phải một nhãn + một trạng thái.
+ * Giờ là chip: nhỏ hơn, viền, bo tròn, nền nhạt hơn — đọc ra là nhãn dán.
+ */
+.metricBadge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--ai-border-strong);
+  border-radius: 999px;
+  background: rgba(var(--ais-rgb-5078a8) / 0.12);
+  color: var(--ai-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ---------- Toolbar / buttons ---------- */

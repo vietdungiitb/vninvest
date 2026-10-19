@@ -131,8 +131,12 @@ describe("S3: enum thô khong lot ra UI", () => {
   });
 
   it("AC3.4 — o 'Nha cung cap hieu luc' hien ten provider, khong in `gemini`", async () => {
+    // R9 (audit code vòng 5): provider **lạ** phải rơi về nhãn `unknown`, KHÔNG phải
+    // `null` rồi in thô key. Bản đầu trả `null` ⇒ `t("anthropic")` → `undefined` →
+    // UI in ra chính chuỗi enum, đúng loại lỗi S3 sinh ra để diệt.
     expect(providerLabelKey("gemini")).toBe("aiCommandCenter.provider.gemini");
-    expect(providerLabelKey("khong_biet")).toBeNull();
+    expect(providerLabelKey("khong_biet")).toBe("aiCommandCenter.provider.unknown");
+    expect(getNestedValue(viDict, providerLabelKey("khong_biet"))).toBe("Nhà cung cấp khác");
 
     const { container } = renderHub();
     await waitFor(() => expect(container.querySelector("h1")).toBeTruthy());

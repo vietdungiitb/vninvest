@@ -81,10 +81,15 @@ export const PROVIDER_OPTIONS: ProviderModelOption[] = [
  *
  * `labelKey` là field **đã có sẵn** trong `ProviderModelOption` từ R1.3 — chỉ là chưa
  * provider nào dùng tới. Không tạo primitive mới.
+ *
+ * ⚠ Provider lạ **không** trả `null` nữa: trả `aiCommandCenter.provider.unknown`.
+ * Bản đầu trả `null` và call-site fallback bằng chính key thô ⇒ `t("anthropic")` →
+ * `getNestedValue` trả `undefined` → UI in ra **chuỗi enum thô**, đúng loại lỗi mà
+ * S3 sinh ra để diệt (bất đối xứng với `aiSourceLabelKey` vốn có nhánh `unknown`).
  */
-export function providerLabelKey(providerKey: string): string | null {
+export function providerLabelKey(providerKey: string): string {
   const hit = PROVIDER_OPTIONS.find((p) => p.key === providerKey);
-  return hit?.labelKey ?? null;
+  return hit?.labelKey ?? "aiCommandCenter.provider.unknown";
 }
 
 /**
