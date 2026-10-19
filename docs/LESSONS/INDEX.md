@@ -18,6 +18,7 @@
 | `fe`, `frontend`, `bundle`, `vite`, `react`, `hook`, `memo`, `searchParams`, `router`, `page` | [`frontend.md`](./frontend.md) | Đo bundle bằng cạnh import tĩnh, Vite preload, **2 `setSearchParams` trong 1 tick không compose**, **object literal làm memo vô hiệu ⇒ treo render**. |
 | `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand` | [`css-soc.md`](./css-soc.md) | CSS/SOC tokens, `soc.module.css` chỉ là barrel, script ghi đè CSS shorthand làm mất duration, quét cửa sổ ±N dòng tạo false positive, màu tăng/giảm chuẩn Bloomberg, **đọc CSS đã build mới kết luận class có map** (L-F11). |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append` | [`tooling-traps.md`](./tooling-traps.md) | `Get-Content|Set-Content` gộp file, `$LASTEXITCODE` sau pipeline sai, **ghi file = đổi line-ending**, **citation đúng dòng nhưng sai file**. |
+| `edit`, `fuzzy`, `tool`, `replace`, `stash`, `crlf`, `lf`, `eol`, `diff`, `numstat` | [`tooling-traps-2.md`](./tooling-traps-2.md) | **`Edit` khớp MỜ ⇒ sửa nhầm biến** (không báo lỗi), **`git stash` đổi LF→CRLF** ⇒ phải `normalize-eol --fix` sau mỗi lần. |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `fernet` | [`security.md`](./security.md) | Bảo mật, secret trong repo, ignore, quy trình revoke/rotate/purge history. |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate` | [`verification.md`](./verification.md) | **Sai lầm không báo lỗi**: script đo sai vẫn ra số hợp lý, kiểm tra tồn tại bằng stdout, verify nhầm artifact, gốc rễ kế thừa phải có phản chứng, chạy test làm bẩn working tree. |
 | `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite` | [`false-green.md`](./false-green.md) | **Xanh gia khong kiem tra gi**: suite xanh khi **so test giam**, `resolve()` bi `legacy_proxy_view` che, phai do bang **HTTP that**. |
@@ -129,10 +130,11 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
+| [`tooling-traps-2.md`](./tooling-traps-2.md) | 2 | **`L-T03`**, **`L-T04`** |
 | [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 | [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 46 lesson / 10 file**
+**Tổng: 48 lesson / 11 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)
@@ -142,10 +144,5 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
   - C1 (≤120 dòng/file) **giữ nguyên và siết thêm ý nghĩa**: đó là cơ chế chống agent đọc lướt — file đầy thì **tách file mới theo chủ đề**, KHÔNG gộp entry.
   - **Khi file đầy: chuyển sang file kế tiếp** (`<chủ đề>-2.md`), KHÔNG ghi đè entry cũ — entry cũ có thể đã được diễn giải sai ở nơi khác, xoá nó là mất dấu vết.
   - ID mới **không renumber** ID cũ; ID bị bỏ trống sau khi gộp là **có chủ đích**, và
-  entry thay thế ghi rõ bản bị gộp ở dòng **Proof**.
+    entry thay thế ghi rõ bản bị gộp ở dòng **Proof**.
 
-## 1.6. Lịch sử sự cố escape sequence
-
-Chi tiết (bảng ký tự bị nuốt, vị trí đã sửa, dry-run) đã chuyển sang
-[`tooling-traps.md`](./tooling-traps.md) §Ghi chú lịch sử — vì đó là **lịch sử một lần
-sửa**, không phải luật phòng ngừa; giữ ở đây làm INDEX vượt C1.

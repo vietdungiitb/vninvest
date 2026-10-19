@@ -174,14 +174,18 @@ Audit trước (`docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md:214-219`
 
 ## F. Câu hỏi cần Owner / PM chốt trước khi code
 
-| # | Câu hỏi | Ảnh hưởng | Phương án A (FE-only) | Phương án B (được sửa BE) |
-|---|---|---|---|---|
-| **Q1** | Cho phép sửa **BE** trong slice này không? (`VnbrokerCircuitBreakerView` + `VnbrokerTestConnectionView` là stub) | F-04, F-07 | Gắn nhãn "chưa nối runtime" + ẩn số giả | Nối runtime thật qua `market_data.vnbroker_adapter` |
-| **Q2** | Có thêm endpoint **health per-provider** (latency/error thật từng provider) không? | F-05, F-11, F-14 | Chỉ hiển thị `provider_catalog` (ready/gate/lý do) + health cấp service, **xoá** số liệu bịa | Thêm `provider_health` thật vào `ServiceHealth` / endpoint mới |
-| **Q3** | Cho phép thêm class mới vào `soc.components.css`? Bao nhiêu? | F-13, F-14 | Tái dùng 100% class có sẵn | Cho phép thêm ~6 class `vnb-*` |
-| **Q4** | Giữ 9 tab hay gom lại? | F-25 | Giữ, thêm affordance cuộn + rút gọn nhãn | Gom 9 → 6 tab nhóm |
+> **ĐÃ CHỐT 2026-10-19:** **Q1=B** (sửa BE — nối circuit breaker + test-connection thật) · **Q2=B** (thêm endpoint health per-provider) · **Q3=C** (được thêm class mới + token mới) · **Q4=A** (giữ 9 tab, rút gọn nhãn + affordance cuộn).
+> Kết quả triển khai ở **§I**.
 
-**Không cần hỏi:** màu tăng/giảm giữ chuẩn Bloomberg (xanh = tăng) — không đụng vùng này (L-F08). Token mới: dự kiến **không thêm token**, chỉ dùng token có sẵn trong `soc.tokens.css`.
+| # | Câu hỏi | Ảnh hưởng | Phương án A (FE-only) | Phương án B (được sửa BE) | **Owner chọn** |
+|---|---|---|---|---|---|
+| **Q1** | Cho phép sửa **BE** trong slice này không? (`VnbrokerCircuitBreakerView` + `VnbrokerTestConnectionView` là stub) | F-04, F-07 | Gắn nhãn "chưa nối runtime" + ẩn số giả | Nối runtime thật qua `market_data.vnbroker_adapter` | **B** |
+| **Q2** | Có thêm endpoint **health per-provider** (latency/error thật từng provider) không? | F-05, F-11, F-14 | Chỉ hiển thị `provider_catalog` (ready/gate/lý do) + health cấp service, **xoá** số liệu bịa | Thêm `provider_health` thật | **B** |
+| **Q3** | Cho phép thêm bao nhiêu class CSS mới? | F-13, F-14 | Tái dùng 100% class có sẵn | Cho phép thêm class + token mới | **C** |
+| **Q4** | Giữ 9 tab hay gom lại? | F-25 | Giữ, thêm affordance cuộn + rút gọn nhãn | Gom 9 → 6 tab nhóm | **A** |
+
+**Không cần hỏi:** màu tăng/giảm giữ chuẩn Bloomberg (xanh = tăng) — không đụng vùng này (L-F08).
+
 
 ---
 
@@ -351,9 +355,87 @@ https://docker.edusuccess.vn/assets/soc-Ql-MEZQk.css   76569 byte
 
 ---
 
+## I. KẾT QUẢ TRIỂN KHAI (Slice 2 FE + Slice 3 BE)
+
+> Owner chốt 2026-10-19: **Q1=B · Q2=B · Q3=C · Q4=A**. Branch `feat/vnbroker-console` → `dev`.
+> Commit: `037e81ca7` (Slice 2 FE) · `911ea4582` (Slice 3 BE).
+
+### I1. Slice 2 — FE (`037e81ca7`)
+
+| Hạng mục | Trước | Sau |
+|---|---|---|
+| `getSocVnbrokerConfig` | trả nguyên envelope | trả `config` = **config payload thật** + `providers_catalog` + provenance |
+| `applySocVnbrokerConfig` | `{config_payload: envelope}` | `{config_payload: payload, change_reason, expected_updated_at}` |
+| `previewSocVnbrokerConfig` | trả thô | `validationErrors` + `impactWarnings` (mã) + `configPayload` |
+| `getSocVnbrokerBenchmarkLatest` / `runSocVnbrokerBenchmark` | đọc `.results` (không tồn tại) | đọc `report.results` + đổi tên 4 field theo BE (`p50_latency_seconds`→`latency_ms`, `requests_per_minute`→`rpm`, `success_pct`→`success_rate`, `rate_limited_pct`→`rate_limit_pct`) |
+| `getSocVnbrokerCircuitBreaker` | đọc `.tripped` (không tồn tại) | đọc `circuit_breaker.status` + `per_provider` + `source` |
+| `getSocVnbrokerHealth` | tự chế `provider_health` | bỏ hẳn `provider_health` |
+| `getSocVnbrokerMetrics` | `1000/avg_response_ms` + map status→% | **XOÁ** (số bịa) |
+| `getSocVnbrokerProviders` | bỏ `primary`/`fallback` | expose đủ `primary` / `fallback` / `enabled` / `providers` |
+| `getSocVnbrokerProviderHealth` | — | **MỚI** (per-provider) |
+| `getSocVnbrokerOwnership` | — | **MỚI** |
+
+**Panel** `SocVnbrokerPanel.tsx` 463 → 1089 dòng (JSX), 6 vùng: KPI strip · provider tile grid · form cấu hình (thay JSON editor) · quan sát · benchmark · quyền & nhật ký. `change_reason` bắt buộc; preview có lỗi thì hiện inline, không mở modal. `SocOwnershipBadge` + `SocWriteGuardBanner` (2 component có sẵn, trước đây không dùng) nay đã dùng.
+
+**i18n**: dùng lại 13 key `soc.vnbroker.*` đang chết + thêm 36 key mới (2 locale); **gộp 2 key trùng** (`reset_confirm`, `benchmark_title`) — giữ nguyên giá trị hiển thị hiện tại.
+**CSS/token (Q3=C)**: 5 class mới (`vnbTile`, `vnbTileHead`, `vnbStatRow`, `vnbStatLabel`, `vnbStatValue`) + 2 token (`--vnb-tile-min`, `--vnb-kpi-min`). Không sửa rule cũ.
+**Q4=A**: rút gọn nhãn 9 tab (`Screener` / `DataOps` / `Prefetch` / `Hiệu năng` / `Backfill DNSE`) + tab bar `scroll-snap` + tab đang chọn tự `scrollIntoView`.
+
+### I2. Slice 3 — BE (`911ea4582`)
+
+| Hạng mục | Trước | Sau |
+|---|---|---|
+| Tầng đo runtime | **không tồn tại** | `market_data/vnbroker_provider_health.py` (mới): `record_provider_success/failure`, `is_circuit_open`, `get_circuit_snapshot`, `build_provider_health_payload`, `probe_provider`, `get_soc_vnbroker_config` |
+| Bảng số đo per-provider | **không tồn tại** | `market_data.VnbrokerProviderHealth` + migration `0007_vnbrokerproviderhealth` (số do `makemigrations` sinh) |
+| `GET /api/soc/vnbroker/circuit-breaker-status/` | `closed` / `failures: 0` **cứng** | state thật + `source: runtime` |
+| `POST /api/soc/vnbroker/test-connection/` | `latency_ms: 45` **cứng** | gọi provider thật qua `probe_provider`; provider chết ⇒ **502** `VNBROKER_PROVIDER_UNREACHABLE` |
+| `GET /api/soc/vnbroker/provider-health/` | — | **MỚI**: độ trễ / tỉ lệ thành công / lỗi liên tiếp / circuit state **thật** |
+| Adapter | không đo latency, không có breaker | đo latency thật, ghi health row, **bỏ qua provider khi mạch mở** |
+| Config SOC → runtime | **F-26: không có consumer nào** | `preferred_provider` + `fallback_providers` + `circuit_breaker_*` **có hiệu lực thật** |
+
+### I3. Test (fail-before đã chạy thật)
+
+| Tệp | Trước | Sau |
+|---|---|---|
+| `packages/web/src/components/__tests__/soc-vnbroker-console.component.test.tsx` | — | **8/8 FAIL** trên panel cũ → **8/8 PASS** trên panel mới (T1–T8) |
+| `packages/web/src/adapters/core/__tests__/soc.test.js` | 13 test chỉ assert URL | 13 test **assert shape + giá trị thật** + 1 test chặn `getSocVnbrokerMetrics` quay lại → **98/98** |
+| `packages/core/backend/src/service_ops/tests/test_vnbroker_console.py` | — | **14 test** (circuit breaker mở/đóng/half-open, health per-provider, probe thật, config bridge) |
+| `packages/core/backend/src/market_data/tests/test_vnbroker_daily_history_guard.py` | giữ nguyên ý nghĩa | cập nhật để kích hoạt kịch bản DNSE qua **nguồn quyết định mới** (config SOC) — vẫn bảo đảm DNSE không bao giờ dùng cho daily OHLCV |
+
+### I4. Bằng chứng "số liệu thật, không phải số bịa"
+
+Các con số trong ảnh chụp ban đầu (`HOẠT ĐỘNG TỐT 1`, `934.6/s`, `0%`, `1ms`, `ĐANG KẾT NỐI (CLOSED)`) **không còn tồn tại trong code**:
+`normalizeVnbrokerHealth` không còn chế `provider_health`; `getSocVnbrokerMetrics` đã bị xoá; `avg_response_ms` cấp service được ghi rõ là "độ trễ cấp dịch vụ" và **không** được gán cho từng provider; badge circuit breaker đọc state thật.
+
+### I5. Trạng thái gate sau 2 slice
+
+| Gate | Kết quả |
+|---|---|
+| `npx tsc --noEmit` | **PASS** |
+| `npx eslint` (file đã sửa) | **0 error** (111 warning `react/jsx-no-literals` — cùng loại với các file JSX sẵn có trong repo) |
+| `npm run build` | **PASS** |
+| `npx vitest run` (panel mới) | **8/8 PASS** |
+| `jest soc.test.js` | **98/98 PASS** |
+| `npm run i18n:scan:strict` | **PASS** |
+| `npm run check:contrast` | **PASS** |
+| `npm run check:tokens` | **exit 1** — lỗi **nền có sẵn** `brokerData.css #c4b5fd`, ngoài scope |
+| BE `manage.py check` / `migrate` | **PASS** (Postgres riêng `vnbroker_console`) |
+| BE `test market_data + test_soc_tasks + test_vnbroker_console` | **219/219 PASS** |
+| BE `test market_data + service_ops` (toàn suite) | 675 test · **failures=3, errors=5** — 6 lỗi trong domain broker DNSE/SSI/TCBS **đã chứng minh là lỗi nền** (stash phần BE của tôi rồi chạy lại trên base `e7b008f25` → FAIL y hệt) |
+| `npm run test` (jest toàn bộ) | 3 suite FAIL (`route-contract`, `field-contract`, `WorkstationLayout`) — **đã chứng minh là lỗi nền** (stash 9 file của tôi rồi chạy lại → FAIL y hệt 3 suite / 9 test) |
+| E2E Playwright / ảnh chụp thật sau khi sửa | **CHƯA CHẠY** |
+
+### I6. Bug của chính tôi trong phiên này (đã sửa, đã ghi lesson)
+
+1. **`Edit` tool khớp MỜ** → tôi sửa nhầm `normalized_start_date` → `start_date` trong `fetch_daily_history` ⇒ `None.isoformat()` ⇒ 2 test BE đỏ. Đã khôi phục. → lesson **L-T03** (`docs/LESSONS/tooling-traps-2.md`).
+2. **`git stash push/pop` đổi LF→CRLF** ⇒ `git diff --numstat` phình 3–5 lần (2 lần trong phiên). Đã `normalize-eol --fix` + kiểm lại numstat. → lesson **L-T04**.
+3. **Probe đếm đôi** (`total_requests = 2` thay vì 1) — bắt được ngay bởi test fail-before ⇒ đã sửa bằng tham số `record_outcome=False`.
+
+---
+
 ## Liên kết
 
-- Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` **Entry 384**
+- Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` **Entry 384** (audit) + **Entry 385** (triển khai Slice 2 + Slice 3)
 - Claim: `docs/CLAIMS.md` (agent `vnbroker-console`)
 - Audit liên quan: `docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md` (mục D10 — thiếu sót, xem §C)
 - Audit UI/UX liên quan: `docs/AUDIT_OPERATIONS_CENTER_UI_UX_AND_TECHNICAL_GAPS_20260701.md:20,61`
