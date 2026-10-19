@@ -96,6 +96,69 @@ const CHECKS = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// S4 AC5.1/AC5.2 — rule CAU TRUC, khong phai rule khop chuoi.
+// ---------------------------------------------------------------------------
+// Vì sao rule riêng: framework `CHECKS` kiem tra "co pattern nay khong". Lỗi S1
+// là **so LUONG** (hai `<nav>` cung mang mot `aria-label`), khong phai "thieu pattern".
+//
+// Vì sao khoá trên `aria-label` chứ không khoá trên ten class (hazard 12):
+// rule viết theo chuoi `"hubNav"` se bi bo qua ngay khi tác giả đặt tên class khác.
+// Rule này kiểm **hậu quả** — một mốc điều hướng không được gán nhãn trùng lặp —
+// nên đổi tên class hay đổi khoá i18n đều không thoát.
+const AI_HUB_FILES = [
+  "packages/web/src/pages/AICommandCenterPage.tsx",
+  "packages/web/src/components/AiHubNav.tsx",
+];
+
+/**
+ * Trả về mọi cặp `<nav ...>` kèm `aria-label: t("KEY")` trong các file đã cho.
+ *
+ * Repo dùng lẫn lộn `e("nav", {...})` (createElement) và `<nav>` (JSX), và
+ * `e(` có thể xuống dòng trước `"nav"` — regex `e\("nav"` **không** khớp dạng đó
+ * (đã đo: gate báo "không tìm thấy <nav> nào" trên chính `AiHubNav.tsx` vốn CÓ nav).
+ *
+ * Cách đúng: chia file theo các điểm MỞ nav, rồi trong mỗi đoạn tới điểm mở kế
+ * tiếp, tìm `aria-label`. Không cần cân bằng ngoặc.
+ */
+function navAriaLabels(texts) {
+  const out = [];
+  const OPENER = /(?:<nav\b|e\(\s*"nav")/g;
+  for (const text of texts) {
+    const starts = [];
+    for (const m of text.matchAll(OPENER)) starts.push(m.index);
+    starts.push(text.length);
+    for (let i = 0; i < starts.length - 1; i++) {
+      const segment = text.slice(starts[i], starts[i + 1]);
+      const label = /aria-label["']?\s*:\s*t\(\s*["']([^"']+)["']/g;
+      for (const l of segment.matchAll(label)) out.push({ key: l[1] });
+    }
+  }
+  return out;
+}
+
+const CUSTOM_CHECKS = [
+  {
+    id: "AC10-single-navigation-system",
+    files: AI_HUB_FILES,
+    run(texts) {
+      const labels = navAriaLabels(texts);
+      if (labels.length === 0) return "khong tim thay <nav> nao co aria-label de kiem";
+      const byKey = new Map();
+      for (const l of labels) byKey.set(l.key, (byKey.get(l.key) || 0) + 1);
+      const dup = [...byKey.entries()].filter(([, n]) => n > 1);
+      if (dup.length > 0) {
+        return (
+          "trang AI CC gan cung mot nhan cho >1 <nav>: " +
+          dup.map(([k, n]) => `"${k}" x${n}`).join(", ") +
+          " — hai thanh dieu huong se trong giong het nhau"
+        );
+      }
+      return null;
+    },
+  },
+];
+
 function checkOne(root, check) {
   const text = readFileSync(join(root, check.file), "utf8");
   for (const p of check.patterns || []) {
@@ -135,6 +198,17 @@ function runGate(root) {
     let err;
     try {
       err = checkOne(root, c);
+    } catch (e) {
+      err = `khong doc duoc file: ${e.message}`;
+    }
+    console.log(`  ${err ? "FAIL" : "PASS"}  ${c.id}`);
+    if (err) failures.push(`${c.id}: ${err}`);
+  }
+  for (const c of CUSTOM_CHECKS) {
+    let err;
+    try {
+      const texts = c.files.map((f) => readFileSync(join(root, f), "utf8"));
+      err = c.run(texts);
     } catch (e) {
       err = `khong doc duoc file: ${e.message}`;
     }
@@ -183,7 +257,66 @@ if (process.argv.includes("--self-test")) {
   } else {
     console.log("  FAIL  ghost-file im lang PASS");
   }
-  const total = CHECKS.length + 1;
+  // ------------------------------------------------------------------
+  // Self-test cho rule CAU TRUC. Bắt buộc co case **PARAPHRASE** — mot cau
+  // hinh ma tac gia KHONG viet khi dinh nghia rule. Neu thieu, rule chi bao ve
+  // hien tuong da bi, va lan sau tac gia viet lai theo cach khac se lot qua
+  // (hazard 12).
+  // ------------------------------------------------------------------
+  const pageText = readFileSync(join(REPO, AI_HUB_FILES[0]), "utf8");
+  const navText = readFileSync(join(REPO, AI_HUB_FILES[1]), "utf8");
+  const custom = CUSTOM_CHECKS[0];
+
+  // (1) Ban dich: chen them MOT <nav> trong page, giong het ban goc.
+  const dupNav = `e("nav", { key: "hub-nav-dup", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [\n    e(Link, { key: "x", to: "#runtime", className: styles.hubNavLink }, t("aiCommandCenter.tabRuntime")),\n  ]),\n`;
+  let err1 = null;
+  try {
+    err1 = custom.run([pageText.replace("      // Summary Cards", dupNav + "      // Summary Cards"), navText]);
+  } catch (e) {
+    err1 = "lo: " + e.message;
+  }
+  if (err1) {
+    caught += 1;
+    console.log(`  PASS  ${custom.id} bat duoc nav trung ban sao`);
+  } else {
+    console.log(`  FAIL  ${custom.id} KHONG bat duoc nav trung ban sao`);
+  }
+
+  // (2) PARAPHRASE — tac gia doi ten class va doi bieu thuc, van phai bi bat.
+  //     Day la case ma tac gia KHONG viet khi dinh nghia rule.
+  const paraphrased = dupNav
+    .replace("styles.hubNav", "styles.sectionNavBar")
+    .replace("styles.hubNavLink", "styles.sectionTab")
+    .replace("t(\"aiCommandCenter.title\")", "t(\"aiCommandCenter.title\") /* giu nguyen nhan */");
+  let err2 = null;
+  try {
+    err2 = custom.run([pageText.replace("      // Summary Cards", paraphrased + "      // Summary Cards"), navText]);
+  } catch (e) {
+    err2 = "lo: " + e.message;
+  }
+  if (err2) {
+    caught += 1;
+    console.log(`  PASS  ${custom.id} bat duoc PARAPHRASE (doi ten class, giu nguyen hien tuong)`);
+  } else {
+    console.log(`  FAIL  ${custom.id} KHONG bat duoc PARAPHRASE`);
+  }
+
+  // (3) Case am: hai <nav> KHAC nhan deu hop le — gate phai im lang.
+  const twoDistinct = `e("nav", { key: "nav-b", "aria-label": t("aiCommandCenter.fallbackTitle") }, []),\n`;
+  let err3 = null;
+  try {
+    err3 = custom.run([pageText.replace("      // Summary Cards", twoDistinct + "      // Summary Cards"), navText]);
+  } catch (e) {
+    err3 = "lo: " + e.message;
+  }
+  if (err3 === null) {
+    caught += 1;
+    console.log(`  PASS  ${custom.id} im lang khi 2 nav KHAC nhan (khong bao loi gia)`);
+  } else {
+    console.log(`  FAIL  ${custom.id} bao loi gia: ${err3}`);
+  }
+
+  const total = CHECKS.length + 3 + 1;
   if (caught !== total) {
     console.error(`\ncheck-ai-cc SELF-TEST FAILED: ${caught}/${total}. Gate khong duoc tin.`);
     process.exit(1);
