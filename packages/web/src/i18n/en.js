@@ -5303,12 +5303,29 @@ aiUsageAnalytics: 'AI Usage',
     personalPrefs: 'Personal preferences',
     personalPrefsDesc: 'Settings for your own account only; they do not affect the shared system configuration.',
     readOnlyBadge: 'Read-only',
+    // S3 (2026-10-19): enum labels. MUST be nested objects — `getNestedValue`
+    // (i18n/index.js:12-16) splits the key on "." and walks one level at a time,
+    // so a flat "aiCommandCenter.provider.gemini" key would never resolve.
+    provider: {
+      openclaw: 'OpenClaw (system default)',
+      openai: 'OpenAI (ChatGPT)',
+      gemini: 'Google Gemini',
+      claude: 'Anthropic (Claude)',
+      local: 'Local model (Ollama/vLLM)',
+    },
+    source: {
+      commandCenter: 'AI command center config',
+      native: 'Native data config',
+      unknown: 'Unknown',
+    },
     effectiveProvider: 'Effective Provider',
     effectiveProviderDesc: 'Source read from AI Command Center.',
     effectiveModel: 'Effective Model',
     effectiveModelDesc: 'Model used for advisory runtime.',
     effectiveSource: 'Effective Source',
-    effectiveSourceDesc: 'command_center or system fallback.',
+    // S3 (2026-10-19): the old copy spelled the enum out; the value now has a
+    // translated label under `aiCommandCenter.source.*`. Describe the meaning instead.
+    effectiveSourceDesc: 'Where the active configuration is read from.',
     runtimeStatus: 'Runtime Status',
     ready: 'Ready',
     readyDesc: 'Runtime can generate advisory.',

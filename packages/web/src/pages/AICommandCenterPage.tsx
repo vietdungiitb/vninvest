@@ -5,6 +5,7 @@ import { usePortfolio } from "../context/PortfolioContext.js";
 import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
 import { ShellPanel } from "../components/ShellPageTemplate.js";
 import styles from "../components/aiSettings.module.css";
+import { providerLabelKey, aiSourceLabelKey } from "../shared/providerModels.js";
 import {
   AICommandCenterForm,
   AISettings,
@@ -229,12 +230,27 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       e(AiHubNav, { key: "hub-tabs" }),
 
       // Summary Cards
+      // S3 (2026-10-19): `effective_ai_provider` / `effective_ai_source` là **enum**, không
+      // phải nhãn. Trước S3 render thẳng chuỗi thô ⇒ người dùng thấy `gemini` và
+      // `command_center` (bằng chứng: ảnh chụp màn hình thật trên staging).
       e("div", { key: "overview-anchor", id: "overview" },
         e(ShellPanel, { title: t("aiCommandCenter.overview") },
           e("div", { className: styles.summaryGrid }, [
-            e(SummaryCard, { key: "card-provider", title: t("aiCommandCenter.effectiveProvider"), value: effectiveProvider || "—", subtitle: t("aiCommandCenter.effectiveProviderDesc") }),
+            e(SummaryCard, {
+              key: "card-provider",
+              title: t("aiCommandCenter.effectiveProvider"),
+              value: effectiveProvider
+                ? t(providerLabelKey(effectiveProvider) ?? effectiveProvider)
+                : "—",
+              subtitle: t("aiCommandCenter.effectiveProviderDesc"),
+            }),
             e(SummaryCard, { key: "card-model", title: t("aiCommandCenter.effectiveModel"), value: effectiveModel || t("aiCommandCenter.needsConfig"), subtitle: t("aiCommandCenter.effectiveModelDesc") }),
-            e(SummaryCard, { key: "card-source", title: t("aiCommandCenter.effectiveSource"), value: effectiveSource, subtitle: t("aiCommandCenter.effectiveSourceDesc") }),
+            e(SummaryCard, {
+              key: "card-source",
+              title: t("aiCommandCenter.effectiveSource"),
+              value: t(aiSourceLabelKey(effectiveSource)),
+              subtitle: t("aiCommandCenter.effectiveSourceDesc"),
+            }),
             e(SummaryCard, { key: "card-status", title: t("aiCommandCenter.runtimeStatus"), value: aiReady ? t("aiCommandCenter.ready") : t("aiCommandCenter.needsConfig"), subtitle: aiReady ? t("aiCommandCenter.readyDesc") : t("aiCommandCenter.needsConfigDesc") }),
           ])
         )
@@ -422,7 +438,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
                 }, [
                   e("span", { key: "meta" },
                     `${t("aiCommandCenter.promptHistoryVersion", { version: entry.version })}`
-                    + (entry.source ? ` · ${entry.source}` : "")
+                    + (entry.source ? ` · ${t(aiSourceLabelKey(entry.source))}` : "")
                     + (savedLabel ? ` · ${savedLabel}` : "")
                   ),
                   e("button", {

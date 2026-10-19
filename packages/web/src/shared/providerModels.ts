@@ -65,9 +65,42 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
 };
 
 export const PROVIDER_OPTIONS: ProviderModelOption[] = [
-  { key: "openclaw", label: "OpenClaw (System Default)" },
-  { key: "openai", label: "OpenAI (ChatGPT)" },
-  { key: "gemini", label: "Google Gemini" },
-  { key: "claude", label: "Anthropic (Claude)" },
-  { key: "local", label: "Local Model (Ollama/vLLM)" }
+  { key: "openclaw", label: "OpenClaw (System Default)", labelKey: "aiCommandCenter.provider.openclaw" },
+  { key: "openai", label: "OpenAI (ChatGPT)", labelKey: "aiCommandCenter.provider.openai" },
+  { key: "gemini", label: "Google Gemini", labelKey: "aiCommandCenter.provider.gemini" },
+  { key: "claude", label: "Anthropic (Claude)", labelKey: "aiCommandCenter.provider.claude" },
+  { key: "local", label: "Local Model (Ollama/vLLM)", labelKey: "aiCommandCenter.provider.local" }
 ];
+
+/**
+ * S3 (2026-10-19): tra nhãn ĐÃ DỊCH cho một provider từ key thô (`gemini` → "Google Gemini").
+ *
+ * Vì sao cần hàm này: `effective_ai_provider` là **enum**, không phải nhãn. Trước S3,
+ * ô "Nhà cung cấp hiệu lực" render thẳng `data.effective_ai_provider` nên người dùng
+ * thấy `gemini` (bằng chứng: ảnh chụp màn hình thật trên staging).
+ *
+ * `labelKey` là field **đã có sẵn** trong `ProviderModelOption` từ R1.3 — chỉ là chưa
+ * provider nào dùng tới. Không tạo primitive mới.
+ */
+export function providerLabelKey(providerKey: string): string | null {
+  const hit = PROVIDER_OPTIONS.find((p) => p.key === providerKey);
+  return hit?.labelKey ?? null;
+}
+
+/**
+ * S3: tra `i18n key` cho giá trị `effective_ai_source`.
+ *
+ * Giá trị thật đo được ở backend (`packages/core/backend/src`, 2026-10-19):
+ *   - `command_center` — mặc định của **cả 4** chỗ đọc trong
+ *     `user_workspace/portfolio_analytics_views.py` (`:1176,1301,1492,1580`).
+ *     Quét đệ quy 750 file `.py`: **không chỗ nào GHI** key này ⇒ hôm nay giá trị này
+ *     là hằng số, hiển thị như dữ liệu người dùng là sai.
+ *   - `native` — chỉ có ở endpoint khác (`market_data/stock_mgmt_native_views.py:2634`),
+ *     không phải trang này; vẫn cần khoá để không bao giờ in thô.
+ *   - giá trị lạ ⇒ `unknown` thay vì in thẳng chuỗi.
+ */
+export function aiSourceLabelKey(source: string | null | undefined): string {
+  if (source === "command_center") return "aiCommandCenter.source.commandCenter";
+  if (source === "native") return "aiCommandCenter.source.native";
+  return "aiCommandCenter.source.unknown";
+}
