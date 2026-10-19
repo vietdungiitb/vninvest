@@ -170,4 +170,77 @@ test.describe('/portfolios/manage — quản lý danh mục', () => {
     await expect(drawer).not.toContainText(/cash = tổng dòng tiền gom từ Transaction/);
     await drawer.getByRole('button', { name: 'Đóng' }).last().click();
   });
+
+  /**
+   * ④ Regression: panel drawer/modal phải **ĐỤC** ở dark mode.
+   *
+   * Fail-before (đo thật trên staging trước khi sửa):
+   *   `.pfm-drawer__panel` background = `rgba(8, 23, 52, 0.4)` ⇒ 40% trong suốt
+   *   ⇒ trang phía sau lọt qua, hai lớp chữ chồng lên nhau (ảnh Owner báo).
+   *   `.pfm-drawer` box = `(0,0,1280x720)` đúng viewport và `elementFromPoint`
+   *   ở top-left/mid-left/bottom-left đều trả `DIV.pfm-drawer` ⇒ **overlay KHÔNG
+   *   hỏng**; chỉ panel mỏng. Nên phải đo **panel**, không đo overlay.
+   *
+   * CONTROL cùng trang (L-V01): `.pfm-kpi__card` là thẻ kính **cố ý** 0.4.
+   * Nếu phép đo của ta trả alpha = 1 cho nó ⇒ bộ đo hỏng ⇒ mọi dòng cùng lô
+   * vô giá trị, phải dừng chứ không kết luận "đã hết lỗi".
+   */
+  test('④ panel drawer/modal ĐỤC ở dark mode — có control chứng minh phép đo chạy', async ({
+    page,
+  }) => {
+    const firstRow = page.locator('table tbody tr').first();
+    test.skip((await firstRow.count()) === 0, 'user chưa có danh mục nào');
+    await firstRow.getByRole('button', { name: 'Chi tiết' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 30_000 });
+
+    const measured = await page.evaluate(() => {
+      const alphaOf = (sel: string): number | null => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) return null;
+        const m = /rgba?\(([^)]*)\)/.exec(getComputedStyle(el).backgroundColor);
+        if (!m) return 1;
+        const parts = m[1].split(/[\s,/]+/).filter(Boolean);
+        if (parts.length < 4) return 1;
+        const a = Number(parts[3]);
+        return Number.isFinite(a) ? a : 1;
+      };
+      return {
+        theme: document.documentElement.getAttribute('data-theme'),
+        drawerPanel: alphaOf('.pfm-drawer__panel'),
+        kpiCard: alphaOf('.pfm-kpi__card'),
+      };
+    });
+
+    // CONTROL trước. Thẻ KPI là kính 0.4 — đo ra 1 nghĩa là phép đo hỏng.
+    expect(
+      measured.kpiCard,
+      `CONTROL hỏng: .pfm-kpi__card phải đo ra ~0.4, thấy ${measured.kpiCard} (theme=${measured.theme}) — phép đo không đáng tin, DỪNG.`,
+    ).toBeLessThan(0.9);
+
+    expect(
+      measured.drawerPanel,
+      `.pfm-drawer__panel phải ĐỤC (alpha=1), thấy ${measured.drawerPanel}`,
+    ).toBe(1);
+  });
+
+  /** ⑤ Tab "Theo dõi": giao của vị thế và danh sách theo dõi. */
+  test('⑤ drawer có tab "Theo dõi" và giải thích vì sao là giao hai tập', async ({ page }) => {
+    const firstRow = page.locator('table tbody tr').first();
+    test.skip((await firstRow.count()) === 0, 'user chưa có danh mục nào');
+    await firstRow.getByRole('button', { name: 'Chi tiết' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('tab', { name: /Vị thế đang giữ/ })).toBeVisible();
+    await expect(drawer.getByRole('tab', { name: /Theo dõi/ })).toBeVisible();
+
+    await drawer.getByRole('tab', { name: /Theo dõi/ }).click();
+    await expect(drawer.getByRole('tab', { name: /Theo dõi/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    // Bắt buộc nói rõ watchlist thuộc tài khoản chứ không thuộc danh mục —
+    // Watchlist không có FK tới Portfolio (user_workspace/models.py:209-253).
+    await expect(drawer.getByText(/dùng chung cho mọi danh mục/)).toBeVisible();
+  });
 });
