@@ -118,6 +118,12 @@
   /* W1-2: purple token (was hardcoded #a855f7 in tierIconMap) */
   --accent-purple: #a855f7;
   --accent-purple-rgb: 168 85 247;
+
+  /* ── VNBroker console (2026-10-19) ──────────────────────────────────
+   * Dung cho panel quan tri nha cung cap du lieu thi truong.
+   * Chi them token — khong doi gia tri token cu (L-F05). */
+  --vnb-tile-min: 260px;
+  --vnb-kpi-min: 150px;
 }
 
 /* W1-0/W1-1: light theme overrides (contrast verified, see docs/evidence/design-token/W1-0-palette.md) */

@@ -18,6 +18,10 @@
   position: relative;
   mask-image: linear-gradient(to right, black 90%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  /* 9 tab vuot viewport 1920px => tab bar cuon ngang. Affordance: snap theo tab
+   * va scroll-padding de tab cuoi khong bi flush vao vung fade. */
+  scroll-padding-inline: 0.5rem;
+  scroll-snap-type: x proximity;
 }
 
 .tabBar::-webkit-scrollbar {
@@ -49,6 +53,8 @@
   position: relative;
   white-space: nowrap;
   user-select: none;
+  scroll-snap-align: start;
+  scroll-margin-inline: 0.5rem;
 }
 
 .tabButton:hover {
@@ -4074,3 +4080,57 @@
   -webkit-box-shadow: 0 0 0 100px rgba(var(--soc-rgb-020b23) / 1) inset;
   transition: background-color 600000s, color 600000s;
 }
+
+/* ── VNBroker console (2026-10-19) ───────────────────────────────────────
+ * Chi them class — khong sua rule cu (L-F05: giu nguyen transition goc).
+ * Dung cho panel quan tri nha cung cap du lieu thi truong. */
+.vnbTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+  border-radius: var(--r-md, 8px);
+  background: var(--bg-panel-soft, rgba(var(--soc-rgb-0f172a) / 0.3));
+  text-align: left;
+  min-width: var(--vnb-tile-min, 260px);
+  transition: border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vnbTile:hover {
+  border-color: var(--border-strong, rgba(var(--soc-rgb-5078a8) / 0.28));
+}
+
+.vnbTileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+/* Hang nhan/gia tri: dung chung cho cac khoi so lieu trong console. */
+.vnbStatRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+}
+
+.vnbStatLabel {
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.vnbStatValue {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  word-break: break-word;
+}
+

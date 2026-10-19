@@ -10,6 +10,8 @@ interface SocConfigPreviewModalProps {
   impactWarnings?: string[];
   validationErrors?: string[];
   diff?: DiffRow[];
+  /** data-testid cho nút xác nhận — panel cha truyền id riêng để test bắt đúng chỗ. */
+  confirmTestId?: string;
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
@@ -44,7 +46,7 @@ function renderJson(
   );
 }
 
-export function SocConfigPreviewModal({ before, after, changeSummary, impactWarnings, validationErrors, diff, onConfirm, onCancel, loading }: SocConfigPreviewModalProps) {
+export function SocConfigPreviewModal({ before, after, changeSummary, impactWarnings, validationErrors, diff, confirmTestId, onConfirm, onCancel, loading }: SocConfigPreviewModalProps) {
   const { t } = useI18n();
   const changedLeaves = diff ? changedLeafKeys(diff) : new Set<string>();
 
@@ -188,6 +190,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
             onClick: onConfirm,
             disabled: loading,
             className: styles.actionBtn,
+            "data-testid": confirmTestId,
             style: {
               background: "rgba(22, 215, 160, 0.2)",
               color: "var(--accent-emerald)",
