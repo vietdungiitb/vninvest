@@ -581,7 +581,7 @@ export function SocVnbrokerPanel() {
                 </div>
 
                 <div
-                  className={styles.vnbStatRow}
+                  className={`${styles.vnbStatRow} ${styles.vnbReadiness}`}
                   data-testid={`vnb-provider-${entry.provider}-readiness`}
                 >
                   <span className={styles.vnbStatLabel}>{t("soc.vnbroker.readiness")}</span>
@@ -688,9 +688,7 @@ export function SocVnbrokerPanel() {
           </div>
 
           <div className={styles.fieldRow}>
-            <label className={styles.fieldLabel} htmlFor="vnb-enabled">
-              {t("soc.vnbroker.enabled")}
-            </label>
+            <span className={styles.fieldLabel}>{t("soc.vnbroker.state_section")}</span>
             <label className={styles.fieldLabel}>
               <input
                 id="vnb-enabled"
@@ -711,15 +709,17 @@ export function SocVnbrokerPanel() {
               <label className={styles.fieldLabel} htmlFor={`vnb-timeout-${key}`}>
                 {t(`soc.vnbroker.timeout_${key}`)}
               </label>
-              <input
-                id={`vnb-timeout-${key}`}
-                type="number"
-                data-testid={`vnb-field-timeout_${key}`}
-                className={styles.fieldInput}
-                value={toNumber(draftTimeout[key], 0)}
-                onChange={(e) => updateTimeout(key, toNumber(e.target.value, 0))}
-              />
-              <span className={styles.fieldUnit}>s</span>
+              <div className={styles.vnbFieldWithUnit}>
+                <input
+                  id={`vnb-timeout-${key}`}
+                  type="number"
+                  data-testid={`vnb-field-timeout_${key}`}
+                  className={styles.fieldInput}
+                  value={toNumber(draftTimeout[key], 0)}
+                  onChange={(e) => updateTimeout(key, toNumber(e.target.value, 0))}
+                />
+                <span className={styles.fieldUnit}>s</span>
+              </div>
             </div>
           ))}
         </div>
@@ -743,15 +743,17 @@ export function SocVnbrokerPanel() {
             <label className={styles.fieldLabel} htmlFor="vnb-retry-delay">
               {t("soc.vnbroker.retry_delay_seconds")}
             </label>
-            <input
-              id="vnb-retry-delay"
-              type="number"
-              data-testid="vnb-field-retry_delay_seconds"
-              className={styles.fieldInput}
-              value={toNumber(draft.retry_delay_seconds, 0)}
-              onChange={(e) => updateDraft({ retry_delay_seconds: toNumber(e.target.value, 0) })}
-            />
-            <span className={styles.fieldUnit}>s</span>
+            <div className={styles.vnbFieldWithUnit}>
+              <input
+                id="vnb-retry-delay"
+                type="number"
+                data-testid="vnb-field-retry_delay_seconds"
+                className={styles.fieldInput}
+                value={toNumber(draft.retry_delay_seconds, 0)}
+                onChange={(e) => updateDraft({ retry_delay_seconds: toNumber(e.target.value, 0) })}
+              />
+              <span className={styles.fieldUnit}>s</span>
+            </div>
           </div>
         </div>
 
@@ -806,33 +808,37 @@ export function SocVnbrokerPanel() {
             <label className={styles.fieldLabel} htmlFor="vnb-cb-window">
               {t("soc.vnbroker.circuit_breaker_window")}
             </label>
-            <input
-              id="vnb-cb-window"
-              type="number"
-              data-testid="vnb-field-circuit_breaker_window_seconds"
-              className={styles.fieldInput}
-              value={toNumber(draft.circuit_breaker_window_seconds, 0)}
-              onChange={(e) =>
-                updateDraft({ circuit_breaker_window_seconds: toNumber(e.target.value, 0) })
-              }
-            />
-            <span className={styles.fieldUnit}>s</span>
+            <div className={styles.vnbFieldWithUnit}>
+              <input
+                id="vnb-cb-window"
+                type="number"
+                data-testid="vnb-field-circuit_breaker_window_seconds"
+                className={styles.fieldInput}
+                value={toNumber(draft.circuit_breaker_window_seconds, 0)}
+                onChange={(e) =>
+                  updateDraft({ circuit_breaker_window_seconds: toNumber(e.target.value, 0) })
+                }
+              />
+              <span className={styles.fieldUnit}>s</span>
+            </div>
           </div>
           <div className={styles.fieldRow}>
             <label className={styles.fieldLabel} htmlFor="vnb-cb-cooldown">
               {t("soc.vnbroker.circuit_breaker_cooldown")}
             </label>
-            <input
-              id="vnb-cb-cooldown"
-              type="number"
-              data-testid="vnb-field-circuit_breaker_cooldown_seconds"
-              className={styles.fieldInput}
-              value={toNumber(draft.circuit_breaker_cooldown_seconds, 0)}
-              onChange={(e) =>
-                updateDraft({ circuit_breaker_cooldown_seconds: toNumber(e.target.value, 0) })
-              }
-            />
-            <span className={styles.fieldUnit}>s</span>
+            <div className={styles.vnbFieldWithUnit}>
+              <input
+                id="vnb-cb-cooldown"
+                type="number"
+                data-testid="vnb-field-circuit_breaker_cooldown_seconds"
+                className={styles.fieldInput}
+                value={toNumber(draft.circuit_breaker_cooldown_seconds, 0)}
+                onChange={(e) =>
+                  updateDraft({ circuit_breaker_cooldown_seconds: toNumber(e.target.value, 0) })
+                }
+              />
+              <span className={styles.fieldUnit}>s</span>
+            </div>
           </div>
         </div>
 

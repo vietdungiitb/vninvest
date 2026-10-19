@@ -4134,3 +4134,28 @@
   word-break: break-word;
 }
 
+/* Input + don vi dong hang (`.fieldUnit` la flex item trong `.fieldRow` dang
+ * column ⇒ bi keo giang full-width; boi wrap no vao hang co dinh). */
+.vnbFieldWithUnit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.vnbFieldWithUnit .fieldInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vnbFieldWithUnit .fieldUnit {
+  flex: 0 0 auto;
+}
+
+/* Readiness: ly do dai hay xuong dong rieng thay vi chen vao cot value. */
+.vnbReadiness {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+}
+
