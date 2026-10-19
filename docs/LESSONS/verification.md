@@ -103,3 +103,19 @@ mới phát hiện được.
   - [ ] Ảnh chụp đúng **phiên bản đã deploy**, không phải bản cũ còn trên môi trường?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 372 §"AC3 tốn 3 lần chụp"; `docs/evidence/ai-r44/visual/`.
 
+## L-V06: Parser mau CSS tra `null` (= "duc") cho mau BAN TRONG SUOT
+
+- **Nguyen nhan:** `[^)]*` dung o dau tien cua `var(...)` nen doc sai gia tri;
+  tach `[\s,/]` roi doi 4 thanh phan nen bo qua cu phat CSS4 `/ alpha`.
+- **Hau qua that (PR #269, 2026-10-19):** gate chan hoi quy "nen modal phai DUC"
+  bao **XANH GIA** cho chinh token dang can bat loi — `--bg-panel: rgba(var(--soc-rgb-081734) / 0.4)`
+  doc ra `null` = "duc", dung thuoc tinh can dung. 3 vong sua truoc khi tim ra.
+- **QUY TAT:** khi parser mau tra `null`/`undefined` = "khong co gi", phai **hoi
+  xem co phai "khong khai alpha" hay "parse that bai"**. Dung mau co `var(...)` lam
+  **control** — mau phai ra alpha thuoc nghinh theo tai lieu.
+- **CHECKLIST:**
+  - [ ] Mau trong mau co `var(--x) / 0.4` (CSS4) hay `rgba(r,g,b,a)` (cu phap cu)?
+  - [ ] Regex co dung `[^)]*` hay `)` ben trong `var(...)`?
+  - [ ] `null` cua parser duoc gan nghia la "DUC" hay la "LOI"?
+  - [ ] Da chay **control** co dap an biet truoc chua (L-V01)?
+- **Proof:** `CODE_CHANGE_AUDIT_LEDGER.md` Entry 384; `packages/web/src/pages/portfolio/manage/__tests__/modal-surface-opaque.component.test.ts` (control `.pfm-kpi__card` phai do ra ~0.4).
