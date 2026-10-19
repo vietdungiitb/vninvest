@@ -10,6 +10,12 @@
   --border-default: rgba(var(--soc-rgb-5078a8) / 0.15);
   --border-strong: rgba(var(--soc-rgb-5078a8) / 0.25);
   --bg-panel: rgba(var(--soc-rgb-081734) / 0.4);
+  /* Mặt phẳng MODAL/DRAWER phải ĐỤC. `--bg-panel` là kính 40% để làm nền thẻ
+     trên nền trang — dùng nó cho panel nổi lên trên nội dung khác sẽ để lộ
+     trang phía sau, hai lớp chữ chồng lên nhau (đo thật trên staging:
+     `.pfm-drawer__panel` = `rgba(8, 23, 52, 0.4)`, `backdropFilter: none`).
+     Mẫu tham chiếu đúng: `WatchlistPage.css:66` — 0.95 + blur. */
+  --bg-panel-solid: rgb(var(--soc-rgb-081734));
   --bg-panel-soft: rgba(var(--soc-rgb-0f172a) / 0.3);
   --bg-input: rgba(var(--soc-rgb-020b23) / 0.6);
   --accent-cyan: var(--soc-c-22d3ee);
@@ -122,6 +128,7 @@
   --border-default: rgba(15, 23, 42, 0.12);
   --border-strong: rgba(15, 23, 42, 0.2);
   --bg-panel: #ffffff;
+  --bg-panel-solid: #ffffff;
   --bg-panel-soft: #f8fafc;
   --bg-input: #f1f5f9;
   --accent-cyan: #0e7490;
