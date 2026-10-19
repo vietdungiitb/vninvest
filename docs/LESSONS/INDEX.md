@@ -16,7 +16,7 @@
 | `gate`, `gates`, `build-gate`, `build-gates`, `tsc`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY`, `exit`, `no-verify`, `billing`, `ci` | [`build-gates.md`](./build-gates.md) | Build/typecheck/lint/test gates, KHÔNG báo PASS cho thứ chưa chạy, gate trên máy agent, **gate đỏ ở worktree nhưng xanh ở main tree**, đếm route theo registry, số đếm được ≠ số lỗi. |
 | `db`, `database`, `postgres`, `backend`, `be-test`, `migrate`, `sqlite` | [`backend.md`](./backend.md) | Backend DB, môi trường test BE cần Postgres, migrate giữa chừng, encoding. |
 | `fe`, `frontend`, `bundle`, `vite`, `react`, `hook`, `memo`, `searchParams`, `router`, `page` | [`frontend.md`](./frontend.md) | Đo bundle bằng cạnh import tĩnh, Vite preload, **2 `setSearchParams` trong 1 tick không compose**, **object literal làm memo vô hiệu ⇒ treo render**. |
-| `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand` | [`css-soc.md`](./css-soc.md) | CSS/SOC tokens, `soc.module.css` chỉ là barrel, script ghi đè CSS shorthand làm mất duration, quét cửa sổ ±N dòng tạo false positive, màu tăng/giảm chuẩn Bloomberg. |
+| `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand` | [`css-soc.md`](./css-soc.md) | CSS/SOC tokens, `soc.module.css` chỉ là barrel, script ghi đè CSS shorthand làm mất duration, quét cửa sổ ±N dòng tạo false positive, màu tăng/giảm chuẩn Bloomberg, **đọc CSS đã build mới kết luận class có map** (L-F11). |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append` | [`tooling-traps.md`](./tooling-traps.md) | `Get-Content|Set-Content` gộp file, `$LASTEXITCODE` sau pipeline sai, **ghi file = đổi line-ending**, **citation đúng dòng nhưng sai file**. |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `fernet` | [`security.md`](./security.md) | Bảo mật, secret trong repo, ignore, quy trình revoke/rotate/purge history. |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate` | [`verification.md`](./verification.md) | **Sai lầm không báo lỗi**: script đo sai vẫn ra số hợp lý, kiểm tra tồn tại bằng stdout, verify nhầm artifact, gốc rễ kế thừa phải có phản chứng, chạy test làm bẩn working tree. |
@@ -123,7 +123,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 |---|---|---|
 | [multi-agent.md](./multi-agent.md) | 8 | `L-001`, `L-002`, `L-003`, `L-005`, `L-007`, `L-008`, `L-A01`, **`L-M02`** |
 | [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
-| [`css-soc.md`](./css-soc.md) | 4 | `L-F03`, `L-F05`, `L-F06`, `L-F08` |
+| [`css-soc.md`](./css-soc.md) | 5 | `L-F03`, `L-F05`, `L-F06`, `L-F08`, **`L-F11`** |
 | [`frontend.md`](./frontend.md) | 4 | `L-F01`, `L-F02`, `L-F09`, `L-F10` |
 | [`migrations.md`](./migrations.md) | 3 | `L-M01`, `L-M02`, `L-M04` |
 | [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
@@ -132,7 +132,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 | [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 45 lesson / 10 file**
+**Tổng: 46 lesson / 10 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)
