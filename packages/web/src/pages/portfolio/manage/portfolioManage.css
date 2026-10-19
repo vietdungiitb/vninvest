@@ -402,7 +402,9 @@
   overflow-y: auto;
   padding: var(--sp-lg);
   color: var(--text-primary);
-  background: var(--bg-panel);
+  /* ĐỤC — xem `--bg-panel-solid` trong `soc.tokens.css`. Không dùng
+     `--bg-panel` (kính 40%): lộ trang phía sau, chữ chồng chữ ở dark mode. */
+  background: var(--bg-panel-solid);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md);
@@ -498,7 +500,8 @@
   overflow-y: auto;
   padding: var(--sp-lg);
   color: var(--text-primary);
-  background: var(--bg-panel);
+  /* ĐỤC — lý do giống `.pfm-modal__panel`. */
+  background: var(--bg-panel-solid);
   border-left: 1px solid var(--border-strong);
 }
 
@@ -566,6 +569,55 @@
 .pfm-drawer__empty {
   margin: 0;
   color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+/* ── Tabs trong drawer ─────────────────────────────────────────────────── */
+/* Khoá dữ liệu: `Vị thế đang giữ` / `Theo dõi`. Drawer là modal nên màu nền
+   tab lấy từ token panel ĐỤC, không dùng `--bg-panel` (kính 40%). */
+.pfm-drawer__tabs {
+  display: flex;
+  gap: var(--sp-xs);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.pfm-drawer__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-sm);
+  margin-bottom: -1px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  cursor: pointer;
+}
+
+.pfm-drawer__tab:hover {
+  color: var(--text-primary);
+}
+
+.pfm-drawer__tab.is-active {
+  color: var(--text-primary);
+  background: var(--bg-panel-soft);
+  border-bottom-color: var(--accent-cyan);
+}
+
+.pfm-drawer__tab-count {
+  padding: 0 var(--sp-xs);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--accent-cyan);
+  background: var(--bg-panel-soft);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+}
+
+.pfm-table--watched {
   font-size: var(--fs-sm);
 }
 

@@ -42,7 +42,45 @@ import "./portfolioManage.css";
 
 const adapter = coreApiAdapter as unknown as {
   getPortfolioHoldings(id: string | number): Promise<unknown>;
+  getWatchlists(): Promise<unknown>;
 };
+
+/** 1 watchlist: `id`, `name`, `items[].symbol` (`serializers.py:17-30`). */
+interface WatchlistRow {
+  id?: number | string;
+  name?: string;
+  items?: { symbol?: string }[];
+}
+
+/**
+ * Danh sách mã đang nằm trong BẤT KỲ watchlist nào của user.
+ *
+ * Vì sao giao thay vì liệt kê watchlist: `Watchlist` **không có FK tới
+ * `Portfolio`** (`user_workspace/models.py:209-253` chỉ có `user`, `tenant`,
+ * `provider`, `broker_account`). Nên "watchlist của danh mục này" không tồn tại —
+ * hiện cả danh sách chung trong mọi drawer sẽ khiến user tưởng nó thuộc danh
+ * mục. Ta chỉ trả lời được câu hỏi có nghĩa: **mã nào đang giữ trong danh mục
+ * này mà bạn cũng đang theo dõi**.
+ */
+function collectWatchedSymbols(raw: unknown): Map<string, string[]> {
+  const data = (raw as { data?: unknown })?.data ?? raw;
+  const map = new Map<string, string[]>();
+  if (!Array.isArray(data)) return map;
+  for (const wl of data as WatchlistRow[]) {
+    const name = typeof wl?.name === "string" && wl.name ? wl.name : "—";
+    for (const item of wl?.items ?? []) {
+      const symbol = typeof item?.symbol === "string" ? item.symbol.trim() : "";
+      if (!symbol) continue;
+      const hit = map.get(symbol);
+      if (hit) {
+        if (!hit.includes(name)) hit.push(name);
+      } else {
+        map.set(symbol, [name]);
+      }
+    }
+  }
+  return map;
+}
 
 /**
  * `nav_reason` là MÃ MÁY (`no_opening_balance` / `no_positions` —
@@ -60,6 +98,8 @@ export interface PortfolioManageDrawerProps {
   summary?: PortfolioSummary;
   /** Tiêm bản giả trong test; mặc định là adapter thật. */
   getHoldings?: PortfolioManageAdapter["getPortfolioHoldings"];
+  /** Tiêm bản giả trong test; mặc định là adapter thật. */
+  getWatchlists?: () => Promise<unknown>;
   onClose(): void;
 }
 
@@ -75,7 +115,8 @@ function readMeta(raw: unknown): HoldingsMeta {
 }
 
 export function PortfolioManageDrawer({
-  portfolio, summary, getHoldings = adapter.getPortfolioHoldings, onClose,
+  portfolio, summary, getHoldings = adapter.getPortfolioHoldings,
+  getWatchlists = adapter.getWatchlists, onClose,
 }: PortfolioManageDrawerProps) {
   const { t, localeTag } = useI18n();
   const titleId = useId();
@@ -85,6 +126,13 @@ export function PortfolioManageDrawer({
   const [meta, setMeta] = useState<HoldingsMeta>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ManagedError | null>(null);
+  const [tab, setTab] = useState<"holdings" | "watched">("holdings");
+  const [watched, setWatched] = useState<Map<string, string[]>>(
+    () => new Map(),
+  );
+  const [watchLoading, setWatchLoading] = useState(false);
+  /** Drawer là modal ⇒ focus trap sẽ hút focus về panel khi đóng tab. */
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const open = Boolean(portfolio);
   const portfolioId = portfolio?.id ?? null;
@@ -118,6 +166,31 @@ export function PortfolioManageDrawer({
       alive = false;
     };
   }, [portfolioId, getHoldings]);
+
+  // Watchlist nạp **song song** với holdings, không chặn tab hiện tại: lỗi
+  // watchlist KHÔNG được làm hỏng tab "Vị thế đang giữ" (đã có dữ liệu).
+  useEffect(() => {
+    if (portfolioId === null) {
+      setWatched(new Map());
+      return;
+    }
+    let alive = true;
+    setWatchLoading(true);
+    getWatchlists()
+      .then((raw: unknown) => {
+        if (alive) setWatched(collectWatchedSymbols(raw));
+      })
+      .catch(() => {
+        // Im lặng có chủ đích: tab Theo dõi tự hiện thông báo lỗi riêng.
+        if (alive) setWatched(new Map());
+      })
+      .finally(() => {
+        if (alive) setWatchLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [portfolioId, getWatchlists]);
 
   // Focus trap + phục hồi focus: bắt buộc cho modal theo WCAG 2.2.
   const onKeyDown = useCallback(
@@ -156,6 +229,8 @@ export function PortfolioManageDrawer({
   if (!open || !portfolio) return null;
 
   const unpriced = meta.unpriced_symbols ?? summary?.unpriced_symbols ?? [];
+  /** Giao: mã đang giữ trong danh mục ∩ mã nằm trong watchlist của user. */
+  const watchedRows = holdings.filter((h) => watched.has(h.symbol));
   const navReasonKey = summary?.nav_reason ? NAV_REASON_KEYS[summary.nav_reason] : null;
   const navReasonText = navReasonKey
     ? t(navReasonKey, {
@@ -257,6 +332,44 @@ export function PortfolioManageDrawer({
           </p>
         )}
 
+        <div className="pfm-drawer__tabs" role="tablist" aria-label={t("portfoliosManage.drawer.tabsLabel", { defaultValue: "Khoá dữ liệu" })}>
+          <button
+            type="button"
+            role="tab"
+            id="pfm-tab-holdings"
+            aria-selected={tab === "holdings"}
+            aria-controls="pfm-panel-holdings"
+            tabIndex={tab === "holdings" ? 0 : -1}
+            className={tab === "holdings" ? "pfm-drawer__tab is-active" : "pfm-drawer__tab"}
+            onClick={() => setTab("holdings")}
+            ref={(el) => { tabRefs.current.holdings = el; }}
+          >
+            {t("portfoliosManage.drawer.tabHoldings", { defaultValue: "Vị thế đang giữ" })}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="pfm-tab-watched"
+            aria-selected={tab === "watched"}
+            aria-controls="pfm-panel-watched"
+            tabIndex={tab === "watched" ? 0 : -1}
+            className={tab === "watched" ? "pfm-drawer__tab is-active" : "pfm-drawer__tab"}
+            onClick={() => setTab("watched")}
+            ref={(el) => { tabRefs.current.watched = el; }}
+          >
+            {t("portfoliosManage.drawer.tabWatched", { defaultValue: "Theo dõi" })}
+            {watchedRows.length > 0 ? (
+              <span className="pfm-drawer__tab-count">{watchedRows.length}</span>
+            ) : null}
+          </button>
+        </div>
+
+        <div
+          id="pfm-panel-holdings"
+          role="tabpanel"
+          aria-labelledby="pfm-tab-holdings"
+          hidden={tab !== "holdings"}
+        >
         <h3 className="pfm-drawer__subtitle">
           {t("portfoliosManage.drawer.holdingsTitle", { defaultValue: "Vị thế đang giữ" })}
         </h3>
@@ -355,6 +468,67 @@ export function PortfolioManageDrawer({
             </table>
           </div>
         )}
+        </div>
+
+        <div
+          id="pfm-panel-watched"
+          role="tabpanel"
+          aria-labelledby="pfm-tab-watched"
+          hidden={tab !== "watched"}
+        >
+          <h3 className="pfm-drawer__subtitle">
+            {t("portfoliosManage.drawer.watchedTitle", { defaultValue: "Mã đang giữ và cũng đang theo dõi" })}
+          </h3>
+          <p className="pfm-drawer__empty">
+            {t("portfoliosManage.drawer.watchedHint", {
+              defaultValue:
+                "Danh sách theo dõi là của tài khoản bạn nên có thể dùng chung cho mọi danh mục. Bảng này chỉ liệt kê mã vừa nằm trong vị thế của danh mục vừa có trong danh sách theo dõi.",
+            })}
+          </p>
+
+          {watchLoading && (
+            <p role="status">{t("portfoliosManage.drawer.watchedLoading", { defaultValue: "Đang tải danh sách theo dõi..." })}</p>
+          )}
+
+          {!watchLoading && watchedRows.length === 0 && (
+            <p className="pfm-drawer__empty">
+              {holdings.length === 0
+                ? t("portfoliosManage.drawer.watchedNoHoldings", {
+                    defaultValue: "Danh mục chưa có vị thế nào để so sánh.",
+                  })
+                : t("portfoliosManage.drawer.watchedEmpty", {
+                    defaultValue: "Không mã nào đang giữ trong danh mục này có trong danh sách theo dõi của bạn.",
+                  })}
+            </p>
+          )}
+
+          {watchedRows.length > 0 && (
+            <div className="pfm-table-wrap">
+              <table className="pfm-table pfm-table--watched">
+                <thead>
+                  <tr>
+                    <th scope="col">{t("portfoliosManage.drawer.symbol", { defaultValue: "Mã" })}</th>
+                    <th scope="col">{t("portfoliosManage.drawer.company", { defaultValue: "Tên công ty" })}</th>
+                    <th scope="col">{t("portfoliosManage.drawer.watchedIn", { defaultValue: "Nằm trong danh sách" })}</th>
+                    <th scope="col" className="pfm-table__num">
+                      {t("portfoliosManage.drawer.weight", { defaultValue: "Tỷ trọng" })}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {watchedRows.map((h) => (
+                    <tr key={h.symbol}>
+                      <th scope="row">{h.symbol}</th>
+                      <td>{h.company_name || EM_DASH}</td>
+                      <td>{(watched.get(h.symbol) ?? []).join(", ")}</td>
+                      <td className="pfm-table__num">{formatPct(h.weight_pct, localeTag) ?? EM_DASH}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <footer className="pfm-drawer__footer">
           <Link to={`/portfolios/${portfolio.id}/overview`} className="pfm-btn-primary">

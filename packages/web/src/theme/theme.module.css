@@ -255,7 +255,9 @@
 }
 
 .modalContent {
-  background-color: var(--bg-panel);
+  /* ĐỤC — `--bg-panel` là kính 40%, lộ nội dung trang phía sau ở dark mode.
+     KHÔNG fallback về `--bg-panel`: fallback đó rơi đúng vào giá trị lỗi. */
+  background-color: var(--bg-panel-solid);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg, 0.5rem);
   box-shadow: var(--shadow-xl, 0 20px 25px rgb(0 0 0 / 0.1));
