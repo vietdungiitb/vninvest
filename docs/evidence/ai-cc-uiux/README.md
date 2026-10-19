@@ -11,6 +11,26 @@ Chụp: `PLAYWRIGHT_BASE_URL=https://docker.edusuccess.vn npx playwright test ai
 | `01-settings-ai-after.png` | Toàn trang `/settings/ai` |
 | `02-nav-va-tong-quan.png` | Cắt vùng đầu: breadcrumb + H1 + thanh tab + tổng quan |
 | `03-verified.png` | Toàn trang, chụp sau khi mọi assert đã xanh |
+| `04-co-cau-hinh-nhan-da-dich.png` | Toàn trang **khi đã có cấu hình AI thật** (`gemini`), modal preview đã đóng |
+| `05-tong-quan-co-du-lieu.png` | Cắt vùng form runtime khi có cấu hình thật |
+
+## Vòng 2 — chụp **có dữ liệu** (`ai-cc-config-screenshot.spec.ts`)
+
+Vòng 1 phát hiện `testuser` trên staging **đã có** cấu hình (`openai` / `gpt-4o-mini`) nhưng ô tổng quan vẫn trống — vì **thiếu API key** nên `ai_ready` false. Để chụp được nhãn provider **đã dịch**, spec tạm đổi sang `gemini` → lưu → chụp → **khôi phục về baseline cố định `openai/gpt-4o-mini`**.
+
+⚠ **Ghi dữ liệu lên môi trường thật** — Owner đã đồng ý. Khôi phục nằm trong `finally` và được **đọc lại từ server** (`goto` mới), không đọc `select` ngay sau khi mình tự đặt.
+
+> **Bài học tự thừa nhận:** bản teardown đầu tiên **đối chiếu `select` ngay sau khi tự đặt giá trị** ⇒ **xanh giả**, và vì một lần chạy hỏng giữa chừng mà staging bị để lại `gemini`. Chỉ phát hiện vì lần chạy sau in ra `CAU HINH LUC VAO = gemini` khác `BASELINE`. Đã sửa: mốc khôi phục là **hằng số** `BASELINE`, và xác minh bằng **tải lại trang** đọc từ server.
+
+## 2 PHÁT HIỆN MỚI — chỉ lộ ra khi có dữ liệu thật (CHƯA sửa)
+
+| # | Vấn đề | Bằng chứng | Mức |
+|---|---|---|---|
+| **N7** | **Modal "Xem lại thay đổi trước khi lưu" KHÔNG hiển thị diff của `ai_provider` / `ai_model`.** Người dùng đổi nhà cung cấp/mô hình rồi bấm "Lưu cấu hình" thì modal chỉ liệt kê **4 `*_agent_prompt`** với giá trị "—" — **không thấy** mình đang đổi provider/model. | Ảnh chụp lần đầu của `05-…` (bị overlay che) — đã **mở ra xem** thấy rõ 4 dòng `flow_agent_prompt` / `sentiment_agent_prompt` / `synthesis_agent_prompt` / `technical_agent_prompt` đều "—", không có dòng provider/model | **major** — đúng chức năng của modal là để người dùng *review* trước khi lưu |
+| **N8** | Modal dùng **tên field kỹ thuật thô** (`flow_agent_prompt`) thay vì nhãn tiếng Việt đã có sẵn (`aiCommandCenter.subAgent.fields.*` = "Chuyên gia dòng tiền"…). | Cùng ảnh; đối chiếu với nhãn đúng đã hiển thị ngay trong form | **minor** — cùng loại "lộ khoá/enum thô" mà S3 đã diệt ở chỗ khác |
+
+Hai mục này **không** thuộc phạm vi PR #267/#268 (nằm ở `AiConfigPreviewModal.tsx`) ⇒ **báo cáo, không tự mở rộng**.
+
 
 ## Những gì ảnh CHỨNG MINH (đối chiếu trực tiếp với ảnh Owner gửi lúc đầu)
 
