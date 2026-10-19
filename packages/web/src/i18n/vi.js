@@ -5366,6 +5366,12 @@ aiUsageAnalytics: 'Usage AI',
         synthesis_agent_prompt: 'Ví dụ: Bạn là Giám đốc Phân tích tổng hợp khuyến nghị cho mã {symbol}.',
       },
     },
+    // S2 (2026-10-19): tùy chọn CÁ NHÂN được tách khỏi panel "chính sách hệ thống".
+    // `eventGate` đọc/ghi qua `getUserConfig`/`updateUserConfig` — endpoint và kho lưu
+    // KHÁC HẲN AI CC config, nên không được nằm chung panel với giá trị cấp hệ thống.
+    personalPrefs: 'Tuỳ chọn cá nhân',
+    personalPrefsDesc: 'Thiết lập riêng cho tài khoản của bạn, không ảnh hưởng cấu hình chung của hệ thống.',
+    readOnlyBadge: 'Chỉ đọc',
     effectiveProvider: 'Nhà cung cấp hiệu lực',
     effectiveProviderDesc: 'Nguồn đọc từ AI Command Center.',
     effectiveModel: 'Mô hình hiệu lực',

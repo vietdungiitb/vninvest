@@ -216,8 +216,14 @@ describe("AICommandCenterPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
+    // S2 (2026-10-19): trước đây test neo vào ô "Khoảng làm mới" của panel chính sách
+    // ("{n} giờ/lần"). S2 đã **xoá** ô đó vì nó trùng với ô sửa được trong form, nên test
+    // chuyển neo sang `advisory_max_auto_refreshes_per_day` — ô **vẫn còn** trong panel và
+    // đi qua **cùng đường** `updateConfig -> onSettingsChange -> applySettingsToOverview`.
+    // Mục tiêu test (R1.4: tổng quan cập nhật sau khi lưu, KHÔNG remount) không đổi.
+    const autoRefreshValue = () => screen.getByTestId("auto-refresh-value").textContent;
     await waitFor(() => {
-      expect(screen.getByText(/giờ\/ lần|giờ\/lần/)).toBeTruthy();
+      expect(autoRefreshValue()).toBe("24"); // baseSettings không có field -> fallback 24
     });
 
     const nextData = {
@@ -246,7 +252,7 @@ describe("AICommandCenterPage", () => {
       expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(screen.getByText("12 giờ/lần")).toBeTruthy();
+      expect(autoRefreshValue()).toBe("8");
     });
   });
 

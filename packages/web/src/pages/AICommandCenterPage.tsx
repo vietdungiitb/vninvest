@@ -61,9 +61,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const isStaffViewer = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   // R1.4 AC1: null = chưa có data (không hiện số giả 24/24/5000); có data mới hiện.
   const [overviewLoaded, setOverviewLoaded] = useState(false);
-  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState<number | null>(null);
   const [maxAutoRefreshes, setMaxAutoRefreshes] = useState<number | null>(null);
-  const [maxTokensDisplay, setMaxTokensDisplay] = useState<number | null>(null);
   const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
   const [eventGateSaving, setEventGateSaving] = useState(false);
 
@@ -107,9 +105,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
     setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
     setAiReady((data as any).ai_ready ?? false);
-    setRefreshIntervalDisplay(Number((data as any).advisory_refresh_interval_hours) || 24);
     setMaxAutoRefreshes(Number((data as any).advisory_max_auto_refreshes_per_day) || 24);
-    setMaxTokensDisplay(Number((data as any).advisory_max_tokens_per_day) || 5000);
     const history = (data as any).ai_prompt_config_history;
     setPromptHistory(Array.isArray(history) ? history : []);
   }, []);
@@ -245,34 +241,59 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       ),
 
       // Policy Section
+      //
+      // S2 (2026-10-19): panel này CHỈ còn giá trị cấp HỆ THỐNG.
+      //  - Đã bỏ `advisory_refresh_interval_hours` + `advisory_max_tokens_per_day`: chúng
+      //    hiện chỉ đọc ở đây nhưng sửa được trong form ngay dưới, với tên khác nhau
+      //    ("Khoảng làm mới" vs "Khoảng làm mới tự động (giờ)"). Số trùng ở 2 nơi làm
+      //    người dùng không biết sửa ở đâu.
+      //  - `advisory_max_auto_refreshes_per_day` được giữ lại vì **không có `<input>` nào**
+      //    trên toàn FE (đo đệ quy 581 file: 10 hit, 0 file tạo input) ⇒ gắn nhãn
+      //    "Chỉ đọc" để không ai tưởng là sửa được.
+      //  - `eventGate` đã chuyển sang panel "Tuỳ chọn cá nhân" phía dưới.
       e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") },
         e("div", { className: styles.metricGrid, "aria-busy": !overviewLoaded }, [
-          e("div", { key: "pol-gate", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.eventGate")),
-            e("label", { key: "v", className: styles.toggleRow },
+          e("div", { key: "pol-auto", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
+            e("p", { key: "v", className: styles.metricValue, "data-testid": "auto-refresh-value" },
+              maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
+            e("p", { key: "badge", className: styles.metricLabel, "data-testid": "auto-refresh-readonly" },
+              t("aiCommandCenter.readOnlyBadge")),
+          ]),
+        ]),
+      ),
+
+      // S2: tùy chọn CÁ NHÂN — endpoint/kho lưu riêng (`updateUserConfig`), không phải
+      // cấu hình trung tâm AI. Tách riêng để hết hiện tượng "lẫn lộn cài đặt tài khoản
+      // với cấu hình trung tâm AI".
+      e(ShellPanel, {
+        key: "personal",
+        title: t("aiCommandCenter.personalPrefs"),
+        subtitle: t("aiCommandCenter.personalPrefsDesc"),
+      },
+        e("div", { className: styles.metricGrid }, [
+          e("div", { key: "personal-gate", className: styles.metricCard }, [
+            // `<label>` bao CẢ nhãn lẫn control: trước đây nhãn nằm ở `<p>` anh em,
+            // nên checkbox chỉ có accessible name là trạng thái ("Bật"/"Tắt") — mọi
+            // toggle trên trang đều đọc giống nhau với trình đọc màn hình.
+            e("label", { key: "v", className: styles.toggleRow, htmlFor: "ai-personal-event-gate" }, [
               e("input", {
+                id: "ai-personal-event-gate",
                 type: "checkbox",
                 className: styles.checkbox,
                 checked: eventGateEnabled === true,
                 disabled: eventGateEnabled === null || eventGateSaving,
                 onChange: handleEventGateToggle,
+                "data-testid": "personal-event-gate",
               }),
-              e("span", null,
-                eventGateEnabled === null ? t("aiCommandCenter.gateUnknown") : eventGateEnabled ? t("aiCommandCenter.gateEnabled") : t("aiCommandCenter.gateDisabled")
-              )
-            ),
-          ]),
-          e("div", { key: "pol-refresh", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval")),
-            e("p", { key: "v", className: styles.metricValue }, refreshIntervalDisplay == null ? "—" : t("aiCommandCenter.refreshIntervalValue", { hours: refreshIntervalDisplay })),
-          ]),
-          e("div", { key: "pol-auto", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
-          ]),
-          e("div", { key: "pol-tokens", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.tokensPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, maxTokensDisplay == null ? "—" : `${maxTokensDisplay}`),
+              e("span", { key: "name" }, t("aiCommandCenter.eventGate")),
+              e("span", { key: "state", className: styles.metricLabel },
+                eventGateEnabled === null
+                  ? t("aiCommandCenter.gateUnknown")
+                  : eventGateEnabled
+                    ? t("aiCommandCenter.gateEnabled")
+                    : t("aiCommandCenter.gateDisabled")),
+            ]),
           ]),
         ]),
       ),
