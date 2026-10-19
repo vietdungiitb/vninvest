@@ -77,17 +77,27 @@ describe("R1.3: i18n sạch AI CC", () => {
     expect(en.has("aiCommandCenter.loadError")).toBe(true);
   });
 
-  it("AC1b: refreshIntervalValue/customModel có ở vi + en", () => {
+  it("AC1b: customModel có ở vi + en", () => {
     // R5.1b: nhánh `aiAgentFederation` (typeAdvisory/…/typeCustom) đã bị gỡ cùng
     // trang Agents. Giữ lại sẽ là test đỏ vì key không còn tồn tại — đã xoá, không
     // phải "cho qua" (xem ai-dead-keys-r51b.component.test.ts khoá trạng thái mới).
-    const want = ["aiCommandCenter.refreshIntervalValue", "aiCommandCenter.customModel"];
+    //
+    // 2026-10-19 (S6): `aiCommandCenter.refreshIntervalValue` cũng bị gỡ khỏi danh
+    // sách ở đây — S2 đã bỏ ô "Khoảng làm mới" khỏi panel chính sách vì nó trùng với
+    // ô sửa được trong form, nên `{hours} giờ/lần` không còn chỗ hiển thị.
+    // ⚠ KHÔNG đụng `refreshInterval` / `refreshIntervalLabel`: chúng **còn sống** ở
+    // `AICommandCenterForm.tsx:774`. Xoá theo tên ngắn sẽ làm hỏng form — đó là bẫy
+    // đã xảy ra 1 lần trong phiên này (xoá nhầm `brokerSystem.eyebrow`).
+    const want = ["aiCommandCenter.customModel", "aiCommandCenter.refreshIntervalLabel"];
     const vi = nsKeys(viDict, "aiCommandCenter");
     const en = nsKeys(enDict, "aiCommandCenter");
     for (const k of want) {
       expect(vi.has(k), `vi thiếu ${k}`).toBe(true);
       expect(en.has(k), `en thiếu ${k}`).toBe(true);
     }
+    // Khoá đã gỡ phải **không quay lại** — chốt trạng thái, không chỉ "cho qua".
+    expect(vi.has("aiCommandCenter.refreshIntervalValue")).toBe(false);
+    expect(en.has("aiCommandCenter.refreshIntervalValue")).toBe(false);
   });
 
   it("AC2: key chết không còn trong vi/en", () => {

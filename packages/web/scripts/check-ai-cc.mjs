@@ -225,6 +225,78 @@ const CUSTOM_CHECKS = [
       return problems.length ? problems.join(" | ") : null;
     },
   },
+  {
+    // AC11 — khai bao `staffOnly` trong routeCatalog phai KHOP voi guard that trong
+    // main.tsx, va chi xet nhom route `/settings/ai*`.
+    //
+    // Vì sao can (giai quyet nghiep vu cua Owner 2026-10-19): `/settings/ai` va
+    // `/settings/ai/audit` deu khai `requiredCapabilities: ["system.ai_command_center.manage"]`
+    // — **GIONG NHAU** — nhung chi route sau co guard staff. Nguoi doc catalog
+    // khong phan biet duoc; da co nham sai va xoa nhieu gan nham roi.
+    // `staffOnly` dua su that cua guard vao catalog, va rule nay bat lech.
+    //
+    // KHONG sua `main.tsx`: bọc `StaffRoute` cho hub se KHOA user thuong ra khoi
+    // noi dat API key rieng (BYOK) — do la hoi quy, khong phai sua loi.
+    id: "AC11-staff-only-declared",
+    files: ["packages/web/src/app/routeCatalog.js", "packages/web/src/main.tsx"],
+    run(entries) {
+      const [catalog, main] = entries.map((e) => e.text);
+
+      // --- doc routeCatalog: quet DONG, giu route "dang chờ" ---
+      // KHÔNG dùng regex xuyên nhiều dòng: `[\s\S]{0,400}?` trước đây trượt qua
+      // ranh giới giữa 2 route ⇒ bắt sai (đã đo: `ai-audit` staffOnly=true bị đọc
+      // thành false, và `settings/ai/slo` bị gán StaffRoute của route kế tiếp).
+      const routes = [];
+      let pending = null;
+      for (const raw of catalog.split("\n")) {
+        const line = raw.trim();
+        if (line.startsWith("id:")) pending = { id: line.slice(4).replace(/"/g, ""), path: null, staffOnly: null };
+        else if (pending && line.startsWith("path:") && pending.path === null) {
+          pending.path = line.slice(6).replace(/"/g, "").split("/").pop() === "" ? pending.path : (line.match(/"([^"]+)"/) || [])[1];
+        } else if (pending && line.startsWith("staffOnly:")) {
+          pending.staffOnly = line.includes("true");
+        } else if (pending && line === "},") {
+          if (pending.path && pending.path.startsWith("/settings/ai")) routes.push(pending);
+          pending = null;
+        }
+      }
+
+      // --- doc main.tsx: cat theo TUNG lenh route ---
+      // `createElement(Route, ...)` la bat dau 1 route; phan den lenh sau la
+      // cua chinh route do — StaffRoute cua route sau KHONG duoc tinh cho route truoc.
+      const guarded = new Set();
+      // BO COMMENT truoc khi quet: comment cua route sau nhac `StaffRoute` se bi
+      // statement route truoc "an" vao (đang xay ra: `/settings/ai/slo` nham co guard
+      // chi vi comment 2 dong tren route `settings/ai/audit`).
+      const mainNoComment = main
+        .split("\n")
+        .map((l) => l.replace(/\/\/.*$/, ""))
+        .join("\n");
+      const statements = mainNoComment.split("createElement(Route,");
+      for (const st of statements.slice(1)) {
+        const p = (st.match(/path:\s*'([^']+)'/) || [])[1];
+        // `main.tsx` khai duong dan **KHONG co dau `/` o dau** (`'settings/ai/audit'`)
+        // con `routeCatalog` co (`"/settings/ai/audit"`). Khong chuan hoa thi phep
+        // so LUON khong khop ⇒ gate luon im lang mot cach sai (đang xay ra o ban dau).
+        if (p && st.slice(0, 260).includes("StaffRoute")) guarded.add("/" + p.replace(/^\//, ""));
+      }
+
+      if (routes.length === 0) return "quet 0 route /settings/ai trong routeCatalog";
+
+      const problems = [];
+      for (const r of routes) {
+        const real = guarded.has(r.path);
+        if (r.staffOnly === null) {
+          problems.push(`${r.path} (${r.id}): thieu khai bao staffOnly trong routeCatalog`);
+        } else if (r.staffOnly !== real) {
+          problems.push(
+            `${r.path} (${r.id}): routeCatalog khai staffOnly=${r.staffOnly} nhung main.tsx ${real ? "CO" : "KHONG"} boc StaffRoute`,
+          );
+        }
+      }
+      return problems.length ? problems.join(" | ") : null;
+    },
+  },
 ];
 
 function checkOne(root, check) {
@@ -389,7 +461,60 @@ if (process.argv.includes("--self-test")) {
   caught += e6 ? 1 : 0;
   console.log(e6 ? "  PASS  " + custom.id + " bat duoc nhay don e('nav')" : "  FAIL  " + custom.id + " KHONG bat duoc nhay don");
 
-  const total = CHECKS.length + 6 + 1;
+  // --- AC11: rule khai bao staffOnly ---
+  // BẮT BUỘC có self-test: ban đầu AC11 dùng regex xuyên dòng ở CẢ HAI file và
+  // cho ra "PASS" **sai** (đã đo: đảo `ai-audit` true→false vẫn xanh). Không có
+  // self-test thì ta sẽ ship một gate im lặng — đúng loại hazard 12.
+  const ac11 = CUSTOM_CHECKS.find((c) => c.id === "AC11-staff-only-declared");
+  const base11 = ac11.collect ? ac11.collect(REPO) : ac11.files.map((f) => ({ name: f, text: readFileSync(join(REPO, f), "utf8") }));
+
+  const e7 = (() => {
+    try {
+      return ac11.run(base11);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e7 === null ? 1 : 0;
+  console.log(e7 === null ? `  PASS  ${ac11.id} im lang tren hien trang that` : `  FAIL  ${ac11.id} bao loi tren hien trang that: ${e7}`);
+
+  // Mutation: hạ `staffOnly: true` của route audit xuống false — khai bao lech
+  // voi guard that trong main.tsx ⇒ phai FAIL.
+  const e8 = (() => {
+    const mutated = base11.map((e) => ({
+      name: e.name,
+      text: e.name.endsWith("routeCatalog.js")
+        ? e.text.replace("staffOnly: true,", "staffOnly: false,")
+        : e.text,
+    }));
+    try {
+      return ac11.run(mutated);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e8 ? 1 : 0;
+  console.log(e8 ? `  PASS  ${ac11.id} bat duoc khai bao staffOnly lech` : `  FAIL  ${ac11.id} KHONG bat duoc khai bao lech`);
+
+  // Mutation 2: xoá HET khai bao staffOnly trong nhom AI — route khong khai bao
+  // phai bi bat (khong duoc im lang mac dinh false).
+  const e9 = (() => {
+    const mutated = base11.map((e) => ({
+      name: e.name,
+      text: e.name.endsWith("routeCatalog.js")
+        ? e.text.replace(/staffOnly:\s*(true|false),/g, "")
+        : e.text,
+    }));
+    try {
+      return ac11.run(mutated);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e9 ? 1 : 0;
+  console.log(e9 ? `  PASS  ${ac11.id} bat duoc route thieu khai bao staffOnly` : `  FAIL  ${ac11.id} KHONG bat duoc route thieu khai bao`);
+
+  const total = CHECKS.length + 9 + 1;
   if (caught !== total) {
     console.error(`\ncheck-ai-cc SELF-TEST FAILED: ${caught}/${total}. Gate khong duoc tin.`);
     process.exit(1);

@@ -293,6 +293,9 @@ export const routeCatalog = Object.freeze([
     group: "system",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["system.ai_command_center.manage"],
+    // S6 (2026-10-19): staffOnly FALSE — user thuong CAN vao de dat API key rieng (BYOK).
+    // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    staffOnly: false,
     adapter: "core",
     status: "baseline",
   },
@@ -303,6 +306,9 @@ export const routeCatalog = Object.freeze([
     group: "system",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["system.ai_command_center.manage"],
+    // S6 (2026-10-19): staffOnly FALSE — doc chi so dung AI cua chinh minh.
+    // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    staffOnly: false,
     adapter: "core",
     status: "baseline",
   },
@@ -314,6 +320,9 @@ export const routeCatalog = Object.freeze([
     group: "system",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["system.ai_command_center.manage"],
+    // S6 (2026-10-19): staffOnly FALSE — doc danh viet tu van ban cua chinh minh.
+    // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    staffOnly: false,
     adapter: "core",
     status: "baseline",
   },
@@ -325,6 +334,9 @@ id: "ai-slo",
         group: "system",
         buildTargets: ["saas", "vip"],
         requiredCapabilities: ["system.ai_command_center.manage"],
+        // S6 (2026-10-19): staffOnly FALSE — doc chi so SLO cua chinh minh.
+        // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+        staffOnly: false,
         adapter: "core",
         status: "baseline",
       },
@@ -332,12 +344,20 @@ id: "ai-slo",
         // R4.5: tab Nhat ky kiem toan (chi staff). Capability khai **gia** nhu 5 route
         // AI khac; ranh gioi staff o `StaffRoute` (guard that, AC3) chu khong phai o
         // day — `requiredCapabilities` la khai bao muc dich, khong phai guard.
+        //
+        // S6 (2026-10-19): them `staffOnly` de SU THAT cua guard nam trong catalog.
+        // Truoc day nguoi doc phai diff 2 file moi biet route nao staff — va da
+        // co nham sai: `/settings/ai` co `requiredCapabilities` Y HET nhung **khong**
+        // staff (user thuong can vao de dat API key rieng), con `/settings/ai/audit`
+        // thi staff. `requiredCapabilities` GIONG NHAU ⇒ khong doc duoc ra khac biet.
+        // Gate `AC11-staff-only-declared` (check-ai-cc.mjs) bat khai bao lech thuc te.
         id: "ai-audit",
         path: "/settings/ai/audit",
         titleKey: "routes.aiAudit",
         group: "system",
         buildTargets: ["saas", "vip"],
         requiredCapabilities: ["system.ai_command_center.manage"],
+        staffOnly: true,
         adapter: "core",
         status: "baseline",
       },
