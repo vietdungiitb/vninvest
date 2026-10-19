@@ -43,11 +43,14 @@ const I18N_MAP: Record<string, string> = {
   webhooks: 'tenantWebhooks.title',
   // R4.4 AC2: các mục `settings`/`ai` trước đây rơi về **chuỗi thô** (`settings`,
   // `ai`) vì không có ánh xạ — người dùng thấy breadcrumb toàn ký tự tiếng Anh.
-  // Dùng **cùng nhãn** với nhóm "Trí tuệ nhân tạo" trong `/settings` để hai nơi
-  // gọi cùng một tên, đừng để breadcrumb gọi "Trung tâm điều hành AI" còn menu
-  // gọi "Trí tuệ nhân tạo" — hai tên cho một chỗ là bug nhãn.
+  //
+  // S4 (2026-10-19): `ai` chuyển sang `routes.aiCommandCenter` = **"Trung tâm AI"** —
+  // cùng tên ngắn với sidebar (`sidebaritems.ts:39`) và `routeCatalog.js:292`.
+  // Trước S4 nơi này gọi "Trí tuệ nhân tạo" (tên **nhóm** trong `/settings`, không phải
+  // tên trang), còn H1 gọi "Trung tâm điều hành AI" ⇒ **3 tên cho 1 trang**.
+  // Owner chốt 2026-10-19: vị trí hẹp dùng tên ngắn, H1 giữ tên dài.
   settings: 'userSettings.title',
-  ai: 'userSettings.aiGroup.title',
+  ai: 'routes.aiCommandCenter',
 };
 
 // R5.1d: nhan breadcrumb cua cac route AI con lai. `Breadcrumb.tsx` tra cuu theo

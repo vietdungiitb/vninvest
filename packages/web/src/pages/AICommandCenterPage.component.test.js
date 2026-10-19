@@ -34,7 +34,6 @@ const baseSettings = {
 };
 
 const TRANSLATIONS = {
-  "aiCommandCenter.eyebrow": "Cài đặt",
   "aiCommandCenter.overview": "Tổng quan",
   "aiCommandCenter.title": "Trung tâm điều hành AI",
   "aiCommandCenter.description":
@@ -156,15 +155,18 @@ describe("AICommandCenterPage", () => {
     expect(coreApiAdapter.getUserConfig).toHaveBeenCalledTimes(1);
   });
 
-  it("renders translated eyebrow and overview without raw i18n keys (Slice A)", async () => {
+  it("renders overview without raw i18n keys (Slice A)", async () => {
     await act(async () => {
       renderPage();
     });
+    // S4 (2026-10-19): test này trước đây assert cả eyebrow "Cài đặt". S4 đã bỏ eyebrow
+    // khỏi trang (trùng khái niệm với breadcrumb "Cài đặt tài khoản" ngay phía trên),
+    // nên case chỉ giữ lại phần assert `overview` + không lộ khoá i18n thô.
     await waitFor(() => {
-      expect(screen.getByText("Cài đặt")).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
     });
     expect(screen.getByText("Tổng quan")).toBeTruthy();
-    expect(screen.queryByText("aiCommandCenter.eyebrow")).toBeNull();
+    expect(screen.queryByText("Cài đặt")).toBeNull();
     expect(screen.queryByText("aiCommandCenter.overview")).toBeNull();
   });
 

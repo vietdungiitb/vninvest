@@ -210,7 +210,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     e("div", { className: `shellPage ${styles.hubPage} ${className}` }, [
       e("header", { className: styles.pageHeader },
         e("div", null, [
-          e("span", { key: "eyebrow", className: styles.pageEyebrow }, t("aiCommandCenter.eyebrow")),
+          // S4 (2026-10-19): đã bỏ eyebrow "Cài đặt". Nó trùng khái niệm với breadcrumb
+          // "Cài đặt tài khoản" ngay trên màn hình đó, khiến người dùng tưởng đang
+          // đọc hướng dẫn của trang cài đặt chứ không phải trung tâm điều hành AI.
           e("h1", { key: "title", className: styles.pageTitle }, t("aiCommandCenter.title")),
           e("p", { key: "desc", className: styles.pageDesc }, t("aiCommandCenter.description")),
         ])

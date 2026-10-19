@@ -70,8 +70,15 @@ describe("R4.4 AC2: breadcrumb tren moi route AI CC", () => {
         createElement(LangProvider, null, createElement(Breadcrumb, { key: "bc" })),
       ),
     );
-    const hub = screen.getByRole("link", { name: /trí tuệ nhân tạo/i });
+    // S4 (2026-10-19): nhãn đổi từ "Trí tuệ nhân tạo" (tên NHÓM trong `/settings`)
+    // sang "Trung tâm AI" — cùng khoá `routes.aiCommandCenter` với sidebar và
+    // `routeCatalog.js:292`. Owner chốt: vị trí hẹp dùng tên ngắn, H1 giữ tên dài.
+    const hub = screen.getByRole("link", { name: /trung tâm ai/i });
     expect(hub.getAttribute("href")).toBe("/settings/ai");
+    expect(
+      screen.queryByRole("link", { name: /trí tuệ nhân tạo/i }),
+      "breadcrumb van dung ten nhom thay vi ten trang",
+    ).toBeNull();
   });
 
   it("3 muc dieu huong doc duoc tren /settings/ai/slo", () => {
