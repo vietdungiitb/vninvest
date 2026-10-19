@@ -16,6 +16,19 @@ import { AiConfigPreviewModal, type AiConfigConflict } from "./AiConfigPreviewMo
 
 const e = createElement;
 
+// R5.3: 4 system sub-agent prompt (technical/flow/sentiment/synthesis). Chỉ staff
+// thấy và sửa — BE cũng chặn 403, UI chặn để user thường không thấy ô trống.
+//
+// PHẢI Ở CẤP MODULE: khai trong thân component thì identity đổi mỗi render, khiến
+// `useCallback(applySettings)` phải thêm dep vô hạn hoặc nuốt dep (L-F10).
+// `npm run lint` bắt đúng lỗi này: `react-hooks/exhaustive-deps` tại dòng `applySettings`.
+const SUB_AGENT_PROMPT_FIELDS = [
+  "technical_agent_prompt",
+  "flow_agent_prompt",
+  "sentiment_agent_prompt",
+  "synthesis_agent_prompt",
+] as const;
+
 const LazyPromptConfigDrawer = lazy(() =>
   import("./AIAdvisoryPromptConfigDrawer.js").then((m) => ({
     default: m.AIAdvisoryPromptConfigDrawer,
@@ -176,15 +189,7 @@ export function AICommandCenterForm({
   const [preview, setPreview] = useState<PreviewEntry | null>(null);
   const [conflict, setConflict] = useState<AiConfigConflict | null>(null);
   const [previewSaving, setPreviewSaving] = useState(false);
-// R5.3: 4 system sub-agent prompt (technical/flow/sentiment/synthesis). Chỉ staff
-// thấy và sửa — BE cũng chặn 403, UI chặn để user thường không thấy ô trống.
-const SUB_AGENT_PROMPT_FIELDS = [
-  "technical_agent_prompt",
-  "flow_agent_prompt",
-  "sentiment_agent_prompt",
-  "synthesis_agent_prompt",
-] as const;
-const [subAgentPrompts, setSubAgentPrompts] = useState<Record<string, string>>({
+  const [subAgentPrompts, setSubAgentPrompts] = useState<Record<string, string>>({
   technical_agent_prompt: "",
   flow_agent_prompt: "",
   sentiment_agent_prompt: "",

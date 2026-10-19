@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, memo, createElement } from "react";
-import { Link, useLocation } from "react-router-dom";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
 import { ShellPanel } from "../components/ShellPageTemplate.js";
 import styles from "../components/aiSettings.module.css";
+import { providerLabelKey, aiSourceLabelKey } from "../shared/providerModels.js";
 import {
   AICommandCenterForm,
   AISettings,
@@ -52,7 +52,6 @@ interface AICommandCenterPageProps {
 
 export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps) {
   const { t, localeTag } = useI18n();
-  const location = useLocation();
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [pageError, setPageError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
@@ -63,9 +62,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const isStaffViewer = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   // R1.4 AC1: null = chưa có data (không hiện số giả 24/24/5000); có data mới hiện.
   const [overviewLoaded, setOverviewLoaded] = useState(false);
-  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState<number | null>(null);
   const [maxAutoRefreshes, setMaxAutoRefreshes] = useState<number | null>(null);
-  const [maxTokensDisplay, setMaxTokensDisplay] = useState<number | null>(null);
   const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
   const [eventGateSaving, setEventGateSaving] = useState(false);
 
@@ -109,9 +106,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
     setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
     setAiReady((data as any).ai_ready ?? false);
-    setRefreshIntervalDisplay(Number((data as any).advisory_refresh_interval_hours) || 24);
     setMaxAutoRefreshes(Number((data as any).advisory_max_auto_refreshes_per_day) || 24);
-    setMaxTokensDisplay(Number((data as any).advisory_max_tokens_per_day) || 5000);
     const history = (data as any).ai_prompt_config_history;
     setPromptHistory(Array.isArray(history) ? history : []);
   }, []);
@@ -215,7 +210,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     e("div", { className: `shellPage ${styles.hubPage} ${className}` }, [
       e("header", { className: styles.pageHeader },
         e("div", null, [
-          e("span", { key: "eyebrow", className: styles.pageEyebrow }, t("aiCommandCenter.eyebrow")),
+          // S4 (2026-10-19): đã bỏ eyebrow "Cài đặt". Nó trùng khái niệm với breadcrumb
+          // "Cài đặt tài khoản" ngay trên màn hình đó, khiến người dùng tưởng đang
+          // đọc hướng dẫn của trang cài đặt chứ không phải trung tâm điều hành AI.
           e("h1", { key: "title", className: styles.pageTitle }, t("aiCommandCenter.title")),
           e("p", { key: "desc", className: styles.pageDesc }, t("aiCommandCenter.description")),
         ])
@@ -223,68 +220,96 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
 
       // R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con.
       e(Breadcrumb, { key: "breadcrumb" }),
-      // R1.8: tab route dùng chung AiHubNav; nav anchor giữ riêng cho section trong trang.
+      // R1.8: tab route dùng chung AiHubNav.
+      //
+      // S1 (2026-10-19): trang **không còn** nav anchor thứ 2 (`#overview` / `#runtime` /
+      // `#audit`). Lý do — nó dùng **cùng** bộ class `styles.hubNav` + **cùng**
+      // `aria-label` với `AiHubNav` nên trông **giống hệt**, và lúc vừa tải
+      // (`location.hash === ""`) **hai** ô "Tổng quan" đều tô sáng.
+      // Ba mục đó cũng không bổ sung gì: `#overview` là đầu trang, `#audit` trùng
+      // nghiệp vụ với route `/settings/ai/audit`, `#runtime` là panel thứ 3 cùng trang.
+      // Hệ điều hướng duy nhất của trang là 5 tab route của `AiHubNav`.
       e(AiHubNav, { key: "hub-tabs" }),
-      // B rest: hub subnav — in-page anchors (route đã có AiHubNav ở trên)
-      e("nav", { key: "hub-nav", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [
-        e(Link, {
-          key: "nav-overview",
-          to: { pathname: location.pathname, hash: "#overview" },
-          className: styles.hubNavLink + (location.hash === "#overview" || (!location.hash && location.pathname === "/settings/ai") ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabOverview")),
-        e(Link, {
-          key: "nav-runtime",
-          to: { pathname: location.pathname, hash: "#runtime" },
-          className: styles.hubNavLink + (location.hash === "#runtime" ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabRuntime")),
-        e(Link, {
-          key: "nav-audit",
-          to: { pathname: location.pathname, hash: "#audit" },
-          className: styles.hubNavLink + (location.hash === "#audit" ? " " + styles.hubNavLinkActive : ""),
-        }, t("aiCommandCenter.tabAudit")),
-      ]),
 
       // Summary Cards
+      // S3 (2026-10-19): `effective_ai_provider` / `effective_ai_source` là **enum**, không
+      // phải nhãn. Trước S3 render thẳng chuỗi thô ⇒ người dùng thấy `gemini` và
+      // `command_center` (bằng chứng: ảnh chụp màn hình thật trên staging).
       e("div", { key: "overview-anchor", id: "overview" },
         e(ShellPanel, { title: t("aiCommandCenter.overview") },
           e("div", { className: styles.summaryGrid }, [
-            e(SummaryCard, { key: "card-provider", title: t("aiCommandCenter.effectiveProvider"), value: effectiveProvider || "—", subtitle: t("aiCommandCenter.effectiveProviderDesc") }),
+            e(SummaryCard, {
+              key: "card-provider",
+              title: t("aiCommandCenter.effectiveProvider"),
+              value: effectiveProvider ? t(providerLabelKey(effectiveProvider)) : "—",
+              subtitle: t("aiCommandCenter.effectiveProviderDesc"),
+            }),
             e(SummaryCard, { key: "card-model", title: t("aiCommandCenter.effectiveModel"), value: effectiveModel || t("aiCommandCenter.needsConfig"), subtitle: t("aiCommandCenter.effectiveModelDesc") }),
-            e(SummaryCard, { key: "card-source", title: t("aiCommandCenter.effectiveSource"), value: effectiveSource, subtitle: t("aiCommandCenter.effectiveSourceDesc") }),
+            e(SummaryCard, {
+              key: "card-source",
+              title: t("aiCommandCenter.effectiveSource"),
+              value: t(aiSourceLabelKey(effectiveSource)),
+              subtitle: t("aiCommandCenter.effectiveSourceDesc"),
+            }),
             e(SummaryCard, { key: "card-status", title: t("aiCommandCenter.runtimeStatus"), value: aiReady ? t("aiCommandCenter.ready") : t("aiCommandCenter.needsConfig"), subtitle: aiReady ? t("aiCommandCenter.readyDesc") : t("aiCommandCenter.needsConfigDesc") }),
           ])
         )
       ),
 
       // Policy Section
+      //
+      // S2 (2026-10-19): panel này CHỈ còn giá trị cấp HỆ THỐNG.
+      //  - Đã bỏ `advisory_refresh_interval_hours` + `advisory_max_tokens_per_day`: chúng
+      //    hiện chỉ đọc ở đây nhưng sửa được trong form ngay dưới, với tên khác nhau
+      //    ("Khoảng làm mới" vs "Khoảng làm mới tự động (giờ)"). Số trùng ở 2 nơi làm
+      //    người dùng không biết sửa ở đâu.
+      //  - `advisory_max_auto_refreshes_per_day` được giữ lại vì **không có `<input>` nào**
+      //    trên toàn FE (đo đệ quy 581 file: 10 hit, 0 file tạo input) ⇒ gắn nhãn
+      //    "Chỉ đọc" để không ai tưởng là sửa được.
+      //  - `eventGate` đã chuyển sang panel "Tuỳ chọn cá nhân" phía dưới.
       e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") },
-        e("div", { className: styles.metricGrid, "aria-busy": !overviewLoaded }, [
-          e("div", { key: "pol-gate", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.eventGate")),
-            e("label", { key: "v", className: styles.toggleRow },
+        e("div", { className: styles.metricGridAuto, "aria-busy": !overviewLoaded }, [
+          e("div", { key: "pol-auto", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
+            e("p", { key: "v", className: styles.metricValue, "data-testid": "auto-refresh-value" },
+              maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
+            e("span", { key: "badge", className: styles.metricBadge, "data-testid": "auto-refresh-readonly" },
+              t("aiCommandCenter.readOnlyBadge")),
+          ]),
+        ]),
+      ),
+
+      // S2: tùy chọn CÁ NHÂN — endpoint/kho lưu riêng (`updateUserConfig`), không phải
+      // cấu hình trung tâm AI. Tách riêng để hết hiện tượng "lẫn lộn cài đặt tài khoản
+      // với cấu hình trung tâm AI".
+      e(ShellPanel, {
+        key: "personal",
+        title: t("aiCommandCenter.personalPrefs"),
+        subtitle: t("aiCommandCenter.personalPrefsDesc"),
+      },
+        e("div", { className: styles.metricGridAuto }, [
+          e("div", { key: "personal-gate", className: styles.metricCard }, [
+            // `<label>` bao CẢ nhãn lẫn control: trước đây nhãn nằm ở `<p>` anh em,
+            // nên checkbox chỉ có accessible name là trạng thái ("Bật"/"Tắt") — mọi
+            // toggle trên trang đều đọc giống nhau với trình đọc màn hình.
+            e("label", { key: "v", className: styles.toggleRow, htmlFor: "ai-personal-event-gate" }, [
               e("input", {
+                id: "ai-personal-event-gate",
                 type: "checkbox",
                 className: styles.checkbox,
                 checked: eventGateEnabled === true,
                 disabled: eventGateEnabled === null || eventGateSaving,
                 onChange: handleEventGateToggle,
+                "data-testid": "personal-event-gate",
               }),
-              e("span", null,
-                eventGateEnabled === null ? t("aiCommandCenter.gateUnknown") : eventGateEnabled ? t("aiCommandCenter.gateEnabled") : t("aiCommandCenter.gateDisabled")
-              )
-            ),
-          ]),
-          e("div", { key: "pol-refresh", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval")),
-            e("p", { key: "v", className: styles.metricValue }, refreshIntervalDisplay == null ? "—" : t("aiCommandCenter.refreshIntervalValue", { hours: refreshIntervalDisplay })),
-          ]),
-          e("div", { key: "pol-auto", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, maxAutoRefreshes == null ? "—" : `${maxAutoRefreshes}`),
-          ]),
-          e("div", { key: "pol-tokens", className: styles.metricCard }, [
-            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.tokensPerDay")),
-            e("p", { key: "v", className: styles.metricValue }, maxTokensDisplay == null ? "—" : `${maxTokensDisplay}`),
+              e("span", { key: "name" }, t("aiCommandCenter.eventGate")),
+              e("span", { key: "state", className: styles.metricLabel },
+                eventGateEnabled === null
+                  ? t("aiCommandCenter.gateUnknown")
+                  : eventGateEnabled
+                    ? t("aiCommandCenter.gateEnabled")
+                    : t("aiCommandCenter.gateDisabled")),
+            ]),
           ]),
         ]),
       ),
@@ -413,7 +438,7 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
                 }, [
                   e("span", { key: "meta" },
                     `${t("aiCommandCenter.promptHistoryVersion", { version: entry.version })}`
-                    + (entry.source ? ` · ${entry.source}` : "")
+                    + (entry.source ? ` · ${t(aiSourceLabelKey(entry.source))}` : "")
                     + (savedLabel ? ` · ${savedLabel}` : "")
                   ),
                   e("button", {

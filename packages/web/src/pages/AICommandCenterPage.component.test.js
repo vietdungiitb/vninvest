@@ -34,7 +34,6 @@ const baseSettings = {
 };
 
 const TRANSLATIONS = {
-  "aiCommandCenter.eyebrow": "Cài đặt",
   "aiCommandCenter.overview": "Tổng quan",
   "aiCommandCenter.title": "Trung tâm điều hành AI",
   "aiCommandCenter.description":
@@ -57,10 +56,8 @@ const TRANSLATIONS = {
   "aiCommandCenter.gateUnknown": "Chưa đọc",
   "aiCommandCenter.refreshInterval": "Khoảng làm mới",
   "aiCommandCenter.autoRefreshPerDay": "Auto refresh/ngày",
-  "aiCommandCenter.tokensPerDay": "Token/ngày",
   "aiCommandCenter.fallbackTitle": "Sao lưu hệ thống AI (Fallback)",
   "aiCommandCenter.fallbackReset": "Đặt lại",
-  "aiCommandCenter.quotaUsed": "lượt",
   "aiCommandCenter.auditLogsTitle": "Nhật ký audit Command Center",
   "aiCommandCenter.auditLogsDesc": "Mỗi trang hiển thị 10 bản ghi.",
   "aiCommandCenter.loadingConfig": "Đang tải cấu hình AI...",
@@ -80,7 +77,6 @@ const TRANSLATIONS = {
   "aiCommandCenter.apiKeyPlaceholderConfigured": "Đã có API Key, nhập key mới để thay đổi...",
   "aiCommandCenter.maxTokensLabel": "Định mức Token / ngày",
   "aiCommandCenter.refreshIntervalLabel": "Khoảng làm mới tự động (giờ)",
-  "aiCommandCenter.refreshIntervalValue": "{hours} giờ/lần",
   "aiCommandCenter.temperatureLabel": "Temperature (0.0 - 1.0)",
   "aiCommandCenter.temperatureHelp": "0 = deterministic, 1 = creative. Mặc định 0.3.",
   "aiCommandCenter.saveBtn": "Lưu cấu hình",
@@ -156,15 +152,18 @@ describe("AICommandCenterPage", () => {
     expect(coreApiAdapter.getUserConfig).toHaveBeenCalledTimes(1);
   });
 
-  it("renders translated eyebrow and overview without raw i18n keys (Slice A)", async () => {
+  it("renders overview without raw i18n keys (Slice A)", async () => {
     await act(async () => {
       renderPage();
     });
+    // S4 (2026-10-19): test này trước đây assert cả eyebrow "Cài đặt". S4 đã bỏ eyebrow
+    // khỏi trang (trùng khái niệm với breadcrumb "Cài đặt tài khoản" ngay phía trên),
+    // nên case chỉ giữ lại phần assert `overview` + không lộ khoá i18n thô.
     await waitFor(() => {
-      expect(screen.getByText("Cài đặt")).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
     });
     expect(screen.getByText("Tổng quan")).toBeTruthy();
-    expect(screen.queryByText("aiCommandCenter.eyebrow")).toBeNull();
+    expect(screen.queryByText("Cài đặt")).toBeNull();
     expect(screen.queryByText("aiCommandCenter.overview")).toBeNull();
   });
 
@@ -216,8 +215,14 @@ describe("AICommandCenterPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
+    // S2 (2026-10-19): trước đây test neo vào ô "Khoảng làm mới" của panel chính sách
+    // ("{n} giờ/lần"). S2 đã **xoá** ô đó vì nó trùng với ô sửa được trong form, nên test
+    // chuyển neo sang `advisory_max_auto_refreshes_per_day` — ô **vẫn còn** trong panel và
+    // đi qua **cùng đường** `updateConfig -> onSettingsChange -> applySettingsToOverview`.
+    // Mục tiêu test (R1.4: tổng quan cập nhật sau khi lưu, KHÔNG remount) không đổi.
+    const autoRefreshValue = () => screen.getByTestId("auto-refresh-value").textContent;
     await waitFor(() => {
-      expect(screen.getByText(/giờ\/ lần|giờ\/lần/)).toBeTruthy();
+      expect(autoRefreshValue()).toBe("24"); // baseSettings không có field -> fallback 24
     });
 
     const nextData = {
@@ -246,7 +251,7 @@ describe("AICommandCenterPage", () => {
       expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(screen.getByText("12 giờ/lần")).toBeTruthy();
+      expect(autoRefreshValue()).toBe("8");
     });
   });
 

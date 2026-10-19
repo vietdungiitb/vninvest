@@ -14,7 +14,7 @@
  */
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -96,6 +96,209 @@ const CHECKS = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// S4 AC5.1/AC5.2 — rule CAU TRUC, khong phai rule khop chuoi.
+// ---------------------------------------------------------------------------
+// Vì sao rule riêng: framework `CHECKS` kiem tra "co pattern nay khong". Lỗi S1
+// là **so LUONG** (hai `<nav>` trùng nhãn hoặc trùng class), không phải "thiếu pattern".
+//
+// Vì sao khoá trên **hậu quả** chứ không khoá trên tên class (hazard 12):
+// rule viết theo chuỗi `"hubNav"` sẽ bị bỏ qua ngay khi tác giả đặt tên class khác.
+// Rule này kiểm **hậu quả** — trong hub AI CC không được có hai `<nav>` trùng
+// `aria-label` hoặc trùng class — nên đổi tên class, đổi khoá i18n, hay tách nav
+// sang file khác đều không thoát.
+
+/**
+ * Mọi file thuộc cây render của `/settings/ai`: BFS từ trang hub theo **import
+ * TƯƠNG ĐỐI** (hazard 7 — "ai là của riêng trang này" là một khẳng định về đồ thị
+ * import, phải DUYỆT chứ không được đoán bằng mắt).
+ *
+ * Vì sao không dùng "mọi file có nhắc `aiCommandCenter.`": đó là **phạm vi rộng hơn
+ * mức cần**. Hai trang khác nhau cùng dùng một class là chuyện bình thường (đo được:
+ * `.auditPager` là nav phân trang ở cả `/settings/ai/audit` và `/settings/ai/traces`).
+ * Với cây render thì "2 `<nav>` cùng class" **chắc chắn** là cùng một trang.
+ */
+function hubClosure(root) {
+  const startRel = "packages/web/src/pages/AICommandCenterPage.tsx";
+  const seen = new Set();
+  const out = [];
+  const queue = [startRel];
+  while (queue.length) {
+    const rel = queue.shift();
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    const abs = join(root, rel);
+    let text;
+    try {
+      text = readFileSync(abs, "utf8");
+    } catch {
+      continue;
+    }
+    out.push({ name: rel, text });
+    // Import tương đối: from "./x.js" | from "../y/z"  (bỏ phần mở rộng .js/.ts)
+    const dir = dirname(abs);
+    for (const m of text.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
+      // TS/ESM: import thường ghi "\u2026/AiHubNav.js" nhưng file thật là .tsx.
+      // Phai thử CẢ "giữ đuôi" lẫn "bóc đuôi rồi nối lại" (đo: giữ nguyên cách cũ
+      // thì BFS không bao giờ tới AiHubNav.tsx ⇒ rule im lặng trên 0 <nav>).
+      const bases = [m[1], m[1].replace(/\.(js|jsx|ts|tsx)$/, "")];
+      for (const b of bases) {
+        for (const ext of ["", ".tsx", ".ts", ".jsx", ".js"]) {
+          const cand = resolve(dir, b + ext);
+          const relC = cand.replace(root + sep, "").replace(/\\/g, "/");
+          if (!/\.(tsx|ts|jsx|js)$/.test(relC)) continue;
+          if (!seen.has(relC)) queue.push(relC);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Rút ra mọi `<nav>` kèm `aria-label: t("KEY")` và các `styles.*` class của nó.
+ *
+ * Repo dùng lẫn lộn `e("nav", …)` (createElement) và `<nav>` (JSX); `e(` có thể
+ * xuống dòng trước `"nav"`; repo cũng dùng cả nháy đơn (`e('nav', …)`). Vì vậy
+ * OPENER nhận CẢ HAI loại nháy.
+ *
+ * Cách đúng: chia file theo các điểm MỞ nav, rồi trong mỗi đoạn tới điểm mở kế
+ * tiếp, tìm `aria-label` và `styles.*`. Không cần cân bằng ngoặc.
+ */
+function navRecords(texts) {
+  const out = [];
+  const OPENER = /(?:<nav\b|e\(\s*["']nav["'])/g;
+  for (const text of texts) {
+    const starts = [];
+    for (const m of text.matchAll(OPENER)) starts.push(m.index);
+    starts.push(text.length);
+    for (let i = 0; i < starts.length - 1; i++) {
+      const segment = text.slice(starts[i], starts[i + 1]);
+      const labels = [...segment.matchAll(/aria-label["']?\s*:\s*t\(\s*["']([^"']+)["']/g)].map((m) => m[1]);
+      const classes = [...new Set([...segment.matchAll(/styles\.([A-Za-z0-9_]+)/g)].map((m) => m[1]))];
+      out.push({ labels, classes });
+    }
+  }
+  return out;
+}
+
+const CUSTOM_CHECKS = [
+  {
+    id: "AC10-single-navigation-system",
+    collect: hubClosure,
+    run(entries) {
+      const recs = navRecords(entries.map((e) => e.text));
+      if (recs.length === 0) return "khong tim thay <nav> nao trong hub AI CC de kiem";
+
+      const bump = (map, key) => map.set(key, (map.get(key) || 0) + 1);
+      const byLabel = new Map();
+      // Trùng CLASS tính trên TOÀN BỘ cây render của hub, không phải toàn repo:
+      // đã đo cây render = 29 file và CHỈ 1 file có `<nav>` (`AiHubNav.tsx`), nên
+      // "2 nav cùng class trong cây này" chắc chắn là cùng một trang. Trước đây đếm
+      // toàn repo thì báo trùng `.auditPager` giả — class đó là nav phân trang ở
+      // `/settings/ai/audit` và `/settings/ai/traces`, hai ROUTE khác nhau, nằm ngoài
+      // cây render này.
+      const byClass = new Map();
+      for (const entry of entries) {
+        for (const r of navRecords([entry.text])) {
+          for (const l of r.labels) bump(byLabel, l);
+          for (const c of r.classes) bump(byClass, c);
+        }
+      }
+      const dupLabel = [...byLabel].filter(([, n]) => n > 1);
+      const dupClass = [...byClass].filter(([, n]) => n > 1);
+
+      const problems = [];
+      if (dupLabel.length) {
+        problems.push(
+          "cung mot nhan cho >1 <nav>: " + dupLabel.map(([k, n]) => `"${k}" x${n}`).join(", ") +
+          " — hai thanh dieu huong se bi trinh doc giong het nhau",
+        );
+      }
+      if (dupClass.length) {
+        problems.push(
+          "cung mot class cho >1 <nav> trong cay render cua hub: " +
+          dupClass.map(([k, n]) => `styles.${k} x${n}`).join(", ") +
+          " — hai thanh dieu huong se trong giong het nhau",
+        );
+      }
+      return problems.length ? problems.join(" | ") : null;
+    },
+  },
+  {
+    // AC11 — khai bao `staffOnly` trong routeCatalog phai KHOP voi guard that trong
+    // main.tsx, va chi xet nhom route `/settings/ai*`.
+    //
+    // Vì sao can (giai quyet nghiep vu cua Owner 2026-10-19): `/settings/ai` va
+    // `/settings/ai/audit` deu khai `requiredCapabilities: ["system.ai_command_center.manage"]`
+    // — **GIONG NHAU** — nhung chi route sau co guard staff. Nguoi doc catalog
+    // khong phan biet duoc; da co nham sai va xoa nhieu gan nham roi.
+    // `staffOnly` dua su that cua guard vao catalog, va rule nay bat lech.
+    //
+    // KHONG sua `main.tsx`: bọc `StaffRoute` cho hub se KHOA user thuong ra khoi
+    // noi dat API key rieng (BYOK) — do la hoi quy, khong phai sua loi.
+    id: "AC11-staff-only-declared",
+    files: ["packages/web/src/app/routeCatalog.js", "packages/web/src/main.tsx"],
+    run(entries) {
+      const [catalog, main] = entries.map((e) => e.text);
+
+      // --- doc routeCatalog: quet DONG, giu route "dang chờ" ---
+      // KHÔNG dùng regex xuyên nhiều dòng: `[\s\S]{0,400}?` trước đây trượt qua
+      // ranh giới giữa 2 route ⇒ bắt sai (đã đo: `ai-audit` staffOnly=true bị đọc
+      // thành false, và `settings/ai/slo` bị gán StaffRoute của route kế tiếp).
+      const routes = [];
+      let pending = null;
+      for (const raw of catalog.split("\n")) {
+        const line = raw.trim();
+        if (line.startsWith("id:")) pending = { id: line.slice(4).replace(/"/g, ""), path: null, staffOnly: null };
+        else if (pending && line.startsWith("path:") && pending.path === null) {
+          pending.path = line.slice(6).replace(/"/g, "").split("/").pop() === "" ? pending.path : (line.match(/"([^"]+)"/) || [])[1];
+        } else if (pending && line.startsWith("staffOnly:")) {
+          pending.staffOnly = line.includes("true");
+        } else if (pending && line === "},") {
+          if (pending.path && pending.path.startsWith("/settings/ai")) routes.push(pending);
+          pending = null;
+        }
+      }
+
+      // --- doc main.tsx: cat theo TUNG lenh route ---
+      // `createElement(Route, ...)` la bat dau 1 route; phan den lenh sau la
+      // cua chinh route do — StaffRoute cua route sau KHONG duoc tinh cho route truoc.
+      const guarded = new Set();
+      // BO COMMENT truoc khi quet: comment cua route sau nhac `StaffRoute` se bi
+      // statement route truoc "an" vao (đang xay ra: `/settings/ai/slo` nham co guard
+      // chi vi comment 2 dong tren route `settings/ai/audit`).
+      const mainNoComment = main
+        .split("\n")
+        .map((l) => l.replace(/\/\/.*$/, ""))
+        .join("\n");
+      const statements = mainNoComment.split("createElement(Route,");
+      for (const st of statements.slice(1)) {
+        const p = (st.match(/path:\s*'([^']+)'/) || [])[1];
+        // `main.tsx` khai duong dan **KHONG co dau `/` o dau** (`'settings/ai/audit'`)
+        // con `routeCatalog` co (`"/settings/ai/audit"`). Khong chuan hoa thi phep
+        // so LUON khong khop ⇒ gate luon im lang mot cach sai (đang xay ra o ban dau).
+        if (p && st.slice(0, 260).includes("StaffRoute")) guarded.add("/" + p.replace(/^\//, ""));
+      }
+
+      if (routes.length === 0) return "quet 0 route /settings/ai trong routeCatalog";
+
+      const problems = [];
+      for (const r of routes) {
+        const real = guarded.has(r.path);
+        if (r.staffOnly === null) {
+          problems.push(`${r.path} (${r.id}): thieu khai bao staffOnly trong routeCatalog`);
+        } else if (r.staffOnly !== real) {
+          problems.push(
+            `${r.path} (${r.id}): routeCatalog khai staffOnly=${r.staffOnly} nhung main.tsx ${real ? "CO" : "KHONG"} boc StaffRoute`,
+          );
+        }
+      }
+      return problems.length ? problems.join(" | ") : null;
+    },
+  },
+];
+
 function checkOne(root, check) {
   const text = readFileSync(join(root, check.file), "utf8");
   for (const p of check.patterns || []) {
@@ -130,11 +333,25 @@ function checkOne(root, check) {
 }
 
 function runGate(root) {
+  // Rule CAU TRUC dung `collect` (quet de quy); rule khop-chuoi dung `files`.
   const failures = [];
   for (const c of CHECKS) {
     let err;
     try {
       err = checkOne(root, c);
+    } catch (e) {
+      err = `khong doc duoc file: ${e.message}`;
+    }
+    console.log(`  ${err ? "FAIL" : "PASS"}  ${c.id}`);
+    if (err) failures.push(`${c.id}: ${err}`);
+  }
+  for (const c of CUSTOM_CHECKS) {
+    let err;
+    try {
+      const entries = c.collect
+      ? c.collect(root)
+      : c.files.map((f) => ({ name: f, text: readFileSync(join(root, f), "utf8") }));
+      err = c.run(entries);
     } catch (e) {
       err = `khong doc duoc file: ${e.message}`;
     }
@@ -183,7 +400,121 @@ if (process.argv.includes("--self-test")) {
   } else {
     console.log("  FAIL  ghost-file im lang PASS");
   }
-  const total = CHECKS.length + 1;
+  // ------------------------------------------------------------------
+  // Self-test cho rule CAU TRUC. Bắt buộc co case **PARAPHRASE** — mot cau
+  // hinh ma tac gia KHONG viet khi dinh nghia rule. Neu thieu, rule chi bao ve
+  // hien tuong da bi, va lan sau tac gia viet lai theo cach khac se lot qua
+  // (hazard 12).
+  // ------------------------------------------------------------------
+  const hubFiles = hubClosure(REPO);
+  const custom = CUSTOM_CHECKS[0];
+
+  /** Chay rule tren (tai lieu goc + cac file gia chen them). */
+  const runOn = (extra = []) => {
+    try {
+      return custom.run([...hubFiles, ...extra]);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  };
+  const named = (name) => ({ name: "mutation", text: name });
+
+  // (1) Ban dich: nav thu 2 trong page, giong het ban goc.
+  const dupNav = { name: "page", text: `e("nav", { key: "hub-nav-dup", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [
+    e(Link, { key: "x", to: "#runtime", className: styles.hubNavLink }, t("aiCommandCenter.tabRuntime")),
+  ]),
+` };
+  const e1 = runOn([dupNav]);
+  caught += e1 ? 1 : 0;
+  console.log(e1 ? `  PASS  ${custom.id} bat duoc nav trung ban sao` : `  FAIL  ${custom.id} KHONG bat duoc nav trung ban sao`);
+
+  // (2) PARAPHRASE — doi ten class, giu nguyen hien tuong. Case ma tac gia
+  //     KHONG viet khi dinh nghia rule (hazard 12).
+  const e2 = runOn([{ name: "page", text: dupNav.text.replace("styles.hubNav", "styles.sectionNavBar").replace("styles.hubNavLink", "styles.sectionTab") }]);
+  caught += e2 ? 1 : 0;
+  console.log(e2 ? `  PASS  ${custom.id} bat duoc PARAPHRASE (doi ten class)` : `  FAIL  ${custom.id} KHONG bat duoc PARAPHRASE`);
+
+  // (3) MUTATION M5 — nav thu 2 tach ra **file thu ba**. Ban rule hardcode 2 file
+  //     se LOT; ban nay phai bat. Day la ca hai khai bao FILES nen file gia phai
+  //     chua "aiCommandCenter." de lot vao pham vi quet de quy.
+  const e3 = runOn([named('e("nav", { "aria-label": t("aiCommandCenter.title") }, []);')]);
+  caught += e3 ? 1 : 0;
+  console.log(e3 ? `  PASS  ${custom.id} bat duoc nav o FILE THU BA (M5)` : `  FAIL  ${custom.id} LOt o FILE THU BA`);
+
+  // (4) MUTATION M6 — hai nav CUNG class nhung KHAC nhan. Day la mau thu hai
+  //     cua AC5.1 ("2 phan tu dung cung class") ma rule ban dau CHUA cai.
+  const e4 = runOn([{ name: "page", text: 'e("nav", { className: styles.hubNav, "aria-label": t("aiCommandCenter.fallbackTitle") }, []);' }]);
+  caught += e4 ? 1 : 0;
+  console.log(e4 ? `  PASS  ${custom.id} bat duoc 2 nav CUNG CLASS khac nhan (M6)` : `  FAIL  ${custom.id} KHONG bat duoc 2 nav cung class`);
+
+  // (5) Case am THAT: hai nav KHAC nhan, KHAC class, deu hop le — gate phai im
+  //     lang. Case (ban dau) chi assert `run() === null`, ma baseline cung null
+  //     ⇒ xanh du co tiem hay khong = tautology. Case nay them MOT nav thu 3
+  //     KHAC class + KHAC nhan: neu detector co bat nham, se FAIL.
+  const e5 = runOn([named('e("nav", { className: styles.somethingElse, "aria-label": t("aiCommandCenter.fallbackTitle") }, []);')]);
+  caught += e5 === null ? 1 : 0;
+  console.log(e5 === null ? `  PASS  ${custom.id} im lang khi 2 nav KHAC nhan va KHAC class` : `  FAIL  ${custom.id} bao loi gia: ${e5}`);
+
+  // (6) Case am THAT thu 2: nav dung nhay don `e('nav', …)`. Repo da dung
+  //     style nay o Breadcrumb.tsx:96 nen detector phai nhan.
+  const e6 = runOn([named("e('nav', { \"aria-label\": t('aiCommandCenter.title') }, []);")]);
+  caught += e6 ? 1 : 0;
+  console.log(e6 ? "  PASS  " + custom.id + " bat duoc nhay don e('nav')" : "  FAIL  " + custom.id + " KHONG bat duoc nhay don");
+
+  // --- AC11: rule khai bao staffOnly ---
+  // BẮT BUỘC có self-test: ban đầu AC11 dùng regex xuyên dòng ở CẢ HAI file và
+  // cho ra "PASS" **sai** (đã đo: đảo `ai-audit` true→false vẫn xanh). Không có
+  // self-test thì ta sẽ ship một gate im lặng — đúng loại hazard 12.
+  const ac11 = CUSTOM_CHECKS.find((c) => c.id === "AC11-staff-only-declared");
+  const base11 = ac11.collect ? ac11.collect(REPO) : ac11.files.map((f) => ({ name: f, text: readFileSync(join(REPO, f), "utf8") }));
+
+  const e7 = (() => {
+    try {
+      return ac11.run(base11);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e7 === null ? 1 : 0;
+  console.log(e7 === null ? `  PASS  ${ac11.id} im lang tren hien trang that` : `  FAIL  ${ac11.id} bao loi tren hien trang that: ${e7}`);
+
+  // Mutation: hạ `staffOnly: true` của route audit xuống false — khai bao lech
+  // voi guard that trong main.tsx ⇒ phai FAIL.
+  const e8 = (() => {
+    const mutated = base11.map((e) => ({
+      name: e.name,
+      text: e.name.endsWith("routeCatalog.js")
+        ? e.text.replace("staffOnly: true,", "staffOnly: false,")
+        : e.text,
+    }));
+    try {
+      return ac11.run(mutated);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e8 ? 1 : 0;
+  console.log(e8 ? `  PASS  ${ac11.id} bat duoc khai bao staffOnly lech` : `  FAIL  ${ac11.id} KHONG bat duoc khai bao lech`);
+
+  // Mutation 2: xoá HET khai bao staffOnly trong nhom AI — route khong khai bao
+  // phai bi bat (khong duoc im lang mac dinh false).
+  const e9 = (() => {
+    const mutated = base11.map((e) => ({
+      name: e.name,
+      text: e.name.endsWith("routeCatalog.js")
+        ? e.text.replace(/staffOnly:\s*(true|false),/g, "")
+        : e.text,
+    }));
+    try {
+      return ac11.run(mutated);
+    } catch (e) {
+      return "lo: " + e.message;
+    }
+  })();
+  caught += e9 ? 1 : 0;
+  console.log(e9 ? `  PASS  ${ac11.id} bat duoc route thieu khai bao staffOnly` : `  FAIL  ${ac11.id} KHONG bat duoc route thieu khai bao`);
+
+  const total = CHECKS.length + 9 + 1;
   if (caught !== total) {
     console.error(`\ncheck-ai-cc SELF-TEST FAILED: ${caught}/${total}. Gate khong duoc tin.`);
     process.exit(1);
