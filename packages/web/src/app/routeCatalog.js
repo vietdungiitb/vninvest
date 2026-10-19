@@ -295,6 +295,15 @@ export const routeCatalog = Object.freeze([
     requiredCapabilities: ["system.ai_command_center.manage"],
     // S6 (2026-10-19): staffOnly FALSE — user thuong CAN vao de dat API key rieng (BYOK).
     // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    // S6 (2026-10-19): `requiredCapabilities` o cac route nay KHONG duoc gi guard gi ca.
+    // Do bang chung: 76 noi khai `requiredCapabilities` tren toan FE va **0 noi DOC**
+    // (khong co `x.requiredCapabilities` / `["requiredCapabilities"]` o dau ca);
+    // BE **0** tham chieu. No la ky khai mo ta, khong phai dieu kien truy cap.
+    // Do do KHONG duoc dung no lam co so de chon StaffRoute/RouteGuard — neu lam vay
+    // se khoa user thuong ra khoi noi dat API key rieng (BYOK).
+    // Ranh gioi staff THAT cua nhom nay la `staffOnly` + `StaffRoute` trong `main.tsx`,
+    // va gate `AC11-staff-only-declared` (check-ai-cc.mjs) bat khai bao lech thuc te.
+    // Xem Entry 383 cua CODE_CHANGE_AUDIT_LEDGER.md.
     staffOnly: false,
     adapter: "core",
     status: "baseline",
@@ -308,6 +317,15 @@ export const routeCatalog = Object.freeze([
     requiredCapabilities: ["system.ai_command_center.manage"],
     // S6 (2026-10-19): staffOnly FALSE — doc chi so dung AI cua chinh minh.
     // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    // S6 (2026-10-19): `requiredCapabilities` o cac route nay KHONG duoc gi guard gi ca.
+    // Do bang chung: 76 noi khai `requiredCapabilities` tren toan FE va **0 noi DOC**
+    // (khong co `x.requiredCapabilities` / `["requiredCapabilities"]` o dau ca);
+    // BE **0** tham chieu. No la ky khai mo ta, khong phai dieu kien truy cap.
+    // Do do KHONG duoc dung no lam co so de chon StaffRoute/RouteGuard — neu lam vay
+    // se khoa user thuong ra khoi noi dat API key rieng (BYOK).
+    // Ranh gioi staff THAT cua nhom nay la `staffOnly` + `StaffRoute` trong `main.tsx`,
+    // va gate `AC11-staff-only-declared` (check-ai-cc.mjs) bat khai bao lech thuc te.
+    // Xem Entry 383 cua CODE_CHANGE_AUDIT_LEDGER.md.
     staffOnly: false,
     adapter: "core",
     status: "baseline",
@@ -322,6 +340,15 @@ export const routeCatalog = Object.freeze([
     requiredCapabilities: ["system.ai_command_center.manage"],
     // S6 (2026-10-19): staffOnly FALSE — doc danh viet tu van ban cua chinh minh.
     // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+    // S6 (2026-10-19): `requiredCapabilities` o cac route nay KHONG duoc gi guard gi ca.
+    // Do bang chung: 76 noi khai `requiredCapabilities` tren toan FE va **0 noi DOC**
+    // (khong co `x.requiredCapabilities` / `["requiredCapabilities"]` o dau ca);
+    // BE **0** tham chieu. No la ky khai mo ta, khong phai dieu kien truy cap.
+    // Do do KHONG duoc dung no lam co so de chon StaffRoute/RouteGuard — neu lam vay
+    // se khoa user thuong ra khoi noi dat API key rieng (BYOK).
+    // Ranh gioi staff THAT cua nhom nay la `staffOnly` + `StaffRoute` trong `main.tsx`,
+    // va gate `AC11-staff-only-declared` (check-ai-cc.mjs) bat khai bao lech thuc te.
+    // Xem Entry 383 cua CODE_CHANGE_AUDIT_LEDGER.md.
     staffOnly: false,
     adapter: "core",
     status: "baseline",
@@ -336,6 +363,15 @@ id: "ai-slo",
         requiredCapabilities: ["system.ai_command_center.manage"],
         // S6 (2026-10-19): staffOnly FALSE — doc chi so SLO cua chinh minh.
         // Xem comment o route `ai-audit` de biet ly do tach khoi `requiredCapabilities`.
+        // S6 (2026-10-19): `requiredCapabilities` o cac route nay KHONG duoc gi guard gi ca.
+        // Do bang chung: 76 noi khai `requiredCapabilities` tren toan FE va **0 noi DOC**
+        // (khong co `x.requiredCapabilities` / `["requiredCapabilities"]` o dau ca);
+        // BE **0** tham chieu. No la ky khai mo ta, khong phai dieu kien truy cap.
+        // Do do KHONG duoc dung no lam co so de chon StaffRoute/RouteGuard — neu lam vay
+        // se khoa user thuong ra khoi noi dat API key rieng (BYOK).
+        // Ranh gioi staff THAT cua nhom nay la `staffOnly` + `StaffRoute` trong `main.tsx`,
+        // va gate `AC11-staff-only-declared` (check-ai-cc.mjs) bat khai bao lech thuc te.
+        // Xem Entry 383 cua CODE_CHANGE_AUDIT_LEDGER.md.
         staffOnly: false,
         adapter: "core",
         status: "baseline",

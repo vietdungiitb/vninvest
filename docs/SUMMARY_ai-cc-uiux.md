@@ -88,6 +88,78 @@ Thêm 7 backlog đã đo (B1–B7): enum thô `gemini`/`command_center` lộ ra 
 
 ---
 
+## 3b. Ba viec Owner yeu cau "lam not" (2026-10-19)
+
+### (1) Deploy + anh chup that — **XONG**
+
+- Deploy: `bash scripts/deploy-staging.sh` tren VPS `14.225.255.47`; `/opt/vninvest` @ `dev` = `34ceeb4a0` (PR #267 da merge). Container healthy, `GET /api/health/` 2xx qua nginx.
+- **E2E tren staging: 2/2 PASS, exit 0** (`tests/visual/ai-cc-uiux-s6.spec.ts`). Assert tren DOM that: 1 nav · dung 5 tab route · **1** muc sang · breadcrumb ten ngan · H1 dung · khong eyebrow · khong enum tho · policy panel khong chua "Gate su kien" va co "Chi doc" · panel ca nhan co toggle.
+- **Anh: `docs/evidence/ai-cc-uiux/{01,02,03}-*.png` — DA MO RA XEM bang mat** (L-V05), khong chi tin exit code. Doi chieu tung dong voi anh Owner gui luc dau: bang o `docs/evidence/ai-cc-uiux/README.md`.
+
+### (2) `/settings/ai` khong boc `StaffRoute` — **DAO NGUOC GIA THUYET CUA TOI**
+
+Bao `StaffRoute` cho hub se **KHOA user thuong** khoi noi ho dat API key rieng. Bang chung:
+
+- `AICommandCenterPage.tsx` **co y** phuc vu non-staff: render *"System prompt do nen tang quan ly. Lien he quan tri vien neu can thay doi."*
+- `sidebaritems.ts:39` mo `/settings/ai` cho moi nguoi; `UserSettingsPage.tsx:275` cung link cho moi nguoi.
+- `/settings/ai/audit` **co y** staff-only (boc + co test khang dinh non-staff bi dua ve `/dashboard`).
+
+=> Loi that **khong phai** "thieu `StaffRoute`" ma la **`requiredCapabilities` khai GIONG HET NHAU cho ca route staff lan route moi nguoi** => khong doc ra duoc khac biet. Da sua dung ban chat:
+
+- Them co `staffOnly` vao **catalog** cho ca 5 route AI (`true` cho `ai-audit`, `false` cho 4 route con lai).
+- Gate **`AC11-staff-only-declared`** bat khai bao lech voi `main.tsx` — **khong** doi hanh vi, **khong** khoa ai.
+- **AC11 suyt ship la gate im lang**: ban dau dung regex xuyen dong o **ca hai** file va **dao trung triet tieu thanh "PASS"** (do: dao `ai-audit` `true→false` van xanh). Ba loi: (a) `main.tsx` khai path **khong co `/` dau** (`'settings/ai/audit'`) con catalog co (`"/settings/ai/audit"`) => khong bao gio khop; (b) comment cua route sau bi statement route truoc "nuot" => `/settings/ai/slo` bi gan guard cua audit; (c) nhom khop tuy y. Da viet lai **khong dung regex xuyen dong** (quet dong cho catalog, cat theo tung `createElement(Route,` cho main.tsx, bo comment) + them **3 case self-test** => **20/20**.
+
+- **Viec that con lai** (can Owner quyet, **khong tu sua**): `/settings/ai` + `/usage` + `/traces` + `/slo` khai `requiredCapabilities: ["system.ai_command_center.manage"]` nhung **khong guard nao** kiem tra capability do ⇒ nguoi dung khong co capability van vao duoc. Do la cau hoi **y do san pham**, khong phai sua 1 dong.
+
+### (4) `requiredCapabilities` co nen siet theo khong — **DO, KHONG SIET**
+
+Owner: *"lam theo khuyen nghi"*. **Khuyen nghia cua toi sau khi do lai: KHONG siet rieng AI CC.** Bang chung quyet dinh:
+
+| Do | Gia tri |
+|---|---|
+| Noi khai `requiredCapabilities` tren toan FE | **76** |
+| Noi **DOC** nó (`.requiredCapabilities` / `["requiredCapabilities"]`) | **0** |
+| Tham chieu o backend | **0** |
+
+=> No la **ky khai mo ta**, khong phai dieu kien truy cap, ** tren toan app** — khong phai rieng AI CC. Siet rieng 5 route AI CC se (a) khong nhất quán voi 76 khai bao con lai, (b) khoa user thuong ra khoi noi dat API key rieng.
+
+Da lam thay the bang cach **ghi su that vao catalog** cho ca 4 route `staffOnly: false` (36 dong comment), de agent sau khong xay tren tien de sai — dung loi gap bao cao cua toi o §3b (2).
+
+**Con lai, can Owner quyet o cap repo (khong phai AI CC):** co nen lam `requiredCapabilities` co gia tri that o khong, hay bo han no di. Tra loi se cham toi 76 route, nen tach ticket rieng.
+
+### (5) Anh chup voi cau hinh that — **XONG, va staging da khoi phuc**
+
+- Vong 1 phat hien `testuser` **co** cau hinh (`openai` / `gpt-4o-mini`) nhung o tong quan van trong — vi **thieu API key** nen `ai_ready` false.
+- Spec `tests/visual/ai-cc-config-screenshot.spec.ts`: tam doi sang `gemini` → luu → chup (`04`, `05`) → **khoi phuc ve baseline cung dinh** `openai` / `gpt-4o-mini`. PASS exit 0.
+- **Da doc lai tu server** sau khi khoi phuc (khong doc `select` ngay sau khi tu dat): `KHOI PHUC XONG (doc lai tu server) = {"provider":"openai","model":"gpt-4o-mini"}`. **Staging sach.**
+- **BAI HOC (tu thu nhan):** teardown ban dau **doi chieu `select` ngay sau khi minh tu dat** ⇒ **xanh gia**; mot lan chay hong giua chung da de lai `gemini` tren staging. Chi phat hien khi lan sau in `CAU HINH LUC VAO = gemini` khac `BASELINE`. Da sua: moc khoi phuc la **hang so**, xac minh bang **`goto` moi** doc tu server.
+
+**2 PHAT HIEN MOI — chi lo ra khi co du lieu that (CHUA sua, ngoai pham vi):**
+
+| # | Van de | Muc |
+|---|---|---|
+| **N7** | Modal *"Xem lai thay doi truoc khi luu"* **khong hien thi diff cua `ai_provider` / `ai_model`** — chi liet ke 4 `*_agent_prompt` gia tri "—". Nguoi dung doi nha cung cap roi bam Luu ma khong thay minh dang doi gi. | **major** |
+| **N8** | Modal dung **ten field ky thuat tho** (`flow_agent_prompt`) thay vi nhan tieng Viet da co (`aiCommandCenter.subAgent.fields.*`). | minor |
+
+Ca hai nam o `AiConfigPreviewModal.tsx` ⇒ **bao cao, khong tu mo rong pham vi**.
+
+### (3) Don khoa i18n chet — **XONG, xoa bang `edit` co ngu canh**
+
+Quet **391 file production** (khong `i18n/`, khong test) bang script Node de quy:
+
+| Khoa | Trang thai | Xu ly |
+|---|---|---|
+| `tabRuntime`, `routingLabel`, `tokensPerDay`, `quotaUsed`, `refreshIntervalValue` | chet han / chet o production | **Xoa** khoi **ca 2 locale** bang `edit` co ngu canh neo. `git diff --numstat` = `0 5` moi file => xoa thuan, khong doi line-ending |
+| **`refreshInterval`** + **`refreshIntervalLabel`** | **CON SONG** o `AICommandCenterForm.tsx:774` | **KHONG dung** — dung bay da canh bao |
+| `maxTokensLabel` | con song (`:752`) | khong dung |
+
+> **Bang chung cho lanot nay**: regex **inline** `node -e` trong PowerShell hong (`\$` bi nuot) => bao **ca 7 khoa DEAD** trong do co `refreshIntervalLabel` dang song. Tin no => toi da xoa nham lam hong form. Sua bang **script file** => ket qua dung. *(Cung loai: `node -e` cung hong luc dung `remove-eyebrow-keys.js` va luc them `provider.unknown` — luon chuyen sang script file khi noi dung co dau cham/nhay.)*
+
+Cap nhat test: `ai-cc-i18n-clean.component.test.ts` AC1b von **assert khoa vua xoa phai ton tai** => doi thanh assert `customModel` + `refreshIntervalLabel` con, va **chot** `refreshIntervalValue` khong quay lai (khong "cho qua"). Don 3 muc gia trong dict gia cua `AICommandCenterPage.component.test.js`.
+
+---
+
 ## 4. Bằng chứng fail-before (không phải "tin tôi")
 
 Mỗi slice có **test đỏ trước, xanh sau**, dùng quy trình byte-exact (`cmd /c "git show … > f"` + assert kích thước):
