@@ -1,3 +1,17 @@
+## Entry 387: Light theme — tìm ra nguyên nhân gốc APP-WIDE (nền body vẫn tối) + khoá bảng màu tối cho console; đo lại light 0 FAIL (2026-10-20)
+
+- **Nhánh**: `feat/vnbroker-console` -> `dev`. Claim `vnbroker-console`. Tài liệu: `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` §J5 · handover `docs/HANDOVER_VNBROKER_CONSOLE_20261020.md`.
+- **VÒNG CUỐI**: đóng lại finding HIGH "light theme panel không đọc được" của agent A11Y. **Đo lại bằng script tự composite nền THẬT** (đọc `backgroundColor` của `body`, KHÔNG giả định trắng) + control `#fff/#000 = 21.00:1` và `#94a3b8/#fff = 2.56:1` (phải FAIL) ⇒ **script đo sai ở V1** (giả định nền trắng làm sai số).
+- **NGUYÊN NHÂN GỐC THẬT — app-wide, KHÔNG phải của panel**:
+  - `packages/web/src/index.css:53` → `--color-bg-primary: #020617` — **không có** override trong khối `:root[data-theme="light"]` của `packages/web/src/theme/tokens.css:65-82`.
+  - `body` dùng class Tailwind `bg-gray-950` ⇒ **luôn nền tối** ở mọi theme (đo thật: body trong light = `rgb(2,6,23)`).
+  - Trong khi `soc.tokens.css` lại đảo token sang nền sáng ⇒ **chữ TỐI trên nền TỐI**.
+  - ⇒ App light theme **chưa hoàn thiện** (nền body + `--color-bg-primary`) — là **quyết định thiết kế** cần Owner, không sửa trong slice này (đụng mọi trang của app).
+- **CÁCH SỬA TRONG PHẠM VI (zero blast radius)**: `.vnbConsole` **khoá lại bảng màu TỐI của SOC** (text/border/bg/accent + raw `--soc-rgb-*`) ⇒ console đọc được ở **cả 2 theme**, **dark không đổi 1 pixel**.
+- **HOẠI 1 HƯỚNG SAI (đã revert)**: commit `ab0cb4989` override `:root[data-theme="light"]` cho `.brokerBadgeOk/.brokerBadgeWarn/.statusBadge*` + đổi `--soc-status-*` sang biến màu tối. Đo đó **rất sai**: nền sau vẫn là nền TỐI ⇒ biến màu tối làm TỆ HƠN. `be91b239e` revert hết, giữ 5 token `--soc-status-*` (giá trị = token gốc, không đổi gì ở 2 theme) để surface muốn tự sửa màu sau này.
+- **ĐO LẠI (cùng script, cùng control)**: light: badge 8.75/8.35 · metric 17.73 · input 17.62 · button 16.09 · empty-state 7.28 ⇒ **0 FAIL**; dark **y hệt** ⇒ light trùng hệt dark. Ảnh: `docs/evidence/vnbroker-console/05-panel-light-theme.png`.
+- **GATE**: `tsc` **0** · `vitest` **12/12** · `normalize-eol` **0** · deploy staging `--verify` **PASS**.
+
 ## Entry 386: VNBroker console vòng 2 — audit UI/UX (2 agent + 2 skill) + sửa **độ trơn tru BE↔FE**: 3 lỗi Owner + 9 lỗi BE↔FE + 9 lỗi A11Y, đo lại bằng pixel thật (2026-10-20)
 
 - **Nhánh**: `feat/vnbroker-console` -> `dev`. Claim `vnbroker-console` (`docs/CLAIMS.md`). Tài liệu: `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` **§J** (Entry 384 = audit, Entry 385 = triển khai v1, Entry 386 = vòng 2).

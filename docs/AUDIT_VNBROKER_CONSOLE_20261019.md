@@ -489,7 +489,34 @@ Nguyên nhân gốc: `.fieldGrid` = `repeat(auto-fit, minmax(200px,1fr))` ⇒ **
 | Số liệu runtime | đổi giữa 2 lần chụp (poll chạy) | — |
 | Console error | **0** | 0 |
 
-### J5. Gate
+### J5. Light theme — tìm ra **nguyên nhân gốc thật** (không phải lỗi badge)
+
+Audit A11Y báo HIGH: "light theme → panel không đọc được". Tôi **đo lại** bằng script tự composite nền **thật** (đọc `backgroundColor` của `body`, không giả định trắng) + control `#fff/#000 = 21.00:1` và `#94a3b8/#fff = 2.56:1` (phải FAIL):
+
+| Lần đo | Kết quả |
+|---|---|
+| V1 (giả định nền trắng) | badge 1.43 / 1.47 · empty-state 2.06 ⇒ **3 FAIL** |
+| V2 (nền thật từ `body`) | body trong light theme = **`rgb(2, 6, 23)` — vẫn nền đen** ⇒ chữ tối trên nền tối |
+
+**Nguyên nhân gốc (app-wide, KHÔNG phải của panel):**
+- `packages/web/src/index.css:53` → `--color-bg-primary: #020617` — **không có** override trong khối `:root[data-theme="light"]` của `packages/web/src/theme/tokens.css:65-82`.
+- `body` dùng class Tailwind `bg-gray-950` ⇒ **luôn tối** ở mọi theme.
+- Trong khi đó `soc.tokens.css` lại đảo token sang nền sáng ⇒ **chữ tối trên nền tối**.
+
+⇒ App-wide "light theme" **chưa hoàn thiện** (nền `body` + `--color-bg-primary`). Đây là **quyết định thiết kế** cần Owner, **không** sửa trong slice này (đụng mọi trang của app).
+
+**Cách sửa trong phạm vi VNBroker (đã làm, zero blast radius):** `.vnbConsole` **khoá lại bảng màu tối của SOC** (text / border / bg / accent + raw `--soc-rgb-*`) ⇒ console đọc được ở **cả 2 theme**, và **dark theme không đổi 1 pixel**.
+
+**Đo lại sau sửa (cùng script, cùng control):**
+
+| Theme | badge | metric-value | field-input | action-btn | empty-state | FAIL |
+|---|---|---|---|---|---|---|
+| light | 8.75 · 8.35 | 17.73 | 17.62 | 16.09 | 7.28 | **0** |
+| dark | 8.75 · 8.35 | 17.73 | 17.62 | 16.09 | 7.28 | **0** |
+
+⇒ light **trùng hệt dark** ⇒ console nhất quán 2 theme. Ảnh: `docs/evidence/vnbroker-console/05-panel-light-theme.png`.
+
+### J6. Gate
 
 `tsc` 0 · `eslint` 0 error · `vitest` **12/12** (4 test mới: T9 chặn trạng thái BE từ chối · T10 nút bằng nhau · T11 nhãn nút khác nhau · T12 có heading) · `jest soc.test.js` 98/98 · `i18n:scan:strict` 0 · `check:contrast` 0 · `check:tokens` exit 1 (**lỗi nền** `brokerData.css #c4b5fd`) · `normalize-eol` 0.
 
