@@ -1,3 +1,27 @@
+## Entry 386: VNBroker console vòng 2 — audit UI/UX (2 agent + 2 skill) + sửa **độ trơn tru BE↔FE**: 3 lỗi Owner + 9 lỗi BE↔FE + 9 lỗi A11Y, đo lại bằng pixel thật (2026-10-20)
+
+- **Nhánh**: `feat/vnbroker-console` -> `dev`. Claim `vnbroker-console` (`docs/CLAIMS.md`). Tài liệu: `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` **§J** (Entry 384 = audit, Entry 385 = triển khai v1, Entry 386 = vòng 2).
+- **Công cụ**: 2 sub-agent (**Accessibility Auditor** · **UI Designer**) + skill `pbakaus/layout` + `jakubkrehel/better-interface`. Mọi kết luận có **đo đạc pixel thật** trên staging (Playwright + `getBoundingClientRect` + `getComputedStyle`), **không** suy từ source. Ảnh: `docs/evidence/vnbroker-console/`.
+- **3 YÊU CẦU CỦA OWNER — đã sửa + đo lại**:
+  - **2 nút trong tile phải BẰNG NHAU**: trước **130px vs 99px** (lệch 31px) → sau **175.66 vs 175.67px** (lệch 0.01px). Nguyên nhân gốc: hàng nút dùng chung class **badge** `.brokerTileBadges` (chỉ `flex-wrap`, không phân bố bề rộng) ⇒ nút bằng nội dung. Sửa: `.vnbTileActions` = grid `repeat(2, minmax(0,1fr))` + `margin-top:auto` (ghim đáy ⇒ 3 tile cùng cao độ, hết ~95px rỗng dưới tile VCI).
+  - **"Giới hạn tốc độ" dồn 1 hàng**: nguyên nhân gốc `.fieldGrid` = `repeat(auto-fit, minmax(200px,1fr))` ⇒ **`auto-fit` thu gọn track rỗng rồi phân lại `fr`** ⇒ nhóm 2 field bị kéo giãn **593px/field**, 4 nhóm có 4 bề rộng cột khác nhau (262/593/593/390). Sửa: `.vnbFormGrid` (**`auto-fill`**) là **1 lưới chung** cho cả 4 nhóm ⇒ mọi nhóm cùng hệ cột, độ rộng input lệch **25.53px** (chênh do chip `s`).
+  - **Tiêu đề nhóm con khác tiêu đề card**: `.vnbFormGroupTitle` (uppercase + rule) + `<h4>`; card `<h3>`; panel `<h2>`.
+- **9 LỖI BE↔FE (quan trọng hơn bố cục)**:
+  - **FE cho phép trạng thái BE sẽ TỪ CHỐI**: `preferred_provider` ∈ `fallback_providers` ⇒ BE `VnbrokerDomainConfig.validate()` trả 400. Sửa: `sanitizeDraft()` + `setPreferred()` + **khoá** checkbox dự phòng của provider chính (test T9).
+  - **Panel chờ ~60s** (đo: 7 request song song) → **5 khối tải độc lập**, mỗi khối có loading + error + "Thử lại" riêng.
+  - **Timeout 12s (số tôi ĐOÁN) cắt mất endpoint còn sống** ⇒ form trống ở lần deploy đầu. Đo thật trên staging: **1 request 1.4–7.8s** ⇒ timeout **30s**. Bắt được nhờ **mở ảnh ra xem** (L-V05), không phải nhờ exit code.
+  - **Không poll** ⇒ "Quan sát trực tiếp" là số tĩnh → poll 60s (bỏ qua tab ẩn) + nút "Làm mới" + `aria-live` + dòng "Cập nhật lúc". Số liệu đã đổi giữa 2 lần chụp (KBS 185.39ms → 122.06ms).
+  - "Thử nghiệm kết nối" provider **chưa sẵn sàng** (BE trả 400 kỹ thuật) → nút disable + `title` = `readiness_reason`.
+  - "Đặt làm chính" provider **đang là chính** → disable.
+  - Không có trạng thái **dirty** → badge "Có thay đổi chưa áp dụng".
+  - `health.status` hiện chuỗi API thô `healthy` → dịch `soc.vnbroker.provider_status_*`.
+  - `breaker_closed: "ĐANG KẾT NỐI (CLOSED)"` — **ngữ nghĩa sai** (CLOSED = bình thường) → "BÌNH THƯỜNG (CLOSED)".
+- **9 LỖI A11Y (WCAG 2.2 AA)**: select benchmark mất accessible name · 6 nút tile trùng tên → `aria-label` + `<section aria-labelledby>` (đo 6/6 khác nhau) · panel không có heading → h2/h3/h4 (đo 15) · vùng live mount động ⇒ SR bỏ qua → node luôn có trong DOM + màu bên trong · lỗi "bắt buộc" không liên kết input → `required`/`aria-invalid`/`aria-describedby` + chỉ hiện sau khi user chạm · focus ring `.fieldInput` chỉ đổi màu viền 1px → `:focus-visible` 2px · checkbox 13px → 16px · `SocConfigPreviewModal` không phải dialog → `role=dialog` + `aria-modal` + Escape + focus vào/ra + `aria-label` nút đóng · bảng thiếu `scope`/`caption`.
+- **SỐ ĐO VERIFY** (staging): 2 nút lệch **0.01px** (≤1) · 3 tile lệch cao độ **0px** (≤1) · độ rộng input lệch **25.53px** (≤32) · **không tràn ngang** ở 1680/1280/1024/840/768/430 (scrollWidth == innerWidth) · panel shell 13.7s · form có dữ liệu 20.8s · **0 console error**.
+- **TEST**: `soc-vnbroker-console.component.test.tsx` 8 → **12** (thêm T9 chặn trạng thái BE từ chối · T10 2 nút bằng nhau · T11 nhãn nút khác nhau theo provider · T12 có heading) ⇒ **12/12 PASS**.
+- **GATE**: `tsc` **0** · `eslint` **0 error** (163 warning cùng loại `react/jsx-no-literals`) · `vitest` **12/12** · `jest soc.test.js` **98/98** · `i18n:scan:strict` **0** · `check:contrast` **0** · `check:tokens` exit 1 (**lỗi nền** `brokerData.css #c4b5fd`) · `normalize-eol` **0** · deploy staging `--verify` **PASS**.
+- **BÀI HỌC LẶT (chưa ghi lesson vì là lỗi quy trình, không phải bẫy công cụ)**: timeout phải chọn từ **số đo thật**; chọn bằng đoán đã làm mất dữ liệu ở 1 lần deploy và chỉ bị phát hiện khi **mở ảnh ra xem** — exit code vẫn xanh.
+
 ## Entry 385: Refactor tab VNBroker — 8 lỗi P0 sửa (contract FE↔BE + panel 6 vùng) + nối circuit breaker / test-connection / health per-provider thật ở BE (2026-10-19)
 
 - **Nhánh**: `feat/vnbroker-console` -> `dev`. Claim `vnbroker-console` (`docs/CLAIMS.md`, commit `9cf90c38e` mở rộng phạm vi). Baseline `dev` @ `e7b008f25`. **2 commit code**: `037e81ca7` (Slice 2 FE) + `911ea4582` (Slice 3 BE). Tài liệu: `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` (Entry 384 là audit, Entry 385 là triển khai).

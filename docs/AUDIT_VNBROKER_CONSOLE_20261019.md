@@ -433,6 +433,68 @@ Các con số trong ảnh chụp ban đầu (`HOẠT ĐỘNG TỐT 1`, `934.6/s`
 
 ---
 
+## J. VÒNG 2 — AUDIT UI/UX + ĐỘ TRƠN TRU BE↔FE (2026-10-20)
+
+> Owner yêu cầu: audit lại UI/UX bằng UI agent + skill, sửa (a) 2 nút trong tile phải **bằng nhau**, (b) nhóm "Giới hạn tốc độ" **dồn 1 hàng**, (c) tự phát hiện lỗi khác, (d) kiểm tra độ trơn tru BE↔FE.
+> Công cụ: 2 sub-agent (**Accessibility Auditor** · **UI Designer**) + skill `pbakaus/layout` + `jakubkrehel/better-interface`. Mọi kết luận đều có **đo đạc pixel thật** trên staging, không suy từ source.
+
+### J1. Lỗi Owner nêu — đã sửa và **đo lại**
+
+| # | Trước (đo) | Sau (đo) | Ngưỡng |
+|---|---|---|---|
+| O1 | 2 nút trong tile: **130px vs 99px** (lệch 31px) | **175.66 vs 175.67px** (lệch 0.01px) | ≤ 1px |
+| O1b | 3 tile hàng nút ở 3 cao độ (275 / 275 / 345) | **3 tile cùng `top=738`** | ≤ 1px |
+| O2 | "Giới hạn tốc độ" 2 field trải **593px/field**; "Thử lại" y hệt | 1 lưới chung `.vnbFormGrid` (`auto-fill minmax(240px,1fr)`) → mọi nhóm **cùng hệ cột**; độ rộng input lệch **25.53px** (do chip `s`) | ≤ 32px |
+
+Nguyên nhân gốc: `.fieldGrid` = `repeat(auto-fit, minmax(200px,1fr))` ⇒ **`auto-fit` thu gọn track rỗng rồi phân lại `fr`** ⇒ nhóm 2 field bị kéo giãn full-width, 4 nhóm có 4 bề rộng cột khác nhau. Sửa bằng `.vnbFormGrid` (**`auto-fill`**) — track rỗng giữ nguyên.
+
+### J2. Lỗi BE↔FE phát hiện khi audit (quan trọng hơn bố cục)
+
+| # | Vấn đề | Trước | Sau |
+|---|---|---|---|
+| B1 | **FE cho phép trạng thái BE sẽ từ chối**: `preferred_provider` ∈ `fallback_providers` → BE `validate()` trả 400 | UI cho chọn tự do | `sanitizeDraft()` + `setPreferred()` loại primary khỏi chuỗi dự phòng; **checkbox dự phòng của provider chính bị khoá** (test T9) |
+| B2 | **Panel chờ ~60s mới hiện** (đo: 7 request song song) | 1 `Promise.allSettled` trên 7 endpoint + 1 cờ `loadingCore` gate toàn panel | **5 khối tải độc lập** (config / providers / ownership / runtime / benchmark), mỗi khối có loading + error + "Thử lại" riêng |
+| B3 | **Timeout 12s (do tôi đoán) cắt mất endpoint còn sống** | — | Đo thật trên staging: **1 request 1.4–7.8s** ⇒ timeout **30s** (trên số đo, không đoán). Đây là lý do form bị trống ở lần deploy đầu — bắt được nhờ **mở ảnh ra xem** (L-V05) |
+| B4 | **Không poll** ⇒ "Quan sát trực tiếp" là số tĩnh | số đo đứng yên sau 60s | poll **60s** (bỏ qua tab ẩn) + nút "Làm mới" + `aria-live` + dòng "Cập nhật lúc". Số liệu đã đổi giữa 2 lần chụp (KBS 185.39ms → 122.06ms) |
+| B5 | "Thử nghiệm kết nối" cho provider **chưa sẵn sàng** → BE trả 400 kỹ thuật | bấm xong mới biết lỗi | nút **disable** + `title` giải thích bằng `readiness_reason` |
+| B6 | "Đặt làm chính" cho provider **đang là chính** | bấm không có gì xảy ra | nút **disable** |
+| B7 | Không có trạng thái "dirty" | không biết đã sửa gì | badge "Có thay đổi chưa áp dụng" (test đo: 0 → 1 khi đổi primary) |
+| B8 | `health.status` hiện chuỗi API thô `healthy` | không dịch | dịch qua `soc.vnbroker.provider_status_*` → "Hoạt động tốt" |
+| B9 | `breaker_closed: "ĐANG KẾT NỐI (CLOSED)"` — **ngữ nghĩa sai** (CLOSED = bình thường) | gây hiểu nhầm | "BÌNH THƯỜNG (CLOSED)" |
+
+### J3. A11Y (WCAG 2.2 AA) — đã sửa
+
+| # | Vấn đề | Sửa |
+|---|---|---|
+| A1 | `<select>` benchmark **không có accessible name** | `<label htmlFor>` + `id` (đo: `label[for]` ≠ null) |
+| A2 | 6 nút trong tile **trùng tên** ("Thử nghiệm kết nối" ×3) | `aria-label` kèm tên provider + tile là `<section aria-labelledby>` (đo: **6/6** nhãn khác nhau) |
+| A3 | Panel **không có heading** nào | `<h2>` panel · `<h3>` khối · `<h4>` nhóm con (đo: **15** heading) |
+| A4 | Vùng live mount **động** ⇒ SR bỏ qua | node `role=alert`/`role=status` **luôn có trong DOM**, phần màu bên trong |
+| A5 | Lỗi "bắt buộc" không liên kết với input | `required` + `aria-required` + `aria-invalid` + `aria-describedby`; lỗi chỉ hiện **sau khi user chạm** (trước đó form "hỏng" sẵn) |
+| A6 | Focus ring `.fieldInput` chỉ đổi màu viền 1px | `:focus-visible` 2px |
+| A7 | Checkbox 13px | 16px + `cursor: pointer` |
+| A8 | `SocConfigPreviewModal` **không phải dialog** (không role/aria-modal, Escape không đóng, focus không trả về) | `role=dialog` + `aria-modal` + `aria-labelledby` + Escape đóng + focus vào nút xác nhận + trả focus về nút đã mở + nút đóng có `aria-label` |
+| A9 | Bảng thiếu `scope` / `<caption>` | thêm đủ |
+
+### J4. Số đo verify (staging, Playwright + `getBoundingClientRect`)
+
+| Phép đo | Kết quả | Ngưỡng |
+|---|---|---|
+| 2 nút tile lệch rộng | **0.01px** | ≤ 1px |
+| 3 tile hàng nút lệch cao độ | **0px** | ≤ 1px |
+| Độ rộng input các nhóm lệch | **25.53px** | ≤ 32px |
+| Tràn ngang ở 1680 / 1280 / 1024 / 840 / 768 / 430 | **OK** (scrollWidth == innerWidth) | không tràn |
+| Panel hiện (shell) | 13.7s (nạp bundle) | — |
+| Form có dữ liệu thật | 20.8s | — |
+| Số liệu runtime | đổi giữa 2 lần chụp (poll chạy) | — |
+| Console error | **0** | 0 |
+
+### J5. Gate
+
+`tsc` 0 · `eslint` 0 error · `vitest` **12/12** (4 test mới: T9 chặn trạng thái BE từ chối · T10 nút bằng nhau · T11 nhãn nút khác nhau · T12 có heading) · `jest soc.test.js` 98/98 · `i18n:scan:strict` 0 · `check:contrast` 0 · `check:tokens` exit 1 (**lỗi nền** `brokerData.css #c4b5fd`) · `normalize-eol` 0.
+
+---
+
 ## Liên kết
 
 - Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` **Entry 384** (audit) + **Entry 385** (triển khai Slice 2 + Slice 3)
