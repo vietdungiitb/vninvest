@@ -516,6 +516,15 @@ Audit A11Y báo HIGH: "light theme → panel không đọc được". Tôi **đo
 
 ⇒ light **trùng hệt dark** ⇒ console nhất quán 2 theme. Ảnh: `docs/evidence/vnbroker-console/05-panel-light-theme.png`.
 
+
+> ⚠ **ĐÍNH CHÍNH 2026-10-20 (sau audit toàn dự án).** Bảng "ĐO LẠI SAU SỬA" ở §J5 đo **CONSOLE** ⇒ "light 0 FAIL" **đúng cho console**,
+> **không** đúng cho app: sau khi khoá palette tối cho `.vnbConsole`, console trở nên **theme-invariant** ⇒ light và dark phải cho cùng số đo
+> (đã verify: 2 file JSON giống hệt sau khi bỏ key `theme`).
+> **Light theme APP vẫn hỏng — tự probe staging**: `theme=light` ⇒ `--text-primary = #0f172a` (chữ tối) trên `--color-bg-primary = #020617`
+> ⇒ **1.13:1 ⇒ tiêu đề biến mất**; cơ chế: `index.css:53-74` không có override light cho `--color-*` (canvas không đổi) còn
+> `theme/tokens.css:65-82` + `soc.tokens.css:124-198` có override light cho `--text-*` (chữ đổi).
+> ⇒ **P0 wave 0** của `.claude/plan/commercial-ui-standardization.md` §1.5 + §4 W0.2; ledger Entry 389.
+
 ### J6. Gate
 
 `tsc` 0 · `eslint` 0 error · `vitest` **12/12** (4 test mới: T9 chặn trạng thái BE từ chối · T10 nút bằng nhau · T11 nhãn nút khác nhau · T12 có heading) · `jest soc.test.js` 98/98 · `i18n:scan:strict` 0 · `check:contrast` 0 · `check:tokens` exit 1 (**lỗi nền** `brokerData.css #c4b5fd`) · `normalize-eol` 0.

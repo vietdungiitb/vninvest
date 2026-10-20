@@ -180,6 +180,25 @@ python manage.py test service_ops.tests.test_vnbroker_console market_data -v 1
 
 ---
 
+
+> ⚠ **ĐÍNH CHÍNH 2026-10-20 (sau audit toàn dự án) — đọc trước khi dùng dòng "Contrast light theme"**
+>
+> Dòng `| Contrast light theme | 3 FAIL | 0 FAIL |` ở §5 **chỉ đúng cho CONSOLE VNBroker**, **không** đúng cho app.
+> Lý do: sau khi khoá palette tối cho `.vnbConsole`, **console trở nên theme-invariant** ⇒ light và dark **phải** cho cùng số đo
+> (đã verify: 2 file JSON giống hệt sau khi bỏ key `theme`).
+>
+> **Light theme của APP vẫn HỎNG — tôi đã tự probe trên staging** (không suy đoán):
+> `theme=light` ⇒ `--text-primary = #0f172a` (chữ TỐI) trong khi `--color-bg-primary = #020617` + `body bg = rgb(2,6,23)` (nền TỐI)
+> ⇒ **chữ tối trên nền tối ≈ 1.13:1 ⇒ tiêu đề biến mất**.
+> Cơ chế: `index.css:53-74` khai token `@theme` (`--color-bg-primary`, `--color-text-primary`) **không có** khối `:root[data-theme="light"]`
+> ⇒ canvas không bao giờ chuyển sáng; còn `theme/tokens.css:65-82` + `soc.tokens.css:124-198` **có** override light cho `--text-primary` ⇒ chữ đảo sáng, nền không.
+>
+> ⇒ Đây là **P0 wave 0** của kế hoạch chuẩn hoá UI toàn dự án:
+> `.claude/plan/commercial-ui-standardization.md` §1.5 + §4 W0.2.
+> Evidence `contrast-light.json` **đúng cho console** nhưng **không đại diện cho app** ⇒ kế hoạch yêu cầu **sinh lại** evidence
+> bằng quy trình ghi rõ `data-theme` + `--text-primary` + `--color-bg-primary` + body bg vào JSON (mục V3).
+> Chi tiết: ledger **Entry 389** (đính chính Entry 387).
+
 ## 10. VÒNG AUDIT CUỐI (2026-10-20, sau khi deploy tổng thể)
 
 Audit lại **toàn bộ** công việc đã làm — không chỉ phần UI — bằng cách chạy lại từng gate trên đúng commit đã deploy, rồi đo lại trên staging.
