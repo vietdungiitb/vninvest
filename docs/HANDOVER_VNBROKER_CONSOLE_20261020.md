@@ -180,7 +180,63 @@ python manage.py test service_ops.tests.test_vnbroker_console market_data -v 1
 
 ---
 
-## 10. LIÊN KẾT
+## 10. VÒNG AUDIT CUỐI (2026-10-20, sau khi deploy tổng thể)
+
+Audit lại **toàn bộ** công việc đã làm — không chỉ phần UI — bằng cách chạy lại từng gate trên đúng commit đã deploy, rồi đo lại trên staging.
+
+### 10.1. Gate (chạy lại toàn bộ trên `6a127002e`)
+
+| Gate | Kết quả | Ghi chú |
+|---|---|---|
+| `npx tsc --noEmit` | **0 lỗi** | |
+| `npx vitest run` (toàn bộ) | **169 file / 1154 test PASS** | 2 test FAIL lúc đầu do **pin list i18n lỗi thời** (đã gỡ 2 mục) |
+| `jest` (toàn bộ) | 18/21 suite PASS · **3 suite FAIL** | **y hệt bộ lỗi nền** đã chứng minh bằng worktree tại base `e7b008f25` |
+| BE `manage.py test tests` (toàn bộ) | **1071 test** · 5 FAIL | **y hệt bộ lỗi nền** (`copilot provider removed` ×4 + `admin UI menu` ×1) |
+| BE `test market_data + test_soc_tasks + test_vnbroker_console` | **219/219 PASS** | |
+| `npm run build` | **PASS** | |
+| `node scripts/i18n-scan-strict.mjs` | **0** | |
+| `npm run check:contrast` | **PASS** (7 tone × 2 mode) | |
+| `npm run check:tokens` | exit 1 | lỗi **nền**: `brokerData.css #c4b5fd` (ngoài scope) |
+| `node scripts/check-lessons.mjs` | **0** (48/60 lesson, 12 file) | |
+| `node packages/web/scripts/check-multi-agent.mjs` | **0 lỗi** | |
+| `node docs/audit-uiux/scripts/check-ledger-entry.mjs` | **PASS** (0 trùng mới) | |
+| `node scripts/pre-push-gate.mjs` | **23 PASS / 0 SKIP / 0 FAIL** | |
+| `bash scripts/deploy-staging.sh --verify` | **PASS** | 6 container healthy · 0 restart · mem 1–4% |
+
+### 10.2. Số đo lại trên staging (sau deploy tổng thể)
+
+| Phép đo | Kết quả | Ngưỡng |
+|---|---|---|
+| 2 nút trong tile lệch rộng | **0.01px** | ≤ 1px |
+| 3 tile hàng nút lệch cao độ | **0px** | ≤ 1px |
+| Độ rộng input các nhóm lệch | **25.53px** | ≤ 32px |
+| Tràn ngang 1680 / 1280 / 1024 / 840 / 768 / 430 | **OK** cả 6 | không tràn |
+| Badge dirty | 0 → 1 khi đổi provider chính | đúng |
+| Checkbox dự phòng của provider chính | **khoá** (vci→kbs thì khoá chuyển sang vci) | đúng |
+| `<select>` benchmark có label | **có** | có |
+| Heading trong panel | **15** (h2/h3/h4) | ≥3 |
+| `aria-label` nút trong tile | **6/6 khác nhau** | 6/6 |
+| Console error | **0** | 0 |
+| Contrast **light** theme | **0 FAIL** (thấp nhất 7.28) | ≥ 4.5 |
+| Contrast **dark** theme | **0 FAIL** (thấp nhất 7.28) | ≥ 4.5 |
+| Dữ liệu form trên staging | `preferred=kbs · rpm=60 · retry=3 · read=30s · burst=10 · cb=5` — **khớp config thật** | |
+| Nhãn CB / health | `BÌNH THƯỜNG (CLOSED)` · `Hoạt động tốt` — **đã dịch** | |
+
+### 10.3. Một lỗi do tôi phát hiện ở vòng audit cuối
+
+`vitest` báo 2 FAIL ở gate **"nested duplicate keys are pinned"** — không phải lỗi mới mà là **hệ quả đúng** của việc tôi gộp 2 key trùng: danh sách `KNOWN_NESTED_DUPLICATES` vẫn pin `soc.vnbroker.benchmark_title` + `soc.vnbroker.reset_confirm` ⇒ phải gỡ 2 mục đó (đã làm, commit `6a127002e`). Đây là cơ chế gate hoạt động đúng: **ghi nhận việc sửa bằng cách bỏ mục khỏi pin list**, không nới gate.
+
+### 10.4. Sự cố quy trình trong phiên (đã xử lý, ghi để không lặp lại)
+
+| Sự cố | Xử lý |
+|---|---|
+| Agent `agent-infra-p0` **dùng cùng working tree** và switch branch giữa lúc tôi đang commit ⇒ commit handover của tôi rơi lên branch của họ, và file bị `git checkout` của họ **xoá khỏi disk** | Khôi phục bằng `git checkout <commit> -- <path>` (commit object còn nguyên), dùng `git branch -f` + `git reset --mixed` để **tách 2 branch mà không đụng file chưa commit của họ**. Đã xác nhận: `feat/vnbroker-console` = commit của tôi, `feat/agent-infra-p0` = `e4bf14eb2` của họ (nguyên vẹn) |
+| `agent-sync.ps1` fail ở bước 5c với `OperationalError: connection timeout` | **Không phải lỗi code** — Docker Desktop đã tắt giữa chừng ⇒ Postgres không chạy. Khởi động lại Docker → chạy lại ⇒ BE test chạy được (1071 test, 5 FAIL nền) |
+| `git stash push/pop` làm churn LF→CRLF (2 lần) | `node scripts/normalize-eol.mjs --fix` + kiểm `git diff --numstat` — đã ghi lesson **L-T04** |
+
+---
+
+## 11. LIÊN KẾT
 
 - `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` — tài liệu gốc (audit + §J vòng 2)
 - `docs/CODE_CHANGE_AUDIT_LEDGER.md` — Entry 384 / 385 / 386 / 387
