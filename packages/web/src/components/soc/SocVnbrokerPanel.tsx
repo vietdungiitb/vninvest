@@ -192,8 +192,15 @@ const vnbrokerAdapter = defaultCoreApiAdapter as unknown as {
 
 const EMPTY_TIMEOUT: VnbrokerTimeout = { connect: 10, read: 30, write: 10, pool: 5 };
 
-/** Mỗi request có trần thời gian: 1 endpoint chậm KHÔNG được kéo dài cả panel. */
-const REQUEST_TIMEOUT_MS = 12_000;
+/**
+ * Mỗi request có trần thời gian: 1 endpoint chậm KHÔNG được kéo dài cả panel.
+ *
+ * Ngưỡng CHỌN TỪ SỐ ĐO THẬT trên staging (2026-10-20, Playwright):
+ * 1 endpoint (không tải) mất 1.4–7.8s; 7 request song song mất ~60s ⇒ timeout
+ * cũ 12s cắt mất endpoint còn sống. 30s là trần trên đo được, không phải
+ * con số đoán.
+ */
+const REQUEST_TIMEOUT_MS = 30_000;
 const RUNTIME_POLL_MS = 60_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -236,7 +243,9 @@ function compactPayload(payload: VnbrokerConfigPayload): VnbrokerConfigPayload {
 /** BE từ chối `fallback_providers` chứa `preferred_provider` — FE chặn trước. */
 function sanitizeDraft(draft: VnbrokerConfigPayload): VnbrokerConfigPayload {
   const primary = String(draft.preferred_provider || "").toLowerCase();
-  const fallback = (draft.fallback_providers || []).filter(
+  const rawFallback = draft.fallback_providers;
+  if (!primary || !rawFallback) return { ...draft };
+  const fallback = rawFallback.filter(
     (provider) => String(provider).toLowerCase() !== primary,
   );
   return { ...draft, fallback_providers: fallback };
@@ -247,10 +256,13 @@ export function SocVnbrokerPanel() {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [loadingCore, setLoadingCore] = useState(true);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [loadingOwnership, setLoadingOwnership] = useState(true);
   const [loadingRuntime, setLoadingRuntime] = useState(true);
   const [loadingBenchmark, setLoadingBenchmark] = useState(true);
-  const [coreError, setCoreError] = useState("");
+  const [configError, setConfigError] = useState("");
+  const [providersError, setProvidersError] = useState("");
   const [runtimeError, setRuntimeError] = useState("");
   const [benchmarkError, setBenchmarkError] = useState("");
 
@@ -296,36 +308,66 @@ export function SocVnbrokerPanel() {
     [t],
   );
 
-  // ── Nhóm 1: cấu hình + provider + ownership (điều kiện để dựng form) ──
-  const loadCore = useCallback(async () => {
-    setLoadingCore(true);
-    setCoreError("");
-    const results = await Promise.allSettled([
-      withTimeout(vnbrokerAdapter.getSocVnbrokerConfig(), REQUEST_TIMEOUT_MS, "config"),
-      withTimeout(vnbrokerAdapter.getSocVnbrokerProviders(), REQUEST_TIMEOUT_MS, "providers"),
-      withTimeout(vnbrokerAdapter.getSocVnbrokerOwnership(), REQUEST_TIMEOUT_MS, "ownership"),
-    ]);
-    const [cfgRes, providersRes, ownRes] = results;
-    if (cfgRes.status === "fulfilled") {
-      const payload = cfgRes.value.config || {};
+  // ── Tải TỪNG KHỐI RIÊNG (đo thật staging: 1 request 1.4–7.8s; 7 request
+  // song song ~60s ⇒ 1 endpoint chậm KHÔNG được chặn cả panel).
+  const loadConfig = useCallback(async () => {
+    setLoadingConfig(true);
+    setConfigError("");
+    try {
+      const res = await withTimeout(
+        vnbrokerAdapter.getSocVnbrokerConfig(),
+        REQUEST_TIMEOUT_MS,
+        "config",
+      );
+      const payload = res.config || {};
       setConfigMeta({
-        service_key: cfgRes.value.service_key,
-        applied_by: cfgRes.value.applied_by,
-        applied_at: cfgRes.value.applied_at,
+        service_key: res.service_key,
+        applied_by: res.applied_by,
+        applied_at: res.applied_at,
       });
       setSavedConfig(payload);
       setDraft(payload);
-    } else {
-      setCoreError(errorText(cfgRes.reason, "soc.vnbroker.load_failed"));
+    } catch (err) {
+      setConfigError(errorText(err, "soc.vnbroker.load_failed"));
+    } finally {
+      setLoadingConfig(false);
     }
-    if (providersRes.status === "fulfilled") {
-      setPrimary(providersRes.value.primary || "");
-      setFallback(providersRes.value.fallback || []);
-      setCatalog(providersRes.value.providers || []);
-    }
-    if (ownRes.status === "fulfilled") setOwnership(ownRes.value);
-    setLoadingCore(false);
   }, [errorText]);
+
+  const loadProviders = useCallback(async () => {
+    setLoadingProviders(true);
+    setProvidersError("");
+    try {
+      const res = await withTimeout(
+        vnbrokerAdapter.getSocVnbrokerProviders(),
+        REQUEST_TIMEOUT_MS,
+        "providers",
+      );
+      setPrimary(res.primary || "");
+      setFallback(res.fallback || []);
+      setCatalog(res.providers || []);
+    } catch (err) {
+      setProvidersError(errorText(err, "soc.vnbroker.load_failed"));
+    } finally {
+      setLoadingProviders(false);
+    }
+  }, [errorText]);
+
+  const loadOwnership = useCallback(async () => {
+    setLoadingOwnership(true);
+    try {
+      const res = await withTimeout(
+        vnbrokerAdapter.getSocVnbrokerOwnership(),
+        REQUEST_TIMEOUT_MS,
+        "ownership",
+      );
+      setOwnership(res);
+    } catch {
+      // Ownership chỉ là thông tin phụ — không chặn phần còn lại của panel.
+    } finally {
+      setLoadingOwnership(false);
+    }
+  }, []);
 
   // ── Nhóm 2: sức khỏe runtime (nhanh hơn, poll riêng) ──
   const loadRuntime = useCallback(async () => {
@@ -370,10 +412,12 @@ export function SocVnbrokerPanel() {
   }, [errorText]);
 
   useEffect(() => {
-    void loadCore();
+    void loadConfig();
+    void loadProviders();
+    void loadOwnership();
     void loadRuntime();
     void loadBenchmark();
-  }, [loadCore, loadRuntime, loadBenchmark]);
+  }, [loadConfig, loadProviders, loadOwnership, loadRuntime, loadBenchmark]);
 
   // Tự làm mới số liệu runtime (tab ẩn thì không poll).
   useEffect(() => {
@@ -496,14 +540,13 @@ export function SocVnbrokerPanel() {
       setPreviewErrors([]);
       setPreviewWarnings([]);
       toast.success(t("soc.vnbroker.apply_success"));
-      await loadCore();
-      await loadRuntime();
+      await Promise.all([loadConfig(), loadProviders(), loadRuntime()]);
     } catch (err) {
       toast.error(errorText(err, "soc.vnbroker.apply_failed"));
     } finally {
       setApplying(false);
     }
-  }, [changeReason, configMeta, draft, loadCore, loadRuntime, toast, t, errorText]);
+  }, [changeReason, configMeta, draft, loadConfig, loadProviders, loadRuntime, toast, t, errorText]);
 
   const handleReset = useCallback(async () => {
     const ok = await confirm({
@@ -520,12 +563,11 @@ export function SocVnbrokerPanel() {
       setChangeReason("");
       setChangeReasonTouched(false);
       toast.success(t("soc.vnbroker.reset_success"));
-      await loadCore();
-      await loadRuntime();
+      await Promise.all([loadConfig(), loadProviders(), loadRuntime()]);
     } catch (err) {
       toast.error(errorText(err, "soc.vnbroker.apply_failed"));
     }
-  }, [confirm, loadCore, loadRuntime, toast, t, errorText]);
+  }, [confirm, loadConfig, loadProviders, loadRuntime, toast, t, errorText]);
 
   const handleRunBenchmark = useCallback(async () => {
     setBenchmarkLoading(true);
@@ -582,10 +624,10 @@ export function SocVnbrokerPanel() {
 
   return (
     <div className={`${styles.glassPanel} ${styles.vnbConsole}`} data-testid="vnb-console">
-      {coreError ? (
+      {providersError ? (
         <div className={styles.inlineError} role="alert" data-testid="vnb-error">
-          {coreError}{" "}
-          <button type="button" className={styles.vnbActionBtn} onClick={() => void loadCore()}>
+          {providersError}{" "}
+          <button type="button" className={styles.vnbActionBtn} onClick={() => void loadProviders()}>
             {t("soc.vnbroker.retry")}
           </button>
         </div>
@@ -603,7 +645,7 @@ export function SocVnbrokerPanel() {
       <h2 className={styles.metricLabel} data-testid="vnb-kpi-title">
         {t("soc.vnbroker.kpi_title")}
       </h2>
-      {loadingCore ? (
+      {loadingProviders ? (
         <div className={styles.metricGrid} aria-hidden="true">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className={`${styles.skeleton} ${styles.vnbSkeletonCard}`} />
@@ -653,7 +695,7 @@ export function SocVnbrokerPanel() {
       {/* ── 1. Bộ nhà cung cấp ───────────────────────────────────────── */}
       <section className={styles.sectionCard} data-testid="vnb-providers">
         <h3 className={styles.sectionCardTitle}>{t("soc.vnbroker.providers_title")}</h3>
-        {loadingCore ? (
+        {loadingProviders ? (
           <div className={styles.vnbTileGrid} aria-hidden="true">
             {[0, 1, 2].map((i) => (
               <div key={i} className={`${styles.skeleton} ${styles.vnbSkeletonCard}`} />
@@ -785,6 +827,26 @@ export function SocVnbrokerPanel() {
       {/* ── 2. Cấu hình ──────────────────────────────────────────────── */}
       <section className={styles.sectionCard} data-testid="vnb-config-form">
         <h3 className={styles.sectionCardTitle}>{t("soc.vnbroker.core_config_title")}</h3>
+        {configError ? (
+          <div className={styles.inlineError} role="alert" data-testid="vnb-config-error">
+            {configError}{" "}
+            <button
+              type="button"
+              className={styles.vnbActionBtn}
+              onClick={() => void loadConfig()}
+            >
+              {t("soc.vnbroker.retry")}
+            </button>
+          </div>
+        ) : null}
+        {loadingConfig ? (
+          <div className={styles.vnbFormGrid} aria-hidden="true">
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
+              <div key={i} className={`${styles.skeleton} ${styles.vnbSkeletonCard}`} />
+            ))}
+          </div>
+        ) : (
+          <>
         {dirty ? (
           <p className={styles.vnbDirtyBadge} data-testid="vnb-dirty-badge">
             {t("soc.vnbroker.config_dirty")}
@@ -1023,35 +1085,26 @@ export function SocVnbrokerPanel() {
         </div>
 
         {/* Vùng live LUÔN có trong DOM (mount sẵn) — nếu render động thì
-            screen reader bỏ qua (L-V04 / WCAG 4.1.3). */}
-        <div
-          className={styles.inlineError}
-          role="alert"
-          aria-live="assertive"
-          data-testid="vnb-preview-errors"
-        >
+            screen reader bỏ qua (L-V04 / WCAG 4.1.3). Phần màu nằm BÊN TRONG
+            để không để lại dải đỏ/vàng rỗng khi chưa có nội dung. */}
+        <div role="alert" aria-live="assertive" data-testid="vnb-preview-errors">
           {previewErrors.length > 0 ? (
-            <>
+            <div className={styles.inlineError}>
               <div>{t("soc.config_preview.validation_errors")}</div>
               {previewErrors.map((err, i) => (
                 <div key={i}>• {err}</div>
               ))}
-            </>
+            </div>
           ) : null}
         </div>
-        <div
-          className={styles.vnbWarning}
-          role="status"
-          aria-live="polite"
-          data-testid="vnb-preview-warnings"
-        >
+        <div role="status" aria-live="polite" data-testid="vnb-preview-warnings">
           {previewWarnings.length > 0 ? (
-            <>
+            <div className={styles.vnbWarning}>
               <div>{t("soc.config_preview.impact_warnings")}</div>
               {previewWarnings.map((code) => (
                 <div key={code}>⚠ {t(`soc.vnbroker.preview_warning_${code}`)}</div>
               ))}
-            </>
+            </div>
           ) : null}
         </div>
 
@@ -1074,6 +1127,8 @@ export function SocVnbrokerPanel() {
             {t("soc.vnbroker.reset_to_defaults")}
           </button>
         </div>
+          </>
+        )}
       </section>
 
       {/* ── 3. Quan sát ──────────────────────────────────────────────── */}
@@ -1289,6 +1344,12 @@ export function SocVnbrokerPanel() {
           team={ownership.owner_team}
           writable={ownership.can_apply !== false}
           accessLevel={ownership.mode}
+        />
+      ) : loadingOwnership ? (
+        <div
+          className={`${styles.skeleton} ${styles.vnbSkeletonCard}`}
+          aria-hidden="true"
+          data-testid="vnb-ownership-loading"
         />
       ) : null}
 
