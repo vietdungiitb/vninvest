@@ -4159,3 +4159,173 @@
   text-align: left;
 }
 
+/* `.vnbStatValue` la con nen phai truyen do dac rieng (khong phai ke thua
+ * text-align cua `.vnbReadiness`). */
+.vnbReadiness .vnbStatValue {
+  text-align: left;
+  max-width: 52ch;
+  font-size: var(--fs-sm, 0.75rem);
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+}
+
+/* ── VNBroker console — vong lap / nhip khong gian (2026-10-20) ───────────
+ * Chi them class. KHONG sua rule dung chung (`.fieldGrid`, `.brokerTileGrid`,
+ * `.brokerTileBadges`, `.actionBtn`) vi 8 file khac dang dung chung (L-F05). */
+
+/* Goc panel: ep mau chu theo token de sang LIGHT theme doc duoc. */
+.vnbConsole {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+/* Luoi tile provider: co theo quan he, khong tran ngang o 769–860px. */
+.vnbTileGrid {
+  display: grid;
+  gap: var(--sp-md, 0.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(var(--vnb-tile-min, 260px), 1fr));
+}
+
+/* Hang hanh dong trong tile: 2 nut BANG NHAU + ghim day tile. */
+.vnbTileActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-sm, 0.5rem);
+  margin-top: auto;
+  padding-top: var(--sp-sm, 0.5rem);
+}
+
+.vnbTileActions > * {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .vnbTileActions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Nut hanh dong co chrome + mau theo token (doc duoc o ca 2 theme). */
+.vnbActionBtn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong, rgba(var(--soc-rgb-5078a8) / 0.3));
+  background: rgba(var(--soc-rgb-5078a8) / 0.08);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.vnbActionBtn:hover:not(:disabled) {
+  border-color: var(--accent-cyan, var(--soc-c-22d3ee));
+  background: rgba(var(--soc-rgb-5078a8) / 0.14);
+}
+
+.vnbActionBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vnbActionBtn:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Luoi form DUNG CHUNG cho moi nhom field: mot he cot duy nhat => 4 nhom
+ * cung be rong cot, khong co nhom 2 field bi keo giang full-width. */
+.vnbFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-md, 0.75rem) var(--sp-lg, 1rem);
+  align-items: start;
+}
+
+.vnbFormGridFull {
+  grid-column: 1 / -1;
+}
+
+/* Tieu de nhom con: KHAC style `.sectionCardTitle` (tieu de card) de tao
+ * phan cap doc (card > nhom > nhan field). */
+.vnbFormGroupTitle {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+  margin: var(--sp-md, 0.75rem) 0 0;
+  padding-bottom: var(--sp-xs, 0.25rem);
+  border-bottom: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+}
+
+.vnbFormGroupTitle:first-child {
+  margin-top: 0;
+}
+
+/* Hang chon provider + nut: khong keo giang select full-width. */
+.vnbToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm, 0.5rem);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-md, 0.75rem);
+}
+
+.vnbSelect {
+  flex: 0 1 auto;
+  min-width: 12rem;
+  max-width: 18rem;
+}
+
+/* Nhac thay doi chua ap dung. */
+.vnbDirtyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--soc-c-fbbf24, #fbbf24);
+}
+
+/* Canh bao (khong phai loi): tone vang, khong dung `.inlineError` (do). */
+.vnbWarning {
+  padding: 0.75rem;
+  border-radius: var(--r-md, 8px);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--soc-c-fbbf24, #fbbf24);
+  font-size: var(--fs-sm, 0.75rem);
+}
+
+/* Input so: focus ring nhin thay duoc (`.fieldInput` chi doi mau vien 1px). */
+.vnbConsole .fieldInput:focus-visible,
+.vnbConsole select:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Checkbox trong pill: 20px de khong phu thuoc khoang cach (WCAG 2.5.8). */
+.vnbConsole .domainPill input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  vertical-align: -2px;
+  cursor: pointer;
+}
+
+.vnbConsole .domainPill input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Skeleton dung chung cho panel. */
+.vnbSkeletonCard {
+  height: 88px;
+  border-radius: var(--r-md, 8px);
+}
+

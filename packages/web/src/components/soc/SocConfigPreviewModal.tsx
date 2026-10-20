@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, useEffect, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { changedLeafKeys, type DiffRow } from "../../lib/diffUtil.js";
 import styles from "./soc.module.css";
@@ -49,6 +49,29 @@ function renderJson(
 export function SocConfigPreviewModal({ before, after, changeSummary, impactWarnings, validationErrors, diff, confirmTestId, onConfirm, onCancel, loading }: SocConfigPreviewModalProps) {
   const { t } = useI18n();
   const changedLeaves = diff ? changedLeafKeys(diff) : new Set<string>();
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  // Giữ callback trong ref để effect không chạy lại (mỗi render của parent tạo
+  // arrow function mới ⇒ focus sẽ nhảy lung tung nếu để trong deps).
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
+
+  // Dialog thật: focus vào nút xác nhận, Escape đóng, focus trả về nút đã mở.
+  useEffect(() => {
+    previousFocus.current = (document.activeElement as HTMLElement | null) ?? null;
+    confirmRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        cancelRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previousFocus.current?.focus?.();
+    };
+  }, []);
 
   return createElement(
     "div",
@@ -60,17 +83,23 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
       "div",
       {
         className: styles.glassPanel,
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-labelledby": "soc-config-preview-title",
         onClick: (e: React.MouseEvent) => e.stopPropagation(),
       },
       createElement(
         "div",
         { },
-        createElement("h3", { }, t("soc.config_preview.title")),
+        createElement("h3", { id: "soc-config-preview-title" }, t("soc.config_preview.title")),
         createElement(
           "button",
           {
+            type: "button",
             onClick: onCancel,
-            },
+            "aria-label": t("soc.actions.close"),
+            title: t("soc.actions.close"),
+          },
           "\u2715",
         ),
       ),
@@ -187,6 +216,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
         createElement(
           "button",
           {
+            ref: confirmRef,
             onClick: onConfirm,
             disabled: loading,
             className: styles.actionBtn,

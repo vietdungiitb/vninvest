@@ -259,11 +259,10 @@ describe("SocVnbrokerPanel — VNBroker console", () => {
     });
     fireEvent.click(screen.getByTestId("vnb-btn-preview"));
     await waitFor(() => {
-      expect(screen.getByTestId("vnb-preview-errors")).toBeTruthy();
+      expect(screen.getByTestId("vnb-preview-errors").textContent).toContain(
+        "max_retries phải trong khoảng [0, 10]",
+      );
     });
-    expect(screen.getByTestId("vnb-preview-errors").textContent).toContain(
-      "max_retries phải trong khoảng [0, 10]",
-    );
   });
 
   // T4 — chặn F-03: benchmark phải đọc report.results với tên field BE
@@ -371,5 +370,67 @@ describe("SocVnbrokerPanel — VNBroker console", () => {
     await waitFor(() => {
       expect((screen.getByTestId("vnb-btn-preview") as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  // T9 — BE từ chối `fallback_providers` chứa `preferred_provider` ⇒ FE phải chặn trước
+  it("T9: provider chính không được nằm trong danh sách dự phòng (BE sẽ từ chối)", async () => {
+    render(<SocVnbrokerPanel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("vnb-field-preferred_provider")).toBeTruthy();
+    });
+    // Mock: primary = "vci" ⇒ checkbox dự phòng của VCI bị khoá
+    expect((screen.getByTestId("vnb-field-fallback-vci") as HTMLInputElement).disabled).toBe(true);
+    // Đổi provider chính sang KBS ⇒ VCI rời chuỗi dự phòng, KBS bị khoá
+    fireEvent.change(screen.getByTestId("vnb-field-preferred_provider"), {
+      target: { value: "kbs" },
+    });
+    await waitFor(() => {
+      expect((screen.getByTestId("vnb-field-fallback-kbs") as HTMLInputElement).disabled).toBe(true);
+    });
+    expect((screen.getByTestId("vnb-field-fallback-vci") as HTMLInputElement).disabled).toBe(false);
+  });
+
+  // T10 — 2 nút trong tile phải BẰNG NHAU (Owner yêu cầu) + nút chính bị khoá
+  it("T10: 2 nút trong tile provider bằng nhau chiều rộng", async () => {
+    render(<SocVnbrokerPanel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("vnb-provider-vci")).toBeTruthy();
+    });
+    const tile = screen.getByTestId("vnb-provider-vci");
+    const buttons = Array.from(tile.querySelectorAll("button")) as HTMLButtonElement[];
+    expect(buttons.length).toBe(2);
+    const widths = buttons.map((b) => b.getBoundingClientRect().width);
+    expect(Math.abs(widths[0] - widths[1])).toBeLessThanOrEqual(1);
+  });
+
+  // T11 — A11Y: nút trong tile phải có tên khác nhau theo provider
+  it("T11: mỗi nút trong tile có accessible name khác nhau theo provider", async () => {
+    render(<SocVnbrokerPanel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("vnb-provider-vci")).toBeTruthy();
+    });
+    const vci = screen.getByTestId("vnb-provider-vci");
+    const dnse = screen.getByTestId("vnb-provider-dnse");
+    const vciLabels = Array.from(vci.querySelectorAll("button")).map(
+      (b) => b.getAttribute("aria-label") || "",
+    );
+    const dnseLabels = Array.from(dnse.querySelectorAll("button")).map(
+      (b) => b.getAttribute("aria-label") || "",
+    );
+    expect(vciLabels.every((l) => l.includes("VCI"))).toBe(true);
+    expect(dnseLabels.every((l) => l.includes("DNSE"))).toBe(true);
+    expect(vciLabels[0]).not.toBe(dnseLabels[0]);
+  });
+
+  // T12 — A11Y: panel phải có heading thật để điều hướng bằng screen reader
+  it("T12: các khối chính có heading (h2/h3) để điều hướng được", async () => {
+    render(<SocVnbrokerPanel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("vnb-providers")).toBeTruthy();
+    });
+    const headings = Array.from(
+      document.querySelectorAll("h2, h3, h4"),
+    ).map((h) => h.tagName);
+    expect(headings.filter((tag) => tag === "H3").length).toBeGreaterThanOrEqual(3);
   });
 });
