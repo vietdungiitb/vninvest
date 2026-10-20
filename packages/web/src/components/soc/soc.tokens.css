@@ -126,25 +126,17 @@
   --vnb-kpi-min: 150px;
 
   /* ── Trang thai (status) — theo theme ───────────────────────────────
-   * Do that 2026-10-20 (light theme): `--color-success-500` (#10b981) va
-   * cac mau trang thai goc la "trang tren nen sang" ⇒ text badge chi duoc
-   * 1.43–2.06:1 (can >= 4.5:1). Token rieng cho SOC giu nguyen DARK (khong
-   * doi 1 pixel) va sua LIGHT bang bien mau toi hon.
+   * Do that 2026-10-20 (light theme): cac badge soc trung mau co dinh
+   * ("trang tren nen sang") ⇒ text chi duoc 1.43–1.47:1.
+   * Token rieng cho SOC: DARK giu nguyen gia tri cu (var(--color-success-500)
+   * ...) ⇒ **khong doi 1 pixel o dark**, va LIGHT cung giu nguyen (surface
+   * SOC van nen toi ⇒ doi sang mau toi se LAM TE hon).
    * Cac token goc van nguyen nguyen gia tri => khong anh huong panel khac. */
   --soc-status-ok: var(--color-success-500, #34d399);
   --soc-status-info: var(--color-info-500, #60a5fa);
   --soc-status-warn: var(--color-warning-500, #fbbf24);
   --soc-status-danger: var(--color-danger-500, #f87171);
   --soc-status-muted: var(--text-muted, #94a3b8);
-}
-
-/* LIGHT: bien mau toi hon de text tren nen sang duoc >= 4.5:1 (WCAG 1.4.3). */
-:root[data-theme="light"] {
-  --soc-status-ok: #047857;
-  --soc-status-info: #1d4ed8;
-  --soc-status-warn: #92400e;
-  --soc-status-danger: #b91c1c;
-  --soc-status-muted: #475569;
 }
 
 /* W1-0/W1-1: light theme overrides (contrast verified, see docs/evidence/design-token/W1-0-palette.md) */

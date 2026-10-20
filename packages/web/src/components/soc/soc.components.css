@@ -4172,11 +4172,6 @@
  * Chi them class. KHONG sua rule dung chung (`.fieldGrid`, `.brokerTileGrid`,
  * `.brokerTileBadges`, `.actionBtn`) vi 8 file khac dang dung chung (L-F05). */
 
-/* Goc panel: ep mau chu theo token de sang LIGHT theme doc duoc. */
-.vnbConsole {
-  color: var(--text-primary, var(--soc-c-f1f5f9));
-}
-
 /* Luoi tile provider: co theo quan he, khong tran ngang o 769–860px. */
 .vnbTileGrid {
   display: grid;
@@ -4329,50 +4324,46 @@
   border-radius: var(--r-md, 8px);
 }
 
-/* ── LIGHT THEME: mau hard-code tren nen sang (do that 2026-10-20) ────────
- * Cac class duoi day DUNG HEX CO DINH (nho mau, xanh la) nen text badge chi
- * duoc 1.43–1.47:1 tren nen sang (WCAG 1.4.3 can >= 4.5:1).
- * Override CHI doi MAU, khong doi layout, khong anh huong dark theme.
- * Do do lai bang getComputedStyle tren staging (co control 21.00:1). */
-:root[data-theme="light"] .brokerBadgeOk {
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(4, 120, 87, 0.35);
-  color: #047857;
-}
-
-:root[data-theme="light"] .brokerBadgeWarn {
-  background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(146, 64, 14, 0.35);
-  color: #92400e;
-}
-
-:root[data-theme="light"] .statusBadgeOk {
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(4, 120, 87, 0.3);
-  color: #047857;
-}
-
-:root[data-theme="light"] .statusBadgeInfo {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(29, 78, 216, 0.3);
-  color: #1d4ed8;
-}
-
-:root[data-theme="light"] .statusBadgeOff {
-  background: rgba(148, 163, 184, 0.16);
-  border: 1px solid rgba(71, 85, 105, 0.3);
-  color: #475569;
-}
-
-:root[data-theme="light"] .vnbWarning {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(146, 64, 14, 0.35);
-  color: #92400e;
-}
-
-:root[data-theme="light"] .vnbDirtyBadge {
-  background: rgba(245, 158, 11, 0.14);
-  border: 1px solid rgba(146, 64, 14, 0.35);
-  color: #92400e;
+/* ── LIGHT THEME: van sang — nhung SHELL van toi ──────────────────────────
+ * Do that 2026-10-20 tren staging: `--color-bg-primary` (#020617) **khong co**
+ * override trong `theme/tokens.css` ⇒ `body` (bg-gray-950) + wrapper shell
+ * van nen **den** khi user bat light theme. Trong khi do, `soc.tokens.css` lai
+ * dao token sang nen sang ⇒ chu TOI tren nen TOI ⇒ khong doc duoc.
+ *
+ * ⇒ Operations Center la surface **dark-first**: khoa bang mau TOI cho
+ * console (scope `.vnbConsole`) de doc duoc o CA 2 theme, va KHONG doi
+ * heuristic cua app shell (viec do thuoc pham vi "app light theme" — xem
+ * `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` §J6).
+ *
+ * Do do day dung cac token raw cua SOC (khong phai `--soc-rgb-*` da bi
+ * `:root[data-theme="light"]` doi nguoc lai). */
+.vnbConsole {
+  color: var(--soc-c-f1f5f9);
+  --text-primary: var(--soc-c-f1f5f9);
+  --text-secondary: var(--soc-c-94a3b8);
+  --text-muted: var(--soc-c-94a3b8);
+  --bg-panel: rgba(8, 23, 52, 0.4);
+  --bg-panel-solid: rgb(8, 23, 52);
+  --bg-panel-soft: rgba(15, 23, 42, 0.3);
+  --bg-input: rgba(2, 11, 35, 0.6);
+  --border-default: rgba(80, 120, 168, 0.15);
+  --border-strong: rgba(80, 120, 168, 0.25);
+  --accent-cyan: var(--soc-c-22d3ee);
+  --soc-rgb-081734: 8 23 52;
+  --soc-rgb-0f172a: 15 23 42;
+  --soc-rgb-020b23: 2 11 35;
+  --soc-rgb-5078a8: 80 120 168;
+  --soc-c-f1f5f9: #f1f5f9;
+  --soc-c-94a3b8: #94a3b8;
+  --soc-c-67e8f9: #67e8f9;
+  --soc-c-34d399: #34d399;
+  --soc-c-fbbf24: #fbbf24;
+  --soc-c-f87171: #f87171;
+  --soc-c-06b6d4: #06b6d4;
+  --soc-status-ok: var(--color-success-500, #34d399);
+  --soc-status-info: var(--color-info-500, #60a5fa);
+  --soc-status-warn: var(--color-warning-500, #fbbf24);
+  --soc-status-danger: var(--color-danger-500, #f87171);
+  --soc-status-muted: var(--text-muted, #94a3b8);
 }
 
