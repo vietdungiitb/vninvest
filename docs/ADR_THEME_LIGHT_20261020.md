@@ -4,7 +4,8 @@
 > **Agent:** `uistd-w0-tokens` (slice S3 của `docs/PLAN_UI_STANDARDIZATION_W0.md` — **DOC-ONLY**)
 > **Base mã nguồn:** `dev` @ `e7b008f25` · **App đang chạy trên staging:** `6a127002e` (branch `feat/vnbroker-console`)
 > **Lệnh tái lập toàn bộ số trong tài liệu này:** `node packages/web/scripts/measure-theme-tokens.mjs`
-> **Đo lúc:** 2026-10-20T16:08:05Z (lần đo cuối, dùng cho **mọi** số dưới đây; có 2 lần đo trước để đối chứng: 15:48Z · 15:53Z) · **CONTROL (L-V01):** `#fff` trên `#000` = **21.00:1**, `#777` trên `#fff` = **4.48:1** — chạy **32 lần**, **0** lần lệch ⇒ mọi số dưới đây đáng tin.
+> **Đo lúc:** 2026-10-20T17:00:46.128Z (lần đo cuối, dùng cho **mọi** số dưới đây) · **xác nhận tái lập:** 2026-10-20T17:03:02.873Z — **mọi số trong bảng dưới đây trùng khớp tuyệt đối** giữa 2 lần đo liên tiếp (trừ `/dashboard`, xem ghi chú ở §1) · **CONTROL (L-V01):** `#fff` trên `#000` = **21.00:1**, `#777` trên `#fff` = **4.48:1** — chạy **32 lần**, **0** lần lệch ⇒ mọi số dưới đây đáng tin.
+> **Quét tĩnh (bán kính ảnh hưởng của phương án (a)):** `node packages/web/scripts/measure-theme-tokens.mjs --scan-hardcoded`
 
 ---
 
@@ -25,12 +26,12 @@ Bật **Giao diện: Sáng** (`UserSettingsPage.tsx:206-209` → `<select name="
 
 | Route | dark: dưới WCAG AA / tổng mẫu | light: dưới WCAG AA / tổng mẫu | thấp nhất (light) |
 |---|---|---|---|
-| `/admin/users` | 8 / 41 | **27 / 60** | **1.0000:1** |
+| `/admin/users` | 8 / 60 | **28 / 60** | **1.0000:1** |
 | `/operations-center?tab=vnbroker` | 8 / 60 | **20 / 60** | 1.9482:1 |
-| `/dashboard` | 8 / 40 | 8 / 40 | 3.7514:1 |
+| `/dashboard` | 8 / 60 | 14 / 60 | 1.3284:1 |
 | `/portfolios/manage` | 8 / 60 | 9 / 60 | 3.6292:1 |
 
-> ⚠ **Tổng mẫu chữ phụ thuộc dữ liệu thật** (số dòng bảng/thẻ đang tải) ⇒ giá trị "8 / 41" hay "8 / 60" là của **đúng lần đo 2026-10-20T16:08:05Z**, có thể khác ở lần chạy khác. **Số ổn định** (không phụ thuộc dữ liệu) là: H1 contrast · `--text-primary` · `--color-bg-primary` · `--bg-panel` · `--bg-panel-solid` · canvas thật.
+> ⚠ **Tổng mẫu chữ phụ thuộc dữ liệu thật** (số dòng bảng/thẻ đang tải). Script đã chờ trang **ổn định** trước khi đo (`networkidle` + hết trạng thái "Đang tải") ⇒ ở lần đo cuối cả 4 route đều ra **60** phần tử ⇒ tổng mẫu **tái lập được**. Riêng **`/dashboard`** còn biến động vì widget thị trường nạp bất đồng bộ: số "dưới WCAG AA" ở light theme quan sát **11 → 14 → 14 / 60** trong 3 lần đo liên tiếp (16:53:48Z → 17:00:46Z → 17:03:02Z), còn H1 contrast **không** đổi. **Số ổn định tuyệt đối** (không phụ thuộc dữ liệu): H1 contrast · `--text-primary` · `--color-bg-primary` · `--bg-panel` · `--bg-panel-solid` · canvas thật.
 
 **Canvas thật (không phải giá trị token):** `getComputedStyle(document.body).backgroundColor` = `oklch(0.13 0.028 261.692)` → `#030712` ở **CẢ** light lẫn dark. Lớp trong `<div class="… bg-[var(--color-bg-primary)] …">` = `#020617` ở **CẢ** hai theme.
 ⇒ **Canvas không bao giờ chuyển sáng** (đo được, không phải suy luận).
@@ -98,7 +99,7 @@ Cặp màu tham chiếu (tính bằng đúng hàm contrast của script đo):
 | **R2** | `#f1f5f9` trên `#ffffff` | **1.0955:1** | **sau khi** override `--color-slate-950: #f1f5f9` ⇒ tiêu đề đó **biến mất** |
 
 ⇒ Đổi `--color-slate-950` toàn cục **đổi lỗi chứ không sửa lỗi**: H1 admin trên nền tối được sửa (18.4140:1), nhưng **mọi chữ `text-slate-950` trên panel nền trắng** rơi từ 20.17:1 xuống **1.0955:1**.
-**Mô phỏng đo thật (inject CSS, không sửa app) — SIM-B:** `/admin/users` H1 `#020617 → #f1f5f9` ⇒ **18.4140:1** ✔ nhưng số phần tử dưới WCAG AA ở light theme **tăng 27 → 29 / 60** (và ở `/operations-center` **20 → 22 / 60**, `/dashboard` **8 → 10 / 40**).
+**Mô phỏng đo thật (inject CSS, không sửa app) — SIM-B:** `/admin/users` H1 `#020617 → #f1f5f9` ⇒ **18.4140:1** ✔ nhưng số phần tử dưới WCAG AA ở light theme **tăng 28 → 29 / 60** (và ở `/operations-center` **20 → 22 / 60**, `/dashboard` **14 → 16 / 60**).
 
 ### R5 — Token conflict có **hệ quả runtime** (mục 3)
 
@@ -141,20 +142,21 @@ Mô phỏng SIM-A (inject `:root[data-theme="light"]{--color-bg-primary:#f8fafc}
 
 | Route | H1 sau khi canvas sáng | Chữ dưới WCAG AA (light thật → SIM-A) | Kết luận |
 |---|---|---|---|
-| `/admin/users` | `#020617` trên `#f8fafc` = **19.2806:1** | 27/60 → **22/60** | ✔ sửa được |
-| `/operations-center?tab=vnbroker` | `#f1f5f9` trên `#f8fafc` = **1.0471:1** | 20/60 → **19/60** | ✘ **vô hình** |
-| `/dashboard` | `#f1f5f9` trên `#f8fafc` = **1.0471:1** | 8/40 → **11/40** | ✘ **vô hình** |
+| `/admin/users` | `#020617` trên `#f8fafc` = **19.2806:1** | 28/60 → **22/60** | ✔ sửa được |
+| `/operations-center?tab=vnbroker` | `#f1f5f9` trên `#f8fafc` = **1.0471:1** | 20/60 → **17/60** | ✘ **vô hình** |
+| `/dashboard` | `#f1f5f9` trên `#f8fafc` = **1.0471:1** | 14/60 → **29/60** | ✘ **vô hình** (tệ hơn: chữ sáng cứng càng nhiều, hỏng càng nhiều) |
 | `/portfolios/manage` | `#0f172a` trên `#ffffff` = **17.8525:1** | 9/60 → **11/60** | ✔ (trang này có nền sáng riêng) |
 
-⇒ **(a) KHÔNG phải đổi 1 token.** Nó đòi sửa **mọi chỗ dùng màu chữ sáng cứng** (vì canvas sáng ⇒ chữ sáng biến mất). Quy mô đo được (quét `packages/web/src/**/*.{tsx,jsx,ts,js}`, bỏ qua biến thể `dark:`):
+⇒ **(a) KHÔNG phải đổi 1 token.** Nó đòi sửa **mọi chỗ dùng màu chữ sáng cứng** (vì canvas sáng ⇒ chữ sáng biến mất). Quy mô đo được (lệnh trong repo: `node packages/web/scripts/measure-theme-tokens.mjs --scan-hardcoded` — quét `packages/web/src/**/*.{ts,tsx,js,jsx}`, bỏ qua biến thể `dark:`):
 
 | Chỉ số | Số đo |
 |---|---|
-| Chỗ dùng màu chữ sáng cứng (`text-white` / `text-slate-100…400` **không** kèm `dark:`) | **242 chỗ trong 70 / 585 file** |
-| Chỗ dùng class nền tối cứng (`bg-gray-950` \| `bg-[var(--color-bg-primary)]` \| `bg-slate-950`) | **131 chỗ trong 39 file** |
-| File CSS **có** khối `:root[data-theme="light"]` | **4 file**: `theme/tokens.css:65` · `components/soc/soc.tokens.css:124` · `components/aiSettings.module.css:31` + `:1238` · `components/ShellPageTemplate.module.css:24` |
+| Tổng file JS/TS trong `packages/web/src` | **585** |
+| Chỗ dùng màu chữ sáng cứng (`text-white` \| `text-slate-100…400`, **không** kèm `dark:`) | **497 chỗ trong 89 / 585 file** |
+| Chỗ dùng class nền tối cứng (`bg-gray-950` \| `bg-slate-950` \| `bg-[var(--color-bg-primary)]`) | **76 chỗ trong 36 file** |
+| File CSS **có** khối `:root[data-theme="light"]` **thật** (bỏ qua dòng trong comment) | **4 file**: `theme/tokens.css:65` · `components/soc/soc.tokens.css:124` · `components/aiSettings.module.css:31` · `components/ShellPageTemplate.module.css:24` |
 
-⇒ (a) là **W1–W3 trở lên**, không phải W0. Ước lượng: ≥ **70 file / 242 chỗ** phải rà; thêm 1 lớp theme sáng cho 39 file nền.
+⇒ (a) là **W1–W3 trở lên**, không phải W0. Ước lượng: ≥ **89 file / 497 chỗ** màu chữ cứng phải rà (file nhiều nhất: `components/WhaleBubbleChart.jsx` **59 chỗ**, `components/dashboard/PortfolioHeatmap.js` **18**), thêm **36 file** có nền tối cứng.
 
 ### (b) **Tắt** light theme khỏi bộ chọn cho tới khi đủ token
 
@@ -164,14 +166,14 @@ Mô phỏng SIM-A (inject `:root[data-theme="light"]{--color-bg-primary:#f8fafc}
 | Chặn boot bằng theme sáng đã lưu | `packages/web/src/main.tsx:259-270` (`localStorage['vninvest-theme']`) |
 | (tuỳ) ép `profile.theme` về `dark` | `packages/web/src/pages/UserSettingsPage.tsx:109` (`profile.theme ?? "light"` → nên đổi fallback) |
 
-Số đo của (b) = **trạng thái dark hiện tại**, đã đo ổn định: H1 `/admin/users` **20.1728:1**, H1 `/operations-center` & `/dashboard` **18.4140:1**, H1 `/portfolios/manage` **17.6506:1**; số phần tử dưới WCAG AA **8** trên mọi route (8/41 · 8/60 · 8/40 · 8/60) — *bằng đúng* mức nền của dark.
+Số đo của (b) = **trạng thái dark hiện tại**, đã đo ổn định: H1 `/admin/users` **20.1728:1**, H1 `/operations-center` & `/dashboard` **18.4140:1**, H1 `/portfolios/manage` **17.6506:1**; số phần tử dưới WCAG AA **8** trên mọi route (8/60 · 8/60 · 8/60 · 8/60) — *bằng đúng* mức nền của dark.
 
 ---
 
 ## 5. Câu hỏi chặn Owner
 
 > **Owner chốt: W0.2' làm theo (a) hay (b)?**
-> **(a)** làm light theme đúng ⇒ thêm 1 wave sửa **≥70 file / 242 chỗ** màu chữ cứng + **39 file** nền tối cứng (đo ở §4a), và mọi trang phải được đo lại bằng `measure-theme-tokens.mjs`;
+> **(a)** làm light theme đúng ⇒ thêm 1 wave sửa **≥89 file / 497 chỗ** màu chữ cứng + **36 file** nền tối cứng (đo ở §4a), và mọi trang phải được đo lại bằng `measure-theme-tokens.mjs`;
 > **(b)** tắt light theme khỏi bộ chọn (`UserSettingsPage.tsx:206-209` + `main.tsx:259-270`) cho tới khi đủ token ⇒ chi phí ~3 dòng, mọi trang về dark với số đo đã ổn định ở §4b.
 > *(Trung gian, không khuyến nghị: giữ nguyên UI nhưng **cảnh báo** cho user khi họ bật Sáng — không sửa được gốc, chỉ che triệu chứng.)*
 
@@ -184,7 +186,7 @@ Giả thuyết ban đầu trong plan (audit v1.0) là: *"`--bg-panel-solid` ch�
 1. `--bg-panel-solid` **có** thật: `packages/web/src/components/soc/soc.tokens.css:18` → `--bg-panel-solid: rgb(var(--soc-rgb-081734));` (đo trên staging: `/portfolios/manage` → `--bg-panel-solid` = **`rgb(8 23 52)`**, light theme = **`#ffffff`**).
 2. Route **duy nhất** render panel đó **đã** nạp SOC chunk: `packages/web/src/pages/PortfoliosPage.tsx:32` → `import "../components/soc/soc.tokens.css";` ⇒ token có mặt trước khi panel được vẽ.
 3. Consumer duy nhất của `theme.module.css` là `packages/web/src/components/WorkstationShell.tsx` — và nó chỉ làm `void theme;` (`WorkstationShell.tsx:32`, import ở `:3`) ⇒ class `.modalContent` (khai ở `theme.module.css:257`) **không bao giờ được áp dụng** ⇒ **`theme.module.css:260` (`background-color: var(--bg-panel-solid);`) là CSS CHẾT**.
-4. Panel thật dùng `background: var(--bg-panel-solid)` ở `packages/web/src/pages/portfolio/manage/portfolioManage.css:407` (`.pfm-modal__panel`) và `:504` (`.pfm-drawer__panel`); markup ở `PortfolioFormDialog.tsx:94` và `PortfolioManageDrawer.tsx:251` (2 file này là **consumer duy nhất** của 2 class đó — đã quét toàn `packages/web/src`).
+4. Panel thật dùng `background: var(--bg-panel-solid)` ở `packages/web/src/pages/portfolio/manage/portfolioManage.css:407` (`.pfm-modal__panel`) và `:504` (`.pfm-drawer__panel`); markup ở `packages/web/src/pages/portfolio/manage/PortfolioFormDialog.tsx:94` và `packages/web/src/pages/portfolio/manage/PortfolioManageDrawer.tsx:251` (2 file này là **consumer duy nhất** của 2 class đó — đã quét toàn `packages/web/src`).
 
 ⇒ **Kết luận:** panel **đã đục sẵn**, không phải nguồn của lỗi light theme. **Không thêm token mới** trong W0 (thêm `--bg-panel-solid` vào `theme/tokens.css` sẽ **tạo** conflict **13 → 14** ⇒ làm đỏ gate baseline-locked `check-token-conflict` ⇒ tự làm hỏng AC-4).
 
@@ -199,7 +201,7 @@ Giả thuyết ban đầu trong plan (audit v1.0) là: *"`--bg-panel-solid` ch�
 | **KHÔNG** sửa `packages/web/src/components/soc/**` | NG-5 — PR #271 chưa merge ⇒ tránh xung đột |
 | **KHÔNG** sửa `adminUi.tsx` (bỏ `text-slate-950`) | R4 — sửa H1 admin sẽ làm hỏng panel nền trắng (20.1728:1 → 1.0955:1) |
 | **KHÔNG** thêm `--bg-panel-solid` vào `theme/tokens.css` | §6 — panel đã đục, thêm token chỉ làm tăng conflict |
-| **KHÔNG** tắt/toggle light theme trong code | Chưa có quyết định của Owner ⇒ chưa sửa (NH-1/NG-1 của plan) |
+| **KHÔNG** tắt/toggle light theme trong code | Chưa có quyết định của Owner ⇒ chưa sửa (NG-1 của plan) |
 | **KHÔNG** chụp/ghi file ảnh vào repo | Script đo không ghi file nào ⇒ working tree sạch |
 
 ⇒ **Light theme HIỆN VẪN HỎNG.** Tài liệu này chỉ **ghi nhận** + **đưa ra lựa chọn**, không phải bản sửa.
@@ -210,8 +212,8 @@ Giả thuyết ban đầu trong plan (audit v1.0) là: *"`--bg-panel-solid` ch�
 
 | # | Rủi ro | Số đo | Mức |
 |---|---|---|---|
-| R-1 | User bật "Giao diện: Sáng" ⇒ **tiêu đề admin biến mất** | H1 `/admin/users` = **1.0000:1**; **27/60** chữ dưới WCAG AA (dark 8/41) | **P0** (chưa ai bị chặn, nhưng lỗi hiển thị rõ ràng) |
-| R-2 | Light theme **không** phải trạng thái hiếm | Backend mặc định `ThemeChoices.DARK` (`identity_access/models.py:165`, `:521`) ⇒ **opt-in**; nhưng `UserSettingsPage.tsx:109` fallback là `"light"` khi `profile.theme` rỗng, và toggle **đang tồn tại** (`:206-209`) | **P1** |
+| R-1 | User bật "Giao diện: Sáng" ⇒ **tiêu đề admin biến mất** | H1 `/admin/users` = **1.0000:1**; **28/60** chữ dưới WCAG AA (dark 8/60) | **P0** (chưa ai bị chặn, nhưng lỗi hiển thị rõ ràng) |
+| R-2 | Light theme **không** phải trạng thái hiếm | Backend mặc định `ThemeChoices.DARK` (`identity_access/models.py:165` và `:522`) ⇒ **opt-in**; nhưng `UserSettingsPage.tsx:109` fallback là `"light"` khi `profile.theme` rỗng, và toggle **đang tồn tại** (`:206-209`) | **P1** |
 | R-3 | `--bg-panel` khác nhau giữa các route cùng dark theme | `/dashboard` `#0f172a` vs `/admin/users` `rgba(8 23 52 / .4)` | **P1** |
 | R-4 | `--bg-panel-solid` **không tồn tại** trên route chưa nạp SOC chunk | `/dashboard` → `(KHÔNG định nghĩa)` | **P2** |
 | R-5 | Nếu Owner chọn (a) mà làm "nửa" (chỉ đổi canvas) | SIM-A: H1 `/dashboard` & `/operations-center` → **1.0471:1** (vô hình) ⇒ **tạo lỗi mới** | **P0** nếu làm nửa |
@@ -226,6 +228,7 @@ Giả thuyết ban đầu trong plan (audit v1.0) là: *"`--bg-panel-solid` ch�
 node packages/web/scripts/measure-theme-tokens.mjs            # báo cáo đầy đủ + CONTROL
 node packages/web/scripts/measure-theme-tokens.mjs --json     # cùng dữ liệu, dạng máy đọc được
 node packages/web/scripts/measure-theme-tokens.mjs --token-conflict   # đếm conflict (tĩnh, không cần mạng)
+node packages/web/scripts/measure-theme-tokens.mjs --scan-hardcoded   # quét tĩnh bán kính ảnh hưởng phương án (a)
 
 # 2) Nếu KHÔNG có staging ⇒ script in "CHUA CHAY: <lý do>" và exit 0 (không chặn push)
 #    BASE_URL=http://localhost:5173 node packages/web/scripts/measure-theme-tokens.mjs
@@ -237,6 +240,10 @@ ssh -i "$HOME/.ssh/id_ed25519" root@14.225.255.47 "cd /opt/vninvest && git rev-p
 # 4) Đối chiếu dòng trích dẫn giữa base và commit đang chạy
 git show e7b008f25:packages/web/src/index.css | sed -n '53p'
 git show 6a127002e:packages/web/src/index.css | sed -n '53p'
+git show 6a127002e:packages/web/src/components/soc/soc.tokens.css | sed -n '143,144p'
+
+# 5) Token conflict phải giữ nguyên 13 (mode B) / 11 (mode A) — AC-1
+node packages/web/scripts/measure-theme-tokens.mjs --token-conflict | findstr /C:"MODE"
 ```
 
 **Mọi số trong tài liệu này đều kèm lệnh tái lập** (mục 1–3 dùng chung 1 lệnh `measure-theme-tokens.mjs`).

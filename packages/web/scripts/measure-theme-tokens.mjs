@@ -32,7 +32,7 @@
  *   working tree (L-V03).
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dirname } from 'node:path';
@@ -94,13 +94,106 @@ function log(...args) {
   if (!AS_JSON) console.log(...args);
 }
 
-function parseArgs() {
-  const out = {};
-  for (const a of process.argv.slice(2)) {
-    const m = /^--([^=]+)=(.*)$/.exec(a);
-    if (m) out[m[1]] = m[2];
+/* ───────────── quét TĨNH: quy mô "sửa nửa" light theme (không cần mạng) ───────────── */
+
+/**
+ * Quét TĨNH trong `packages/web/src` — dùng để đo **bán kính ảnh hưởng** của
+ * phương án (a) "làm light theme đúng": nếu canvas chuyển sáng thì mọi chỗ dùng
+ * **màu chữ sáng cứng** (không kèm `dark:`) sẽ biến mất, và mọi chỗ dùng
+ * **nền tối cứng** sẽ đọc sai.
+ *
+ * Cũng liệt kê các file CSS có khối `:root[data-theme="light"]` **THẬT**
+ * (bỏ qua dòng comment — sống ở `aiSettings.module.css:1238` chỉ là comment).
+ */
+const SRC_DIR = resolve(REPO_ROOT, 'packages/web/src');
+
+const LIGHT_TEXT_RE = /(?<!dark:)\btext-(?:white|slate-(?:100|200|300|400))\b/g;
+const DARK_BG_RE = /(?<!dark:)\b(?:bg-gray-950|bg-slate-950|bg-\[var\(--color-bg-primary\)\])\b/g;
+
+function walkSource(dir, acc = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) walkSource(p, acc);
+    else if (/\.(tsx|jsx|ts|js)$/.test(e.name)) acc.push(p);
   }
-  return out;
+  return acc;
+}
+
+function printStaticScan() {
+  if (!existsSync(SRC_DIR)) {
+    console.log(`CHUA CHAY: khong tim thay ${SRC_DIR}`);
+    return 0;
+  }
+  const files = walkSource(SRC_DIR);
+  let lightOcc = 0;
+  let lightFiles = 0;
+  let darkOcc = 0;
+  let darkFiles = 0;
+  const lightList = [];
+  const darkList = [];
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8');
+    const rel = f.replace(`${REPO_ROOT}\\`, '').replace(/\\/g, '/');
+    const l = src.match(LIGHT_TEXT_RE) || [];
+    const d = src.match(DARK_BG_RE) || [];
+    if (l.length) { lightOcc += l.length; lightFiles += 1; lightList.push([rel, l.length]); }
+    if (d.length) { darkOcc += d.length; darkFiles += 1; darkList.push([rel, d.length]); }
+  }
+
+  console.log('QUET TINH — quy mo phuong an (a) "lam light theme dung" (khong can mang)');
+  console.log(`Thu muc quet : packages/web/src  (${files.length} file .ts/.tsx/.js/.jsx)`);
+  console.log('');
+  console.log('Dinh nghia chu "cung" (khong kem bien the `dark:`):');
+  console.log('  - chu sang cung   : text-white | text-slate-100 | text-slate-200 | text-slate-300 | text-slate-400');
+  console.log('  - nen toi cung    : bg-gray-950 | bg-slate-950 | bg-[var(--color-bg-primary)]');
+  console.log('');
+  console.log(`CHU SANG CUNG : ${lightOcc} cho trong ${lightFiles} / ${files.length} file`);
+  console.log(`NEN TOI CUNG  : ${darkOcc} cho trong ${darkFiles} file`);
+  console.log('');
+  console.log('15 file chiu "chu sang cung" nhieu nhat:');
+  for (const [f, n] of lightList.sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    console.log(`   ${String(n).padStart(4)}  ${f}`);
+  }
+  console.log('');
+  console.log('15 file chiu "nen toi cung" nhieu nhat:');
+  for (const [f, n] of darkList.sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    console.log(`   ${String(n).padStart(4)}  ${f}`);
+  }
+  console.log('');
+
+  // file CSS co khoi :root[data-theme="light"] THAT (bo qua comment)
+  console.log('File CSS co khoi :root[data-theme="light"] THAT:');
+  const cssFiles = [];
+  (function walkCss(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walkCss(p);
+      else if (e.name.endsWith('.css')) cssFiles.push(p);
+    }
+  })(SRC_DIR);
+  let lightBlockFiles = 0;
+  for (const f of cssFiles.sort()) {
+    const raw = readFileSync(f, 'utf8');
+    const hits = [];
+    let inComment = false;
+    raw.split(/\r?\n/).forEach((line, i) => {
+      // bỏ qua phần trong comment /* ... */ (giữ đúng số dòng gốc)
+      const code = line.replace(/\/\*[\s\S]*?\*\//g, '');
+      const before = inComment;
+      if (/\/\*/.test(code) && !/\*\//.test(code)) inComment = true;
+      const isCode = !before && !inComment;
+      if (isCode && /:root\[data-theme=["']light["']\]\s*\{/.test(code)) hits.push(i + 1);
+      if (/\*\//.test(code)) inComment = false;
+    });
+    if (hits.length) {
+      lightBlockFiles += 1;
+      console.log(`   ${f.replace(`${REPO_ROOT}\\`, '').replace(/\\/g, '/')}  — dong ${hits.join(', ')}`);
+    }
+  }
+  console.log(`   => ${lightBlockFiles} file`);
+  console.log('');
+  console.log('Lenh tai lap: node packages/web/scripts/measure-theme-tokens.mjs --scan-hardcoded');
+  return 0;
 }
 
 /* ───────────── token conflict (đếm TĨNH trên 3 file CSS — không cần mạng) ───────────── */
@@ -526,12 +619,138 @@ function measureInPage({ theme, simulate, controls: controlSpec, tokens: tokenSp
 
 /* ───────────────────────── chạy ───────────────────────── */
 
-async function main() {
-  const args = parseArgs();
+/**
+ * Bọc `page.evaluate` để phân biệt **lỗi script của tôi** với **môi trường không có**:
+ * hàm được `page.evaluate` serialize và chạy trong browser ⇒ **không** nhìn thấy
+ * biến của Node (đã dính lỗi `ReferenceError: CONTROL is not defined`).
+ * Lỗi loại này phải báo `LOI SCRIPT` + exit ≠ 0, KHÔNG được giả làm `CHUA CHAY`
+ * (nếu không, người đọc tưởng "máy không có staging" trong khi script hỏng) — L-V01.
+ */
+async function measureOnPage(page, args) {
+  try {
+    return await page.evaluate(measureInPage, args);
+  } catch (err) {
+    const e = new Error(`LOI SCRIPT (page.evaluate): ${err.message}`);
+    e.__scriptBug = true;
+    throw e;
+  }
+}
 
+/**
+ * Lỗi MÔI TRƯỜNG (không có staging / mạng / login) ⇒ `CHUA CHAY` + exit 0.
+ * Lỗi SCRIPT của tôi ⇒ `LOI SCRIPT` + exit ≠ 0 (không được giả làm "không có môi trường").
+ */
+function isEnvironmentError(err) {
+  const m = String((err && err.message) || '');
+  return /page\.goto|net::ERR_|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION|Timed out|Timeout \d+ms exceeded|navigation|ECONNREFUSED|ENOTFOUND/i.test(m);
+}
+
+/**
+ * Chờ trang **ổn định** trước khi đo.
+ *
+ * Lý do: "mẫu chữ" (số phần tử có chữ) **phụ thuộc dữ liệu thật** — nếu đo lúc
+ * bảng còn đang tải thì số phần tử khác nhau giữa 2 lần chạy ⇒ **số không tái lập
+ * được** (vi phạm tinh thần L-V01: mọi số phải tái lập). Vì vậy chờ:
+ *   1) mạng rảnh (`networkidle`),
+ *   2) hết trạng thái "Đang tải / loading" hiển thị,
+ *   3) thêm 500ms cho style áp xong.
+ * ⇒ "H1 contrast · token · canvas" vốn đã ổn định; phần này chỉ ổn định **mẫu chữ**.
+ */
+async function waitForSettled(page) {
+  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => { /* ignore */ });
+  await page
+    .waitForFunction(
+      () => {
+        const nodes = Array.from(document.querySelectorAll('body *'));
+        return !nodes.some((n) => {
+          if (n.children.length) return false;
+          if (!/đang tải|loading/i.test((n.textContent || '').trim())) return false;
+          const r = n.getClientRects();
+          return r.length > 0 && r[0].height > 0;
+        });
+      },
+      { timeout: 20000 },
+    )
+    .catch(() => { /* trang không có trạng thái loading => coi như đã ổn */ });
+  await page.waitForTimeout(500);
+}
+
+/** Đo 1 route (2 theme + 2 mô phỏng) rồi đẩy kết quả vào `results`. */
+async function measureRoute(page, route, results) {
+  const url = `${BASE_URL}${route.path}`;
+  let loaded = true;
+  let loadNote = '';
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('h1', { timeout: 20000 }).catch(() => {
+      loadNote = 'khong tim thay <h1> trong 20s';
+    });
+    await waitForSettled(page);
+  } catch (err) {
+    if (isEnvironmentError(err)) throw err;
+    loaded = false;
+    loadNote = err.message;
+  }
+  if (!loaded) {
+    results.push({ route, loaded: false, note: loadNote });
+    return;
+  }
+
+  // theme = dark (KHÔNG có data-theme) — theo đúng boot của main.tsx:265
+  await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+  await page.waitForTimeout(300);
+  const dark = await measureOnPage(page, { theme: 'default (khong co data-theme)', simulate: null, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
+
+  // theme = light
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  await page.waitForTimeout(300);
+  const light = await measureOnPage(page, { theme: 'light (data-theme="light")', simulate: null, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
+
+  const entry = { route, loaded: true, note: loadNote, dark, light, simulations: [] };
+
+  /* MÔ PHỎNG (inject CSS — KHÔNG sửa app) */
+  if (SIMULATE) {
+    const sims = [
+      {
+        id: 'SIM-A',
+        label: 'light + CANVAS SANG (--color-bg-primary: #f8fafc) = phuong an (a) lam light theme dung',
+        css: ':root[data-theme="light"]{--color-bg-primary:#f8fafc !important;}',
+      },
+      {
+        id: 'SIM-B',
+        label: 'light + override --color-slate-950: #f1f5f9 = "sua nho" text-slate-950 toan cuc',
+        css: ':root{--color-slate-950:#f1f5f9 !important;}',
+      },
+    ];
+    for (const sim of sims) {
+      await page.evaluate((css) => {
+        const el = document.createElement('style');
+        el.id = '__measure_sim__';
+        el.textContent = css;
+        document.head.appendChild(el);
+      }, sim.css);
+      await page.waitForTimeout(250);
+      const m = await measureOnPage(page, { theme: 'light (data-theme="light")', simulate: sim.id, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
+      await page.evaluate(() => {
+        const el = document.getElementById('__measure_sim__');
+        if (el) el.remove();
+      });
+      entry.simulations.push({ id: sim.id, label: sim.label, css: sim.css, measure: m });
+    }
+  }
+
+  results.push(entry);
+}
+
+async function main() {
   /* 0) chế độ đếm token conflict — TĨNH, không cần mạng */
   if (process.argv.includes('--token-conflict')) {
     return printTokenConflict();
+  }
+
+  /* 0b) chế độ quét tĩnh — đo bán kính ảnh hưởng của phương án (a) */
+  if (process.argv.includes('--scan-hardcoded')) {
+    return printStaticScan();
   }
 
   // 1) sha đang chạy trên staging
@@ -578,68 +797,14 @@ async function main() {
     /* 4) đo từng route × từng theme */
     const results = [];
     for (const route of ROUTES) {
-      const url = `${BASE_URL}${route.path}`;
-      let loaded = true;
-      let loadNote = '';
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await page.waitForSelector('h1', { timeout: 20000 }).catch(() => {
-          loadNote = 'khong tim thay <h1> trong 20s';
-        });
-        await page.waitForTimeout(900); // để style áp xong
+        await measureRoute(page, route, results);
       } catch (err) {
-        loaded = false;
-        loadNote = err.message;
+        if (isEnvironmentError(err)) throw err; // => CHUA CHAY (không có staging/mạng)
+        const e = new Error(`LOI SCRIPT (vòng đo): ${err.message}`);
+        e.__scriptBug = true;
+        throw e;
       }
-      if (!loaded) {
-        results.push({ route, loaded: false, note: loadNote });
-        continue;
-      }
-
-      // theme = dark (KHÔNG có data-theme) — theo đúng boot của main.tsx:265
-      await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
-      await page.waitForTimeout(300);
-      const dark = await page.evaluate(measureInPage, { theme: 'default (khong co data-theme)', simulate: null, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
-
-      // theme = light
-      await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
-      await page.waitForTimeout(300);
-      const light = await page.evaluate(measureInPage, { theme: 'light (data-theme="light")', simulate: null, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
-
-      const entry = { route, loaded: true, note: loadNote, dark, light, simulations: [] };
-
-      /* 5) MÔ PHỎNG (inject CSS — KHÔNG sửa app) */
-      if (SIMULATE) {
-        const sims = [
-          {
-            id: 'SIM-A',
-            label: 'light + CANVAS SANG (--color-bg-primary: #f8fafc) = phuong an (a) lam light theme dung',
-            css: ':root[data-theme="light"]{--color-bg-primary:#f8fafc !important;}',
-          },
-          {
-            id: 'SIM-B',
-            label: 'light + override --color-slate-950: #f1f5f9 = "sua nho" text-slate-950 toan cuc',
-            css: ':root{--color-slate-950:#f1f5f9 !important;}',
-          },
-        ];
-        for (const sim of sims) {
-          await page.evaluate((css) => {
-            const el = document.createElement('style');
-            el.id = '__measure_sim__';
-            el.textContent = css;
-            document.head.appendChild(el);
-          }, sim.css);
-          await page.waitForTimeout(250);
-          const m = await page.evaluate(measureInPage, { theme: 'light (data-theme="light")', simulate: sim.id, controls: CONTROL, tokens: TOKENS, pairs: REFERENCE_PAIRS });
-          await page.evaluate(() => {
-            const el = document.getElementById('__measure_sim__');
-            if (el) el.remove();
-          });
-          entry.simulations.push({ id: sim.id, label: sim.label, css: sim.css, measure: m });
-        }
-      }
-
-      results.push(entry);
     }
 
     /* 6) in báo cáo */
@@ -688,6 +853,13 @@ async function main() {
     return 0;
   } catch (err) {
     console.error('');
+    if (!isEnvironmentError(err)) {
+      console.error(`LOI SCRIPT: ${err.message}`);
+      console.error('  -> Day KHONG phai "moi truong khong co staging" => phai sua script;');
+      console.error('     moi so do cua phien nay la VO GIA TRI (L-V01).');
+      try { await browser.close(); } catch { /* ignore */ }
+      return 2;
+    }
     console.error(`CHUA CHAY: ${err.message}`);
     try { await browser.close(); } catch { /* ignore */ }
     return 0;
