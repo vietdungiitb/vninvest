@@ -13,7 +13,7 @@ export function CommercialToolbar({ children, label, className, id }: Commercial
   return (
     <div
       id={id}
-      className={joinClassNames(styles.cmToolbar, className)}
+      className={joinClassNames(styles["cm-toolbar"], className)}
       data-cm-zone="toolbar-group"
       {...(label ? { role: "group", "aria-label": label } : {})}
     >

@@ -14,11 +14,11 @@ export interface CommercialMetaProps {
 
 export function CommercialMeta({ items, className }: CommercialMetaProps) {
   return (
-    <dl className={joinClassNames(styles.cmMetaList, className)} data-cm-zone="meta-list">
+    <dl className={joinClassNames(styles["cm-meta-list"], className)} data-cm-zone="meta-list">
       {items.map((item, index) => (
-        <div key={`${item.label}-${index}`} className={styles.cmMetaItem}>
-          <dt className={styles.cmMetaLabel}>{item.label}</dt>
-          <dd className={styles.cmMetaValue}>{item.value}</dd>
+        <div key={`${item.label}-${index}`} className={styles["cm-meta-item"]}>
+          <dt className={styles["cm-meta-label"]}>{item.label}</dt>
+          <dd className={styles["cm-meta-value"]}>{item.value}</dd>
         </div>
       ))}
     </dl>

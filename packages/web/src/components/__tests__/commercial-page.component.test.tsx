@@ -165,6 +165,37 @@ describe("UI Standardization W0 — CommercialPage contract (AC-3)", () => {
     expect(css).toMatch(/:focus-visible[^{]*\{[^}]*outline\s*:\s*2px/);
   });
 
+  it("AC-5e: mọi class trong CSS module đều có tiền tố .cm-", () => {
+    const css = readFileSync(CSS_PATH, "utf8");
+    const classNames = [...new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g)].map((m) => m[1]))];
+    expect(classNames.length).toBeGreaterThan(0);
+    for (const name of classNames) {
+      expect(name.startsWith("cm-")).toBe(true);
+    }
+  });
+
+  it("AC-5f: mọi key styles[...] dùng trong JSX đều tồn tại trong CSS module (và ngược lại)", () => {
+    const css = readFileSync(CSS_PATH, "utf8");
+    const cssClasses = new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g)].map((m) => m[1]));
+
+    const usedKeys = new Set<string>();
+    for (const file of COMPONENT_FILES) {
+      if (!file.endsWith(".tsx")) continue;
+      const src = readFileSync(file, "utf8");
+      for (const match of src.matchAll(/styles\["([^"]+)"\]/g)) {
+        usedKeys.add(match[1]);
+      }
+    }
+
+    expect(usedKeys.size).toBeGreaterThan(0);
+    for (const key of usedKeys) {
+      expect(cssClasses.has(key)).toBe(true);
+    }
+    for (const className of cssClasses) {
+      expect(usedKeys.has(className)).toBe(true);
+    }
+  });
+
   it("AC-5d: file component không hardcode chuỗi hiển thị tiếng Việt", () => {
     const viRegex = /[\u00C0-\u1EF9]/;
     const componentOnly = COMPONENT_FILES.filter((f) => !f.endsWith("commercialMessages.ts"));

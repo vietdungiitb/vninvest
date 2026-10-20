@@ -1,4 +1,4 @@
-.cmPage {
+.cm-page {
   display: grid;
   gap: var(--space-4, 1rem);
   color: var(--color-text-primary);
@@ -6,12 +6,12 @@
   line-height: 1.55;
 }
 
-.cmHeader {
+.cm-header {
   display: grid;
   gap: var(--space-3, 0.75rem);
 }
 
-.cmEyebrow {
+.cm-eyebrow {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -19,7 +19,7 @@
   color: var(--color-text-muted);
 }
 
-.cmTitleRow {
+.cm-title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -27,13 +27,13 @@
   flex-wrap: wrap;
 }
 
-.cmTitleBlock {
+.cm-title-block {
   display: grid;
   gap: var(--space-2, 0.5rem);
   min-width: 0;
 }
 
-.cmTitle {
+.cm-title {
   margin: 0;
   font-size: 24px;
   line-height: 1.2;
@@ -41,13 +41,13 @@
   color: var(--color-text-primary);
 }
 
-.cmDescription {
+.cm-description {
   margin: 0;
   max-width: 72ch;
   color: var(--color-text-secondary);
 }
 
-.cmBadge {
+.cm-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -60,13 +60,13 @@
   font-weight: 700;
 }
 
-.cmMetrics {
+.cm-metrics {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-3, 0.75rem);
 }
 
-.cmMetric {
+.cm-metric {
   display: grid;
   gap: 4px;
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
@@ -75,7 +75,7 @@
   background: var(--color-bg-panel);
 }
 
-.cmMetricLabel {
+.cm-metric-label {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -83,13 +83,13 @@
   color: var(--color-text-muted);
 }
 
-.cmMetricValue {
+.cm-metric-value {
   font-size: 20px;
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
-.cmNotice {
+.cm-notice {
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   border: 1px solid var(--color-border-primary);
   border-left: 3px solid var(--color-accent-primary);
@@ -98,7 +98,7 @@
   color: var(--color-text-secondary);
 }
 
-.cmToolbar {
+.cm-toolbar {
   display: flex;
   align-items: center;
   gap: var(--space-3, 0.75rem);
@@ -109,23 +109,23 @@
   background: var(--color-bg-panel);
 }
 
-.cmBody {
+.cm-body {
   display: grid;
   gap: var(--space-4, 1rem);
   min-width: 0;
 }
 
-.cmState {
+.cm-state {
   display: grid;
   gap: var(--space-3, 0.75rem);
 }
 
-.cmLive {
+.cm-live {
   display: grid;
   gap: var(--space-2, 0.5rem);
 }
 
-.cmError {
+.cm-error {
   display: grid;
   gap: var(--space-2, 0.5rem);
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
@@ -135,18 +135,18 @@
   background: var(--color-bg-panel);
 }
 
-.cmErrorMessage {
+.cm-error-message {
   margin: 0;
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
-.cmErrorHint {
+.cm-error-hint {
   margin: 0;
   color: var(--color-text-secondary);
 }
 
-.cmRetryButton {
+.cm-retry-button {
   justify-self: start;
   padding: 8px 16px;
   border: 1px solid var(--color-border-focus);
@@ -158,28 +158,28 @@
   cursor: pointer;
 }
 
-.cmRetryButton:hover {
+.cm-retry-button:hover {
   border-color: var(--color-accent-primary);
 }
 
-.cmRetryButton:focus-visible {
+.cm-retry-button:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
-.cmSkeleton {
+.cm-skeleton {
   display: grid;
   gap: 8px;
   padding: var(--space-3, 0.75rem) 0;
 }
 
-.cmLoading {
+.cm-loading {
   margin: 0;
   color: var(--color-text-muted);
   font-size: 12px;
 }
 
-.cmSkeletonLine {
+.cm-skeleton-line {
   display: block;
   height: 12px;
   border-radius: var(--radius-sm, 0.25rem);
@@ -187,15 +187,15 @@
   border: 1px solid var(--color-border-primary);
 }
 
-.cmSkeletonLine:nth-child(2) {
+.cm-skeleton-line:nth-child(2) {
   width: 80%;
 }
 
-.cmSkeletonLine:nth-child(3) {
+.cm-skeleton-line:nth-child(3) {
   width: 60%;
 }
 
-.cmEmpty {
+.cm-empty {
   display: grid;
   gap: var(--space-2, 0.5rem);
   justify-items: start;
@@ -204,25 +204,25 @@
   border-radius: var(--radius-lg, 0.5rem);
 }
 
-.cmEmptyValue {
+.cm-empty-value {
   font-size: 20px;
   font-weight: 700;
   color: var(--color-text-muted);
 }
 
-.cmEmptyReason {
+.cm-empty-reason {
   margin: 0;
   color: var(--color-text-secondary);
 }
 
-.cmActions {
+.cm-actions {
   display: flex;
   align-items: center;
   gap: var(--space-3, 0.75rem);
   flex-wrap: wrap;
 }
 
-.cmMeta {
+.cm-meta {
   display: grid;
   gap: var(--space-2, 0.5rem);
   padding-top: var(--space-3, 0.75rem);
@@ -231,7 +231,7 @@
   font-size: 12px;
 }
 
-.cmMetaList {
+.cm-meta-list {
   display: flex;
   align-items: center;
   gap: var(--space-4, 1rem);
@@ -239,49 +239,49 @@
   margin: 0;
 }
 
-.cmMetaItem {
+.cm-meta-item {
   display: flex;
   align-items: baseline;
   gap: 6px;
 }
 
-.cmMetaLabel {
+.cm-meta-label {
   font-weight: 700;
 }
 
-.cmMetaValue {
+.cm-meta-value {
   margin: 0;
   color: var(--color-text-secondary);
 }
 
-.cmTableWrap {
+.cm-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg, 0.5rem);
 }
 
-.cmTable {
+.cm-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.cmTableCaption {
+.cm-table-caption {
   padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   text-align: left;
   font-weight: 700;
   color: var(--color-text-secondary);
 }
 
-.cmTableHeadCell,
-.cmTableBodyCell,
-.cmTableRowHeader {
+.cm-table-head-cell,
+.cm-table-body-cell,
+.cm-table-row-header {
   padding: 10px var(--space-4, 1rem);
   text-align: left;
   border-bottom: 1px solid var(--color-border-primary);
 }
 
-.cmTableHeadCell {
+.cm-table-head-cell {
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -290,16 +290,16 @@
   white-space: nowrap;
 }
 
-.cmTableRowHeader {
+.cm-table-row-header {
   color: var(--color-text-primary);
   font-weight: 700;
 }
 
-.cmTableBodyCell {
+.cm-table-body-cell {
   color: var(--color-text-secondary);
 }
 
-.cmTableEmpty {
+.cm-table-empty {
   padding: var(--space-4, 1rem);
   color: var(--color-text-muted);
 }

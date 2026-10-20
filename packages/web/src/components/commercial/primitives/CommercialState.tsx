@@ -34,36 +34,36 @@ export function CommercialState({
 
   return (
     <div
-      className={joinClassNames(styles.cmState, className)}
+      className={joinClassNames(styles["cm-state"], className)}
       data-cm-zone="state"
       aria-busy={loading ? "true" : "false"}
     >
-      <div className={styles.cmError} role="alert" data-cm-zone="state-error">
+      <div className={styles["cm-error"]} role="alert" data-cm-zone="state-error">
         {hasError ? (
           <>
-            <p className={styles.cmErrorMessage}>{error}</p>
-            <p className={styles.cmErrorHint}>{retryHint ?? defaultRetryHint}</p>
-            <button type="button" className={styles.cmRetryButton} onClick={onRetry}>
+            <p className={styles["cm-error-message"]}>{error}</p>
+            <p className={styles["cm-error-hint"]}>{retryHint ?? defaultRetryHint}</p>
+            <button type="button" className={styles["cm-retry-button"]} onClick={onRetry}>
               {retryLabel}
             </button>
           </>
         ) : null}
       </div>
-      <div className={styles.cmLive} role="status" aria-live="polite" data-cm-zone="state-live">
+      <div className={styles["cm-live"]} role="status" aria-live="polite" data-cm-zone="state-live">
         {loading ? (
           <>
-            <div className={styles.cmSkeleton} aria-hidden="true">
-              <span className={styles.cmSkeletonLine} />
-              <span className={styles.cmSkeletonLine} />
-              <span className={styles.cmSkeletonLine} />
+            <div className={styles["cm-skeleton"]} aria-hidden="true">
+              <span className={styles["cm-skeleton-line"]} />
+              <span className={styles["cm-skeleton-line"]} />
+              <span className={styles["cm-skeleton-line"]} />
             </div>
-            <p className={styles.cmLoading}>{loadingLabel}</p>
+            <p className={styles["cm-loading"]}>{loadingLabel}</p>
           </>
         ) : null}
         {empty && !loading ? (
-          <div className={styles.cmEmpty}>
-            <span className={styles.cmEmptyValue}>{emptyValue}</span>
-            <p className={styles.cmEmptyReason}>{emptyReason ?? defaultEmptyReason}</p>
+          <div className={styles["cm-empty"]}>
+            <span className={styles["cm-empty-value"]}>{emptyValue}</span>
+            <p className={styles["cm-empty-reason"]}>{emptyReason ?? defaultEmptyReason}</p>
             {emptyCta}
           </div>
         ) : null}

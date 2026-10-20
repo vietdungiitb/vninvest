@@ -31,9 +31,9 @@ export interface CommercialMetricProps {
 
 export function CommercialMetric({ label, value, className }: CommercialMetricProps) {
   return (
-    <div className={joinClassNames(styles.cmMetric, className)} data-cm-zone="metric">
-      <span className={styles.cmMetricLabel}>{label}</span>
-      <strong className={styles.cmMetricValue}>{value}</strong>
+    <div className={joinClassNames(styles["cm-metric"], className)} data-cm-zone="metric">
+      <span className={styles["cm-metric-label"]}>{label}</span>
+      <strong className={styles["cm-metric-value"]}>{value}</strong>
     </div>
   );
 }
@@ -65,49 +65,49 @@ export function CommercialPage({
   return (
     <div
       id={resolvedId}
-      className={joinClassNames(styles.cmPage, className)}
+      className={joinClassNames(styles["cm-page"], className)}
       role="region"
       aria-labelledby={titleId}
       data-cm-zone="page"
     >
-      <header className={styles.cmHeader} data-cm-zone="header">
-        {eyebrow ? <span className={styles.cmEyebrow}>{eyebrow}</span> : null}
-        <div className={styles.cmTitleRow}>
-          <div className={styles.cmTitleBlock}>
-            <h1 id={titleId} className={styles.cmTitle}>
+      <header className={styles["cm-header"]} data-cm-zone="header">
+        {eyebrow ? <span className={styles["cm-eyebrow"]}>{eyebrow}</span> : null}
+        <div className={styles["cm-title-row"]}>
+          <div className={styles["cm-title-block"]}>
+            <h1 id={titleId} className={styles["cm-title"]}>
               {title}
             </h1>
-            {description ? <p className={styles.cmDescription}>{description}</p> : null}
+            {description ? <p className={styles["cm-description"]}>{description}</p> : null}
           </div>
-          {badge ? <div className={styles.cmBadge}>{badge}</div> : null}
+          {badge ? <div className={styles["cm-badge"]}>{badge}</div> : null}
         </div>
         {metrics ? (
-          <div className={styles.cmMetrics} data-cm-zone="metrics">
+          <div className={styles["cm-metrics"]} data-cm-zone="metrics">
             {metrics}
           </div>
         ) : null}
       </header>
       {notice ? (
-        <div className={styles.cmNotice} role="status" data-cm-zone="notice">
+        <div className={styles["cm-notice"]} role="status" data-cm-zone="notice">
           {notice}
         </div>
       ) : null}
       {toolbar ? (
-        <div className={styles.cmToolbar} data-cm-zone="toolbar">
+        <div className={styles["cm-toolbar"]} data-cm-zone="toolbar">
           {toolbar}
         </div>
       ) : null}
-      <div className={styles.cmBody} data-cm-zone="body">
+      <div className={styles["cm-body"]} data-cm-zone="body">
         {children}
       </div>
       <CommercialState {...stateProps} />
       {actions ? (
-        <div className={styles.cmActions} data-cm-zone="actions">
+        <div className={styles["cm-actions"]} data-cm-zone="actions">
           {actions}
         </div>
       ) : null}
       {meta ? (
-        <div className={styles.cmMeta} data-cm-zone="meta">
+        <div className={styles["cm-meta"]} data-cm-zone="meta">
           {meta}
         </div>
       ) : null}

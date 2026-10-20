@@ -23,13 +23,13 @@ export interface CommercialTableProps {
 
 export function CommercialTable({ caption, columns, rows, empty, className }: CommercialTableProps) {
   return (
-    <div className={styles.cmTableWrap} data-cm-zone="table">
-      <table className={joinClassNames(styles.cmTable, className)}>
-        <caption className={styles.cmTableCaption}>{caption}</caption>
+    <div className={styles["cm-table-wrap"]} data-cm-zone="table">
+      <table className={joinClassNames(styles["cm-table"], className)}>
+        <caption className={styles["cm-table-caption"]}>{caption}</caption>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col" className={styles.cmTableHeadCell}>
+              <th key={column.key} scope="col" className={styles["cm-table-head-cell"]}>
                 {column.label}
               </th>
             ))}
@@ -38,7 +38,7 @@ export function CommercialTable({ caption, columns, rows, empty, className }: Co
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={Math.max(columns.length, 1)} className={styles.cmTableEmpty}>
+              <td colSpan={Math.max(columns.length, 1)} className={styles["cm-table-empty"]}>
                 {empty}
               </td>
             </tr>
@@ -47,11 +47,11 @@ export function CommercialTable({ caption, columns, rows, empty, className }: Co
               <tr key={row.id ?? `row-${rowIndex}`}>
                 {columns.map((column) =>
                   column.rowHeader ? (
-                    <th key={column.key} scope="row" className={styles.cmTableRowHeader}>
+                    <th key={column.key} scope="row" className={styles["cm-table-row-header"]}>
                       {row.cells[column.key]}
                     </th>
                   ) : (
-                    <td key={column.key} className={styles.cmTableBodyCell}>
+                    <td key={column.key} className={styles["cm-table-body-cell"]}>
                       {row.cells[column.key]}
                     </td>
                   ),
