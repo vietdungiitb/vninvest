@@ -4329,3 +4329,50 @@
   border-radius: var(--r-md, 8px);
 }
 
+/* ── LIGHT THEME: mau hard-code tren nen sang (do that 2026-10-20) ────────
+ * Cac class duoi day DUNG HEX CO DINH (nho mau, xanh la) nen text badge chi
+ * duoc 1.43–1.47:1 tren nen sang (WCAG 1.4.3 can >= 4.5:1).
+ * Override CHI doi MAU, khong doi layout, khong anh huong dark theme.
+ * Do do lai bang getComputedStyle tren staging (co control 21.00:1). */
+:root[data-theme="light"] .brokerBadgeOk {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(4, 120, 87, 0.35);
+  color: #047857;
+}
+
+:root[data-theme="light"] .brokerBadgeWarn {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(146, 64, 14, 0.35);
+  color: #92400e;
+}
+
+:root[data-theme="light"] .statusBadgeOk {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(4, 120, 87, 0.3);
+  color: #047857;
+}
+
+:root[data-theme="light"] .statusBadgeInfo {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(29, 78, 216, 0.3);
+  color: #1d4ed8;
+}
+
+:root[data-theme="light"] .statusBadgeOff {
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  color: #475569;
+}
+
+:root[data-theme="light"] .vnbWarning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(146, 64, 14, 0.35);
+  color: #92400e;
+}
+
+:root[data-theme="light"] .vnbDirtyBadge {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(146, 64, 14, 0.35);
+  color: #92400e;
+}
+
