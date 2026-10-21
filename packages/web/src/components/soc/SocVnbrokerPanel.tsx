@@ -764,7 +764,12 @@ export function SocVnbrokerPanel() {
                     </span>
                   ),
                   ready: (
-                    <span className={styles.vnbCellStack}>
+                    <span
+                      className={styles.vnbCellStack}
+                      title={`${t("soc.vnbroker.last_check")}: ${
+                        row?.last_success_at ? formatTime(row.last_success_at) : "—"
+                      }`}
+                    >
                       <span
                         className={styles.statusBadge}
                         style={getStatusBadgeStyle(ready ? "healthy" : "degraded")}
@@ -788,10 +793,6 @@ export function SocVnbrokerPanel() {
                           ))}
                         </span>
                       ) : null}
-                      <span className={styles.vnbStatLabel}>
-                        {t("soc.vnbroker.last_check")}:{" "}
-                        {row?.last_success_at ? formatTime(row.last_success_at) : "—"}
-                      </span>
                     </span>
                   ),
                   perf: (

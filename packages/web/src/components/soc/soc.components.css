@@ -4422,7 +4422,7 @@
   flex-direction: column;
   gap: 0.25rem;
   align-items: flex-start;
-  max-width: 22rem;
+  max-width: 18rem;
 }
 .vnbEnvList {
   display: flex;
