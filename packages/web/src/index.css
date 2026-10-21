@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "./theme/tokens.css";
+/* Light theme (UI Standardization W1, T1+T2) — override token `--color-*` + utility
+   theo property. File SINH BOI `packages/web/scripts/check-light-theme.mjs --update`.
+   Gia tri lay tu SSOT `theme/tokens.css:65-71`. KHONG sua tay. */
+@import "./theme/light-theme.css";
 @import "tailwind-sidebar/styles.css";
 @import "simplebar/dist/simplebar.min.css";
 
