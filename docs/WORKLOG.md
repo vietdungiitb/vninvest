@@ -147,3 +147,18 @@ hay thứ tự discovery) · 13 FAIL cụ thể · ruff mức cấu hình · pur
 | 19 | Bài học mới (7) ghi trong Entry 391 | PASS | probe "0 lỗi" do **CHƯA ĐĂNG NHẬP** (cần control "đã đo thật") · specificity 0,2,0 thua rule module ⇒ `:root[data-theme]` · class bị scope hash không override được từ file global · vá ở tầng token · gate đo sai scope · blob EOL "mixed" kẹt vĩnh viễn (normalize-eol chặn mọi lần sửa) ⇒ xoá rồi thêm lại · double-encoding UTF-8 qua PowerShell | - | - |
 
 **Rủi ro lớn nhất phát hiện trong phiên này**: **gate có thể XANH GIẢ** (2 BLOCKER W0: route không đo được + `oklch()` làm cặp rơi khỏi tập) và **probe của tôi cũng xanh giả** (do CHƯA ĐĂNG NHẬP) ⇒ **mọi phép đo đều phải có CONTROL** (L-V01/L-V04). Gate của W0/W1 đã đóng 2 BLOCKER + 9 MAJOR + 17/17 probe.
+
+## 2026-10-21 (tiếp) — Redesign 2 panel Operations Center + light theme (a) + **2 lỗi nghiêm trọng về chính gate**
+
+| # | Task | Kết quả | Bằng chứng (lệnh) | Rủi ro | Next |
+|---|---|---|---|---|---|
+| 1 | Nạp skill UI/UX (`ui-skills-root` → `pbakaus/layout` · `pbakaus/distill` · `mengto/tailwindcss`) + khảo sát BE+FE 2 panel (sub-agent read-only) | PASS | Bản đồ: 15 hành động (Môi giới) + 29 hành động (VNBroker) · 21 nhãn dễ nhầm · 5 nhóm lỗi bố cục | - | - |
+| 2 | R1: đổi 20 nhãn + 4 giá trị raw (phân biệt "nguồn dữ liệu" / "nhà môi giới") | PASS | **PR #274 (merged)** · tsc 0 · vitest 0 · i18n:scan:strict 0 | - | - |
+| 3 | R2: tile → **bảng 9 cột** + KPI 4 + dải meta đầu trang (VNBroker) | PASS | **PR #275 (merged)** · 12/12 test contract **cũ** vẫn pass | - | - |
+| 4 | R3: 3 card → **bảng 5 cột** + dải chính sách + rút badge lặp (Môi giới) | PASS | **PR #276 (merged)** · 15 hành động giữ nguyên | - | - |
+| 5 | Light theme (a): 5 vòng **chụp ảnh → mở ảnh ra xem** | PASS | H1 `/admin/users` light **1.0000:1 → 19.2806:1**; chữ dưới AA **28/60 → 10/60**; dark **không hồi quy** (8/60) | 10/60 chữ vẫn dưới AA (chủ yếu `th` bảng admin) | C-1/C-2 |
+| 6 | ⚠ **Phát hiện: `pre-push-gate.mjs` hỏng cú pháp ⇒ gate KHÔNG chạy** | PASS (đã sửa) | Thủ phạm `1fe43761c` (merge W1, ghép conflict **tay**) · `node --check` FAIL dòng 522 · sửa `b45b9c8ed` → gate **28 PASS** | Các push giữa đó **không được gate** | lesson L-G09 |
+| 7 | ⚠ **Phát hiện: `.githooks/pre-push` kết thúc `exit 0` + bỏ qua gate khi ở `dev`** | PASS (đã sửa) | Sửa `688f73243`: gate fail ⇒ `exit $gate_status`; `dev` chỉ bỏ qua khi **không có gì để đẩy** ⇒ đã kiểm chứng push từ `dev` **có** chạy gate | Mọi squash-merge vào `dev` trước đó **không qua gate** | lesson L-G09 |
+| 8 | Dọn dẹp: 5 worktree `agent-uistd-*` + branch local/remote + claim đóng | PASS | worktree còn: main + `agent-infra-p0` (agent khác) | - | - |
+
+**Bài học lớn nhất phiên:** *"push thành công" **KHÔNG** chứng minh gate đã chạy* — 2 lỗi (file hỏng cú pháp + hook nuốt exit code) cùng làm cho nhiều push **không được gate thật**. Đã ghi **L-G09** + sửa cả hai.
