@@ -453,6 +453,7 @@ for (const uiGate of [
   "check-focus-ring",
   "check-theme-contrast",
   "check-a11y-runtime",
+  "check-light-theme",
 ]) {
   const gatePath = join(REPO, "packages", "web", "scripts", `${uiGate}.mjs`);
   if (!existsSync(gatePath)) {
