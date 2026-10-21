@@ -47,6 +47,7 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | `fe`, `frontend`, `bundle`, `vite`, `chunk`, `preload`, `react`, `hook`, `memo`, `useCallback`, `useMemo`, `searchParams`, `setSearchParams`, `router`, `useState` | `frontend` | `docs/LESSONS/frontend.md` |
 | `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc` | `docs/LESSONS/css-soc.md` |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append`, `proof` | `tooling-traps` | `docs/LESSONS/tooling-traps.md` |
+| `edit`, `fuzzy`, `tool`, `replace`, `refactor`, `stash`, `crlf`, `lf`, `eol`, `numstat`, `normalize-eol` | `tooling-traps` | `docs/LESSONS/tooling-traps-2.md` |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `rotate`, `revoke`, `token`, `fernet`, `history` | `security` | `docs/LESSONS/security.md` |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate`, `claim cua nguoi khac` | `verification` | `docs/LESSONS/verification.md` |
 | `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite` | `false-green` | `docs/LESSONS/false-green.md` |

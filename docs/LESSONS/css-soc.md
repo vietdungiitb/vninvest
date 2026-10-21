@@ -79,3 +79,16 @@ one !important la duoc.
   - [ ] Khi sua mau tang/giam, da **hoi Owner** chua?
   - [ ] Da doc spec chua (tai day spec la chuan Bloomberg)?
 - **Proof:** Owner chot 2026-10-07. Entry 250/251 cua ledger da sua lai.
+
+## L-F11: KHONG kết luận "CSS module không map class" từ file nguồn — đọc CSS ĐÃ BUILD
+
+- **Nguyên nhân:** Đọc `soc.module.css` (3 dòng `@import`) rồi suy ra `styles.metricCard` là `undefined` ⇒ class không được áp dụng ⇒ báo "panel không có style" như một finding nghiêm trọng.
+- **Hậu quả thật (2026-10-19, audit tab VNBroker):** Đọc `packages/web/dist/assets/soc-*.css` → tìm thấy `._metricCard_ovxpd_1{...}`, `._serviceCard_ovxpd_1{...}` ⇒ Vite/postcss-modules **CÓ** scope class của file được `@import` trong barrel. Kết luận sai đã bị bác **trước khi** vào báo cáo; nếu lỡ đưa vào, báo cáo mang 1 finding P0 giả (ảnh chụp thật cho thấy style có áp dụng).
+- **Khi nào gặp:** `tags: [css, soc, modules, vite, postcss, audit, false-positive, build, dist]`
+- **QUY TẮC:** "Muốn kết luận về **class có được áp dụng hay không** ⇒ đọc **CSS đã build** (`packages/web/dist/assets/*.css`, hoặc `docker cp` từ `/usr/share/nginx/html/assets/` trong image) và tìm tên class **đã hash** (`_metricCard_<hash>_1`). **Đừng** suy ra từ nội dung file `.module.css`. Mẹo nhận biết nhanh: class đã hash **không** xuất hiện dưới dạng `.metricCard` — tìm chuỗi `metricCard` (**không** ký hiệu chấm)."
+- **CHECKLIST:**
+  - [ ] Đã tìm tên class **không ký hiệu chấm** trong CSS build trước khi kết luận class không map chưa?
+  - [ ] Đã phân biệt "file `.module.css` là barrel" với "class trong file được `@import` **không** được scope"?
+  - [ ] Nếu deploy khác local: đã lấy CSS từ **đúng artifact** (docker image, không phải `dist` trên host — xem L-V01)?
+  - [ ] Khi đối chiếu ảnh chụp mà thấy "unstyled", đã **hỏi lại**: style có thật sự không áp dụng, hay chỉ là tương phản thấp (border 1px alpha 0.15 trên nền tương tự)?
+- **Proof:** `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` §E1 + Phụ lục P4; `packages/web/dist/assets/soc-CqdbE_IP.css` chứa `._metricCard_ovxpd_1` và `._serviceCard_ovxpd_1` dù `soc.module.css` chỉ có 3 dòng.

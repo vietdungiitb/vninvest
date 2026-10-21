@@ -16,15 +16,138 @@ const normalizeConfigEnvelope = (payload) => {
   };
 };
 
-const normalizeVnbrokerHealth = (payload) => {
-  const status = payload?.status || 'unknown';
+// ─── VNBroker normalizers ───────────────────────────────────────────────
+// Hợp đồng BE <-> FE cho domain vnbroker (BE: service_ops/views/vnbroker.py).
+//
+// NGUYÊN TẮC: adapter KHÔNG tự chế dữ liệu. Mọi field đều lấy từ response BE
+// rồi đổi tên cho dễ đọc. Field BE không tồn tại => null/unknown, TUYỆT ĐỐI
+// không bịa bằng công thức (audit Entry 384 §D1: F-01..F-08).
+const normalizeVnbrokerConfig = (payload) => {
+  const config = payload?.config_payload ?? payload?.config ?? {};
   return {
-    ...payload,
-    provider_health: payload?.provider_health || {
-      healthy: status === 'healthy' ? 1 : 0,
-      degraded: status === 'degraded' ? 1 : 0,
-      critical: status === 'unhealthy' ? 1 : 0,
+    service_key: payload?.service_key || "",
+    config_schema_version: payload?.config_schema_version || "",
+    config,
+    providers_catalog: Array.isArray(payload?.providers_catalog) ? payload.providers_catalog : [],
+    applied_by: payload?.applied_by || "",
+    applied_at: payload?.applied_at || null,
+    change_reason: payload?.change_reason || "",
+    is_current: payload?.is_current !== false,
+  };
+};
+
+const normalizeVnbrokerHealth = (payload) => ({
+  service_key: payload?.service_key || "",
+  status: payload?.status || "unknown",
+  last_check_at: payload?.last_check_at || null,
+  last_success_at: payload?.last_success_at || null,
+  consecutive_failures: Number(payload?.consecutive_failures || 0),
+  avg_response_ms: payload?.avg_response_ms == null ? null : Number(payload.avg_response_ms),
+  detail: payload?.detail || {},
+});
+
+const normalizeVnbrokerProviders = (payload) => ({
+  primary: payload?.primary || "",
+  fallback: Array.isArray(payload?.fallback) ? payload.fallback : [],
+  enabled: payload?.enabled !== false,
+  providers: Array.isArray(payload?.providers) ? payload.providers : [],
+});
+
+const normalizeVnbrokerProviderHealth = (payload) => {
+  const rows = Array.isArray(payload?.providers) ? payload.providers : [];
+  return {
+    checked_at: payload?.checked_at || null,
+    source: payload?.source || "unknown",
+    providers: rows.map((row) => ({
+      provider: row?.provider || "",
+      label: row?.label || row?.provider || "",
+      status: row?.status || "unknown",
+      latency_ms: row?.latency_ms == null ? null : Number(row.latency_ms),
+      success_rate: row?.success_rate == null ? null : Number(row.success_rate),
+      error_rate: row?.error_rate == null ? null : Number(row.error_rate),
+      total_requests: Number(row?.total_requests || 0),
+      failed_requests: Number(row?.failed_requests || 0),
+      last_success_at: row?.last_success_at || null,
+      last_error: row?.last_error || "",
+      circuit_state: row?.circuit_state || "unknown",
+    })),
+  };
+};
+
+const normalizeVnbrokerBenchmarkResult = (row) => ({
+  provider: row?.provider || "",
+  concurrency: Number(row?.concurrency || 0),
+  runs: Number(row?.runs || 0),
+  elapsed_seconds: Number(row?.elapsed_seconds || 0),
+  total_requests: Number(row?.total_requests || 0),
+  success_requests: Number(row?.success_requests || 0),
+  rate_limited_requests: Number(row?.rate_limited_requests || 0),
+  failed_requests: Number(row?.failed_requests || 0),
+  timeout_errors: Number(row?.timeout_errors || 0),
+  transport_errors: Number(row?.transport_errors || 0),
+  rpm: Number(row?.requests_per_minute || 0),
+  success_rate: Number(row?.success_pct || 0),
+  rate_limit_pct: Number(row?.rate_limited_pct || 0),
+  latency_ms: Math.round(Number(row?.p50_latency_seconds || 0) * 1000),
+  p95_latency_ms: Math.round(Number(row?.p95_latency_seconds || 0) * 1000),
+});
+
+const normalizeVnbrokerBenchmark = (payload) => {
+  const report = payload?.report || null;
+  if (!report) {
+    return { has_report: false, report: null };
+  }
+  return {
+    has_report: true,
+    report: {
+      symbol: report.symbol || "",
+      started_at: report.started_at || null,
+      finished_at: report.finished_at || null,
+      providers: Array.isArray(report.providers) ? report.providers : [],
+      concurrency_levels: Array.isArray(report.concurrency_levels) ? report.concurrency_levels : [],
+      results: (Array.isArray(report.results) ? report.results : []).map(
+        normalizeVnbrokerBenchmarkResult,
+      ),
+      recommendation: report.recommendation || null,
     },
+  };
+};
+
+const normalizeVnbrokerCircuitBreaker = (payload) => {
+  const cb = payload?.circuit_breaker || {};
+  const perProvider = payload?.per_provider || {};
+  return {
+    status: cb.status || "unknown",
+    failures: Number(cb.failures || 0),
+    threshold: Number(cb.threshold || 0),
+    window_seconds: Number(cb.window_seconds || 0),
+    cooldown_seconds: Number(cb.cooldown_seconds || 0),
+    source: payload?.source || "unknown",
+    per_provider: Object.fromEntries(
+      Object.entries(perProvider).map(([key, value]) => [
+        key,
+        {
+          status: value?.status || "unknown",
+          failures: Number(value?.failures || 0),
+        },
+      ]),
+    ),
+  };
+};
+
+// `impactWarnings` trả về MÃ (không phải câu chữ) — panel lo sang i18n.
+const normalizeVnbrokerPreview = (payload) => {
+  const errors = Array.isArray(payload?.errors) ? payload.errors : [];
+  const impact = payload?.impact || {};
+  const impactWarnings = [];
+  if (impact.providers_changed) impactWarnings.push("providers_changed");
+  if (impact.timeout_changed) impactWarnings.push("timeout_changed");
+  return {
+    valid: payload?.valid !== false && errors.length === 0,
+    validationErrors: errors,
+    impactWarnings,
+    configPayload: payload?.config_payload || {},
+    providersCatalog: Array.isArray(payload?.providers_catalog) ? payload.providers_catalog : [],
   };
 };
 
@@ -99,40 +222,59 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
 
     // ─── VNBroker ──────────────────────────────────────────────────────────
+    // `config` Ở ĐÂY là CONFIG PAYLOAD THẬT (timeout/max_retries/preferred_provider…),
+    // KHÔNG phải envelope. Gửi envelope làm `config_payload` ⇒ BE `from_dict`
+    // không đọc được key nào ở cấp 1 ⇒ toàn bộ chỉnh sửa của user bị mất
+    // (audit Entry 384 §D1 F-01).
     getSocVnbrokerConfig() {
-      return coreGet("/operator/soc/vnbroker/config/").then(normalizeConfigEnvelope);
+      return coreGet("/operator/soc/vnbroker/config/").then(normalizeVnbrokerConfig);
     },
 
-    applySocVnbrokerConfig(config) {
-      return corePost("/operator/soc/vnbroker/config/", { config_payload: config }).then(normalizeConfigEnvelope);
+    applySocVnbrokerConfig(config, options = {}) {
+      const body = { config_payload: config, change_reason: options.changeReason || "" };
+      if (options.expectedUpdatedAt) body.expected_updated_at = options.expectedUpdatedAt;
+      return corePost("/operator/soc/vnbroker/config/", body).then(normalizeVnbrokerConfig);
     },
 
     previewSocVnbrokerConfig(config) {
-      return corePost("/operator/soc/vnbroker/config/preview/", { config_payload: config });
+      return corePost("/operator/soc/vnbroker/config/preview/", { config_payload: config }).then(
+        normalizeVnbrokerPreview,
+      );
     },
 
     getSocVnbrokerHealth() {
       return coreGet("/operator/soc/vnbroker/health/").then(normalizeVnbrokerHealth);
     },
 
-    testSocVnbrokerConnection() {
-      return corePost("/operator/soc/vnbroker/test-connection/");
+    // Health PER PROVIDER — nguồn thật, không suy ra từ health cấp service.
+    getSocVnbrokerProviderHealth() {
+      return coreGet("/operator/soc/vnbroker/provider-health/").then(normalizeVnbrokerProviderHealth);
+    },
+
+    testSocVnbrokerConnection(provider = "vci") {
+      return corePost("/operator/soc/vnbroker/test-connection/", { provider });
     },
 
     getSocVnbrokerProviders() {
-      return coreGet("/operator/soc/vnbroker/providers/");
+      return coreGet("/operator/soc/vnbroker/providers/").then(normalizeVnbrokerProviders);
     },
 
     runSocVnbrokerBenchmark(payload = {}) {
-      return corePost("/operator/soc/vnbroker/benchmark/", payload);
+      return corePost("/operator/soc/vnbroker/benchmark/", payload).then(normalizeVnbrokerBenchmark);
     },
 
     getSocVnbrokerBenchmarkLatest() {
-      return coreGet("/operator/soc/vnbroker/benchmark/");
+      return coreGet("/operator/soc/vnbroker/benchmark/").then(normalizeVnbrokerBenchmark);
     },
 
     getSocVnbrokerCircuitBreaker() {
-      return coreGet("/operator/soc/vnbroker/circuit-breaker-status/");
+      return coreGet("/operator/soc/vnbroker/circuit-breaker-status/").then(
+        normalizeVnbrokerCircuitBreaker,
+      );
+    },
+
+    getSocVnbrokerOwnership() {
+      return coreGet("/operator/soc/vnbroker/ownership/");
     },
 
     // ─── Operator users (A2) ─────────────────────────────────────────
@@ -242,24 +384,6 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     testSocBrokerConnection(provider) {
       return corePost("/operator/soc/broker/test-connection/", { provider });
-    },
-
-    getSocVnbrokerMetrics() {
-      return this.getSocVnbrokerHealth().then((health) => {
-        const latency = Number(health.avg_response_ms || 0);
-        const status = health.status || 'unknown';
-        const errorRateByStatus = {
-          healthy: 0,
-          degraded: 25,
-          unknown: 50,
-          unhealthy: 100,
-          maintenance: 0,
-        };
-        return {
-          throughput: latency > 0 ? Number((1000 / latency).toFixed(2)) : 0,
-          error_rate: errorRateByStatus[status] ?? 0,
-        };
-      });
     },
 
     // ─── DataOps Market-Data Runtime ───────────────────────────────────────

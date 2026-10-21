@@ -409,3 +409,64 @@ class GlobalSymbolCoverage(models.Model):
 
     def __str__(self) -> str:
         return f'{self.registry.symbol}:{self.dataset}:{self.freshness_state}'
+
+
+class VnbrokerProviderHealth(models.Model):
+    """
+    Sức khỏe runtime + trạng thái circuit breaker THEO TỪNG nhà cung cấp dữ liệu.
+
+    Ghi bởi `market_data.vnbroker_provider_health` mỗi lần gọi provider thật
+    (qua `market_data.vnbroker_adapter`). Đọc bởi SOC console:
+    `GET /operator/soc/vnbroker/provider-health/` và
+    `GET /operator/soc/vnbroker/circuit-breaker-status/`.
+
+    Trước đây không tồn tại bảng nào theo provider: `ServiceHealth` là
+    OneToOne theo SERVICE, và probe domain vnbroker chỉ kiểm tra
+    `has_current_config` — nên console chỉ hiện được 1 dòng health cấp dịch vụ
+    và mọi số liệu per-provider đều phải bịa (audit Entry 384 §D1 F-05/F-11).
+    """
+
+    class StatusChoices(models.TextChoices):
+        HEALTHY = 'healthy', 'Hoạt động tốt'
+        DEGRADED = 'degraded', 'Suy giảm'
+        UNHEALTHY = 'unhealthy', 'Nguy cấp'
+        UNKNOWN = 'unknown', 'Chưa xác định'
+
+    class CircuitStateChoices(models.TextChoices):
+        CLOSED = 'closed', 'Đóng (bình thường)'
+        OPEN = 'open', 'Mở (đang ngắt)'
+        HALF_OPEN = 'half_open', 'Mở một nửa (đang thử lại)'
+
+    provider = models.CharField(max_length=16, unique=True, verbose_name='Mã nhà cung cấp')
+    label = models.CharField(max_length=64, blank=True, default='', verbose_name='Tên hiển thị')
+    status = models.CharField(
+        max_length=16,
+        choices=StatusChoices.choices,
+        default=StatusChoices.UNKNOWN,
+        verbose_name='Trạng thái',
+    )
+    circuit_state = models.CharField(
+        max_length=16,
+        choices=CircuitStateChoices.choices,
+        default=CircuitStateChoices.CLOSED,
+        verbose_name='Trạng thái ngắt mạch',
+    )
+    latency_ms = models.FloatField(null=True, blank=True, verbose_name='Độ trễ (ms)')
+    total_requests = models.BigIntegerField(default=0, verbose_name='Tổng số request')
+    failed_requests = models.BigIntegerField(default=0, verbose_name='Số request lỗi')
+    rate_limited_requests = models.BigIntegerField(default=0, verbose_name='Số request bị rate limit')
+    consecutive_failures = models.IntegerField(default=0, verbose_name='Lỗi liên tiếp')
+    last_success_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần thành công gần nhất')
+    last_check_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần kiểm gần nhất')
+    circuit_opened_at = models.DateTimeField(null=True, blank=True, verbose_name='Mở mạch lúc')
+    last_error = models.TextField(blank=True, default='', verbose_name='Lỗi gần nhất')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật lúc')
+
+    class Meta:
+        verbose_name = 'Sức khỏe nhà cung cấp VNBroker'
+        verbose_name_plural = 'Sức khỏe nhà cung cấp VNBroker'
+        db_table = 'market_data_vnbrokerproviderhealth'
+        ordering = ['provider']
+
+    def __str__(self) -> str:
+        return f'{self.provider} ({self.status}/{self.circuit_state})'

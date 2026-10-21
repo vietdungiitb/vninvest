@@ -80,63 +80,228 @@ describe("SOC adapter", () => {
   });
 
   // ─── VNBroker Domain ─────────────────────────────────────────────────────
+  // Contract test: assert SHAPE + giá trị thật, KHÔNG chỉ assert URL.
+  // L-V04: test chỉ assert URL là xanh giả — contract lệch vẫn xanh
+  // (audit Entry 384 §D1: 8 lỗi P0 tồn tại dù toàn bộ suite xanh).
   describe("VNBroker", () => {
-    it("getSocVnbrokerConfig calls coreGet and normalizes", async () => {
-      coreGet.mockResolvedValue({ status: "ok", config: { timeout: 30 } });
+    const CONFIG_PAYLOAD = {
+      timeout: { connect: 10, read: 30, write: 10, pool: 5 },
+      max_retries: 3,
+      preferred_provider: "vci",
+      fallback_providers: ["kbs", "dnse"],
+    };
+
+    it("getSocVnbrokerConfig trả config payload THẬT, không phải envelope", async () => {
+      coreGet.mockResolvedValue({
+        id: 6,
+        service: 1,
+        service_key: "vnbroker_quote",
+        config_schema_version: "1.0",
+        applied_by: "admin",
+        is_current: true,
+        config_payload: CONFIG_PAYLOAD,
+        config: CONFIG_PAYLOAD,
+        providers_catalog: [{ provider: "vci", label: "VCI" }],
+      });
       const result = await soc.getSocVnbrokerConfig();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/config/");
-      expect(result.config).toEqual({ timeout: 30 });
+      // payload thật nằm ở `config` — đây là thứ panel sửa
+      expect(result.config.preferred_provider).toBe("vci");
+      expect(result.config.timeout.read).toBe(30);
+      // envelope KHÔNG được lẫn vào config (bug F-01)
+      expect(result.config.id).toBeUndefined();
+      expect(result.config.service).toBeUndefined();
+      expect(result.providers_catalog).toHaveLength(1);
+      expect(result.applied_by).toBe("admin");
     });
 
-    it("applySocVnbrokerConfig calls corePost and normalizes", async () => {
-      corePost.mockResolvedValue({ status: "saved", config_payload: { timeout: 30 } });
-      const result = await soc.applySocVnbrokerConfig({ timeout: 30 });
-      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/", { config_payload: { timeout: 30 } });
-      expect(result.config_payload).toEqual({ timeout: 30 });
+    it("applySocVnbrokerConfig gửi config_payload + change_reason + expected_updated_at", async () => {
+      corePost.mockResolvedValue({ config_payload: CONFIG_PAYLOAD, config: CONFIG_PAYLOAD });
+      const result = await soc.applySocVnbrokerConfig(CONFIG_PAYLOAD, {
+        changeReason: "tang timeout read",
+        expectedUpdatedAt: "2026-10-19T10:00:00Z",
+      });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/", {
+        config_payload: CONFIG_PAYLOAD,
+        change_reason: "tang timeout read",
+        expected_updated_at: "2026-10-19T10:00:00Z",
+      });
+      expect(result.config.preferred_provider).toBe("vci");
     });
 
-    it("previewSocVnbrokerConfig calls corePost", async () => {
-      await soc.previewSocVnbrokerConfig({ proxy: "auto" });
-      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/preview/", { config_payload: { proxy: "auto" } });
+    it("applySocVnbrokerConfig gửi payload sạch — không kèm field envelope", async () => {
+      corePost.mockResolvedValue({ config_payload: CONFIG_PAYLOAD });
+      await soc.applySocVnbrokerConfig(CONFIG_PAYLOAD, {});
+      const body = corePost.mock.calls[0][1];
+      expect(body.config_payload).toEqual(CONFIG_PAYLOAD);
+      expect(body.config_payload.id).toBeUndefined();
+      expect(body.config_payload.service).toBeUndefined();
+      expect(body.config_payload.is_current).toBeUndefined();
     });
 
-    it("getSocVnbrokerHealth calls coreGet and normalizes", async () => {
-      coreGet.mockResolvedValue({ status: "healthy", avg_response_ms: 45 });
+    it("previewSocVnbrokerConfig map errors -> validationErrors, impact -> mã cảnh báo", async () => {
+      corePost.mockResolvedValue({
+        valid: false,
+        errors: ["max_retries phải trong khoảng [0, 10]"],
+        config_payload: CONFIG_PAYLOAD,
+        providers_catalog: [],
+        impact: { providers_changed: true, timeout_changed: false },
+      });
+      const result = await soc.previewSocVnbrokerConfig(CONFIG_PAYLOAD);
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/preview/", {
+        config_payload: CONFIG_PAYLOAD,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.validationErrors).toEqual(["max_retries phải trong khoảng [0, 10]"]);
+      expect(result.impactWarnings).toEqual(["providers_changed"]);
+    });
+
+    it("getSocVnbrokerHealth KHÔNG tự chế provider_health", async () => {
+      coreGet.mockResolvedValue({
+        service_key: "vnbroker_quote",
+        status: "healthy",
+        avg_response_ms: 45,
+        last_check_at: "2026-10-19T10:00:00Z",
+        consecutive_failures: 0,
+      });
       const result = await soc.getSocVnbrokerHealth();
-      expect(result.provider_health.healthy).toBe(1);
+      expect(result.status).toBe("healthy");
       expect(result.avg_response_ms).toBe(45);
+      expect(result.last_check_at).toBe("2026-10-19T10:00:00Z");
+      // KHÔNG còn provider_health bịa từ health cấp service (F-05)
+      expect(result.provider_health).toBeUndefined();
     });
 
-    it("testSocVnbrokerConnection calls corePost", async () => {
-      await soc.testSocVnbrokerConnection();
-      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/test-connection/");
+    it("getSocVnbrokerProviderHealth đọc số đo thật theo provider", async () => {
+      coreGet.mockResolvedValue({
+        checked_at: "2026-10-19T10:00:00Z",
+        source: "runtime",
+        providers: [
+          {
+            provider: "vci",
+            label: "VCI",
+            status: "healthy",
+            latency_ms: 120,
+            success_rate: 99.5,
+            error_rate: 0.5,
+            total_requests: 200,
+          },
+          { provider: "dnse", label: "DNSE", status: "degraded", latency_ms: null, success_rate: null },
+        ],
+      });
+      const result = await soc.getSocVnbrokerProviderHealth();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/provider-health/");
+      expect(result.providers).toHaveLength(2);
+      expect(result.providers[0].latency_ms).toBe(120);
+      expect(result.providers[0].success_rate).toBe(99.5);
+      // thiếu số đo => null, KHÔNG ép về 0 (tránh hiển thị "0ms" giả)
+      expect(result.providers[1].latency_ms).toBeNull();
+      expect(result.providers[1].success_rate).toBeNull();
     });
 
-    it("getSocVnbrokerProviders calls coreGet", async () => {
-      await soc.getSocVnbrokerProviders();
+    it("testSocVnbrokerConnection gửi provider được chọn", async () => {
+      corePost.mockResolvedValue({ provider: "kbs", status: "ok", latency_ms: 88 });
+      const result = await soc.testSocVnbrokerConnection("kbs");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/test-connection/", { provider: "kbs" });
+      expect(result.latency_ms).toBe(88);
+    });
+
+    it("getSocVnbrokerProviders trả primary + fallback (không bỏ)", async () => {
+      coreGet.mockResolvedValue({
+        primary: "vci",
+        fallback: ["kbs", "dnse"],
+        enabled: true,
+        providers: [{ provider: "vci", label: "VCI", enabled: true, runtime_ready: true }],
+      });
+      const result = await soc.getSocVnbrokerProviders();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/providers/");
+      expect(result.primary).toBe("vci");
+      expect(result.fallback).toEqual(["kbs", "dnse"]);
+      expect(result.enabled).toBe(true);
+      expect(result.providers[0].runtime_ready).toBe(true);
     });
 
-    it("runSocVnbrokerBenchmark calls corePost with payload", async () => {
-      await soc.runSocVnbrokerBenchmark({ count: 100 });
-      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/benchmark/", { count: 100 });
+    it("runSocVnbrokerBenchmark đọc report.results và đổi tên field BE", async () => {
+      corePost.mockResolvedValue({
+        ok: true,
+        has_report: true,
+        report: {
+          symbol: "VNM",
+          providers: ["VCI"],
+          concurrency_levels: [8],
+          results: [
+            {
+              provider: "VCI",
+              concurrency: 8,
+              runs: 3,
+              total_requests: 30,
+              success_requests: 29,
+              failed_requests: 1,
+              rate_limited_requests: 0,
+              timeout_errors: 0,
+              transport_errors: 1,
+              requests_per_minute: 120.5,
+              rate_limited_pct: 0,
+              success_pct: 96.67,
+              p50_latency_seconds: 0.25,
+              p95_latency_seconds: 0.4,
+            },
+          ],
+          recommendation: {
+            primary_provider: "VCI",
+            fallback_provider: "KBS",
+            adaptive_start_concurrency: 8,
+          },
+        },
+      });
+      const result = await soc.runSocVnbrokerBenchmark({ provider: "vci" });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/benchmark/", { provider: "vci" });
+      expect(result.has_report).toBe(true);
+      expect(result.report.results).toHaveLength(1);
+      expect(result.report.results[0].latency_ms).toBe(250);
+      expect(result.report.results[0].p95_latency_ms).toBe(400);
+      expect(result.report.results[0].rpm).toBe(120.5);
+      expect(result.report.results[0].success_rate).toBe(96.67);
+      expect(result.report.results[0].rate_limit_pct).toBe(0);
+      expect(result.report.recommendation.primary_provider).toBe("VCI");
     });
 
-    it("getSocVnbrokerBenchmarkLatest calls coreGet", async () => {
-      await soc.getSocVnbrokerBenchmarkLatest();
+    it("getSocVnbrokerBenchmarkLatest trả has_report=false khi chưa có report", async () => {
+      coreGet.mockResolvedValue({ has_report: false, report: null });
+      const result = await soc.getSocVnbrokerBenchmarkLatest();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/benchmark/");
+      expect(result.has_report).toBe(false);
+      expect(result.report).toBeNull();
     });
 
-    it("getSocVnbrokerCircuitBreaker calls coreGet", async () => {
-      await soc.getSocVnbrokerCircuitBreaker();
+    it("getSocVnbrokerCircuitBreaker đọc circuit_breaker.status + per_provider", async () => {
+      coreGet.mockResolvedValue({
+        source: "runtime",
+        circuit_breaker: {
+          status: "open",
+          failures: 5,
+          threshold: 5,
+          window_seconds: 60,
+          cooldown_seconds: 300,
+        },
+        per_provider: { vci: { status: "closed", failures: 0 }, kbs: { status: "open", failures: 7 } },
+      });
+      const result = await soc.getSocVnbrokerCircuitBreaker();
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/circuit-breaker-status/");
+      expect(result.status).toBe("open");
+      expect(result.failures).toBe(5);
+      expect(result.threshold).toBe(5);
+      expect(result.per_provider.vci.status).toBe("closed");
+      expect(result.per_provider.kbs.failures).toBe(7);
     });
 
-    it("getSocVnbrokerMetrics derives from health", async () => {
-      coreGet.mockResolvedValue({ status: "healthy", avg_response_ms: "50" });
-      const metrics = await soc.getSocVnbrokerMetrics();
-      expect(metrics.throughput).toBe(20);
-      expect(metrics.error_rate).toBe(0);
+    it("getSocVnbrokerOwnership calls coreGet", async () => {
+      await soc.getSocVnbrokerOwnership();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/ownership/");
+    });
+
+    it("KHÔNG còn getSocVnbrokerMetrics — số liệu throughput/error_rate từng bịa (F-06)", async () => {
+      expect(soc.getSocVnbrokerMetrics).toBeUndefined();
     });
   });
 
@@ -576,13 +741,15 @@ describe("SOC adapter", () => {
     it("normalizeConfigEnvelope handles missing config", async () => {
       coreGet.mockResolvedValue({ status: "ok" });
       const result = await soc.getSocVnbrokerConfig();
-      expect(result.config).toBeDefined();
+      expect(result.config).toEqual({});
     });
 
     it("getSocVnbrokerHealth falls back to unknown status", async () => {
       coreGet.mockResolvedValue({});
       const result = await soc.getSocVnbrokerHealth();
-      expect(result.provider_health.critical).toBe(0);
+      expect(result.status).toBe("unknown");
+      expect(result.avg_response_ms).toBeNull();
+      expect(result.consecutive_failures).toBe(0);
     });
 
     it("getSocBackfillRuns defaults limit=20", async () => {
@@ -601,11 +768,11 @@ describe("SOC adapter", () => {
       expect(metrics.rules_hit_rate).toBe(0);
     });
 
-    it("getSocVnbrokerMetrics handles unknown status", async () => {
-      coreGet.mockResolvedValue({ status: "unknown", avg_response_ms: null });
-      const metrics = await soc.getSocVnbrokerMetrics();
-      expect(metrics.throughput).toBe(0);
-      expect(metrics.error_rate).toBe(50);
+    it("getSocVnbrokerProviderHealth trả mảng rỗng khi BE chưa có nguồn số liệu", async () => {
+      coreGet.mockResolvedValue({});
+      const result = await soc.getSocVnbrokerProviderHealth();
+      expect(result.providers).toEqual([]);
+      expect(result.source).toBe("unknown");
     });
 
     it("encodeURIComponent is used for special characters in serviceKey", async () => {

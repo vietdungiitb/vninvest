@@ -7,13 +7,14 @@
 export type StatusTone = "success" | "info" | "warning" | "danger" | "muted" | "neutral";
 
 export const STATUS_VAR: Record<StatusTone, string> = {
-  success: "var(--color-success-500, #34d399)",
-  info: "var(--color-info-500, #60a5fa)",
-  warning: "var(--color-warning-500, #fbbf24)",
-  danger: "var(--color-danger-500, #f87171)",
-  muted: "var(--color-text-muted, #94a3b8)",
-  neutral: "var(--color-text-secondary, #cbd5e1)",
+  success: "var(--soc-status-ok, var(--color-success-500, #34d399))",
+  info: "var(--soc-status-info, var(--color-info-500, #60a5fa))",
+  warning: "var(--soc-status-warn, var(--color-warning-500, #fbbf24))",
+  danger: "var(--soc-status-danger, var(--color-danger-500, #f87171))",
+  muted: "var(--soc-status-muted, var(--text-muted, #94a3b8))",
+  neutral: "var(--text-secondary, #cbd5e1)",
 };
+
 
 // Translucent badge background keyed by tone (kept in sync with STATUS_VAR).
 export const STATUS_BG_VAR: Record<StatusTone, string> = {

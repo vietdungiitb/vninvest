@@ -19,6 +19,12 @@ from django.db.utils import ProgrammingError, OperationalError
 from django.utils import timezone
 from django.utils.timezone import now
 from .models import VnbrokerRuntimeConfig
+from .vnbroker_provider_health import (
+    get_soc_vnbroker_config,
+    is_circuit_open,
+    record_provider_failure,
+    record_provider_success,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +279,15 @@ def _normalize_supported_source(source: str | None, *, fallback_to_config: bool 
     if not fallback_to_config:
         return ''
 
+    # ƯU TIÊN cấu hình SOC (`ServiceConfig` domain vnbroker) — đây là cầu nối để
+    # `preferred_provider` mà operator sửa trong console CÓ hiệu lực thật
+    # (trước đây `VnbrokerDomainConfig` không có consumer nào — F-26).
+    soc_preferred = str(
+        get_soc_vnbroker_config().get('preferred_provider') or ''
+    ).strip().upper()
+    if soc_preferred in _SUPPORTED_PROVIDER_SOURCES and _provider_available(soc_preferred):
+        return soc_preferred
+
     config = get_active_config()
     configured_source = str(
         getattr(config, 'data_source', VnbrokerRuntimeConfig.SourceChoices.VCI)
@@ -451,14 +466,18 @@ def _pick_latest_bar(frame: pd.DataFrame):
     return frame.iloc[0]
 
 
-def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote_class) -> dict[str, Any] | None:
+def _fetch_realtime_price_with_quote_class(
+    symbol_upper: str,
+    source: str,
+    quote_class,
+    *,
+    record_outcome: bool = True,
+) -> dict[str, Any] | None:
     today = dt_date.today()
     quote_client = quote_class(symbol=symbol_upper)
     frame = None
     last_error: Exception | None = None
-    # Cửa sổ 1 ngày trả rỗng khi KBS chưa có bar cho ngày đó (cuối tuần,
-    # ngày lễ, phiên chưa cập nhật) -> nới dần thay vì trả None. Đo thật
-    # 2026-10-12: 1 ngày fail ở T-0/T-1/T-2 nhưng OK ở T-3; 5 ngày -> 3 rows.
+    started = time.perf_counter()
     for lookback_days in (0, 3, 7, 30):
         start = today - dt_timedelta(days=lookback_days)
         try:
@@ -474,6 +493,7 @@ def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote
             continue
         if frame is not None and not frame.empty:
             break
+    elapsed_ms = (time.perf_counter() - started) * 1000
     if frame is None or frame.empty:
         if last_error is not None:
             logger.warning(
@@ -482,7 +502,13 @@ def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote
                 source,
                 last_error,
             )
+        # Ghi nhận thất bại thật — nếu không, console không có gì để hiển thị
+        # (trước đây mọi số liệu per-provider đều phải bịa).
+        if record_outcome:
+            record_provider_failure(source, str(last_error or 'empty frame'))
         return None
+    if record_outcome:
+        record_provider_success(source, elapsed_ms)
 
     # VCI trả ascending (iloc[0] = cũ nhất), KBS trả descending — không đoán thứ tự,
     # luôn chọn bar mới nhất theo cột 'time' (fix stale-row phát hiện khi điều tra VCI 400).
@@ -509,6 +535,14 @@ def fetch_realtime_price(symbol: str, *, source: str | None = None) -> dict[str,
     """
     symbol_upper = symbol.strip().upper()
     normalized_source = _resolve_realtime_source(source)
+    # Circuit breaker: provider đang bị NGẮT thì không gọi (tiết kiệm + tránh
+    # nghẽn thêm). Đây là nơi `circuit_breaker_threshold` / `_cooldown_seconds`
+    # trong config SOC có hiệu lực thật.
+    if is_circuit_open(normalized_source):
+        logger.warning(
+            'fetch_realtime_price skipped: circuit open for provider %s', normalized_source
+        )
+        return None
     try:
         quote_class = _load_quote_class(normalized_source)
         return _fetch_realtime_price_with_quote_class(symbol_upper, normalized_source, quote_class)
@@ -543,6 +577,12 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
     }
     """
     normalized_source = _resolve_realtime_source(source)
+    if is_circuit_open(normalized_source):
+        logger.warning(
+            'fetch_price_board_snapshots_batch skipped: circuit open for provider %s',
+            normalized_source,
+        )
+        return {}
     quote_class = _load_quote_class(normalized_source)
     logger.info('Fetching batch price board snapshot from %s for %d symbols.', normalized_source, len(symbols))
 
@@ -574,9 +614,11 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
             dfs = async_to_sync(_wait_coro)()
         else:
             dfs = raw_res
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error('fetch_price_board_snapshots_batch failed: %s', exc)
+        record_provider_failure(normalized_source, str(exc))
         return {}
+
 
     results = {}
     for df in dfs:
@@ -596,11 +638,16 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
                 'open': float(row.get('open') or row['close']),
                 'high': float(row.get('high') or row['close']),
                 'low': float(row.get('low') or row['close']),
-                'volume': int(row.get('volume') or 0),
+                'volume': int(row['volume']),
                 'fetched_at': now().isoformat(),
                 'source': normalized_source,
             }
+    if results:
+        record_provider_success(normalized_source)
+    else:
+        record_provider_failure(normalized_source, 'batch trả về rỗng')
     return results
+
 
 
 def fetch_price_board_snapshot(symbols: list[str], *, source: str | None = None) -> list[dict[str, Any]]:
@@ -649,9 +696,23 @@ def fetch_daily_history(
     if not primary_source:
         return []
 
-    # Build fallback candidates list (primary first, then other allowed sources)
-    sources_to_try = [primary_source]
+    # Build fallback candidates list (primary first, then the fallback chain).
+    # ƯU TIÊN chuỗi fallback trong config SOC (`fallback_providers`) — nếu không
+    # có thì dùng roster mặc định. DNSE vẫn bị loại vì daily OHLCV hard-disable.
+    soc_config = get_soc_vnbroker_config()
+    configured_fallbacks = [
+        str(item or '').strip().upper()
+        for item in (soc_config.get('fallback_providers') or [])
+    ]
+    fallback_chain = [
+        item for item in configured_fallbacks if item in _DAILY_HISTORY_ALLOWED_SOURCES
+    ]
     for allowed in _DAILY_HISTORY_ALLOWED_SOURCES:
+        if allowed not in fallback_chain:
+            fallback_chain.append(allowed)
+
+    sources_to_try = [primary_source]
+    for allowed in fallback_chain:
         if allowed != primary_source and allowed not in sources_to_try:
             sources_to_try.append(allowed)
 
@@ -669,6 +730,12 @@ def fetch_daily_history(
 
     last_error = None
     for current_source in sources_to_try:
+        if is_circuit_open(current_source):
+            logger.warning(
+                'fetch_daily_history skipped %s: circuit open', current_source
+            )
+            continue
+        started = time.perf_counter()
         try:
             quote_class = _load_quote_class(current_source)
             quote_client = quote_class(symbol=symbol_upper)
@@ -678,10 +745,11 @@ def fetch_daily_history(
                 interval='1D',
                 show_log=False,
             )
-            
+
             if df is None or df.empty:
                 logger.warning('fetch_daily_history %s returned empty DataFrame for %s (range: %s to %s)',
                                current_source, symbol_upper, normalized_start_date, normalized_end_date)
+                record_provider_failure(current_source, 'empty DataFrame')
                 continue
 
             rows: list[dict[str, Any]] = []
@@ -703,13 +771,17 @@ def fetch_daily_history(
                     continue
 
             if rows:
+                record_provider_success(current_source, (time.perf_counter() - started) * 1000)
                 if current_source != primary_source:
                     logger.info('fetch_daily_history primary source %s failed; fallback to %s succeeded for %s',
                                 primary_source, current_source, symbol_upper)
                 return rows
-        except Exception as exc:
+            record_provider_failure(current_source, 'mọi dòng OHLCV đều lỗi')
+        except Exception as exc:  # noqa: BLE001
             last_error = exc
+            record_provider_failure(current_source, str(exc))
             logger.warning('fetch_daily_history %s failed for %s: %s', current_source, symbol_upper, exc)
+
 
     if last_error:
         logger.warning('fetch_daily_history exhausted all sources for %s. Last error: %s', symbol_upper, last_error)

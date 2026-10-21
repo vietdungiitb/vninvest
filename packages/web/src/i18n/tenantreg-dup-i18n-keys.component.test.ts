@@ -133,8 +133,6 @@ describe("tenantreg D2 — no duplicate top-level key in the i18n dictionaries",
 const KNOWN_NESTED_DUPLICATES: Record<string, string[]> = {
   "vi.js": [
     "routes.support",
-    "soc.vnbroker.benchmark_title",
-    "soc.vnbroker.reset_confirm",
     "soc.screener.config",
     "watchlist.priceUnitHint",
     "whaleAdvisory.description",
@@ -143,8 +141,6 @@ const KNOWN_NESTED_DUPLICATES: Record<string, string[]> = {
   ],
   "en.js": [
     "routes.support",
-    "soc.vnbroker.benchmark_title",
-    "soc.vnbroker.reset_confirm",
     "soc.screener.config",
     "watchlist.priceUnitHint",
     "whaleAlertsDashboard.severity",

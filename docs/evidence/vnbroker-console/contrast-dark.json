@@ -1,0 +1,106 @@
+{
+  "theme": null,
+  "control": {
+    "whiteOnBlack": 21,
+    "gray94OnWhite": 2.5640413904962034
+  },
+  "rows": [
+    {
+      "name": "role-badge-ok",
+      "color": "rgb(251, 191, 36)",
+      "bg": "rgb(46, 40, 35)",
+      "ratio": 8.75,
+      "fontSize": "10.88px",
+      "fontWeight": "700"
+    },
+    {
+      "name": "role-badge-warn",
+      "color": "rgb(74, 222, 128)",
+      "bg": "rgb(14, 45, 47)",
+      "ratio": 8.35,
+      "fontSize": "10.88px",
+      "fontWeight": "700"
+    },
+    {
+      "name": "status-badge-ready",
+      "missing": true
+    },
+    {
+      "name": "status-badge-notready",
+      "missing": true
+    },
+    {
+      "name": "credential-pill",
+      "missing": true
+    },
+    {
+      "name": "metric-label",
+      "missing": true
+    },
+    {
+      "name": "metric-value",
+      "color": "rgb(241, 245, 249)",
+      "bg": "rgb(3, 12, 35)",
+      "ratio": 17.73,
+      "fontSize": "19.2px",
+      "fontWeight": "700"
+    },
+    {
+      "name": "stat-label",
+      "missing": true
+    },
+    {
+      "name": "stat-value",
+      "missing": true
+    },
+    {
+      "name": "field-label",
+      "missing": true
+    },
+    {
+      "name": "field-input",
+      "color": "rgb(241, 245, 249)",
+      "bg": "rgb(4, 13, 36)",
+      "ratio": 17.62,
+      "fontSize": "12.8px",
+      "fontWeight": "400"
+    },
+    {
+      "name": "field-unit",
+      "missing": true
+    },
+    {
+      "name": "action-btn",
+      "color": "rgb(241, 245, 249)",
+      "bg": "rgb(13, 24, 47)",
+      "ratio": 16.09,
+      "fontSize": "12px",
+      "fontWeight": "600"
+    },
+    {
+      "name": "section-title",
+      "missing": true
+    },
+    {
+      "name": "group-title",
+      "missing": true
+    },
+    {
+      "name": "dirty-badge",
+      "missing": true
+    },
+    {
+      "name": "empty-state",
+      "color": "rgb(148, 163, 184)",
+      "bg": "rgb(9, 18, 38)",
+      "ratio": 7.28,
+      "fontSize": "13.6px",
+      "fontWeight": "400"
+    },
+    {
+      "name": "help-text",
+      "missing": true
+    }
+  ],
+  "fails": []
+}
