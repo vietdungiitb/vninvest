@@ -4498,3 +4498,18 @@
 :root[data-theme="light"] .metricLabel {
   color: #475569;
 }
+
+/* ── W1-C (vong 3): o input + nut + the tieu de cot trong light mode ──────────
+   Do (computed style tren staging, 2026-10-21): o timeout dung class
+   `.fieldInput` (KHONG phai `.searchInput`) nen `rgba(2,11,35,.6)` ⇒ chu sang
+   tren nen toi; the tieu de cot dung mau cu #94a3b8 ⇒ < 4.5:1; nut hanh dong bi
+   BOP (w=44px cho scrollWidth=119) ⇒ chu bi cat. */
+:root[data-theme="light"] .fieldInput {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+.vnbActionBtn {
+  min-width: 7.5rem;
+  white-space: nowrap;
+}
