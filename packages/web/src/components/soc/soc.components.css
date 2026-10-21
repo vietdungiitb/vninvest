@@ -4410,7 +4410,12 @@
 
 /* ── W1 redesign (R2): bang nguon du lieu + o cell ─────────────────────── */
 .vnbCellSource {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
   min-width: 8.5rem;
+  white-space: nowrap;
 }
 .vnbCellStack {
   display: flex;
