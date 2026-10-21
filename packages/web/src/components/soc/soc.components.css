@@ -4513,3 +4513,29 @@
   min-width: 7.5rem;
   white-space: nowrap;
 }
+
+/* ── W1-C (vong 4): card + tieu de + empty state + cot thao tac o light mode ──
+   Do (mo anh ra xem, L-V05): card "Quan sat truc tiep" van nen xam-dam
+   (`.metricCard` dark-first) · tieu de section (`.sectionCardTitle`) van nhat ·
+   empty state van nen xam · 2 nut hanh dong van CHONG nhau (`.vnbTileActions`
+   la `grid 2 cot` nen moi nut bi bop trong 1 o hep).
+   Fix: nen trang · chu toi/tieu sang · cot thao tac 1 hang khong bop. */
+:root[data-theme="light"] .metricCard {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+:root[data-theme="light"] .sectionCardTitle,
+:root[data-theme="light"] .emptyState {
+  color: #334155;
+}
+:root[data-theme="light"] .emptyState {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.vnbTileActions {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  justify-content: start;
+  white-space: nowrap;
+}
