@@ -486,7 +486,7 @@ for (const uiGate of [
     // thu co vi pham — dang xanh gia (L-G02).
     const chuaChay = (r.out.match(/CHUA CHAY[^\n]*/) || [])[0];
     const advisory = (r.out.match(/ADVISORY[^\n]*/) || [])[0];
-    const viPhamMoi = (r.out.match(/VI PHAM MOI[^\n]*/i) || [])[0];
+    const viPhamMoi = (r.out.match(/VI PHAM MOI[^\n]*/) || [])[0];
     const xanh = (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0];
     const summary =
       chuaChay || advisory || viPhamMoi || xanh || (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
