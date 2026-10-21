@@ -1203,6 +1203,7 @@ aiUsageAnalytics: 'AI Usage',
       table_caption: 'Brokers and their routing configuration',
       col_provider: 'Broker',
       no_queues: 'No queues yet.',
+      cred_secrets: 'Credential JSON',
     },
     users: {
       eyebrow: 'System administration',

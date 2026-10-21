@@ -490,11 +490,13 @@ export function SocBrokerPanel() {
           e("select", {
             value: credProvider,
             onChange: (ev: { target: { value: string } }) => setCredProvider(ev.target.value),
-          }, PROVIDERS.map((p) => e("option", { key: p, value: p }, p)))),
+          }, PROVIDERS.map((p) => e("option", { key: p, value: p }, p.toUpperCase())))),
         e("textarea", {
           value: credSecrets,
           onChange: (ev: { target: { value: string } }) => setCredSecrets(ev.target.value),
           className: styles.configEditor, rows: 3,
+          placeholder: '{\n  "api_key": "…",\n  "api_secret": "…"\n}',
+          "aria-label": t("soc.broker.cred_secrets"),
         }),
         e("div", { className: styles.metricLabel }, t("soc.broker.purposes") + ": ",
           PURPOSES.map((pu) => e("label", { key: pu },
@@ -502,7 +504,7 @@ export function SocBrokerPanel() {
               type: "checkbox", checked: credPurposes.includes(pu),
               onChange: () => setCredPurposes((cur) =>
                 cur.includes(pu) ? cur.filter((x) => x !== pu) : [...cur, pu]),
-            }), " " + pu + " "))),
+            }), " " + t(PURPOSE_LABELS[pu] || pu) + " "))),
         e("button", { type: "button", className: styles.actionBtn, onClick: handleSaveCred },
           t("soc.broker.cred_save")),
       ),

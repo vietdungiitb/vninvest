@@ -1203,6 +1203,7 @@ aiUsageAnalytics: 'Usage AI',
       table_caption: 'Danh sách nhà môi giới và cấu hình định tuyến',
       col_provider: 'Nhà môi giới',
       no_queues: 'Chưa có hàng đợi nào.',
+      cred_secrets: 'JSON credential',
     },
     users: {
       eyebrow: 'Quản trị hệ thống',
