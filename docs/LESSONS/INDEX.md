@@ -21,6 +21,7 @@
 | `edit`, `fuzzy`, `tool`, `replace`, `stash`, `crlf`, `lf`, `eol`, `diff`, `numstat` | [`tooling-traps-2.md`](./tooling-traps-2.md) | **`Edit` khớp MỜ ⇒ sửa nhầm biến** (không báo lỗi), **`git stash` đổi LF→CRLF** ⇒ phải `normalize-eol --fix` sau mỗi lần. |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `fernet` | [`security.md`](./security.md) | Bảo mật, secret trong repo, ignore, quy trình revoke/rotate/purge history. |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate` | [`verification.md`](./verification.md) | **Sai lầm không báo lỗi**: script đo sai vẫn ra số hợp lý, kiểm tra tồn tại bằng stdout, verify nhầm artifact, gốc rễ kế thừa phải có phản chứng, chạy test làm bẩn working tree. |
+| `merge`, `conflict`, `syntax`, `false-green`, `xanh-gia`, `push`, `hook`, `pre-push`, `node --check` | [`build-gates-2.md`](./build-gates-2.md) | **Ghep conflict TAY lam hong gate** ⇒ "push thanh cong" KHONG chung minh gate da chay; phai `node --check` + chay lai gate. |
 | `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite`, `baseline`, `update-baseline`, `undecodable`, `oklch`, `id`, `set`, `hash`, `count`, `not-measured` | [`false-green.md`](./false-green.md) | **Xanh gia khong kiem tra gi**: suite xanh khi **so test giam**, `resolve()` bi `legacy_proxy_view` che, phai do bang **HTTP that**. |
 
 ## 1.2. Hướng dẫn dùng (Tag-based selection)
@@ -134,7 +135,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 | [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 50 lesson / 11 file**
+**Tổng: 50 lesson / 12 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)
