@@ -9,14 +9,12 @@ export interface CommercialMessages {
   emptyReason: string;
 }
 
-const VI_MESSAGES: CommercialMessages = {
-  retry: "Thử lại",
-  retryHint: "Nếu lỗi vẫn tiếp diễn, hãy tải lại trang hoặc liên hệ quản trị viên.",
-  loading: "Đang tải dữ liệu...",
-  emptyValue: "—",
-  emptyReason: "Chưa có dữ liệu để hiển thị.",
-};
 
+/**
+ * Fallback catalog (EN). The VI strings live in `src/i18n/vi.js` and the EN ones in
+ * `src/i18n/en.js` — the i18n dictionary is the SSOT, this file is only the
+ * `defaultValue` when a key is missing (i18n/index.js:42 falls back to VI).
+ */
 const EN_MESSAGES: CommercialMessages = {
   retry: "Try again",
   retryHint: "If the problem persists, reload the page or contact your administrator.",
@@ -32,7 +30,9 @@ export interface CommercialTranslator {
 
 export function useCommercialTranslator(): CommercialTranslator {
   const { t, locale } = useI18n();
-  const messages = locale === "en" ? EN_MESSAGES : VI_MESSAGES;
+  // The dictionary decides the locale; this catalog is the fallback only.
+  const messages = EN_MESSAGES;
+  void locale;
   const translate = useCallback(
     (key: string, defaultValue: string) => t(key, { defaultValue }),
     [t],
