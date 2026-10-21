@@ -102,7 +102,7 @@ const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
 const PROVIDERS = ["dnse", "ssi", "tcbs"];
 const PURPOSES = ["backfill", "snapshot", "signal"];
 
-/** Nhãn hiển thị cho mục đích sử dụng (giá trị BE là tiếng Anh). */
+/** Nhan hien thi cho muc dich su dung (gia tri BE la tieng Anh). */
 const PURPOSE_LABELS: Record<string, string> = {
   backfill: "soc.broker.purpose_backfill",
   snapshot: "soc.broker.purpose_snapshot",

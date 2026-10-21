@@ -10,6 +10,8 @@ export interface CommercialTableColumn {
 
 export interface CommercialTableRow {
   id?: string;
+  /** `data-testid` của `<tr>` — dùng khi test cần truy cập cả hàng (vd: cả 2 nút hành động). */
+  testId?: string;
   cells: Record<string, ReactNode>;
 }
 
@@ -44,7 +46,7 @@ export function CommercialTable({ caption, columns, rows, empty, className }: Co
             </tr>
           ) : (
             rows.map((row, rowIndex) => (
-              <tr key={row.id ?? `row-${rowIndex}`}>
+              <tr key={row.id ?? `row-${rowIndex}`} data-testid={row.testId}>
                 {columns.map((column) =>
                   column.rowHeader ? (
                     <th key={column.key} scope="row" className={styles["cm-table-row-header"]}>
