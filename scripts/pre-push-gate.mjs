@@ -430,6 +430,35 @@ if (existsSync(openapiBudget)) {
   }
 } else skip("openapi-budget", "khong co check-openapi-schema-budget.py");
 
+// ------------------------------------------- UI baseline gates (UI Standardization W0)
+// 5 gate trong `packages/web/scripts/` — moi gate KHOANG VI PHAM MOI (baseline-locked)
+// va co `--self-test` chung minh no bat loi that. Gate phu thuoc staging (a11y-runtime)
+// in `CHUA CHAY` + exit 0 khi khong co staging — vi cong nay coi exit != 0 la FAIL
+// (dong 437) nen exit != 0 se chan push oan.
+for (const uiGate of [
+  "check-token-conflict",
+  "check-heading-contract",
+  "check-focus-ring",
+  "check-theme-contrast",
+  "check-a11y-runtime",
+]) {
+  const gatePath = join(REPO, "packages", "web", "scripts", `${uiGate}.mjs`);
+  if (!existsSync(gatePath)) {
+    skip(`ui-${uiGate}`, `khong co packages/web/scripts/${uiGate}.mjs`);
+    continue;
+  }
+  const r = run(process.execPath, [gatePath], join(REPO, "packages", "web"));
+  if (r.code !== 0) {
+    bad(`ui-${uiGate}`, r.out.split("\n").slice(0, 10).join("\n"));
+  } else {
+    const summary =
+      (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0] ||
+      (r.out.match(/CHUA CHAY[^\n]*/) || [])[0] ||
+      (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
+    ok(`ui-${uiGate}`, summary.trim());
+  }
+}
+
 // ------------------------------------------------------------------ tong ket
 console.log("");
 if (failed > 0) {
