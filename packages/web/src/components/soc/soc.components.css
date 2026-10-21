@@ -4410,10 +4410,7 @@
 
 /* ── W1 redesign (R2): bang nguon du lieu + o cell ─────────────────────── */
 .vnbCellSource {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  align-items: flex-start;
+  min-width: 8.5rem;
 }
 .vnbCellStack {
   display: flex;
@@ -4562,6 +4559,8 @@
   position: sticky;
   right: 0;
   z-index: 1;
-  background: #ffffff;
-  box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.12);
+  /* nen theo TOKEN: --color-bg-panel = #0f172a (dark) | #ffffff (light, T1 override).
+     Hardcode #ffffff se tao dai trang che bang o dark theme. */
+  background: var(--color-bg-panel, #0f172a);
+  box-shadow: -1px 0 0 var(--border-default, rgba(148, 163, 184, 0.2));
 }
