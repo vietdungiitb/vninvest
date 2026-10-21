@@ -4553,3 +4553,15 @@
   width: max-content;
   min-width: 100%;
 }
+
+/* COT THAO TAC DINH (sticky): bang 9 cot rong hon container (1316px > 1202px) ⇒
+   wrapper cuon ngang; neu khong dinh, 2 nut hanh dong nam ngoai tam nhin ⇒
+   nguoi dung khong thay duoc hanh dong ma khong do. */
+.vnbSourceTable th:last-child,
+.vnbSourceTable td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: #ffffff;
+  box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.12);
+}
