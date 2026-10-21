@@ -101,6 +101,13 @@ const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
 const PROVIDERS = ["dnse", "ssi", "tcbs"];
 const PURPOSES = ["backfill", "snapshot", "signal"];
 
+/** Nhan hien thi cho muc dich su dung (gia tri BE la tieng Anh). */
+const PURPOSE_LABELS: Record<string, string> = {
+  backfill: "soc.broker.purpose_backfill",
+  snapshot: "soc.broker.purpose_snapshot",
+  signal: "soc.broker.purpose_signal",
+};
+
 function formatTime(iso?: string | null, locale = "vi-VN"): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -330,7 +337,7 @@ export function SocBrokerPanel() {
                 type: "checkbox",
                 checked: (en.purpose_allowlist || []).includes(pu),
                 onChange: () => togglePurpose(p, pu),
-              }), " " + pu + " "))),
+              }), " " + t(PURPOSE_LABELS[pu] || pu) + " "))),
         );
       }),
       e("label", { className: styles.metricLabel },
@@ -437,7 +444,7 @@ export function SocBrokerPanel() {
       creds.map((c) => e("div", { key: c.provider || "", className: styles.metricCard },
         e("p", { className: styles.metricLabel },
           e("strong", null, (c.provider || "").toUpperCase()), " · ",
-          (c.allowed_purposes || []).join(","), " · ",
+          (c.allowed_purposes || []).map((pu) => t(PURPOSE_LABELS[pu] || pu)).join(", "), " · ",
           (c.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified")), " · ",
           formatTime(c.last_verified_at, tag), " ",
           expiryBadge(c.needs_verification ? c.stale_reason : undefined)),
