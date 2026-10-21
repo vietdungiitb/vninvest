@@ -121,3 +121,29 @@ test con. Con số cũ đã được đính chính ngay trong ledger.
 
 **CHƯA CHẠY**: sửa 38 lỗi `UniqueViolation` (cần xác định `TransactionTestCase`
 hay thứ tự discovery) · 13 FAIL cụ thể · ruff mức cấu hình · purge git history.
+
+## 2026-10-21 - UI Standardization W0 (template + 5 gate) + W1 (light theme (a)) — Owner chốt 2 quyết định (Agent solo, multi-agent-workflow Stage 1-8)
+
+| # | Task | Kết quả | Bằng chứng (lệnh) | Rủi ro | Next |
+|---|---|---|---|---|---|
+| 1 | Đọc `project-lessons` + `multi-agent-workflow` **TRƯỚC** khi lập kế hoạch / khai claim | PASS | Đọc `docs/LESSONS/{css-soc,verification,multi-agent}.md`; ghi "Lessons áp dụng" trong plan | - | - |
+| 2 | W0 Stage 1-3: plan v1.3 + audit plan (verdict `AGREE`) + 3 claim | PASS | `docs/PLAN_UI_STANDARDIZATION_W0.md`; audit `%TEMP%\opencode\PLAN_AUDIT_W0_v12.md` | - | - |
+| 3 | W0 S1: template `CommercialPage` + 4 primitive + CSS module + test | PASS | `vitest src/components/__tests__/commercial-page.component.test.tsx` → **20/20**; 0 hex cứng | - | - |
+| 4 | W0 S2: 5 gate máy baseline-locked + điểm gọi `pre-push-gate` | PASS | 5 gate exit 0 · `--self-test` **27 case** | Gate runtime đo trên **app sống** ⇒ tập vi phạm đổi theo dữ liệu | Vòng 3 (đã xử lý) |
+| 5 | W0 S3: đo light theme + ADR (KHÔNG sửa token) | PASS | H1 `/admin/users` light = **1.0000:1 (vô hình)**; 28/60 chữ dưới AA (ADR §2) | - | - |
+| 6 | **Audit code W0 vòng 1** (sub-agent độc lập, read-only) | **FAIL** | **2 BLOCKER + 10 MAJOR**: B-1 route không đo được bị coi "không vi phạm" (gate xanh + gợi ý **hạ baseline**); B-2 cặp FAIL đổi sang `oklch()` rơi khỏi tập ⇒ gate báo "đã hết" ⇒ **XANH** | Gate có đường xanh giả **đã chứng minh bằng chạy thật** | Vòng 2 (đã sửa) |
+| 7 | Sửa W0 vòng 2: 2 BLOCKER + 9 MAJOR + probe suite | PASS | **Probe 17/17** đường lách bị bắt (fixture ngoài repo, baseline đo trên fixture **SẠCH** trước khi mutate — L-V04) | - | - |
+| 8 | Push W0 + PR | PASS | pre-push **28 PASS / 0 FAIL**; **PR #272** (`feat/uistd-w0` → `dev`) | - | - |
+| 9 | **Owner chốt** (2026-10-21): (1) light theme theo **(a)**; (2) M-10 + phần còn lại theo khuyến nghị | PASS | Ghi trong `docs/PLAN_UI_STANDARDIZATION_W1.md` + 2 claim | - | - |
+| 10 | W1-A đo quy mô bằng script riêng (**có control**) | PASS | 227 màu Tailwind / 424 file · 185 biến thể alpha · `slate-900/950` dùng cả làm chữ (96) lẫn nền (48) ⇒ remap **theo property** | - | - |
+| 11 | W1-A: T1 token light + T2 remap utility + T3 gate `check-light-theme` | PASS | gate exit 0 + self-test **5/5**; `build` 0 (verify rule trong **CSS build** — L-F11) | - | - |
+| 12 | W1-A fail-after trên staging (deploy branch) | PASS | H1 `/admin/users` **1.0000:1 → 13.98:1** · `/dashboard` 1.0471:1 → 12.85:1 · chữ dưới AA **28/60 → 5/60** | Còn 4× breadcrumb chip (3.45:1) + 1× biên 4.45:1 | Backlog W1-C (C-1..C-2) |
+| 13 | W1-B: M-10 (41 token → họ đảo được) + T-1 (bỏ 11 inline `outline:none`) + T-6 (5 key vào cả 2 locale) | PASS | `check-focus-ring` 8 → **2** · `check-i18n-hardcoded` **0** · `i18n:scan:strict` 0 | - | - |
+| 14 | Gate "XAU DI" của `check-theme-contrast` bắt hồi quy của chính tôi | PASS | 3 cặp 3.75 → 2.36 ⇒ gate đo sai scope (không thấy `light-theme.css`) ⇒ thêm file vào scope + **đo lại baseline** (tập 32 **không đổi**) | - | - |
+| 15 | Gate runtime W0 chuyển sang `--advisory` (app sống) | PASS | 3 lần đo liên tiếp: 113 → 141 → 173 vi phạm ⇒ delta không phản hồi hồi quy | Gate runtime KHÔNG còn là hàng rào chặn | T-2 (staging seed) |
+| 16 | Push W1 + PR | PASS | pre-push **29 PASS / 0 FAIL**; **PR #273** (`feat/uistd-w1` → `feat/uistd-w0`, **xếp tầng**) | - | Merge #272 trước, rồi #273 |
+| 17 | Ghi ledger + lessons + SUMMARY + handover | PASS | ledger **Entry 390** (W0) + **Entry 391** (W1) · lessons **L-V08** + **L-V09** (47/60) · `docs/SUMMARY_uistd-w0-{template,gates,tokens}.md` · `docs/SUMMARY_uistd-w1.md` · `docs/HANDOVER_UI_STANDARDIZATION_W0_20261021.md` + `..._W1_20261021.md` | - | - |
+| 18 | **CHƯA CHẠY** | **CHƯA CHẠY** | `npm run test:visual` · BE test (Django) · **ảnh chụp thật light/dark** (L-V05: phải mở ảnh ra xem) · staging E2E ngoài 10 route ghim | Không có bằng chứng ⇒ không ghi "PASS" | Ticket W1-C |
+| 19 | Bài học mới (7) ghi trong Entry 391 | PASS | probe "0 lỗi" do **CHƯA ĐĂNG NHẬP** (cần control "đã đo thật") · specificity 0,2,0 thua rule module ⇒ `:root[data-theme]` · class bị scope hash không override được từ file global · vá ở tầng token · gate đo sai scope · blob EOL "mixed" kẹt vĩnh viễn (normalize-eol chặn mọi lần sửa) ⇒ xoá rồi thêm lại · double-encoding UTF-8 qua PowerShell | - | - |
+
+**Rủi ro lớn nhất phát hiện trong phiên này**: **gate có thể XANH GIẢ** (2 BLOCKER W0: route không đo được + `oklch()` làm cặp rơi khỏi tập) và **probe của tôi cũng xanh giả** (do CHƯA ĐĂNG NHẬP) ⇒ **mọi phép đo đều phải có CONTROL** (L-V01/L-V04). Gate của W0/W1 đã đóng 2 BLOCKER + 9 MAJOR + 17/17 probe.
