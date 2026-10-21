@@ -1,0 +1,14 @@
+{
+  "gate": "check-focus-ring",
+  "scope": "packages/web/src",
+  "measuredAt": "2026-10-20T16:13:23.860Z",
+  "scannedFiles": 415,
+  "violations": [
+    "packages/web/src/components/dashboard/PortfolioHeatmap.js",
+    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx"
+  ],
+  "details": {
+    "packages/web/src/components/dashboard/PortfolioHeatmap.js": "dong 589: text-lg font-black text-slate-100 hover:text-cyan-400 hover:underline transition-all focus",
+    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx": "dong 93: p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none"
+  }
+}

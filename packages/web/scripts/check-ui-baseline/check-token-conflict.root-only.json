@@ -1,0 +1,37 @@
+{
+  "gate": "check-token-conflict",
+  "scope": "root-only",
+  "scopeLabel": "mode A (chi :root thuan)",
+  "measuredAt": "2026-10-20T16:10:58.004Z",
+  "files": [
+    "packages/web/src/index.css",
+    "packages/web/src/theme/tokens.css",
+    "packages/web/src/components/soc/soc.tokens.css"
+  ],
+  "violations": [
+    "--accent-cyan",
+    "--bg-panel",
+    "--bg-panel-soft",
+    "--border-default",
+    "--font-sans",
+    "--fs-md",
+    "--fs-sm",
+    "--fs-xs",
+    "--text-muted",
+    "--text-primary",
+    "--text-secondary"
+  ],
+  "details": {
+    "--accent-cyan": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-accent-primary, #06b6d4)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = var(--soc-c-22d3ee)",
+    "--bg-panel": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-bg-panel, #0f172a)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = rgba(var(--soc-rgb-081734) / 0.4)",
+    "--bg-panel-soft": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-bg-panel, #0f172a)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = rgba(var(--soc-rgb-0f172a) / 0.3)",
+    "--border-default": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-border-primary, #1e293b)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = rgba(var(--soc-rgb-5078a8) / 0.15)",
+    "--font-sans": "packages/web/src/theme/tokens.css:1 (:root) = \"Inter\", \"Segoe UI\", system-ui, -apple-system, sans-serif  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = ui-sans-system, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+    "--fs-md": "packages/web/src/theme/tokens.css:1 (:root) = 0.875rem  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = 0.85rem",
+    "--fs-sm": "packages/web/src/theme/tokens.css:1 (:root) = 0.8125rem  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = 0.75rem",
+    "--fs-xs": "packages/web/src/theme/tokens.css:1 (:root) = 0.75rem  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = 0.68rem",
+    "--text-muted": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-text-muted, #64748b)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = var(--soc-c-94a3b8)",
+    "--text-primary": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-text-primary, #f1f5f9)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = var(--soc-c-f1f5f9)",
+    "--text-secondary": "packages/web/src/theme/tokens.css:1 (:root) = var(--color-text-secondary, #94a3b8)  ||  packages/web/src/components/soc/soc.tokens.css:5 (:root) = var(--soc-c-94a3b8)"
+  }
+}
