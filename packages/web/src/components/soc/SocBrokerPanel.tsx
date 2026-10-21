@@ -5,6 +5,7 @@ import { useConfirm } from "../../components/ConfirmModal.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { downloadSocCsv } from "../../pages/admin/socCsv.js";
+import { CommercialTable } from "../commercial/primitives/CommercialTable.js";
 import styles from "./soc.module.css";
 
 const e = createElement;
@@ -100,6 +101,13 @@ const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
 
 const PROVIDERS = ["dnse", "ssi", "tcbs"];
 const PURPOSES = ["backfill", "snapshot", "signal"];
+
+/** Nhãn hiển thị cho mục đích sử dụng (giá trị BE là tiếng Anh). */
+const PURPOSE_LABELS: Record<string, string> = {
+  backfill: "soc.broker.purpose_backfill",
+  snapshot: "soc.broker.purpose_snapshot",
+  signal: "soc.broker.purpose_signal",
+};
 
 function formatTime(iso?: string | null, locale = "vi-VN"): string {
   if (!iso) return "";
@@ -303,63 +311,85 @@ export function SocBrokerPanel() {
 
     e("div", { className: styles.sectionCard },
       e("h3", { className: styles.sectionCardTitle }, t("soc.broker.config_title")),
-      PROVIDERS.map((p) => {
-        const en = entries[p] || {};
-        return e("div", { key: p, className: styles.metricCard },
-          e("p", { className: styles.metricLabel }, e("strong", null, p.toUpperCase())),
-          e("label", { className: styles.metricLabel },
-            e("input", {
-              type: "checkbox", checked: !!en.enabled,
-              onChange: (ev: { target: { checked: boolean } }) => updateEntry(p, { enabled: ev.target.checked }),
-            }), " " + t("soc.broker.enabled")),
-          e("label", { className: styles.metricLabel }, t("soc.broker.routing") + " ",
-            e("input", {
-              type: "number", min: 0, max: 9, value: en.routing_order ?? 0,
-              onChange: (ev: { target: { value: string } }) => updateEntry(p, { routing_order: Number(ev.target.value) }),
-              className: styles.searchInput,
-            })),
-          e("label", { className: styles.metricLabel }, t("soc.broker.rpm") + " ",
-            e("input", {
-              type: "number", min: 1, value: en.requests_per_minute ?? 60,
-              onChange: (ev: { target: { value: string } }) => updateEntry(p, { requests_per_minute: Number(ev.target.value) }),
-              className: styles.searchInput,
-            })),
-          e("div", { className: styles.metricLabel }, t("soc.broker.purposes") + ": ",
-            PURPOSES.map((pu) => e("label", { key: pu },
-              e("input", {
+      e(CommercialTable, {
+        caption: t("soc.broker.table_caption"),
+        columns: [
+          { key: "provider", label: t("soc.broker.col_provider"), rowHeader: true },
+          { key: "enabled", label: t("soc.broker.enabled") },
+          { key: "routing", label: t("soc.broker.routing") },
+          { key: "rpm", label: t("soc.broker.rpm") },
+          { key: "purposes", label: t("soc.broker.purposes") },
+        ],
+        rows: PROVIDERS.map((p) => {
+          const en = entries[p] || {};
+          return {
+            id: p,
+            testId: `soc-broker-provider-${p}`,
+            cells: {
+              provider: e("strong", null, p.toUpperCase()),
+              enabled: e("input", {
                 type: "checkbox",
-                checked: (en.purpose_allowlist || []).includes(pu),
-                onChange: () => togglePurpose(p, pu),
-              }), " " + pu + " "))),
-        );
+                checked: !!en.enabled,
+                "aria-label": `${t("soc.broker.enabled")} — ${p.toUpperCase()}`,
+                onChange: (ev: { target: { checked: boolean } }) => updateEntry(p, { enabled: ev.target.checked }),
+              }),
+              routing: e("input", {
+                type: "number", min: 0, max: 9, value: en.routing_order ?? 0,
+                "aria-label": `${t("soc.broker.routing")} — ${p.toUpperCase()}`,
+                onChange: (ev: { target: { value: string } }) => updateEntry(p, { routing_order: Number(ev.target.value) }),
+                className: styles.searchInput,
+              }),
+              rpm: e("input", {
+                type: "number", min: 1, value: en.requests_per_minute ?? 60,
+                "aria-label": `${t("soc.broker.rpm")} — ${p.toUpperCase()}`,
+                onChange: (ev: { target: { value: string } }) => updateEntry(p, { requests_per_minute: Number(ev.target.value) }),
+                className: styles.searchInput,
+              }),
+              purposes: e("span", { className: styles.brokerTileBadges },
+                PURPOSES.map((pu) => e("label", { key: pu, className: styles.metricLabel },
+                  e("input", {
+                    type: "checkbox",
+                    checked: (en.purpose_allowlist || []).includes(pu),
+                    onChange: () => togglePurpose(p, pu),
+                  }), " " + t(PURPOSE_LABELS[pu] || pu)))),
+            },
+          };
+        }),
       }),
-      e("label", { className: styles.metricLabel },
+
+      e("div", { className: styles.brokerPolicyRow },
+        e("label", { className: styles.metricLabel },
+          e("input", {
+            type: "checkbox", checked: !!config.kill_switch_write,
+            onChange: (ev: { target: { checked: boolean } }) => setConfig((c) => ({ ...c, kill_switch_write: ev.target.checked })),
+          }), " " + t("soc.broker.kill_switch")),
+        e("span", { className: styles.metricLabel }, t("soc.broker.quiet") + " ",
+          e("input", {
+            type: "time", value: config.quiet_hours_start || "",
+            placeholder: "17:00",
+            "aria-label": `${t("soc.broker.quiet")} (bắt đầu)`,
+            onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_start: ev.target.value })),
+            className: styles.searchInput,
+          }), " – ",
+          e("input", {
+            type: "time", value: config.quiet_hours_end || "",
+            placeholder: "08:30",
+            "aria-label": `${t("soc.broker.quiet")} (kết thúc)`,
+            onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_end: ev.target.value })),
+            className: styles.searchInput,
+          })),
         e("input", {
-          type: "checkbox", checked: !!config.kill_switch_write,
-          onChange: (ev: { target: { checked: boolean } }) => setConfig((c) => ({ ...c, kill_switch_write: ev.target.checked })),
-        }), " " + t("soc.broker.kill_switch")),
-      e("div", { className: styles.metricLabel },
-        t("soc.broker.quiet") + " ",
-        e("input", {
-          type: "text", value: config.quiet_hours_start || "",
-          onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_start: ev.target.value })),
+          type: "text", value: reason, placeholder: t("soc.broker.reason_ph"),
+          "aria-label": t("soc.broker.reason_ph"),
+          onChange: (ev: { target: { value: string } }) => setReason(ev.target.value),
           className: styles.searchInput,
-        }), " – ",
-        e("input", {
-          type: "text", value: config.quiet_hours_end || "",
-          onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_end: ev.target.value })),
-          className: styles.searchInput,
-        })),
-      e("input", {
-        type: "text", value: reason, placeholder: t("soc.broker.reason_ph"),
-        onChange: (ev: { target: { value: string } }) => setReason(ev.target.value),
-        className: styles.searchInput,
-      }),
-      e("div", null,
-        e("button", { type: "button", className: styles.actionBtn, onClick: handlePreview },
-          t("soc.broker.preview_btn")),
-        e("button", { type: "button", className: styles.actionBtn, disabled: applying, onClick: handleApply },
-          applying ? t("soc.broker.applying") : t("soc.broker.apply_btn")),
+        }),
+        e("div", { className: styles.brokerPolicyActions },
+          e("button", { type: "button", className: styles.actionBtn, onClick: handlePreview },
+            t("soc.broker.preview_btn")),
+          e("button", { type: "button", className: styles.actionBtn, disabled: applying, onClick: handleApply },
+            applying ? t("soc.broker.applying") : t("soc.broker.apply_btn")),
+        ),
       ),
     ),
 
@@ -375,7 +405,10 @@ export function SocBrokerPanel() {
             e("p", { className: styles.metricLabel }, e("strong", null, String(p.provider).toUpperCase())),
             e("p", { className: styles.metricValue },
               (p.enabled ? "● " : "○ ") + (p.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified"))),
-            p.needs_verification ? e("span", null, " ", expiryBadge(p.stale_reason)) : null,
+            // Chi hien badge khi NOI them thong tin: "Chua xac minh" + badge "Chua xac minh ket noi" la LAP.
+            p.needs_verification && (p.is_verified || p.stale_reason === "chua_cau_hinh")
+              ? e("span", null, " ", expiryBadge(p.stale_reason))
+              : null,
             e("p", { className: styles.metricLabel },
               `${wv("lastRun", "Lần chạy cuối")}: `,
               last
@@ -416,12 +449,17 @@ export function SocBrokerPanel() {
             }, testing === String(p.provider) ? t("soc.broker.testing") : t("soc.broker.test_btn")),
           );
         })),
-      e("div", { className: styles.metricCard },
-        e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "Hàng đợi Celery"))),
-        Object.entries(health.queues || {}).map(([q, d]) =>
-          e("div", { key: q, className: styles.brokerLaneRow },
-            e("span", null, q), e("span", null, fmtNum(d)))),
-      ),
+      Object.keys(health.queues || {}).length > 0
+        ? e("div", { className: styles.metricCard },
+            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "Hàng đợi Celery"))),
+            Object.entries(health.queues || {}).map(([q, d]) =>
+              e("div", { key: q, className: styles.brokerLaneRow },
+                e("span", null, q), e("span", null, fmtNum(d)))),
+          )
+        : e("div", { className: styles.metricCard },
+            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "Hàng đợi Celery"))),
+            e("p", { className: styles.metricLabel }, t("soc.broker.no_queues")),
+          ),
       (health.top_errors || []).length > 0
         ? e("div", { className: styles.metricCard },
             e("p", { className: styles.metricLabel }, e("strong", null, wv("topErrors", "Lỗi hàng đầu"))),
@@ -437,7 +475,7 @@ export function SocBrokerPanel() {
       creds.map((c) => e("div", { key: c.provider || "", className: styles.metricCard },
         e("p", { className: styles.metricLabel },
           e("strong", null, (c.provider || "").toUpperCase()), " · ",
-          (c.allowed_purposes || []).join(","), " · ",
+          (c.allowed_purposes || []).map((pu) => t(PURPOSE_LABELS[pu] || pu)).join(", "), " · ",
           (c.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified")), " · ",
           formatTime(c.last_verified_at, tag), " ",
           expiryBadge(c.needs_verification ? c.stale_reason : undefined)),

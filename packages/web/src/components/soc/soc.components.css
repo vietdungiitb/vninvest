@@ -4407,3 +4407,19 @@
 :root[data-theme="light"] .diffTable th {
   color: #475569;
 }
+
+/* ── W1 redesign (R3): dai chinh sach cua panel Moi gioi ─────────────────── */
+.brokerPolicyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-default, rgba(148, 163, 184, 0.2));
+}
+.brokerPolicyActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
