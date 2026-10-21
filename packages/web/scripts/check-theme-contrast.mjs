@@ -66,6 +66,11 @@ const TOKEN_FILES = [
   "packages/web/src/index.css",
   "packages/web/src/theme/tokens.css",
   "packages/web/src/components/soc/soc.tokens.css",
+  // W1-A: the light theme's own token values live in `theme/light-theme.css`
+  // (T1 block). Without this file the gate measures DARK backgrounds against
+  // LIGHT text and reports a false regression (measured 2026-10-21:
+  // `text-muted-on-bg-panel@soc/light` 3.75:1 -> 2.36:1).
+  "packages/web/src/theme/light-theme.css",
 ];
 
 /**
