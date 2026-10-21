@@ -42,3 +42,47 @@
   - [ ] Có grep `urls.py` xác nhận `include` đã bỏ?
   - [ ] Với FE: đã kiểm **bundle deploy** (`dist/assets`) chứ không chỉ source?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 375 §"BẪY ĐO resolve()"; `docs/evidence/ai-cc/r51-gates.md` §"Bẫy đo".
+
+## L-V08: Gate coi "khong do duoc" la "khong co vi pham" ⇒ xanh gia + tu de nghi HA baseline
+
+- **Nguyen nhân:** Gate baseline-locked bo qua nhung item **khong do duoc** (route timeout, mau
+  khong giai ma duoc) ⇒ tap vi pham **thu nho** ⇒ gate in "khong co vi pham MOI" **va** goi y
+  `--update-baseline` de **giam** baseline. Vong sau route do khong do duoc ⇒ vi pham moi **khong bao gio
+  bi chan**.
+- **Hau qua that (W0, Entry 390):** `check-a11y-runtime.mjs` — 4/10 route timeout ⇒ 44/113 vi pham bi
+  gan nhan "da het" ⇒ neu lam theo goi y, baseline 113→69 va **4 route mat vinh vien khoi tam canh**.
+  Vong audit lap 2 bat duoc 2 BLOCKER cung kieu: `check-theme-contrast` mat mot cap FAIL doi sang
+  `oklch()` ⇒ cap do roi khoi tap ⇒ gate bao "da het" ⇒ **xanh**.
+- **Khi nao gap:** `tags: [gate, baseline, false-green, xanh-gia, measure, probe, staging, timeout, update-baseline, oklch, undecodable]`
+- **QUY TAC:** "Item **khong do duoc** ≠ item **khong co vi pham**. Phai tach 3 nhan:
+  **(a) vi pham moi** ⇒ chan, **(b) khong do duoc** ⇒ `CHUA CHAY` + **KHONG** ket luan xanh,
+  **(c) da het** ⇒ chi bao khi **vung do duoc**. `--update-baseline` **tu choi** khi pham vi chua day du
+  hoac co cap moi roi vao 'khong doc duoc'."
+- **CHECKLIST:**
+  - [ ] Gate co phan biet "vi pham moi" / "khong do duoc" / "da het" rieng biet?
+  - [ ] Pham vi do **day du** moi duoc phep ghi baseline? (`measured.length === ROUTES.length`)
+  - [ ] Cap **roi vao 'khong doc duoc'** co bi tinh la vi pham moi (khong phai "da het")?
+  - [ ] `--update-baseline` co tu choi khi pham vi chua du / co cap khong doc duoc moi?
+  - [ ] Da **probe** duong lach: doi 1 cap FAIL sang `oklch()` ⇒ gate co bat?
+- **Proof:** `docs/AUDIT_UI_STANDARDIZATION_W0.md` §D (B-1, B-2) + `docs/SUMMARY_uistd-w0-gates.md` §10.1; probe suite 17/17.
+
+## L-V09: Id cua tap so phai mang **gia tri / so lan** — khong chi ten hay duong dan
+
+- **Nguyen nhan:** Gate so **tap** (set) de tranh "lam xanh bang cach doi cach do". Nhung khi **id**
+  cua phan tu **khong mang thong tin can so**, thi tap **bi thay doi ma khong ai biet**: doi
+  **gia tri** (van cung ten) hoac **them vi pham vao file da co trong baseline** (van cung duong dan)
+  ⇒ gate van xanh.
+- **Hau qua that (W0, Entry 390):** 3 gate deu gap loi nay: `check-token-conflict` id = **ten token** ⇒ doi
+  `--text-primary` tu `#f8fafc` sang `#000000` (chu bien mat) **khong bi bat**; `check-focus-ring` va
+  `check-heading-contract` id = **duong dan file** ⇒ file da trong baseline them 5 vi pham moi **van xanh**.
+  Audit lap 2 do 3/17 probe "khong bat" chinh vi ly do nay.
+- **Khi nao gap:** `tags: [gate, baseline, id, set, false-green, xanh-gia, token, value, hash, count, probe]`
+- **QUY TAC:** "Id cua phan tu violation phai mang **thong tin dung thu can so**: **gia tri** (hash) cho
+  mau mau, **so lan** cho vi pham theo file. Id chi la duong dan/toi ten ⇒ gate chi kiem tra *co ton tai*,
+  khong kiem tra *co thay doi*."
+- **CHECKLIST:**
+  - [ ] Id co mang **gia tri** (hash) khi dang so mau mau/token?
+  - [ ] Id co mang **so lan** (hoac danh sach dong) khi dang so vi pham theo file?
+  - [ ] Do lai tap vi pham **gia tri** (khong phai **ten**) khi tai-key baseline?
+  - [ ] Da thu: doi gia tri cua mot phan tu da co trong baseline ⇒ gate co bat?
+- **Proof:** `docs/AUDIT_UI_STANDARDIZATION_W0.md` §D (M-1, M-2, N-1) + `docs/SUMMARY_uistd-w0-gates.md` §10.2, §10.3, §10.5.
