@@ -8,6 +8,8 @@ import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { getStatusBadgeStyle, toneColor } from "./socStatusColors.js";
 import { diffObjects, type DiffRow } from "../../lib/diffUtil.js";
+import { CommercialTable } from "../commercial/primitives/CommercialTable.js";
+import { CommercialMeta } from "../commercial/primitives/CommercialMeta.js";
 import styles from "./soc.module.css";
 
 interface VnbrokerTimeout {
@@ -641,6 +643,24 @@ export function SocVnbrokerPanel() {
         />
       ) : null}
 
+      <CommercialMeta
+        className={styles.vnbMetaStrip}
+        items={[
+          {
+            label: t("soc.vnbroker.applied_by"),
+            value: configMeta?.applied_by
+              ? `${configMeta.applied_by} · ${formatTime(configMeta.applied_at)}`
+              : t("soc.vnbroker.not_applied_yet"),
+          },
+          {
+            label: t("soc.vnbroker.write_permission"),
+            value: canApply
+              ? t("soc.badge.writable_yes")
+              : t("soc.badge.writable_no"),
+          },
+        ]}
+      />
+
       {/* ── 0. KPI strip ─────────────────────────────────────────────── */}
       <h2 className={styles.metricLabel} data-testid="vnb-kpi-title">
         {t("soc.vnbroker.kpi_title")}
@@ -672,21 +692,13 @@ export function SocVnbrokerPanel() {
             </div>
           </div>
           <div className={styles.metricCard}>
-            <div className={styles.metricLabel}>{t("soc.vnbroker.kpi_timeout")}</div>
-            <div className={styles.metricValue} data-testid="vnb-kpi-timeout">
-              {toNumber(draftTimeout.read, EMPTY_TIMEOUT.read as number)}s
-            </div>
-          </div>
-          <div className={styles.metricCard}>
-            <div className={styles.metricLabel}>{t("soc.vnbroker.kpi_rpm")}</div>
-            <div className={styles.metricValue} data-testid="vnb-kpi-rpm">
-              {toNumber(draft.requests_per_minute, 0)}
-            </div>
-          </div>
-          <div className={styles.metricCard}>
-            <div className={styles.metricLabel}>{t("soc.vnbroker.kpi_retry")}</div>
-            <div className={styles.metricValue} data-testid="vnb-kpi-retry">
-              {toNumber(draft.max_retries, 0)}
+            <div className={styles.metricLabel}>{t("soc.vnbroker.kpi_breaker")}</div>
+            <div
+              className={styles.metricValue}
+              data-testid="vnb-kpi-breaker"
+              style={{ color: breakerOpen ? toneColor("danger") : toneColor("success") }}
+            >
+              {breakerOpen ? t("soc.vnbroker.breaker_tripped") : t("soc.vnbroker.breaker_closed")}
             </div>
           </div>
         </div>
@@ -702,22 +714,43 @@ export function SocVnbrokerPanel() {
             ))}
           </div>
         ) : (
-          <div className={styles.vnbTileGrid}>
-            {catalog.map((entry) => {
+          <CommercialTable
+            caption={t("soc.vnbroker.table_caption")}
+            columns={[
+              { key: "source", label: t("soc.vnbroker.col_source"), rowHeader: true },
+              { key: "role", label: t("soc.vnbroker.col_role") },
+              { key: "ready", label: t("soc.vnbroker.col_ready") },
+              { key: "latency", label: t("soc.vnbroker.latency") },
+              { key: "success", label: t("soc.vnbroker.success_rate") },
+              { key: "requests", label: t("soc.vnbroker.col_requests") },
+              { key: "circuit", label: t("soc.vnbroker.col_circuit") },
+              { key: "lastCheck", label: t("soc.vnbroker.last_check") },
+              { key: "actions", label: t("soc.vnbroker.col_actions") },
+            ]}
+            rows={catalog.map((entry) => {
               const role = roleOf(entry.provider);
               const row = healthByProvider.get(entry.provider);
               const ready = entry.runtime_ready;
               const isPrimary = role === "primary";
-              const titleId = `vnb-provider-title-${entry.provider}`;
-              return (
-                <section
-                  key={entry.provider}
-                  className={styles.vnbTile}
-                  aria-labelledby={titleId}
-                  data-testid={`vnb-provider-${entry.provider}`}
-                >
-                  <div className={styles.vnbTileHead}>
-                    <strong id={titleId}>{entry.label || entry.provider.toUpperCase()}</strong>
+              const name = entry.label || entry.provider.toUpperCase();
+              return {
+                id: entry.provider,
+                testId: `vnb-provider-${entry.provider}`,
+                cells: {
+                  source: (
+                    <span
+                      className={styles.vnbCellSource}
+                      data-testid={`vnb-provider-${entry.provider}-name`}
+                    >
+                      <strong>{name}</strong>
+                      <span className={styles.domainPill}>
+                        {entry.credential_mode === "api-key"
+                          ? t("soc.vnbroker.credential_mode_api_key")
+                          : t("soc.vnbroker.credential_mode_builtin")}
+                      </span>
+                    </span>
+                  ),
+                  role: (
                     <span
                       className={`${styles.brokerBadge} ${
                         isPrimary
@@ -730,97 +763,107 @@ export function SocVnbrokerPanel() {
                     >
                       {roleLabel(role)}
                     </span>
-                  </div>
-
-                  <div className={styles.brokerTileBadges}>
-                    <span
-                      className={styles.statusBadge}
-                      style={getStatusBadgeStyle(ready ? "healthy" : "degraded")}
-                    >
-                      {ready ? t("soc.vnbroker.provider_ready") : t("soc.vnbroker.provider_not_ready")}
-                    </span>
-                    <span className={styles.domainPill}>{entry.credential_mode === "api-key" ? t("soc.vnbroker.credential_mode_api_key") : t("soc.vnbroker.credential_mode_builtin")}</span>
-                  </div>
-
-                  <div
-                    className={`${styles.vnbStatRow} ${styles.vnbReadiness}`}
-                    data-testid={`vnb-provider-${entry.provider}-readiness`}
-                  >
-                    <span className={styles.vnbStatLabel}>{t("soc.vnbroker.readiness")}</span>
-                    <span className={styles.vnbStatValue}>
-                      {entry.readiness_reason || entry.runtime_gate}
-                    </span>
-                  </div>
-                  {entry.required_runtime_envs.length ? (
-                    <div className={styles.brokerTileBadges}>
-                      {entry.required_runtime_envs.map((env) => (
-                        <span key={env} className={styles.domainPill}>
-                          {env}
+                  ),
+                  ready: (
+                    <span className={styles.vnbCellStack}>
+                      <span
+                        className={styles.statusBadge}
+                        style={getStatusBadgeStyle(ready ? "healthy" : "degraded")}
+                      >
+                        {ready
+                          ? t("soc.vnbroker.provider_ready")
+                          : t("soc.vnbroker.provider_not_ready")}
+                      </span>
+                      <span
+                        className={styles.vnbStatValue}
+                        data-testid={`vnb-provider-${entry.provider}-readiness`}
+                      >
+                        {entry.readiness_reason || entry.runtime_gate}
+                      </span>
+                      {entry.required_runtime_envs.length ? (
+                        <span className={styles.vnbEnvList}>
+                          {entry.required_runtime_envs.map((env) => (
+                            <span key={env} className={styles.domainPill}>
+                              {env}
+                            </span>
+                          ))}
                         </span>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className={styles.vnbStatRow}>
-                    <span className={styles.vnbStatLabel}>{t("soc.vnbroker.latency")}</span>
+                      ) : null}
+                    </span>
+                  ),
+                  latency: (
                     <span className={styles.vnbStatValue}>
                       {row?.latency_ms == null ? "—" : `${row.latency_ms}ms`}
                     </span>
-                  </div>
-                  <div className={styles.vnbStatRow}>
-                    <span className={styles.vnbStatLabel}>{t("soc.vnbroker.success_rate")}</span>
+                  ),
+                  success: (
                     <span className={styles.vnbStatValue}>
                       {row?.success_rate == null ? "—" : `${row.success_rate}%`}
                     </span>
-                  </div>
-                  <div className={styles.vnbStatRow}>
-                    <span className={styles.vnbStatLabel}>{t("soc.vnbroker.last_check")}</span>
+                  ),
+                  requests: (
+                    <span className={styles.vnbStatValue}>
+                      {row ? `${row.total_requests} / ${row.failed_requests}` : "—"}
+                    </span>
+                  ),
+                  circuit: (
+                    <span
+                      className={styles.vnbStatValue}
+                      title={row?.last_error || undefined}
+                    >
+                      {row?.circuit_state
+                        ? t(`soc.vnbroker.circuit_state_${row.circuit_state}`)
+                        : "—"}
+                    </span>
+                  ),
+                  lastCheck: (
                     <span className={styles.vnbStatValue}>
                       {row?.last_success_at ? formatTime(row.last_success_at) : "—"}
                     </span>
-                  </div>
-
-                  <div className={styles.vnbTileActions}>
-                    <button
-                      type="button"
-                      className={styles.vnbActionBtn}
-                      disabled={!ready || testingProvider === entry.provider}
-                      title={
-                        ready
-                          ? t("soc.vnbroker.test_connection")
-                          : entry.readiness_reason || t("soc.vnbroker.provider_not_ready")
-                      }
-                      aria-label={`${t("soc.vnbroker.test_connection")} — ${entry.label || entry.provider.toUpperCase()}`}
-                      onClick={() => void handleTestConnection(entry.provider)}
-                    >
-                      {testingProvider === entry.provider
-                        ? t("soc.vnbroker.testing_connection")
-                        : t("soc.vnbroker.test_connection")}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.vnbActionBtn}
-                      disabled={isPrimary}
-                      title={
-                        isPrimary
-                          ? t("soc.vnbroker.already_primary")
-                          : t("soc.vnbroker.set_primary")
-                      }
-                      aria-label={`${t("soc.vnbroker.set_primary")} — ${entry.label || entry.provider.toUpperCase()}`}
-                      onClick={() => {
-                        setPreferred(entry.provider);
-                        setChangeReason(
-                          t("soc.vnbroker.change_reason_primary", { provider: entry.provider }),
-                        );
-                      }}
-                    >
-                      {t("soc.vnbroker.set_primary")}
-                    </button>
-                  </div>
-                </section>
-              );
+                  ),
+                  actions: (
+                    <span className={styles.vnbTileActions}>
+                      <button
+                        type="button"
+                        className={styles.vnbActionBtn}
+                        disabled={!ready || testingProvider === entry.provider}
+                        title={
+                          ready
+                            ? t("soc.vnbroker.test_connection")
+                            : entry.readiness_reason || t("soc.vnbroker.provider_not_ready")
+                        }
+                        aria-label={`${t("soc.vnbroker.test_connection")} — ${name}`}
+                        onClick={() => void handleTestConnection(entry.provider)}
+                      >
+                        {testingProvider === entry.provider
+                          ? t("soc.vnbroker.testing_connection")
+                          : t("soc.vnbroker.test_connection")}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.vnbActionBtn}
+                        disabled={isPrimary}
+                        title={
+                          isPrimary
+                            ? t("soc.vnbroker.already_primary")
+                            : t("soc.vnbroker.set_primary")
+                        }
+                        aria-label={`${t("soc.vnbroker.set_primary")} — ${name}`}
+                        onClick={() => {
+                          setPreferred(entry.provider);
+                          setChangeReason(
+                            t("soc.vnbroker.change_reason_primary", { provider: entry.provider }),
+                          );
+                        }}
+                      >
+                        {t("soc.vnbroker.set_primary")}
+                      </button>
+                    </span>
+                  ),
+                },
+              };
             })}
-          </div>
+          />
         )}
       </section>
 
@@ -1351,17 +1394,6 @@ export function SocVnbrokerPanel() {
           aria-hidden="true"
           data-testid="vnb-ownership-loading"
         />
-      ) : null}
-
-      {configMeta ? (
-        <section className={styles.sectionCard} data-testid="vnb-config-meta">
-          <div className={styles.vnbStatRow}>
-            <span className={styles.vnbStatLabel}>{t("soc.vnbroker.applied_by")}</span>
-            <span className={styles.vnbStatValue}>
-              {configMeta.applied_by || "—"} · {formatTime(configMeta.applied_at)}
-            </span>
-          </div>
-        </section>
       ) : null}
 
       {previewOpen ? (
