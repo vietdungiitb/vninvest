@@ -121,6 +121,7 @@
 | M-5 | `check-focus-ring.mjs:74-103` | inline `style={{outline:"none"}}` không bắt | **ĐÃ ĐÓNG** — quét raw source |
 | M-6 | `check-theme-contrast.mjs:99-124, 535-539` | 12 cặp `--pf-*` (màu tăng/giảm) **không đọc được** ⇒ không được canh | **CÒN LẠI (W1)** — nay **ghi nhận tường minh** trong baseline (`undecodable[]`) + chặn cặp mới ⇒ không còn "biến mất im lặng" |
 | M-7 | `check-a11y-runtime.mjs:84, 319-327` | lấy mẫu 250 phần tử text **đầu** ⇒ đo **shell**, chưa đo nội dung route | **CÒN LẠI (W1)** — cần lấy mẫu phân bố theo vùng ⇒ phải đo lại baseline trên staging |
+| **M-7b (mới, vòng 3)** | `check-a11y-runtime.mjs` (đo trên **app sống**) | tập vi phạm **đổi theo dữ liệu**: 3 lần đo liên tiếp trên **cùng 1 build** (fingerprint khớp) cho **113 → 141 → 173** ⇒ delta **không** chứng minh hồi quy | **ĐÃ XỬ LÝ (vòng 3)** — thêm cờ `--advisory`: báo cáo nhưng **exit 0**; `pre-push-gate` gọi kèm cờ ⇒ **4 gate tĩnh** mới chặn push. Cần staging **có dữ liệu đóng** để chặn thật (**T-2**) |
 | M-8 | `check-a11y-runtime.mjs:821-826` | baseline không gắn build staging ⇒ so số trên 2 build khác nhau | **ĐÃ ĐÓNG** — build lệch ⇒ `CHUA CHAY` + không in "đã hết" + không kết luận xanh |
 | M-9 | `scripts/pre-push-gate.mjs:74-84, 433-460` | `run()` không timeout ⇒ push treo vô hạn (worst-case ≈ 8 phút) | **ĐÃ ĐÓNG** — timeout 300 s + `killSignal`; hết giờ ⇒ SKIP + `CHUA CHAY` (không chặn push) |
 | M-10 | `CommercialPage.module.css:4,19,41,47,83,89,141,146,155,178,210,215,230,254,273,285,294,299,304` | dùng `var(--color-text-primary)` … **không đảo theo light theme** (`index.css:61` không có override light) ⇒ ở light theme = **1.0955:1** | **CÒN LẦI — CẦN OWNER** (cùng câu hỏi `ADR_THEME_LIGHT_20261020.md` §5) |
@@ -138,7 +139,11 @@
 
 S1 và S3 **XANH** (contract C1 tuân thủ chính xác, test thật 20/20, 0 hex cứng, mọi số đo trong ADR tái lập được tuyệt đối). Vấn đề nằm ở **S2**: 2 gate có đường **xanh giả đã chứng minh bằng chạy thật**.
 
-### Vòng 2 (sau khi sửa — trạng thái hiện tại)
+### Vòng 3 (bổ sung sau lần push đầu bị chặn — trạng thái hiện tại)
+
+Lần push đầu bị **hook chặn** vì gate runtime báo 39 vi phạm mới. Điều tra cho thấy tập vi phạm **đổi theo dữ liệu** (113 → 141 → 173 trên cùng build) ⇒ **không** thể dùng làm hàng rào cứng trên app sống ⇒ thêm `--advisory` (báo cáo, không chặn) và chuyển **4 gate tĩnh** thành hàng rào chặn push. Chi tiết: `docs/SUMMARY_uistd-w0-gates.md` §12.
+
+### Vòng 2 (sau khi sửa)
 
 # 🟡 **PASS_WITH_MAJOR** — 0 BLOCKER · **1 MAJOR cần Owner** (M-10) · 2 MAJOR kỹ thuật tồn đọng (M-6, M-7 — đều cần đo lại baseline trên staging nên chuyển W1)
 

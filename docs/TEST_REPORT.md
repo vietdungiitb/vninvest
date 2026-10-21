@@ -48,7 +48,8 @@
 | G2 | `node scripts/check-focus-ring.mjs` | **0** | 8 vi phạm / 415 file · baseline 8 · `✓ khong co vi pham MOI` |
 | G3 | `node scripts/check-heading-contract.mjs` | **0** | 25 vi phạm / 99 file · baseline 25 · `✓ khong co vi pham MOI` |
 | G4 | `node scripts/check-theme-contrast.mjs` | **0** | 32 cặp · baseline 32 · `✓ khong co vi pham MOI` |
-| G5 | `node scripts/check-a11y-runtime.mjs` | **0** | 113 vi phạm / 10 route · baseline 113 · `✓ khong co vi pham MOI` |
+| G5 | `node scripts/check-a11y-runtime.mjs --advisory` | **0** | **ADVISORY** (app sống ⇒ tập vi phạm đổi theo dữ liệu: 113 → 141 → 173 trên cùng build) — báo cáo delta, **không chặn** |
+| G5b | `node scripts/check-a11y-runtime.mjs` (không cờ) | **1** | chặn khi có vi phạm mới — dùng khi chạy độc lập/CI trên staging **có dữ liệu đóng** |
 | ST | `--self-test` × 5 gate | **0** | 4 + 6 + 5 + 4 + 8 = **27 case** PASS |
 | PR | probe suite (17 đường lách của audit vòng 1) | **0** | **17/17 bắt** (exit 1) — fixture ngoài repo, baseline đo trên fixture **SẠCH** rồi mới mutate |
 

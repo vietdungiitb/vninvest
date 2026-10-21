@@ -769,7 +769,7 @@ function writeBaseline(file, violations, notes, fingerprint, measured) {
 // ─────────────────────────────────────────────────────────────────── cli ──────
 
 function parseArgs(argv) {
-  const out = { printViolations: false, selfTest: false, update: false, repo: DEFAULT_REPO, baseline: null };
+  const out = { printViolations: false, selfTest: false, update: false, repo: DEFAULT_REPO, baseline: null, advisory: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--repo") out.repo = path.resolve(argv[++i]);
@@ -777,6 +777,7 @@ function parseArgs(argv) {
     else if (a === "--print-violations") out.printViolations = true;
     else if (a === "--self-test") out.selfTest = true;
     else if (a === "--update-baseline") out.update = true;
+    else if (a === "--advisory") out.advisory = true;
     else if (a === "--help" || a === "-h") out.help = true;
     else {
       console.error(`check-a11y-runtime: tham so khong ro: ${a}`);
@@ -877,6 +878,16 @@ async function run(opts) {
   if (fresh.length) {
     console.error(`\n  ✗ ${fresh.length} VI PHAM MOI (khong co trong baseline):`);
     for (const v of fresh) console.error(`    ${v.id}  ${v.detail}`);
+    if (opts.advisory) {
+      // ADVISORY: the measurement runs against a LIVE app. The violation set
+      // follows the DATA (alerts present or not, breadcrumb H1s, chips...), so
+      // a delta is not proof of a regression. The gate therefore REPORTS but
+      // does not BLOCK on the push path. To make it a hard gate it needs a
+      // seeded/frozen staging — see AUDIT_UI_STANDARDIZATION_W0 T-2.
+      console.error("  ! ADVISORY (--advisory): app SONG, tap vi pham doi theo DU LIEU ⇒ KHONG chan.");
+      console.error("  ! De gate chan that, can staging co du lieu DONG (seed) truoc khi do.");
+      return 0;
+    }
     console.error("  ✗ REGRESSION — gate that.");
     return 1;
   }

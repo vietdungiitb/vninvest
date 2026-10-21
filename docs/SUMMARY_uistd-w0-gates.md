@@ -186,3 +186,25 @@ Probe chạy trên **fixture ngoài repo** (`%TEMP%\opencode`), phương pháp: 
 | T-4 | `check-theme-contrast` CONTROL của self-test chỉ assert "0 vi phạm ⇒ exit 0" | nên assert thêm "số cặp **đã đo** ≥ N" | W1 |
 | T-5 | `check-heading-contract` không bắt `<h1>` tạo qua biến (`const Tag="h1"`) | giới hạn của phân tích tĩnh | W1 |
 | T-6 | `CommercialPage.module.css` dùng họ token `--color-*` **không đảo theo light theme** (audit M-10) | cần Owner chốt cùng câu hỏi light theme của ADR §5 | Owner |
+
+## 12. GATE RUNTIME PHẢI LÀ **ADVISORY** (vòng 3 — phát hiện khi push)
+
+Khi push lần đầu, `check-a11y-runtime` chạy đủ 10 route rồi **BLOCKED push** với **39 "VI PHAM MOI"**. Điều tra:
+
+| Lần đo (cùng 1 build staging, fingerprint **khớp**) | Số vi phạm | Ghi chú |
+|---|---|---|
+| Lúc tạo baseline (02:11) | **113** | baseline commit |
+| Lần đo khi push (lần 1) | **141** | +28 |
+| Lần đo ngay sau đó (vòng 3) | **173** | +32 |
+| Lần đo lúc sửa (lần 4) | **173** | ổn định tạm thời |
+
+⇒ **Tập vi phạm của app SỐNG đổi theo DỮ LIỆU** (có alert hay không, breadcrumb, `chip-count`, nội dung list) ⇒ **delta KHÔNG chứng minh hồi quy** ⇒ baseline cố định cho một phép đo runtime là **không khả thi**.
+
+⇒ **Quyết định (vòng 3):** `check-a11y-runtime` có thêm cờ `--advisory`:
+- `--advisory` ⇒ **báo cáo** đầy đủ (tập vi phạm + delta + lý do) nhưng **exit 0** ⇒ **KHÔNG chặn push**.
+- **không** cờ ⇒ hành vi cũ (exit 1 khi có vi phạm mới) ⇒ dùng khi chạy **độc lập/CI** trên staging **có dữ liệu đóng (seed)**.
+- `scripts/pre-push-gate.mjs` gọi gate này **kèm `--advisory`** ⇒ push path chỉ có **4 gate tĩnh** chặn (token-conflict, heading-contract, focus-ring, theme-contrast) — cả 4 đọc **file**, không phụ thuộc app sống.
+
+⇒ **Điều kiện để gate runtime chặn thật** (ticket **T-2** ở §11): staging phải có **dữ liệu đóng** (seed) + đo lại baseline ⇒ khi đó bỏ `--advisory` ở pre-push.
+
+⚠ **Không** sửa baseline theo từng lần đo (113 → 141 → 173) — baseline là **mốc tham chiếu**, không phải trạng thái hiện tại. Tài liệu này ghi rõ độ **không ổn định** để không ai tưởng gate này là hàng rào chắc.

@@ -462,7 +462,15 @@ for (const uiGate of [
   // Timeout: gate nao phu thuoc staging (a11y-runtime do 10 route x 30s) co
   // the treo vo han tren duong push. Het thoi gian => CHUA CHAY, khong phai
   // FAIL (khong co bang chung de ket luan) — nhung van phai IN ra.
-  const r = run(process.execPath, [gatePath], join(REPO, "packages", "web"), 300000);
+  //
+  // `check-a11y-runtime` do tren APP SONG ⇒ tap vi pham doi theo DU LIEU
+  // (co alert hay khong, breadcrumb, chip-count...) ⇒ mot delta KHONG chung
+  // minh la hoi quy. No chay o che do --advisory: BAO CAO nhung KHONG CHAN
+  // push. Muon no chan that, can staging co du lieu DONG (seed) truoc — xem
+  // AUDIT_UI_STANDARDIZATION_W0 T-2.
+  const advisory = uiGate === "check-a11y-runtime";
+  const args = advisory ? [gatePath, "--advisory"] : [gatePath];
+  const r = run(process.execPath, args, join(REPO, "packages", "web"), 300000);
   if (r.code === null) {
     // Khong co exit code = gate khong chay xong (het thoi gian / khong spawn
     // duoc) => KHONG co bang chung de ket luan, nen SKIP chu khong phai FAIL.

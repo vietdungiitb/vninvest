@@ -64,7 +64,8 @@
   - [ ] Cap **roi vao 'khong doc duoc'** co bi tinh la vi pham moi (khong phai "da het")?
   - [ ] `--update-baseline` co tu choi khi pham vi chua du / co cap khong doc duoc moi?
   - [ ] Da **probe** duong lach: doi 1 cap FAIL sang `oklch()` ⇒ gate co bat?
-- **Proof:** `docs/AUDIT_UI_STANDARDIZATION_W0.md` §D (B-1, B-2) + `docs/SUMMARY_uistd-w0-gates.md` §10.1; probe suite 17/17.
+- **TRƯỜNG HỢP THỨ 2 (vòng 3, cùng phiên):** phép đo trên **app sống** ⇒ tập vi phạm **đổi theo dữ liệu**: 3 lần đo liên tiếp trên **cùng 1 build** (fingerprint asset **khớp**) cho **113 → 141 → 173** ⇒ delta **không** phản ánh hồi quy ⇒ **baseline cố định cho phép đo runtime là không khả thi** ⇒ phải **seed dữ liệu** (staging cố định) trước khi dùng làm hàng rào, hoặc hạ xuống **advisory**.
+- **Proof:** `docs/AUDIT_UI_STANDARDIZATION_W0.md` §D (B-1, B-2, M-7b) + `docs/SUMMARY_uistd-w0-gates.md` §10.1, §12; probe suite 17/17.
 
 ## L-V09: Id cua tap so phai mang **gia tri / so lan** — khong chi ten hay duong dan
 

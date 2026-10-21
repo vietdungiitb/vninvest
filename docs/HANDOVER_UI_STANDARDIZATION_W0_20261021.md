@@ -55,7 +55,7 @@ Template shell sẵn có dùng họ **có đảo** (`--text-primary`/`--text-sec
 `tsc` 0 · `lint` 0 error (4251 warning) · `vitest` 0 (169 file/1162 test) · `jest` **1** (3 suite/9 test = **đúng baseline dev**, delta 0) · `build` 0 · `check:tokens` **1** (1 lỗi nền, delta 0) · `check:contrast` 0 · `check:dom-landmarks` 0 · `i18n:scan:strict` 0 · `check-lessons` 0 · `check-multi-agent` 0 · `normalize-eol` 0 · `pre-push-gate` **27 PASS / 1 SKIP / 0 FAIL** · **5 gate UI exit 0** · 5 self-test 27 case · **probe 17/17**.
 
 > **CHƯA CHẠY (không ghi PASS):** `npm run test:visual` · BE test (cần Postgres; Docker Desktop hay tắt) · staging E2E ngoài 10 route ghim.
-> **1 SKIP trong pre-push:** `ui-check-a11y-runtime` **hết 300 s** (10 route × 30 s + login trên staging) ⇒ in `CHUA CHAY`, **không chặn push** (thiết kế M-9) ⇒ **cần nới timeout hoặc đưa gate ra khỏi đường push** (xem T-2).
+> **GATE RUNTIME LÀ ADVISORY (vòng 3):** lần push đầu bị hook **chặn** vì `check-a11y-runtime` báo 39 vi phạm mới ⇒ điều tra: tập vi phạm của **app sống** đổi theo **dữ liệu** (3 lần đo liên tiếp, **cùng 1 build**: **113 → 141 → 173**) ⇒ delta **không** chứng minh hồi quy ⇒ gate nay có cờ `--advisory` (báo cáo, **exit 0**) và `pre-push-gate` gọi kèm cờ ⇒ **4 gate tĩnh** (token-conflict, heading-contract, focus-ring, theme-contrast) là hàng rào chặn push; **gate runtime chỉ báo động**. Muốn nó chặn thật ⇒ staging phải có **dữ liệu đóng (seed)** (T-2).
 
 ## 6. Audit code — vòng 1 FAIL, vòng 2 PASS_WITH_MAJOR
 
@@ -75,6 +75,7 @@ Baseline được **tái-key** (id mang **giá trị**/**số lần**) với **t
 | **PowerShell `Set-Content -Encoding utf8` thêm BOM** | commit message bắt đầu bằng `﻿` | viết message ra **file** bằng Node (`fs.writeFileSync`) rồi `git commit -F` |
 | **Append file CRLF bằng Node (LF) ⇒ lệch EOL** | pre-commit hook `normalize-eol` **BLOCKED** | `node scripts/normalize-eol.mjs --fix` → kiểm `git diff --numstat` → commit lại (L-T01) |
 | **staging route timeout** | `check-a11y-runtime` đo được 6/10 (lần audit) hoặc 9/10 (lần tôi) | gate nay in `CHUA CHAY` + **không** kết luận xanh (đã sửa B-1) ⇒ cần staging ổn định + nới timeout (T-2) |
+| **App sống ⇒ tập vi phạm đổi theo DỮ LIỆU** | 3 lần đo liên tiếp trên **cùng build**: 113 → 141 → 173 ⇒ delta **không** phản ánh hồi quy | gate runtime chuyển sang `--advisory` (báo cáo, không chặn); 4 gate tĩnh giữ vai trò hàng rào ⇒ **T-2** (seed staging) |
 
 ## 8. Claim
 
