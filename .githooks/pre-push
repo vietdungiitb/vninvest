@@ -8,10 +8,19 @@
 
 set -e
 
-# Only gate feature branches. Never gate a docs-only sync of dev.
+# Gate feature branches. `dev` is only skipped when it has NOTHING new to
+# push (a pure docs sync). A dev push that actually changes code MUST be gated
+# too — otherwise every squash-merge into dev would land ungated (the merge
+# commit is "docs-only" by title but it carries the whole feature).
 branch=$(git rev-parse --abbrev-ref HEAD)
 case "$branch" in
-  main|dev|master|enterprise) exit 0 ;;
+  main|master|enterprise) exit 0 ;;
+  dev)
+    if [ -z "$(git diff --name-only origin/dev...HEAD 2>/dev/null)" ]; then
+      echo "pre-push: dev khong co gi moi de day len — bo qua gate."
+      exit 0
+    fi
+    ;;
 esac
 
 echo "check:multi-agent"
@@ -22,10 +31,18 @@ node packages/web/scripts/check-multi-agent.mjs
 # (docs/MANDATORY_WORKFLOW_GUIDE_20260928.md). It now reports SKIP loudly instead
 # of letting a missing gate read as green.
 echo "pre-push-gate"
+gate_status=0
 if [ -f scripts/pre-push-gate.mjs ]; then
-  node scripts/pre-push-gate.mjs
+  node scripts/pre-push-gate.mjs || gate_status=$?
 else
   echo "WARNING: scripts/pre-push-gate.mjs khong ton tai - gate khong chay." >&2
+  gate_status=1
+fi
+# Fail closed: a failing gate MUST block the push (the trailing `exit 0` used
+# to swallow it — every push read as green even with a broken gate).
+if [ "$gate_status" -ne 0 ]; then
+  echo "pre-push: GATE FAIL (exit $gate_status) — CHAN PUSH." >&2
+  exit "$gate_status"
 fi
 
 # Backend: only if this branch actually touches the backend, and only if a
