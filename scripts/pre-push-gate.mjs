@@ -481,9 +481,15 @@ for (const uiGate of [
     // "CHUA CHAY" phai duoc uu tien hon "khong co vi pham MOI": mot gate in
     // ca hai dong thi nguoi doc pre-push se thay "gate xanh" va bo qua
     // "chua chay" — do chinh la cach doc sai (audit N-10).
+    // "VI PHAM MOI" phai duoc uu tien TREN "PASS": gate advisory in ra danh
+    // sach vi pham moi nhưng exit 0 ⇒ neu hieu "PASS" thi ta BÁO PASS cho
+    // thu co vi pham — dang xanh gia (L-G02).
     const chuaChay = (r.out.match(/CHUA CHAY[^\n]*/) || [])[0];
+    const advisory = (r.out.match(/ADVISORY[^\n]*/) || [])[0];
+    const viPhamMoi = (r.out.match(/VI PHAM MOI[^\n]*/i) || [])[0];
     const xanh = (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0];
-    const summary = chuaChay || xanh || (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
+    const summary =
+      chuaChay || advisory || viPhamMoi || xanh || (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
     ok(`ui-${uiGate}`, summary.trim());
   }
 }
