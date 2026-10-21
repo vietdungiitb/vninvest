@@ -1158,6 +1158,7 @@ aiUsageAnalytics: 'AI Usage',
       circuit_state_open: 'Open',
       circuit_state_half_open: 'Half-open',
       circuit_state_unknown: 'Unknown',
+      col_perf: 'Latency · Success',
     },
     broker: {
       purpose_backfill: 'Backfill',

@@ -1158,6 +1158,7 @@ aiUsageAnalytics: 'Usage AI',
       circuit_state_open: 'Đã ngắt',
       circuit_state_half_open: 'Đang thử lại',
       circuit_state_unknown: 'Chưa biết',
+      col_perf: 'Độ trễ · Thành công',
     },
     broker: {
       purpose_backfill: 'Bù dữ liệu',

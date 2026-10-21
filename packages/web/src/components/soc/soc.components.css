@@ -4547,20 +4547,9 @@
 /* Bang nguon du lieu 9 cot: rong toi thieu de khong cat cot thao tac;
    wrapper `.cm-table-wrap` da co overflow-x:auto ⇒ cuon ngang khi can. */
 .vnbSourceTable {
-  width: max-content;
-  min-width: 100%;
+  /* Bang 7 cot da VUA container (1202px) => dung width chuan cua template
+     (`width:100%`) ⇒ KHONG cuon ngang, KHONG can cot dinh (sticky) ⇒ khong con
+     o nao bi bop hay nen khac mau. */
+  width: 100%;
 }
 
-/* COT THAO TAC DINH (sticky): bang 9 cot rong hon container (1316px > 1202px) ⇒
-   wrapper cuon ngang; neu khong dinh, 2 nut hanh dong nam ngoai tam nhin ⇒
-   nguoi dung khong thay duoc hanh dong ma khong do. */
-.vnbSourceTable th:last-child,
-.vnbSourceTable td:last-child {
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  /* nen theo TOKEN: --color-bg-panel = #0f172a (dark) | #ffffff (light, T1 override).
-     Hardcode #ffffff se tao dai trang che bang o dark theme. */
-  background: var(--color-bg-panel, #0f172a);
-  box-shadow: -1px 0 0 var(--border-default, rgba(148, 163, 184, 0.2));
-}

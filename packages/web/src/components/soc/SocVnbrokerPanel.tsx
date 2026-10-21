@@ -721,11 +721,9 @@ export function SocVnbrokerPanel() {
               { key: "source", label: t("soc.vnbroker.col_source"), rowHeader: true },
               { key: "role", label: t("soc.vnbroker.col_role") },
               { key: "ready", label: t("soc.vnbroker.col_ready") },
-              { key: "latency", label: t("soc.vnbroker.latency") },
-              { key: "success", label: t("soc.vnbroker.success_rate") },
+              { key: "perf", label: t("soc.vnbroker.col_perf") },
               { key: "requests", label: t("soc.vnbroker.col_requests") },
               { key: "circuit", label: t("soc.vnbroker.col_circuit") },
-              { key: "lastCheck", label: t("soc.vnbroker.last_check") },
               { key: "actions", label: t("soc.vnbroker.col_actions") },
             ]}
             rows={catalog.map((entry) => {
@@ -790,20 +788,21 @@ export function SocVnbrokerPanel() {
                           ))}
                         </span>
                       ) : null}
+                      <span className={styles.vnbStatLabel}>
+                        {t("soc.vnbroker.last_check")}:{" "}
+                        {row?.last_success_at ? formatTime(row.last_success_at) : "—"}
+                      </span>
                     </span>
                   ),
-                  latency: (
-                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
+                  perf: (
+                    <span className={styles.vnbStatValue}>
                       {row?.latency_ms == null ? "—" : `${row.latency_ms}ms`}
-                    </span>
-                  ),
-                  success: (
-                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
+                      {" · "}
                       {row?.success_rate == null ? "—" : `${row.success_rate}%`}
                     </span>
                   ),
                   requests: (
-                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
+                    <span className={styles.vnbStatValue}>
                       {row ? `${row.total_requests} / ${row.failed_requests}` : "—"}
                     </span>
                   ),
@@ -817,13 +816,8 @@ export function SocVnbrokerPanel() {
                         : "—"}
                     </span>
                   ),
-                  lastCheck: (
-                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
-                      {row?.last_success_at ? formatTime(row.last_success_at) : "—"}
-                    </span>
-                  ),
                   actions: (
-                    <span className={`${styles.vnbTileActions} ${styles.vnbActionsCell}`}>
+                    <span className={styles.vnbTileActions}>
                       <button
                         type="button"
                         className={styles.vnbActionBtn}
