@@ -43,6 +43,7 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | `claim`, `claims`, `shared`, `deny`, `worktree`, `rebase`, `hook`, `pre-commit`, `multi-agent`, `agent`, `branch`, `merge`, `pr`, `checkout --` | `multi-agent` | `docs/LESSONS/multi-agent.md` |
 | `migrat`, `migration`, `makemigrations`, `leaf`, `leaf-node`, `leaf_node`, `*/migrations/*` | `migrations` | `docs/LESSONS/migrations.md` |
 | `gate`, `gates`, `tsc`, `typecheck`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY`, `exit`, `no-verify`, `billing`, `ci` | `build-gates` | `docs/LESSONS/build-gates.md` |
+| `merge`, `conflict`, `syntax`, `false-green`, `xanh-gia`, `push`, `hook`, `pre-push`, `node --check` | `build-gates-2` | `docs/LESSONS/build-gates-2.md` |
 | `db`, `database`, `postgres`, `sqlite`, `backend`, `be-test`, `CORE_DATABASE_URL`, `migrate` | `backend` | `docs/LESSONS/backend.md` |
 | `fe`, `frontend`, `bundle`, `vite`, `chunk`, `preload`, `react`, `hook`, `memo`, `useCallback`, `useMemo`, `searchParams`, `setSearchParams`, `router`, `useState` | `frontend` | `docs/LESSONS/frontend.md` |
 | `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc` | `docs/LESSONS/css-soc.md` |
