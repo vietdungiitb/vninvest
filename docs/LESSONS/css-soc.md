@@ -92,3 +92,26 @@ one !important la duoc.
   - [ ] Nếu deploy khác local: đã lấy CSS từ **đúng artifact** (docker image, không phải `dist` trên host — xem L-V01)?
   - [ ] Khi đối chiếu ảnh chụp mà thấy "unstyled", đã **hỏi lại**: style có thật sự không áp dụng, hay chỉ là tương phản thấp (border 1px alpha 0.15 trên nền tương tự)?
 - **Proof:** `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` §E1 + Phụ lục P4; `packages/web/dist/assets/soc-CqdbE_IP.css` chứa `._metricCard_ovxpd_1` và `._serviceCard_ovxpd_1` dù `soc.module.css` chỉ có 3 dòng.
+
+## L-F12: Muốn "giu cot khi cuon ngang" — ĐỪNG dan nen cho 1 o; hay rut bang cho VUA container
+
+- **Nguyen nhan:** Bang 9 cot rong hon container (1377px > 1202px) ⇒ cot cuoi (hanh dong) bi day ra
+  ngoai tam nhin ⇒ dua no "dinh" (`position: sticky`) la cach nhanh nhat.
+- **Hau qua that (Entry 391/W1, 2026-10-21):** dan nen `#ffffff` cho o sticky ⇒ o **light theme** khop, o
+  **dark theme** tao mot **dai trang** che bang + 2 nut hanh dong "mo tren nen trang" (khong doc duoc) ⇒
+  Owner gui anh bao "cot thao tac dang loi, mau sac cung khong hop voi dark theme cua ca trang".
+  Sua bang token (`var(--color-bg-panel)`) ⇒ o dark van **lech** vi card nen **ban trong suot**
+  (`rgba(#0f172a/.3)`) ≠ token **duc** ⇒ van "khong hop".
+  **Cach dung:** rut bang cho **VUA container** (gop cot, dua cot it quan trong xuong dong phu/tooltip) ⇒
+  khong con can sticky ⇒ khong con o nao lech mau, khong con o nao bi bop.
+- **Khi nao gap:** \`tags: [css, table, sticky, overflow, dark-mode, light-mode, soc, layout, contrast]\`
+- **QUY TAC:** "Khong dan nen cho MOT o de giu no khi cuon ngang. Hay rut noi dung cho bang **VUA
+  container**: gop cot, dua thong tin it quan trong vao dong phu/tooltip, rut do rong cot. Neu van can
+  cuon ngang thi nen cua o sticky phai **trung mau nen that cua container** (dung `background: inherit` +
+  duong tach bang token), **khong** hardcode."
+- **CHECKLIST:**
+  - [ ] Bang co rong <= container khong? (do `table.getBoundingClientRect().width` vs wrapper `clientWidth`)
+  - [ ] Neu phai cuon ngang: nen o sticky co **cung mau nen container** (khong hardcode) khong?
+  - [ ] Moi thead/cell co bi **bop** khong (chu xuong dong trong o) — kiem bang computed style, khong doan?
+  - [ ] Da **mo anh ra xem** (L-V05) o **ca 2 theme** truoc khi bao xong?
+- **Proof:** \`docs/CODE_CHANGE_AUDIT_LEDGER.md\` Entry 391 + \`docs/HANDOVER_UI_REDESIGN_20261021.md\` §5; anh \`docs/evidence/ui-redesign-20261021/\`.

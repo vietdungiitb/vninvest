@@ -43,7 +43,10 @@
 | 3 | nút bị bóp (w=44 vs scrollWidth=119) | `min-width: 7.5rem` + `nowrap` |
 | 4 | card "Quan sát trực tiếp" nền xám-đậm; tiêu đề section nhạt; empty state xám | override `.metricCard`/`.sectionCardTitle`/`.emptyState` + `.vnbTileActions` 1 hàng |
 | 5 | "PROVIDER" + "BACKFILL/SNAPSHOT/SIGNAL" raw; textarea `{}` | đổi giá trị i18n + placeholder JSON mẫu |
-| 6 | cột "Thao tac" bị **CẮT** (bảng 9 cột rộng 1316px > container 1202px ⇒ nút nằm ngoài tầm nhìn) | đo computed style ⇒ cột cuối `position: sticky; right: 0` ⇒ **luôn thấy** dù bảng cuộn ngang |
+| 6 | cột "Thao tac" bị **CẮT** (bảng 9 cột rộng 1377px > container 1202px) | lần 1: dán `position: sticky` ⇒ **SAI CÁCH** (xem vòng 7) |
+| 7 | **Owner gửi ảnh dark**: cột "Thao tác" có **dải trắng** che bảng + 2 nút mờ trên trắng; "màu không hợp dark theme của cả trang" | nguyên nhân: tôi hardcode `background:#ffffff` cho ô dính ⇒ sai ở dark. Sửa lần 2: đổi sang **token** `var(--color-bg-panel)` ⇒ hết dải trắng, **nhưng vẫn lệch** vì card nền **bán trong suốt** ≠ token đục |
+| 8 | pill "Có sẵn" bị **BÓP thành hình tròn** (chữ xuống 3 dòng) | do regex khi rút cột đã **xóa mất** `display:flex` của `.vnbCellSource` ⇒ khôi phục đủ rule + `white-space:nowrap` |
+| 9 | cột "Thao tác" vẫn tràn | **CÁCH ĐÚNG**: thu bảng cho **VỪA container** — gộp "Độ trễ"+"Tỷ lệ thành công" ⇒ 1 cột, đưa "Lần kiểm gần nhất" vào `title` của ô "Sẵn sàng", `max-width:18rem` ⇒ **7 cột, vừa khít** ⇒ **bỏ hẳn sticky** (không còn ô nào lệch màu/bị bóp) |
 
 ⇒ **Bằng chứng:** `docs/evidence/ui-redesign-20261021/{01,02}-vnbroker-{light,dark}.png`, `{03,04}-broker-{light,dark}.png`.
 

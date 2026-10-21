@@ -46,7 +46,7 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | `merge`, `conflict`, `syntax`, `false-green`, `xanh-gia`, `push`, `hook`, `pre-push`, `node --check` | `build-gates-2` | `docs/LESSONS/build-gates-2.md` |
 | `db`, `database`, `postgres`, `sqlite`, `backend`, `be-test`, `CORE_DATABASE_URL`, `migrate` | `backend` | `docs/LESSONS/backend.md` |
 | `fe`, `frontend`, `bundle`, `vite`, `chunk`, `preload`, `react`, `hook`, `memo`, `useCallback`, `useMemo`, `searchParams`, `setSearchParams`, `router`, `useState` | `frontend` | `docs/LESSONS/frontend.md` |
-| `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc` | `docs/LESSONS/css-soc.md` |
+| `css`, `soc`, `tokens`, `a11y`, `focus`, `color`, `shorthand`, `module.css`, `scss` | `css-soc`, `sticky`, `overflow`, `dark-mode` | `docs/LESSONS/css-soc.md` |
 | `powershell`, `shell`, `numstat`, `git`, `line-ending`, `crlf`, `diff`, `citation`, `evidence`, `append`, `proof` | `tooling-traps` | `docs/LESSONS/tooling-traps.md` |
 | `edit`, `fuzzy`, `tool`, `replace`, `refactor`, `stash`, `crlf`, `lf`, `eol`, `numstat`, `normalize-eol` | `tooling-traps` | `docs/LESSONS/tooling-traps-2.md` |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `rotate`, `revoke`, `token`, `fernet`, `history` | `security` | `docs/LESSONS/security.md` |
