@@ -739,7 +739,7 @@ export function SocVnbrokerPanel() {
                     >
                       {ready ? t("soc.vnbroker.provider_ready") : t("soc.vnbroker.provider_not_ready")}
                     </span>
-                    <span className={styles.domainPill}>{entry.credential_mode}</span>
+                    <span className={styles.domainPill}>{entry.credential_mode === "api-key" ? t("soc.vnbroker.credential_mode_api_key") : t("soc.vnbroker.credential_mode_builtin")}</span>
                   </div>
 
                   <div
