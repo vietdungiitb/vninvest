@@ -43,6 +43,7 @@
 | 3 | nút bị bóp (w=44 vs scrollWidth=119) | `min-width: 7.5rem` + `nowrap` |
 | 4 | card "Quan sát trực tiếp" nền xám-đậm; tiêu đề section nhạt; empty state xám | override `.metricCard`/`.sectionCardTitle`/`.emptyState` + `.vnbTileActions` 1 hàng |
 | 5 | "PROVIDER" + "BACKFILL/SNAPSHOT/SIGNAL" raw; textarea `{}` | đổi giá trị i18n + placeholder JSON mẫu |
+| 6 | cột "Thao tac" bị **CẮT** (bảng 9 cột rộng 1316px > container 1202px ⇒ nút nằm ngoài tầm nhìn) | đo computed style ⇒ cột cuối `position: sticky; right: 0` ⇒ **luôn thấy** dù bảng cuộn ngang |
 
 ⇒ **Bằng chứng:** `docs/evidence/ui-redesign-20261021/{01,02}-vnbroker-{light,dark}.png`, `{03,04}-broker-{light,dark}.png`.
 
