@@ -4546,3 +4546,9 @@
   width: 1%;
   white-space: nowrap;
 }
+
+/* Bang nguon du lieu 9 cot: rong toi thieu de khong cat cot thao tac;
+   wrapper `.cm-table-wrap` da co overflow-x:auto ⇒ cuon ngang khi can. */
+.vnbSourceTable {
+  min-width: 58rem;
+}

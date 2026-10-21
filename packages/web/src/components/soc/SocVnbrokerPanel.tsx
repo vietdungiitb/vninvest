@@ -715,6 +715,7 @@ export function SocVnbrokerPanel() {
           </div>
         ) : (
           <CommercialTable
+            className={styles.vnbSourceTable}
             caption={t("soc.vnbroker.table_caption")}
             columns={[
               { key: "source", label: t("soc.vnbroker.col_source"), rowHeader: true },
