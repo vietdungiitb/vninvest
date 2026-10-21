@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "./theme/tokens.css";
+/* Light theme (UI Standardization W1, T1+T2) — override token `--color-*` + utility
+   theo property. File SINH BOI `packages/web/scripts/check-light-theme.mjs --update`.
+   Gia tri lay tu SSOT `theme/tokens.css:65-71`. KHONG sua tay. */
+@import "./theme/light-theme.css";
 @import "tailwind-sidebar/styles.css";
 @import "simplebar/dist/simplebar.min.css";
 
@@ -532,6 +536,19 @@
     color: #fb7185;
     border: 1px solid rgb(244 63 94 / 0.3);
   }
+  /* LIGHT MODE (W1 · UI Standardization W1) — `.pill[data-sign]` dat mau cua
+     DARK trong index.css:529-543 ⇒ chu sang (emerald-400 #34d399) tren nen sang
+     = 1.92:1 ⇒ duoi WCAG AA. Do duoc 2026-10-21 tren staging (build e03762ea8). */
+  :root[data-theme="light"] .pill[data-sign="1"] {
+    color: #047857;
+  }
+  :root[data-theme="light"] .pill[data-sign="-1"] {
+    color: #be123c;
+  }
+  :root[data-theme="light"] .pill[data-sign="0"] {
+    color: #475569;
+  }
+
   .pill[data-sign="0"] {
     background-color: rgb(138 148 166 / 0.12);
     color: #8a94a6;

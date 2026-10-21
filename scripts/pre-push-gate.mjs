@@ -518,3 +518,5 @@ if (skipped > 0) {
 
 console.log(`pre-push-gate: ${passed} PASS / 0 SKIP / 0 FAIL — cho phep push`);
 process.exit(0);
+
+  "check-light-theme",

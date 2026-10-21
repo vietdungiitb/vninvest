@@ -57,8 +57,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
     max_symbols_per_scan: (source.max_symbols_per_scan as number | undefined) ?? 2000,
     alert_cooldown_seconds: (source.alert_cooldown_seconds as number | undefined) ?? 300,
     max_alerts_per_symbol_per_hour: (source.max_alerts_per_symbol_per_hour as number | undefined) ?? 5,
-    result_retention_hours: (source.result_retention_hours as number | undefined) ?? 24,
-  });
+    result_retention_hours: (source.result_retention_hours as number | undefined) ?? 24 });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -69,8 +68,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       max_symbols_per_scan: (next.max_symbols_per_scan as number | undefined) ?? 2000,
       alert_cooldown_seconds: (next.alert_cooldown_seconds as number | undefined) ?? 300,
       max_alerts_per_symbol_per_hour: (next.max_alerts_per_symbol_per_hour as number | undefined) ?? 5,
-      result_retention_hours: (next.result_retention_hours as number | undefined) ?? 24,
-    });
+      result_retention_hours: (next.result_retention_hours as number | undefined) ?? 24 });
   }, [initialConfig]);
 
   const validate = () => {
@@ -111,8 +109,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       max_symbols_per_scan: 2000,
       alert_cooldown_seconds: 300,
       max_alerts_per_symbol_per_hour: 5,
-      result_retention_hours: 24,
-    });
+      result_retention_hours: 24 });
     setErrors({});
   };
 
@@ -123,9 +120,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
     border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
     borderRadius: "var(--r-sm, 6px)",
     color: "var(--text-primary, #f1f5f9)",
-    fontSize: "var(--fs-md)",
-    outline: "none",
-  };
+    fontSize: "var(--fs-md)" };
 
   const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
     createElement("div", { className: styles.screenerField },
@@ -136,8 +131,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         onChange: (e) => setConfig((prev) => ({ ...prev, [key]: parseInt(e.target.value, 10) || (min ?? 0) })),
         min: min,
         max: max,
-        style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" },
-      }),
+        style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" } }),
       errors[key as string] && createElement("p", { className: styles.screenerFieldError }, errors[key as string])
     );
 
@@ -152,11 +146,11 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
       ),
     ),
-    createElement("details", { className: styles.sectionCard,  },
+    createElement("details", { className: styles.sectionCard },
       createElement("summary", { },
         t("soc.screener.config.advanced")
       ),
-      createElement("div", { className: styles.configEditor,  },
+      createElement("div", { className: styles.configEditor },
         JSON.stringify(resolveScreenerConfigSource(props.initialConfig), null, 2)
       ),
     ),
@@ -165,27 +159,21 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
           onClick: handleReset,
           variant: "ghost",
           size: "sm",
-          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
-        
-      },
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}` },
       t("soc.screener.config.reset")
       ),
         createElement(Button, {
           onClick: onCancel,
           variant: "ghost",
           size: "sm",
-          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
-        
-      },
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}` },
       t("common.cancel")
       ),
         onPreview ? createElement(Button, {
           onClick: handlePreview,
           variant: "ghost",
           size: "sm",
-          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
-        
-      },
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}` },
       t("soc.screener.config.preview")
       ) : null,
         createElement(Button, {
@@ -193,9 +181,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
           disabled: loading,
           variant: "default",
           size: "sm",
-          className: `${styles.actionBtn} ${styles.actionBtnPrimary}`,
-        
-      },
+          className: `${styles.actionBtn} ${styles.actionBtnPrimary}` },
       loading ? t("common.saving") : t("common.save")
       ),
     ),

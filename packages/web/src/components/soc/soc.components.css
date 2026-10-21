@@ -4081,6 +4081,7 @@
   transition: background-color 600000s, color 600000s;
 }
 
+
 /* ── VNBroker console (2026-10-19) ───────────────────────────────────────
  * Chi them class — khong sua rule cu (L-F05: giu nguyen transition goc).
  * Dung cho panel quan tri nha cung cap du lieu thi truong. */
@@ -4367,3 +4368,42 @@
   --soc-status-muted: var(--text-muted, #94a3b8);
 }
 
+/* ── LIGHT MODE (W1 · UI Standardization W1) ────────────────────────────────
+   Các class SOC được SCOPE (hash) khi import qua barrel `soc.module.css`
+   ⇒ một override ở file global KHÔNG match được ⇒ phải override TẠI ĐÂY.
+   Đo thật 2026-10-21 trên staging (build e03762ea8): badge/bảng này giữ màu
+   TỐI ⇒ chữ sáng trên nền sáng (1.25:1 … 2.56:1) ⇒ dưới WCAG AA.
+   Giá trị: theo SSOT light `theme/tokens.css:65-71` + bảng remap của
+   `check-light-theme.mjs` (emerald-700 #047857 · cyan-700 #0e7490 ·
+   amber-700 #b45309 · red-700 #b91c1c · slate-600 #475569). */
+:root[data-theme="light"] .statusBadgeOk {
+  color: #047857;
+}
+:root[data-theme="light"] .statusBadgeOff {
+  color: #475569;
+}
+:root[data-theme="light"] .statusBadgeInfo {
+  color: #0e7490;
+}
+:root[data-theme="light"] .statusBadgeSuccess {
+  color: #047857;
+}
+:root[data-theme="light"] .statusBadgeWarning {
+  color: #b45309;
+}
+:root[data-theme="light"] .statusBadgeDanger {
+  color: #b91c1c;
+}
+:root[data-theme="light"] .pageBtn {
+  color: #475569;
+}
+:root[data-theme="light"] .pageBtn:not(:disabled):hover {
+  color: #0f172a;
+}
+:root[data-theme="light"] .overviewMetricValue {
+  color: #475569;
+}
+:root[data-theme="light"] .socDataTable th,
+:root[data-theme="light"] .diffTable th {
+  color: #475569;
+}

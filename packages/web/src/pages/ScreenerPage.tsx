@@ -62,8 +62,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           field: c.field,
           min: verr.min ?? "−∞",
           max: verr.max ?? "+∞",
-          defaultValue: `Giá trị ${c.field} phải trong khoảng ${verr.min ?? "−∞"}–${verr.max ?? "+∞"}`,
-        }));
+          defaultValue: `Giá trị ${c.field} phải trong khoảng ${verr.min ?? "−∞"}–${verr.max ?? "+∞"}` }));
         return;
       }
     }
@@ -74,8 +73,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
   return (
     <div style={{
       background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-      borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', display: 'flex', flexDirection: 'column', gap: '16px',
-    }}>
+      borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
         <label htmlFor="screener-rule-name" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted, #94a3b8)', marginBottom: '4px', display: 'block' }}>
           {t('screener.ruleName')}
@@ -89,8 +87,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           style={{
             width: '100%', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
             color: 'var(--text-primary, #f1f5f9)', fontSize: 'var(--fs-md)', borderRadius: '4px',
-            padding: '0.5rem 0.75rem', outline: 'none',
-          }}
+            padding: '0.5rem 0.75rem' }}
         />
       </div>
       <ScreenerFilterBuilder
@@ -104,8 +101,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           onClick={handleSave}
           style={{
             padding: '0.5rem 1rem', background: 'var(--accent-cyan, #06b6d4)', color: 'var(--text-on-accent)', fontSize: 'var(--fs-md)',
-            borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600,
-          }}
+            borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600 }}
         >
           {t('screener.saveRule')}
         </button>
@@ -113,8 +109,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           onClick={onCancel}
           style={{
             padding: '0.5rem 1rem', background: 'color-mix(in srgb, var(--bg-panel) 80%, transparent)', color: 'var(--text-secondary, #94a3b8)', fontSize: 'var(--fs-md)',
-            borderRadius: 'var(--r-md)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', cursor: 'pointer',
-          }}
+            borderRadius: 'var(--r-md)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', cursor: 'pointer' }}
         >
           {t('common.cancel')}
         </button>
@@ -131,8 +126,7 @@ export function ScreenerPage() {
     ['screener', 'rules'],
     '/screener/rules/',
     {
-      queryFn: () => coreApiAdapter.getScreenerRules().then((d: any) => (Array.isArray(d) ? d : d.results || [])),
-    },
+      queryFn: () => coreApiAdapter.getScreenerRules().then((d: any) => (Array.isArray(d) ? d : d.results || [])) },
   );
   const rules: Rule[] = useMemo(() => (rulesData as Rule[] | undefined) ?? [], [rulesData]);
   const [editing, setEditing] = useState<Rule | 'new' | null>(null);
@@ -230,8 +224,7 @@ export function ScreenerPage() {
   const handleDelete = async (id: number) => {    const confirmed = await confirm({
       title: t("screener.deleteRuleTitle"),
       message: t("screener.deleteRuleConfirm"),
-      variant: "destructive",
-    });
+      variant: "destructive" });
     if (!confirmed) return;
     try {
       await coreApiAdapter.deleteScreenerRule(String(id));
@@ -253,9 +246,7 @@ export function ScreenerPage() {
         symbol: r.symbol,
         close: r.close,
         action: r.ai_advisory?.strategy_action ?? null,
-        score: r.ai_advisory?.ai_score_0_100 ?? null,
-      })),
-    };
+        score: r.ai_advisory?.ai_score_0_100 ?? null })) };
     setHistory(saveScreenerRun(entry));
     // P2.3: BE auto-creates ScreenerRunHistory on run — invalidate server list
     try {
@@ -283,10 +274,8 @@ export function ScreenerPage() {
           title: t('screener.templates.preview'),
           message: t('screener.duplicateRuleConfirm', {
             name: dup.name,
-            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?`,
-          }),
-          variant: "default",
-        });
+            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?` }),
+          variant: "default" });
         if (!ok) return;
         ruleId = dup.id;
         ruleName = dup.name;
@@ -297,8 +286,7 @@ export function ScreenerPage() {
         const created = await coreApiAdapter.createScreenerRule({
           name: `[Thử] ${t(tmpl.name_key)}`,
           rules_json: candidate,
-          is_active: false,
-        });
+          is_active: false });
         ruleId = created.id ?? null;
         ruleName = created.name || t(tmpl.name_key);
         setPreviewRuleId(ruleId);
@@ -328,10 +316,8 @@ export function ScreenerPage() {
           title: t('screener.templates.saveAsRule'),
           message: t('screener.duplicateRuleConfirm', {
             name: dup.name,
-            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?`,
-          }),
-          variant: "default",
-        });
+            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?` }),
+          variant: "default" });
         if (!ok) return;
         setEditing(dup);
         return;
@@ -514,8 +500,7 @@ export function ScreenerPage() {
       order: order === 'asc' || order === 'desc' ? order : DEFAULT_SCAN_PARAMS.order,
       page: Number.isInteger(page) && page >= 1 ? page : 1,
       limit: [10, 25, 50, 100, 2000].includes(limit) ? limit : DEFAULT_SCAN_PARAMS.limit,
-      include_ai: DEFAULT_SCAN_PARAMS.include_ai,
-    };
+      include_ai: DEFAULT_SCAN_PARAMS.include_ai };
     if (searchParams.get('run') === '1') {
       setTimeout(() => runWithParams(found, params), 0);
     } else {
@@ -532,15 +517,13 @@ export function ScreenerPage() {
     const data = await coreApiAdapter.runScreenerRule(String(activeRule.id), {
       ...scanParams,
       page: 1,
-      limit: 2000,
-    });
+      limit: 2000 });
     return (data.matched ?? []) as Array<Record<string, unknown>>;
   }, [activeRule, scanParams, results]);
 
   const pageStyle: React.CSSProperties = {
     padding: '24px', display: 'flex', flexDirection: 'column', gap: 'var(--sp-6)',
-    maxWidth: '1200px', margin: '0 auto',
-  };
+    maxWidth: '1200px', margin: '0 auto' };
 
   return (
     <div style={pageStyle}>
@@ -556,8 +539,7 @@ export function ScreenerPage() {
             onClick={() => setEditing('new')}
             style={{
               padding: '0.5rem 1rem', background: 'var(--accent-cyan, #06b6d4)', color: 'var(--text-on-accent)',
-              fontSize: 'var(--fs-md)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600,
-            }}
+              fontSize: 'var(--fs-md)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600 }}
           >
             {t('screener.createRule')}
           </button>
@@ -566,8 +548,7 @@ export function ScreenerPage() {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
         background: 'color-mix(in srgb, var(--accent-cyan) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-cyan) 18%, transparent)',
-        color: 'var(--accent-shell)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)', fontSize: 'var(--fs-xs)',
-      }}>
+        color: 'var(--accent-shell)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)', fontSize: 'var(--fs-xs)' }}>
         <span>{t('screener.opsHint')}</span>
         <a href="/operations-center?tab=screener" style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
           {t('screener.opsLink')}
@@ -578,8 +559,7 @@ export function ScreenerPage() {
         <div style={{
           background: 'color-mix(in srgb, var(--accent-rose) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-rose) 50%, transparent)',
           color: 'var(--accent-rose)', fontSize: 'var(--fs-md)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{error}</span>
           <button
             onClick={() => setError('')}
@@ -594,8 +574,7 @@ export function ScreenerPage() {
         <div style={{
           background: 'color-mix(in srgb, var(--accent-emerald) 12%, transparent)', border: '1px solid rgba(74,222,128,0.4)',
           color: 'var(--accent-emerald)', fontSize: 'var(--fs-md)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{notice}</span>
           <button
             onClick={() => setNotice('')}
@@ -619,16 +598,14 @@ export function ScreenerPage() {
           {[1, 2].map((i) => (
             <div key={i} style={{
               height: '64px', background: 'color-mix(in srgb, var(--bg-panel) 40%, transparent)', borderRadius: 'var(--r-lg)',
-              animation: 'pulse 2s infinite',
-            }} />
+              animation: 'pulse 2s infinite' }} />
           ))}
         </div>
       ) : rules.length === 0 ? (
         <div style={{
           background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
           borderRadius: 'var(--r-lg)', padding: '40px', textAlign: 'center',
-          color: 'var(--text-muted, #94a3b8)', fontSize: 'var(--fs-md)',
-        }}>
+          color: 'var(--text-muted, #94a3b8)', fontSize: 'var(--fs-md)' }}>
           {t('screener.noRules')}
         </div>
       ) : (
@@ -636,8 +613,7 @@ export function ScreenerPage() {
           {rules.map((rule) => (
             <div key={rule.id} style={{
               background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-              borderRadius: 'var(--r-lg)', padding: '16px',
-            }}>
+              borderRadius: 'var(--r-lg)', padding: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1', minWidth: '0' }}>
                   <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary, #f1f5f9)' }}>{rule.name}</p>
@@ -659,16 +635,14 @@ export function ScreenerPage() {
                       background: running === rule.id ? 'color-mix(in srgb, var(--accent-emerald) 30%, transparent)' : 'color-mix(in srgb, var(--accent-emerald) 20%, transparent)',
                       border: '1px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent)', color: 'var(--accent-emerald)', fontSize: 'var(--fs-xs)',
                       borderRadius: 'var(--r-md)', cursor: running === rule.id ? 'not-allowed' : 'pointer',
-                      fontWeight: 500, opacity: running === rule.id ? 0.6 : 1,
-                    }}
+                      fontWeight: 500, opacity: running === rule.id ? 0.6 : 1 }}
                   >
                     {running === rule.id ? (
                       <>
                         <span style={{
                           width: '12px', height: '12px', border: '2px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent)',
                           borderTopColor: 'var(--accent-emerald)', borderRadius: '50%', display: 'inline-block',
-                          animation: 'spin 1s linear infinite',
-                        }} />
+                          animation: 'spin 1s linear infinite' }} />
                         {t('screener.running')}
                       </>
                     ) : t('screener.run')}
@@ -678,8 +652,7 @@ export function ScreenerPage() {
                     style={{
                       padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)',
                       border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', color: 'var(--text-secondary, #94a3b8)',
-                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                    }}
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer' }}
                   >
                     {t('common.edit')}
                   </button>
@@ -691,8 +664,7 @@ export function ScreenerPage() {
                       background: rule.is_public ? 'color-mix(in srgb, var(--accent-cyan) 20%, transparent)' : 'color-mix(in srgb, var(--bg-panel) 60%, transparent)',
                       border: rule.is_public ? '1px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent)' : '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
                       color: rule.is_public ? 'var(--accent-cyan)' : 'var(--text-secondary, #94a3b8)',
-                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                    }}
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer' }}
                   >
                     {rule.is_public
                       ? t('screener.community.unshare', { defaultValue: 'Hủy chia sẻ' })
@@ -703,8 +675,7 @@ export function ScreenerPage() {
                     style={{
                       padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--accent-rose) 15%, transparent)',
                        border: '1px solid color-mix(in srgb, var(--accent-rose) 30%, transparent)', color: 'var(--accent-rose)',
-                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                    }}
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer' }}
                   >
                     {t('common.delete')}
                   </button>
@@ -718,8 +689,7 @@ export function ScreenerPage() {
       {results && previewInfo && (
         <div style={{
           background: 'color-mix(in srgb, var(--accent-cyan) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-cyan) 35%, transparent)',
-          color: 'var(--accent-cyan)', fontSize: 'var(--fs-sm)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)',
-        }}>
+          color: 'var(--accent-cyan)', fontSize: 'var(--fs-sm)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)' }}>
           {t('screener.previewBanner', { defaultValue: 'Kết quả chạy thử — chưa lưu thành rule' })}
           {DOT_SEPARATOR}
           {previewInfo.ruleName}
@@ -729,8 +699,7 @@ export function ScreenerPage() {
         <div style={{
           background: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-blue) 35%, transparent)',
           color: 'var(--accent-blue)', fontSize: 'var(--fs-sm)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
-          display: 'flex', flexDirection: 'column', gap: '8px',
-        }}>
+          display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <span>
               {t('screener.jobQueued')}
@@ -741,8 +710,7 @@ export function ScreenerPage() {
               onClick={handleCancelPoll}
               style={{
                 padding: '0.25rem 0.5rem', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-blue) 35%, transparent)',
-                color: 'var(--accent-blue)', fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer',
-              }}
+                color: 'var(--accent-blue)', fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
             >
               {t('common.cancel' as any)}
             </button>
@@ -751,8 +719,7 @@ export function ScreenerPage() {
             <div style={{
               width: jobStatus.total ? `${Math.min(100, ((jobStatus.scanned ?? 0) / jobStatus.total) * 100)}%` : '30%',
               height: '100%', background: 'var(--accent-blue)', transition: 'width 0.5s',
-              animation: jobStatus.status === 'queued' ? 'pulse 1.5s infinite' : undefined,
-            }} />
+              animation: jobStatus.status === 'queued' ? 'pulse 1.5s infinite' : undefined }} />
           </div>
           <span style={{ fontSize: 'var(--fs-2xs)', color: 'color-mix(in srgb, var(--accent-blue) 80%, transparent)' }}>
             {t('screener.jobCancelNote')}
@@ -769,8 +736,7 @@ export function ScreenerPage() {
                   limit: results.limit ?? scanParams.limit,
                   pages: results.pages ?? 1,
                   sort: results.sort ?? scanParams.sort,
-                  order: results.order ?? scanParams.order,
-                }
+                  order: results.order ?? scanParams.order }
               : null
           }
           busy={running !== null}

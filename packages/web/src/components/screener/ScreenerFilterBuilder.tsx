@@ -41,8 +41,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
       field: fieldKey,
       op: spec?.defaultOp ?? "gt",
       value: spec?.defaultValue ?? 0,
-      logic: "AND",
-    }]);
+      logic: "AND" }]);
   }, [conditions, onChange, maxConditions]);
 
   const renderCondition = (cond: ScreenerCondition, index: number) => {
@@ -59,8 +58,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           padding: "8px",
           background: "rgba(15,23,42,0.3)",
           borderRadius: "8px",
-          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-        }
+          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" }
       },
       index > 0 && createElement(
         "select",
@@ -74,9 +72,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             borderRadius: "4px",
             color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
-            outline: "none",
-            minWidth: "70px",
-          }
+            minWidth: "70px" }
         },
         LOGIC_OPTIONS.map((o) => createElement("option", { key: o.value, value: o.value }, t("screener.logic." + o.value)))
       ),
@@ -93,9 +89,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             borderRadius: "4px",
             color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
-            outline: "none",
-            minWidth: "180px",
-          }
+            minWidth: "180px" }
         },
         Object.entries(SCREENER_FIELD_GROUPS).flatMap(([groupKey, group]) =>
           createElement("optgroup", { key: groupKey, label: t("screener.group." + groupKey) },
@@ -117,9 +111,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             borderRadius: "4px",
             color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
-            outline: "none",
-            minWidth: "60px",
-          }
+            minWidth: "60px" }
         },
         OP_OPTIONS.map((o) => createElement("option", { key: o.value, value: o.value }, o.label))
       ),
@@ -139,9 +131,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             borderRadius: "4px",
             color: "var(--text-primary, #f1f5f9)",
-            fontSize: "12px",
-            outline: "none",
-          }
+            fontSize: "12px" }
         }
       ),
       conditions.length > 1 && createElement(
@@ -155,8 +145,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             color: "#f87171",
             borderRadius: "4px",
             cursor: "pointer",
-            fontSize: "12px",
-          }
+            fontSize: "12px" }
         },
         "\u2715"
       )
@@ -182,8 +171,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             borderRadius: "6px",
             border: "none",
             cursor: "pointer",
-            fontWeight: 500,
-          }
+            fontWeight: 500 }
         },
         t("screener.addCondition")
       )
@@ -211,8 +199,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
                   type: "checkbox",
                   checked: conditions.some(c => c.field === fieldKey),
                   onChange: () => togglePickerField(fieldKey),
-                  style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" },
-                }),
+                  style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" } }),
                 t("screener.fields." + field.key)
               )
             )

@@ -3,9 +3,10 @@
   "scope": [
     "packages/web/src/index.css",
     "packages/web/src/theme/tokens.css",
-    "packages/web/src/components/soc/soc.tokens.css"
+    "packages/web/src/components/soc/soc.tokens.css",
+    "packages/web/src/theme/light-theme.css"
   ],
-  "measuredAt": "2026-10-21T00:32:57.285Z",
+  "measuredAt": "2026-10-21T07:54:22.517Z",
   "minRatio": 4.5,
   "violations": [
     "accent-cyan-on-bg-primary@soc/light",
@@ -54,13 +55,13 @@
     "text-muted-on-bg-panel-token@shell/dark": "--text-muted tren --bg-panel = 3.75:1 (< 4.5:1) · shell/dark",
     "text-muted-on-bg-panel@shell/dark": "--text-muted tren --color-bg-panel = 3.75:1 (< 4.5:1) · shell/dark",
     "text-muted-on-bg-panel@shell/light": "--text-muted tren --color-bg-panel = 3.75:1 (< 4.5:1) · shell/light",
-    "text-muted-on-bg-panel@soc/light": "--text-muted tren --color-bg-panel = 3.75:1 (< 4.5:1) · soc/light",
+    "text-muted-on-bg-panel@soc/light": "--text-muted tren --color-bg-panel = 2.36:1 (< 4.5:1) · soc/light",
     "text-muted-on-bg-primary@shell/dark": "--text-muted tren --color-bg-primary = 4.24:1 (< 4.5:1) · shell/dark",
     "text-muted-on-bg-primary@shell/light": "--text-muted tren --color-bg-primary = 4.24:1 (< 4.5:1) · shell/light",
-    "text-muted-on-bg-primary@soc/light": "--text-muted tren --color-bg-primary = 4.24:1 (< 4.5:1) · soc/light",
+    "text-muted-on-bg-primary@soc/light": "--text-muted tren --color-bg-primary = 2.66:1 (< 4.5:1) · soc/light",
     "text-muted-on-bg-secondary@shell/dark": "--text-muted tren --color-bg-secondary = 3.75:1 (< 4.5:1) · shell/dark",
     "text-muted-on-bg-secondary@shell/light": "--text-muted tren --color-bg-secondary = 3.75:1 (< 4.5:1) · shell/light",
-    "text-muted-on-bg-secondary@soc/light": "--text-muted tren --color-bg-secondary = 3.75:1 (< 4.5:1) · soc/light",
+    "text-muted-on-bg-secondary@soc/light": "--text-muted tren --color-bg-secondary = 2.36:1 (< 4.5:1) · soc/light",
     "text-on-accent-on-accent-cyan@shell/dark": "--text-on-accent tren --accent-cyan = 2.43:1 (< 4.5:1) · shell/dark",
     "text-on-accent-on-accent-cyan@shell/light": "--text-on-accent tren --accent-cyan = 2.43:1 (< 4.5:1) · shell/light",
     "text-on-accent-on-accent-cyan@soc/dark": "--text-on-accent tren --accent-cyan = 1.81:1 (< 4.5:1) · soc/dark",
@@ -89,9 +90,6 @@
     "pf-positive-text-on-pf-positive-soft@shell/light",
     "pf-negative-text-on-pf-negative-soft@shell/light"
   ],
-  "runtime": {
-    "fingerprint": "/assets/adapters-BLMSU645.js\n/assets/casl-DuoGIQh7.js\n/assets/context-B96ebgt5.js\n/assets/hooks-XFOCPTrk.js\n/assets/i18n-BADHzG9o.js\n/assets/icons-Cwm2-TF2.js\n/assets/index-COBl2dPh.js\n/assets/index-ZvEAG5nN.css\n/assets/react-vendor-DY_EuVRM.js\n/assets/tanstack-CLZZaXwP.js\n/assets/ui-mRsKotQ1.js\n/assets/utils-B0CuFPs6.js\n/assets/vite-helpers-BxaVoaJg.js"
-  },
   "undecodableDetails": {
     "text-primary-on-bg-panel-solid@shell/dark": "shell/dark: text-primary-on-bg-panel-solid (--bg-panel-solid khong doc duoc duoc giai ma tinh)",
     "pf-gain-on-pf-surface@shell/dark": "shell/dark: pf-gain-on-pf-surface (--pf-gain khong doc duoc duoc giai ma tinh)",
@@ -105,5 +103,8 @@
     "pf-flat-on-pf-surface@shell/light": "shell/light: pf-flat-on-pf-surface (--pf-flat khong doc duoc duoc giai ma tinh)",
     "pf-positive-text-on-pf-positive-soft@shell/light": "shell/light: pf-positive-text-on-pf-positive-soft (--pf-positive-text khong doc duoc duoc giai ma tinh)",
     "pf-negative-text-on-pf-negative-soft@shell/light": "shell/light: pf-negative-text-on-pf-negative-soft (--pf-negative-text khong doc duoc duoc giai ma tinh)"
+  },
+  "runtime": {
+    "fingerprint": "/assets/adapters-B64GAyed.js\n/assets/casl-DuoGIQh7.js\n/assets/context-C5xsvACj.js\n/assets/hooks-BYurvqtA.js\n/assets/i18n-BRCzXFAs.js\n/assets/icons-Cwm2-TF2.js\n/assets/index-6F88Igur.js\n/assets/index-RUsrVPe2.css\n/assets/react-vendor-DY_EuVRM.js\n/assets/tanstack-CLZZaXwP.js\n/assets/ui-mRsKotQ1.js\n/assets/utils-B0CuFPs6.js\n/assets/vite-helpers-BxaVoaJg.js"
   }
 }

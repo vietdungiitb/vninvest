@@ -142,27 +142,23 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
       { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } },
       createElement("input", {
         value: name, onChange: (e: any) => setName(e.target.value), placeholder: t("screener.schedule.namePlaceholder"),
-        style: { flex: "1", minWidth: "160px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px", outline: "none" },
-      }),
+        style: { flex: "1", minWidth: "160px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" } }),
       createElement(
         "select",
         {
           value: ruleId, onChange: (e: any) => setRuleId(e.target.value),
-          style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" },
-        },
+          style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" } },
         createElement("option", { value: "" }, t("screener.schedule.ruleOption")),
         ...rules.filter((r) => r.id != null).map((r) => createElement("option", { key: r.id, value: String(r.id) }, r.name))
       ),
       createElement("input", {
         type: "time", value: runTime, onChange: (e: any) => setRunTime(e.target.value),
-        style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" },
-      }),
+        style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" } }),
       createElement(
         "button",
         {
           type: "button", onClick: () => { void handleCreate(); }, disabled: saving,
-          style: { padding: "6px 14px", background: "var(--accent-cyan, #06b6d4)", color: "#fff", fontSize: "13px", borderRadius: "8px", border: "none", cursor: saving ? "wait" : "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 },
-        },
+          style: { padding: "6px 14px", background: "var(--accent-cyan, #06b6d4)", color: "#fff", fontSize: "13px", borderRadius: "8px", border: "none", cursor: saving ? "wait" : "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 } },
         t("screener.schedule.create")
       )
     ),
@@ -184,9 +180,7 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
                 fontSize: "11px", padding: "3px 8px", borderRadius: "6px", cursor: "pointer",
                 background: on ? "rgba(34,211,238,0.2)" : "rgba(15,23,42,0.6)",
                 border: on ? "1px solid rgba(34,211,238,0.4)" : "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                color: on ? "#22d3ee" : "var(--text-secondary, #94a3b8)",
-              },
-            },
+                color: on ? "#22d3ee" : "var(--text-secondary, #94a3b8)" } },
             dayLabel(wd)
           );
         })

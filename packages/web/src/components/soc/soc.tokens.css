@@ -143,7 +143,7 @@
 :root[data-theme="light"] {
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted: #64748b;
+  --text-muted: #475569;
   --border-default: rgba(15, 23, 42, 0.12);
   --border-strong: rgba(15, 23, 42, 0.2);
   --bg-panel: #ffffff;
@@ -190,6 +190,12 @@
   --soc-c-06b6d4: #0e7490;
   --soc-c-48cae4: #0e7490;
   --soc-c-67e8f9: #0e7490;
+  /* W1-A (2026-10-21): 2 token SOC con thieu gia tri LIGHT => giu mau TOI o light mode
+     (do staging build e03762ea8: muted 2.45:1, badge xanh 2.54:1). Gia tri theo bang
+     remap cua check-light-theme.mjs. Cac token khac da co gia tri light san o duoi. */
+  --soc-c-94a3b8: #475569;
+  --soc-c-6ee7b7: #047857;
+  --soc-c-f87171: #b91c1c;
   --soc-c-34d399: #047857;
   --soc-rgb-34d399: 4 120 87;
   --soc-c-10b981: #047857;
