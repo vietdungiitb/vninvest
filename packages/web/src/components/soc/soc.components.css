@@ -4539,3 +4539,10 @@
   justify-content: start;
   white-space: nowrap;
 }
+
+/* Cot thao tac: rong theo noi dung (width:1%) + nowrap ⇒ 2 nut khong bi cat,
+   bang cuon ngang (wrapper `.cm-table-wrap` da co overflow-x:auto). */
+.vnbActionsCell {
+  width: 1%;
+  white-space: nowrap;
+}

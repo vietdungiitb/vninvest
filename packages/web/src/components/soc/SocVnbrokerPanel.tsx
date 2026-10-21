@@ -822,7 +822,7 @@ export function SocVnbrokerPanel() {
                     </span>
                   ),
                   actions: (
-                    <span className={styles.vnbTileActions}>
+                    <span className={`${styles.vnbTileActions} ${styles.vnbActionsCell}`}>
                       <button
                         type="button"
                         className={styles.vnbActionBtn}
