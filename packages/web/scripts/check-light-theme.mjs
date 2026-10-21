@@ -146,6 +146,16 @@ const TOKEN_LIGHT = {
   "--color-accent-primary": "#0891b2",
   "--color-accent-secondary": "#0e7490",
   "--color-accent-hover": "#0e7490",
+  // Semantic tones (W1-A): the bright tones are unreadable on a light canvas
+  // (measured on staging build e03762ea8: success-500 = 2.54:1 on white).
+  "--color-success-400": "#047857",
+  "--color-success-500": "#047857",
+  "--color-warning-400": "#b45309",
+  "--color-warning-500": "#b45309",
+  "--color-danger-400": "#b91c1c",
+  "--color-danger-500": "#dc2626",
+  "--color-info-400": "#1d4ed8",
+  "--color-info-500": "#1d4ed8",
 };
 
 /**
