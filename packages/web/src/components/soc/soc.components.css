@@ -4446,3 +4446,30 @@
   gap: 0.5rem;
   margin-left: auto;
 }
+
+/* ── W1-C: be mat SOC trong light mode ─────────────────────────────────────
+   Do (do bang chung 01-vnbroker-light.png, 2026-10-21): `.glassPanel` va
+   `.sectionCard` dung nen DARK-first (`rgba(#0f172a/.3)`, `rgba(#081734/.4)`) ⇒
+   o light mode be mat xam-trung tinh va **chu sang tren nen xam** ⇒ dai meta
+   va nut hanh dong bi mo (tuong phan < 4.5:1). Fix: be mat sang + chu toi.
+   Gia tri lay tu SSOT `theme/tokens.css:65-71`. */
+:root[data-theme="light"] .glassPanel {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="light"] .sectionCard {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+:root[data-theme="light"] .vnbActionBtn {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  white-space: nowrap;
+}
+:root[data-theme="light"] .vnbActionBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+.vnbCellValue {
+  white-space: nowrap;
+}

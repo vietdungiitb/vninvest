@@ -792,17 +792,17 @@ export function SocVnbrokerPanel() {
                     </span>
                   ),
                   latency: (
-                    <span className={styles.vnbStatValue}>
+                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                       {row?.latency_ms == null ? "—" : `${row.latency_ms}ms`}
                     </span>
                   ),
                   success: (
-                    <span className={styles.vnbStatValue}>
+                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                       {row?.success_rate == null ? "—" : `${row.success_rate}%`}
                     </span>
                   ),
                   requests: (
-                    <span className={styles.vnbStatValue}>
+                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                       {row ? `${row.total_requests} / ${row.failed_requests}` : "—"}
                     </span>
                   ),
@@ -817,7 +817,7 @@ export function SocVnbrokerPanel() {
                     </span>
                   ),
                   lastCheck: (
-                    <span className={styles.vnbStatValue}>
+                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                       {row?.last_success_at ? formatTime(row.last_success_at) : "—"}
                     </span>
                   ),
@@ -1213,7 +1213,7 @@ export function SocVnbrokerPanel() {
             </div>
             <div className={styles.vnbStatRow} data-testid="vnb-cb-failures">
               <span className={styles.vnbStatLabel}>{t("soc.vnbroker.breaker_failures")}</span>
-              <span className={styles.vnbStatValue}>
+              <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                 {breaker?.failures ?? 0} / {breaker?.threshold ?? 0}
               </span>
             </div>
@@ -1231,11 +1231,11 @@ export function SocVnbrokerPanel() {
             </div>
             <div className={styles.vnbStatRow}>
               <span className={styles.vnbStatLabel}>{t("soc.vnbroker.last_check")}</span>
-              <span className={styles.vnbStatValue}>{formatTime(health?.last_check_at)}</span>
+              <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>{formatTime(health?.last_check_at)}</span>
             </div>
             <div className={styles.vnbStatRow}>
               <span className={styles.vnbStatLabel}>{t("soc.vnbroker.consecutive_failures")}</span>
-              <span className={styles.vnbStatValue}>{health?.consecutive_failures ?? 0}</span>
+              <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>{health?.consecutive_failures ?? 0}</span>
             </div>
           </div>
 
@@ -1251,7 +1251,7 @@ export function SocVnbrokerPanel() {
                 {providerHealth.map((row) => (
                   <div className={styles.vnbStatRow} key={row.provider}>
                     <span className={styles.vnbStatLabel}>{row.label || row.provider}</span>
-                    <span className={styles.vnbStatValue}>
+                    <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
                       {row.latency_ms == null ? "—" : `${row.latency_ms}ms`} ·{" "}
                       {row.success_rate == null ? "—" : `${row.success_rate}%`}
                     </span>
@@ -1259,7 +1259,7 @@ export function SocVnbrokerPanel() {
                 ))}
                 <div className={styles.vnbStatRow} data-testid="vnb-provider-health-source">
                   <span className={styles.vnbStatLabel}>{t("soc.vnbroker.data_source")}</span>
-                  <span className={styles.vnbStatValue}>{providerHealthSource}</span>
+                  <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>{providerHealthSource}</span>
                 </div>
               </>
             ) : (
@@ -1317,7 +1317,7 @@ export function SocVnbrokerPanel() {
         {benchmark?.recommendation?.primary_provider ? (
           <div className={styles.vnbStatRow} data-testid="vnb-benchmark-recommendation">
             <span className={styles.vnbStatLabel}>{t("soc.vnbroker.optimized_primary")}</span>
-            <span className={styles.vnbStatValue}>
+            <span className={`${styles.vnbStatValue} ${styles.vnbCellValue}`}>
               {benchmark.recommendation.primary_provider} ·{" "}
               {t("soc.vnbroker.optimized_fallback")}:{" "}
               {benchmark.recommendation.fallback_provider || "—"} ·{" "}
