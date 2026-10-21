@@ -4407,3 +4407,26 @@
 :root[data-theme="light"] .diffTable th {
   color: #475569;
 }
+
+/* ── W1 redesign (R2): bang nguon du lieu + o cell ─────────────────────── */
+.vnbCellSource {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+.vnbCellStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  max-width: 22rem;
+}
+.vnbEnvList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.vnbMetaStrip {
+  margin-bottom: 0.5rem;
+}
