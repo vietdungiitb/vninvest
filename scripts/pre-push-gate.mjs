@@ -71,14 +71,26 @@ const IS_WIN = process.platform === "win32";
  * duoc", khong phai "chay roi khong thay loi". Da gap that — gate bao FAIL
  * "0 loi" va chan moi push tren Windows trong khi lenh chua chay bao gio.
  */
-function run(cmd, args, cwd = REPO) {
+function run(cmd, args, cwd = REPO, timeoutMs = 0) {
   const exe = IS_WIN && /^(npm|npx|yarn|pnpm)$/.test(cmd) ? cmd + ".cmd" : cmd;
-  const r = spawnSync(exe, args, { cwd, encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(exe, args, {
+    cwd,
+    encoding: "utf8",
+    shell: false,
+    maxBuffer: 64 * 1024 * 1024,
+    ...(timeoutMs ? { timeout: timeoutMs, killSignal: "SIGKILL" } : {}),
+  });
   if (r.error) {
     return { code: null, out: "", launchError: `${r.error.code || "ERR"}: ${r.error.message}` };
   }
   if (r.status === null) {
-    return { code: null, out: (r.stdout || "") + (r.stderr || ""), launchError: `tiet truc ${exe}, khong co exit code` };
+    return {
+      code: null,
+      out: (r.stdout || "") + (r.stderr || ""),
+      launchError: r.signal
+        ? `het thoi gian (${timeoutMs}ms), bi huy`
+        : `tiet truc ${exe}, khong co exit code`,
+    };
   }
   return { code: r.status, out: (r.stdout || "") + (r.stderr || "") };
 }
@@ -429,6 +441,58 @@ if (existsSync(openapiBudget)) {
     ok("openapi-budget", left ? `${left} (no san, da baseline)` : "OK");
   }
 } else skip("openapi-budget", "khong co check-openapi-schema-budget.py");
+
+// ------------------------------------------- UI baseline gates (UI Standardization W0)
+// 5 gate trong `packages/web/scripts/` — moi gate KHOANG VI PHAM MOI (baseline-locked)
+// va co `--self-test` chung minh no bat loi that. Gate phu thuoc staging (a11y-runtime)
+// in `CHUA CHAY` + exit 0 khi khong co staging — vi cong nay coi exit != 0 la FAIL
+// (dong 437) nen exit != 0 se chan push oan.
+for (const uiGate of [
+  "check-token-conflict",
+  "check-heading-contract",
+  "check-focus-ring",
+  "check-theme-contrast",
+  "check-a11y-runtime",
+]) {
+  const gatePath = join(REPO, "packages", "web", "scripts", `${uiGate}.mjs`);
+  if (!existsSync(gatePath)) {
+    skip(`ui-${uiGate}`, `khong co packages/web/scripts/${uiGate}.mjs`);
+    continue;
+  }
+  // Timeout: gate nao phu thuoc staging (a11y-runtime do 10 route x 30s) co
+  // the treo vo han tren duong push. Het thoi gian => CHUA CHAY, khong phai
+  // FAIL (khong co bang chung de ket luan) — nhung van phai IN ra.
+  //
+  // `check-a11y-runtime` do tren APP SONG ⇒ tap vi pham doi theo DU LIEU
+  // (co alert hay khong, breadcrumb, chip-count...) ⇒ mot delta KHONG chung
+  // minh la hoi quy. No chay o che do --advisory: BAO CAO nhung KHONG CHAN
+  // push. Muon no chan that, can staging co du lieu DONG (seed) truoc — xem
+  // AUDIT_UI_STANDARDIZATION_W0 T-2.
+  const advisory = uiGate === "check-a11y-runtime";
+  const args = advisory ? [gatePath, "--advisory"] : [gatePath];
+  const r = run(process.execPath, args, join(REPO, "packages", "web"), 300000);
+  if (r.code === null) {
+    // Khong co exit code = gate khong chay xong (het thoi gian / khong spawn
+    // duoc) => KHONG co bang chung de ket luan, nen SKIP chu khong phai FAIL.
+    skip(`ui-${uiGate}`, `khong chay xong (${r.launchError || "khong ro"}) — CHUA CHAY`);
+  } else if (r.code !== 0) {
+    bad(`ui-${uiGate}`, r.out.split("\n").slice(0, 10).join("\n"));
+  } else {
+    // "CHUA CHAY" phai duoc uu tien hon "khong co vi pham MOI": mot gate in
+    // ca hai dong thi nguoi doc pre-push se thay "gate xanh" va bo qua
+    // "chua chay" — do chinh la cach doc sai (audit N-10).
+    // "VI PHAM MOI" phai duoc uu tien TREN "PASS": gate advisory in ra danh
+    // sach vi pham moi nhưng exit 0 ⇒ neu hieu "PASS" thi ta BÁO PASS cho
+    // thu co vi pham — dang xanh gia (L-G02).
+    const chuaChay = (r.out.match(/CHUA CHAY[^\n]*/) || [])[0];
+    const advisory = (r.out.match(/ADVISORY[^\n]*/) || [])[0];
+    const viPhamMoi = (r.out.match(/VI PHAM MOI[^\n]*/) || [])[0];
+    const xanh = (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0];
+    const summary =
+      chuaChay || advisory || viPhamMoi || xanh || (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
+    ok(`ui-${uiGate}`, summary.trim());
+  }
+}
 
 // ------------------------------------------------------------------ tong ket
 console.log("");

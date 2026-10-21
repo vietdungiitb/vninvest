@@ -50,7 +50,7 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | `edit`, `fuzzy`, `tool`, `replace`, `refactor`, `stash`, `crlf`, `lf`, `eol`, `numstat`, `normalize-eol` | `tooling-traps` | `docs/LESSONS/tooling-traps-2.md` |
 | `security`, `secret`, `secrets`, `.env`, `ignore`, `purge`, `rotate`, `revoke`, `token`, `fernet`, `history` | `security` | `docs/LESSONS/security.md` |
 | `measure`, `measurement`, `verify`, `probe`, `computed`, `contrast`, `parser`, `fail-before`, `root-cause`, `audit`, `screenshot`, `evidence`, `artifact`, `mutate`, `claim cua nguoi khac` | `verification` | `docs/LESSONS/verification.md` |
-| `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite` | `false-green` | `docs/LESSONS/false-green.md` |
+| `false-green`, `xanh-gia`, `pass`, `delete`, `script`, `numstat`, `resolve`, `proxy`, `urlconf`, `curl`, `dangling`, `suite`, `baseline`, `update-baseline`, `undecodable`, `oklch`, `id`, `set`, `hash`, `count`, `not-measured` | `false-green` | `docs/LESSONS/false-green.md` |
 
 **Quy tắc an toàn (fallback) — ưu tiên bỏ sót:**
 
