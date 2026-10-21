@@ -40,6 +40,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -173,7 +174,15 @@ function collectConflicts(repo, scopeKey) {
     const detail = defs
       .map((d) => `${d.file}:${d.line} (${d.kind}) = ${d.value}`)
       .join("  ||  ");
-    violations.push({ id: name, detail });
+    // The id carries the VALUES, not only the name: a conflict whose value
+    // changed is a DIFFERENT defect (that is the one that breaks a route),
+    // and comparing names only would let it pass unnoticed.
+    const fingerprint = crypto
+      .createHash("sha1")
+      .update([...values].sort().join("|"))
+      .digest("hex")
+      .slice(0, 8);
+    violations.push({ id: `${name}@${fingerprint}`, detail });
   }
   violations.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return violations;

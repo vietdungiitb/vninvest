@@ -525,7 +525,10 @@ function measureStatic(repo) {
       const map = buildMap(repo, variant.order, theme);
       const canvas = resolveColor("--color-bg-primary", map);
       if (!canvas) {
-        undecodable.push(`${variantKey}/${theme}: --color-bg-primary khong doc duoc`);
+        undecodable.push({
+          id: `${variantKey}/${theme}#canvas`,
+          detail: `${variantKey}/${theme}: --color-bg-primary khong doc duoc`,
+        });
         continue;
       }
       const canvasOpaque = canvas[3] >= 1 ? canvas.slice(0, 3) : [0, 0, 0];
@@ -533,9 +536,10 @@ function measureStatic(repo) {
         const fg = resolveColor(pair.fg, map);
         const bg = resolveColor(pair.bg, map);
         if (!fg || !bg) {
-          undecodable.push(
-            `${variantKey}/${theme}: ${pair.id} (${!fg ? pair.fg : pair.bg} khong doc duoc duoc giai ma tinh)`,
-          );
+          undecodable.push({
+            id: `${pair.id}@${variantKey}/${theme}`,
+            detail: `${variantKey}/${theme}: ${pair.id} (${!fg ? pair.fg : pair.bg} khong doc duoc duoc giai ma tinh)`,
+          });
           continue;
         }
         const bgOpaque = composite(bg, canvasOpaque);
@@ -695,7 +699,11 @@ function writeBaseline(file, staticViolations, undecodable, runtime) {
     minRatio: MIN_RATIO,
     violations: staticViolations.map((v) => v.id),
     details: Object.fromEntries(staticViolations.map((v) => [v.id, v.detail])),
-    undecodable,
+    // Pairs that CANNOT be measured (oklch/color-mix/...). They are recorded
+    // so a NEW unmeasurable pair is caught instead of silently shrinking the
+    // measured set (see AUDIT_UI_STANDARDIZATION_W0 B-2).
+    undecodable: undecodable.map((u) => u.id),
+    undecodableDetails: Object.fromEntries(undecodable.map((u) => [u.id, u.detail])),
     runtime: runtime && runtime.status === "OK" ? { fingerprint: runtime.fingerprint } : { status: "CHUA_CHAY" },
   };
   writeFileSync(file, JSON.stringify(payload, null, 2) + "\n", "utf8");
@@ -751,6 +759,27 @@ async function run(opts) {
     : await measureRuntimeCanvas();
 
   if (opts.update) {
+    // Refuse to write a baseline that would silently drop a pair the gate can
+    // no longer measure (B-2): the violation set would shrink for a reason
+    // that has nothing to do with a fix.
+    const prev = readBaseline(bFile);
+    if (prev) {
+      const prevIds = new Set(prev.violations || []);
+      const prevUndecodable = new Set(prev.undecodable || []);
+      const curUndecodable = new Set(staticResult.undecodable.map((u) => u.id));
+      const lost = [...prevIds].filter((id) => curUndecodable.has(id));
+      const newly = [...curUndecodable].filter((id) => !prevUndecodable.has(id));
+      if (lost.length || newly.length) {
+        console.error(
+          `check-theme-contrast: KHONG CHO PHA BASELINE — ${lost.length} cap bi mat vao 'khong doc duoc' ` +
+            `va ${newly.length} cap moi khong doc duoc.`,
+        );
+        for (const id of lost) console.error(`    mat vao undecodable: ${id}`);
+        for (const id of newly) console.error(`    undecodable moi: ${id}`);
+        console.error("  Ep ve rgb() truoc, do lai, roi moi --update-baseline.");
+        return 2;
+      }
+    }
     const payload = writeBaseline(bFile, staticResult.violations, staticResult.undecodable, runtime);
     console.log(
       `check-theme-contrast: DA GHI BASELINE ${bFile} (${payload.violations.length} vi pham).`,
@@ -812,8 +841,29 @@ async function run(opts) {
   }
 
   const known = new Set(baseline.violations || []);
+  const knownUndecodable = new Set(baseline.undecodable || []);
+  const undecodableIds = new Set(staticResult.undecodable.map((u) => u.id));
   const fresh = staticResult.violations.filter((v) => !known.has(v.id));
   const gone = [...known].filter((id) => !staticResult.violations.some((v) => v.id === id));
+  // B-2: a pair that WAS a violation and became undecodable (`oklch()`,
+  // `color-mix()`) left the measured set. It is NOT fixed — it is a pair the
+  // gate can no longer judge. Treat it as a regression, never as "gone".
+  const lostToUndecodable = [...known].filter((id) => undecodableIds.has(id));
+  // A pair that became undecodable shrinks the measured set: that is a
+  // coverage regression, not a pass.
+  const newUndecodable = [...undecodableIds].filter((id) => !knownUndecodable.has(id));
+  // A known violation that got WORSE keeps the same id (the id carries the
+  // pair, not the ratio) — compare the ratio so a pair sliding from 4.40:1
+  // to 4.10:1 is not silently accepted.
+  const ratioOf = (detail) => {
+    const m = String(detail || "").match(/=\s*([\d.]+):1/);
+    return m ? Number(m[1]) : null;
+  };
+  const baselineDetails = baseline.details || {};
+  const worse = staticResult.violations
+    .filter((v) => known.has(v.id))
+    .map((v) => ({ v, now: ratioOf(v.detail), before: ratioOf(baselineDetails[v.id]) }))
+    .filter((x) => x.now !== null && x.before !== null && x.now < x.before - 0.005);
 
   if (opts.printViolations) {
     for (const v of staticResult.violations) console.log(v.id);
@@ -829,11 +879,30 @@ async function run(opts) {
   for (const v of staticResult.violations) console.log(`    ${v.id}  ${v.detail}`);
   if (staticResult.undecodable.length) {
     console.log(`  ⚠ ${staticResult.undecodable.length} cap KHONG doc duoc (khong ket luan, khong coi la trong suot):`);
-    for (const u of staticResult.undecodable.slice(0, 12)) console.log(`    ${u}`);
+    for (const u of staticResult.undecodable.slice(0, 12)) console.log(`    ${u.id}  ${u.detail}`);
   }
   if (fresh.length) {
     console.error(`\n  ✗ ${fresh.length} VI PHAM MOI (khong co trong baseline):`);
     for (const v of fresh) console.error(`    ${v.id}  ${v.detail}`);
+    console.error("  ✗ REGRESSION — gate that.");
+    return 1;
+  }
+  if (lostToUndecodable.length) {
+    console.error(`\n  ✗ ${lostToUndecodable.length} cap trong baseline KHONG DOC DUOC nua (oklch/color-mix):`);
+    for (const id of lostToUndecodable) console.error(`    ${id}`);
+    console.error("  ✗ Cap da chuyen sang dang khong giai ma duoc ⇒ KHONG duoc coi la 'da sua'.");
+    console.error("  ✗ Phai ep ve rgb() truoc khi ket luan — gate that.");
+    return 1;
+  }
+  if (newUndecodable.length) {
+    console.error(`\n  ✗ ${newUndecodable.length} cap MOI khong doc duoc (tap do duoc bi thu nho):`);
+    for (const id of newUndecodable) console.error(`    ${id}`);
+    console.error("  ✗ Do duoc bi thu nho ⇒ gate that (xem AUDIT_UI_STANDARDIZATION_W0 M-6).");
+    return 1;
+  }
+  if (worse.length) {
+    console.error(`\n  ✗ ${worse.length} cap trong baseline bi XAU DI (tuong phan thap hon):`);
+    for (const x of worse) console.error(`    ${x.v.id}  ${x.before}:1 -> ${x.now}:1`);
     console.error("  ✗ REGRESSION — gate that.");
     return 1;
   }
@@ -990,17 +1059,19 @@ async function selfTest() {
     "color-text-muted-on-bg-primary",
   );
 
-  // L-V06 — `oklch()` is NOT decoded statically. The pair must be reported as
-  // UNDECODABLE (no verdict), NEVER silently treated as "transparent" and
-  // never counted as a violation.
+  // L-V06 + B-2 — `oklch()` is NOT decoded statically. The pair must be
+  // reported as UNDECODABLE (no verdict), NEVER silently treated as
+  // "transparent" and never counted as a violation. It must ALSO not shrink
+  // the measured set silently: the pair was measurable in the baseline, so
+  // losing it is a coverage regression ⇒ the gate blocks (audit B-2).
   await probe(
-    "CASE: mau oklch() → bao 'khong doc duoc', KHONG ket luan trong suot",
+    "CASE: mau oklch() → bao 'khong doc duoc', KHONG ket luan trong suot, tap do duoc bi thu nho ⇒ exit 1",
     (root) => {
       const f = path.join(root, "packages/web/src/index.css");
       const src = fs.readFileSync(f, "utf8");
       fs.writeFileSync(f, src.replace("--color-text-muted: #94a3b8;", "--color-text-muted: oklch(0.5 0.1 200);"), "utf8");
     },
-    0,
+    1,
     "khong doc duoc duoc giai ma tinh",
   );
 

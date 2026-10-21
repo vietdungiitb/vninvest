@@ -714,7 +714,18 @@ async function measureStaging() {
     if (!measured.length) {
       return { status: "CHUA_CHAY", reason: "khong route nao do duoc" };
     }
-    return { status: "OK", violations, notes, measured, fingerprint: buildFingerprint(index.body) };
+    // A route that could not be measured is NOT a route without violations.
+    // It is a route the gate did not look at (B-1) — the caller must not
+    // conclude "green" and must not offer to shrink the baseline.
+    const unmeasured = ROUTES.filter((r) => !measured.includes(r));
+    return {
+      status: "OK",
+      violations,
+      notes,
+      measured,
+      unmeasured,
+      fingerprint: buildFingerprint(index.body),
+    };
   } catch (err) {
     return { status: "CHUA_CHAY", reason: err.message };
   } finally {
@@ -790,8 +801,20 @@ async function run(opts) {
   }
 
   const violations = result.violations.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const unmeasured = result.unmeasured || [];
 
   if (opts.update) {
+    // B-1: writing a baseline from a PARTIAL measurement silently drops the
+    // routes that timed out — they would leave the scope of the gate for
+    // good. Refuse instead.
+    if (unmeasured.length) {
+      console.error(
+        `check-a11y-runtime: KHONG CHO PHA BASELINE — chi do duoc ${result.measured.length}/${ROUTES.length} route.`,
+      );
+      for (const r of unmeasured) console.error(`    chua do duoc: ${r}`);
+      console.error("  Do duoc day du tat ca route truoc khi ghi baseline.");
+      return 2;
+    }
     const payload = writeBaseline(bFile, violations, result.notes, result.fingerprint, result.measured);
     console.log(
       `check-a11y-runtime: DA GHI BASELINE ${bFile} (${payload.violations.length} vi pham / ${result.measured.length} route).`,
@@ -811,17 +834,25 @@ async function run(opts) {
 
   const known = new Set(baseline.violations || []);
   const fresh = violations.filter((v) => !known.has(v.id));
-  const gone = [...known].filter((id) => !violations.some((v) => v.id === id));
+  // A violation of a route that could NOT be measured is not "gone" — it was
+  // never looked at (B-1).
+  const routeOf = (id) => ROUTES.find((r) => id.startsWith(r)) || "";
+  const gone = [...known].filter(
+    (id) => !violations.some((v) => v.id === id) && !unmeasured.includes(routeOf(id)),
+  );
 
   if (opts.printViolations) {
     for (const v of violations) console.log(v.id);
     return 0;
   }
 
-  if (baseline.stagingBuild && result.fingerprint && baseline.stagingBuild !== result.fingerprint) {
+  const buildDiffers =
+    baseline.stagingBuild && result.fingerprint && baseline.stagingBuild !== result.fingerprint;
+  if (buildDiffers) {
     console.log(
-      `  ℹ staging build KHAC baseline du do (${result.fingerprint.split("\n")[0]} != ${baseline.stagingBuild.split("\n")[0]}) — ` +
-        `so sanh van dua tren TAP vi pham, khong tren so build.`,
+      `  ⚠ CHUA CHAY: staging build KHAC baseline du do ` +
+        `(${result.fingerprint.split("\n")[0]} != ${baseline.stagingBuild.split("\n")[0]}) — ` +
+        `so sanh VI PHAM van dua tren TAP, nhung danh sach "da het" KHONG duoc tin o build khac.`,
     );
   }
 
@@ -829,6 +860,13 @@ async function run(opts) {
     `check-a11y-runtime — ${violations.length} vi pham / ${result.measured.length} route da do ` +
       `| baseline ${known.size} | file: ${path.relative(opts.repo, bFile).split(path.sep).join("/")}`,
   );
+  if (unmeasured.length) {
+    console.log(
+      `  CHUA CHAY: ${unmeasured.length}/${ROUTES.length} route KHONG DO DUOC — ` +
+        `gate CHUA ket luan "xanh" cho cac route nay: ${unmeasured.join(", ")}`,
+    );
+    console.log("    (khong phai 'khong co vi pham' — mau chua do duoc, khong ket luan)");
+  }
   console.log("  TAP VI PHAM HIEN TAI:");
   if (!violations.length) console.log("    (khong co)");
   for (const v of violations) console.log(`    ${v.id}  ${v.detail}`);
@@ -842,9 +880,17 @@ async function run(opts) {
     console.error("  ✗ REGRESSION — gate that.");
     return 1;
   }
-  if (gone.length) {
+  if (gone.length && !buildDiffers) {
     console.log(`  ℹ ${gone.length} vi pham trong baseline da het: ${gone.join(", ")}`);
     console.log("    ⇒ co the ha baseline bang: node packages/web/scripts/check-a11y-runtime.mjs --update-baseline");
+  }
+  if (unmeasured.length) {
+    console.log("  ⚠ KHONG ket luan 'gate xanh' — pham vi do chua DAY DU (xem dong CHUA CHAY o tren).");
+    return 0;
+  }
+  if (buildDiffers) {
+    console.log("  ⚠ KHONG ket luan 'gate xanh' — staging build khac baseline (xem dong CHUA CHAY o tren).");
+    return 0;
   }
   console.log("  ✓ khong co vi pham MOI — gate xanh (tap vi pham ⊆ baseline).");
   return 0;

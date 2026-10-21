@@ -1,14 +1,26 @@
 {
   "gate": "check-focus-ring",
   "scope": "packages/web/src",
-  "measuredAt": "2026-10-20T16:13:23.860Z",
+  "measuredAt": "2026-10-21T04:03:06.755Z",
   "scannedFiles": 415,
   "violations": [
-    "packages/web/src/components/dashboard/PortfolioHeatmap.js",
-    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx"
+    "packages/web/src/components/TenantAdminCommandPalette.tsx#1",
+    "packages/web/src/components/dashboard/PortfolioHeatmap.js#1",
+    "packages/web/src/components/screener/ScreenerFilterBuilder.tsx#4",
+    "packages/web/src/components/screener/ScreenerSchedulePanel.tsx#1",
+    "packages/web/src/components/soc/SocScreenerConfigForm.tsx#1",
+    "packages/web/src/components/soc/SocScreenerRuleModal.tsx#3",
+    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx#1",
+    "packages/web/src/pages/ScreenerPage.tsx#1"
   ],
   "details": {
-    "packages/web/src/components/dashboard/PortfolioHeatmap.js": "dong 589: text-lg font-black text-slate-100 hover:text-cyan-400 hover:underline transition-all focus",
-    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx": "dong 93: p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none"
+    "packages/web/src/components/TenantAdminCommandPalette.tsx#1": "dong 57: inline style \", background: \"transparent\", color: \"var(--text-primary)\", outline: \"none\", fontSize: 14 ",
+    "packages/web/src/components/dashboard/PortfolioHeatmap.js#1": "dong 589: text-lg font-black text-slate-100 hover:text-cyan-400 hover:underline transition-all focus",
+    "packages/web/src/components/screener/ScreenerFilterBuilder.tsx#4": "dong 77: inline style imary, #f1f5f9)\", fontSize: \"12px\", outline: \"none\", minWidth: \" | dong 96: inline style imary, #f1f5f9)\", fontSize: \"12px\", outline: \"none\", minWidth: \" | dong 120: inline style imary, #f1f5f9)\", fontSize: \"12px\", outline: \"none\", minWidth: \" | dong 143: inline style imary, #f1f5f9)\", fontSize: \"12px\", outline: \"none\", } }",
+    "packages/web/src/components/screener/ScreenerSchedulePanel.tsx#1": "dong 145: inline style fontSize: \"13px\", borderRadius: \"6px\", padding: \"6px 10px\", outline: \"none\" }, }), creat",
+    "packages/web/src/components/soc/SocScreenerConfigForm.tsx#1": "dong 127: inline style -text-primary, #f1f5f9)\", fontSize: \"var(--fs-md)\", outline: \"none\", }; const field = (",
+    "packages/web/src/components/soc/SocScreenerRuleModal.tsx#3": "dong 45: inline style olor: \"var(--text-primary, #f1f5f9)\", fontSize: \"0.875rem\", outline: \"none\" } }), errors.n | dong 47: inline style e: \"0.875rem\", fontFamily: \"monospace\", resize: \"vertical\", outline: \"none\" } }), threshol | dong 48: inline style e: \"0.875rem\", fontFamily: \"monospace\", resize: \"vertical\", outline: \"none\" } }), valueErr",
+    "packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx#1": "dong 93: p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none",
+    "packages/web/src/pages/ScreenerPage.tsx#1": "dong 92: inline style borderRadius: '4px', padding: '0.5rem 0.75rem', outline: 'none', }} />"
   }
 }

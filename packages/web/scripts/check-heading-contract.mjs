@@ -107,7 +107,9 @@ function collect(repo) {
       .map((l, i) => (/<h1[\s/>]/.test(l) || /createElement\(\s*["']h1["']/.test(l) ? i + 1 : 0))
       .filter(Boolean);
     violations.push({
-      id: rel.split(path.sep).join("/"),
+      // The count is part of the id: a page that is already in the baseline
+      // and grows a SECOND `<h1>` is a new defect, not the known one.
+      id: `${rel.split(path.sep).join("/")}#${at.length}`,
       detail: `dong ${at.slice(0, 3).join(", ")}${at.length > 3 ? ` (+${at.length - 3})` : ""}`,
     });
   }

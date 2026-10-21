@@ -52,8 +52,16 @@ const TEST_RE = /(__tests__|\.test\.|\.spec\.)/;
 
 /** The class string removes the outline ... */
 const KILLS_OUTLINE = /focus(-visible)?:outline-none/;
-/** ... and nothing on the same selector puts a replacement back. */
-const HAS_REPLACEMENT = /(^|[^a-z-])(ring|shadow|border)/;
+/**
+ * ... and nothing on the same selector puts a replacement back.
+ *
+ * `ring-none` / `shadow-none` / `border-none` REMOVE the indicator, they do
+ * not replace it. Counting them as a replacement is the most common way to
+ * make this gate green while the focus ring is still gone.
+ */
+const HAS_REPLACEMENT = /(^|[^a-z-])(ring(?!-none)|shadow(?!-none)|border(?!-none))/;
+/** Inline style that removes the outline (`style={{ outline: "none" }}`). */
+const INLINE_OUTLINE_KILL = /outline\s*:\s*["'`]none["'`]/;
 
 function walk(dir, acc = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -121,11 +129,27 @@ function collect(repo) {
       scanned += 1;
       const rel = path.relative(repo, abs).split(path.sep).join("/");
       const src = fs.readFileSync(abs, "utf8");
-      const hits = literals(src).filter((l) => KILLS_OUTLINE.test(l.text) && !HAS_REPLACEMENT.test(l.text));
-      if (!hits.length) continue;
+      const lits = literals(src);
+      const hits = lits.filter((l) => KILLS_OUTLINE.test(l.text) && !HAS_REPLACEMENT.test(l.text));
+      // `style={{ outline: "none" }}` removes the ring without any class.
+      // The key and the value are SEPARATE string literals, so the pattern has
+      // to be matched on the raw source, not on the literals.
+      const inline = [];
+      const inlineRe = /outline\s*:\s*["'`]none["'`]/g;
+      let im;
+      while ((im = inlineRe.exec(src))) {
+        const line = src.slice(0, im.index).split("\n").length;
+        const around = src.slice(Math.max(0, im.index - 60), im.index + 40).replace(/\s+/g, " ");
+        inline.push({ line, text: around });
+      }
+      if (!hits.length && !inline.length) continue;
+      const allHits = [
+        ...hits.map((h) => `dong ${h.line}: ${h.text.trim().slice(0, 90)}`),
+        ...inline.map((h) => `dong ${h.line}: inline style ${h.text.trim().slice(0, 90)}`),
+      ];
       violations.push({
-        id: rel,
-        detail: hits.map((h) => `dong ${h.line}: ${h.text.trim().slice(0, 90)}`).join(" | "),
+        id: `${rel}#${allHits.length}`,
+        detail: allHits.join(" | "),
       });
     } else if (/\.css$/.test(abs)) {
       scanned += 1;
@@ -136,12 +160,20 @@ function collect(repo) {
       const hits = [];
       while ((m = re.exec(src))) {
         const body = m[3];
-        if (!/outline\s*:\s*none/.test(body)) continue;
-        if (/box-shadow|border/.test(body)) continue;
+        // `outline: 0` removes the outline just like `outline: none`.
+        if (!/outline\s*:\s*(none|0)\b/.test(body)) continue;
+        // A declaration that removes the indicator is NOT a replacement:
+        // `box-shadow: none` / `border-color: transparent` are no-ops.
+        const effective = body
+          .replace(/box-shadow\s*:\s*none\s*;?/gi, "")
+          .replace(/border[^:;{}]*:\s*transparent\s*;?/gi, "")
+          .replace(/border[^:;{}]*:\s*none\s*;?/gi, "")
+          .replace(/outline\s*:\s*(none|0)\s*;?/gi, "");
+        if (/box-shadow|border/.test(effective)) continue;
         hits.push(`dong ${src.slice(0, m.index).split("\n").length}: ${m[1].trim().slice(0, 70)}`);
       }
       if (!hits.length) continue;
-      violations.push({ id: rel, detail: hits.join(" | ") });
+      violations.push({ id: `${rel}#${hits.length}`, detail: hits.join(" | ") });
     }
   }
   violations.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
