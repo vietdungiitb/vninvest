@@ -13,8 +13,8 @@
 | H1 `/admin/users` — **light** | **1.0000:1 (VÔ HÌNH)** | **19.2806:1** | lỗi nghiêm trọng nhất đã hết |
 | H1 `/admin/users` — **dark** | 20.1728:1 | 20.1728:1 | **không hồi quy** |
 | Logo sidebar — light | — | 5.3578:1 | |
-| Chữ dưới AA — light | 28/60 | **10/60** | thấp nhất 1.0471:1 → **2.5526:1** |
-| Chữ dưới AA — dark | 8/60 | 8/60 | **không hồi quy** |
+| Chữ dưới AA — light | 28/60 | **8–10/60** | thấp nhất 1.0471:1 → **2.5526:1** |
+| Chữ dưới AA — dark | 8/60 | **8–9/60** | **không hồi quy** (chênh 1 phần tử do lấy mẫu) |
 
 ## 2. Đổi tên (gốc rễ: hệ thống dùng chữ "provider" cho **hai** thứ, mã `DNSE` tồn tại ở cả hai)
 
