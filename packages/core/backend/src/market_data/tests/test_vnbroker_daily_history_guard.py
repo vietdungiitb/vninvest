@@ -19,7 +19,22 @@ class VnbrokerDailyHistoryGuardTests(TestCase):
 
     @patch('market_data.vnbroker_adapter.import_module')
     @patch('market_data.vnbroker_adapter.get_active_config')
-    def test_runtime_dnse_source_falls_back_to_vci_for_daily_history(self, get_active_config_mock, import_module_mock):
+    @patch('market_data.vnbroker_adapter.get_soc_vnbroker_config')
+    def test_runtime_dnse_source_falls_back_to_vci_for_daily_history(
+        self,
+        get_soc_vnbroker_config_mock,
+        get_active_config_mock,
+        import_module_mock,
+    ):
+        # Từ 2026-10-19 config SOC (control plane của console VNBroker) là nguồn
+        # quyết định provider chính — `VnbrokerRuntimeConfig` chỉ còn là fallback
+        # (audit Entry 384 F-26: trước đó config SOC không có hiệu lực runtime).
+        # Kịch bản của test vẫn giữ nguyên: provider DNSE KHÔNG BAO GIỜ được dùng
+        # cho daily OHLCV và phải log mã disable.
+        get_soc_vnbroker_config_mock.return_value = {
+            'preferred_provider': 'DNSE',
+            'fallback_providers': [],
+        }
         get_active_config_mock.return_value = SimpleNamespace(data_source='DNSE')
 
         quote_client = Mock()

@@ -81,7 +81,7 @@
       "title": "06.01 — Tổng Quan Mô Hình Dữ Liệu"
     },
     {
-      "lines": 1668,
+      "lines": 1685,
       "path": "docs/system-design/06-DATA-ARCHITECTURE/06.02-danh-muc-model.md",
       "title": "06.02 — Danh Mục Model (Máy Sinh, Không Sửa Tay)"
     },
@@ -91,7 +91,7 @@
       "title": "07.01 — Quy Ước API"
     },
     {
-      "lines": 1525,
+      "lines": 1527,
       "path": "docs/system-design/07-API-SPEC/07.02-danh-muc-api.md",
       "title": "07.02 — Danh Mục API (Máy Sinh, Không Sửa Tay)"
     },
@@ -221,6 +221,6 @@
       "title": "vninvest — Bộ Hồ Sơ Phân Tích & Thiết Kế Hệ Thống"
     }
   ],
-  "generatedAt": "2026-10-18",
+  "generatedAt": "2026-10-19",
   "root": "docs/system-design"
 }

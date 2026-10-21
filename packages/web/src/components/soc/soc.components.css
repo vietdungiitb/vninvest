@@ -18,6 +18,10 @@
   position: relative;
   mask-image: linear-gradient(to right, black 90%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  /* 9 tab vuot viewport 1920px => tab bar cuon ngang. Affordance: snap theo tab
+   * va scroll-padding de tab cuoi khong bi flush vao vung fade. */
+  scroll-padding-inline: 0.5rem;
+  scroll-snap-type: x proximity;
 }
 
 .tabBar::-webkit-scrollbar {
@@ -49,6 +53,8 @@
   position: relative;
   white-space: nowrap;
   user-select: none;
+  scroll-snap-align: start;
+  scroll-margin-inline: 0.5rem;
 }
 
 .tabButton:hover {
@@ -4074,3 +4080,290 @@
   -webkit-box-shadow: 0 0 0 100px rgba(var(--soc-rgb-020b23) / 1) inset;
   transition: background-color 600000s, color 600000s;
 }
+
+/* ── VNBroker console (2026-10-19) ───────────────────────────────────────
+ * Chi them class — khong sua rule cu (L-F05: giu nguyen transition goc).
+ * Dung cho panel quan tri nha cung cap du lieu thi truong. */
+.vnbTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+  border-radius: var(--r-md, 8px);
+  background: var(--bg-panel-soft, rgba(var(--soc-rgb-0f172a) / 0.3));
+  text-align: left;
+  min-width: var(--vnb-tile-min, 260px);
+  transition: border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vnbTile:hover {
+  border-color: var(--border-strong, rgba(var(--soc-rgb-5078a8) / 0.28));
+}
+
+.vnbTileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+/* Hang nhan/gia tri: dung chung cho cac khoi so lieu trong console. */
+.vnbStatRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+}
+
+.vnbStatLabel {
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.vnbStatValue {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Input + don vi dong hang (`.fieldUnit` la flex item trong `.fieldRow` dang
+ * column ⇒ bi keo giang full-width; boi wrap no vao hang co dinh). */
+.vnbFieldWithUnit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.vnbFieldWithUnit .fieldInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vnbFieldWithUnit .fieldUnit {
+  flex: 0 0 auto;
+}
+
+/* Readiness: ly do dai hay xuong dong rieng thay vi chen vao cot value. */
+.vnbReadiness {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+/* `.vnbStatValue` la con nen phai truyen do dac rieng (khong phai ke thua
+ * text-align cua `.vnbReadiness`). */
+.vnbReadiness .vnbStatValue {
+  text-align: left;
+  max-width: 52ch;
+  font-size: var(--fs-sm, 0.75rem);
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+}
+
+/* ── VNBroker console — vong lap / nhip khong gian (2026-10-20) ───────────
+ * Chi them class. KHONG sua rule dung chung (`.fieldGrid`, `.brokerTileGrid`,
+ * `.brokerTileBadges`, `.actionBtn`) vi 8 file khac dang dung chung (L-F05). */
+
+/* Luoi tile provider: co theo quan he, khong tran ngang o 769–860px. */
+.vnbTileGrid {
+  display: grid;
+  gap: var(--sp-md, 0.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(var(--vnb-tile-min, 260px), 1fr));
+}
+
+/* Hang hanh dong trong tile: 2 nut BANG NHAU + ghim day tile. */
+.vnbTileActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-sm, 0.5rem);
+  margin-top: auto;
+  padding-top: var(--sp-sm, 0.5rem);
+}
+
+.vnbTileActions > * {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .vnbTileActions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Nut hanh dong co chrome + mau theo token (doc duoc o ca 2 theme). */
+.vnbActionBtn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong, rgba(var(--soc-rgb-5078a8) / 0.3));
+  background: rgba(var(--soc-rgb-5078a8) / 0.08);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.vnbActionBtn:hover:not(:disabled) {
+  border-color: var(--accent-cyan, var(--soc-c-22d3ee));
+  background: rgba(var(--soc-rgb-5078a8) / 0.14);
+}
+
+.vnbActionBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vnbActionBtn:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Luoi form DUNG CHUNG cho moi nhom field: mot he cot duy nhat => 4 nhom
+ * cung be rong cot, khong co nhom 2 field bi keo giang full-width. */
+.vnbFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-md, 0.75rem) var(--sp-lg, 1rem);
+  align-items: start;
+}
+
+.vnbFormGridFull {
+  grid-column: 1 / -1;
+}
+
+/* Tieu de nhom con: KHAC style `.sectionCardTitle` (tieu de card) de tao
+ * phan cap doc (card > nhom > nhan field). */
+.vnbFormGroupTitle {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+  margin: var(--sp-md, 0.75rem) 0 0;
+  padding-bottom: var(--sp-xs, 0.25rem);
+  border-bottom: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+}
+
+.vnbFormGroupTitle:first-child {
+  margin-top: 0;
+}
+
+/* Hang chon provider + nut: khong keo giang select full-width. */
+.vnbToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm, 0.5rem);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-md, 0.75rem);
+}
+
+.vnbSelect {
+  flex: 0 1 auto;
+  min-width: 12rem;
+  max-width: 18rem;
+}
+
+/* Nhac thay doi chua ap dung. */
+.vnbDirtyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--soc-c-fbbf24, #fbbf24);
+}
+
+/* Canh bao (khong phai loi): tone vang, khong dung `.inlineError` (do). */
+.vnbWarning {
+  padding: 0.75rem;
+  border-radius: var(--r-md, 8px);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--soc-c-fbbf24, #fbbf24);
+  font-size: var(--fs-sm, 0.75rem);
+}
+
+/* Input so: focus ring nhin thay duoc (`.fieldInput` chi doi mau vien 1px). */
+.vnbConsole .fieldInput:focus-visible,
+.vnbConsole select:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Checkbox trong pill: 20px de khong phu thuoc khoang cach (WCAG 2.5.8). */
+.vnbConsole .domainPill input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  vertical-align: -2px;
+  cursor: pointer;
+}
+
+.vnbConsole .domainPill input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-cyan, var(--soc-c-22d3ee));
+  outline-offset: 2px;
+}
+
+/* Skeleton dung chung cho panel. */
+.vnbSkeletonCard {
+  height: 88px;
+  border-radius: var(--r-md, 8px);
+}
+
+/* ── LIGHT THEME: van sang — nhung SHELL van toi ──────────────────────────
+ * Do that 2026-10-20 tren staging: `--color-bg-primary` (#020617) **khong co**
+ * override trong `theme/tokens.css` ⇒ `body` (bg-gray-950) + wrapper shell
+ * van nen **den** khi user bat light theme. Trong khi do, `soc.tokens.css` lai
+ * dao token sang nen sang ⇒ chu TOI tren nen TOI ⇒ khong doc duoc.
+ *
+ * ⇒ Operations Center la surface **dark-first**: khoa bang mau TOI cho
+ * console (scope `.vnbConsole`) de doc duoc o CA 2 theme, va KHONG doi
+ * heuristic cua app shell (viec do thuoc pham vi "app light theme" — xem
+ * `docs/AUDIT_VNBROKER_CONSOLE_20261019.md` §J6).
+ *
+ * Do do day dung cac token raw cua SOC (khong phai `--soc-rgb-*` da bi
+ * `:root[data-theme="light"]` doi nguoc lai). */
+.vnbConsole {
+  color: var(--soc-c-f1f5f9);
+  --text-primary: var(--soc-c-f1f5f9);
+  --text-secondary: var(--soc-c-94a3b8);
+  --text-muted: var(--soc-c-94a3b8);
+  --bg-panel: rgba(8, 23, 52, 0.4);
+  --bg-panel-solid: rgb(8, 23, 52);
+  --bg-panel-soft: rgba(15, 23, 42, 0.3);
+  --bg-input: rgba(2, 11, 35, 0.6);
+  --border-default: rgba(80, 120, 168, 0.15);
+  --border-strong: rgba(80, 120, 168, 0.25);
+  --accent-cyan: var(--soc-c-22d3ee);
+  --soc-rgb-081734: 8 23 52;
+  --soc-rgb-0f172a: 15 23 42;
+  --soc-rgb-020b23: 2 11 35;
+  --soc-rgb-5078a8: 80 120 168;
+  --soc-c-f1f5f9: #f1f5f9;
+  --soc-c-94a3b8: #94a3b8;
+  --soc-c-67e8f9: #67e8f9;
+  --soc-c-34d399: #34d399;
+  --soc-c-fbbf24: #fbbf24;
+  --soc-c-f87171: #f87171;
+  --soc-c-06b6d4: #06b6d4;
+  --soc-status-ok: var(--color-success-500, #34d399);
+  --soc-status-info: var(--color-info-500, #60a5fa);
+  --soc-status-warn: var(--color-warning-500, #fbbf24);
+  --soc-status-danger: var(--color-danger-500, #f87171);
+  --soc-status-muted: var(--text-muted, #94a3b8);
+}
+

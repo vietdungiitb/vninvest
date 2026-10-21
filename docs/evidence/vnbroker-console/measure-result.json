@@ -1,0 +1,18 @@
+{
+  "shellMs": 16550,
+  "configMs": 23848,
+  "data": {
+    "preferred": "kbs",
+    "rpm": "60",
+    "retry": "3",
+    "timeoutRead": "30",
+    "burst": "10",
+    "cbThreshold": "5",
+    "kpiPrimary": "KBS",
+    "cbStatus": "BÌNH THƯỜNG (CLOSED)",
+    "healthStatus": "Hoạt động tốt",
+    "dirty": 0
+  },
+  "consoleErrors": [],
+  "outDir": "C:\\Users\\PHAMVI~1\\AppData\\Local\\Temp\\opencode\\vnbroker-shots3"
+}

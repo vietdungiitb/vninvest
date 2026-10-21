@@ -35,6 +35,11 @@ from market_data.vnbroker_benchmark import (
     get_latest_price_board_benchmark_report,
     run_price_board_provider_benchmark,
 )
+from market_data.vnbroker_provider_health import (
+    build_provider_health_payload,
+    get_circuit_snapshot,
+    probe_provider,
+)
 from vninvest_core.api_envelope import envelope_response
 
 
@@ -169,6 +174,29 @@ class VnbrokerCircuitBreakerSummarySerializer(serializers.Serializer):
 class VnbrokerCircuitBreakerResponseSerializer(serializers.Serializer):
     circuit_breaker = VnbrokerCircuitBreakerSummarySerializer()
     per_provider = serializers.DictField(child=serializers.DictField(child=serializers.JSONField()))
+
+
+class VnbrokerProviderHealthRowSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    label = serializers.CharField(allow_blank=True)
+    status = serializers.CharField()
+    latency_ms = serializers.FloatField(allow_null=True)
+    success_rate = serializers.FloatField(allow_null=True)
+    error_rate = serializers.FloatField(allow_null=True)
+    total_requests = serializers.IntegerField()
+    failed_requests = serializers.IntegerField()
+    rate_limited_requests = serializers.IntegerField()
+    consecutive_failures = serializers.IntegerField()
+    last_success_at = serializers.DateTimeField(allow_null=True)
+    last_check_at = serializers.DateTimeField(allow_null=True)
+    last_error = serializers.CharField(allow_blank=True)
+    circuit_state = serializers.CharField()
+
+
+class VnbrokerProviderHealthResponseSerializer(serializers.Serializer):
+    checked_at = serializers.DateTimeField()
+    source = serializers.CharField()
+    providers = VnbrokerProviderHealthRowSerializer(many=True)
 
 
 class VnbrokerBenchmarkRequestSerializer(serializers.Serializer):
@@ -458,6 +486,26 @@ class VnbrokerHealthView(SOCBaseView):
 
 
 @extend_schema(
+    summary='Lấy sức khỏe theo từng nhà cung cấp VNBroker',
+    description=(
+        'Trả sức khỏe runtime đo THẬT của từng provider (độ trễ, tỉ lệ thành công, '
+        'lỗi liên tiếp, trạng thái circuit breaker). Không có dữ liệu thì trả '
+        '`source=unavailable` và mảng rỗng — KHÔNG tự chế số liệu.'
+    ),
+    responses={
+        200: envelope_response(VnbrokerProviderHealthResponseSerializer),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class VnbrokerProviderHealthView(SOCBaseView):
+    """GET sức khỏe per-provider của VNBroker."""
+
+    def get(self, request):
+        return envelope(build_provider_health_payload())
+
+
+@extend_schema(
     summary='Kiểm tra kết nối provider VNBroker',
     description='Thực hiện test kết nối nhẹ cho provider VNBroker được chọn và trả latency snapshot. Endpoint này validate provider trước khi thử kết nối.',
     request=VnbrokerTestConnectionRequestSerializer,
@@ -497,13 +545,26 @@ class VnbrokerTestConnectionView(SOCBaseView):
                 field_errors={'provider': unready_provider_messages},
             )
 
-        # Placeholder — in real implementation, call vnbroker_adapter
-        return envelope({
-            'provider': provider,
-            'status': 'ok',
-            'latency_ms': 45,
+        # Gọi provider THẬT và đo độ trễ. Trước 2026-10-19 endpoint này trả
+        # `latency_ms: 45` cứng (placeholder) ⇒ nút "Thử nghiệm kết nối" LUÔN
+        # báo thành công dù provider đã chết (audit Entry 384 §D1 F-07).
+        probe = probe_provider(provider)
+        payload = {
+            'provider': probe.get('provider', provider),
+            'status': probe.get('status', 'error'),
+            'latency_ms': probe.get('latency_ms'),
+            'error': probe.get('error', ''),
             'timestamp': timezone.now().isoformat(),
-        })
+        }
+        if probe.get('status') != 'ok':
+            return self.error_response(
+                request,
+                code='VNBROKER_PROVIDER_UNREACHABLE',
+                detail=probe.get('error') or 'Không gọi được provider.',
+                http_status=status.HTTP_502_BAD_GATEWAY,
+                field_errors={'provider': [probe.get('error') or 'unreachable']},
+            )
+        return envelope(payload)
 
 
 @extend_schema(
@@ -564,19 +625,11 @@ class VnbrokerCircuitBreakerView(SOCBaseView):
 
     def get(self, request):
         """Circuit breaker state."""
-        return envelope({
-            'circuit_breaker': {
-                'status': 'closed',  # closed=ok, open=failing
-                'failures': 0,
-                'threshold': 5,
-                'window_seconds': 60,
-                'cooldown_seconds': 300,
-            },
-            'per_provider': {
-                provider_id: {'status': 'closed', 'failures': 0}
-                for provider_id in get_supported_provider_ids('vnbroker')
-            },
-        })
+        # Nguồn THẬT: đọc state circuit breaker theo provider do
+        # `market_data.vnbroker_provider_health` ghi khi gọi provider.
+        # Trước 2026-10-19 endpoint này trả `closed` / `failures: 0` cứng ⇒
+        # badge "CLOSED" luôn xanh giả (audit Entry 384 §D1 F-04).
+        return envelope(get_circuit_snapshot())
 
 
 @extend_schema(
