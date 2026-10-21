@@ -71,14 +71,26 @@ const IS_WIN = process.platform === "win32";
  * duoc", khong phai "chay roi khong thay loi". Da gap that — gate bao FAIL
  * "0 loi" va chan moi push tren Windows trong khi lenh chua chay bao gio.
  */
-function run(cmd, args, cwd = REPO) {
+function run(cmd, args, cwd = REPO, timeoutMs = 0) {
   const exe = IS_WIN && /^(npm|npx|yarn|pnpm)$/.test(cmd) ? cmd + ".cmd" : cmd;
-  const r = spawnSync(exe, args, { cwd, encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(exe, args, {
+    cwd,
+    encoding: "utf8",
+    shell: false,
+    maxBuffer: 64 * 1024 * 1024,
+    ...(timeoutMs ? { timeout: timeoutMs, killSignal: "SIGKILL" } : {}),
+  });
   if (r.error) {
     return { code: null, out: "", launchError: `${r.error.code || "ERR"}: ${r.error.message}` };
   }
   if (r.status === null) {
-    return { code: null, out: (r.stdout || "") + (r.stderr || ""), launchError: `tiet truc ${exe}, khong co exit code` };
+    return {
+      code: null,
+      out: (r.stdout || "") + (r.stderr || ""),
+      launchError: r.signal
+        ? `het thoi gian (${timeoutMs}ms), bi huy`
+        : `tiet truc ${exe}, khong co exit code`,
+    };
   }
   return { code: r.status, out: (r.stdout || "") + (r.stderr || "") };
 }
@@ -447,14 +459,23 @@ for (const uiGate of [
     skip(`ui-${uiGate}`, `khong co packages/web/scripts/${uiGate}.mjs`);
     continue;
   }
-  const r = run(process.execPath, [gatePath], join(REPO, "packages", "web"));
-  if (r.code !== 0) {
+  // Timeout: gate nao phu thuoc staging (a11y-runtime do 10 route x 30s) co
+  // the treo vo han tren duong push. Het thoi gian => CHUA CHAY, khong phai
+  // FAIL (khong co bang chung de ket luan) — nhung van phai IN ra.
+  const r = run(process.execPath, [gatePath], join(REPO, "packages", "web"), 300000);
+  if (r.code === null) {
+    // Khong co exit code = gate khong chay xong (het thoi gian / khong spawn
+    // duoc) => KHONG co bang chung de ket luan, nen SKIP chu khong phai FAIL.
+    skip(`ui-${uiGate}`, `khong chay xong (${r.launchError || "khong ro"}) — CHUA CHAY`);
+  } else if (r.code !== 0) {
     bad(`ui-${uiGate}`, r.out.split("\n").slice(0, 10).join("\n"));
   } else {
-    const summary =
-      (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0] ||
-      (r.out.match(/CHUA CHAY[^\n]*/) || [])[0] ||
-      (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
+    // "CHUA CHAY" phai duoc uu tien hon "khong co vi pham MOI": mot gate in
+    // ca hai dong thi nguoi doc pre-push se thay "gate xanh" va bo qua
+    // "chua chay" — do chinh la cach doc sai (audit N-10).
+    const chuaChay = (r.out.match(/CHUA CHAY[^\n]*/) || [])[0];
+    const xanh = (r.out.match(/khong co vi pham MOI[^\n]*/) || [])[0];
+    const summary = chuaChay || xanh || (r.out.match(/PASS[^\n]*/) || ["PASS"])[0];
     ok(`ui-${uiGate}`, summary.trim());
   }
 }

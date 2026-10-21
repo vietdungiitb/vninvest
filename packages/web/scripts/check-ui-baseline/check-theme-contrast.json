@@ -76,20 +76,34 @@
     "text-secondary-on-bg-secondary@soc/light": "--text-secondary tren --color-bg-secondary = 1.72:1 (< 4.5:1) · soc/light"
   },
   "undecodable": [
-    "shell/dark: text-primary-on-bg-panel-solid (--bg-panel-solid khong doc duoc duoc giai ma tinh)",
-    "shell/dark: pf-gain-on-pf-surface (--pf-gain khong doc duoc duoc giai ma tinh)",
-    "shell/dark: pf-loss-on-pf-surface (--pf-loss khong doc duoc duoc giai ma tinh)",
-    "shell/dark: pf-flat-on-pf-surface (--pf-flat khong doc duoc duoc giai ma tinh)",
-    "shell/dark: pf-positive-text-on-pf-positive-soft (--pf-positive-text khong doc duoc duoc giai ma tinh)",
-    "shell/dark: pf-negative-text-on-pf-negative-soft (--pf-negative-text khong doc duoc duoc giai ma tinh)",
-    "shell/light: text-primary-on-bg-panel-solid (--bg-panel-solid khong doc duoc duoc giai ma tinh)",
-    "shell/light: pf-gain-on-pf-surface (--pf-gain khong doc duoc duoc giai ma tinh)",
-    "shell/light: pf-loss-on-pf-surface (--pf-loss khong doc duoc duoc giai ma tinh)",
-    "shell/light: pf-flat-on-pf-surface (--pf-flat khong doc duoc duoc giai ma tinh)",
-    "shell/light: pf-positive-text-on-pf-positive-soft (--pf-positive-text khong doc duoc duoc giai ma tinh)",
-    "shell/light: pf-negative-text-on-pf-negative-soft (--pf-negative-text khong doc duoc duoc giai ma tinh)"
+    "text-primary-on-bg-panel-solid@shell/dark",
+    "pf-gain-on-pf-surface@shell/dark",
+    "pf-loss-on-pf-surface@shell/dark",
+    "pf-flat-on-pf-surface@shell/dark",
+    "pf-positive-text-on-pf-positive-soft@shell/dark",
+    "pf-negative-text-on-pf-negative-soft@shell/dark",
+    "text-primary-on-bg-panel-solid@shell/light",
+    "pf-gain-on-pf-surface@shell/light",
+    "pf-loss-on-pf-surface@shell/light",
+    "pf-flat-on-pf-surface@shell/light",
+    "pf-positive-text-on-pf-positive-soft@shell/light",
+    "pf-negative-text-on-pf-negative-soft@shell/light"
   ],
   "runtime": {
     "fingerprint": "/assets/adapters-BLMSU645.js\n/assets/casl-DuoGIQh7.js\n/assets/context-B96ebgt5.js\n/assets/hooks-XFOCPTrk.js\n/assets/i18n-BADHzG9o.js\n/assets/icons-Cwm2-TF2.js\n/assets/index-COBl2dPh.js\n/assets/index-ZvEAG5nN.css\n/assets/react-vendor-DY_EuVRM.js\n/assets/tanstack-CLZZaXwP.js\n/assets/ui-mRsKotQ1.js\n/assets/utils-B0CuFPs6.js\n/assets/vite-helpers-BxaVoaJg.js"
+  },
+  "undecodableDetails": {
+    "text-primary-on-bg-panel-solid@shell/dark": "shell/dark: text-primary-on-bg-panel-solid (--bg-panel-solid khong doc duoc duoc giai ma tinh)",
+    "pf-gain-on-pf-surface@shell/dark": "shell/dark: pf-gain-on-pf-surface (--pf-gain khong doc duoc duoc giai ma tinh)",
+    "pf-loss-on-pf-surface@shell/dark": "shell/dark: pf-loss-on-pf-surface (--pf-loss khong doc duoc duoc giai ma tinh)",
+    "pf-flat-on-pf-surface@shell/dark": "shell/dark: pf-flat-on-pf-surface (--pf-flat khong doc duoc duoc giai ma tinh)",
+    "pf-positive-text-on-pf-positive-soft@shell/dark": "shell/dark: pf-positive-text-on-pf-positive-soft (--pf-positive-text khong doc duoc duoc giai ma tinh)",
+    "pf-negative-text-on-pf-negative-soft@shell/dark": "shell/dark: pf-negative-text-on-pf-negative-soft (--pf-negative-text khong doc duoc duoc giai ma tinh)",
+    "text-primary-on-bg-panel-solid@shell/light": "shell/light: text-primary-on-bg-panel-solid (--bg-panel-solid khong doc duoc duoc giai ma tinh)",
+    "pf-gain-on-pf-surface@shell/light": "shell/light: pf-gain-on-pf-surface (--pf-gain khong doc duoc duoc giai ma tinh)",
+    "pf-loss-on-pf-surface@shell/light": "shell/light: pf-loss-on-pf-surface (--pf-loss khong doc duoc duoc giai ma tinh)",
+    "pf-flat-on-pf-surface@shell/light": "shell/light: pf-flat-on-pf-surface (--pf-flat khong doc duoc duoc giai ma tinh)",
+    "pf-positive-text-on-pf-positive-soft@shell/light": "shell/light: pf-positive-text-on-pf-positive-soft (--pf-positive-text khong doc duoc duoc giai ma tinh)",
+    "pf-negative-text-on-pf-negative-soft@shell/light": "shell/light: pf-negative-text-on-pf-negative-soft (--pf-negative-text khong doc duoc duoc giai ma tinh)"
   }
 }
