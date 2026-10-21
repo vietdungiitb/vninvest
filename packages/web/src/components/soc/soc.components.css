@@ -4473,3 +4473,28 @@
 .vnbCellValue {
   white-space: nowrap;
 }
+
+/* ── W1-C (vong 2): mau chu + o input trong panel SOC o light mode ────────────
+   Do (mo anh ra xem, L-V05): sau khi nen panel chuyen sang trang, CHU KE THUA
+   van la mau SANG (panel SOC dat color theo dark-first) ⇒ chu trong bang va
+   nhieu o input bi mo; o input nen rgba(#020b73/.6) (dark-first) ⇒ CHU TOI
+   tren nen toi ⇒ khong doc duoc. Fix: nen trang + chu toi + vien xam.
+   Gia tri lay tu SSOT theme/tokens.css:65-71. */
+:root[data-theme="light"] .glassPanel,
+:root[data-theme="light"] .sectionCard {
+  color: #0f172a;
+}
+:root[data-theme="light"] .searchInput,
+:root[data-theme="light"] .configEditor,
+:root[data-theme="light"] .vnbActionBtn {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+:root[data-theme="light"] .vnbStatValue {
+  color: #0f172a;
+}
+:root[data-theme="light"] .vnbStatLabel,
+:root[data-theme="light"] .metricLabel {
+  color: #475569;
+}
