@@ -49,6 +49,8 @@ describe("W0.9 — chart data unlock (tape + workspace toolbar + pane chi bao)",
 
   it("S5 — KHONG bat showCorporateEvents khi BE chua co nguon du lieu (khong bat mu)", () => {
     expect(src).toMatch(/showCorporateEvents:\s*false/);
-    expect(src).toMatch(/corporate events/i);
+    // Comment ghi "corporate actions" (BE chua co nguon du lieu) — khop Y DO test:
+    // "co comment giai thich", khong khop mot cum tieng Anh cu the.
+    expect(src).toMatch(/corporate (events|actions)/i);
   });
 });
