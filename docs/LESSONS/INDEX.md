@@ -11,7 +11,7 @@
 
 | Tag | File | Mô tả phạm vi áp dụng |
 |---|---|---|
-| `multi-agent`, `claim`, `claims`, `shared`, `shared-files`, `worktree`, `hook`, `pre-commit`, `rebase`, `agent`, `branch`, `pr` | [`multi-agent.md`](./multi-agent.md) | Quy trình multi-agent, khai claim, file shared, worktree, rebase, hook, `git checkout --` phá dữ liệu. |
+| `multi-agent`, `claim`, `claims`, `shared`, `shared-files`, `worktree`, `hook`, `pre-commit`, `rebase`, `agent`, `branch`, `pr`, `docker`, `postgres`, `db-down`, `new-agent`, `agent-pr`, `eol-drift`, `byte-drift` | [`multi-agent.md`](./multi-agent.md) + [`multi-agent-2.md`](./multi-agent-2.md) | Quy trình multi-agent, khai claim, file shared, worktree, rebase, hook, `git checkout --` phá dữ liệu. **+ môi trường pipeline**: Docker chết chặn Stage 0 · `agent-pr.ps1` hỏng cú pháp chặn Stage 7 · gate byte-sensitive đỏ ở mọi worktree mới. |
 | `migration`, `migrations`, `makemigrations`, `leaf`, `leaf-node`, `leaf_node` | [`migrations.md`](./migrations.md) | Django migrations: tránh tự đặt số, đọc head thật, tránh conflicting leaf nodes, worktree vs HEAD. |
 | `gate`, `gates`, `build-gate`, `build-gates`, `tsc`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY`, `exit`, `no-verify`, `billing`, `ci` | [`build-gates.md`](./build-gates.md) | Build/typecheck/lint/test gates, KHÔNG báo PASS cho thứ chưa chạy, gate trên máy agent, **gate đỏ ở worktree nhưng xanh ở main tree**, đếm route theo registry, số đếm được ≠ số lỗi. |
 | `db`, `database`, `postgres`, `backend`, `be-test`, `migrate`, `sqlite` | [`backend.md`](./backend.md) | Backend DB, môi trường test BE cần Postgres, migrate giữa chừng, encoding. |
@@ -124,6 +124,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | File | Số lesson | ID |
 |---|---|---|
 | [multi-agent.md](./multi-agent.md) | 8 | `L-001`, `L-002`, `L-003`, `L-005`, `L-007`, `L-008`, `L-A01`, **`L-M02`** |
+| [`multi-agent-2.md`](./multi-agent-2.md) | 3 | **`L-M05`**, **`L-M06`**, **`L-M07`** |
 | [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
 | [`css-soc.md`](./css-soc.md) | 5 | `L-F03`, `L-F05`, `L-F06`, `L-F08`, **`L-F11`** |
 | [`frontend.md`](./frontend.md) | 4 | `L-F01`, `L-F02`, `L-F09`, `L-F10` |
@@ -135,7 +136,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 | [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 52 lesson / 12 file**
+**Tổng: 55 lesson / 13 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

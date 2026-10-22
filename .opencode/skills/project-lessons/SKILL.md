@@ -41,6 +41,7 @@ Suy ra tag (case-insensitive) từ `taskDescription` + `filePaths` + `actions`:
 | Từ khóa / Path | Tags | File cần đọc |
 |---|---|---|
 | `claim`, `claims`, `shared`, `deny`, `worktree`, `rebase`, `hook`, `pre-commit`, `multi-agent`, `agent`, `branch`, `merge`, `pr`, `checkout --` | `multi-agent` | `docs/LESSONS/multi-agent.md` |
+| `docker`, `postgres`, `db-down`, `new-agent`, `agent-pr`, `pr-script`, `eol-drift`, `byte-drift`, `global-config-drift` | `multi-agent-2` | `docs/LESSONS/multi-agent-2.md` |
 | `migrat`, `migration`, `makemigrations`, `leaf`, `leaf-node`, `leaf_node`, `*/migrations/*` | `migrations` | `docs/LESSONS/migrations.md` |
 | `gate`, `gates`, `tsc`, `typecheck`, `lint`, `build`, `test`, `PASS`, `CHƯA CHẠY`, `exit`, `no-verify`, `billing`, `ci` | `build-gates` | `docs/LESSONS/build-gates.md` |
 | `merge`, `conflict`, `syntax`, `false-green`, `xanh-gia`, `push`, `hook`, `pre-push`, `node --check` | `build-gates-2` | `docs/LESSONS/build-gates-2.md` |
