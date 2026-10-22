@@ -19,8 +19,9 @@
 | **Thứ retail mua** | Thông tin thị trường **chỗ khác không có**: **charts · whale · dark flow · AI phân tích kỹ thuật** |
 | **Ranh giới sản phẩm** | AI = **phân tích kỹ thuật**, KHÔNG phải khuyến nghị đầu tư · **KHÔNG đặt lệnh** (trừ khi có hợp đồng riêng) |
 | **Rủi ro lớn nhất** | **Order book trên biểu đồ đang là dữ liệu giả** mà app tiêu thụ âm thầm. Retail sẽ trả tiền cho "dữ liệu mà chỗ khác không có" — nếu dữ liệu không đáng tin thì không có brand name nào xây được trên đó |
+| **Nguyên tắc ưu tiên (bản 3)** | **Ưu tiên vấn đề tự giải quyết bằng code [T]; việc phụ thuộc bên ngoài [X] lùi xuống cuối.** Giai đoạn 1 = **36 slice = 100% [T]** ⇒ không bị chặn bởi quyết định pháp lý, hợp đồng hay khoá dịch vụ nào. 12 mục [X] nằm ở hàng đợi, mỗi mục có **điều kiện mở** rõ ràng |
 | **Ưu tiên 90 ngày** | **W0** dọn nền (gate, code chết) → **W1** dữ liệu đáng tin + đúng pháp lý sản phẩm + 2 tầng tài khoản broker → **W2** chiều sâu giá trị retail → **W3** brand name (kích hoạt & giữ chân) |
-| **Còn cần bạn chốt** | **6 câu** (§7) — Q1 tên vai trò staff thứ 2, Q2 credential tầng 2 thuộc tenant hay operator, Q3 tầng 2 có cần trading token không, Q4 bỏ trial 14 ngày, Q5 free có quảng cáo ở đâu, Q6 ai trả chi phí LLM cho free |
+| **Còn cần bạn chốt** | **6 câu** (§7) — Q1 tên vai trò staff thứ 2, Q2 credential tầng 2 thuộc tenant hay operator, Q3 tầng 2 có cần trading token không, Q4 bỏ trial 14 ngày, Q5 free có quảng cáo ở đâu, Q6 ai trả chi phí LLM cho free. **Lưu ý: cả 6 đều là quyết định của bạn — không phải phụ thuộc bên ngoài ⇒ không bị lùi hàng đợi** |
 
 ---
 
@@ -106,27 +107,44 @@
 
 ---
 
-## 4. Lộ trình (5 wave · 32 slice giai đoạn 1 · ~205–265 engineer-day)
+## 4. Lộ trình (5 wave giai đoạn 1 + 1 hàng đợi bên ngoài · 36 slice [T] + 12 mục [X])
 
-### W0 — "Dọn nền để không tự đánh lừa mình" · P0 · 2 tuần · 8 slice
-Wire gate thật (`check-light-theme` + lint + vitest + CI) · xoá ~3 000 LOC code chết + 51 route không include · sửa `exports` hỏng · dọn 6 registry entry shadow + 3 feature folder rỗng · đưa ~17 endpoint `/partner/*` về adapter · **fail-closed mọi endpoint trả dữ liệu giả** · đóng 3 blocker AI (OpenClaw/SAML/`ai_agents`) · chuẩn hoá 3 tài liệu trạng thái + bật CI.
+> **Nguyên tắc (bạn đã chốt, bản 3):** ưu tiên **vấn đề có tính kỹ thuật lập trình — tự giải quyết bằng code [T]**; **vấn đề phụ thuộc bên ngoài [X] lùi xuống cuối**. Mỗi slice gắn nhãn **[T]** / **[X]**. **Toàn bộ giai đoạn 1 (W0–W3) = 100% [T]** ⇒ không có mục nào bị chặn bởi UBCKNN, bản quyền dữ liệu, hợp đồng broker, IdP, khoá FCM hay App Store.
 
-### W1 — "Dữ liệu đáng tin + đúng pháp lý sản phẩm" · P0 · 90 ngày · 8 slice
-`W1.1` AI contract → phân tích kỹ thuật (đổi prompt + shape + serializer + UI + 2 locale + disclaimer) · `W1.2` gỡ order placement (paper only, nhãn rõ, audit tách operation) · `W1.3` nhãn **"Ước tính"** cho order book + `is_mock` tới FE · `W1.4` **2 tầng tài khoản broker** (model + resolver + endpoint SOC theo tenant + permission + role mới + FE 2 panel) · `W1.5` minh bạch whale/dark flow (công thức + nguồn + độ mới) + sửa task NOOP · `W1.6` OpenClaw → tính năng hỗ trợ · `W1.7` **SAML verify thật** · `W1.8` chính sách free + push `not_configured`.
+### W0 — "Dọn nền để không tự đánh lừa mình" · P0 · 2 tuần · 8 slice · **[T] ×8**
+Wire gate thật (`check-light-theme` + lint + vitest + CI) · xoá ~3 000 LOC code chết + 51 route không include · sửa `exports` hỏng · dọn 6 registry entry shadow + 3 feature folder rỗng · đưa ~17 endpoint `/partner/*` về adapter · **fail-closed mọi endpoint trả dữ liệu giả** · đóng 3 blocker AI (OpenClaw fail-closed · **SAML verify thật** · `ai_agents` rỗng) · chuẩn hoá 3 tài liệu trạng thái + bật CI.
 
-### W2 — "Chiều sâu giá trị retail" · P1 · 90–180 ngày · 9 slice
-`W2.1` **bật 59 indicator + Pine Editor + tape + corporate events** (chi phí thấp, hiệu ứng cao nhất vì "charts" là nhu cầu #1) · `W2.2` chart layout lưu server + share · `W2.3` **AI chat grounded + trích dẫn nguồn** · `W2.4` **NL-screener** (prompt tiếng Việt → filter + Explanation) · `W2.5` **backtest/paper trading giả định VN** (lô 100 · T+2,5 · phí 2 chiều · PIT 0,1% · slippage) · `W2.6` tax-aware P/L + sharpe/sortino · `W2.7` top movers / market pulse · `W2.8` screener + heatmap theo ngành · `W2.9` AI digest mỗi sáng.
+### W1 — "Dữ liệu đáng tin + đúng pháp lý sản phẩm" · P0 · 90 ngày · 10 slice · **[T] ×10**
+`W1.1` **AI contract → phân tích kỹ thuật** (đổi prompt + shape + serializer + UI + 2 locale + disclaimer) · `W1.2` **gỡ order placement** khỏi sản phẩm (chỉ `paper`, nhãn rõ, audit tách operation) · `W1.3` nhãn **"Ước tính"** cho order book + `is_mock` tới FE · `W1.4` **mở khoá toàn bộ dữ liệu đang bị tắt trong chính repo** (7 → 59 series, tape, corporate events, task NOOP, indicator `None`, 4 endpoint rỗng) — **slice thuần code, tác động lớn nhất tới giá trị retail** · `W1.5` **2 tầng tài khoản broker — phần code** (model + resolver + endpoint SOC theo tenant + permission + role + FE 2 panel) · `W1.6` minh bạch whale/dark flow (công thức "absorption proxy" + nguồn + độ mới) · `W1.7` OpenClaw → tính năng hỗ trợ, fail-closed có lý do · `W1.8` **SAML verify thật** (thư viện + `xmlsec1` đã có trong repo) · `W1.9` bỏ trial 14 ngày (free vô hạn) · `W1.10` push `not_configured` thay vì báo thành công giả.
 
-### W3 — "Brand name: kích hoạt & giữ chân" · P1–P2 · 6–12 tháng · 7 slice
-`W3.1` **activation funnel** (checklist 5 bước, first value trong 3 phút, empty state có dữ liệu mẫu) · `W3.2` **referral + share** (mã giới thiệu, link mời, chia sẻ screener/ảnh phân tích) · `W3.3` **PWA + push thật** · `W3.4` mobile ergonomics cho VN (tiết kiệm data, 3G) · `W3.5` landing page + SEO + brand assets · `W3.6` **widget nhúng thương hiệu = kênh phân phối miễn phí** (tái dùng advertising widget sẵn có) · `W3.7` nhật ký hành trình retail để đo funnel.
+### W2 — "Chiều sâu giá trị retail" · P1 · 90–180 ngày · 10 slice · **[T] ×10**
+`W2.1` **AI chat grounded + trích dẫn nguồn** · `W2.2` **NL-screener** (prompt tiếng Việt → filter + Explanation) · `W2.3` **backtest/paper trading giả định VN** (lô 100 · T+2,5 · phí 2 chiều · PIT 0,1% · slippage) — khác biệt duy nhất vs TradingView · `W2.4` tax-aware P/L + sharpe/sortino · `W2.5` top movers / market pulse (màn hình đầu tiên cho retail) · `W2.6` screener + heatmap theo ngành · `W2.7` chart layout lưu server + share · `W2.8` AI digest mỗi sáng · `W2.9` **tài chính nhiều năm chuẩn hoá** (nguồn đã có sẵn trong repo) + fix bug `revenue_growth_yoy` · `W2.10` P/B · Graham · Z-Score · F-Score · Dupont.
 
-### W4 — "Giai đoạn 2: doanh thu & B2B" · **để sau, chỉ thiết kế sẵn** · 7 slice
-Chính sách giá + entitlement · giá theo seat + platform fee · advisor/client workspace · bảng giá + landing B2B + demo tenant · data licensing · hóa đơn VAT điện tử · AI add-on + model portfolio.
+### W3 — "Brand name: kích hoạt & giữ chân" · P1–P2 · 6–12 tháng · 8 slice · **[T] ×8**
+`W3.1` **activation funnel** (checklist 5 bước, first value trong 3 phút, dữ liệu mẫu cho empty state) · `W3.2` **referral + share** (mã giới thiệu, link mời, ảnh tóm tắt phân tích) · `W3.3` **PWA** (manifest + service worker + install prompt) · `W3.4` mobile ergonomics cho VN (tiết kiệm data, 3G) · `W3.5` landing page + SEO + brand assets · `W3.6` **widget nhúng thương hiệu = kênh phân phối miễn phí** (tái dùng advertising widget sẵn có) · `W3.7` nhật ký hành trình retail để đo funnel · `W3.8` email vòng dài (welcome · nudges · re-engagement) + abstraction cho SMS/Zalo.
 
-### W5 — Dài hạn (12–24 tháng)
-App native (từ scaffold `packages/mobile` → app thật) · agent AI sandbox-first · corporate actions + nguồn dữ liệu · tài chính nhiều năm + DCF/Z-Score/RRG · chỉ số ngành ICB · trái phiếu · marketplace indicator.
+### W4 — "Giai đoạn 2: doanh thu & B2B — phần CODE" · 6 slice · **[T] ×6** · *điều kiện mở: có khách B2B ký hợp đồng*
+Chính sách giá + entitlement · giá theo seat + platform fee · advisor/client workspace · bảng giá + landing B2B + demo tenant · AI add-on + model portfolio (phần code) · hóa đơn VAT (phần code: model + abstraction provider).
 
----
+### W5 — **HÀNG ĐỢI BÊN NGOÀI (X)** · ưu tiên thấp · 12 mục · *mỗi mục có điều kiện mở*
+
+| Mục | Phụ thuộc bên ngoài | Điều kiện mở | Phần code đã làm trước được |
+|---|---|---|---|
+| Implement protocol OpenClaw | Bạn cấp đặc tả D-03c | Có đặc tả | W1.7 (fail-closed + định vị) |
+| **Đặt lệnh live** | **Hợp đồng riêng với broker** | Có hợp đồng | W1.2 (guard + `paper` mode) |
+| Conditional orders (OCO/Trailing) | Phụ thuộc đặt lệnh live | Có hợp đồng | — (giá trị thấp khi chưa có live) |
+| Nguồn dữ liệu corporate actions | Feed VSDC/broker | Có feed | W2.9 (model + adjustment engine) |
+| Chỉ số ngành ICB + chuỗi giá ngành | Nhiều nguồn dữ liệu | Có nguồn | Phân cấp ICB trong code |
+| Trái phiếu / tín dụng | Nguồn dữ liệu trái phiếu | Có nguồn | — (chỉ 1 lớp đối thủ có) |
+| Bổ sung indicator mới (> 59) | Repo khác `vninvestcharts-widget` | Được sửa repo đó | W1.4 (bật 59 cái đang có) |
+| App native iOS/Android | App Store / Play Store | Có account, sau PWA | W3.3 (PWA ăn phần lớn giá trị) |
+| Khoá FCM/VAPID production | Tài khoản Google | Có project | W1.10 + W3.3 (plumbing) |
+| Bán dữ liệu VN (data licensing) | Bản quyền VSDC/HOSE | Có ý kiến pháp lý | Partner API đã có |
+| Affiliate/referral broker (hoa hồng) | Pháp lý UBCKNN | Có ý kiến pháp lý | W3.2 (referral nội bộ — khác hoàn toàn) |
+| Agent AI tự đặt lệnh / robo-advisor | Compliance quản lý đầu tư | Có giấy phép | — |
+
+**Luật vận hành:** mỗi tuần rà bảng W5 — mục nào đủ điều kiện thì lên W4. **Không mục [X] nào được chặn W0–W3** (thiết kế đã bảo đảm điều này).
+
 
 ## 5. Chiến lược giai đoạn 1: miễn phí, đo bằng hành vi
 
