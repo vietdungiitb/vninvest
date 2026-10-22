@@ -60,7 +60,9 @@ describe("W0.10 — gap-3: allowlist chi con dung 1 gap that", () => {
   });
 
   it("da bo gap da dong (billing pdf + service-accounts detail)", () => {
-    expect(contract).not.toContain("partner/billing/invoices");
-    expect(contract).not.toContain("partner/service-accounts");
+    // Chi kiem cac DONG PATTERN cua allowlist, KHONG kiem comment (comment giai
+    // thich van nhac toi 2 gap da dong ⇒ kiem comment se bao sai).
+    expect(contract).not.toContain("pattern: /^\\/core\\/v1\\/partner\\/billing\\/invoices");
+    expect(contract).not.toContain("pattern: /^\\/core\\/v1\\/partner\\/service-accounts");
   });
 });
