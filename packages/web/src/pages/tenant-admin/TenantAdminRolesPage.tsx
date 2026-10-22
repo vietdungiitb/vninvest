@@ -91,7 +91,7 @@ export function TenantAdminRolesPage() {
 
   const { data, isLoading: loading, error } = useTenantAdminQuery<{ roles: CustomRole[] }>(
     ["tenant-roles"],
-    `/core/v1/partner/roles/`,
+    `/partner/roles/`,
     { headers: activeTenantId ? { "X-Tenant-ID": activeTenantId } : undefined, enabled: !!activeTenantId },
   );
 
@@ -135,14 +135,14 @@ export function TenantAdminRolesPage() {
       const payload = { name: formName.trim(), permissions: formPerms };
       if (editing) {
         await (defaultCoreApiAdapter as any).corePatch(
-          `/core/v1/partner/roles/${editing.public_id}/`,
+          `/partner/roles/${editing.public_id}/`,
           payload,
           { headers: { "X-Tenant-ID": activeTenantId } },
         );
         toast.success(t("tenantRoles.updateSuccess") || "Role updated");
       } else {
         await (defaultCoreApiAdapter as any).corePost(
-          `/core/v1/partner/roles/`,
+          `/partner/roles/`,
           payload,
           { headers: { "X-Tenant-ID": activeTenantId } },
         );
@@ -163,7 +163,7 @@ export function TenantAdminRolesPage() {
     setDeleting(true);
     try {
       await (defaultCoreApiAdapter as any).coreDelete(
-        `/core/v1/partner/roles/${deleteTarget.public_id}/`,
+        `/partner/roles/${deleteTarget.public_id}/`,
         { headers: { "X-Tenant-ID": activeTenantId } },
       );
       toast.success(t("tenantRoles.deleteSuccess") || "Role deleted");

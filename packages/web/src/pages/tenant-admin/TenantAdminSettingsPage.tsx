@@ -54,7 +54,7 @@ export function TenantAdminSettingsPage() {
 
   const { data, isLoading: loading, error } = useTenantAdminQuery<Settings>(
     ["tenant-settings"],
-    `/core/v1/partner/settings/`,
+    `/partner/settings/`,
     { headers: activeTenantId ? { 'X-Tenant-ID': activeTenantId } : undefined, enabled: !!activeTenantId },
   );
 
@@ -82,7 +82,7 @@ export function TenantAdminSettingsPage() {
     setSaving(true);
     try {
       await defaultCoreApiAdapter.corePut(
-        `/core/v1/partner/settings/`,
+        `/partner/settings/`,
         {
           timezone: settings.timezone,
           locale: settings.locale,
