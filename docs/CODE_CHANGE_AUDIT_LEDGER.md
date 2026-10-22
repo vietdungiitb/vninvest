@@ -66,6 +66,7 @@
 - **CHƯA CHẠY (ghi rõ)**: E2E Playwright (cần browser trên VPS — **CHƯA THỬ**) · ảnh chụp thật · deploy staging mới.
 - **BÀI HỌC RÚT RA (ghi vào ledger, chưa tạo file LESSONS mới vì hết chỗ C2)**: (a) **một gate có thể "chết im lặng" nhiều năm** vì lỗi parse-time — phải **kiểm tra gate CÓ THẬT SỰ CHẠY** (số test > 0), không chỉ "PASS"; (b) **SSOT dạng file sinh tự động phải được regenerate khi nguồn đổi** — thêm guard "manifest stale" vào gate; (c) **comment trong code phải được kiểm chứng bằng config thật** — comment sai đã làm suite chết 2 lần.
 - **Lessons áp dụng**: L-001 L-002 L-003 L-007 L-008 L-M02 L-M05 L-M08 L-V01 L-V02 L-V04 L-G01 L-G02 L-G04 L-G05 L-G07 L-G08 L-T01 L-T02 L-A01.
+- **GHI CHU CHO REVIEWER — VI SAO DIFF LON (1146/1071):** `ROADMAP_STATUS.md` (1 627 dong) + `PROGRESS_DASHBOARD.md` (534 dong) trong repo co **line-ending MIXED** (`git ls-files --eol` -> `i/mixed w/mixed`). Commit nay **chuan hoa 2 file ve LF thuan** (chi 3 dong banner noi dung duoc them) => git diff hien thi **toan bo file**. Day la **cai thien** (gate `encoding` khong con phu thuoc EOL hon tap) nhung **tach bach** de reviewer khong bat ngo: noi dung chi thay 3 banner + sua 2 trang thai PR, phan con lai la chuan hoa EOL.
 ## Entry 398: W0.6 DATA HONESTY — 5 endpoint không được "nói dối"; TDD RED→GREEN trên VPS staging; 0 hồi quy (PR #280)
 
 - **Nhánh**: `feat/w0-6-data-honesty` -> `dev`. Claim `w0-6-data-honesty`. Worktree `C:/Mujoco Projects/agent-w0-6`. Base `origin/dev` @ `bda7698ba`. **Slice đầu tiên của ROADMAP bản 3 sau W0 FOUNDATION** (PR #278).
@@ -95,6 +96,7 @@
 - **MÔI TRƯỜNG THỬ NGHIỆM**: **toàn bộ BE test chạy trên VPS staging** theo `docs/STAGING_VPS_RUNBOOK.md` §12.3 (image `vninvest-core-api:staging` + DB tạm `w06_red` / `w06_reg` trên `vninvest-core-db`) — **KHÔNG dùng local Docker** (quy định cứng Owner 2026-10-22, `docs/AGENT_PROTOCOL.md` §12). **Dọn đã verify**: DB tạm **đã DROP** (log `DROP DATABASE`) · worktree VPS `/tmp/wt-w06_*` **đã remove** + `git worktree prune` · `docker ps` **"không còn container thử nghiệm nào"** (mọi container `--rm`).
 - **CHƯA CHẠY (ghi rõ)**: E2E Playwright (cần browser trên VPS — **CHƯA THỬ**) · ảnh chụp thật · deploy staging mới. **FE**: **không có file FE nào thay đổi** ⇒ không cần chạy lại suite FE (ghi rõ trong PR).
 - **Lessons áp dụng**: L-001 L-002 L-003 L-007 L-008 L-M02 L-M05 L-M08 L-V01 L-V02 L-V04 L-G01 L-G02 L-G04 L-G05 L-G07 L-G08 L-T01 L-T02 L-A01.
+- **GHI CHU CHO REVIEWER — VI SAO DIFF LON (1146/1071):** `ROADMAP_STATUS.md` (1 627 dong) + `PROGRESS_DASHBOARD.md` (534 dong) trong repo co **line-ending MIXED** (`git ls-files --eol` -> `i/mixed w/mixed`). Commit nay **chuan hoa 2 file ve LF thuan** (chi 3 dong banner noi dung duoc them) => git diff hien thi **toan bo file**. Day la **cai thien** (gate `encoding` khong con phu thuoc EOL hon tap) nhung **tach bach** de reviewer khong bat ngo: noi dung chi thay 3 banner + sua 2 trang thai PR, phan con lai la chuan hoa EOL.
 
 ## Entry 397: QUY ĐỊNH CỨNG — mọi thử nghiệm chạy trên VPS staging, CẤM local Docker; chạy nốt toàn bộ gate `CHƯA CHẠY` trên staging (Owner 2026-10-22)
 
