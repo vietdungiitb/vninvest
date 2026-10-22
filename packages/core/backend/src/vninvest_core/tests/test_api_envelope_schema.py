@@ -618,12 +618,6 @@ class HandlerResolvabilityTest(EnvelopeSchemaFixture):
         ('data_ingest.views', 'DataIngestAdminViewSet'): 'viewset action ten khac method',
         ('data_ingest.views', 'IngestJobViewSet'): 'viewset action ten khac method',
         ('data_ingest.views', 'IngestRunViewSet'): 'viewset action ten khac method',
-        # `_module_tree()` trả `None` ⇒ không đọc được source để tìm handler.
-        ('user_workspace.views_broker', 'broker_providers_api'): 'module source doc khong duoc',
-        ('user_workspace.views_broker', 'broker_config_schema_api'): 'module source doc khong duoc',
-        ('user_workspace.views_broker', 'broker_config_api'): 'module source doc khong duoc',
-        ('user_workspace.views_broker', 'broker_test_connection_api'): 'module source doc khong duoc',
-        ('user_workspace.views_broker', 'broker_job_status_api'): 'module source doc khong duoc',
     }
 
     def test_no_silent_skips_outside_the_known_list(self):

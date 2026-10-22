@@ -157,7 +157,7 @@ def _row_to_kwargs(row: dict) -> dict:
     except ValueError:
         raise ValueError(f'effective_from khong hop le: {raw_from!r}')
     if timezone.is_naive(effective_from):
-        effective_from = timezone.make_aware(effective_from, timezone.utc)
+        effective_from = timezone.make_aware(effective_from, timezone.UTC)
     source = str(row.get('pricing_source') or AICostRate.PricingSourceChoices.MANUAL).strip()
     if source not in AICostRate.PricingSourceChoices.values:
         raise ValueError(f'pricing_source khong hop le: {source!r}')
