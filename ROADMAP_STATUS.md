@@ -1,4 +1,15 @@
 # VNInvest Roadmap Status (2026-04-03)
+> ## ⚠️ TÀI LIỆU LỊCH SỬ — KHÔNG PHẢI TRẠNG THÁI HIỆN TẠI
+>
+> File này ghi lại **lịch sử sprint tới 2026-04-03** và **đã cũ 6 tháng** (repo đã chuyển
+> monorepo `packages/*` từ 2026-05 và AI Command Center đã tới R5.3).
+>
+> **Nguồn sự thật hiện hành:** [`docs/MASTER_TRACKING_2026Q4.md`](docs/MASTER_TRACKING_2026Q4.md) (điểm vào cho đội code)
+> và [`docs/ROADMAP_MASTER_2026Q4_2027.md`](docs/ROADMAP_MASTER_2026Q4_2027.md) (lộ trình + AC từng slice).
+> Nếu hai tài liệu này mâu thuẫn, **tài liệu trong `docs/` mới thắng**.
+
+---
+
 
 ---
 

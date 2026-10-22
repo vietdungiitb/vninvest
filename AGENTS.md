@@ -258,3 +258,6 @@ Không deviation khỏi cấu trúc đầu ra (mục 4). Thiếu section = kết
 Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước hiện hành của dự án: append **1 `## Entry N` riêng** ở đầu file + 1 dòng index ở bảng cuối file, đánh số kế tiếp (không sửa/xoá Entry cũ).
 
 **Từ 2026-10-03 yêu cầu này đã thi hành được** — ledger gỡ khỏi deny-list ở cả 7 nguồn (xem mục Progress Q-01). Agent append Entry của mình rồi commit bình thường, **không cần** `--no-verify` và không cần claim trước. Còn `AGENTS.md` thì vẫn nằm trong deny-list.
+
+> **Cập nhật 2026-10-22 (coordinator):** Mục "PLAN AI Command Center Rev.2" phía dưới **đã cũ** — R0–R5.3 đã merge.
+> Lộ trình hiện hành: `docs/MASTER_TRACKING_2026Q4.md` (điểm vào) + `docs/ROADMAP_MASTER_2026Q4_2027.md`.

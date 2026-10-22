@@ -261,3 +261,13 @@ fail-before đo được · type-check 0 lỗi · lint 0 error · test 0 fail (B
 | 6 | **Tên vai trò staff thứ 2**: "COC" đã bị chiếm bởi *Center Operations Center* ⇒ đặt tên mới (`broker_operator`?) | W1.5 | Trung bình |
 | 7 | **Credential tầng 2 thuộc tenant hay operator?** (operator ⇒ 2 tenant dùng chung 1 credential ⇒ vi phạm cách ly dữ liệu) | W1.5 | Cao — bảo mật |
 | 8 | **Tầng 2 có cần trading token không?** (không ⇒ scope nhỏ hơn nhiều) | W1.5 | Trung bình |
+
+### Mục 11 — W0.8b: bật CI là **phụ thuộc bên ngoài [X]**, không phải lỗi code
+
+| Bằng chứng | Nội dung |
+|---|---|
+| `.github/workflows-disabled/README.md:9-14` | **200/200 run gần nhất thất bại**; 8 workflow × 5 run = **40/40 fail** |
+| Nguyên nhân gốc | `The job was not started because recent account payments have failed or your spending limit needs to be increased.` — fail sau **2–3 giây với `steps=0`** ⇒ **runner chưa chạy bước nào** |
+| Hệ quả | Bật CI lúc này = **40/40 fail = chặn mọi PR** ⇒ không sửa được bằng code |
+| Không mất gì | Toàn bộ logic gate vẫn chạy qua `agent-sync.ps1` bước 5 (README dòng 26–36) |
+| Việc cần Owner | Xử lý billing / spending limit GitHub Actions ⇒ rồi `git mv .github/workflows-disabled/*.yml .github/workflows/` |

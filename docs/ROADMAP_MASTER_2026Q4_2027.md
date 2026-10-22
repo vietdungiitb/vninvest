@@ -429,7 +429,7 @@
 | W0.5 gate contract API + path 404 | [T] | ✅ **DONE** (PR #281) | **Gate `route-contract` hồi sinh** (suite chưa bao giờ chạy: `type: module` ⇒ ESM ⇒ `__dirname` không tồn tại; + manifest stale) · manifest regenerate **612→627 route** · gate quét thêm `src/pages`+`src/context` · **4 call site FE 404** đã sửa · VPS staging: **4/4 test pass**, 396 call quét, **0 path không resolve** |
 | W0.6 fail-closed 5 endpoint trả dữ liệu giả | [T] | ✅ **DONE** (PR #280) | 5 endpoint: push / whale test / usage meters / quota warning / depth chart · TDD RED→GREEN trên VPS staging · **hồi quy = 0** (3466 test / 11 fail / 224 err — khớp baseline) |
 | W0.7 SAML strict thật + OpenClaw + `ai_agents` | [T] | ⏳ chưa làm | **P0 an toàn** (D5) |
-| W0.8 chuẩn hoá doc trạng thái + bật CI | [T] | ⏳ chưa làm | ⚠ `AGENTS.md` deny-list |
+| W0.8a chuẩn hoá 4 doc trạng thái (ROADMAP_STATUS · PROGRESS_DASHBOARD · OPEN_WORK_20260927 · AGENTS.md) | [T] | ✅ **DONE** (PR #285) | 4 file có banner trỏ về nguồn sự thật; PR #272/#273 đã merge được cập nhật |
 
 **Handoff:** `docs/HANDOVER_W0_FOUNDATION_20261022.md` · **Ledger:** Entry 396
 
@@ -699,3 +699,13 @@ Slice W0.2 **không thay đổi code** (0 dòng bị xoá). Giá trị nằm ở
 - **2 lần cùng một lỗi (L-V02)**: (1) audit trước bảo `contracts.admin_ops` "không được include" — **SAI**, 2 file test dùng `ROOT_URLCONF='tests.urls_test_admin_ops'` ⇒ 26 route **còn sống trong test**; (2) agent (tôi) xoá nhầm `market_data/urls.py` vì grep `market_data.urls` — **SAI**, `core_urls.py:39` có `from .urls import ...` (relative import) ⇒ file **đang serve** route stock-management.
 - **4 test liên quan trực tiếp tới 5 file bị nghi ngờ đang ĐỎ SẴN ở `dev`**: `test_write_endpoint_count_is_unchanged` · `test_known_unreadable_entries_are_still_needed` · `test_flat_views_are_not_documented_as_envelope` · `test_S4_AC3_unmapped_model_lands_in_fallback_group` ⇒ **lưới bảo vệ không hoạt động** ⇒ không thể dùng "suite xanh" làm bằng chứng an toàn khi xoá ⇒ **giữ code**.
 - **Baseline BE đo lại trên `origin/dev` cùng VPS:** 3 468 test · **failures=12** · errors=224 · skipped=7 (khớp **đúng từng tên** với branch đã khôi phục) ⇒ **0 hồi quy**. *(Ghi chú: baseline "11 fail" ghi ở Entry 397 đã outdated — đo lại cùng môi trường cho 12.)*
+
+### 4.13 W0.8b — bật CI là việc **[X] phụ thuộc bên ngoài**, không phải lỗi code (2026-10-22)
+
+`.github/workflows-disabled/README.md:9-14` ghi rõ: **200/200 run gần nhất thất bại, 8 workflow × 5 run = 40/40 fail**, nguyên nhân gốc:
+`The job was not started because recent account payments have failed or your spending limit needs to be increased.` — job fail sau **2–3 giây với `steps=0`** ⇒ **runner chưa chạy bước nào** ⇒ **không phải lỗi code**.
+
+⇒ **Bật CI lúc này = 40/40 fail = chặn mọi PR.** Không sửa được bằng code ⇒ xếp vào **hàng đợi [X]** (cần Owner xử lý billing/spending limit GitHub).
+⇒ **Toàn bộ logic gate vẫn chạy** qua `agent-sync.ps1` bước 5 (README dòng 26–36) ⇒ **không mất lớp kiểm tra nào**.
+
+> **Bài học cho roadmap:** mọi hạng mục "bật CI / bật service / dùng dịch vụ ngoài" phải được kiểm tra **nguyên nhân gốc có phải code hay không** trước khi xếp vào nhóm [T].

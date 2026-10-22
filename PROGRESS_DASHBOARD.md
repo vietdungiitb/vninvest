@@ -1,4 +1,14 @@
 # VNInvest — Progress Dashboard
+> ## ⚠️ TÀI LIỆU LỊCH SỬ — KHÔNG PHẢI TRẠNG THÁI HIỆN TẠI
+>
+> Cập nhật gần nhất: **2026-10-03**. Trạng thái hiện hành: [`docs/MASTER_TRACKING_2026Q4.md`](docs/MASTER_TRACKING_2026Q4.md).
+>
+> **Lưu ý về các gate "Legacy Decommission A–G" (dòng ~53–61):** chúng tham chiếu việc
+> "archive `frontend/`" — nhưng `frontend/` **đã không còn được git-track** (`git ls-files frontend` = 0)
+> ⇒ các gate đó **đã vô nghĩa**, không phải việc đang chờ.
+
+---
+
 
 > **Central progress board** for SaaS migration and feature delivery.
 
