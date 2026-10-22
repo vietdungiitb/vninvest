@@ -124,7 +124,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | File | Số lesson | ID |
 |---|---|---|
 | [multi-agent.md](./multi-agent.md) | 8 | `L-001`, `L-002`, `L-003`, `L-005`, `L-007`, `L-008`, `L-A01`, **`L-M02`** |
-| [`multi-agent-2.md`](./multi-agent-2.md) | 3 | **`L-M05`**, **`L-M06`**, **`L-M07`** |
+| [`multi-agent-2.md`](./multi-agent-2.md) | 4 | **`L-M05`**, **`L-M06`**, **`L-M07`**, **`L-V09`** |
 | [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
 | [`css-soc.md`](./css-soc.md) | 5 | `L-F03`, `L-F05`, `L-F06`, `L-F08`, **`L-F11`** |
 | [`frontend.md`](./frontend.md) | 4 | `L-F01`, `L-F02`, `L-F09`, `L-F10` |
@@ -136,7 +136,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
 | [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
 
-**Tổng: 56 lesson / 14 file**
+**Tổng: 57 lesson / 14 file**
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

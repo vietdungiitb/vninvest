@@ -112,6 +112,7 @@
 | **#280** | **W0.6 DATA HONESTY** — 5 endpoint fail-closed (push / whale test / usage meters / quota warning / depth chart) | BE full **3 466 / 11 fail / 224 err** = baseline, **0 hồi quy** |
 | **#281** | **W0.5** — **gate contract API hồi sinh** (suite chưa bao giờ chạy) + manifest regenerate + 4 call site 404 | jest route-contract **4/4 PASS**, 396 call, **0 path không resolve** |
 | **#282** | **W0.9 = W1.4+W2.1** — bật tape + workspace toolbar + pane chỉ báo 6 indicator | **7 → 13 indicator**; vitest 1 169/1 174, build PASS |
+| *(W0.2)* | **Kết luận: không có code chết để xoá** | — | Đã đính chính roadmap bằng **phản chứng chạy thật** trên VPS (2 lần grep sai, 4 test bảo vệ đang đỏ sẵn). Xem ledger Entry 402 |
 | **#283** | **W0.10** — gap-2 (route detail service account) + gap-1 (in hoá đơn trực tiếp) + allowlist chỉ còn gap-3 | BE **3 468 / 11 / 224** = baseline; manifest **631 route** |
 | *(coordinator)* | **W0.3** — sửa `exports` 10/10 trỏ file `.ts` không tồn tại → `.js` | verify **10/10 resolve** |
 
@@ -146,7 +147,7 @@
 
 | Slice | Nội dung | Ghi chú |
 |---|---|---|
-| **W0.2** | Xoá code chết: `contracts/admin_ops` (**2 126 LOC**, 26 route trả 410) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4) | Xoá file ⇒ phải xoá/thay 2 file test contract cũ bằng guard "vẫn trả 410" |
+| **W0.2** | Xoá code chết (44 route) | [T] | **KHÔNG XOÁ ĐƯỢC — đã đính chính** | Mọi file đều còn **tham chiếu thật**; 4 test bảo vệ đang **đỏ sẵn** ⇒ lưới không đáng tin. Xem ledger Entry 402 |
 | **W0.4** | Xoá 6 entry registry bị shadow + `PortfoliosBrokerPage` + `ShellSupportPage` + `ShellAiCommandCenterPage` + 3 feature folder rỗng | Cần quyết định: giữ export `src/index.js` (public API) hay xoá |
 | **W0.7** | Đóng 3 blocker AI: **SAML `strict` verify thật** (P0 an toàn) · OpenClaw (D4) · `ai_agents` (app rỗng) | SAML: `xmlsec1` CLI có sẵn (`/usr/bin/xmlsec1` 1.2.41) nhưng `python3-saml` **import lỗi** `lxml & xmlsec libxml2 version mismatch` ⇒ cần rebuild image hoặc verify bằng CLI. **Cần Owner chọn hướng (a)/(b)** |
 | **W0.8** | Chuẩn hoá 3 doc stale + **bật CI** (8 workflow disabled) + khôi phục/verify ledger Entry 1–383 | `AGENTS.md` là deny-list ⇒ coordinator |
