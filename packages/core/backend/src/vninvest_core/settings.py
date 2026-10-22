@@ -123,12 +123,12 @@ INSTALLED_APPS = [
     'ops_audit',
     'data_ingest',
     'advisory',
+    'ai_agents',
     'user_workspace',
     'market_data',
     'service_ops',
     'support',
     'advertising',
-    'ai_agents',
     'ai_analytics',
 ]
 

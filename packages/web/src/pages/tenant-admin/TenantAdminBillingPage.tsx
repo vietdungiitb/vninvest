@@ -115,6 +115,38 @@ interface TenantAdminBillingPageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
+/**
+ * W0.10 gap-1 — dung HTML de in hoa don (khong can thu vien PDF server-side).
+ * BE khong co route tai hoa don PDF va image khong co thu vien PDF nao
+ * (da probe VPS staging: reportlab/xhtml2pdf/weasyprint/fpdf/PIL deu "no")
+ * => khong goi URL BE khong ton tai (404) ma IN TRUC TIEP tu du lieu hoa don da co.
+ */
+export function buildInvoicePrintHtml(invoice: unknown, tenantName: string): string {
+  // Doc field an toan: kieu `Invoice` cua FE khong phai `Record<string, unknown>`
+  // (interface khong co index signature) => phai ep qua `unknown` de tranh loi TS.
+  const data = (invoice ?? {}) as Record<string, unknown>;
+  const number = String(data.number ?? data.invoice_number ?? data.public_id ?? "");
+  const amount = new Intl.NumberFormat("vi-VN").format(
+    Number(data.total_amount ?? data.amount ?? 0),
+  );
+  const currency = String(data.currency ?? "VND");
+  const status = String(data.status ?? "");
+  return [
+    "<!doctype html><html lang='vi'><head><meta charset='utf-8'>",
+    "<title>Hoa don " + number + "</title>",
+    "<style>body{font-family:system-ui,sans-serif;padding:32px;color:#111}",
+    "table{border-collapse:collapse;width:100%;margin-top:16px}",
+    "td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}",
+    "</style></head><body>",
+    "<h1>Hoa don " + number + "</h1>",
+    "<p><b>Khach hang:</b> " + tenantName + "</p>",
+    "<p><b>Trang thai:</b> " + status + "</p>",
+    "<table><tr><th>So tien</th><th>Loai tien</th></tr>",
+    "<tr><td>" + amount + "</td><td>" + currency + "</td></tr>",
+    "</table></body></html>",
+  ].join("");
+}
+
 export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   const { t, formatCurrency: fmtCurrency, formatDate: fmtDate, formatNumber } = useI18n();
   const { ability } = usePortfolio();
@@ -156,18 +188,19 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   const invoices = data?.invoices ?? [];
   const costTrend = data?.costTrend ?? null;
 
-  const handleDownloadInvoice = async (invoiceId: string) => {
-    try {
-      const response = await defaultCoreApiAdapter.coreGet(`/partner/billing/invoices/${invoiceId}/pdf/`);
-      if (response && response.url) {
-        window.open(response.url, "_blank");
-      } else {
-        toast.info(t("tenantBilling.downloadPreparing"));
-        window.open(`/partner/billing/invoices/${invoiceId}/pdf/`, "_blank");
-      }
-    } catch {
+  // W0.10 gap-1: BE khong co route tai hoa don PDF va image khong co thu vien
+  // PDF nao (da probe VPS staging: reportlab/xhtml2pdf/weasyprint/fpdf/PIL deu "no").
+  // => Khong goi URL BE khong ton tai (404) ma IN TRUC TIEP tu du lieu hoa don da co.
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    const printWindow = window.open('', '_blank', 'width=880,height=1000');
+    if (!printWindow) {
       toast.error(t("tenantBilling.downloadError"));
+      return;
     }
+    printWindow.document.write(buildInvoicePrintHtml(invoice, ""));
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   const canRead = ability?.can?.("read", "TenantBillingView") ?? false;
@@ -369,7 +402,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                       <div className={ta.bill_18}>
                         <span className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{formatCurrency(invoice.total_amount, fmtCurrency, t)}</span>
                         <button
-                          onClick={() => handleDownloadInvoice(invoice.id)}
+                          onClick={() => handleDownloadInvoice(invoice)}
                           className={[`${styles.button}`, ta.bill_19].filter(Boolean).join(" ")}
                           style={{ fontSize: 11, padding: "4px 8px", border: "1px solid rgba(0,180,216,0.2)" }}
                           title={t("tenantBilling.downloadInvoice")}
