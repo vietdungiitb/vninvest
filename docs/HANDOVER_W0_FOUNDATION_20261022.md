@@ -222,7 +222,7 @@ Main tree có `w/crlf`, worktree mới có `w/lf` (cùng nội dung commit `i/lf
 
 | Phần | Nhãn | Trạng thái |
 |---|---|---|
-| W0.8a chuẩn hoá 4 doc trạng thái | [T] | ✅ **DONE** (PR #285) |
+| W0.8a chuẩn hoá 4 doc trạng thái | [T] | ✅ **DONE** (coordinator, commit `31dcae058` + `91bad0440` — **không có PR**; trích dẫn "PR #285" ở đây là **sai**, đã sửa 2026-10-22 — số 285 nay là PR của slice rà soát PM) |
 | W0.8b bật CI | **[X]** | ⛔ **BỊ CHẶN BỞI BILLING GITHUB** — 40/40 run fail, `steps=0`, runner chưa chạy bước nào (`workflows-disabled/README.md:9-14`). Không sửa được bằng code ⇒ cần Owner xử lý spending limit. Logic gate vẫn chạy qua `agent-sync.ps1` bước 5 |
 
 > **Baseline BE đo lại trên `origin/dev` (cùng VPS): 3 468 test · failures=12 · errors=224 · skipped=7** (baseline "11 fail" ở Entry 397 đã outdated).
