@@ -22,6 +22,7 @@
 | **Nguyên tắc ưu tiên (bản 3)** | **Ưu tiên vấn đề tự giải quyết bằng code [T]; việc phụ thuộc bên ngoài [X] lùi xuống cuối.** Giai đoạn 1 = **36 slice = 100% [T]** ⇒ không bị chặn bởi quyết định pháp lý, hợp đồng hay khoá dịch vụ nào. 12 mục [X] nằm ở hàng đợi, mỗi mục có **điều kiện mở** rõ ràng |
 | **Ưu tiên 90 ngày** | **W0** dọn nền (gate, code chết) → **W1** dữ liệu đáng tin + đúng pháp lý sản phẩm + 2 tầng tài khoản broker → **W2** chiều sâu giá trị retail → **W3** brand name (kích hoạt & giữ chân) |
 | **Còn cần bạn chốt** | **6 câu** (§7) — Q1 tên vai trò staff thứ 2, Q2 credential tầng 2 thuộc tenant hay operator, Q3 tầng 2 có cần trading token không, Q4 bỏ trial 14 ngày, Q5 free có quảng cáo ở đâu, Q6 ai trả chi phí LLM cho free. **Lưu ý: cả 6 đều là quyết định của bạn — không phải phụ thuộc bên ngoài ⇒ không bị lùi hàng đợi** |
+| **Đã triển khai** | **W0.1 + W0.1b + W0.4 xong** (PR #278) ⇒ `pre-push-gate` **32 PASS / 0 FAIL** (trước: 28) — 3 gate "false-green" đã được hồi sinh, 6 entry registry chết đã xoá, gate mới `check-page-registry` chống tái phát. Còn 6 slice W0 → xem handoff `docs/HANDOVER_W0_FOUNDATION_20261022.md` |
 
 ---
 

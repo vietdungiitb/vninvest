@@ -417,6 +417,22 @@
 | W5 | 12 | **X×12** | ~90–120 | Hàng đợi bên ngoài — **chỉ mở khi có điều kiện** |
 
 
+### 4.9 Trạng thái triển khai (cập nhật khi có kết quả thật)
+
+| Slice | Nhãn | Trạng thái | Bằng chứng |
+|---|---|---|---|
+| **W0.1** wire `check-light-theme` + `check-portfolio-contrast` + `check-page-registry` | [T] | ✅ **DONE** (PR #278) | `scripts/pre-push-gate.mjs` +33 dòng · 4 gate mới PASS · `dev` @ `a3c4329a0` ⇒ `pre-push-gate` **32 PASS / 0 FAIL** |
+| **W0.1b** sửa path pattern OC-19 doc-sync | [T] | ✅ **DONE** (PR #278) | `check_opencore_doc_sync.ps1:50-51` · fail-before: pattern cũ match=false với path thật ⇒ self-test **5/5** |
+| **W0.4** xoá 6 registry entry shadow + gate `check-page-registry` | [T] | ✅ **DONE** (PR #278) | Gate báo **đúng 6** entry chết trước khi xoá ⇒ PASS (61 entry, 0 chết, 0 trỏ sai) · `--self-test` **9/9** |
+| W0.2 xoá code chết (2 126 LOC `admin_ops` + 51 route) | [T] | ⏳ chưa làm | cần Docker cho BE test |
+| W0.3 sửa `exports` 10/10 trỏ file `.ts` không tồn tại | [T] | ⏳ chưa làm | ⚠ **deny-list** (`packages/web/package.json`) ⇒ coordinator |
+| W0.5 ~17 endpoint `/partner/*` về adapter | [T] | ⏳ chưa làm | |
+| W0.6 fail-closed 7 endpoint trả dữ liệu giả | [T] | ⏳ chưa làm | **ưu tiên cao** (D1: retail mua dữ liệu) |
+| W0.7 SAML strict thật + OpenClaw + `ai_agents` | [T] | ⏳ chưa làm | **P0 an toàn** (D5) |
+| W0.8 chuẩn hoá doc trạng thái + bật CI | [T] | ⏳ chưa làm | ⚠ `AGENTS.md` deny-list |
+
+**Handoff:** `docs/HANDOVER_W0_FOUNDATION_20261022.md` · **Ledger:** Entry 396
+
 ## 5. CHIẾN LƯỢC DOANH THU — GIAI ĐOẠN 1: MIỄN PHÍ, MỤC TIÊU LÀ BRAND NAME
 
 > **D8 (Owner, 2026-10-21):** *"B2B sẽ cần khi hệ thống đủ tốt sẽ có nhà phát triển ký hợp đồng; giờ tập trung vào người dùng cuối để lấy brand name. Chấp nhận giai đoạn đầu không có doanh thu, phải miễn phí."*
