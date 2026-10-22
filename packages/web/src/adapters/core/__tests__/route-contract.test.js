@@ -20,7 +20,18 @@ import path from "node:path";
 // SyntaxError. The old comment here claimed the opposite ("Jest runs this suite as
 // ESM, so `__dirname` does not exist"), which is why the suite never executed.
 const HERE = __dirname;
-const ADAPTER_DIR = path.resolve(HERE, "..");
+// W0.5: gate phai quet TAT CA noi goi core API — khong chi adapter.
+// Truoc day chi quet `src/adapters/core/*.js`, nen moi loi goi coreGet/corePost
+// trong `src/pages/**` va `src/context/**` deu ngoai tam gate => path sai chi
+// lo ra khi user bam (404 im lang).
+const SRC_ROOT = path.resolve(HERE, "..", "..", "..");
+const SCAN_ROOTS = [
+  { dir: path.join(SRC_ROOT, "adapters"), label: "adapters" },
+  { dir: path.join(SRC_ROOT, "pages"), label: "pages" },
+  { dir: path.join(SRC_ROOT, "context"), label: "context" },
+];
+const SCAN_EXTS = new Set([".js", ".jsx", ".ts", ".tsx"]);
+const SKIP_FILE_RE = /\.(test|spec)\.[^.]+$/;
 
 // Read the manifest with fs rather than `import ... from "./x.json"`: ESM JSON
 // imports need an import assertion and silently yielded an empty object here,
@@ -44,17 +55,47 @@ function toRegExp(route) {
   return new RegExp(`^${body}/?$`);
 }
 
+function collectFiles(dir, out) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (["node_modules", "__tests__", "__snapshots__", "dist"].includes(entry.name)) continue;
+      collectFiles(full, out);
+    } else {
+      if (!SCAN_EXTS.has(path.extname(entry.name))) continue;
+      if (SKIP_FILE_RE.test(entry.name)) continue;
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/**
+ * W0.5: quet TAT CA file (adapter + page + context) va chi lay chuoi NAM TRONG
+ * `coreGet/corePost/corePut/corePatch/coreDelete(...)`.
+ *
+ * QUAN TRONG: chi `cache key` (vd `useTenantAdminQuery(..., "/partner/usage/trends/")`)
+ * KHONG phai URL — neu quet moi chuoi "/partner/..." se bao SAI (false positive).
+ * Vi du thuc te: `TenantAdminUsagePage.tsx:185` trong roadmap duoc goi la "sai"
+ * nhung no la cache key; URL that la `adapter.getAllUsageTrends()` -> `/partner/usage/trend/`.
+ */
 function collectAdapterCalls() {
   const calls = [];
-  for (const name of fs.readdirSync(ADAPTER_DIR)) {
-    if (!name.endsWith(".js") || name.endsWith(".test.js")) continue;
-    const file = path.join(ADAPTER_DIR, name);
-    const text = fs.readFileSync(file, "utf8");
-    let match;
-    CALL_RE.lastIndex = 0;
-    while ((match = CALL_RE.exec(text)) !== null) {
-      const line = text.slice(0, match.index).split("\n").length;
-      calls.push({ file: name, line, raw: match[1] });
+  for (const root of SCAN_ROOTS) {
+    for (const file of collectFiles(root.dir, [])) {
+      const text = fs.readFileSync(file, "utf8");
+      let match;
+      CALL_RE.lastIndex = 0;
+      while ((match = CALL_RE.exec(text)) !== null) {
+        const line = text.slice(0, match.index).split("\n").length;
+        calls.push({ file: path.relative(SRC_ROOT, file), line, raw: match[1] });
+      }
     }
   }
   return calls;
@@ -97,6 +138,15 @@ describe("core adapter route contract", () => {
 
   it("finds adapter calls to check (guard against a silently empty scan)", () => {
     expect(calls.length).toBeGreaterThan(300);
+  });
+
+  it("scan really covers pages and context (W0.5 guard)", () => {
+    const fromPages = calls.filter((c) => c.file.startsWith("pages" + path.sep));
+    const fromContext = calls.filter((c) => c.file.startsWith("context" + path.sep));
+    const fromAdapters = calls.filter((c) => c.file.startsWith("adapters" + path.sep));
+    expect(fromAdapters.length).toBeGreaterThan(300);
+    expect(fromPages.length).toBeGreaterThan(5);
+    expect(fromContext.length).toBeGreaterThan(0);
   });
 
   it("manifest is non-empty (guards a vacuous pass)", () => {
