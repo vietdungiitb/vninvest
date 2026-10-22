@@ -647,17 +647,17 @@ Xem bảng đầy đủ tại **§1.1** (D1–D8). Tóm tắt: **D1** retail-fir
 - **Đối thủ trực tiếp ở nhóm data/analysis VN là FireAnt, không phải TradingView.** Bất kỳ roadmap nào không so với FireAnt là so sai.
 - Tài liệu này **lập trên context do Owner cung cấp + đọc code thật**. Mọi ô `?` đã verify bằng grep/reader thật trên `packages/core` + `packages/web`; riêng 5 năng lực nằm trong widget npm cần **click thật** để khẳng định reachability.
 
-### 4.10 Trang thai trien khai � cap nhat 2026-10-22 (sau W0.6 / W0.5 / W0.9)
+### 4.10 Trang thai trien khai - cap nhat 2026-10-22 (sau W0.6 / W0.5 / W0.9)
 
 | Slice | Nhan | Trang thai | Bang chung |
 |---|---|---|---|
-| W0.6 fail-closed 5 endpoint tra du lieu gia | [T] | DONE (PR #280) | BE full suite VPS 3466 / 11 fail / 224 err � **khop baseline, 0 hoi quy**; 13 test moi PASS |
-| W0.5 gate contract API + path 404 | [T] | DONE (PR #281) | Suite `route-contract` **hoi sinh** (truoc: chua bao gio chay) � manifest **612 ? 627 route** � gate quet them `src/pages`+`src/context` � **4 call site FE 404** da sua |
+| W0.6 fail-closed 5 endpoint tra du lieu gia | [T] | DONE (PR #280) | BE full suite VPS 3466 / 11 fail / 224 err - **khop baseline, 0 hoi quy**; 13 test moi PASS |
+| W0.5 gate contract API + path 404 | [T] | DONE (PR #281) | Suite `route-contract` **hoi sinh** (truoc: chua bao gio chay) - manifest **612 ? 627 route** - gate quet them `src/pages`+`src/context` - **4 call site FE 404** da sua |
 | W0.3 sua `exports` 10/10 tro file `.ts` khong ton tai | [T] | DONE (coordinator) | 10/10 entry ? `.js`; verify 10/10 resolve |
 | W0.9 (= W1.4 + W2.1) mo khoa du lieu chart | [T] | DONE (PR #282) | `showTapePanel` + `showWorkspaceToolbar` + pane chi bao 6 indicator ? **7 ? 13**; VPS vitest **5/5**, tong **1174 passed** (0 hoi quy) |
 | W0.2 xoa code chet (2 126 LOC `admin_ops` + 51 route) | [T] | **CON LAI** | can BE test VPS |
 | W0.7 SAML `strict` verify that (P0 an toan) + `ai_agents` + `OpenClaw` | [T] | **CON LAI** | SAML can them `xmlsec` vao `requirements.txt` ? **deny-list / coordinator** + rebuild image |
 | W0.8 chuan hoa doc trang thai + bat CI | [T] | **CON LAI** | `AGENTS.md` deny-list ? coordinator |
 
-> **3 endpoint BE chua co** (gap ro trong gate `route-contract`): W0.5-gap-1 `partner/billing/invoices/{id}/pdf/` � gap-2 `partner/service-accounts/{id}/` � gap-3 `/ai/agents/*`.
-> **10 i18n key `indicator*`** (`vi.js:3671-3680`) van la DEAD � nhan cho mot FE indicator picker chua ton tai; giu nguyen de khong mat dau vet.
+> **3 endpoint BE chua co** (gap ro trong gate `route-contract`): W0.5-gap-1 `partner/billing/invoices/{id}/pdf/` - gap-2 `partner/service-accounts/{id}/` - gap-3 `/ai/agents/*`.
+> **10 i18n key `indicator*`** (`vi.js:3671-3680`) van la DEAD - nhan cho mot FE indicator picker chua ton tai; giu nguyen de khong mat dau vet.

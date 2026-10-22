@@ -151,7 +151,7 @@ Main tree có `w/crlf`, worktree mới có `w/lf` (cùng nội dung commit `i/lf
 - **CHƯA CHẠY**: `npm run test` · `npm run test:components` · BE `pytest` (Docker lỗi) · E2E Playwright · ảnh chụp thật · deploy staging
 - Baseline BE đã biết: **602 test — failures=10, errors=3** (`e01dbf3d`)
 
-## 9. Cap nhat 2026-10-22 (sau 3 slice) � ban giao cho phien sau
+## 9. Cap nhat 2026-10-22 (sau 3 slice) - ban giao cho phien sau
 
 | Slice | PR | Trang thai | Ghi chu nhan giao |
 |---|---|---|---|
@@ -160,17 +160,17 @@ Main tree có `w/crlf`, worktree mới có `w/lf` (cùng nội dung commit `i/lf
 | W0.3 exports | (coordinator) | DONE | 10/10 entry `.ts` ? `.js`; deny-list ? coordinator commit |
 | W0.9 Chart Data Unlock | #282 | DONE | `showTapePanel` + `showWorkspaceToolbar` + pane chi bao 6 indicator ? **7 ? 13**; VPS vitest 5/5, tong 1174 passed (0 hoi quy) |
 
-### Con lai � thu tu uu tien de xu cho phien sau
+### Con lai - thu tu uu tien de xu cho phien sau
 
-1. **W0.7 SAML `strict` verify THAT (P0 an toan, D5)** � can them `xmlsec` vao `requirements.txt` ? **deny-list ? coordinator** + rebuild image staging + deploy. Hien tai `strict` **luon raise** ? SSO doanh nghiep khong dung duoc; `noop` (dev) ? khong verify ? co rui ro gia mao chu ky.
-2. **W0.2 xoa code chet** � 2 126 LOC `contracts/admin_ops` (26 route da 410 GONE) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4). Nho: 2 file test contract cung phai xoa hoac thay bang guard 1 dong "van tra 410".
-3. **3 endpoint BE chua co** (W0.5-gap-1/2/3) � FE dang goi ? 404 that. gap-1 PDF hoa don � gap-2 PATCH/DELETE 1 service account � gap-3 `/ai/agents/*` (app rong).
-4. **W0.8** � chuan hoa `ROADMAP_STATUS.md` (stale 6 thang) � `PROGRESS_DASHBOARD.md` (stale) � `AGENTS.md` (deny-list) + **bat CI** (8 workflow disabled).
-5. **OpenClaw** (D4) + `ai_agents` � implement hoac go khoi danh sach provider.
+1. **W0.7 SAML `strict` verify THAT (P0 an toan, D5)** - can them `xmlsec` vao `requirements.txt` ? **deny-list ? coordinator** + rebuild image staging + deploy. Hien tai `strict` **luon raise** ? SSO doanh nghiep khong dung duoc; `noop` (dev) ? khong verify ? co rui ro gia mao chu ky.
+2. **W0.2 xoa code chet** - 2 126 LOC `contracts/admin_ops` (26 route da 410 GONE) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4). Nho: 2 file test contract cung phai xoa hoac thay bang guard 1 dong "van tra 410".
+3. **3 endpoint BE chua co** (W0.5-gap-1/2/3) - FE dang goi ? 404 that. gap-1 PDF hoa don - gap-2 PATCH/DELETE 1 service account - gap-3 `/ai/agents/*` (app rong).
+4. **W0.8** - chuan hoa `ROADMAP_STATUS.md` (stale 6 thang) - `PROGRESS_DASHBOARD.md` (stale) - `AGENTS.md` (deny-list) + **bat CI** (8 workflow disabled).
+5. **OpenClaw** (D4) + `ai_agents` - implement hoac go khoi danh sach provider.
 
 ### 4 moi bai hoc lon nhat cua 3 slice vua roi
 
-- **Mot gate co the "chet im lang" nhieu nam** vi loi parse-time. Phai kiem tra gate **CO THAT SU CHAY** (so test > 0), khong chi "PASS". `route-contract` chet vi `package.json` khai `"type": "module"` nen `__dirname` khong ton tai � va **comment sai trong file** da lam no chet 2 lan.
-- **SSOT dang file sinh tu dong phai duoc regenerate khi nguon doi** � manifest stale 612 route lam 7 nhom route BE "khong ton tai" (gia).
-- **Comment trong code phai duoc kiem chung bang config that** � comment sai lam suite chet 2 lan.
-- **Audit truoc bao sai 2 cap "lech so it/so nhieu"** � hoa ra la **cache key** cua `useTenantAdminQuery`, khong phai URL. Phai doc code that truoc khi dua vao roadmap (L-V02).
+- **Mot gate co the "chet im lang" nhieu nam** vi loi parse-time. Phai kiem tra gate **CO THAT SU CHAY** (so test > 0), khong chi "PASS". `route-contract` chet vi `package.json` khai `"type": "module"` nen `__dirname` khong ton tai - va **comment sai trong file** da lam no chet 2 lan.
+- **SSOT dang file sinh tu dong phai duoc regenerate khi nguon doi** - manifest stale 612 route lam 7 nhom route BE "khong ton tai" (gia).
+- **Comment trong code phai duoc kiem chung bang config that** - comment sai lam suite chet 2 lan.
+- **Audit truoc bao sai 2 cap "lech so it/so nhieu"** - hoa ra la **cache key** cua `useTenantAdminQuery`, khong phai URL. Phai doc code that truoc khi dua vao roadmap (L-V02).
