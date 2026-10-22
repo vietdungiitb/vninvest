@@ -167,7 +167,7 @@
 |---|---|---|---|---|
 | A1 | **2 lỗi thật còn treo**: `timezone.utc` (`advisory/pricing.py:160`) + 5 endpoint `broker_*` bị bỏ qua envelope (`test_api_envelope_schema.py:607`) | [T] | S | Có test khoá sẵn · BE test trên VPS staging |
 | A2 | **Vệ sinh registry claim**: đóng 8 dòng claim cũ (5 `in-progress` + 3 `proposed`) | [T] | S | `audit-status-claims` ⇒ "đang mở: 0" |
-| A3 | **Bằng chứng W0.8a**: backfill ledger Entry 403 + sửa trích dẫn "PR #285" (không tồn tại) | [T] | S | Doc-only |
+| A3 | **Bằng chứng W0.8a**: backfill ledger Entry 403 + sửa trích dẫn PR **sai** của W0.8a (W0.8a **không có PR**) | [T] | S | Doc-only |
 | A4 | **Đính chính roadmap** W0.4 + W0.2 (kết luận "không xoá được") | [T] | S | Doc-only · giống cách Entry 402 đã làm |
 | A5 | **OpenClaw → tính năng hỗ trợ** (D4, fail-closed có lý do) + ghi nhận `ai_agents` chờ Owner | [T] | M | BE test trên VPS staging |
 
