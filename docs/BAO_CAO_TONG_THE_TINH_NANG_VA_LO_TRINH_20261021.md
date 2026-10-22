@@ -1,5 +1,9 @@
 # BÁO CÁO TỔNG THỂ TÍNH NĂNG & LỘ TRÌNH PHÁT TRIỂN — VNInvest
 
+> **📌 ĐIỂM VÀO CHO ĐỘI CODE:** [`MASTER_TRACKING_2026Q4.md`](./MASTER_TRACKING_2026Q4.md) — bảng trạng thái từng slice, việc còn lại theo thứ tự ưu tiên, quy trình bắt buộc, và 8 câu đang chờ Owner.
+>
+> **Ngày lập:** 2026-10-21 · **Bản:** 2 (sau 8 quyết định Owner) · **Cập nhật:** 2026-10-22 · **PR đã merge:** #277–#283
+
 **Ngày:** 2026-10-21 · **Phiên bản:** 2 (sau 8 quyết định của Owner) · **Phạm vi:** toàn bộ repo `vninvest` (5 package track) · **Trạng thái:** tài liệu chiến lược + lộ trình, **không sửa code production**
 
 > **Đọc tài liệu nào?**
