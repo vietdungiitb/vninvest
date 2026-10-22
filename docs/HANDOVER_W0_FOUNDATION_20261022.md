@@ -205,3 +205,15 @@ Main tree có `w/crlf`, worktree mới có `w/lf` (cùng nội dung commit `i/lf
 - **Khi "danh co the la code chet", Kiem tra CONSUMER TRUOC khi xoa** - `AISliceE.i18n.component.test.js:147` spy `getAIAgents` cho thay 4 method do KHONG phai code chet ma la **404 that tren UI**. Da hoan nguyen.
 - **Kiem chung kieu du lieu cua type truoc khi viet code** - `Invoice` khong co `number`/`currency`; 4 loi TS bi `tsc` bat sau khi viet.
 - **Khi route BE moi duoc them, PH?I regenerate manifest** (SSOT cua gate) - neu khong route moi se khong co trong manifest ? gate bao sai.
+### W0.2 — kết luận (2026-10-22): KHÔNG có code chết để xoá
+
+| Việc | Kết quả |
+|---|---|
+| Xoá code chết (44 route / 841 dòng) | **KHÔNG XOÁ ĐƯỢC** — 5 file đều còn tham chiếu THẬT |
+| `contracts.admin_ops` (2 470 dòng) | Chết ở prod (`urls.py:77` → 410) nhưng **còn sống trong test** (`ROOT_URLCONF='tests.urls_test_admin_ops'`, 740 dòng test) ⇒ cần Owner chốt |
+| `market_data/urls.py` (6 route) | **ĐANG DÙNG** — `core_urls.py:39` có `from .urls import ...` |
+| `ops_audit/*_parity*` (4 file) | 4 test bảo vệ liên quan trực tiếp đang **đỏ sẵn** ở `dev` ⇒ lưới không đáng tin ⇒ giữ |
+
+**Baseline BE đo lại trên `origin/dev` (cùng VPS): 3 468 test · failures=12 · errors=224 · skipped=7** — khớp **đúng từng tên** với branch ⇒ **0 hồi quy**. *(Baseline "11 fail" ghi ở Entry 397 đã outdated.)*
+
+**Bài học mới (L-V09):** grep theo đường dẫn dotted cho kết quả **giả** khi code dùng relative import / include() bằng chuỗi. Đã xảy ra **2 lần** (audit `admin_ops` + agent `market_data.urls` — lần sau suýt làm chết toàn bộ endpoint `/core/v1/market-data/*`).

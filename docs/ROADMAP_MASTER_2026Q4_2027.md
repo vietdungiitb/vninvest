@@ -424,7 +424,7 @@
 | **W0.1** wire `check-light-theme` + `check-portfolio-contrast` + `check-page-registry` | [T] | ✅ **DONE** (PR #278) | `scripts/pre-push-gate.mjs` +33 dòng · 4 gate mới PASS · `dev` @ `a3c4329a0` ⇒ `pre-push-gate` **32 PASS / 0 FAIL** |
 | **W0.1b** sửa path pattern OC-19 doc-sync | [T] | ✅ **DONE** (PR #278) | `check_opencore_doc_sync.ps1:50-51` · fail-before: pattern cũ match=false với path thật ⇒ self-test **5/5** |
 | **W0.4** xoá 6 registry entry shadow + gate `check-page-registry` | [T] | ✅ **DONE** (PR #278) | Gate báo **đúng 6** entry chết trước khi xoá ⇒ PASS (61 entry, 0 chết, 0 trỏ sai) · `--self-test` **9/9** |
-| W0.2 xoá code chết (2 126 LOC `admin_ops` + 51 route) | [T] | ⏳ chưa làm | cần Docker cho BE test |
+| W0.2 "xoa code chet" | [T] | **KHONG XOA DUOC — da dinh chinh** | Moi file bi nghi ngo xoa deu CON tham chieu THAT (test voi ROOT_URLCONF rieng / relative import / app khac include bang chuoi). Tieu chi dung: **so reference THAT**, khong phai "so route ai khong goi". Xem ledger Entry 402 |
 | W0.3 sửa `exports` 10/10 trỏ file `.ts` không tồn tại | [T] | ✅ **DONE** (coordinator) | 10/10 entry `.ts` → `.js` (đã verify file `.js` tồn tại); ⚠ deny-list ⇒ commit coordinator |
 | W0.5 gate contract API + path 404 | [T] | ✅ **DONE** (PR #281) | **Gate `route-contract` hồi sinh** (suite chưa bao giờ chạy: `type: module` ⇒ ESM ⇒ `__dirname` không tồn tại; + manifest stale) · manifest regenerate **612→627 route** · gate quét thêm `src/pages`+`src/context` · **4 call site FE 404** đã sửa · VPS staging: **4/4 test pass**, 396 call quét, **0 path không resolve** |
 | W0.6 fail-closed 5 endpoint trả dữ liệu giả | [T] | ✅ **DONE** (PR #280) | 5 endpoint: push / whale test / usage meters / quota warning / depth chart · TDD RED→GREEN trên VPS staging · **hồi quy = 0** (3466 test / 11 fail / 224 err — khớp baseline) |
@@ -692,3 +692,10 @@ Xem bảng đầy đủ tại **§1.1** (D1–D8). Tóm tắt: **D1** retail-fir
 - **Khi "danh co the la code chet", Kiem tra CONSUMER TRUOC khi xoa** - `AISliceE.i18n.component.test.js:147` spy `getAIAgents` cho thay 4 method do KHONG phai code chet ma la **404 that tren UI**. Da hoan nguyen.
 - **Kiem chung kieu du lieu cua type truoc khi viet code** - `Invoice` khong co `number`/`currency`; 4 loi TS bi `tsc` bat sau khi viet.
 - **Khi route BE moi duoc them, PH?I regenerate manifest** (SSOT cua gate) - neu khong route moi se khong co trong manifest ? gate bao sai.
+### 4.12 W0.2 — kết luận: KHÔNG có code chết để xoá (2026-10-22)
+
+Slice W0.2 **không thay đổi code** (0 dòng bị xoá). Giá trị nằm ở **phản chứng**:
+
+- **2 lần cùng một lỗi (L-V02)**: (1) audit trước bảo `contracts.admin_ops` "không được include" — **SAI**, 2 file test dùng `ROOT_URLCONF='tests.urls_test_admin_ops'` ⇒ 26 route **còn sống trong test**; (2) agent (tôi) xoá nhầm `market_data/urls.py` vì grep `market_data.urls` — **SAI**, `core_urls.py:39` có `from .urls import ...` (relative import) ⇒ file **đang serve** route stock-management.
+- **4 test liên quan trực tiếp tới 5 file bị nghi ngờ đang ĐỎ SẴN ở `dev`**: `test_write_endpoint_count_is_unchanged` · `test_known_unreadable_entries_are_still_needed` · `test_flat_views_are_not_documented_as_envelope` · `test_S4_AC3_unmapped_model_lands_in_fallback_group` ⇒ **lưới bảo vệ không hoạt động** ⇒ không thể dùng "suite xanh" làm bằng chứng an toàn khi xoá ⇒ **giữ code**.
+- **Baseline BE đo lại trên `origin/dev` cùng VPS:** 3 468 test · **failures=12** · errors=224 · skipped=7 (khớp **đúng từng tên** với branch đã khôi phục) ⇒ **0 hồi quy**. *(Ghi chú: baseline "11 fail" ghi ở Entry 397 đã outdated — đo lại cùng môi trường cho 12.)*

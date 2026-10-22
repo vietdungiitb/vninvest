@@ -58,3 +58,18 @@
   - [ ] Da **dọn** sau thu nghiem: DB tam DROP · worktree tam remove · node_modules tam xoa · `docker ps` khong con container thu nghiem?
   - [ ] Da ghi bang chong VPS vao ledger (lenh + ket qua + so do) chua?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 397; `docs/STAGING_VPS_RUNBOOK.md` §12; `docs/AGENT_PROTOCOL.md` §12.
+
+## L-V09: Grep theo ĐƯỜNG DẪN DOTTED cho kết quả GIẢ khi code dùng RELATIVE import / include() bằng CHUỖI
+
+- **Nguyên nhân:** `grep "market_data.urls"` trả **0 hit** vì code thật import bằng **relative**: `from .urls import urlpatterns as shared_urlpatterns` (`core_urls.py:39`). Tương tự `include('vninvest_core.contracts.admin_ops.urls')` — grep `"contracts.admin_ops"` (dấu chấm) không match, phải grep **chuỗi** có dấu chấm.
+- **Hậu quả thật (2026-10-22):** xoá nhầm `market_data/urls.py` (6 route) ⇒ `ModuleNotFoundError: No module named 'market_data.urls'` ⇒ **toàn bộ endpoint `/core/v1/market-data/*` chết**. Đã khôi phục kịp trước khi merge. Lần trước đó (audit) cùng lỗi với `contracts.admin_ops` ⇒ 26 route "không ai gọi" **nhưng còn sống trong test** (ROOT_URLCONF riêng).
+- **Khi nào gặp:** `tags: [verification, grep, dotted-path, relative-import, dead-code, audit, delete, false-negative, baseline]`
+- **QUY TẮC:** "**KHÔNG** kết luận 'code chết' bằng grep theo đường dẫn dotted. Tiêu chí đúng là **số reference THẬT**: (a) grep **basename** (không dấu chấm), (b) grep **relative import** `from .X import` / `from .X import (`, (c) grep **chuỗi include()**, (d) grep **tên file** trong mọi `.py` kể cả `tests/`, (e) loại bỏ dòng comment. **Và bắt buộc**: chạy `manage.py check` + **full test suite trên VPS** trước khi commit xoá. Nếu có test **đang đỏ sẵn** liên quan tới file cần xoá ⇒ **KHÔNG xoá** (lưới bảo vệ không hoạt động ⇒ không có bằng chứng an toàn)."
+- **CHECKLIST:**
+  - [ ] Tôi đã grep **basename** (không dấu chấm) chứ không chỉ dotted path?
+  - [ ] Tôi đã grep `from .X import` (relative) và `include('...X...')` (chuỗi)?
+  - [ ] Tôi đã grep trong **`tests/`** chứ không chỉ `src/`?
+  - [ ] `manage.py check` PASS **trên VPS** (không phải local)?
+  - [ ] Full BE suite trên VPS **khớp baseline** (cùng commit, cùng môi trường)?
+  - [ ] Có test nào **đang đỏ sẵn** liên quan tới file cần xoá không? ⇒ nếu có ⇒ **KHÔNG xoá**
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 402; `packages/core/backend/src/market_data/core_urls.py:39`; `packages/core/backend/tests/test_admin_ops_contract_api.py:55`.

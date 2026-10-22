@@ -1,3 +1,9 @@
+> **K? LU?N S?A (2026-10-22) � DOC N�Y �� B? ��NH CH�NH.**
+> K? ho?ch ban d?u d? ki?n xo� 5 file (38 route / 827 d�ng). **Khi ch?y `manage.py check` + full BE suite
+> tr�n VPS staging th� ph�t hi?n: 5 file d� **�?U C�N THAM CHI?U TH?T** ? **KH�NG XO� �U?C**.
+> Ri�ng `market_data/urls.py` (6 route) **dang serve** (`core_urls.py:39` c� `from .urls import ...`).
+> Chi ti?t 2 l?n grep sai + 4 test b?o v? dang d? s?n: **ledger Entry 402** + **lesson L-V09**.
+> Branch n�y **kh�ng xo� 1 d�ng code**; n� ch? s?a t�i li?u + ghi lesson.
 # IMPLEMENTATION PLAN — W0.2 XOÁ CODE CHẾT THẬT (44 route / 841 dòng)
 
 **Agent:** `w0-2-dead-code` · **Branch:** `feat/w0-2-dead-code` -> `dev`
