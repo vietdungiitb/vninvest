@@ -18,7 +18,7 @@
 | **Quy tắc môi trường** | **Mọi thử nghiệm chạy trên VPS staging** `14.225.255.47`. **Cấm local Docker.** Sau thử nghiệm phải xoá container/worktree/DB tạm. Cổng chặn máy: `scripts/check-experiment-env.mjs` |
 | **Quy mô** | BE **16 Django app** ~93 000 LOC · FE **421 file** ~110 000 LOC · 291 + 215 test file · ~500 route BE · **69** route FE |
 | **Đã merge trong kỳ này** | **8 PR** (**#277–#284**) + **1 coordinator không có PR** (W0.8a, commit `31dcae058`/`91bad0440`) — xem §4 |
-| **Còn lại trong W0** | **2 slice code còn làm được** (W0.7 phần OpenClaw · W0.4 phần còn lại — nhưng **đã đính chính: 0 dòng xoá được**) + **3 việc vệ sinh bằng chứng** (Phase A) + **2 việc chặn bên ngoài** — xem §6 và [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) |
+| **Còn lại trong W0** | **5 việc Phase A** (2 code: sửa 2 lỗi thật + OpenClaw/D4 · 3 doc: vệ sinh registry + backfill ledger + đính chính roadmap) + **2 việc chặn bên ngoài/hạ tầng** (SAML rebuild image · CI billing) + **1 mục chờ Owner** (gap-3) — xem §6 và [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) |
 
 ---
 
