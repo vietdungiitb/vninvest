@@ -58,6 +58,25 @@ const ALLOWED_PATHS = [
 ];
 
 /** Đường dẫn bị phép chứa lệnh docker (script deploy có chủ đích). */
+/**
+ * File ĐỊNH NGHĨA chính luật — chứa chuỗi "docker run|exec|compose|build|ps" để
+ * DÒ pattern. Nếu không allowlist, gate sẽ tự chặn chính mình (false positive).
+ */
+const RULE_DEFINITION_PATHS = [
+  "scripts/check-experiment-env.mjs",
+  "scripts/pre-push-gate.mjs",
+  "docs/LESSONS/",
+  "docs/lessons/",
+  ".opencode/skills/",
+];
+
+/**
+ * CHỈ quét file THỰC THI. Tài liệu (`.md`) chỉ **mô tả** lệnh docker (ví dụ
+ * hướng dẫn dọn container sau thử nghiệm) — không phải lệnh sẽ chạy ⇒ không
+ * được gate chặn. Rủi ro "chạy thử nghiệm bằng local docker" nằm ở SCRIPT.
+ */
+const SCANNED_EXTENSIONS = [".sh", ".ps1", ".py", ".mjs", ".cjs", ".js", ".ts", ".yml", ".yaml", ".json", ".bat", ".cmd"];
+
 const ALLOWED_SCRIPT_PATHS = [
   "scripts/deploy-staging.sh",
   "scripts/deploy-server.sh",
@@ -115,6 +134,11 @@ export function findLocalDockerViolations(addedLines) {
   for (const { path, line, text } of addedLines) {
     const p = path.replace(/\\/g, "/");
     if (ALLOWED_PATHS.some((a) => p.startsWith(a))) continue;
+    if (RULE_DEFINITION_PATHS.some((a) => p.startsWith(a))) continue;
+    // CHI quet file thuc thi (script/config) — tai lieu `.md` chi mo ta lenh.
+    const dot = p.lastIndexOf(".");
+    const ext = dot >= 0 ? p.slice(dot).toLowerCase() : "";
+    if (!SCANNED_EXTENSIONS.includes(ext)) continue;
     if (ALLOWED_SCRIPT_PATHS.some((a) => p === a || p.startsWith(a + "/"))) continue;
     if (!DOCKER_PATTERNS.some((re) => re.test(text))) continue;
     if (VPS_MARKERS.some((re) => re.test(text))) continue;
@@ -215,12 +239,27 @@ function selfTest() {
     check("case 6", v.length === 0, `nhan ${JSON.stringify(v)}`);
   }
 
+  // 7. TAI LIEU `.md` chi MO TA lenh docker => KHONG bao (khong phai lenh chay).
+  {
+    const v = findLocalDockerViolations([
+      { path: "docs/HANDOVER.md", line: 84, text: "xoa container: docker exec vninvest-core-db psql ..." },
+    ]);
+    check("case 7", v.length === 0, `nhan ${JSON.stringify(v)}`);
+  }
+  // 8. File dinh nghia chinh LUAT (gate tu chan chinh no) => KHONG bao.
+  {
+    const v = findLocalDockerViolations([
+      { path: "scripts/check-experiment-env.mjs", line: 10, text: "const DOCKER_PATTERNS = [/docker\\s+run/];" },
+    ]);
+    check("case 8", v.length === 0, `nhan ${JSON.stringify(v)}`);
+  }
+
   if (failures.length) {
     console.error("check-experiment-env --self-test: FAIL");
     failures.forEach((f) => console.error("  - " + f));
     return 1;
   }
-  console.log("check-experiment-env --self-test: PASS (6/6 case)");
+  console.log("check-experiment-env --self-test: PASS (8/8 case)");
   return 0;
 }
 
