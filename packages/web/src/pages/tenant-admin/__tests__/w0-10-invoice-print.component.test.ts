@@ -45,7 +45,9 @@ describe("W0.10 — gap-1: hoa don in truc tiep, khong goi URL BE khong ton tai"
 
   it("khong goi window.open voi duong dan thieu /core/v1", () => {
     // Bug 2 cua cung cho: window.open("/partner/...") tro ve server FE, khong phai BE.
-    const opens = billing.match(/window\.open\(\s*[`"']([^`"']+)/g) || [];
+    // CHI kiem cac cua so window.open co DUONG DAN server (bat dau bang "/") —
+    // cua so in ("window.open('', ...)") la about:blank, hop le.
+    const opens = billing.match(/window\.open\(\s*[`"'](\/[^`"']*)/g) || [];
     for (const call of opens) {
       expect(call).toContain("/core/v1/");
     }
