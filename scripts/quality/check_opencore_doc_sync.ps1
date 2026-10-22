@@ -46,9 +46,13 @@ if ($changedFiles.Count -eq 0) {
 
 $requiresGate = $false
 foreach ($path in $changedFiles) {
+    # W0.1b (2026-10-22): path pattern da sua tu `^backend/` + `^frontend/` sang
+    # `^packages/core/backend/` + `^packages/web/`. Repo da chuyen sang monorepo
+    # `packages/*` nen pattern cu KHONG match file nao => gate LUON PASS
+    # (false-green) — dung chinh xac tai day.
     if (
-        $path -match '^backend/.*(opencore|entitlement|quota|trial|grace|feature_gate|pricing|package|subscription|billing|plan)' -or
-        $path -match '^frontend/.*(opencore|entitlement|quota|trial|grace|feature_gate|pricing|package|subscription|billing|plan)'
+        $path -match '^packages/core/backend/.*(opencore|entitlement|quota|trial|grace|feature_gate|pricing|package|subscription|billing|plan)' -or
+        $path -match '^packages/web/.*(opencore|entitlement|quota|trial|grace|feature_gate|pricing|package|subscription|billing|plan)'
     ) {
         $requiresGate = $true
         break

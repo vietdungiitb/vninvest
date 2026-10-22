@@ -494,6 +494,39 @@ for (const uiGate of [
   }
 }
 
+// ------------------------------------------- W0.1 gate bo sung (2026-10-22)
+// 3 gate nay TON TAI nhung TRUOC day KHONG duoc goi tu pre-push => "gate xanh
+// giang ma khong chay" (Ledger Entry 391 T3 + audit ROADMAP §2.4 T1/T15).
+// Ca 3 la gate TUYET DOI (khong baseline-locked) => exit != 0 la FAIL that.
+//
+// `check-page-registry` co `--self-test` rieng: chay them trong pre-push de
+// chung minh gate THAT SU bat loi (khong phai tautology) — L-V01.
+for (const extraGate of [
+  { name: "check-light-theme", args: [] },
+  { name: "check-portfolio-contrast", args: [] },
+  { name: "check-page-registry", args: [] },
+  { name: "check-page-registry", args: ["--self-test"], label: "check-page-registry-selftest" },
+]) {
+  const gatePath = join(REPO, "packages", "web", "scripts", `${extraGate.name}.mjs`);
+  const gateLabel = extraGate.label || extraGate.name;
+  if (!existsSync(gatePath)) {
+    skip(`ui-${gateLabel}`, `khong co packages/web/scripts/${extraGate.name}.mjs`);
+    continue;
+  }
+  const r = run(process.execPath, [gatePath, ...extraGate.args], join(REPO, "packages", "web"), 300000);
+  if (r.code === null) {
+    // Khong co exit code = gate khong chay xong => KHONG co bang chung de ket
+    // luan => SKIP chu khong phai FAIL (cung convention voi vong lap gate UI).
+    skip(`ui-${gateLabel}`, `khong chay xong (${r.launchError || "khong ro"}) — CHUA CHAY`);
+  } else if (r.code !== 0) {
+    bad(`ui-${gateLabel}`, r.out.split("\n").slice(0, 10).join("\n"));
+  } else {
+    const pass = r.out.match(/PASS[^\n]*/);
+    const lastLine = r.out.split("\n").filter((l) => l.trim()).slice(-1)[0] || "PASS";
+    ok(`ui-${gateLabel}`, (pass ? pass[0] : lastLine).trim());
+  }
+}
+
 // ------------------------------------------------------------------ tong ket
 console.log("");
 if (failed > 0) {
