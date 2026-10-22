@@ -165,6 +165,10 @@ const KNOWN_MISSING_BE_ENDPOINTS = [
     pattern: /^\/core\/v1\/partner\/service-accounts\/[^/]+\/?$/,
     why: "BE chi co partner/service-accounts/ (list) + /<sa_id>/usage/ — chua co route detail (W0.5-gap-2)",
   },
+  {
+    pattern: /^\/core\/v1\/ai\/agents(?:\/[^/]*)?\/?$/,
+    why: "app ai_agents RONG (0 route) — 4 method adapter tro vao app da bi xoa (W0.7 xu ly: xoa khoi INSTALLED_APPS hoac implement)",
+  },
 ];
 
 /**
