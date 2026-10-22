@@ -430,3 +430,39 @@ Exit `2` = **không verify được** — tuyệt đối không đọc là PASS.
 
 ⇒ Sửa `docs/LESSONS/` mà không chạy lệnh này thì push bị chặn. Đó là điểm khác với
 §11.1–11.5: những mục đó chỉ có tác dụng nếu người đọc làm theo.
+
+---
+
+## 12. MÔI TRƯỜNG THỬ NGHIỆM — CẤM LOCAL DOCKER (Owner chốt 2026-10-14, nhắc lại 2026-10-22)
+
+> **QUY ĐỊNH CỨNG, KHÔNG HỎI LẠI, KHÔNG CÓ NGOẠI LỆ:**
+> **MỌI thử nghiệm — kể cả thử nghiệm chỉ dùng một lần — PHẢI chạy trên VPS staging `14.225.255.47`.**
+> **CẤM dùng local Docker cho MỌI thử nghiệm** (kể cả container dùng-một-lần local).
+> Sau khi thử nghiệm xong, **xoá container/worktree/DB tạm** nếu không dùng nữa.
+
+**Lý do (đo thật, không phải giả định):** host local cạn RAM ⇒ suite test local cho kết quả **giả** (OOM, `OperationalError`). Container local **vẫn ăn RAM host** ⇒ cấm luôn. Quy định chi tiết + quy trình: **`docs/STAGING_VPS_RUNBOOK.md` §12** (đọc trước khi thử nghiệm).
+
+| Loại thử nghiệm | Nơi chạy |
+|---|---|
+| `manage.py test` (mọi scope) · `npm run test*` / `test:components` · `npm run build` · Playwright / E2E | **BẮT BUỘC VPS staging** — `docs/STAGING_VPS_RUNBOOK.md` §12.3 (BE) / §12.4 (FE) |
+| `manage.py check` · `makemigrations --check` · `ruff` · `eslint` · `tsc --noEmit` · `bash -n` · grep/read · viết code + review diff | Được local (nhẹ, không RAM/DB) |
+
+**Cổng chặn máy:** `node scripts/check-experiment-env.mjs` — quét **dòng mới thêm** trong diff; dòng nào gọi `docker run|exec|compose|build|ps` mà **không có** dấu hiệu VPS (`ssh` · `14.225.255.47` · `docker.edusuccess.vn` · `vninvest-staging` · `/opt/vninvest`) ⇒ **FAIL**, kèm lệnh VPS chuẩn. Có `--self-test` (6/6) chứng minh gate bắt lỗi thật. Đã nối vào `scripts/pre-push-gate.mjs`.
+
+**Lưu ý agent:** khi `new-agent.ps1` fail ở bước 2/7 (tạo DB) vì Docker local không chạy ⇒ **KHÔNG dùng local Docker để bù**. Có 2 lựa chọn hợp lệ: (a) slice **không sửa BE** ⇒ tạo worktree thủ công và ghi rõ "BE test = CHƯA CHẠY"; (b) slice **có sửa BE** ⇒ **chạy test BE trên VPS staging** theo §12.3 (không cần Docker local). Xem `docs/LESSONS/multi-agent-2.md` L-M05.
+
+## 13. Thử nghiệm 1 lần cũng phải trên VPS — bằng chứng 2026-10-22
+
+Sau khi sửa W0 (PR #278), các gate còn `CHƯA CHẠY` đã được chạy **trên VPS staging** theo §12:
+
+| Gate | Kết quả trên VPS staging (`origin/dev` @ `3448aa238`) |
+|---|---|
+| BE `manage.py check` | **PASS** — "System check identified no issues (0 silenced)" |
+| BE `manage.py migrate` | **PASS** — áp tới `user_workspace.0030_backfill_dnse_broker_backed` |
+| BE `manage.py test` (**full**) | **3453 test · failures=11 · errors=224 · skipped=7** (386s) — **chưa lấy được baseline cùng commit ⇒ `CHƯA XÁC MINH` mức lỗi nền**; nhưng slice của tôi **không sửa file BE nào** nên không thể là nguyên nhân |
+| FE `npm run test:components` | **1169/1174 pass**, 2 file fail · 5 test fail — **CHỨNG MINH pre-existing**: chạy lại trên commit trước merge (`bd3c33df2`) cho **KẾT QUẢ GIỐNG HỆT** (`tenantreg-dup-i18n-keys.component.test.ts` 2 test + `commercial-page.component.test.tsx` 3 test); diff tập file fail = **rỗng** |
+| FE `npm run test` (jest) | **262/271 pass**, 3 suite fail: `WorkstationLayout.test.jsx` · `field-contract.test.js` · `route-contract.test.js` — **khớp đúng 3 suite pre-existing** đã ghi ở ledger Entry 384 |
+| FE `npm run build` | **PASS** — "✓ built in 34.62s" |
+| FE `npm run lint` | **0 error**, 4416 warning |
+
+**Dọn sau thử nghiệm (bắt buộc, đã làm):** DB tạm `w0_verify` **đã DROP** · worktree `/tmp/wt-*` **đã remove** · `node_modules` trên VPS **đã xoá** · `docker ps` xác nhận **không còn container thử nghiệm nào** (mọi container chạy bằng `--rm`).

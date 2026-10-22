@@ -1,3 +1,34 @@
+## Entry 397: QUY ĐỊNH CỨNG — mọi thử nghiệm chạy trên VPS staging, CẤM local Docker; chạy nốt toàn bộ gate `CHƯA CHẠY` trên staging (Owner 2026-10-22)
+
+- **Phạm vi:** coordinator consolidation trên `dev` (claim `w0-staging-policy`). **DOC + 1 script gate máy mới.** Không sửa code production.
+- **YÊU CẦU OWNER (2026-10-22):** *"mọi thử nghiệm phải thực hiện trên vps staging kể cả thử nghiệm chỉ sử dụng 1 lần. Cái này cần được quy định cứng — không sử dụng local docker trong mọi thử nghiệm mà bắt buộc phải thực hiện trên vps staging. Thử nghiệm xong nếu không dùng nữa thì có thể xóa container đi."*
+- **PHÁT HIỆN GỐC RỄ (quan trọng):** quy định này **ĐÃ CÓ SẴN** từ Owner chốt 2026-10-14 tại `docs/STAGING_VPS_RUNBOOK.md` **§12** (kéo dài §12.1–§12.4, có sẵn quy trình BE/FE + dọn dẹp). Phiên trước **KHÔNG ĐỌC §12** ⇒ cố khởi động Docker Desktop local (thất bại) ⇒ mất ~20 phút ⇒ BE test bị ghi `CHƯA CHẠY` **trong khi VPS có đủ Postgres + image staging + node**. ⇒ Đây là lỗi **đọc tài liệu**, không phải lỗi môi trường ⇒ đã ghi **L-M08** (`docs/LESSONS/multi-agent-2.md`).
+- **ĐÃ NÂNG THÀNH QUY ĐỊNH CỨNG + CỔNG CHẶN MÁY**:
+  - `docs/AGENT_PROTOCOL.md` **§12 MỚI** (môi trường thử nghiệm: bảng PHẢI/DƯỢC chạy ở đâu, quy tắc khi `new-agent.ps1` fail vì Docker) + **§13** (bằng chứng 2026-10-22).
+  - `docs/STAGING_VPS_RUNBOOK.md` §12 giữ nguyên làm nguồn gốc.
+  - **CỔNG CHẶN MÁY MỚI `scripts/check-experiment-env.mjs`** (+ `--self-test` **6/6**): quét **dòng mới thêm** trong diff (`git diff --cached`, không có thì `origin/dev...HEAD`); dòng nào gọi `docker run|exec|compose|build|ps` mà **không** có dấu hiệu VPS (`ssh` · `14.225.255.47` · `docker.edusuccess.vn` · `vninvest-staging` · `/opt/vninvest`) ⇒ **FAIL** + in lệnh VPS chuẩn. Allowlist cho file đã có chủ đích (runbook, script deploy-lên-VPS, compose, workflow). Đã **nối vào `scripts/pre-push-gate.mjs`** (2 entry: `check-experiment-env` + `check-experiment-env-selftest`).
+- **TOÀN BỘ GATE `CHƯA CHẠY` ĐÃ CHẠY THẬT TRÊN VPS STAGING** (theo `docs/STAGING_VPS_RUNBOOK.md` §12.3 BE + §12.4 FE, trên `origin/dev` @ `3448aa238`):
+
+| Gate | Kết quả thật trên VPS |
+|---|---|
+| BE `manage.py check` | **PASS** — "System check identified no issues (0 silenced)" |
+| BE `manage.py migrate` | **PASS** — áp tới `user_workspace.0030_backfill_dnse_broker_backed` |
+| BE `manage.py test` (**full suite**) | **3453 test · failures=11 · errors=224 · skipped=7** (386s) |
+| FE `npm run test:components` | **1169/1174 pass** · 2 file fail · 5 test fail |
+| FE `npm run test` (jest) | **262/271 pass** · 3 suite fail |
+| FE `npm run build` | **PASS** — "✓ built in 34.62s" |
+| FE `npm run lint` | **0 error**, 4416 warning |
+
+- **ATTRIBUTION — CHỨNG MINH FAIL LÀ PRE-EXISTING, KHÔNG PHẢI DO SLICE** (chạy trên chính VPS, so 2 commit):
+  - **vitest**: chạy trên `origin/dev` (sau merge) vs `bd3c33df2` (trước merge) ⇒ **KẾT QUẢ GIỐNG HỆT**: 2 file / 5 test fail (`tenantreg-dup-i18n-keys.component.test.ts` 2 test · `commercial-page.component.test.tsx` 3 test); `comm -23` (chỉ có ở DEV) = **rỗng**, `comm -13` (chỉ có ở TRƯỚC) = **rỗng** ⇒ **0 khác biệt** ⇒ 100% pre-existing.
+  - **jest**: 3 suite fail = `WorkstationLayout.test.jsx` · `field-contract.test.js` · `route-contract.test.js` ⇒ **khớp đúng** 3 suite đã ghi pre-existing ở Entry 384.
+  - **BE**: 3453 test / 224 errors — mức lỗi nền **CHƯA XÁC MINH** (chưa lấy baseline cùng commit) nhưng slice W0 **không sửa file BE nào** ⇒ không thể là nguyên nhân. **Ghi `CHƯA XÁC MINH` cho baseline, không suy ra.**
+- **DỌN SAU THỬ NGHIỆM (bắt buộc, đã làm và đã verify)**: DB tạm `w0_verify` **đã DROP** (`DROP DATABASE` trong log) · worktree VPS `/tmp/wt-w0_verify` + `/tmp/wt-w0_fe_verify` + `/tmp/wt-w0_attr2` **đã remove** + `git worktree prune` · `node_modules` trên VPS **đã xoá** · `docker ps` xác nhận **"không còn container thử nghiệm nào"** (mọi container chạy `--rm`).
+- **2 LỖI THẬT PHÁT HIỆN KHI CHẠY SUITE (ghi vào handoff, KHÔNG sửa ở slice này)**: ① `advisory/pricing.py` dùng `timezone.utc` — Django 6.0.6 **đã xoá** `django.utils.timezone.utc` (phải `timezone.UTC`) ⇒ `test_no_timezone_utc.py` đỏ ② `KNOWN_UNREADABLE` trong `user_workspace.views_broker` còn ghi 5 API `broker_*_api` là "đã đọc được handler" ⇒ xem lại allowlist của test đó.
+- **GATE CHẠY THẬT (local, nhẹ — §12.2 cho phép)**: `node scripts/check-experiment-env.mjs --self-test` **6/6** · `node scripts/check-experiment-env.mjs` **0 lỗi** · `node scripts/check-lessons.mjs` **0** (14 file / 56/60 lesson) · `node scripts/pre-push-gate.mjs` **33 PASS / 0 FAIL** (28 cũ + 4 gate W0 + 2 gate env + self-test) · `tsc --noEmit` **0** · `npm run lint` **0 error** (chạy trên VPS).
+- **CHƯA CHẠY**: E2E Playwright (cần browser trên VPS — **CHƯA THỬ**, ghi rõ) · ảnh chụp thật · deploy staging mới.
+- **LESSON MỚI**: `docs/LESSONS/multi-agent-2.md` **L-M08** — "quy định đã có sẵn trong repo mà không đọc" + checklist đọc `STAGING_VPS_RUNBOOK.md` §12 trước mọi thử nghiệm. INDEX §1.1 + §1.5 cập nhật (tổng 55→**56 lesson / 14 file**).
+
 ## Entry 396: W0 FOUNDATION — wire 3 gate thật + sửa path OC-19 + xoá 6 page-registry entry shadow + gate `check-page-registry` mới (PR #278)
 
 - **Nhánh**: `feat/w0-foundation` -> `dev`. Claim `w0-foundation` (`docs/CLAIMS.md`). **PR #278 MERGED** → `dev` @ `a3c4329a0`. Worktree `C:/Mujoco Projects/agent-w0-foundation`. **Slice đầu tiên của ROADMAP_MASTER bản 3 (W0).**

@@ -44,3 +44,17 @@
   - [ ] `dev` sach o main tree chay gate => PASS chua?
   - [ ] Ly do (3 bang chung) **da ghi trong commit body** chua?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 396 §"`global-config-drift` FAIL trong worktree"; `docs/LESSONS/build-gates.md` L-G08.
+
+## L-M08: Quy dinh da co san trong repo ma khong DOC — "moi thu nghiem chay tren VPS staging"
+
+- **Nguyenn han:** `docs/STAGING_VPS_RUNBOOK.md` **§12** (Owner chot 2026-10-14) da quy dinh "moi test BE/FE chay tren VPS staging, CAM container local" **tu truoc**. Phiên 2026-10-22 agent **khong doc §12** ⇒ thu khoi dong Docker Desktop local (that bai) ⇒ mat ~20 phong ⇒ BE test phai ghi "CHUA CHAY".
+- **Hau qua that:** 1 slice gui report voi gate BE = `CHUA CHAY` **trong khi VPS da co Postgres + image staging + node** ⇒ thu nghiem co the chay duoc ma lai bo qua. Sau khi doc §12, **toan bo gate con CHUA CHAY da chay that tren VPS** (BE full 3453 test · FE vitest 1169/1174 · jest 262/271 · build PASS · lint 0 error) trong <15 phong.
+- **Khi nao gap:** `tags: [multi-agent, staging, vps, docker, test, gate, runbook, experiment]`
+- **QUY TAC:** "**Truoc khi chay bat ky thu nghiem nao, DOC `docs/STAGING_VPS_RUNBOOK.md` §12.** Neu thu nghiem can Docker/Postgres/RAM-nang ⇒ **chay tren VPS staging** (`ssh -i $HOME/.ssh/id_ed25519 root@14.225.255.47`, repo `/opt/vninvest`), **khong** khoi dong Docker local. Ket thuc thu nghiem ⇒ **drop DB tam, xoa worktree tam, xoa node_modules tam, xac nhan khong con container thu nghiem** (`docker ps`). Gate may: `node scripts/check-experiment-env.mjs` chan dong moi them goi docker ma khong co dau hieu VPS."
+- **CHECKLIST:**
+  - [ ] Da doc `docs/STAGING_VPS_RUNBOOK.md` §12 truoc khi thu nghiem chua?
+  - [ ] Thieu nghiem nay co can Docker/Postgres/RAM-nang khong? => **VPS**.
+  - [ ] Neu VPS khong truy cap duoc => ghi "CHUA CHAY" + **ly do cu the** (khong doi thu nghiem sang local docker).
+  - [ ] Da **dọn** sau thu nghiem: DB tam DROP · worktree tam remove · node_modules tam xoa · `docker ps` khong con container thu nghiem?
+  - [ ] Da ghi bang chong VPS vao ledger (lenh + ket qua + so do) chua?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 397; `docs/STAGING_VPS_RUNBOOK.md` §12; `docs/AGENT_PROTOCOL.md` §12.

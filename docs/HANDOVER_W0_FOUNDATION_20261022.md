@@ -56,6 +56,39 @@ Main tree có `w/crlf`, worktree mới có `w/lf` (cùng nội dung commit `i/lf
 
 ---
 
+## 3b. QUY ĐỊNH CỨNG MỚI (Owner 2026-10-22) — MỌI THỬ NGHIỆM CHẠY TRÊN VPS STAGING
+
+> **CẤM DÙNG LOCAL DOCKER CHO MỌI THỬ NGHIỆM — kể cả thử nghiệm chỉ dùng 1 lần.**
+> Quy định này **đã có sẵn** từ 2026-10-14 tại `docs/STAGING_VPS_RUNBOOK.md` §12; phiên 2026-10-22 đã **không đọc** ⇒ mất thời gian. Nay đã nâng thành **quy định cứng + cổng chặn máy**.
+
+| Hạng mục | Nội dung |
+|---|---|
+| **Nơi quy định** | `docs/AGENT_PROTOCOL.md` **§12** (mới) · `docs/STAGING_VPS_RUNBOOK.md` **§12** (đã có) |
+| **Cổng chặn máy** | `node scripts/check-experiment-env.mjs` — quét **dòng mới thêm** trong diff; gọi `docker run\|exec\|compose\|build\|ps` mà **không** có dấu hiệu VPS (`ssh` · `14.225.255.47` · `docker.edusuccess.vn` · `vninvest-staging` · `/opt/vninvest`) ⇒ **FAIL** kèm lệnh VPS chuẩn. `--self-test` **6/6**. Đã nối vào `pre-push-gate` (2 entry: gate + self-test) |
+| **Lesson** | `docs/LESSONS/multi-agent-2.md` **L-M08** — "quy định đã có sẵn trong repo mà không đọc" |
+
+### Kết quả chạy thật trên VPS staging (2026-10-22) — các gate đã `CHƯA CHẠY` giờ đã chạy
+
+Đã chạy theo `docs/STAGING_VPS_RUNBOOK.md` §12.3 (BE) + §12.4 (FE), trên `origin/dev` @ `3448aa238`:
+
+| Gate | Kết quả |
+|---|---|
+| BE `manage.py check` | **PASS** — "System check identified no issues (0 silenced)" |
+| BE `manage.py migrate` | **PASS** — áp tới `user_workspace.0030_backfill_dnse_broker_backed` |
+| BE `manage.py test` (**full**) | **3453 test · failures=11 · errors=224 · skipped=7** (386s) — mức lỗi nền **chưa lấy được baseline cùng commit ⇒ `CHƯA XÁC MINH`**; slice W0 **không sửa file BE nào** nên không thể là nguyên nhân |
+| FE `npm run test:components` | **1169/1174 pass** · 2 file fail · 5 test fail — **CHỨNG MINH pre-existing**: chạy lại trên commit trước merge (`bd3c33df2`) cho **KẾT QUẢ GIỐNG HỆT** (`tenantreg-dup-i18n-keys.component.test.ts` 2 test + `commercial-page.component.test.tsx` 3 test); diff tập file fail = **rỗng** |
+| FE `npm run test` (jest) | **262/271 pass** · 3 suite fail: `WorkstationLayout.test.jsx` · `field-contract.test.js` · `route-contract.test.js` — **khớp đúng 3 suite pre-existing** đã ghi ở ledger Entry 384 |
+| FE `npm run build` | **PASS** — "✓ built in 34.62s" |
+| FE `npm run lint` | **0 error**, 4416 warning |
+
+**Dọn sau thử nghiệm (đã làm, đã verify):** DB tạm `w0_verify` **đã DROP** · worktree `/tmp/wt-*` **đã remove** + `git worktree prune` · `node_modules` trên VPS **đã xoá** · `docker ps` xác nhận **không còn container thử nghiệm nào** (mọi container chạy `--rm`).
+
+### 2 lỗi thật phát hiện khi chạy suite trên VPS (việc nên làm tiếp)
+1. **`advisory/pricing.py` dùng `timezone.utc`** — Django 6.0.6 **đã xoá** `django.utils.timezone.utc` (phải dùng `timezone.UTC`) ⇒ test `test_no_timezone_utc.py` đỏ. Lỗi thật, không phải của W0.
+2. **`KNOWN_UNREADABLE` trong `user_workspace.views_broker`** — 5 API `broker_config_api` · `broker_config_schema_api` · `broker_test_connection_api` · `broker_providers_api` · `broker_job_status_api` bị test đánh dấu "đã đọc được handler" ⇒ **xem lại danh sách allowlist** của test đó.
+
+
+
 ## 4. Việc còn lại của W0 (6 slice) — thứ tự đề xuất
 
 | Slice | Nội dung | File dự kiến | Ghi chú quy trình |
