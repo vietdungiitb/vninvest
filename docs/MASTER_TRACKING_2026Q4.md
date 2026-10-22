@@ -2,8 +2,8 @@
 
 > **Điểm vào duy nhất cho đội code.** Đọc file này để biết: dự án đang ở đâu, đã làm gì, làm tiếp cái gì, và bằng chứng ở đâu.
 >
-> **Cập nhật:** 2026-10-22 · **`dev` @ `abecf55b0`** · **Gate:** `pre-push-gate` **34 PASS / 0 SKIP / 0 FAIL**
-> **Tài liệu chi tiết:** [`ROADMAP_MASTER_2026Q4_2027.md`](./ROADMAP_MASTER_2026Q4_2027.md) (kỹ thuật) · [`BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md`](./BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md) (quản lý) · [`COMPETITIVE_BENCHMARK_20261021.md`](./COMPETITIVE_BENCHMARK_20261021.md) (đối thủ, 108 URL) · [`HANDOVER_W0_FOUNDATION_20261022.md`](./HANDOVER_W0_FOUNDATION_20261022.md) (bàn giao) · [`AGENT_PROTOCOL.md`](./AGENT_PROTOCOL.md) (quy trình) · [`CLAIMS.md`](./CLAIMS.md) + [`CODE_CHANGE_AUDIT_LEDGER.md`](./CODE_CHANGE_AUDIT_LEDGER.md) (bằng chứng)
+> **Cập nhật:** 2026-10-22 (rà soát PM lần 2) · **`dev` @ `91bad0440`** · **Gate:** `pre-push-gate` **34 PASS / 0 SKIP / 0 FAIL**
+> **Tài liệu chi tiết:** [`ROADMAP_MASTER_2026Q4_2027.md`](./ROADMAP_MASTER_2026Q4_2027.md) (kỹ thuật) · [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) (**rà soát việc dang dở + kế hoạch tiếp theo**) · [`BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md`](./BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md) (quản lý) · [`COMPETITIVE_BENCHMARK_20261021.md`](./COMPETITIVE_BENCHMARK_20261021.md) (đối thủ, 108 URL) · [`HANDOVER_W0_FOUNDATION_20261022.md`](./HANDOVER_W0_FOUNDATION_20261022.md) (bàn giao) · [`AGENT_PROTOCOL.md`](./AGENT_PROTOCOL.md) (quy trình) · [`CLAIMS.md`](./CLAIMS.md) + [`CODE_CHANGE_AUDIT_LEDGER.md`](./CODE_CHANGE_AUDIT_LEDGER.md) (bằng chứng)
 
 ---
 
@@ -17,8 +17,8 @@
 | **Nguyên tắc ưu tiên** | **Ưu tiên vấn đề tự giải quyết bằng code [T]**; việc phụ thuộc bên ngoài [X] **lùi xuống cuối** |
 | **Quy tắc môi trường** | **Mọi thử nghiệm chạy trên VPS staging** `14.225.255.47`. **Cấm local Docker.** Sau thử nghiệm phải xoá container/worktree/DB tạm. Cổng chặn máy: `scripts/check-experiment-env.mjs` |
 | **Quy mô** | BE **16 Django app** ~93 000 LOC · FE **421 file** ~110 000 LOC · 291 + 215 test file · ~500 route BE · **69** route FE |
-| **Đã merge trong kỳ này** | **8 PR** (#277–#283 + 1 coordinator) — xem §4 |
-| **Còn lại trong W0** | **6 slice** — xem §6 |
+| **Đã merge trong kỳ này** | **8 PR** (**#277–#284**) + **1 coordinator không có PR** (W0.8a, commit `31dcae058`/`91bad0440`) — xem §4 |
+| **Còn lại trong W0** | **2 slice code còn làm được** (W0.7 phần OpenClaw · W0.4 phần còn lại — nhưng **đã đính chính: 0 dòng xoá được**) + **3 việc vệ sinh bằng chứng** (Phase A) + **2 việc chặn bên ngoài** — xem §6 và [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) |
 
 ---
 
@@ -143,35 +143,53 @@
 | W0.9 | Mở khoá dữ liệu chart (7→13 indicator) | #282 |
 | W0.10 | gap-1 / gap-2 / allowlist | #283 |
 
-### Còn lại W0 (6 slice)
+### Còn lại W0 (rà soát PM 2026-10-22 — đã đính chính, không còn "6 slice")
 
-| Slice | Nội dung | Ghi chú |
-|---|---|---|
-| **W0.2** | Xoá code chết (44 route) | [T] | **KHÔNG XOÁ ĐƯỢC — đã đính chính** | Mọi file đều còn **tham chiếu thật**; 4 test bảo vệ đang **đỏ sẵn** ⇒ lưới không đáng tin. Xem ledger Entry 402 |
-| **W0.4** | Xoá 6 entry registry bị shadow + `PortfoliosBrokerPage` + `ShellSupportPage` + `ShellAiCommandCenterPage` + 3 feature folder rỗng | Cần quyết định: giữ export `src/index.js` (public API) hay xoá |
-| **W0.7** | Đóng 3 blocker AI: **SAML `strict` verify thật** (P0 an toàn) · OpenClaw (D4) · `ai_agents` (app rỗng) | SAML: `xmlsec1` CLI có sẵn (`/usr/bin/xmlsec1` 1.2.41) nhưng `python3-saml` **import lỗi** `lxml & xmlsec libxml2 version mismatch` ⇒ cần rebuild image hoặc verify bằng CLI. **Cần Owner chọn hướng (a)/(b)** |
-| **W0.8** | Chuẩn hoá 3 doc stale + **bật CI** (8 workflow disabled) + khôi phục/verify ledger Entry 1–383 | `AGENTS.md` là deny-list ⇒ coordinator |
-| *(gap-3)* | `/ai/agents/*` — app rỗng nhưng **FE UI `AISliceE` vẫn gọi** ⇒ 404 thật trên UI | **Cần Owner chọn:** implement BE registry `ai_agents` hay gỡ UI |
+| Slice | Nội dung | Trạng thái thật | Ghi chú |
+|---|---|---|---|
+| **W0.2** | Xoá code chết (44 route) | ✅ **ĐÃ ĐÓNG — kết luận: KHÔNG XOÁ ĐƯỢC** | Mọi file đều còn **tham chiếu thật**; 4 test bảo vệ đang **đỏ sẵn** ⇒ lưới không đáng tin. Xem ledger Entry 402 |
+| **W0.4** | Xoá 6 entry registry bị shadow + `PortfoliosBrokerPage` + `ShellSupportPage` + `ShellAiCommandCenterPage` + 3 feature folder rỗng | ⚠ **6 entry shadow ĐÃ XOÁ (#278); phần còn lại: 0 dòng xoá được** | 3 file component **đang được gate assert** (`packages/web/scripts/check-shell.mjs:37,41,150,156,454,806`) + public API `packages/web/src/index.js:20,27` ⇒ xoá là **vỡ gate**. Thư mục rỗng duy nhất: `packages/web/src/features/advertising/hooks` (1, không phải 3). **Cần đính chính roadmap (Phase A4)** |
+| **W0.7** | Đóng 3 blocker AI: **SAML `strict` verify thật** (P0 an toàn) · OpenClaw (D4) · `ai_agents` (app rỗng) | ⏳ **1/3 làm được ngay** (OpenClaw ⇒ W1.7) · SAML **chặn hạ tầng** · `ai_agents` **chờ Owner** | SAML: `xmlsec1` CLI có sẵn (`/usr/bin/xmlsec1` 1.2.41) nhưng `python3-saml` **import lỗi** `lxml & xmlsec libxml2 version mismatch` ⇒ cần rebuild image hoặc verify bằng CLI. **Cần Owner chọn hướng (a)/(b)** |
+| **W0.8a** | Chuẩn hoá 4 doc trạng thái | ✅ **DONE** — commit `31dcae058` + `91bad0440` (không có PR) | Ledger Entry **403** (backfill 2026-10-22) |
+| **W0.8b** | Bật CI (8 workflow disabled) | ⛔ **[X] — chặn bởi billing GitHub** | 40/40 run fail, `steps=0` ⇒ runner chưa chạy bước nào ⇒ **không sửa được bằng code**. Xem §11 |
+| *(gap-3)* | `/ai/agents/*` — app rỗng nhưng **FE UI `AISliceE` vẫn gọi** ⇒ 404 thật trên UI | ⏳ **chờ Owner chốt hướng** | FE: `packages/web/src/adapters/core/workspace.js:727,731,735,739`; BE app `ai_agents` **0 route** |
 
 ---
 
-## 6. Việc còn lại — theo thứ tự nên làm tiếp
+## 6. Việc còn lại — theo thứ tự nên làm tiếp (rà soát PM 2026-10-22)
+
+> **Bản chi tiết (AC đo được, file:line, gate, phụ thuộc): [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) §4.**
+> **Nguyên tắc giữ nguyên (ROADMAP §4.0.1):** "M0 = W0 xanh" — nhưng "xanh" = **đã đóng bằng bằng chứng** (DONE / đính chính bằng `file:line` / `[X]` đã có Owner ticket), **không phải** "còn mục nào ghi trong roadmap".
+
+### Phase A — Đóng W0 + vệ sinh bằng chứng (5 slice S/M, **không cần Owner**)
+
+| # | Việc | Loại | Effort | Ghi chú |
+|---|---|---|---|---|
+| A1 | **2 lỗi thật còn treo**: `timezone.utc` (`advisory/pricing.py:160`) + 5 endpoint `broker_*` bị bỏ qua envelope (`test_api_envelope_schema.py:607`) | [T] | S | Có test khoá sẵn · BE test trên VPS staging |
+| A2 | **Vệ sinh registry claim**: đóng 8 dòng claim cũ (5 `in-progress` + 3 `proposed`) | [T] | S | `audit-status-claims` ⇒ "đang mở: 0" |
+| A3 | **Bằng chứng W0.8a**: backfill ledger Entry 403 + sửa trích dẫn "PR #285" (không tồn tại) | [T] | S | Doc-only |
+| A4 | **Đính chính roadmap** W0.4 + W0.2 (kết luận "không xoá được") | [T] | S | Doc-only · giống cách Entry 402 đã làm |
+| A5 | **OpenClaw → tính năng hỗ trợ** (D4, fail-closed có lý do) + ghi nhận `ai_agents` chờ Owner | [T] | M | BE test trên VPS staging |
+
+### Phase B — W1 (2 agent song song sau Phase A)
 
 | # | Việc | Loại | Effort | Phụ thuộc | Ghi chú |
 |---|---|---|---|---|---|
-| 1 | **gap-3**: `/ai/agents/*` | [T] | M | — | 404 thật trên UI · cần Owner chốt hướng |
-| 2 | **W0.7 SAML** — verify chữ ký thật | [T] | L | Docker rebuild (image) hoặc dùng `xmlsec1` CLI | **P0 an toàn (D5)** · production hiện **không** dùng được SSO |
-| 3 | **W0.6 mở rộng**: depth chart nhãn ở **chart order book** + `materialize_unified_alerts` NOOP + AI news summary null | [T] | M | — | Một phần còn `[X]` vì widget là repo ngoài |
-| 4 | **W0.2** xoá code chết 2 126 LOC | [T] | M | — | Cần test guard thay 2 file contract |
-| 5 | **W0.4** dọn registry shadow + feature folder rỗng | [T] | M | — | Cần chốt public API `src/index.js` |
-| 6 | **W0.8** doc stale + bật CI | [T] | M | — | `AGENTS.md` deny-list ⇒ coordinator |
-| 7 | **W1.1** AI contract → phân tích kỹ thuật | [T] | L | — | Đổi prompt + shape + serializer + 2 locale + disclaimer |
-| 8 | **W1.2** NL-screener | [T] | M | — | P0 theo benchmark |
-| 9 | **W1.3** backtest giả định VN (lô 100 · T+2,5 · phí 2 chiều · PIT 0,1%) | [T] | M | — | Khác biệt rẻ nhất vs TradingView |
-| 10 | **W1.9** giá theo seat + platform fee | [T] | M | — | Điều kiện mở B2B |
-| 11 | **W3.1** referral + PWA + activation funnel | [T] | M | — | Mục tiêu brand name (D8) |
+| B1 | **W1.1** AI contract → **phân tích kỹ thuật** (bỏ `signal`/`target_price`/`recommendation`) | [T] | L | — | Đổi prompt + shape + serializer + 2 locale + disclaimer · **nền cho W2.1** |
+| B2 | **W1.2** Gỡ order placement khỏi sản phẩm (D2) — `live` trả 4xx, nhãn "phiếu thử nghiệm" | [T] | M | — | Không đụng `W1.3`/`W1.5` |
+| B3 | **W1.3** Depth chart minh bạch (nhãn "Ước tính" mọi nơi) | [T] | M | — | 1 phần ở repo ngoài ⇒ `[X]` |
+| B4 | **W1.4 phần còn lại** — `materialize_unified_alerts` NOOP · indicators `None` · AI news `null` · news digest rỗng · discovery hub rỗng | [T] | M | — | **AC cũ "7→59" đã outdated** (đã 13/59) |
+| B5 | **W1.6** Minh bạch whale/dark flow (`dark_flow_score` = absorption proxy + nguồn + freshness) | [T] | M | — | |
+| B6 | **W1.8** SAML `strict` verify thật | [T] | M | **Owner Q2** | P0 an toàn (D5) |
+| B7 | **W1.9** Chính sách free (D8) — bỏ trial 14 ngày | [T] | M | Owner Q7 | |
+| B8 | **W1.10** Push `not_configured` — **chỉ phần còn lại** (W0.6 đã làm phần lõi) | [T] | S | — | |
+| B9 | **W1.5** 2 tầng tài khoản broker (D3) — phần code | [T] | L | **Owner Q4/Q5/Q6** | Role mới **không** dùng "COC" (đã bị chiếm) |
 
-**Hàng đợi bên ngoài [X]** (chỉ mở khi có điều kiện) — xem `ROADMAP_MASTER` §4.7: đặt lệnh live (cần hợp đồng broker) · corporate actions (cần nguồn feed) · chỉ số ngành ICB (cần nhiều nguồn) · app native (cần App Store) · khoá FCM production · bán dữ liệu VN (bản quyền VSDC/HOSE) · affiliate broker (pháp lý UBCKNN) · agent AI / robo-advisor (compliance)
+### Phase C — Mở song song sau W1.1
+
+**W2.1** (AI chat grounded — phụ thuộc cứng W1.1) · **W2.3** (backtest giả định VN — khác biệt duy nhất vs TradingView) · **W2.9→W2.10** (tài chính nhiều năm → định giá) · **W3.1/W3.2** (activation funnel + referral — cần W1.9 + W1.6).
+
+**Hàng đợi bên ngoài [X]** (chỉ mở khi có điều kiện) — xem `ROADMAP_MASTER` §4.7: đặt lệnh live (cần hợp đồng broker) · corporate actions (cần nguồn feed) · chỉ số ngành ICB · app native (cần App Store) · khoá FCM production · bán dữ liệu VN (bản quyền VSDC/HOSE) · affiliate broker (pháp lý UBCKNN) · agent AI / robo-advisor (compliance) · **bật CI (billing GitHub)**. Theo ROADMAP §4.7: **được phép** làm tiếp W1–W3 **không cần** chờ bất kỳ mục [X] nào.
 
 ---
 
@@ -218,11 +236,12 @@ fail-before đo được · type-check 0 lỗi · lint 0 error · test 0 fail (B
 | Muốn biết gì | Đọc file nào |
 |---|---|
 | Kế hoạch kỹ thuật chi tiết từng slice (file:line + AC) | `ROADMAP_MASTER_2026Q4_2027.md` |
+| **Rà soát việc dang dở + kế hoạch tiếp theo (Phase A/B/C) + guardrail chống sai lệch** | **`PM_REVIEW_20261022.md`** |
 | Tóm tắt quản lý (1 trang) + quyết định Owner | `BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md` |
 | Đối thủ 4 lớp, 108 URL nguồn, bảng giá | `COMPETITIVE_BENCHMARK_20261021.md` |
 | Bàn giao phiên (việc còn lại + ưu tiên) | `HANDOVER_W0_FOUNDATION_20261022.md` |
 | Quy trình + deny-list + môi trường thử nghiệm | `AGENT_PROTOCOL.md` · `STAGING_VPS_RUNBOOK.md` §12 |
-| Bằng chứng từng thay đổi | `CODE_CHANGE_AUDIT_LEDGER.md` (Entry 392–401) |
+| Bằng chứng từng thay đổi | `CODE_CHANGE_AUDIT_LEDGER.md` (Entry 392–404) |
 | Ai đang giữ file nào | `CLAIMS.md` (`node packages/web/scripts/check-multi-agent.mjs`) |
 | Bài học đã ghi | `docs/LESSONS/INDEX.md` (14 file / 56 lesson) |
 
@@ -233,7 +252,7 @@ fail-before đo được · type-check 0 lỗi · lint 0 error · test 0 fail (B
 | Chỉ số | Hiện tại | Mục tiêu cuối W3 |
 |---|---|---|
 | **Gate trong pre-push** | **34** | ≥ 37 + CI ≥ 1 workflow bật thật |
-| **Endpoint có contract test** | ~95% | **100%** |
+| **Endpoint có contract test** | ~99%+ (gate `route-contract` **đã hồi sinh** PR #281 — quét 396 call, 0 path không resolve; allowlist còn **đúng 1 gap thật** = gap-3) | **100%** (sau khi Owner chốt gap-3) |
 | **Stub BE còn lại** | 28 (đã đóng 5) | **0** |
 | **Code chết** | ~3 000 LOC | **0** |
 | **Năng lực competitive** | HAVE 9 / PARTIAL 13 / MISSING 11 | **HAVE ≥ 22** |
@@ -245,7 +264,7 @@ fail-before đo được · type-check 0 lỗi · lint 0 error · test 0 fail (B
 | **D1 / D7 retention** | chưa đo | 35% / 20% |
 | **Referral coefficient** | chưa có referral | ≥ 0,3 |
 
-**Baseline test để so:** BE full suite trên VPS staging = **3 468 test / failures=11 / errors=224 / skipped=7** · FE vitest = **1 179 passed / 5 failed (2 file pre-existing)** · `pre-push-gate` = **34 PASS / 0 FAIL**
+**Baseline test để so:** BE full suite trên VPS staging = **3 468 test / failures=12 / errors=224 / skipped=7** (Entry 402, đo lại trên `origin/dev` — con số "11 fail" ở Entry 397 đã outdated) · FE vitest = **1 179 passed / 5 failed (2 file pre-existing)** · `pre-push-gate` = **34 PASS / 0 SKIP / 0 FAIL** (đo lại 2026-10-22 trên `dev` @ `91bad0440`) · **2 gate A11Y in "CHUA CHAY"** vì staging đang chạy build khác baseline (`ui-check-theme-contrast` · `ui-check-a11y-runtime`)
 
 ---
 
@@ -254,13 +273,16 @@ fail-before đo được · type-check 0 lỗi · lint 0 error · test 0 fail (B
 | # | Câu hỏi | Chặn slice nào | Ưu tiên |
 |---|---|---|---|
 | 1 | **gap-3**: implement BE registry `ai_agents` hay **gỡ UI `AISliceE`**? | W0.7 / W1 | Cao — đang là 404 thật trên UI |
-| 2 | **SAML**: (a) sửa `lxml`/`xmlsec` version mismatch + rebuild image, hay (b) verify bằng **`xmlsec1` CLI** qua subprocess? | W0.7 | Cao — P0 an toàn, prod hiện không dùng được SSO |
-| 3 | **Bỏ trial 14 ngày** hay giữ (free nhưng còn hạn dùng thử)? | W1.9 | Trung bình |
-| 4 | **Free có quảng cáo không, đặt ở đâu?** (không đặt trong màn hình whale/dark-flow/AI) | W3 | Trung bình |
-| 5 | **Ai trả chi phí LLM cho user free?** (cần quota do VNInvest trả, nếu không free không có AI ⇒ mất khác biệt D1) | W2.3 | Cao |
-| 6 | **Tên vai trò staff thứ 2**: "COC" đã bị chiếm bởi *Center Operations Center* ⇒ đặt tên mới (`broker_operator`?) | W1.5 | Trung bình |
-| 7 | **Credential tầng 2 thuộc tenant hay operator?** (operator ⇒ 2 tenant dùng chung 1 credential ⇒ vi phạm cách ly dữ liệu) | W1.5 | Cao — bảo mật |
-| 8 | **Tầng 2 có cần trading token không?** (không ⇒ scope nhỏ hơn nhiều) | W1.5 | Trung bình |
+| 2 | **SAML**: (a) sửa `lxml`/`xmlsec` version mismatch + rebuild image, hay (b) verify bằng **`xmlsec1` CLI** qua subprocess? | W0.7 / W1.8 | Cao — P0 an toàn, prod hiện không dùng được SSO |
+| 3 | **`contracts/admin_ops`** (2 470 LOC + 740 dòng test): giữ làm bằng chứng contract hay xoá 3 210 dòng? | W0.2 (chốt) | Trung bình — mảng 3 210 dòng đang treo |
+| 4 | **Bỏ trial 14 ngày** hay giữ (free nhưng còn hạn dùng thử)? | W1.9 | Trung bình |
+| 5 | **Free có quảng cáo không, đặt ở đâu?** (không đặt trong màn hình whale/dark-flow/AI) | W3 | Trung bình |
+| 6 | **Ai trả chi phí LLM cho user free?** (cần quota do VNInvest trả, nếu không free không có AI ⇒ mất khác biệt D1) | W2.3 | Cao |
+| 7 | **Tên vai trò staff thứ 2**: "COC" đã bị chiếm bởi *Center Operations Center* ⇒ đặt tên mới (`broker_operator`?) | W1.5 | Trung bình |
+| 8 | **Credential tầng 2 thuộc tenant hay operator?** (operator ⇒ 2 tenant dùng chung 1 credential ⇒ vi phạm cách ly dữ liệu) | W1.5 | Cao — bảo mật |
+| 9 | **Tầng 2 có cần trading token không?** (không ⇒ scope nhỏ hơn nhiều) | W1.5 | Trung bình |
+
+> Bản đầy đủ 9 câu + ảnh hưởng nếu chậm trả lời: [`PM_REVIEW_20261022.md`](./PM_REVIEW_20261022.md) §6.
 
 ### Mục 11 — W0.8b: bật CI là **phụ thuộc bên ngoài [X]**, không phải lỗi code
 
