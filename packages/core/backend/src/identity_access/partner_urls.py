@@ -44,6 +44,12 @@ urlpatterns = [
     path('partner/service-accounts', views.ServiceAccountListView.as_view(), name='partner-sa-list-noslash'),
     path('partner/service-accounts/<str:sa_id>/usage/', views.partner_service_account_usage, name='partner-sa-usage'),
     path('partner/service-accounts/<str:sa_id>/usage', views.partner_service_account_usage, name='partner-sa-usage-noslash'),
+    # W0.10 gap-2: FE goi PATCH/DELETE 1 service account
+    # (/partner/service-accounts/{id}/) nhung route CHUA duoc dang ky => 404 that.
+    # View da ton tai (views_tenant.py:190 ServiceAccountDetailView) va dung khoa
+    # `service_account_id` (get_object) => route phai dung DUNG ten khoa do.
+    path('partner/service-accounts/<str:service_account_id>/', views.ServiceAccountDetailView.as_view(), name='partner-sa-detail'),
+    path('partner/service-accounts/<str:service_account_id>', views.ServiceAccountDetailView.as_view(), name='partner-sa-detail-noslash'),
 
     # PATs
     path('partner/pats/', views.PATListView.as_view(), name='partner-pat-list'),

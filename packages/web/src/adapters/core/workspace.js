@@ -717,7 +717,9 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     },
 
     // ─── AI Agent Registry API ───────────────────────────────────────────
-
+    // W0.10 gap-3: app `ai_agents` RONG (0 route) nhung FE UI (AISliceE) VAN GOI
+    // => 404 THAT tren UI, KHONG phai code chet. Giu nguyen method de khong pha FE;
+    // can Owner chot: implement BE registry hay go UI.
     getAIAgents(params = {}) {
       const query = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))

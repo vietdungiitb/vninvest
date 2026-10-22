@@ -157,17 +157,17 @@ const PREFIX_INTERPOLATIONS = {
  * `service-accounts/{id}/` — FE patch/xoa 1 service account, BE chi co list + usage.
  */
 const KNOWN_MISSING_BE_ENDPOINTS = [
-  {
-    pattern: /^\/core\/v1\/partner\/billing\/invoices\/[^/]+\/pdf\/?$/,
-    why: "BE chua co route tai hoa don PDF (W0.5-gap-1 — can them BE route)",
-  },
-  {
-    pattern: /^\/core\/v1\/partner\/service-accounts\/[^/]+\/?$/,
-    why: "BE chi co partner/service-accounts/ (list) + /<sa_id>/usage/ — chua co route detail (W0.5-gap-2)",
-  },
+  // W0.10 (2026-10-22): chi con 1 gap — `/ai/agents/*`.
+  //   gap-1 /partner/billing/invoices/{id}/pdf/ -> FE in truc tiep tu du lieu (khong goi BE)
+  //   gap-2 /partner/service-accounts/{id}/    -> route da dang ky (partner-sa-detail)
+  //   gap-3 /ai/agents/*                      -> app ai_agents RONG (0 route) NHUNG FE UI
+  //                                             (AISliceE) VAN GOI => 404 THAT tren UI.
+  //                                             Can Owner chot: implement BE registry
+  //                                             hay go khoi UI. KHONG duoc xoa method
+  //                                             adapter khi FE con goi.
   {
     pattern: /^\/core\/v1\/ai\/agents(?:\/[^/]*)?\/?$/,
-    why: "app ai_agents RONG (0 route) — 4 method adapter tro vao app da bi xoa (W0.7 xu ly: xoa khoi INSTALLED_APPS hoac implement)",
+    why: "app ai_agents rong (0 route) nhung FE UI AISliceE van goi => 404 that tren UI (W0.10 gap-3 — can Owner chot)",
   },
 ];
 
