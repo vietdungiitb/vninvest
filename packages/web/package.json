@@ -34,16 +34,16 @@
     "prepare": "husky"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./build-target": "./src/config/buildTarget.ts",
-    "./route-catalog": "./src/app/routeCatalog.ts",
-    "./navigation-catalog": "./src/app/navigationCatalog.ts",
-    "./bootstrap-client": "./src/context/bootstrapClient.ts",
-    "./auth-runtime": "./src/context/authRuntime.ts",
-    "./auth-react": "./src/context/authReact.ts",
-    "./adapters/core": "./src/adapters/core/index.ts",
-    "./adapters/core-api-adapter": "./src/adapters/coreApiAdapter.ts",
-    "./adapters/vip-app": "./src/adapters/vip-app/index.ts"
+    ".": "./src/index.js",
+    "./build-target": "./src/config/buildTarget.js",
+    "./route-catalog": "./src/app/routeCatalog.js",
+    "./navigation-catalog": "./src/app/navigationCatalog.js",
+    "./bootstrap-client": "./src/context/bootstrapClient.js",
+    "./auth-runtime": "./src/context/authRuntime.js",
+    "./auth-react": "./src/context/authReact.js",
+    "./adapters/core": "./src/adapters/core/index.js",
+    "./adapters/core-api-adapter": "./src/adapters/coreApiAdapter.js",
+    "./adapters/vip-app": "./src/adapters/vip-app/index.js"
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",

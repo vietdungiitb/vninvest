@@ -425,8 +425,8 @@
 | **W0.1b** sửa path pattern OC-19 doc-sync | [T] | ✅ **DONE** (PR #278) | `check_opencore_doc_sync.ps1:50-51` · fail-before: pattern cũ match=false với path thật ⇒ self-test **5/5** |
 | **W0.4** xoá 6 registry entry shadow + gate `check-page-registry` | [T] | ✅ **DONE** (PR #278) | Gate báo **đúng 6** entry chết trước khi xoá ⇒ PASS (61 entry, 0 chết, 0 trỏ sai) · `--self-test` **9/9** |
 | W0.2 xoá code chết (2 126 LOC `admin_ops` + 51 route) | [T] | ⏳ chưa làm | cần Docker cho BE test |
-| W0.3 sửa `exports` 10/10 trỏ file `.ts` không tồn tại | [T] | ⏳ chưa làm | ⚠ **deny-list** (`packages/web/package.json`) ⇒ coordinator |
-| W0.5 ~17 endpoint `/partner/*` về adapter | [T] | ⏳ chưa làm | |
+| W0.3 sửa `exports` 10/10 trỏ file `.ts` không tồn tại | [T] | ✅ **DONE** (coordinator) | 10/10 entry `.ts` → `.js` (đã verify file `.js` tồn tại); ⚠ deny-list ⇒ commit coordinator |
+| W0.5 gate contract API + path 404 | [T] | ✅ **DONE** (PR #281) | **Gate `route-contract` hồi sinh** (suite chưa bao giờ chạy: `type: module` ⇒ ESM ⇒ `__dirname` không tồn tại; + manifest stale) · manifest regenerate **612→627 route** · gate quét thêm `src/pages`+`src/context` · **4 call site FE 404** đã sửa · VPS staging: **4/4 test pass**, 396 call quét, **0 path không resolve** |
 | W0.6 fail-closed 5 endpoint trả dữ liệu giả | [T] | ✅ **DONE** (PR #280) | 5 endpoint: push / whale test / usage meters / quota warning / depth chart · TDD RED→GREEN trên VPS staging · **hồi quy = 0** (3466 test / 11 fail / 224 err — khớp baseline) |
 | W0.7 SAML strict thật + OpenClaw + `ai_agents` | [T] | ⏳ chưa làm | **P0 an toàn** (D5) |
 | W0.8 chuẩn hoá doc trạng thái + bật CI | [T] | ⏳ chưa làm | ⚠ `AGENTS.md` deny-list |
