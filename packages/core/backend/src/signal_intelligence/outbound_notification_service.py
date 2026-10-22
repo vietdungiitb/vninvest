@@ -8,6 +8,20 @@ logger = logging.getLogger(__name__)
 
 
 class OutboundNotificationService:
+    # ── W0.6 DATA HONESTY ──────────────────────────────────────────────
+    # Push CHUA duoc cau hinh thi KHONG duoc bao "da gui". Truoc day ham
+    # tra True khi thieu key HOAC khi settings.DEBUG=True ⇒ nguoi dung tin
+    # nham da nhan push trong khi thuc te khong co gi gui.
+    @classmethod
+    def push_configured(cls) -> dict:
+        """Cho biet push nao da duoc cau hinh THAT (khong phai sentinel MOCK_*)."""
+        fcm_key = getattr(settings, 'FCM_SERVER_KEY', '') or ''
+        vapid_key = getattr(settings, 'VAPID_PRIVATE_KEY', '') or ''
+        return {
+            'fcm': bool(fcm_key) and fcm_key != 'MOCK_FCM_KEY',
+            'webpush': bool(vapid_key) and vapid_key != 'MOCK_VAPID_KEY',
+        }
+
     @classmethod
     def send_email(cls, to_email: str, subject: str, html_content: str, text_content: str = "") -> bool:
         """
@@ -53,10 +67,15 @@ class OutboundNotificationService:
             # Log exact payload for transparency
             logger.debug(f"FCM payload: {payload}")
 
-            # Return true in sandbox/mock environments
-            if fcm_api_key == 'MOCK_FCM_KEY' or settings.DEBUG:
-                logger.info("FCM running in Sandbox/Debug mode. Push marked as delivered.")
-                return True
+            # W0.6: chua co key THAT ⇒ KHONG bao "da gui".
+            # settings.DEBUG khong duoc lam push thanh cong gia.
+            if fcm_api_key == 'MOCK_FCM_KEY' or not fcm_api_key:
+                logger.warning(
+                    "FCM chua duoc cau hinh (FCM_SERVER_KEY) — KHONG gui push cho "
+                    "token=%s. Tra False de khong bao sai nguoi dung.",
+                    fcm_token[:15],
+                )
+                return False
 
             # If in production, trigger actual Firebase endpoint
             headers = {
@@ -99,10 +118,14 @@ class OutboundNotificationService:
 
             logger.info(f"Initiating WebPush to subscription={str(subscription_info)[:50]}...")
 
-            # If mock, return true directly
-            if vapid_private_key == 'MOCK_VAPID_KEY' or settings.DEBUG:
-                logger.info("WebPush running in Sandbox/Debug mode. Browser push marked as delivered.")
-                return True
+            # W0.6: chua co key THAT ⇒ KHONG bao "da gui".
+            # settings.DEBUG khong duoc lam push thanh cong gia.
+            if vapid_private_key == 'MOCK_VAPID_KEY' or not vapid_private_key:
+                logger.warning(
+                    "WebPush chua duoc cau hinh (VAPID_PRIVATE_KEY) — KHONG gui browser "
+                    "push. Tra False de khong bao sai nguoi dung."
+                )
+                return False
 
             # In production, utilize pywebpush library dynamically to encrypt payload
             from pywebpush import webpush, WebPushException

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pandas as pd
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIClient, APIRequestFactory
 
 from commercial.tasks import send_quota_warning
 from identity_access.models import CoreTenant
@@ -56,7 +56,8 @@ class WhaleTestEndpointHonestyTests(TestCase):
         self.staff.is_staff = True
         self.staff.is_superuser = True
         self.staff.save()
-        self.client.force_login(self.staff)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.staff)
 
     @patch("signal_intelligence.order_flow_engine.detect_dark_flow_windows")
     @patch("signal_intelligence.order_flow_engine.load_session_ticks_df")
@@ -94,11 +95,16 @@ class WhaleTestEndpointHonestyTests(TestCase):
 
 # ── C) Usage meters: so that, hoac 501 — KHONG phai 200 + [] ───────────────
 class UsageMetersHonestyTests(TestCase):
-    def test_helper_reports_unavailable_instead_of_empty_list(self):
+    def setUp(self):
+        self.user = User.objects.create_user(username="meteruser", password="pw")
+        self.tenant = CoreTenant.objects.create(
+            owner_user=self.user, tenant_code="W06M", display_name="W06M"
+        )
+
+    def test_helper_without_tenant_is_unavailable_not_empty_list(self):
         from commercial.tasks import build_usage_meters
 
-        with patch("commercial.tasks._counter_backend_available", return_value=False):
-            out = build_usage_meters(None)
+        out = build_usage_meters(None)
 
         self.assertFalse(out["available"])
         self.assertTrue(out["reason"])
@@ -107,16 +113,17 @@ class UsageMetersHonestyTests(TestCase):
     def test_endpoint_returns_501_when_meter_backend_unavailable(self):
         from identity_access.views_tenant import PartnerUsageMetersView
 
-        user = User.objects.create_user(username="meteruser", password="pw")
         factory = APIRequestFactory()
         request = factory.get(USAGE_METERS_URL)
-        request.user = user
+        request.user = self.user
 
         with patch(
+            "identity_access.views_tenant._get_request_tenant", return_value=self.tenant
+        ), patch(
             "commercial.tasks.build_usage_meters",
             return_value={
                 "available": False,
-                "reason": "counter_backend_unavailable",
+                "reason": "quota_source_unavailable",
                 "meters": [],
             },
         ):
@@ -124,6 +131,28 @@ class UsageMetersHonestyTests(TestCase):
 
         self.assertEqual(response.status_code, 501)
         self.assertIn("meter", str(response.data).lower())
+
+    def test_endpoint_returns_real_meters(self):
+        from identity_access.views_tenant import PartnerUsageMetersView
+
+        factory = APIRequestFactory()
+        request = factory.get(USAGE_METERS_URL)
+        request.user = self.user
+
+        with patch(
+            "identity_access.views_tenant._get_request_tenant", return_value=self.tenant
+        ), patch(
+            "commercial.tasks.build_usage_meters",
+            return_value={
+                "available": True,
+                "reason": None,
+                "meters": [{"meter": "api_calls", "used": 0, "limit": 1000, "counted": True}],
+            },
+        ):
+            response = PartnerUsageMetersView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(_payload(response)), 1)
 
 
 # ── D) Quota warning: phai GUI email that ─────────────────────────────────
@@ -181,8 +210,9 @@ class QuotaWarningEmailTests(TestCase):
 # ── E) Depth chart: phai noi ro "uoc tinh" ────────────────────────────────
 class DepthChartQualityTests(TestCase):
     def setUp(self):
-        user = User.objects.create_user(username="depthuser", password="pw")
-        self.client.force_login(user)
+        self.user = User.objects.create_user(username="depthuser", password="pw")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
 
     def test_response_declares_estimated_data_quality(self):
         response = self.client.get(DEPTH_CHART_URL.format(symbol="VNM"))

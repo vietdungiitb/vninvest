@@ -26,6 +26,7 @@ from commercial.plan_catalog import (
     is_plan_derived_api_calls_limit,
 )
 from identity_access.models import CoreTenant
+from signal_intelligence.outbound_notification_service import OutboundNotificationService
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,77 @@ METER_ENTITLEMENT_BY_PLAN: dict[str, dict[str, int]] = {
     }
     for meter in METER_NAMES
 }
+
+
+def _counter_backend_available() -> bool:
+    """Redis co the QUET bo dem khong (nguon so lieu moi nhat) hay khong."""
+    client = getattr(cache, '_cache', None)
+    return client is not None and hasattr(client, 'scan_iter')
+
+
+# (meter, field used, field limit) — nguon THAT la bang QuotaRecord.
+QUOTA_METER_FIELDS: tuple[tuple[str, str, str], ...] = (
+    ('api_calls', 'api_calls_used', 'api_calls_limit'),
+    ('symbols', 'symbols_used', 'symbols_limit'),
+    ('users', 'users_used', 'users_limit'),
+    ('storage_mb', 'storage_mb_used', 'storage_mb_limit'),
+)
+
+
+def build_usage_meters(tenant) -> dict:
+    """Meter usage cua 1 tenant — tra SO THAT, hoac bao 'khong kha dung'.
+
+    Tra {'available': bool, 'reason': str|None, 'meters': [...]}.
+    W0.6: KHONG bao gio tra list RONG rong khi khong doc duoc nguon metering —
+    nguoi dung se hieu nham la "chua dung gi" trong khi thuc te la "chua do duoc".
+    """
+    if tenant is None:
+        return {'available': False, 'reason': 'tenant_not_found', 'meters': []}
+
+    plan = getattr(tenant, 'plan', 'free')
+    try:
+        record = (
+            QuotaRecord.objects.filter(tenant=tenant)
+            .order_by('-period_start')
+            .first()
+        )
+    except Exception as exc:  # noqa: BLE001 — bao ro, khong lam treo
+        return {
+            'available': False,
+            'reason': f'quota_source_unavailable: {exc.__class__.__name__}',
+            'meters': [],
+        }
+
+    meters: list[dict] = []
+    for meter, used_field, limit_field in QUOTA_METER_FIELDS:
+        used = int(getattr(record, used_field, 0) or 0) if record is not None else 0
+        limit = int(getattr(record, limit_field, -1) or -1) if record is not None else -1
+        if meter == 'api_calls' and limit == -1:
+            limit = get_api_calls_limit(plan)
+        meters.append({'meter': meter, 'used': used, 'limit': limit, 'counted': True})
+
+    # Meter entitlement (ai_regenerate / exports) — CO entitlement, CHUA co bo dem
+    # => used = None + counted = False (khong bia so 0).
+    for meter in METER_NAMES:
+        meters.append({
+            'meter': meter,
+            'used': None,
+            'limit': METER_ENTITLEMENT_BY_PLAN.get(plan, {}).get(meter, 0),
+            'counted': False,
+        })
+
+    return {
+        'available': True,
+        'reason': None,
+        'meters': meters,
+        'live_counters': _counter_backend_available(),
+    }
+
+
+def _tenant_owner_email(tenant) -> str | None:
+    owner = getattr(tenant, 'owner_user', None)
+    email = (getattr(owner, 'email', '') or '').strip()
+    return email or None
 
 
 def _iter_quota_counter_keys(day: date):
@@ -289,16 +361,50 @@ def check_overdue_invoices(self, today_iso: str | None = None):
 
 @shared_task(name='commercial.tasks.send_quota_warning', bind=True, max_retries=3, default_retry_delay=300)
 def send_quota_warning(self, tenant_id: str, percent: int):
-    """Deduplicated quota warning stub for future outbound email integration."""
+    """Gui email canh bao quota THAT (W0.6: truoc day chi ghi log, KHONG gui gi).
+
+    Tra status: 'sent' | 'failed' | 'skipped' + reason.
+    """
     dedup_date = timezone.now().date().isoformat()
     dedup_key = f'quota:warning_sent:{tenant_id}:{dedup_date}:{percent}'
     if not cache.add(dedup_key, 1, timeout=25 * 3600):
         return {'status': 'skipped', 'reason': 'duplicate_warning'}
 
+    tenant = CoreTenant.objects.filter(public_id=tenant_id).first()
+    if tenant is None:
+        return {'status': 'skipped', 'reason': 'tenant_not_found', 'tenant_id': tenant_id}
+
+    email = _tenant_owner_email(tenant)
+    if not email:
+        return {
+            'status': 'skipped',
+            'reason': 'tenant_email_missing',
+            'tenant_id': tenant_id,
+            'percent': int(percent),
+        }
+
+    subject = f'Canh bao han muc dung luong API {int(percent)}%'
+    ok = OutboundNotificationService.send_email(
+        to_email=email,
+        subject=subject,
+        html_content=(
+            f'<p>Tenant <b>{tenant_id}</b> da dung <b>{int(percent)}%</b> han muc '
+            f'dung luong API.</p>'
+        ),
+        text_content=f'Tenant {tenant_id} da dung {int(percent)}% han muc dung luong API.',
+    )
+    if not ok:
+        return {
+            'status': 'failed',
+            'reason': 'email_send_failed',
+            'tenant_id': tenant_id,
+            'percent': int(percent),
+        }
     return {
-        'status': 'queued',
+        'status': 'sent',
         'tenant_id': tenant_id,
         'percent': int(percent),
+        'email': email,
     }
 
 
