@@ -31,11 +31,13 @@ function resolvePageComponent(routeId: string) {
   // ngược. Registry id (`core-*`) giữ nguyên — resolver là lớp ánh xạ duy nhất.
   else if (routeId === 'portfolios') registryId = 'portfolio-workspace';
     else if (routeId === 'portfolios-manage') registryId = 'core-portfolios';
-    // D-36: broker panel tach route rieng. Registry id giu `portfolios-broker`
-    // de khong doi 2 chiều với routeId catalog `portfolios-manage-broker`.
+    // D-36: broker panel tach route rieng. Route `/portfolios/manage/broker`
+    // render `RedirectPreserveQuery` -> `/broker` (khong goi
+    // `resolvePageComponent`) nen KHONG can mapping. GỠ 2026-10-22 (W0.4):
+    // mapping toi registry id `portfolios-broker` da bi xoa cung entry
+    // trong `pageRegistry.js` (entry do khong bao gio duoc resolve).
     // KHONG bat `routeId.startsWith('portfolio-')` o duoi: rule do chi bat
     // `portfolio-` (so), `portfolios-manage-broker` bat dau bang `portfolios-`.
-    else if (routeId === 'portfolios-manage-broker') registryId = 'portfolios-broker';
   else if (routeId === 'admin-tenants') registryId = 'admin-core-tenants';
   else if (routeId === 'admin-tenant-service-accounts') registryId = 'admin-core-service-accounts';
   else if (routeId === 'admin-tenant-pats') registryId = 'admin-core-pats';

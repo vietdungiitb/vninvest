@@ -193,18 +193,24 @@ makePageEntry("ai-slo", "baseline", () =>
       // R4.5: trang Nhat ky kiem toan (tab thu 6, chi staff — route boc StaffRoute).
       makePageEntry("ai-audit", "baseline", () =>
         import("./AIAuditPage.tsx").then((module) => module.AIAuditPage)),
-  makePageEntry("dashboard", "baseline", () =>
-    import("./workspace/ShellDashboardPage.tsx").then((module) => module.ShellDashboardPage)),
-  makePageEntry("transactions", "baseline", () =>
-    import("./workspace/ShellTransactionsPage.tsx").then((module) => module.ShellTransactionsPage)),
-  makePageEntry("watchlist", "baseline", () =>
-    import("./workspace/ShellWatchlistPage.tsx").then((module) => module.ShellWatchlistPage)),
-  makePageEntry("portfolios", "baseline", () =>
-    import("./workspace/ShellPortfoliosPage.tsx").then((module) => module.ShellPortfoliosPage)),
   makePageEntry("support", "baseline", () =>
     import("./SupportPage.tsx").then((module) => module.SupportPage)),
-  makePageEntry("settings", "baseline", () =>
-    import("./system/ShellSettingsPage.tsx").then((module) => module.ShellSettingsPage)),
+  // GỠ 2026-10-22 (W0.4): 6 entry duoi day da bi SHADOW — `main.tsx` resolve
+  // routeId sang registry id KHAC nen entry goc khong bao gio duoc render:
+  //   dashboard    -> core-dashboard      (main.tsx:24)
+  //   transactions -> core-transactions   (main.tsx:28)
+  //   watchlist    -> core-watchlist      (main.tsx:27)
+  //   portfolios   -> portfolio-workspace (main.tsx:32)
+  //   settings     -> core-user-settings  (main.tsx:49)
+  //   portfolios-broker -> (route `/portfolios/manage/broker` da doi sang
+  //                         `RedirectPreserveQuery` -> `/broker`, khong goi
+  //                         resolvePageComponent)
+  // Gate chong tai phat: `packages/web/scripts/check-page-registry.mjs`
+  // (tu kiem chung parser, co --self-test 9/9).
+  //
+  // LUU Y: file component (`Shell*Page.tsx`, `PortfoliosBrokerPage.tsx`) van
+  // con ton tai va van duoc export o `src/index.js` (public API) — viec xoa
+  // file la SLICE RIENG (can quyet dinh public API cua package).
   // GỠ 2026-10-09 (wave 6): entry `shell-ai-command-center` đã bị xoá khỏi
   // registry. Lý do: `main.tsx` KHÔNG route nào dùng id này ⇒ entry chết, và
   // `check-h1-graph --gate` báo đúng 1 vi phạm `unreferenced-registry-entry`
@@ -227,17 +233,16 @@ makePageEntry("ai-slo", "baseline", () =>
     import("./DashboardPage.tsx").then((module) => module.default)),
   makePageEntry("core-portfolios", "core", () =>
     import("./PortfoliosPage.tsx").then((module) => module.PortfoliosPage)),
-  // B2.1 (Wave 2 Broker Hub): entry `/broker`. Entry `portfolios-broker` GIỮ LẠI —
-  // component của nó redirect về `/broker` (quyết định PLAN §0.6).
+  // B2.1 (Wave 2 Broker Hub): entry `/broker`.
   makePageEntry("broker", "new", () =>
     import("./broker/BrokerHubPage.tsx").then((module) => module.BrokerHubPage)),
   // Follow-up mount: route con `/broker/accounts/:accountId` — AccountManager
   // 4 tab + SyncCenter (DATA) qua `BrokerAccountPage` (HUB).
   makePageEntry("broker-account", "new", () =>
     import("./broker/BrokerAccountPage.tsx").then((module) => module.BrokerAccountPage)),
-  // /portfolios/manage/broker - panel broker tach khoi trang quan ly danh muc.
-  makePageEntry("portfolios-broker", "core", () =>
-    import("./PortfoliosBrokerPage.tsx").then((module) => module.PortfoliosBrokerPage)),
+  // GỠ 2026-10-22 (W0.4): entry `portfolios-broker` da bi xoa — route
+  // `/portfolios/manage/broker` render `RedirectPreserveQuery` -> `/broker`
+  // (khong goi `resolvePageComponent`) nen entry khong bao gio duoc resolve.
   // S-04/S-11: 5 man hinh danh muc dung chung 1 entry. `routeId` trong
   // routeCatalog quyet dinh tab nao duoc mo; component doc `tab` tu path.
   makePageEntry("portfolio-workspace", "core", () =>
