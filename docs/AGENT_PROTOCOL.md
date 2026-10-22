@@ -447,7 +447,7 @@ Exit `2` = **không verify được** — tuyệt đối không đọc là PASS.
 | `manage.py test` (mọi scope) · `npm run test*` / `test:components` · `npm run build` · Playwright / E2E | **BẮT BUỘC VPS staging** — `docs/STAGING_VPS_RUNBOOK.md` §12.3 (BE) / §12.4 (FE) |
 | `manage.py check` · `makemigrations --check` · `ruff` · `eslint` · `tsc --noEmit` · `bash -n` · grep/read · viết code + review diff | Được local (nhẹ, không RAM/DB) |
 
-**Cổng chặn máy:** `node scripts/check-experiment-env.mjs` — quét **dòng mới thêm** trong diff; dòng nào gọi `docker run|exec|compose|build|ps` mà **không có** dấu hiệu VPS (`ssh` · `14.225.255.47` · `docker.edusuccess.vn` · `vninvest-staging` · `/opt/vninvest`) ⇒ **FAIL**, kèm lệnh VPS chuẩn. Có `--self-test` (6/6) chứng minh gate bắt lỗi thật. Đã nối vào `scripts/pre-push-gate.mjs`.
+**Cổng chặn máy:** `node scripts/check-experiment-env.mjs` — quét **dòng mới thêm** trong diff; dòng nào gọi `docker run|exec|compose|build|ps` mà **không có** dấu hiệu VPS (`ssh` · `14.225.255.47` · `docker.edusuccess.vn` · `vninvest-staging` · `/opt/vninvest`) ⇒ **FAIL**, kèm lệnh VPS chuẩn. Có `--self-test` (8/8) chứng minh gate bắt lỗi thật. Đã nối vào `scripts/pre-push-gate.mjs`.
 
 **Lưu ý agent:** khi `new-agent.ps1` fail ở bước 2/7 (tạo DB) vì Docker local không chạy ⇒ **KHÔNG dùng local Docker để bù**. Có 2 lựa chọn hợp lệ: (a) slice **không sửa BE** ⇒ tạo worktree thủ công và ghi rõ "BE test = CHƯA CHẠY"; (b) slice **có sửa BE** ⇒ **chạy test BE trên VPS staging** theo §12.3 (không cần Docker local). Xem `docs/LESSONS/multi-agent-2.md` L-M05.
 
