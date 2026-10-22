@@ -1,13 +1,13 @@
 {
   "_comment": "Baseline do bang lenh: python scripts/check-openapi-schema-budget.py (tu packages/core/backend). Cong nay CHAN THOAI LUI, khong chan no san. Ha baseline xuong khi ban sua so loi.",
-  "_measured_at": "2026-10-05",
+  "_measured_at": "2026-10-22",
   "_measured_by": "manage.py spectacular, sau khi khai bao @extend_schema cho 34 function-based view (identity_access auth, user_workspace dnse/broker/retail, data_ingest, vninvest_core/urls)",
   "_counting_rule": "Gate so sanh TONG (errors) va UNIQUE (errors_unique) rieng biet. 'errors' la so dong loi spectacular phat ra (mot operation co the nhieu dong); 'errors_unique' la so ten loi khac nhau. Do bang lenh nay nen cam hai con so phai cung he so sanh.",
   "_why_not_zero": "Con DUNG 8 unique loi, tat ca deu co ly do bi CHAN - khong phai con sot vi hieu: (1) StripeWebhookView (commercial/stripe_webhooks.py:47) trong vung Stripe dang DONG BANG; (2-8) 7 dnse_*_api trong src/user_workspace/views_dnse.py, file dang bi agent KHAC giu `in-progress` tai docs/CLAIMS.md:277 (portfolio-w3-api / feat/portfolio-w3-api) - theo AGENTS.md 6.1 thi khong duoc sua, da revert. Het function view o 13 file khac.",
-  "_delta_this_commit": "Gate do bang chinh lenh: errors 154 -> 32, errors_unique 35 -> 8. Fix gom 2 dang khac nhau: (a) function DA co @extend_schema responses= nhung thieu request= -> them request= vao decorator cu, them decorator moi khong giai quyet; (b) function chua co decorator -> them moi, doc shape tu return that.",
+  "_delta_this_commit": "Gate do bang chinh lenh: errors 154 -> 32, errors_unique 35 -> 8. Fix gom 2 dang khac nhau: (a) function DA co @extend_schema responses= nhung thieu request= -> them request= vao decorator cu, them decorator moi khong giai quyet; (b) function chua co decorator -> them moi, doc shape tu return that. | 2026-10-22 W0.10: +2 route partner-sa-detail (ServiceAccountDetailView, da khai bao @extend_schema) => warnings 184 -> 191, warnings_unique 182 -> 189. Cap nhat baseline CUNG COMMIT voi endpoint moi (quy uoc trong file nay: so loi tang khi them endpoint co schema = chap nhan ngay, commit ca hai cung nhau).",
   "_kept_warnings_note": "Warnings khong doi suot tu Entry 250: 4x UnifiedAlertSerializer, 2x TenantLifecycleEventSerializer, 1x IngestJobSerializer, 1x SessionFactsSerializer, 3x StockManagementTrackedSymbol*.",
   "errors": 32,
   "errors_unique": 8,
-  "warnings": 184,
-  "warnings_unique": 182
+  "warnings": 191,
+  "warnings_unique": 189
 }

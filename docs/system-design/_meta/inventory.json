@@ -91,7 +91,7 @@
       "title": "07.01 — Quy Ước API"
     },
     {
-      "lines": 1527,
+      "lines": 1531,
       "path": "docs/system-design/07-API-SPEC/07.02-danh-muc-api.md",
       "title": "07.02 — Danh Mục API (Máy Sinh, Không Sửa Tay)"
     },
@@ -221,6 +221,6 @@
       "title": "vninvest — Bộ Hồ Sơ Phân Tích & Thiết Kế Hệ Thống"
     }
   ],
-  "generatedAt": "2026-10-19",
+  "generatedAt": "2026-10-22",
   "root": "docs/system-design"
 }

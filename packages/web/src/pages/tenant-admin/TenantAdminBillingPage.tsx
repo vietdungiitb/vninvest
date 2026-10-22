@@ -138,7 +138,7 @@ export function buildInvoicePrintHtml(invoice: unknown, tenantName: string): str
     "table{border-collapse:collapse;width:100%;margin-top:16px}",
     "td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}",
     "</style></head><body>",
-    "<h1>Hoa don " + number + "</h1>",
+    "<h2>Hoa don " + number + "</h2>",
     "<p><b>Khach hang:</b> " + tenantName + "</p>",
     "<p><b>Trang thai:</b> " + status + "</p>",
     "<table><tr><th>So tien</th><th>Loai tien</th></tr>",

@@ -175,33 +175,33 @@ Main tree cÃ³ `w/crlf`, worktree má»›i cÃ³ `w/lf` (cÃ¹ng ná»™i dung commit `i/lf
 - **Comment trong code phai duoc kiem chung bang config that** - comment sai lam suite chet 2 lan.
 - **Audit truoc bao sai 2 cap "lech so it/so nhieu"** - hoa ra la **cache key** cua `useTenantAdminQuery`, khong phai URL. Phai doc code that truoc khi dua vao roadmap (L-V02).
 
-## 4.11 Trang thai trien khai — W0.10 (cap nhat 2026-10-22)
+## 4.11 Trang thai trien khai - W0.10 (cap nhat 2026-10-22)
 
 | Slice | Nhan | Trang thai | Bang chung |
 |---|---|---|---|
 | W0.10 gap-2 route detail service account | [T] | DONE (PR #283) | 2 route moi; BE 2/2 OK; manifest 627->631 route |
 | W0.10 gap-1 in hoa don truc tiep (FE) | [T] | DONE (PR #283) | BE khong co route PDF + khong co thu vien PDF (probe VPS) ? in tu du lieu co san |
-| W0.10 gap-3 `/ai/agents/*` | [T] | **HOAN NGUYEN — CON LAI** | FE UI `AISliceE` VAN GOI ? 404 that tren UI (khong phai code chet) ? **can Owner chot: implement BE registry hay go UI** |
+| W0.10 gap-3 `/ai/agents/*` | [T] | **HOAN NGUYEN - CON LAI** | FE UI `AISliceE` VAN GOI ? 404 that tren UI (khong phai code chet) ? **can Owner chot: implement BE registry hay go UI** |
 | W0.7 SAML `strict` verify that (P0 an toan) | [T] | **BI CHAN HA TANG** | `import xmlsec` FAIL `lxml & xmlsec libxml2 version mismatch` ? `onelogin.saml2` khong import duoc ? `strict` luon raise; `xmlsec1` CLI co san ? huong (b) khong can module python; can Owner chot |
 
-> **Baseline hien tai (VPS staging)**: BE full **3468 / 11 fail / 224 err / 7 skip** · FE vitest **1179 passed / 5 failed** (2 file pre-existing) · pre-push **34 PASS / 0 FAIL**.
+> **Baseline hien tai (VPS staging)**: BE full **3468 / 11 fail / 224 err / 7 skip** - FE vitest **1179 passed / 5 failed** (2 file pre-existing) - pre-push **34 PASS / 0 FAIL**.
 
-## 10. Cap nhat 2026-10-22 (W0.10) — ban giao cho phien sau
+## 10. Cap nhat 2026-10-22 (W0.10) - ban giao cho phien sau
 
 | Slice | PR | Trang thai | Ghi chu nhan giao |
 |---|---|---|---|
 | W0.10 gap-1 + gap-2 + gap-3 | #283 | DONE 2/3, gap-3 hoan nguyen | gap-2 = 2 dong route cho view DA TON TAI; gap-1 = FE in truc tiep (khong co thu vien PDF server-side); gap-3 = FE van goi ? can Owner chot |
 
-### Con lai — thu tu uu tien de xu cho phien sau
+### Con lai - thu tu uu tien de xu cho phien sau
 
-1. **gap-3 (`/ai/agents/*`)** — Owner chot: implement BE registry `ai_agents` (model + views + routes) hay go khoi UI `AISliceE`. Hien FE goi 1 API **khong ton tai** ? 404 that tren UI.
-2. **W0.7 SAML `strict` verify that (P0 an toan, D5)** — can Owner chot giua (a) sua `lxml`/`xmlsec` version mismatch trong image (rebuild + deploy) hay (b) verify bang `xmlsec1` CLI qua subprocess (binary co san `/usr/bin/xmlsec1`). Hien `strict` **luon raise** ? enterprise SSO khong dung duoc o production.
-3. **W0.2 xoa code chet** — 2 126 LOC `contracts/admin_ops` (26 route da 410 GONE) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4). Nho 2 file test contract cung phai xoa hoac thay bang guard 1 dong "van tra 410".
-4. **W0.8** — chuan hoa `ROADMAP_STATUS.md` (stale 6 thang) · `PROGRESS_DASHBOARD.md` (stale) · `AGENTS.md` (deny-list) + **bat CI** (8 workflow disabled).
-5. **E2E Playwright** — CHUA CHAY (can browser tren VPS); `ui-check-theme-contrast` + `ui-check-a11y-runtime` van in "CHUA CHAY" vi staging chay build khac baseline.
+1. **gap-3 (`/ai/agents/*`)** - Owner chot: implement BE registry `ai_agents` (model + views + routes) hay go khoi UI `AISliceE`. Hien FE goi 1 API **khong ton tai** ? 404 that tren UI.
+2. **W0.7 SAML `strict` verify that (P0 an toan, D5)** - can Owner chot giua (a) sua `lxml`/`xmlsec` version mismatch trong image (rebuild + deploy) hay (b) verify bang `xmlsec1` CLI qua subprocess (binary co san `/usr/bin/xmlsec1`). Hien `strict` **luon raise** ? enterprise SSO khong dung duoc o production.
+3. **W0.2 xoa code chet** - 2 126 LOC `contracts/admin_ops` (26 route da 410 GONE) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4). Nho 2 file test contract cung phai xoa hoac thay bang guard 1 dong "van tra 410".
+4. **W0.8** - chuan hoa `ROADMAP_STATUS.md` (stale 6 thang) - `PROGRESS_DASHBOARD.md` (stale) - `AGENTS.md` (deny-list) + **bat CI** (8 workflow disabled).
+5. **E2E Playwright** - CHUA CHAY (can browser tren VPS); `ui-check-theme-contrast` + `ui-check-a11y-runtime` van in "CHUA CHAY" vi staging chay build khac baseline.
 
 ### Bai hoc them cua W0.10
 
-- **Khi "danh co the la code chet", Kiem tra CONSUMER TRUOC khi xoa** — `AISliceE.i18n.component.test.js:147` spy `getAIAgents` cho thay 4 method do KHONG phai code chet ma la **404 that tren UI**. Da hoan nguyen.
-- **Kiem chung kieu du lieu cua type truoc khi viet code** — `Invoice` khong co `number`/`currency`; 4 loi TS bi `tsc` bat sau khi viet.
-- **Khi route BE moi duoc them, PH?I regenerate manifest** (SSOT cua gate) — neu khong route moi se khong co trong manifest ? gate bao sai.
+- **Khi "danh co the la code chet", Kiem tra CONSUMER TRUOC khi xoa** - `AISliceE.i18n.component.test.js:147` spy `getAIAgents` cho thay 4 method do KHONG phai code chet ma la **404 that tren UI**. Da hoan nguyen.
+- **Kiem chung kieu du lieu cua type truoc khi viet code** - `Invoice` khong co `number`/`currency`; 4 loi TS bi `tsc` bat sau khi viet.
+- **Khi route BE moi duoc them, PH?I regenerate manifest** (SSOT cua gate) - neu khong route moi se khong co trong manifest ? gate bao sai.

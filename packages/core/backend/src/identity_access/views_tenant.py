@@ -187,6 +187,18 @@ class ServiceAccountListView(generics.ListCreateAPIView):
         serializer.save(tenant=tenant)
 
 
+@extend_schema(
+    summary='Chi tiet service account',
+    description='GET / PATCH / DELETE 1 service account cua tenant hien tai.',
+    request=CoreServiceAccountSerializer,
+    responses={
+        200: envelope_response(CoreServiceAccountSerializer),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CoreServiceAccountSerializer
     permission_classes = TENANT_PERMISSION_CLASSES
