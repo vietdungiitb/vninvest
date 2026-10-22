@@ -521,11 +521,29 @@ class TenantLifecycleView(APIView):
 
 
 class PartnerUsageMetersView(generics.ListAPIView):
-    """Usage meters list — placeholder until usage metering is implemented."""
+    """Usage meters — so THAT tu nguon metering (W0.6: khong tra list rong am tham)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def list(self, request, *args, **kwargs):
-        return envelope([])
+        # Lazy import: tranh vong import identity_access <-> commercial.
+        from commercial.tasks import build_usage_meters
+
+        try:
+            tenant = _get_request_tenant(request)
+        except PermissionDenied:
+            return Response(
+                {'detail': 'Tenant not found for the current user.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        out = build_usage_meters(tenant)
+        if not out.get('available'):
+            # 501 = chua khai duoc metering — KHONG phai "ban chua dung gi".
+            return Response(
+                {'detail': f"Usage metering chua kha dung: {out.get('reason')}"},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+        return envelope(out['meters'])
 
 
 # ---------------------------------------------------------------------------

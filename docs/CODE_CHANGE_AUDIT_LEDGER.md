@@ -1,3 +1,33 @@
+## Entry 398: W0.6 DATA HONESTY — 5 endpoint không được "nói dối"; TDD RED→GREEN trên VPS staging; 0 hồi quy (PR #280)
+
+- **Nhánh**: `feat/w0-6-data-honesty` -> `dev`. Claim `w0-6-data-honesty`. Worktree `C:/Mujoco Projects/agent-w0-6`. Base `origin/dev` @ `bda7698ba`. **Slice đầu tiên của ROADMAP bản 3 sau W0 FOUNDATION** (PR #278).
+- **Lý do ưu tiên cao nhất**: D1 (Owner) — khách trả tiền là **retail**, mua **charts · whale · dark flow · AI**. ⇒ một endpoint trả thứ giả mà không nói rõ = giết brand name. W0.6 là "nền trung thực dữ liệu" cho toàn bộ W1/W2.
+- **5 thay đổi (TDD, mỗi cái 1 nhóm test)**:
+  - **A** `signal_intelligence/outbound_notification_service.py:33-89,91-120` — `send_fcm_push`/`send_webpush` **chưa có key ⇒ trả `False`** + `logger.warning` ("KHÔNG gửi") thay vì `True` ("marked as delivered"); **bỏ `settings.DEBUG`** khỏi nhánh "coi là thành công" (DEBUG không được làm push thành công giả); thêm `OutboundNotificationService.push_configured()` → `{'fcm': bool, 'webpush': bool}` (phân biệt sentinel `MOCK_*`).
+  - **B** `service_ops/views/signals.py:764-776` — whale test **chạy engine THẬT**: `load_session_ticks_df` + `detect_whale_ticks` + `detect_dark_flow_windows` ⇒ trả `ticks_scanned` / `whale_ticks_detected` / `dark_flow_windows` / `session_date`; **không có tick ⇒ `test_result:'no_data'` + `detection_possible:False`**; lỗi ⇒ `'error'` + lý do. **KHÔNG còn hardcode `'success'`.**
+  - **C** `identity_access/views_tenant.py:523-528` + `commercial/tasks.py` (helper mới `build_usage_meters`, `_counter_backend_available`, `QUOTA_METER_FIELDS`) — meter **thật** từ `QuotaRecord` (`api_calls` · `symbols` · `users` · `storage_mb` — cả 4 có field used/limit) + entitlement meter (`ai_regenerate` · `exports`) với `used: None, counted: False` (**không bịa số 0**); **không khả dụng ⇒ HTTP 501 + lý do** thay vì 200 + `[]` âm thầm.
+  - **D** `commercial/tasks.py:290-302` — `send_quota_warning` **gửi email THẬT** qua `OutboundNotificationService.send_email` ⇒ `sent` / `failed` / `skipped`(+`tenant_not_found`|`tenant_email_missing`|`duplicate_warning`); giữ nguyên dedup (cache key `quota:warning_sent:...`).
+  - **E** `market_serving/native_views.py:443-452,511-523` — thêm `data_quality:'estimated'` + note **tiếng Việt** rõ ở **cả hai** nhánh (có snapshot / không có snapshot); giữ `is_mock` (contract cũ, FE đang dùng).
+- **ĐÍNH CHÍNH 1 CONTRADICTION (L-V02 — phải có phản chứng)**: roadmap §4.3 **W1.3** nói badge "Ước tính" **chưa có** ⇒ **SAI**: `packages/web/src/components/workstation/StockOrderBookWidget.jsx:153-161` **đã** render badge khi `orderBook?.is_mock` (`t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" })`) ⇒ **không sửa FE** ở slice này; phần còn lại (order book nhúng trong widget biểu đồ, `chartAdapter.js:160`) là **repo ngoài** `vninvestcharts-widget` ⇒ **[X]**. Đã ghi vào plan §1 và ledger.
+- **TDD (`tdd-workflow`) — RED đo thật trên VPS TRƯỚC khi sửa production code**: `Ran 12 tests — FAILED (failures=4, errors=7)`; lỗi đúng lý do nghiệp vụ: `AssertionError: 'success' == 'success'` (whale test hardcode) · `AssertionError: 'queued' != 'skipped'` (quota warning chỉ ghi log) · 7 error = **thiếu implementation** (`push_configured` chưa có, `build_usage_meters` chưa có) ⇒ **compile-time RED** hợp lệ. **GREEN**: `Ran 13 tests — OK`.
+- **1 LỖI SETUP ĐÃ SỬA (L-V04 — không được đỏ vì lý do sai)**: depth-chart test đỏ `403 != 200` do dùng `force_login` thay vì `APIClient.force_authenticate` (pattern đúng của repo: `market_serving/tests/test_native_views.py:28-29`) + `_payload` không đọc được DRF `Response` (chỉ có `.data`) khi gọi view trực tiếp bằng `APIRequestFactory`. Đã sửa ⇒ RED/GREEN chỉ còn lý do nghiệp vụ.
+- **HỒI QUY = 0 (đo trên VPS staging, cùng môi trường với baseline)**:
+
+| | Full BE suite trên VPS staging |
+|---|---|
+| **Baseline** (`origin/dev` @ 3448aa238, Entry 397) | 3453 test · **failures=11** · **errors=224** · **skipped=7** |
+| **Nhánh này** (`feat/w0-6-data-honesty` @ 54265ba62) | **3466 test** · **failures=11** · **errors=224** · **skipped=7** |
+
+⇒ **+13 test (mới của slice) đều PASS; 0 failure mới; 0 error mới.** Lần chạy đầu của nhánh còn **failures=14** ⇒ **3 hồi quy** do tôi gây ra, đã truy ra và sửa (xem dưới).
+- **3 TEST CŨ ĐANG KHOÁ HÀNH VI NÓI DỐI — đã cập nhật (không phải "test sai", mà là test khoá contract sai)**:
+  1. `src/service_ops/tests/test_soc_api_signals.py::test_whale_test_endpoint_labels_smoke` — assert `payload['smoke'] is True` (endpoint hardcode `'success'`) ⇒ nay assert `test_result != 'success'` + `∈ ('no_data','completed','error')` + có `ticks_scanned`/`whale_ticks_detected`/`detection_possible`.
+  2. `tests/test_commercial_tasks.py::test_send_quota_warning_deduplicates_per_day` — assert `first['status'] == 'queued'` (chỉ ghi log) ⇒ nay patch `_tenant_owner_email` + `send_email` ⇒ `first 'sent'`, `second 'skipped'/'duplicate_warning'` (mục đích dedup giữ nguyên).
+  3. `tests/test_workstation_endpoints.py::test_realtime_depth_chart_no_snapshot` — assert `note == 'no_snapshot_data'` (chu literal cũ) ⇒ nay assert `note` non-empty + `is_mock` + `data_quality == 'estimated'`.
+- **GATE CHẠY THẬT**: BE `manage.py check` **PASS** · BE `manage.py test` (scope file mới) **13/13 OK** · BE **full suite 3466 / 11 / 224 / 7** (393s) · `py_compile` 6 file **0 lỗi** · `check-lessons` 0 · `check-multi-agent` 0 lỗi · `check-experiment-env --self-test` 8/8 · `pre-push-gate` **34 PASS / 0 FAIL**.
+- **MÔI TRƯỜNG THỬ NGHIỆM**: **toàn bộ BE test chạy trên VPS staging** theo `docs/STAGING_VPS_RUNBOOK.md` §12.3 (image `vninvest-core-api:staging` + DB tạm `w06_red` / `w06_reg` trên `vninvest-core-db`) — **KHÔNG dùng local Docker** (quy định cứng Owner 2026-10-22, `docs/AGENT_PROTOCOL.md` §12). **Dọn đã verify**: DB tạm **đã DROP** (log `DROP DATABASE`) · worktree VPS `/tmp/wt-w06_*` **đã remove** + `git worktree prune` · `docker ps` **"không còn container thử nghiệm nào"** (mọi container `--rm`).
+- **CHƯA CHẠY (ghi rõ)**: E2E Playwright (cần browser trên VPS — **CHƯA THỬ**) · ảnh chụp thật · deploy staging mới. **FE**: **không có file FE nào thay đổi** ⇒ không cần chạy lại suite FE (ghi rõ trong PR).
+- **Lessons áp dụng**: L-001 L-002 L-003 L-007 L-008 L-M02 L-M05 L-M08 L-V01 L-V02 L-V04 L-G01 L-G02 L-G04 L-G05 L-G07 L-G08 L-T01 L-T02 L-A01.
+
 ## Entry 397: QUY ĐỊNH CỨNG — mọi thử nghiệm chạy trên VPS staging, CẤM local Docker; chạy nốt toàn bộ gate `CHƯA CHẠY` trên staging (Owner 2026-10-22)
 
 - **Phạm vi:** coordinator consolidation trên `dev` (claim `w0-staging-policy`). **DOC + 1 script gate máy mới.** Không sửa code production.

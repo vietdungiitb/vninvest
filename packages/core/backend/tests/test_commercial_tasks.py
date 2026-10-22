@@ -227,11 +227,18 @@ class CommercialTasksTests(TestCase):
         self.assertEqual(paid_subscription.status, Subscription.StatusChoices.ACTIVE)
 
     def test_send_quota_warning_deduplicates_per_day(self):
+        """W0.6: task phai GUI email that, khong chi ghi log ('queued').
+
+        Truoc day ham tra {'status': 'queued'} ⇒ nguoi dung tin nham da canh bao.
+        Nay: lan 1 gui email (sent), lan 2 bi dedup.
+        """
         cache_stub = _QuotaCacheStub({})
-        with patch('commercial.tasks.cache', cache_stub):
+        with patch('commercial.tasks.cache', cache_stub), \
+             patch('commercial.tasks._tenant_owner_email', return_value='owner@example.com'), \
+             patch('commercial.tasks.OutboundNotificationService.send_email', return_value=True):
             first = send_quota_warning.run(str(self.tenant_one.public_id), 80)
             second = send_quota_warning.run(str(self.tenant_one.public_id), 80)
 
-        self.assertEqual(first['status'], 'queued')
+        self.assertEqual(first['status'], 'sent')
         self.assertEqual(second['status'], 'skipped')
         self.assertEqual(second['reason'], 'duplicate_warning')

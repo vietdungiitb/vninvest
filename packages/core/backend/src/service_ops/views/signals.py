@@ -765,14 +765,68 @@ class SignalsWhaleTestView(SOCBaseView):
     """POST /api/soc/signals/whale/test/"""
 
     def post(self, request):
-        """Test whale detection."""
-        symbol = request.data.get('symbol', 'VNM')
+        """Chay whale detection THAT tren tick cua symbol.
+
+        W0.6: truoc day ham tra cung 'test_result': 'success' bat ke khi CHUA
+        chay gi ⇒ operator tin nham da test. Bay phai bao so lieu that.
+        """
+        import logging as _logging
+        from django.utils import timezone as _timezone
+
+        # Lazy import: tranh keo pandas vao luc khoi dong server.
+        from signal_intelligence.order_flow_engine import (
+            detect_dark_flow_windows,
+            detect_whale_ticks,
+            load_session_ticks_df,
+        )
+
+        log = _logging.getLogger(__name__)
+        symbol = str(request.data.get('symbol', 'VNM') or 'VNM').upper()
+        session_date = _timezone.now().date()
+
+        try:
+            df = load_session_ticks_df(symbol, session_date)
+        except Exception as exc:  # noqa: BLE001 — endpoint phai bao loi ro
+            log.warning('soc_signals_whale_test: load tick that that: %s', exc)
+            return envelope({
+                'symbol': symbol,
+                'test_result': 'error',
+                'detection_possible': False,
+                'session_date': session_date.isoformat(),
+                'ticks_scanned': 0,
+                'whale_ticks_detected': 0,
+                'dark_flow_windows': 0,
+                'note': f'Khong tai duoc du lieu tick: {exc.__class__.__name__}',
+            })
+
+        ticks = 0 if df is None else int(len(df))
+        if ticks == 0:
+            return envelope({
+                'symbol': symbol,
+                'test_result': 'no_data',
+                'detection_possible': False,
+                'smoke': False,
+                'session_date': session_date.isoformat(),
+                'ticks_scanned': 0,
+                'whale_ticks_detected': 0,
+                'dark_flow_windows': 0,
+                'note': 'Khong co du lieu tick cho phien nay — KHONG co gi de detect. '
+                        'Hay chay ingestion truoc khi test.',
+            })
+
+        whale_df = detect_whale_ticks(df)
+        whale_count = 0 if whale_df is None else int(len(whale_df))
+        dark_windows = detect_dark_flow_windows(df)
         return envelope({
             'symbol': symbol,
-            'test_result': 'success',
+            'test_result': 'completed',
             'detection_possible': True,
-            'smoke': True,
-            'note': 'Endpoint kiểm tra hiện trả stub — chưa chạy detection thật (xem W2.4 honest metrics).',
+            'smoke': False,
+            'session_date': session_date.isoformat(),
+            'ticks_scanned': ticks,
+            'whale_ticks_detected': whale_count,
+            'dark_flow_windows': len(dark_windows),
+            'note': 'Ket qua chay THAT tren du lieu tick cua phien.',
         })
 
 

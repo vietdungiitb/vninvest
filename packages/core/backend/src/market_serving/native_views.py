@@ -446,8 +446,10 @@ class RealtimeDepthChartView(APIView):
                 'asks': [],
                 'spread': 0,
                 'timestamp': timezone.now().isoformat(),
-                'note': 'no_snapshot_data',
+                'note': 'Khong co du lieu snapshot cho phien nay — khong co so lich '
+                        'de uoc tinh.',
                 'is_mock': True,
+                'data_quality': 'estimated',
                 'source': 'synthetic_from_snapshot',
             })
         
@@ -518,8 +520,10 @@ class RealtimeDepthChartView(APIView):
             'last_price': last_price,
             'tick_size': tick_size,
             'is_mock': True,
+            'data_quality': 'estimated',
             'source': 'synthetic_from_snapshot',
-            'note': 'estimates',
+            'note': 'UOC TINH — so lich duoc sinh tu snapshot gia moi nhat, '
+                    'KHONG phai so lich that cua san.',
         })
     
     def _get_tick_size(self, symbol):
