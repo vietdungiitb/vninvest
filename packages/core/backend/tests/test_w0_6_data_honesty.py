@@ -25,8 +25,15 @@ USAGE_METERS_URL = "/core/v1/partner/usage/meters/"
 
 
 def _payload(response):
-    """Unwrap envelope `{data, meta}` — fallback về body thô nếu shape khác."""
-    body = response.json()
+    """Unwrap envelope `{data, meta}` — fallback về body thô nếu shape khác.
+
+    `APIClient` trả response co `.json()`; `APIRequestFactory` + goi truc tiep
+    view tra ve DRF `Response` (chi co `.data`).
+    """
+    if hasattr(response, "json"):
+        body = response.json()
+    else:
+        body = getattr(response, "data", response)
     return body.get("data", body)
 
 
