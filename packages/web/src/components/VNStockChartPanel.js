@@ -172,6 +172,26 @@ export default function VNStockChartPanel({
       series: [{ type: 'Volume', yAxis: 'right' }],
     },
     {
+      // W0.9: pane chi bao mac dinh — widget 1.2.5 co san 59 indicator
+      // (DMI·CCI·MFI·OBV·VWAP·SAR...), app truoc day chi truyen 7 series.
+      // KHONG bat het 59 mot luc (chart roi + nang) — day la bo mac dinh.
+      id: 'indicators',
+      label: t('stockDetail.chartIndicators', { defaultValue: 'Chỉ báo' }),
+      pinned: false,
+      visible: true,
+      heightRatio: 0.23,
+      splitScale: true,
+      tooltip: 'value',
+      series: [
+        { type: 'DMI', yAxis: 'left', color: '#a78bfa', scaleSlotId: 'ind-left' },
+        { type: 'CCI', yAxis: 'left', color: '#f472b6', scaleSlotId: 'ind-left' },
+        { type: 'MFI', yAxis: 'left', color: '#34d399', scaleSlotId: 'ind-left' },
+        { type: 'OBV', yAxis: 'right', color: '#fbbf24' },
+        { type: 'VWAP', yAxis: 'right', color: '#38bdf8' },
+        { type: 'SAR', yAxis: 'right', color: '#fb7185' },
+      ],
+    },
+    {
       id: 'rsi_macd',
       label: t('stockDetail.chartRsiMacd', { defaultValue: 'RSI + MACD' }),
       pinned: false,
@@ -254,9 +274,16 @@ export default function VNStockChartPanel({
           showNonTradingDays: true,
           showSymbolBadges: true,
           workspaceId: workspaceId ?? `stock-${symbol}`,
-          showTapePanel: false,
+          // W0.9: bat tape (time & sales) — du lieu tick THAT da co o BE
+          // (`market_data.IntradayTapeView`), chi bi tat o UI.
+          showTapePanel: true,
           showAdvisoryPanel: false,
+          // W0.9: KHONG bat `showCorporateEvents` — BE chua co nguon du lieu
+          // corporate actions (ex-date / split / rights) nen overlay se rong;
+          // bat rong = nhieu tinh, giong "noi doi" (xem roadmap §5 W5.3).
           showCorporateEvents: false,
+          // W0.9: bat toolbar layout/workspace (co prop nay trong type decl widget).
+          showWorkspaceToolbar: true,
           locale: locale,
           messages: widgetMessagesVi,
           theme: theme,

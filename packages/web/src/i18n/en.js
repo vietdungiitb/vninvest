@@ -3468,6 +3468,7 @@ aiUsageAnalytics: 'AI Usage',
     },
   },
   stockDetail: {
+    chartIndicators: 'Indicators',
     intradayFetchFailed: 'Failed to fetch intraday matched trades.',
     intradayLabel: 'Intraday matched trades',
     intradayTitle: 'Matched trades',
