@@ -527,6 +527,34 @@ for (const extraGate of [
   }
 }
 
+// ------------------------------------------- QUY DINH CUNG: MOI THU NGHIEM CHAY TREN VPS
+// `scripts/check-experiment-env.mjs` — quet dong MOI them trong diff: dong nao goi
+// `docker run|exec|compose|build|ps` ma KHONG co dau hieu VPS (ssh / 14.225.255.47 /
+// docker.edusuccess.vn / vninvest-staging / /opt/vninvest) => FAIL.
+// Nguon: docs/AGENT_PROTOCOL.md §12 + docs/STAGING_VPS_RUNBOOK.md §12 (Owner chot).
+// Host local can RAM => ket qua test local GIA (OOM / OperationalError) => CAM local docker.
+for (const envGate of [
+  { name: "check-experiment-env", args: [] },
+  { name: "check-experiment-env", args: ["--self-test"], label: "check-experiment-env-selftest" },
+]) {
+  const gatePath = join(REPO, "scripts", `${envGate.name}.mjs`);
+  const gateLabel = envGate.label || envGate.name;
+  if (!existsSync(gatePath)) {
+    skip(gateLabel, `khong co scripts/${envGate.name}.mjs`);
+    continue;
+  }
+  const r = run(process.execPath, [gatePath, ...envGate.args], REPO, 120000);
+  if (r.code === null) {
+    skip(gateLabel, `khong chay xong (${r.launchError || "khong ro"}) — CHUA CHAY`);
+  } else if (r.code !== 0) {
+    bad(gateLabel, r.out.split("\n").slice(0, 12).join("\n"));
+  } else {
+    const pass = r.out.match(/PASS[^\n]*/);
+    const lastLine = r.out.split("\n").filter((l) => l.trim()).slice(-1)[0] || "PASS";
+    ok(gateLabel, (pass ? pass[0] : lastLine).trim());
+  }
+}
+
 // ------------------------------------------------------------------ tong ket
 console.log("");
 if (failed > 0) {
