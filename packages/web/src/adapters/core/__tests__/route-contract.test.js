@@ -15,11 +15,34 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// `jest.config.js` sets `extensionsToTreatAsEsm` to [.jsx, .ts, .tsx] only, so this
-// `.js` suite is transformed to CommonJS by babel-jest and `import.meta` is a
-// SyntaxError. The old comment here claimed the opposite ("Jest runs this suite as
-// ESM, so `__dirname` does not exist"), which is why the suite never executed.
-const HERE = __dirname;
+// W0.5 — SUA SU LAI MOT LAN NUA, LAN NAY LA GOC RE THAT.
+//
+// `packages/web/package.json` khai `"type": "module"` ⇒ MOI file `.js` trong
+// package la ESM ⇒ `__dirname` KHONG TON TAI. Comment cu (18-21) noi nguoc:
+// "jest.config.js sets extensionsToTreatAsEsm to [.jsx,.ts,.tsx] only, so this
+// .js suite is transformed to CommonJS" — SAI, vi `type: module` da lam .js
+// thanh ESM ma khong can setting do.
+//
+// Hau qua: suite `route-contract` **CHUA BAO GIờ CHAY** ⇒ gate bao ve contract
+// API chet trong im lang (ghi nhan o ledger Entry 384) ⇒ 32 method adapter tro
+// sai route van duoc merge, va moi loi goi sai trong `src/pages/**` deu ngoai
+// tam gate.
+//
+// Cach sua: dung `process.cwd()` (jest chay voi rootDir = packages/web) + kiem
+// tra file manifest ton tai o moi candidate ⇒ khong phu thuoc `__dirname` hay
+// `import.meta` (parse-time SyntaxError neu file bi transform CJS).
+function resolveHere() {
+  const candidates = [
+    path.join(process.cwd(), "src", "adapters", "core", "__tests__"),
+    path.join(process.cwd(), "packages", "web", "src", "adapters", "core", "__tests__"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "core-route-manifest.json"))) return candidate;
+  }
+  return candidates[0];
+}
+
+const HERE = resolveHere();
 // W0.5: gate phai quet TAT CA noi goi core API — khong chi adapter.
 // Truoc day chi quet `src/adapters/core/*.js`, nen moi loi goi coreGet/corePost
 // trong `src/pages/**` va `src/context/**` deu ngoai tam gate => path sai chi
