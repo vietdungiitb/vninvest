@@ -533,10 +533,19 @@ class SignalsP2AHonestMetricsTestCase(SignalsApiBaseTestCase):
         self.assertEqual(payload['rules_seen_session'], 1)
         self.assertNotIn('active_rules', payload)
 
-    def test_whale_test_endpoint_labels_smoke(self):
+    def test_whale_test_endpoint_runs_real_engine(self):
+        """W0.6: endpoint phai CHAY engine that va bao so lieu that.
+
+        Truoc day endpoint hardcode 'test_result': 'success' + 'smoke': True
+        ⇒ test cu khoa chinh DANG LIE. Nay assert theo contract moi.
+        """
         payload = unwrapped_json(self.client.post('/api/soc/signals/whale/test/', {'symbol': 'VNM'}, format='json'))
-        self.assertTrue(payload['smoke'])
+        self.assertNotEqual(payload['test_result'], 'success')
+        self.assertIn(payload['test_result'], ('no_data', 'completed', 'error'))
         self.assertIn('note', payload)
+        self.assertIn('ticks_scanned', payload)
+        self.assertIn('whale_ticks_detected', payload)
+        self.assertIn('detection_possible', payload)
 
     def test_feed_export_returns_columns_rows_and_count(self):
         payload = unwrapped_json(self.client.get('/api/soc/signals/feed/export/'))

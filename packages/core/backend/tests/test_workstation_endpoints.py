@@ -150,7 +150,10 @@ class WorkstationEndpointTests(TestCase):
         self.assertEqual(data['symbol'], 'NONEXISTENT')
         self.assertEqual(data['bids'], [])
         self.assertEqual(data['asks'], [])
-        self.assertEqual(data['note'], 'no_snapshot_data')
+        # W0.6: note dang tie Viet + phai noi ro du lieu la UOC TINH.
+        self.assertTrue(data['note'])
+        self.assertTrue(data['is_mock'])
+        self.assertEqual(data['data_quality'], 'estimated')
 
     def test_realtime_whale_feed_aggregate_view_resolves(self):
         """Test that whale feed aggregate route resolves with symbol."""
