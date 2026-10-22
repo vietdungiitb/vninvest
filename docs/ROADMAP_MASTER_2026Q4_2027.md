@@ -427,7 +427,7 @@
 | W0.2 xoá code chết (2 126 LOC `admin_ops` + 51 route) | [T] | ⏳ chưa làm | cần Docker cho BE test |
 | W0.3 sửa `exports` 10/10 trỏ file `.ts` không tồn tại | [T] | ⏳ chưa làm | ⚠ **deny-list** (`packages/web/package.json`) ⇒ coordinator |
 | W0.5 ~17 endpoint `/partner/*` về adapter | [T] | ⏳ chưa làm | |
-| W0.6 fail-closed 7 endpoint trả dữ liệu giả | [T] | ⏳ chưa làm | **ưu tiên cao** (D1: retail mua dữ liệu) |
+| W0.6 fail-closed 5 endpoint trả dữ liệu giả | [T] | ✅ **DONE** (PR #280) | 5 endpoint: push / whale test / usage meters / quota warning / depth chart · TDD RED→GREEN trên VPS staging · **hồi quy = 0** (3466 test / 11 fail / 224 err — khớp baseline) |
 | W0.7 SAML strict thật + OpenClaw + `ai_agents` | [T] | ⏳ chưa làm | **P0 an toàn** (D5) |
 | W0.8 chuẩn hoá doc trạng thái + bật CI | [T] | ⏳ chưa làm | ⚠ `AGENTS.md` deny-list |
 
