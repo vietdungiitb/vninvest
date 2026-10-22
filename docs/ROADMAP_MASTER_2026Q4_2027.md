@@ -9,11 +9,15 @@
 
 ## 0. Tóm tắt điều hành
 
-1. **VNInvest đã là một nền tảng B2B2B hiếm, không phải một app retail.** 16 Django app · 69 route web · ~500 route API · multi-tenant + PAT + partner API (108 route) + SOC (136 route) + SSO + audit + billing. **Trong nước chưa có đối thủ trực tiếp** ở nhóm này (chỉ BSC Open API = broker→app, FireAnt API = data). Đây là tài sản lớn nhất và **phải đóng gói thành sản phẩm bán được**, không phải để trong code.
-2. **Khoảng trống lớn nhất KHÔNG phải "thêm tính năng" mà là "AI nằm trong workflow" + "chiều sâu dữ liệu VN".** Đã verify 33 năng lực trong code: **HAVE 9 · PARTIAL 13 · MISSING 11**. Hầu hết `PARTIAL` là do **backend có nhưng frontend tắt, hoặc thiếu lớp dữ liệu** — chi phí thấp, giá trị cao.
-3. **Nền tảng kỹ thuật có 3 "false-green" gate đang làm mọi báo cáo PASS trước đây không đáng tin.** `check-light-theme` không được wire vào pre-push · OC-19 doc-sync match path `^backend/` đã legacy ⇒ luôn PASS · 8/9 CI workflow bị tắt. **Không dọn cái này, mọi "PASS" của roadmap sẽ là ảo.** Đây là Wave 0 bắt buộc.
-4. **Khoảng trống doanh thu lớn nhất = giá theo seat.** 0 hit `seat` trong toàn bộ model/giá/entitlement. Nền tảng B2B đã có (multi-tenant, SOC, SSO, audit) nhưng **chưa có đơn vị giá theo seat** ⇒ không đóng gói được cho broker/cố vấn/quỹ. Effort **M**, doanh thu **cao** ⇒ đưa lên Wave 1.
-5. **Không nên làm:** fractional shares (VN yêu cầu lô 100) · options/crypto/prediction markets (giấy phép) · desktop app (VN mobile-first) · social community (rủi ro đạo đức "đầu cơ"). **Nên làm sớm:** backtest/paper trading với giả định VN (lô 100 · T+2,5 · phí 2 chiều · PIT 0,1%) — đây là khác biệt duy nhất so với TradingView.
+> **Bản 2 (2026-10-21) — đã pivot theo quyết định Owner.** Bản 1 định vị B2B2B là hướng chính; **Owner đã chốt đổi**: ưu tiên **người dùng cuối (retail)**, **giai đoạn đầu miễn phí, chấp nhận không có doanh thu**, mục tiêu là **lấy brand name**; B2B (nhà phát triển ký hợp đồng) để sau, khi hệ thống đủ tốt. Mọi phần còn lại của tài liệu đã viết lại theo hướng đó. Xem §1.1 (8 quyết định) và §1.2 (hệ quả chiến lược).
+
+1. **Sản phẩm trả tiền (sau này) là retail, và thứ họ mua là thứ chỗ khác không có: charts · whale · dark flow · AI phân tích kỹ thuật.** Không phải "nhiều tính năng" mà là **dữ liệu dòng tiền + tín hiệu** mà TradingView/moomoo/Webull/Bloomberg **không có cho thị trường VN**.
+2. **Hai tầng ứng dụng trên mỗi broker lane (DNSE/SSI/TCBS)**: (a) **người dùng cuối** → portfolio của chính họ; (b) **staff COC** → thông tin thị trường. ⇒ **2 tài khoản riêng biệt, không dùng chung.** Hiện code **chưa có** khái niệm credential broker cấp tenant/staff (chỉ có `UserBrokerConfig` per-user + 1 `SystemBrokerCredential` global) ⇒ đây là **slice kiến trúc P0** (§4.3 W1.4).
+3. **AI = phân tích kỹ thuật, KHÔNG phải khuyến nghị đầu tư; hệ thống KHÔNG đặt lệnh trừ khi có hợp đồng riêng.** Hôm nay LLM **được yêu cầu** trả `signal: BUY|SELL|HOLD` + `target_price` + `recommendation` (`orchestrator.py:717-723`) và ~35 chuỗi UI nói "khuyến nghị" ⇒ phải đổi **contract đầu ra của LLM + tầng UI**, không chỉ đổi câu chữ.
+4. **Trung thực dữ liệu là vấn đề P0, không phải P2.** Retail sẽ trả tiền cho "dữ liệu mà chỗ khác không có" — nên **order book trên biểu đồ đang là dữ liệu giả** (`native_views.py:430` tự ghi *"mock implementation"*, `:450` `is_mock: True`) mà app **đang tiêu thụ** (`chartAdapter.js:160`) là **rủi ro niềm tin lớn nhất**. Whale/dark flow thì **thật** (tick thật → `UnifiedAlert`/`WhaleAlertCanonical`; `dark_flow_score` = |net CVD|/total value — là **absorption proxy**, cần ghi rõ trong UI).
+5. **Nền tảng kỹ thuật có 3 "false-green" gate** (`check-light-theme` không wire · OC-19 doc-sync path legacy · CI 1/9 workflow) ⇒ mọi "PASS" sau này không kiểm chứng được nếu không dọn Wave 0 trước.
+6. **Giai đoạn đầu: miễn phí, không doanh thu — vậy mục tiêu đo là brand name.** ⇒ ưu tiên **kích hoạt & giữ chân** (activation funnel, referral, PWA/mobile, push) thay vì entitlement/pricing. **0 referral/affiliate** trong toàn repo · **không PWA** (`packages/web/public` không tồn tại) · trial 14 ngày (`onboarding_views.py:137`) — cần nghĩ lại vì "free" nghĩa là không hết hạn.
+7. **Không nên làm:** fractional shares (lô 100) · options/crypto/prediction (giấy phép) · desktop app (VN mobile-first) · social community "đầu cơ" · **đặt lệnh trong sản phẩm** (ngoài phạm vi hợp đồng) · **bán theo seat / advisor workspace** (để sau — B2B giai đoạn 2).
 
 ---
 
@@ -28,6 +32,32 @@
 | **E. Verify `?`** | 33 năng lực còn `?` trong ma trận | **HAVE 9 / PARTIAL 13 / MISSING 11** | Xem mục 3 |
 
 **Nguyên tắc đã áp dụng:** mọi khẳng định kèm `file:line` · route đếm theo **registry** không theo tên file (L-G07) · số đếm tách "thật / tương đối / không phải lỗi" (L-G04) · gốc rễ kế thừa phải tái hiện được mới hành động (L-V02) · không báo PASS cho thứ chưa chạy (L-G02).
+
+---
+
+## 1.1. QUYẾT ĐỊNH OWNER — 2026-10-21 (8 câu, đã chốt)
+
+| # | Câu hỏi (bản 1) | **QUYẾT ĐỊNH** | Hệ quả kỹ thuật bắt buộc |
+|---|---|---|---|
+| **D1** (Q1) | Khách trả tiền chính là retail hay B2B? | **RETAIL** — cần thông tin thị trường mà chỗ khác không có: **charts, whale, dark flow, AI advisory** | Xoá ưu tiên per-seat / advisor workspace khỏi W1. Đưa **dữ liệu whale/dark flow/AI** lên hàng đầu. Toàn bộ benchmark "white-space" phải đọc lại theo lăng kính retail |
+| **D2** (Q2) | Được định giá "AI khuyến nghị" không? | **AI mang tính KỸ THUẬT (phân tích kỹ thuật)**. **Hệ thống KHÔNG hỗ trợ đặt lệnh trừ khi có hợp đồng riêng** | ① Đổi **contract đầu ra LLM**: `signal: BUY\|SELL\|HOLD` + `target_price` + `recommendation` → hướng kỹ thuật (`orchestrator.py:717-723`). ② Đổi ~35 chuỗi i18n "khuyến nghị" (`vi.js:3789,3794,3795,4505,4507,5176,5216,5230-5235,6794,6950,7023`…). ③ **Gỡ order placement khỏi sản phẩm** (giữ `paper` mode) — `views_dnse.py:390-399` đã chặn `live` cứng, giữ nguyên + ghi rõ |
+| **D3** (Q3) | Ai trả phí giao dịch DNSE? | **Mỗi lane broker (DNSE/SSI/TCBS) có 2 tầng ứng dụng**: (a) **người dùng cuối** → portfolio; (b) **staff COC** → thông tin thị trường. ⇒ **2 tài khoản riêng biệt** | Cần **credential broker cấp tenant/staff** tách khỏi `UserBrokerConfig` (per-user). Hôm nay chỉ có: `UserBrokerConfig` (`user` NOT NULL, `user_workspace/models.py:819-825`) + `SystemBrokerCredential` **global 1 row/provider** (`identity_access/models.py:974-977`). Tên "COC" **đã bị chiếm** bởi *Center Operations Center* (`docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md:1`) ⇒ đặt tên role mới, ví dụ `broker_operator` |
+| **D4** (Q5) | OpenClaw: cấp protocol hay gỡ? | **OpenClaw là TÍNH NĂNG HỔ TRỢ** | Không phải provider giao dịch chính. `advisory/ai_clients/openclaw.py:44` `SUPPORTED_PROTOCOLS = ()` ⇒ mọi call 503. Cần: implement protocol **hoặc** định vị lại thành "trợ lý hỗ trợ" + fail-closed rõ ràng (không để user hiểu là AI chính đang chết) |
+| **D5** (Q6) | SAML production dùng thật không? | **DÙNG THẬT TRONG TƯƠNG LAI** | Không chấp nhận `strict`-luôn-raise là trạng thái vĩnh viễn. `python3-saml` **đã có** trong `requirements.txt:46`; `libxmlsec1-dev` + `xmlsec1` **đã có** trong `Dockerfile:19,58` ⇒ chỉ thiếu code verify (BL-01b) tại `saml_service.py:402-406` |
+| **D6** (Q7) | Depth chart giả: tắt hay gắn nhãn? | **ƯỚC TÍNH** (giữ, gắn nhãn) | Không tắt UI. Nhưng phải: (a) gắn nhãn "ước tính" ở **mọi** nơi hiển thị, (b) **không** để chart order book ngầm dùng mock — `chartAdapter.js:160` gọi `getRealtimeDepthChart` ⇒ `native_views.py:450` `is_mock: True` |
+| **D7** (Q8) | Đã có key FCM/VAPID production chưa? | **CHƯA CÓ — tính năng tương lai** | Không được báo thành công giả. `outbound_notification_service.py:56-57,102-103` trả `True` khi thiếu key ⇒ phải trả `skipped`/`not_configured` **kèm lý do**, và UI phải nói "chưa bật" |
+| **D8** (mới) | Ai trả tiền khi nào? | **B2B để sau** (khi hệ thống đủ tốt, có nhà phát triển ký hợp đồng). **Giai đoạn đầu MIỄN PHÍ, chấp nhận không có doanh thu** — mục tiêu là **lấy brand name** | Toàn bộ §5 cũ (6 tier + giá) **chuyển sang "giai đoạn 2"**. Thay bằng: (a) **mục tiêu đo = brand name** ⇒ đo **activation, DAU, retention, referral, brand search**, không đo MRR. (b) Bỏ `plan`/entitlement gating khỏi đường **giá trị cốt lõi** (whale/dark flow/AI/chart) — đây là thứ định vị thương hiệu. (c) Trial 14 ngày (`onboarding_views.py:137`) **không còn hợp lý** khi sản phẩm free ⇒ cần chính sách mới |
+
+### 1.2. Hệ quả chiến lược (những gì bản 1 nói sai)
+
+| Tuyên bố ở bản 1 | Trạng thái sau D1–D8 | Lý do |
+|---|---|---|
+| "Khoảng trống doanh thu lớn nhất = giá theo seat" | ❌ **Hạ ưu tiên** | D1: retail-first, D8: B2B để sau. Per-seat chuyển sang W3 (giai đoạn 2) |
+| "W1 = AI chat + NL-screener + backtest + seat pricing + Zalo + bảng giá" | 🔁 **Đổi thứ tự** | D1+D8: trước tiên phải **có dữ liệu đáng tin** + **kích hoạt được**, sau đó mới mở rộng |
+| "Đối thủ trực tiếp ở nhóm data/analysis VN là FireAnt" | ✅ Giữ | Nhưng thêm: đối thủ **cho "AI khuyến nghị"** (FireAnt Copilot) — ta **không** theo hướng đó (D2) ⇒ khác biệt là **phân tích kỹ thuật có dữ liệu dòng tiền thật** |
+| "Bảng giá 6 tier" | ⏸ **Giai đoạn 2** | D8: miễn phí, chưa doanh thu |
+| "AI advisory là lợi thế lớn nhất" | 🔁 **Cần làm lại** | D2: phải đổi contract LLM + UI. Giá trị còn lại = **rationale + feature attribution + dữ liệu dòng tiền thật**, không phải khuyến nghị |
+| "Whale/dark flow = lợi thế khó copy" | ✅ Giữ, **nhưng phải trung thực** | Whale **thật** (`signal_intelligence/tasks.py:280-360`, source `pandas_tick_engine`) · `dark_flow_score` **thật nhưng là absorption proxy** (`session_facts_engine.py:38,205`) — phải ghi rõ trong UI, không gọi là "dấu vết cá mập" tuyệt đối |
 
 ---
 
@@ -244,162 +274,183 @@
 
 ---
 
-## 4. LỘ TRÌNH
+## 4. LỘ TRÌNH (BẢN 2 — retail-first, free, không đặt lệnh)
 
-### 4.0 Nguyên tắc thực thi
+> Đã viết lại toàn bộ theo D1–D8 (§1.1). **Thứ tự thay đổi so với bản 1**: trước khi mở rộng tính năng, phải **(1)** làm dữ liệu đáng tin, **(2)** đúng pháp lý sản phẩm, **(3)** có 2 tầng tài khoản broker, **(4)** kích hoạt được người dùng. Tăng trưởng/brand mới đi sau.
 
-1. **M0 = W0 xanh.** Không bắt đầu W1 trước khi Wave 0 (nền + gate) đóng — nếu không, mọi "PASS" của W1–W4 là **không kiểm chứng được** (L-G02 + bài học 4-agent-báo-PASS → merge `198 test errors=1`).
+### 4.0 Nguyên tắc thực thi (cập nhật)
+
+1. **M0 = W0 xanh.** Không bắt đầu W1 trước khi Wave 0 (nền + gate) đóng — nếu không, mọi "PASS" của W1+ là **không kiểm chứng được** (L-G02 + bài học 4-agent-báo-PASS → merge `198 test errors=1`).
 2. **Mỗi slice = 1 PR + 1 claim + 1 ledger Entry.** Không nhét nhiều feature vào 1 PR.
-3. **Không bán tier mới trước khi entitlement tồn tại.** Gate: không có `PLAN_ENTITLEMENTS` entry tương ứng ⇒ không được publish giá.
-4. **Không giảm chức năng hiện có** để làm scope nhỏ hơn. Nếu thu hẹp (ví dụ tắt depth chart giả) ⇒ ghi rõ trong ledger + thông báo Owner.
-5. **0 hồi quy:** mọi slice phải có **fail-before** đo được (L-V04) + **fail-after** + gate chạy thật trên code **sau rebase** (L-G01).
-6. **Ưu tiên W1 theo doanh thu × effort**, không theo độ dễ.
+3. **Trung thực dữ liệu > thêm tính năng.** Retail mua "dữ liệu mà chỗ khác không có" ⇒ **mọi giá trị `is_mock`/synthetic phải được nhãn rõ ở UI** hoặc endpoint phải fail-closed. Không được bán "ước tính" như "thật".
+4. **Không bán thứ chưa có entitlement.** Trong giai đoạn free, "entitlement" = **không chặn tính năng giá trị cốt lõi** (whale / dark flow / AI / chart). Không để `plan` chặn 3 phần đó.
+5. **0 hồi quy:** mọi slice có **fail-before** đo được (L-V04) + **fail-after** + gate chạy thật trên code **sau rebase** (L-G01).
+6. **Đổi ngôn ngữ = đổi contract.** Với D2, không được chỉ đổi chuỗi hiển thị: phải đổi **prompt + shape JSON + serializer + component + 2 locale** cùng lúc, và có test khoá shape mới.
 
 ### 4.1 WAVE 0 — "Dọn nền để không tự đánh lừa mình" (P0 · 2 tuần · 8 slice)
 
 | Slice | Nội dung | File chính | Effort | AC (đo được) |
 |---|---|---|---|---|
 | **W0.1** | **Wire gate thật**: `check-light-theme` + `eslint` + `vitest run` vào `pre-push-gate.mjs`; sửa pattern OC-19 (`^packages/core/backend/` + `^packages/web/`) | `scripts/pre-push-gate.mjs` · `scripts/quality/check_opencore_doc_sync.ps1:50-51` | **M** | Grep `light-theme` trong pre-push ≥1 hit · OC-19 self-test fail trên path sai |
-| **W0.2** | **Xoá code chết**: `contracts/admin_ops` (2 126 LOC, 26 route) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4) — hoặc **include** lại nếu FE cần | `vninvest_core/urls.py:37-42,58,62` · `market_data/urls.py:7-12` | **M** | `grep -c "path("` trong `src/**/urls*.py` khớp URLconf thật · 2 file test contract cũ phải xoá cùng lúc |
-| **W0.3** | **Sửa `exports` của `packages/web/package.json`** (10/10 trỏ `.ts` không tồn tại) — sửa `.ts`→`.js` hoặc xoá khối `exports` nếu package không được consume | `packages/web/package.json:36-48` | **S** | `node -e "require.resolve"` cho từng entry export → 0 lỗi |
-| **W0.4** | **Dọn route/component chết**: 6 registry entry shadow + `PortfoliosBrokerPage` + `ShellSupportPage` + `ShellAiCommandCenterPage` + 3 feature folder rỗng + `config/buildTarget.js` | `pageRegistry.js:196-207,208-220,239` · `main.tsx:24-49` · `features/{community,saas,vip}/` | **M** | Mọi entry `pageRegistry` đều được `resolvePageComponent` gọi tới (script đếm theo registry, L-G07) |
+| **W0.2** | **Xoá code chết**: `contracts/admin_ops` (2 126 LOC, 26 route) + `market_data/urls.py` (6) + `market_data/public_urls.py` (34) + `ops_audit/urls_parity.py` (4) | `vninvest_core/urls.py:37-42,58,62` · `market_data/urls.py:7-12` | **M** | Số `path(` trong `src/**/urls*.py` khớp URLconf thật · 2 file test contract cũ xoá cùng lúc |
+| **W0.3** | **Sửa `exports`** của `packages/web/package.json` (10/10 trỏ `.ts` không tồn tại) | `packages/web/package.json:36-48` | **S** | `require.resolve` từng entry export → 0 lỗi |
+| **W0.4** | **Dọn route/component chết**: 6 registry entry shadow + `PortfoliosBrokerPage` + `ShellSupportPage` + `ShellAiCommandCenterPage` + 3 feature folder rỗng | `pageRegistry.js:196-207,208-220,239` · `main.tsx:24-49` | **M** | Mọi entry registry đều được `resolvePageComponent` gọi tới (đếm theo registry, L-G07) |
 | **W0.5** | **Đưa ~17 endpoint `/partner/*` về adapter** + sửa 2 cặp lệch số ít/số nhiều (`alert-config`/`alert-configs`, `trend`/`trends`) | `pages/tenant-admin/TenantAdminUsagePage.tsx:157-224` + 6 page khác · `adapters/core/operator.js:69,89` | **M** | `route-contract.test.js` quét **cả** page → 0 endpoint ngoài adapter |
-| **W0.6** | **Fail-closed mọi "giả"**: depth chart `is_mock` · FCM/VAPID mock · SOC whale test · `usage/meters` · `send_quota_warning` · `materialize_unified_alerts` NOOP · AI news summary null | `market_serving/native_views.py:450,520-522` · `outbound_notification_service.py:56-57,102-103` · `service_ops/views/signals.py:764-776` · `identity_access/views_tenant.py:523-528` · `commercial/tasks.py:290-302` · `market_serving/materializers.py:211-220` | **L** | Mỗi endpoint: hoặc **trả 501 + lý do**, hoặc **dữ liệu thật**, hoặc **UI gắn nhãn "ước tính"** — có assert |
-| **W0.7** | **Đóng 3 blocker AI**: OpenClaw (cấp protocol hoặc gỡ khỏi provider list + migration) · SAML (`python3-saml` + xmlsec1, hoặc fail-closed rõ ràng) · `ai_agents` (xoá khỏi `INSTALLED_APPS` hoặc implement) | `advisory/ai_clients/openclaw.py:44` · `identity_access/saml_service.py:394-406` · `settings.py:131` | **M** | `curl` 3 endpoint trả **200 với dữ liệu thật** hoặc **503 có lý do**, **không 200 giả** |
-| **W0.8** | **Chuẩn hoá tài liệu trạng thái** + **bật lại CI** (8 workflow disabled) + **khôi phục/verify ledger Entry 1–383** | `ROADMAP_STATUS.md` · `PROGRESS_DASHBOARD.md` · `docs/OPEN_WORK_20260927.md:39-40` · `AGENTS.md` (mục AI-CC) · `.github/workflows-disabled/` | **M** | Mỗi doc có "verified: <date> @ <sha>" · `git log docs/CODE_CHANGE_AUDIT_LEDGER.md` cho biết Entry 1–383 ở đâu |
+| **W0.6** | **Fail-closed mọi "giả"** (D6 + D7): depth chart `is_mock` · FCM/VAPID mock · SOC whale test · `usage/meters` · `send_quota_warning` · `materialize_unified_alerts` NOOP · AI news summary null | `market_serving/native_views.py:450,520-522` · `outbound_notification_service.py:56-57,102-103` · `service_ops/views/signals.py:764-776` · `identity_access/views_tenant.py:523-528` · `commercial/tasks.py:290-302` · `market_serving/materializers.py:211-220` | **L** | Mỗi endpoint: **trả 501 + lý do** hoặc **dữ liệu thật** hoặc **UI gắn nhãn "ước tính"** — có assert |
+| **W0.7** | **Đóng 3 blocker AI**: OpenClaw (D4 — định vị "tính năng hỗ trợ" + implement protocol hoặc fail-closed rõ ràng) · SAML (D5 — implement BL-01b) · `ai_agents` (app rỗng → xoá khỏi `INSTALLED_APPS` hoặc implement) | `advisory/ai_clients/openclaw.py:44` · `identity_access/saml_service.py:402-406` · `settings.py:131` | **M** | `python3-saml` **được import** và `strict` verify được 1 Response có chữ ký hợp lệ (test với fixture thật) |
+| **W0.8** | **Chuẩn hoá tài liệu trạng thái** + **bật CI** (8 workflow disabled) + **khôi phục/verify ledger Entry 1–383** | `ROADMAP_STATUS.md` · `PROGRESS_DASHBOARD.md` · `docs/OPEN_WORK_20260927.md:39-40` · `AGENTS.md` (mục AI-CC) · `.github/workflows-disabled/` | **M** | Mỗi doc có "verified: <date> @ <sha>" · CI ≥1 workflow chạy thật |
 
-**Định nghĩa "Done" W0:** `pre-push-gate` chạy ≥ 31 gate (thêm 3) · OC-19 self-test fail trên path legacy · 0 route khai báo mà không include · 0 component chết trong registry · contract test cover 100% endpoint FE gọi · 0 endpoint trả dữ liệu giả · 3 doc trạng thái có ngày verify · CI bật ≥ 1 workflow (web-ci).
+**Định nghĩa "Done" W0:** `pre-push-gate` ≥31 gate · OC-19 self-test fail trên path legacy · 0 route khai báo mà không include · 0 component chết trong registry · contract test cover 100% endpoint FE gọi · 0 endpoint trả dữ liệu giả · 3 doc trạng thái có ngày verify.
 
-### 4.2 WAVE 1 — "Đóng AI gap + mở đường B2B" (P0 · 90 ngày · 11 slice)
+### 4.2 WAVE 1 — "Dữ liệu đáng tin + đúng pháp lý sản phẩm" (P0 · 90 ngày · 8 slice)
 
-| Slice | Nội dung | Nền tảng đã có | Effort | Vì sao P0 |
+> Đây là wave **quan trọng nhất** với chiến lược mới: một retail free mà thấy dữ liệu giả / AI khuyến nghị sẽ **không quay lại**, và không có brand name nào được xây trên nền không đáng tin.
+
+| Slice | Nội dung | Bằng chứng cần sửa | Effort | AC |
 |---|---|---|---|---|
-| **W1.1** | **AI assistant chat** grounded vào dữ liệu VN của chính VNInvest + **trích dẫn nguồn** | 6 provider (`ai_clients/__init__.py:21-62`) · orchestrator · audit log | **L** | FireAnt Copilot + TV Copilot + Robinhood Cortex **đều đã có**; là điều kiện không chuyển sang FireAnt |
-| **W1.2** | **NL-screener**: prompt tiếng Việt → filter + cột + thứ tự, có **Explanation** minh bạch từng filter | 42 field (`screener_helpers.py:70-94`) + `ScreenerRule` | **M** | FireAnt Lọc AI + TV AI Screener (paywall 100–500 req/tháng) ⇒ **chi phí thấp, giá trị cao** |
-| **W1.3** | **Backtest/paper trading với giả định VN**: lô 100 · T+2,5 · phí 2 chiều · PIT bán 0,1% · slippage · khớp giá mở cửa phiên kế tiếp | 2 engine backtest + widget Strategy Tester | **M** | **Khác biệt duy nhất vs TradingView**; đồng thời sửa nhãn *"Giá chưa trừ phí/thuế"* (`AdvisoryBacktestPanel.js:104`) |
-| **W1.4** | **Tax-aware P/L 0,1%** + lot-level cost basis + báo cáo lợi nhuận sau thuế | ledger `tax`/`taxes_paid` (`ledger/holdings.py:163,181,252-277`) | **S** | Không đối thủ VN nào làm · điều kiện bán cho khách nghiêm túc |
-| **W1.5** | **Risk metrics bổ sung** sharpe / sortino / correlation | `ledger/analytics.py:328-391` đã có vol/VaR/DD/beta/alpha | **S** | Bảng giá sản phẩm; cần sửa test khẳng định "không expose" (`test_portfolio_metrics.py:95-99`) |
-| **W1.6** | **Top movers / market pulse** (1 trang) | screener đã sort momentum | **S** | Tác động DAU hằng ngày |
-| **W1.7** | **Screener theo ngành/chỉ số** | 6 SECTOR group + `StockProfile.industry` | **S–M** | Tiền đề cho RRG (W2.3) + heatmap (W1.8) |
-| **W1.8** | **Heatmap theo ngành** (bật lại scope ngành) | `components/dashboard/PortfolioHeatmap.js` **đã có 593 LOC** | **S** | Fidelity heatmap **miễn phí** ⇒ không monetize riêng, đóng gói vào Pro |
-| **W1.9** | **Giá theo seat + platform fee** (monetization enabler) | `plan_catalog.py` + `Invoice.line_items` + Stripe | **M** | **0 hit `seat` toàn repo** ⇒ chưa đóng gói được cho broker/cố vấn |
-| **W1.10** | **Kênh cảnh báo Zalo (OA) + Telegram/Slack** | `outbound_notification_service.py` (email/FCM/WebPush sẵn) | **M** | **Zalo là moat VN** — chưa đối thủ nào có |
-| **W1.11** | **Bảng giá công khai + landing B2B + demo tenant** | `commercial/public_urls.py:6` legal pages + plan catalog | **M** | Tiền đề mọi doanh thu tier |
+| **W1.1** | **AI: contract đầu ra → phân tích kỹ thuật.** Bỏ `signal: BUY\|SELL\|HOLD` + `target_price` + `recommendation`; thay bằng hướng kỹ thuật: `technical_bias` (thuận/trung lập/bất lợi) · `setup` (mô hình giá) · `support_resistance` (vùng tham khảo) · `risk_level` · `confidence` · `rationale` · `technical_summary`. Đổi prompt synthesis + 3 sub-agent, serializer, component, **cả 2 locale**, thêm disclaimer "phân tích kỹ thuật, không phải khuyến nghị đầu tư" | `orchestrator.py:717-723` (contract) · `:561` (system prompt synthesis) · `advisory/serializers.py:226-243` · `orchestrator.py:481,875` (attribution) · i18n `vi.js:3789,3794,3795,4505,4507,5176,5216,5230-5235,6794,6950,7023` | **L** | Prompt test khoá shape mới (assert **không** còn key `signal`/`target_price`/`recommendation`) · 0 chuỗi "khuyến nghị" còn trong 2 locale · disclaimer hiện ở mọi màn hình AI |
+| **W1.2** | **Gỡ order placement khỏi sản phẩm** (D2). Giữ `mode=paper`; `mode=live` trả lỗi rõ ràng "cần hợp đồng riêng"; đổi nhãn "phiếu lệnh" → **"phiếu thử nghiệm"**; ẩn nút "Đặt lệnh" ở stock detail; audit operation tách `broker.place_order.paper` | `views_dnse.py:390-399` (live bị chặn) · `:211,235,240` (audit operation) · `adapters/core/workspace.js:465-479` · `components/advisory/AdvisoryOrderTicket.js:7,47-59` · `components/DNSEConnectionPanel.js:247-306` · `pages/StockDetailPage.tsx:211-213` | **M** | 0 call `mode=live` trong FE · mọi nhãn lệnh có chữ "thử nghiệm"/"paper" · endpoint `live` trả 4xx + message giải thích |
+| **W1.3** | **Trung thực depth chart (D6)**: `is_mock`/`source` phải đi tới FE; mọi nơi hiển thị order book gắn nhãn **"Ước tính"**; chartAdapter **không** được dùng mock mà không cảnh báo | `market_serving/native_views.py:430,450-451,520-522` · `adapters/chartAdapter.js:154-176` (điểm `:160` gọi endpoint mock) | **M** | Response depth-chart có `is_mock` ⇒ FE hiện badge "Ước tính" · test khoá badge |
+| **W1.4** | **2 tầng tài khoản broker (D3)** — kiến trúc. Model mới `TenantBrokerCredential` (`tenant` + `provider` + `purpose` ∈ {`market_info`,`trade`,`backfill`}) · resolver theo tenant · endpoint SOC theo tenant (thay `get_or_create(provider=…)` global) · permission + role mới (**đừng dùng tên "COC"** — đã bị chiếm bởi Operations Center) · FE: tách panel retail vs panel staff | `identity_access/models.py:974-977` (global 1 row) · `:1017-1035` (`get_system_broker_secrets`) · `:1038-1057` (lấy credential của admin bất kỳ — **nên bỏ**) · `user_workspace/models.py:819-825` (`user` NOT NULL) · `:880-883` (unique) · `service_ops/views/broker.py:440,463` · `broker/sync_service.py:49,61,67` · `broker/base.py:80-108` (capability matrix) | **L** | 2 tenant khác nhau **không** dùng chung credential · test chứng minh 2 tenant × 3 provider = 6 row tách biệt · `data_ingest/tasks.py:2470` truyền tenant |
+| **W1.5** | **Minh bạch whale / dark flow.** (a) Ghi rõ `dark_flow_score` là **absorption proxy** (`|net_cvd|/total_value`), không phải "dấu vết cá mập" tuyệt đối — hiện công thức trong UI. (b) Sửa `materialize_unified_alerts` NOOP. (c) Hiện **nguồn + độ mới** dữ liệu (provider, thời điểm, `stale`) trên mọi panel whale/dark flow | `market_serving/session_facts_engine.py:38,205` · `session_facts_engine.py:350` · `market_serving/models.py:95-101` (`source`, `stale`) · `signal_intelligence/tasks.py:280-360` (nguồn thật `pandas_tick_engine`) · `market_serving/materializers.py:211-220` · `advisory/orchestrator.py:439,452,471,484` | **M** | UI hiện công thức + nguồn + freshness · `materialize_unified_alerts` không còn NOOP · test khoá nhãn "absorption proxy" |
+| **W1.6** | **OpenClaw → tính năng hỗ trợ (D4)**: định vị lại role trong UI + implement protocol nếu có, nếu không thì **fail-closed có lý do** (không để user tưởng AI chính đang chết) | `advisory/ai_clients/openclaw.py:44,153,169-172` · `advisory/models.py:250` (provider option) | **M** | 1 test: gọi openclaw ⇒ trả 200 với kết quả **hoặc** 503 có `error_code` + message tiếng Việt giải thích "tính năng hỗ trợ đang chưa bật" |
+| **W1.7** | **SAML strict thật (D5)**: implement BL-01b dùng `python3-saml` (đã có `requirements.txt:46`) + `xmlsec1` (đã có `Dockerfile:19,58`) | `identity_access/saml_service.py:384-406` · `requirements.txt:46` · `Dockerfile:19,58` | **M** | Test: 1 Response có chữ ký hợp lệ ⇒ `strict` **verify pass**; Response sai chữ ký ⇒ **reject** (không chỉ "raise vô điều kiện") |
+| **W1.8** | **Chính sách "free" + push not-configured (D7 + D8)**: bỏ trial 14 ngày (hoặc đổi thành "free vô hạn"); push trả `skipped` + lý do khi thiếu key; UI nói "chưa bật" thay vì im lặng | `onboarding_views.py:137` (`trial_ends_at = now + 14d`) · `tenant_lifecycle/tasks.py:111,142` (auto-expire) · `outbound_notification_service.py:39,56-57,97,102-103` | **M** | Tenant free không bị auto-expire · `send_push` thiếu key ⇒ `skipped` + `reason` + test |
 
-**Định nghĩa "Done" W1:** AI chat chạy trên dữ liệu VN thật **có trích dẫn** · NL-screener sinh đúng filter **có Explanation** · backtest khớp 1 case số liệu thật của FireAnt (lô 100 + phí 2 chiều + PIT) · `seat` có trong `PLAN_ENTITLEMENTS` + `Invoice.line_items` + Stripe quantity · Zalo gửi thật 1 tin · **≥1 khách hàng B2B ký trial Business tier** · bảng giá publish.
+### 4.3 WAVE 2 — "Chiều sâu giá trị retail" (P1 · 90–180 ngày · 9 slice)
 
-### 4.3 WAVE 2 — "Chiều sâu dữ liệu + chiều sâu thực thi" (P1 · 90–180 ngày · 10 slice)
+> 4 nhu cầu D1 tương ứng 4 cụm: **chart** (W2.1–2.2) · **AI** (W2.3–2.4) · **whale/dark flow** (đã ở W1.5 + W2.7) · **backtest VN** (W2.5).
+
+| Slice | Nội dung | Nền tảng đã có | Effort | Ghi chú |
+|---|---|---|---|---|
+| **W2.1** | **Bật trọn 59 indicator + Pine Editor + tape + corporate events** (đang tắt) | Widget 1.2.5 có sẵn: 59 indicator · Pine Editor + compiler + `registerSeries` · `TapePanel` · `showCorporateEvents` · `VNInvestMultiCharts` | **S–M** | App hiện chỉ bật **7 series** (`VNStockChartPanel.js:157-186`), `showTapePanel: false` (`:257`), `showCorporateEvents: false` (`:259`) ⇒ **chi phí thấp, hiệu ứng cao nhất** vì "charts" là nhu cầu #1 của retail. Xoá 10 i18n dead key `vi.js:3671-3680` |
+| **W2.2** | **Chart layout lưu server + share** (hiện chỉ localStorage theo `workspaceId`) | `VNStockChartPanel.js:256` + `chartAdapter.js` | **M** | Không tự khoe "share" khi chưa có link |
+| **W2.3** | **AI assistant chat** grounded vào dữ liệu VN + **trích dẫn nguồn** | 6 provider (`ai_clients/__init__.py:21-62`) · orchestrator 4 trace/refresh · audit log | **L** | Reframe theo W1.1: chat phân tích kỹ thuật, **không** ra lệnh mua/bán. FireAnt Copilot / TV Copilot / Robinhood Cortex đều đã có ⇒ điều kiện không chuyển sang FireAnt |
+| **W2.4** | **NL-screener**: prompt tiếng Việt → filter + cột + thứ tự, có **Explanation** | 42 field (`screener_helpers.py:70-94`) + `ScreenerRule` (`models.py:1063`) | **M** | FireAnt Lọc AI + TV AI Screener (paywall 100–500 req/tháng) ⇒ chi phí thấp, dùng hằng ngày |
+| **W2.5** | **Backtest/paper trading với giả định VN**: lô 100 · T+2,5 · phí 2 chiều · PIT bán 0,1% · slippage · khớp giá mở cửa phiên kế tiếp | 2 engine backtest + widget Strategy Tester | **M** | **Khác biệt duy nhất vs TradingView**. Sửa nhãn *"Giá chưa trừ phí/thuế"* (`AdvisoryBacktestPanel.js:104`, `vi.js:6825`) |
+| **W2.6** | **Tax-aware P/L 0,1% + lot-level** + **sharpe/sortino/correlation** | ledger `tax`/`taxes_paid` (`ledger/holdings.py:163,181,252-277`) · `ledger/analytics.py:328-391` | **S** | Sửa test khẳng định "không expose" (`tests/test_portfolio_metrics.py:95-99`) |
+| **W2.7** | **Top movers / market pulse** (1 trang) | screener đã sort momentum | **S** | Tác động DAU hằng ngày — cũng là **màn hình đầu tiên** cho retail |
+| **W2.8** | **Screener theo ngành + heatmap theo ngành** | 6 SECTOR group + `StockProfile.industry` + `PortfolioHeatmap.js` (**đã có 593 LOC**) | **S–M** | Bật scope ngành cho heatmap có sẵn |
+| **W2.9** | **AI proactive digest** (mỗi sáng: "danh mục tăng/giảm vì…") | scheduler + Celery beat (`settings.py:592-639`) + FCM/WebPush | **M** | Khác biệt "AI có" vs "AI hữu ích" (Cortex Portfolio Digests / eToro Tori) |
+
+### 4.4 WAVE 3 — "Brand name: kích hoạt & giữ chân" (P1–P2 · 6–12 tháng · 7 slice)
+
+> D8 nói mục tiêu giai đoạn đầu là **brand name** ⇒ wave này **không phải phụ lục**, mà là **mục tiêu**. Đo bằng activation rate · D1/D7 · referral · brand search — **không đo MRR**.
+
+| Slice | Nội dung | Hiện trạng (đã verify) | Effort |
+|---|---|---|---|
+| **W3.1** | **Onboarding activation funnel**: checklist 5 bước (tạo TK → nối broker → thêm portfolio → thêm watchlist → nhận cảnh báo đầu tiên) + **first value trong 3 phút** + empty state có dữ liệu mẫu | **CHƯA CÓ** onboarding checklist/progress/tour (`grep onboarding\|checklist\|first_value\|progress\|tour` = 0 ở FE) | **L** |
+| **W3.2** | **Referral + share**: mã giới thiệu, link mời, chia sẻ watchlist/screener công khai, **chia sẻ ảnh tóm tắt phân tích** | **0 referral/affiliate/utm** trong toàn repo (trừ 1 `utm_source` trong URL widget nâng cấp). Có sẵn: `is_public` (`user_workspace/models.py:1087`) + `ScreenerRuleForkAPIView` (`views.py:913`) | **M** |
+| **W3.3** | **PWA + push thật**: `manifest.webmanifest` + service worker + install prompt + FCM/VAPID production key | **Chưa có PWA** — `packages/web/public` **không tồn tại**, `index.html` không có `<link rel="manifest">`, `vite.config.ts:13` không PWA plugin | **M** |
+| **W3.4** | **Mobile ergonomics cho VN** (data saving, 3G, màn hình nhỏ) | Có 1 spec `tests/visual/mobile-ergonomics.spec.ts`; có `lighthouse-budget.json` | **M** |
+| **W3.5** | **Landing page + SEO + brand assets** | **Chưa có landing page**; route `commercial` chỉ có billing + payment-return + legal pages (`commercial/public_urls.py:6`) | **M** |
+| **W3.6** | **Widget nhúng thương hiệu = kênh phân phối miễn phí** (tái dùng advertising widget sẵn có) | Có sẵn: `/core/v1/widget/config`, `/core/v1/widget/ad` (`advertising/urls.py:37-38`) + `/api/v1/content/display/` (`api_urls.py:5`) | **M** |
+| **W3.7** | **Nhật ký sự kiện hành trình retail** để đo funnel (activation, D1, D7, referral) | Có `ops_audit` + `api_rollup` (`ops_audit/tasks.py:206`) + Prometheus (`settings.py:936`) | **M** |
+
+### 4.5 WAVE 4 — "Giai đoạn 2: doanh thu & B2B" (để sau, khi hệ thống đủ tốt)
+
+> Owner: *"B2B sẽ cần khi hệ thống đủ tốt sẽ có nhà phát triển ký hợp đồng"*. ⇒ **toàn bộ wave này KHÔNG làm trong 12 tháng tới**, chỉ **thiết kế sẵn** để không phải refactor sau này.
 
 | Slice | Nội dung | Effort | Ghi chú |
 |---|---|---|---|
-| **W2.1** | **Corporate actions** — model sự kiện (ex-date, tỷ lệ split/rights) + nguồn dữ liệu + điều chỉnh giá `is_adjusted` + overlay chart | **M–L** | Phần khó là **nguồn dữ liệu** (có thể phải mua feed). Widget đã có `showCorporateEvents` |
-| **W2.2** | **Tài chính cơ bản nhiều năm chuẩn hoá** — model (đã bị xoá ở `0006_remove_stockfundamental`) + backfill + chuẩn hoá + YoY thật (fix bug `revenue_growth_yoy`) | **L** | Nền cho W2.3 |
-| **W2.3** | **Định giá + fundamental screener**: DCF · P/B · Graham Number · Z-Score · F-Score · Dupont | **M** | W2.2 là tiền đề |
-| **W2.4** | **Pre-trade risk control**: đọc buying power → chặn/cảnh báo sức mua & margin | **M** | Rào cản procurement B2B |
-| **W2.5** | **Conditional orders** (OCO · Up/Down · Trailing) trên DNSE + **mở lane SSI/TCBS** (đang "coming soon") | **M** | `BrokerSettingsSection.tsx:259-282`; SSI iBoard đã chứng minh khả thi ở VN |
-| **W2.6** | **Export/SDK cho quant**: Excel add-in + Python SDK | **M** | FireAnt for Excel chỉ Cao Cấp ⇒ cửa vào B2B |
-| **W2.7** | **PWA**: `manifest.webmanifest` + service worker + install prompt + push | **S–M** | Thay cho app native (XL). Cần `packages/web/public/` (**đang không tồn tại**) |
-| **W2.8** | **Bật hết 59 indicator + Pine Editor + multi-chart layout** (đang tắt: `VNStockChartPanel.js:157-186,257,259`) + xoá 10 i18n dead key | **S–M** | Chi phí thấp, hiệu ứng cao — *"độ sâu" là điểm yếu đã biết* |
-| **W2.9** | **Chart layout save & share** (server-side, theo account) | **M** | Giữ chân + khác biệt FireAnt |
-| **W2.10** | **AI proactive digest** (mỗi sáng: "danh mục tăng/giảm vì…") | **M** | Khác biệt "AI có" vs "AI hữu ích" |
+| W4.1 | **Chính sách giá + entitlement** (định nghĩa lại theo retail, không theo B2B) | M | Thiết kế trước W1.4 (2 tầng tài khoản) |
+| W4.2 | **Giá theo seat + platform fee** | M | 0 hit `seat` toàn repo — mới làm khi có khách |
+| W4.3 | **Advisor/client workspace** | L | Koyfin Advisor $209/$299 là mốc |
+| W4.4 | **Bảng giá công khai + landing B2B + demo tenant** | M | Dùng lại hạ tầng tenant/SOC đã có |
+| W4.5 | **Data licensing tier** (phí theo volume) | M | Cần rà soát bản quyền VSDC/HOSE — **CHƯA XÁC MINH** |
+| W4.6 | **Hóa đơn VAT điện tử** (MISA/VNPT) | M | Rào cản procurement B2B |
+| W4.7 | **AI add-on tier** + **model portfolio / robo-lite** | M–L | Cần compliance |
 
-### 4.4 WAVE 3 — "Nền tảng B2B + AI content" (P1–P2 · 6–12 tháng · 7 slice)
+### 4.6 WAVE 5 — Dài hạn (12–24 tháng)
 
-| Slice | Nội dung | Effort | Đối thủ tham chiếu |
-|---|---|---|---|
-| **W3.1** | **Advisor/client workspace** — client portfolios, model portfolio, attribution, báo cáo định kỳ có branding, import statement | **L** | Koyfin Advisor Core $209 / Pro $299 |
-| **W3.2** | **AI report / slide** cho môi giới & content creator | **M** | FireAnt AI Report (chỉ Cao Cấp 5,75tr/12th) |
-| **W3.3** | **White-label widget** (từ advertising widget sẵn có) | **M** | TradingView Enterprise |
-| **W3.4** | **Orderflow tier pro** — volume profile, footprint, TPO (bật cái đã có trong widget) + **foreign/proprietary flow depth** (điểm khác biệt VN) | **M** | TV Plus $29,95 / Premium $59,95 |
-| **W3.5** | **Target allocation + auto-rebalance + sub-account theo mục tiêu + DRIP** | **M** | VNDIRECT MYDGO · eToro |
-| **W3.6** | **Hóa đơn VAT điện tử** (MISA/VNPT) | **M** | Rào cản procurement B2B ở VN |
-| **W3.7** | **Data licensing tier** — phí dữ liệu theo volume + partner data API | **M** | Bloomberg tách phí data + phí sàn · Webull Overage |
+W5.1 App native iOS/Android (chuyển `packages/mobile` từ scaffold → app thật) · W5.2 Agent AI sandbox-first (MCP/REST, mặc định paper, 2 lớp xác nhận) · W5.3 Corporate actions + nguồn dữ liệu · W5.4 Tài chính cơ bản nhiều năm + DCF/Z-Score/F-Score/Dupont/RRG · W5.5 Chỉ số ngành ICB + chuỗi giá ngành · W5.6 Trái phiếu / tín dụng · W5.7 Marketplace indicator (Pine) + widget OS.
 
-### 4.5 WAVE 4 — "Dài hạn / ghi để dành" (P3 · 12–24 tháng · 5 slice)
-
-W4.1 App native iOS/Android (chuyển `packages/mobile` từ scaffold → app thật) · W4.2 Agent AI sandbox-first (MCP/REST tools, mặc định paper trading, 2 lớp xác nhận cho live) · W4.3 Robo-advisor lite (compliance) · W4.4 Chỉ báo cộng đồng (Pine marketplace) + widget OS · W4.5 Trái phiếu / tín dụng.
-
-### 4.6 Tổng effort & phụ thuộc
+### 4.7 Tổng effort & phụ thuộc
 
 | Wave | Slice | Effort (ed) | Phụ thuộc cứng |
 |---|---|---|---|
 | W0 | 8 | ~25–30 | — (đi trước tất cả) |
-| W1 | 11 | ~70–90 | W0.6 (fail-closed) · W0.7 (provider) · W1.7 → W1.8 |
-| W2 | 10 | ~60–80 | W2.2 → W2.3 · W1.3 → W2.5 |
-| W3 | 7 | ~45–60 | W1.9 (seat) → W3.1 · W2.1 (corporate actions) → W3.5 DRIP |
-| W4 | 5 | ~60–90 | W2.7 (PWA) → W4.1 |
+| W1 | 8 | ~70–90 | W0.6 → W1.3 · W0.7 → W1.6/W1.7 · W1.1 trước W2.3 (cùng contract) |
+| W2 | 9 | ~65–85 | W1.1 → W2.3 · W1.5 → W2.9 · W2.5 → (tương lai) conditional orders |
+| W3 | 7 | ~45–60 | W1.8 → W3.3 (push) · W1.5 → W3.1 (first value có dữ liệu thật) |
+| W4 | 7 | ~50–70 | W1.4 (2 tầng tài khoản) → W4.1/W4.2 |
+| **Tổng W0–W3** | **32** | **~205–265** | ≈ 3–4 agent song song × 2 tháng |
 
-**Tổng ~260–350 engineer-day** cho W0–W3 (tương đương 4–6 agent song song × 2 tháng). Cần **coordinator** phân bổ theo DAG, không chia theo file.
 
----
+## 5. CHIẾN LƯỢC DOANH THU — GIAI ĐOẠN 1: MIỄN PHÍ, MỤC TIÊU LÀ BRAND NAME
 
-## 5. MONETIZATION
+> **D8 (Owner, 2026-10-21):** *"B2B sẽ cần khi hệ thống đủ tốt sẽ có nhà phát triển ký hợp đồng; giờ tập trung vào người dùng cuối để lấy brand name. Chấp nhận giai đoạn đầu không có doanh thu, phải miễn phí."*
+>
+> ⇒ Bản 1 của tài liệu này coi **6 tier + giá** là trọng tâm. **Đã hạ xuống giai đoạn 2** (§5.3). Giai đoạn 1 **không có doanh thu** ⇒ **hàm mục tiêu đổi**: từ *MRR* sang **activation · D1 · D7 · referral · brand search**.
 
-### 5.1 Bảng giá đối thủ (đã verify từ trang bảng giá chính thức)
+### 5.1 Hàm mục tiêu giai đoạn 1 (đo được, không cần doanh thu)
+
+| Chỉ số | Mục tiêu | Nguồn đo trong repo | Hiện trạng |
+|---|---|---|---|
+| **Activation rate** (đăng ký → first value trong 3 phút) | ≥ 40% | Cần sự kiện funnel (W3.7) | **Chưa có** đo |
+| **D1 / D7 / D30 retention** | D1 ≥ 35% · D7 ≥ 20% | `ops_audit` + `api_rollup` (`ops_audit/tasks.py:206`) + Prometheus (`settings.py:936`) | Có sẵn hạ tầng, **chưa có dashboard** |
+| **Referral coefficient** (mỗi user mời được mấy user) | ≥ 0,3 | Chưa có referral (W3.2) | **0 referral/affiliate/utm** toàn repo |
+| **Brand search** (lượt tìm "vninvest", traffic tự nhiên) | theo dõi | Landing + SEO (W3.5) | **Chưa có landing page** |
+| **Push opt-in** | ≥ 25% user bật | `outbound_notification_service.py` | Push **chưa có key** (D7) |
+| **PWA install** | ≥ 10% active user | W3.3 | **Chưa có PWA** (`packages/web/public` không tồn tại) |
+| **Số mã trong watchlist trung bình** | ≥ 8 | `WatchlistItem` | — |
+| **Tỉ lệ phiên có dữ liệu whale/dark-flow thật** | 100% | `SessionFacts.source` ∈ {LIVE, CACHE, COMPUTED} (`market_serving/models.py:95-99`) | Cần đo theo `source` + `stale` |
+| **Tỉ lệ màn hình AI hiển thị disclaimer** | 100% | W1.1 | Chưa có disclaimer |
+
+### 5.2 Chính sách "miễn phí" — 5 quyết định cụ thể phải chốt
+
+| # | Vấn đề | Hiện trạng | Đề xuất | Ảnh hưởng |
+|---|---|---|---|---|
+| **P1** | **Trial 14 ngày** | `onboarding_views.py:137` `trial_ends_at = now + 14d`; `tenant_lifecycle/tasks.py:111,142` auto-expire | **Bỏ hạn dùng thử** — free vô hạn cho retail | Nếu không, user mất dữ liệu sau 14 ngày ⇒ giết brand. Ảnh hưởng trực tiếp D7 |
+| **P2** | **`plan` gating có chặn tính năng giá trị cốt lõi không?** | `PLAN_ENTITLEMENTS` (`plan_catalog.py:62-102`) có `exports: 0` cho `free`/`starter`, `ai_regenerate: 0` cho `free`/`starter` | **Gỡ gating** cho whale / dark flow / AI phân tích / chart. Giữ gating cho *chi phí biên* (số lượt AI) | Nếu giữ gating ⇒ retail free không thấy đúng thứ khác biệt ⇒ vô nghĩa chiến lược brand |
+| **P3** | **Quảng cáo cho user free?** | Đã có `advertising` app (widget + campaign + impression/click) | **Giữ, nhưng giới hạn** — không intrusive trong màn hình dữ liệu (whale/dark flow/AI) | Đối thủ trả phí đều bỏ quảng cáo; free tier có ads là chuẩn ngành (TradingView Basic) |
+| **P4** | **Ai trả tiền hạ tầng AI?** | BYOK (`advisory/models.py:234` `UserAICredential`) — user tự mang key | **Hỗ trợ cả 2**: BYOK cho pro + **quota AI do VNInvest trả** cho free (giới hạn lượt) | Nếu free không có AI ⇒ mất khác biệt cốt lõi (D1) |
+| **P5** | **Có cần tài khoản "COC" (staff) trả phí?** | D3: tầng 2 là staff dùng thông tin thị trường | **Chưa** — staff của chính VNInvest hoặc của khách hàng B2B sau này | Ảnh hưởng thiết kế credential W1.4 (tách purpose) |
+
+### 5.3 Giai đoạn 2 — 3 đường doanh thu (thiết kế sẵn, **không làm trong 12 tháng tới**)
+
+| Đường | Mô hình | Mốc giá tham chiếu (đã verify) | Điều kiện phải có trước |
+|---|---|---|---|
+| **A. Bán cho nhà phát triển (B2B)** | Hợp đồng theo tenant: platform fee + seat + SLA | Koyfin Advisor Core $209 ≈ 5,43tr/tháng/seat · TradingView Enterprise · Webull Institutional | W1.4 (2 tầng tài khoản) · W4.1/W4.2 (seat) · W4.3 (advisor workspace) · W4.6 (HĐĐT VAT) |
+| **B. Bán dữ liệu VN** | Phí dữ liệu theo volume + partner API | FireAnt API · FactSet/Bloomberg tách phí data | **CHƯA XÁC MINH** bản quyền VSDC/HOSE |
+| **C. Affiliate / referral broker** | Hoa hồng mở tài khoản + khối lượng giao dịch | FireAnt × Shinhan | **CHƯA XÁC MINH** pháp lý UBCKNN về referral fee |
+
+### 5.4 Bảng giá tham chiếu (để thiết kế giai đoạn 2, **không publish giai đoạn 1**)
 
 | Sản phẩm | Giá | ≈ VND/tháng | Nguồn |
 |---|---|---|---|
-| FireAnt Thiết Yếu | 1.429.000đ/năm | **119.000đ** | `company.fireant.vn/bang-gia` |
-| FireAnt Chuyên Nghiệp | 3.830.000đ/năm | **319.000đ** | cùng trên |
-| FireAnt Cao Cấp | 5.750.000đ/năm | **479.000đ** | cùng trên |
-| TradingView Essential | $12,95/tháng | ~337.000đ | `tradingview.com/pricing/` |
-| TradingView Plus | $29,95 | ~779.000đ | cùng trên |
-| TradingView Premium | $59,95 | ~1.559.000đ | cùng trên |
-| TradingView **AI Copilot add-on** | $7,50/tháng | ~195.000đ | đối thủ 3rd-party review |
-| Koyfin Plus / Premium | $39 / $79 | ~1.014.000 / 2.054.000đ | `koyfin.com/pricing/` |
-| **Koyfin Advisor Core / Pro** | $209 / $299 | **5.434.000 / 7.774.000đ** | cùng trên |
-| Robinhood Gold | $5/tháng | ~130.000đ | robinhood.com |
-| Moomoo Engine | $3,99/tháng | ~104.000đ | moomoo.com |
-| Bloomberg Terminal | $31.980/năm/seat | ~2.665.000đ/tháng | third-party |
+| FireAnt Thiết Yếu / Chuyên Nghiệp / Cao Cấp | 1,429tr · 3,83tr · 5,75tr /năm | **119k · 319k · 479k** | `company.fireant.vn/bang-gia` |
+| TradingView Essential / Plus / Premium | $12,95 · $29,95 · $59,95 | ~337k · 779k · 1.559k | `tradingview.com/pricing/` |
+| TradingView AI Copilot add-on | $7,50/tháng | ~195k | third-party review |
+| Koyfin Plus / Premium | $39 · $79 | ~1,014k · 2,054k | `koyfin.com/pricing/` |
+| Koyfin Advisor Core / Pro | $209 · $299 | ~5,434k · 7,774k | cùng trên |
+| Robinhood Gold · Moomoo Engine | $5 · $3,99 | ~130k · ~104k | robinhood.com · moomoo.com |
+| Bloomberg Terminal | $31.980/năm/seat | ~2,665k/tháng | third-party |
 | FactSet Workstation | ~$12k–30k/năm | ~1tr–2,5tr/tháng | third-party |
 
-**Điểm định vị:** sàn VN 119k–479k/tháng · trần retail quốc tế 1–2tr/tháng · trần pro/B2B 5,4–7,8tr/tháng/seat.
+**Bảng 6 tier của bản 1** (Free / Basic 149k / Pro 499k / AI add-on 199k / Business 3–8tr+seat / Enterprise 15–60tr) **được giữ nguyên trong §5.4 bản 1 lịch sử** và sẽ viết lại khi chốt chính sách giá. **Ưu tiên thiết kế sẵn**: entitlement key `seats` (W4.2) + tách `purpose` trong credential broker (W1.4) — để khi có khách B2B không phải refactor model.
 
-### 5.2 6 tier đề xuất (đối chiếu catalog hiện tại)
-
-> Catalog hiện tại: `free` · `starter` (100.000đ/30 ngày) · `pro` (500.000đ/180 ngày) · `enterprise` (900.000đ/360 ngày) — `commercial/plan_catalog.py:35-46`. Đề xuất dưới đây **mở rộng**, không phá catalog cũ.
-
-| Tier | Tên | Giá đề xuất | Thay đổi so với hiện tại | Bổ sung |
-|---|---|---|---|---|
-| **0** | **Free** | 0đ | `free` đã có (`plan_catalog.py:63-72`) | + giới hạn watchlist 30 mã, screener ≤10 tiêu chí, AI advisory 3 lượt/tháng, **có quảng cáo** |
-| **1** | **Basic** | **149.000đ/tháng** · 1.490.000đ/năm | = `starter` giá 100k + **giá theo số** | + realtime, watchlist không giới hạn, lịch quét screener, alert email/push/**Zalo**, **AI chat 100 lượt/tháng**, export CSV |
-| **2** | **Pro** | **499.000đ/tháng** · 4.490.000đ/năm | ≈ `pro` 500k (giữ) | + NL-screener, **paper trading + backtest giả định VN**, conditional orders, whale signals đầy đủ, heatmap, corporate actions, webhooks, export XLSX, Slack/Telegram, AI chat 500 lượt |
-| **3** | **AI Add-on** | **199.000đ/tháng** | **MỚI** (mô hình TradingView Copilot) | AI chat không giới hạn, AI report/slide, NL-screener không giới hạn, ưu tiên model |
-| **4** | **Business / Tenant** | **3.000.000–8.000.000đ/tháng/tenant + 1.290.000–1.990.000đ/tháng/seat** | **MỚI** (cần W1.9) | tenant admin console, SSO/SAML, audit, partner API, white-label widget, **client/advisor workspace**, AI budget theo tenant |
-| **5** | **Enterprise** | **15.000.000–60.000.000đ/tháng/tenant + phí dữ liệu theo volume** | `enterprise` 900k/360d → **thay bằng** | API giao dịch thương mại, data licensing, SLA 99,9%, triển khai |
-
-### 5.3 Ma trận entitlement — code cần có (hiện tại **THIẾU**)
+### 5.5 Ma trận entitlement — **giai đoạn 2**, giữ nguyên thiết kế
 
 | Nhóm | Free | Basic | Pro | AI add-on | Business | Enterprise | **Cần code** |
 |---|---|---|---|---|---|---|---|
-| Realtime market data | delayed | ✓ | ✓ | ✓ | ✓ | ✓ | `realtime` flag trong entitlement |
-| Screener nâng cao + lịch quét | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | `screener_advanced` |
-| NL-screener | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `nl_screener` |
-| AI chat | ✗ (3 lượt) | 100 | 500 | ∞ | ∞+quota | ∞+quota | `ai_chat_monthly` (**mới**) |
-| Backtest giả định VN | ✗ | cơ bản | ✓ | ✓ | ✓ | ✓ | `backtest_vn` |
-| Paper trading | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `paper_trading` (**mới**) |
-| Conditional orders | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `conditional_orders` (**mới**) |
-| Whale / order-flow | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `whale_signals` |
-| Order placement | ✗ | ✗ | ✓ (DNSE) | ✓ | ✓ | ✓ | `order_placement` |
-| Webhooks / API read | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `webhooks` đã có |
-| Export XLSX / SDK | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | `exports` đã có |
-| **Số seat** | 1 | 1 | 3 | 3 | theo HĐ | không giới hạn | **`seats` (mới — W1.9)** |
-| Tenant admin + SSO + SOC + audit | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | `sso` đã có; thêm `soc`, `tenant_admin` |
-| Client/advisor workspace | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | `advisor_workspace` (**mới — W3.1**) |
-| Quảng cáo | có | ✗ | ✗ | ✗ | ✗ | ✗ | `ads` (**mới** — tách khỏi paid tier) |
+| Realtime market data | delayed | ✓ | ✓ | ✓ | ✓ | ✓ | `realtime` |
+| Whale / dark flow / AI phân tích | **✓ (miễn phí — D8)** | ✓ | ✓ | ✓ | ✓ | ✓ | **gỡ gating** |
+| Screener nâng cao + lịch quét | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `screener_advanced` |
+| NL-screener | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | `nl_screener` |
+| AI chat | quota thấp | 100 | 500 | ∞ | ∞+quota | ∞+quota | `ai_chat_monthly` |
+| Backtest giả định VN | cơ bản | ✓ | ✓ | ✓ | ✓ | ✓ | `backtest_vn` |
+| Paper trading | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `paper_trading` |
+| **Order placement (live)** | ✗ | ✗ | **✗ — chỉ khi có hợp đồng (D2)** | ✗ | ✗ | ✗ | **KHÔNG bán** |
+| Webhooks / API read | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | `webhooks` |
+| Export XLSX / SDK | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | `exports` |
+| **Số seat** | 1 | 1 | 3 | 3 | theo HĐ | không giới hạn | **`seats` (mới)** |
+| Tenant admin + SSO + SOC + audit | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | `soc`, `tenant_admin` |
+| Client/advisor workspace | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | `advisor_workspace` |
+| Quảng cáo | có | ✗ | ✗ | ✗ | ✗ | ✗ | `ads` |
 
-### 5.4 Nguồn doanh thu ngoài subscription
+### 5.6 Nguồn doanh thu ngoài subscription (giai đoạn 2) — đã đánh giá ở §5.3
 
-| Nguồn | Mô hình | Điều kiện |
-|---|---|---|
-| Affiliate/referral broker | hoa hồng mở tài khoản + khối lượng | Cần rà soát pháp lý UBCKNN về referral fee — **CHƯA XÁC MINH** |
-| Data licensing | thuê dữ liệu VN cho quant/tổ chức | Cần xác minh giấy phép cung cấp dữ liệu VSDC/HOSE — **CHƯA XÁC MINH** |
-| Paper trading / sandbox B2B | phí theo tenant | Moomoo Sandbox · Webull Institutional |
-| AI usage overage | trả theo token | Khớp SOC có budget control (`advisory/models.py:408` `AIDeployment`) |
-| Ads | free tier | Đã có `advertising/` widget |
-| Model portfolio / robo-lite | phí quản lý | Cần compliance |
-
----
 
 ## 6. QUY TRÌNH THỰC THI
 
@@ -456,20 +507,21 @@ W4.1 App native iOS/Android (chuyển `packages/mobile` từ scaffold → app th
 | R7 | Xung đột claim với agent khác đang chạy (CLAIMS.md 524 KB, 1723 dòng, nhiều claim `in-progress` cũ) | TB | Kiểm tra `docs/CLAIMS.md` trước mỗi slice |
 | R8 | Agent đọc tài liệu trạng thái **stale** (ROADMAP_STATUS 6 tháng) ⇒ quyết định sai | Cao | W0.8 trước mọi wave khác |
 
-### 7.2 8 câu hỏi cần Owner chốt
+### 7.2 8 câu đã chốt (2026-10-21)
 
-| # | Câu hỏi | Ảnh hưởng | Hạn |
+Xem bảng đầy đủ tại **§1.1** (D1–D8). Tóm tắt: **D1** retail-first (charts · whale · dark flow · AI kỹ thuật) · **D2** AI là phân tích kỹ thuật, **không** đặt lệnh trừ khi có hợp đồng · **D3** 2 tầng tài khoản broker (retail + staff) · **D4** OpenClaw = tính năng hỗ trợ · **D5** SAML dùng thật tương lai · **D6** depth chart = "ước tính" (giữ, gắn nhãn) · **D7** push = tính năng tương lai, không báo thành công giả · **D8** giai đoạn đầu **miễn phí**, B2B để sau.
+
+### 7.3 6 câu còn mở (chặn W1)
+
+| # | Câu hỏi | Vì sao chặn | Hạn |
 |---|---|---|---|
-| **Q1** | **Khách hàng trả tiền chính là retail NĐT hay Business/tenant?** | Quyết định 70% effort của W1–W3 | Trước W1.9 |
-| **Q2** | Có được định giá **"AI khuyến nghị"** không (UBCKNN)? | Bật/tắt AI add-on + NL-screener | Trước W1.1 |
-| **Q3** | **Ai trả phí giao dịch DNSE** — VNInvest thu commission hay chỉ là công cụ? | Mô hình doanh thu cốt lõi | Trước W1.9 |
-| **Q4** | `packages/web` có được consume như **npm package thật** không? | W0.3 giữ hay xoá `exports` | Trước W0.3 |
-| **Q5** | **OpenClaw**: cấp D-03c (protocol/base URL/auth) hay **gỡ khỏi danh sách provider**? | W0.7 + chặn user mới (`advisory/models.py:250`) | Trước W0.7 |
-| **Q6** | **SAML SSO** production có dùng thật không? (`strict` hiện luôn raise) | W0.7 — fail-closed chấp nhận được hay phải cài `python3-saml` | Trước W0.7 |
-| **Q7** | **Depth chart giả** — tắt UI hay gắn nhãn "ước tính"? | W0.6 | Trước W0.6 |
-| **Q8** | **Push notification** đã có key FCM/VAPID production chưa? | W0.6 (đang trả `True` giả) | Trước W0.6 |
+| **Q1** | **Tên gọi cho vai trò staff thứ 2** (tầng "COC")? **"COC" đã bị chiếm** bởi *Center Operations Center* (`docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md:1`) | W1.4 tạo model + permission + route — đặt tên sau rất đắt | Trước W1.4 |
+| **Q2** | **Credential tầng 2 thuộc tenant hay thuộc operator?** | Tenant ⇒ mỗi khách có 1 tài khoản DNSE riêng. Operator ⇒ 1 global account dùng chung ⇒ **vi phạm cách ly dữ liệu giữa các tenant** (đây đúng là lỗi của `SystemBrokerCredential` hiện tại: `provider unique=True` toàn hệ thống, `identity_access/models.py:974-977`) | Trước W1.4 |
+| **Q3** | **Tầng 2 có cần trading token không?** | Nếu **không** ⇒ W1.4 chỉ còn read path (`get_balance`/`get_positions`/`get_orders`), **không** đụng lifecycle token DNSE (`views_dnse.py:862-910`) ⇒ scope nhỏ hơn nhiều | Trước W1.4 |
+| **Q4** | **Bỏ trial 14 ngày hay giữ?** | `onboarding_views.py:137` + `tenant_lifecycle/tasks.py:111,142` — nếu free vô hạn thì phải sửa cả 2, nếu không user mất dữ liệu sau 14 ngày | Trước W1.8 |
+| **Q5** | **Free có quảng cáo không, và ở đâu?** | Đối thủ trả phí đều "No ads" ⇒ ads chỉ ở free, và **không** đặt trong màn hình whale/dark-flow/AI (khác biệt cốt lõi) | Trước W3 |
+| **Q6** | **Ai trả chi phí LLM cho free?** | Nếu không có quota do VNInvest trả ⇒ free không có AI ⇒ mất khác biệt D1. Cần con số chi phí biên/user | Trước W2.3 |
 
----
 
 ## 8. PHỤ LỤC
 
@@ -493,18 +545,29 @@ W4.1 App native iOS/Android (chuyển `packages/mobile` từ scaffold → app th
 
 ### 8.2 Chỉ số đo (dashboard dùng cho mỗi wave)
 
+**Giai đoạn 1 (free, mục tiêu brand name) — đo hành vi, không đo tiền:**
+
 | Chỉ số | Hiện tại | Mục tiêu cuối W3 |
 |---|---|---|
-| Route catalog | 69 | 85+ |
-| Endpoint có contract test | ~95% (adapter) | **100%** |
-| Stub BE còn lại | 28 | **0** |
-| Code chết định lượng | ~3 000 LOC (`admin_ops` 2 126 + registry shadow 837) | **0** |
-| Năng lực competitive | HAVE 9 / PARTIAL 13 / MISSING 11 | **HAVE ≥22** |
-| Indicator bật trong app | 7 / 59 | **59** |
-| Gate trong pre-push | 28 | **≥31** + CI ≥1 workflow |
-| Tài liệu trạng thái stale | 3 | **0** |
-| Entitlement keys | 8 | **≥18** |
-| Tier giá publish | 0 | **6** |
+| **Chuỗi "khuyến nghị" còn trong i18n** | ~35 chuỗi (2 locale) | **0** (chuyển sang "phân tích kỹ thuật") |
+| **Key `signal`/`target_price`/`recommendation` trong shape LLM** | có (`orchestrator.py:717-723`) | **0** (shape kỹ thuật mới) |
+| **Màn hình AI có disclaimer** | 0 | **100%** |
+| **Endpoint trả dữ liệu giả mà không nhãn** | ≥ 7 | **0** |
+| **Panel hiển thị order book có nhãn "Ước tính"** | 0 | **100%** |
+| **Tenant-level broker credential** | 0 (chỉ per-user + 1 global) | **có** (2 tầng, tách per tenant) |
+| **Indicator bật trong app** | 7 / 59 | **59** |
+| **Referral / share / PWA / landing** | 0 / 0 / 0 / 0 | **có** (W3) |
+| **Trial tự hết hạn** | 14 ngày | **0** (free vô hạn) hoặc đã chốt |
+| **Onboarding checklist** | không có | **có** (W3.1) |
+| **Route catalog** | 69 | 78+ |
+| **Endpoint có contract test** | ~95% (adapter) | **100%** |
+| **Stub BE còn lại** | 28 | **0** |
+| **Code chết định lượng** | ~3 000 LOC | **0** |
+| **Gate trong pre-push** | 28 | **≥31** + CI ≥1 workflow |
+| **Tài liệu trạng thái stale** | 3 | **0** |
+
+**Giai đoạn 2 (doanh thu) — đo sau, xem §5.1/§5.5:** activation rate · D1/D7/D30 · referral coefficient · brand search · MRR theo tier · seat · AI cost/user.
+
 
 ### 8.3 Tài liệu phải đọc khi bắt đầu wave
 
