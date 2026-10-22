@@ -1,5 +1,7 @@
 # ROADMAP MASTER 2026Q4 → 2027 — Hiện trạng toàn bộ tính năng & lộ trình cạnh tranh toàn cầu
 
+> **Bản đọc cho quản lý (15 phút):** [`BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md`](./BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md) · **Bản này** là bản kỹ thuật chi tiết cho team thực thi.
+>
 > **Ngày lập:** 2026-10-21 · **HEAD khi viết:** `e5f934ff9` (branch `dev`) · **Claim:** `master-roadmap-2026q4` (`docs/CLAIMS.md`)
 > **Vai trò:** PM code lead + system frontend designer · **Phạm vi:** toàn bộ repo `vninvest` (5 package track)
 > **Tài liệu liên quan:** `docs/COMPETITIVE_BENCHMARK_20261021.md` (benchmark 4 lớp đối thủ, 108 URL) · `docs/CODE_CHANGE_AUDIT_LEDGER.md` (Entry 393) · `docs/OPEN_WORK_20260927.md` · `docs/OPEN_WORK_SEC_20260929.md`

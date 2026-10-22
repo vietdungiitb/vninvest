@@ -1,4 +1,6 @@
 ## Entry 394: ROADMAP MASTER **BẢN 2** — pivot theo quyết định Owner: retail-first, giai đoạn đầu **miễn phí** (mục tiêu = brand name), AI = **phân tích kỹ thuật** (không khuyến nghị), **không đặt lệnh**, 2 tầng tài khoản broker (2026-10-21)
+- **BẢN ĐỌC CHO QUẢN LÝ (2026-10-21)**: đã tạo `docs/BAO_CAO_TONG_THE_TINH_NANG_VA_LO_TRINH_20261021.md` (208 dòng, 8 mục: tóm tắt 1 trang · hiện trạng + bảng "thật vs giả" · 8 quyết định Owner · 5 wave · chiến lược giai đoạn 1 · rủi ro · 6 câu cần chốt · phụ lục) — tách khỏi bản kỹ thuật để Owner đọc đầu-cuối ~15 phút; 3 cross-link tới tài liệu gốc đã verify tồn tại (0 U+FFFD). Đã thêm con trỏ ở đầu `docs/ROADMAP_MASTER_2026Q4_2027.md`.
+
 
 - **Nhánh**: `feat/master-roadmap-2026q4` -> `dev` (cùng branch, commit tiếp theo Entry 393). Claim `master-roadmap-2026q4`. **DOC-ONLY — KHÔNG sửa code production.**
 - **Bối cảnh**: sau Entry 393 (bản 1 định vị B2B2B là hướng chính), Owner đã **chốt 8 quyết định** (§1.1 của tài liệu) ⇒ **bản 1 sai ở trọng tâm**. Tài liệu đã viết lại: §0, §1.1 (D1–D8), §1.2 (hệ quả), §4 (toàn bộ roadmap), §5 (chiến lược doanh thu), §7.2–7.3, §8.2.
