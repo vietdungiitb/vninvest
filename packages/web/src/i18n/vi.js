@@ -3472,6 +3472,7 @@ aiUsageAnalytics: 'Usage AI',
     },
   },
   stockDetail: {
+    chartIndicators: 'Chỉ báo',
     intradayFetchFailed: 'Không lấy được dữ liệu khớp lệnh.',
     intradayLabel: 'Khớp lệnh trong phiên',
     intradayTitle: 'Khớp lệnh',
