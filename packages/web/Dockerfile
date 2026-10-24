@@ -3,6 +3,8 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package*.json ./
+# Vendored tarball (registry unpublished 2026-10-22): must exist before npm ci resolves file: deps
+COPY vendor ./vendor
 ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm ci --legacy-peer-deps
 
