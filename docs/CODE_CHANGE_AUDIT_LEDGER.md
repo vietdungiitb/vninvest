@@ -1,3 +1,15 @@
+## Entry 409: Staging xanh - vendored tarball + root file: deps (that bai 2 lan truoc khi dung)
+
+- **Claim:** `vendor-charts-widget` (van mo den khi verify xong; Entry 408 moi chi la claim-done giua chung). **Nhanh:** `feat/vendor-charts-widget`.
+- **Lan 1 that bai:** thieu `COPY vendor` trong Dockerfile (chi COPY package*.json) -> ENOENT /app/vendor/*.tgz. Sua: them `COPY vendor ./vendor` truoc `npm ci` (commit 8cdb6ae2c).
+- **Lan 2 that bai:** 3 engine @vninvestcharts/* cung bi go khoi registry (404 packument). Thu `overrides` + `file:vendor/...` THAT BAI: npm resolve file: trong overrides theo thu muc DEPENDER (node_modules/vninvestcharts-widget/vendor/...) chu khong theo root - co bang chung log. Thu `bundleDependencies` + lock `bundled:true` viet tay THAT BAI: npm van fetch packument de resolve range (khong tin entry thieu resolved).
+- **Cach thang (da verify that):** engine lam `file:` dep TRUC TIEP o root package.json (npm resolve dung tu root - da chung minh), tarball widget giu nguyen goc 31-file (khong bundle), lockfile resolve file:vendor/*.tgz, khong con URL registry nao cho scope @vninvestcharts/*. Kiem chung cuc manh: `npm ci` THAT trong thu muc rieng /tmp/citest (mo phong Docker builder): added 1089 packages, 0 loi 404.
+- **Deploy staging:** `bash scripts/deploy-staging.sh` (REPO_BRANCH=feat/vendor-charts-widget) XANH: frontend build xong, config hop le, API health 2xx, khong container chet, khong crash-loop (RestartCount 0, mem 1-4%). Staging dang chay ac4c2c2c4 == branch HEAD. Se redeploy dev sau khi PR merge.
+- **CHUA CHAY:** BE/FE suite tren staging (slice build-only, khong cham code chay).
+- **Bai hoc:** (1) pre-push-gate xanh khong co nghia la docker build xanh - docker build la mot gate rieng phai chay that; (2) `npm ci --dry-run` PASS khong chung minh duoc gi ve fetch - chi full `npm ci` moi la bang chung; (3) doc npm ve file: trong overrides phai kiem chung bang log that, dung tin tri nho.
+- **Lessons ap dung:** L-001 L-002 L-003 L-007 L-008 L-M02 L-V02 L-V04.
+
+---
 ## Entry 408: Vendor vninvestcharts-widget-1.2.5.tgz -> file: spec (unblock staging build, registry go go)
 
 - **Claim:** `vendor-charts-widget` - **Nhanh:** `feat/vendor-charts-widget` -> `dev`. **Commit:** claim `dc61a56af` + fix `8aa2b6e58` (+ claim-done + entry nay).
