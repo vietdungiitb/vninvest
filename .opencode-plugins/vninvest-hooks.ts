@@ -6,7 +6,7 @@ const isLegacyPath = (worktreePath: string, filePath: string): boolean => {
   return rel2.startsWith("backend/") || rel2.startsWith("frontend/")
 }
 
-const vnRegex = /[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]/i
+const vnRegex = /[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờỡợúùủũụưứừửữựýỳỷỹỵđ]/i
 
 const hasRawVietnamese = (content: string): boolean => {
   const lines = content.split("\n")
@@ -41,7 +41,10 @@ const getStringField = (obj: UnknownRecord, keys: string[]): string | undefined 
   return undefined
 }
 
-const collectCandidateStrings = (event: unknown): string[] => {
+const PATH_KEYS = ["filePath", "file_path", "path", "TargetFile", "Target", "filename", "file", "resource"]
+const COMMAND_KEYS = ["command", "cmd"]
+
+const collectFields = (event: unknown, keys: string[]): string[] => {
   const out: string[] = []
   const visit = (value: unknown, depth: number): void => {
     if (depth > 3 || value === null || value === undefined) {
@@ -61,7 +64,7 @@ const collectCandidateStrings = (event: unknown): string[] => {
     }
     if (typeof value === "object") {
       const record = value as UnknownRecord
-      for (const key of ["filePath", "file_path", "path", "TargetFile", "Target", "filename", "file", "resource", "command", "cmd", "text"]) {
+      for (const key of keys) {
         const field = record[key]
         if (typeof field === "string" && field.length > 0) {
           out.push(field)
@@ -74,6 +77,21 @@ const collectCandidateStrings = (event: unknown): string[] => {
   }
   visit(event, 0)
   return out
+}
+
+// Like isLegacyPath but for a bare candidate string (no base to resolve
+// against): relativize against worktreePath first so that
+// `packages/core/backend/...` (new code) is NOT mistaken for legacy `backend/`.
+const isLegacyCandidate = (worktreePath: string, text: string): boolean => {
+  const normalized = text.replace(/\\/g, "/").replace(/^\.\/+/, "")
+  const wt = worktreePath.replace(/\\/g, "/").replace(/\/+$/, "")
+  let rel = normalized
+  if (normalized.toLowerCase().startsWith(wt.toLowerCase() + "/")) {
+    rel = normalized.slice(wt.length + 1)
+  } else if (/^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/")) {
+    return false
+  }
+  return rel === "backend" || rel === "frontend" || rel.startsWith("backend/") || rel.startsWith("frontend/")
 }
 
 export const VNInvestHooksPlugin = Plugin.define({
@@ -120,23 +138,20 @@ export const VNInvestHooksPlugin = Plugin.define({
 
     await ctx.permission.hook("evaluate", (event) => {
       const e = event as unknown as UnknownRecord
-      const candidates = collectCandidateStrings(event)
+      const pathCandidates = collectFields(event, PATH_KEYS)
 
-      for (const text of candidates) {
-        const normalized = text.replace(/\\/g, "/")
-        if (normalized.includes("backend/") || normalized.includes("frontend/")) {
-          if (/(^|\/)(backend|frontend)\//.test(normalized)) {
-            ;(event as unknown as UnknownRecord)["effect"] = "deny"
-            ;(event as unknown as UnknownRecord)["reason"] = legacyPermissionReason
-            log("error", `[VNInvest] BLOCKED: Sửa đổi trên đường dẫn legacy bị cấm: ${text}`)
-            return
-          }
+      for (const text of pathCandidates) {
+        if (isLegacyCandidate(worktreePath, text)) {
+          ;(event as unknown as UnknownRecord)["effect"] = "deny"
+          ;(event as unknown as UnknownRecord)["reason"] = legacyPermissionReason
+          log("error", `[VNInvest] BLOCKED: Sửa đổi trên đường dẫn legacy bị cấm: ${text}`)
+          return
         }
       }
 
       const actionText = String(e["action"] ?? "").toLowerCase()
       if (actionText.includes("bash") || actionText.includes("shell") || actionText.includes("command") || actionText.includes("execute")) {
-        const joined = candidates.join("\n")
+        const joined = collectFields(event, COMMAND_KEYS).join("\n")
         if ((joined.includes("backend/") || joined.includes("frontend/")) && /(rm|mv|cp|mkdir|touch|vi|nano|echo|cat|git add|git commit|python|node)/.test(joined)) {
           ;(event as unknown as UnknownRecord)["effect"] = "deny"
           ;(event as unknown as UnknownRecord)["reason"] = legacyBashReason
