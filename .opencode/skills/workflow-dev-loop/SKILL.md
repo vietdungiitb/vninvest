@@ -43,7 +43,7 @@ Khi ≥ 2 agent song song: đọc thêm skill `multi-agent-workflow` + `docs/AGE
 - Plan ghi `Lessons áp dụng: [...]` (hoặc `NONE – <lý do>`). Viết check tái hiện **trước** dòng code đầu tiên.
 
 ### B3. Audit độc lập + B4. Đồng thuận
-- Auditor khác (người/model khác), **chỉ đọc**. Không tự audit việc của chính mình. Verdict: `PASS` | `AGREE` (+reservation: ai đóng, ở bước nào) | `NEED_REVISION` (objection đánh số) | `REJECT`.
+- Auditor khác (người/model khác), **chỉ đọc**. Không tự audit việc của chính mình. Verdict: `PASS` | `AGREE` (+reservation: ai đóng, ở bước nào) | `NEED_REVISION` (objection đánh số) | `REJECT`. Verdict PHẢI ghi thành file văn bản (quy tắc 6) mới được chuyển B5.
 - Gate B4→B5: `PASS`/`AGREE`. `NEED_REVISION` → sửa plan → audit lại, tối đa 3 vòng; quá thì ghi `blocker`, trả partial state, dừng.
 
 ### B5. Claim + cách ly (`docs/CLAIMS.md`)
@@ -64,20 +64,21 @@ Khi ≥ 2 agent song song: đọc thêm skill `multi-agent-workflow` + `docs/AGE
 - Cổng nào không chạy được → ghi `CHƯA CHẠY` + lý do. Cấm báo `PASS` cho thứ chưa chạy.
 
 ### B8. Re-audit độc lập
-- Auditor khác kiểm trên revision mới nhất, tự suy ra lại mọi số liệu. Cổng ra: test toàn Pass (+`CHƯA CHẠY` được chấp nhận) và audit 0 blocker + 0 major. Chưa đạt → về B6, tối đa 3 vòng.
+- Auditor khác kiểm trên revision mới nhất, tự suy ra lại mọi số liệu. Cổng ra: test toàn Pass (+`CHƯA CHẠY` được chấp nhận) và audit 0 blocker + 0 major, kết quả ghi thành file văn bản (quy tắc 6). Chưa đạt → về B6, tối đa 3 vòng.
 
 ### B9. Bàn giao
 - Claim → `done`. Prepend 1 `## Entry N` vào `docs/CODE_CHANGE_AUDIT_LEDGER.md` + commit riêng.
 - Commit message ghi rõ đã chạy gì + `CHƯA CHẠY` gì. Push → `pwsh -File scripts/agent-pr.ps1` → PR merge-commit (không squash).
 - Sau merge: `pwsh -File scripts/agent-cleanup.ps1 -Branch <b> -Execute`, xóa junction trước khi xóa cây.
 
-## 2. Năm luật cứng (giữ từ erp-dev-loop, ví dụ vninvest)
+## 2. Sáu luật cứng (5 giữ từ erp-dev-loop + 1 vninvest, Owner chốt 2026-10-24)
 
 1. **Auditor luôn độc lập, chỉ đọc.** Không audit việc của chính mình.
 2. **Quy tắc 3 lần thử.** Một bước hỏng sửa tối đa 3 lần; quá thì `blocker` + dừng, không thử sai làm nát code.
 3. **Bảo toàn encoding & line-ending.** Sau mỗi lần ghi file: `git diff --numstat` khớp dự kiến; file LF; dính mojibake/EOL là dừng (L-T01).
 4. **Không đọc tiếng Việt qua console shell Windows.** Console render sai (mojibake); đọc file trực tiếp UTF-8; console chỉ xem exit code/số lượng.
 5. **Trung thực số liệu tuyệt đối.** Mọi con số kèm lệnh tái hiện; không tái hiện được → ghi `ƯỚC LƯỢNG` hoặc bỏ. Không `PASS` giả.
+6. **Mọi audit / đề xuất / review PHẢI thành văn bản — không ngoại lệ.** Verdict audit (B3), đồng thuận (B4), re-audit (B8), báo cáo bàn giao (B9) và mọi kết luận điều tra phải được ghi thành file trong repo (`docs/evidence/<slice>/` hoặc `docs/<TÊN>_*.md`) TRƯỚC khi coi bước đó xong. Báo cáo miệng/chat-only = bước chưa hoàn thành, auditor sau từ chối nghiệm thu. Không có ngoại lệ kể cả "việc nhỏ".
 
 ## 3. Bản đồ skill hỗ trợ — gọi đúng bước loop
 

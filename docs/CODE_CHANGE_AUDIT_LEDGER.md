@@ -1,3 +1,38 @@
+## Entry 409: Staging xanh - vendored tarball + root file: deps (that bai 2 lan truoc khi dung)
+
+- **Claim:** `vendor-charts-widget` (van mo den khi verify xong; Entry 408 moi chi la claim-done giua chung). **Nhanh:** `feat/vendor-charts-widget`.
+- **Lan 1 that bai:** thieu `COPY vendor` trong Dockerfile (chi COPY package*.json) -> ENOENT /app/vendor/*.tgz. Sua: them `COPY vendor ./vendor` truoc `npm ci` (commit 8cdb6ae2c).
+- **Lan 2 that bai:** 3 engine @vninvestcharts/* cung bi go khoi registry (404 packument). Thu `overrides` + `file:vendor/...` THAT BAI: npm resolve file: trong overrides theo thu muc DEPENDER (node_modules/vninvestcharts-widget/vendor/...) chu khong theo root - co bang chung log. Thu `bundleDependencies` + lock `bundled:true` viet tay THAT BAI: npm van fetch packument de resolve range (khong tin entry thieu resolved).
+- **Cach thang (da verify that):** engine lam `file:` dep TRUC TIEP o root package.json (npm resolve dung tu root - da chung minh), tarball widget giu nguyen goc 31-file (khong bundle), lockfile resolve file:vendor/*.tgz, khong con URL registry nao cho scope @vninvestcharts/*. Kiem chung cuc manh: `npm ci` THAT trong thu muc rieng /tmp/citest (mo phong Docker builder): added 1089 packages, 0 loi 404.
+- **Deploy staging:** `bash scripts/deploy-staging.sh` (REPO_BRANCH=feat/vendor-charts-widget) XANH: frontend build xong, config hop le, API health 2xx, khong container chet, khong crash-loop (RestartCount 0, mem 1-4%). Staging dang chay ac4c2c2c4 == branch HEAD. Se redeploy dev sau khi PR merge.
+- **CHUA CHAY:** BE/FE suite tren staging (slice build-only, khong cham code chay).
+- **Bai hoc:** (1) pre-push-gate xanh khong co nghia la docker build xanh - docker build la mot gate rieng phai chay that; (2) `npm ci --dry-run` PASS khong chung minh duoc gi ve fetch - chi full `npm ci` moi la bang chung; (3) doc npm ve file: trong overrides phai kiem chung bang log that, dung tin tri nho.
+- **Lessons ap dung:** L-001 L-002 L-003 L-007 L-008 L-M02 L-V02 L-V04.
+
+---
+## Entry 408: Vendor vninvestcharts-widget-1.2.5.tgz -> file: spec (unblock staging build, registry go go)
+
+- **Claim:** `vendor-charts-widget` - **Nhanh:** `feat/vendor-charts-widget` -> `dev`. **Commit:** claim `dc61a56af` + fix `8aa2b6e58` (+ claim-done + entry nay).
+- **Goc re:** staging deploy rot o `npm ci`: `vninvestcharts-widget@1.2.5.tgz` 404 - goi bi UNPUBLISH khoi npm registry ngay 2026-10-22 (xac minh local + VPS deu 404; scope `@vninvestcharts/widget` cung 404 - khong the thay ten). Local build con chay nho node_modules cu tu 14/10.
+- **Sua (Owner duyet huong vendor 2026-10-24):** `npm pack` tu dung node_modules da cai (byte-identical noi dung dang chay) -> `packages/web/vendor/vninvestcharts-widget-1.2.5.tgz` (2.6MB, co dist/index.js+index.css+package.json) - spec `^1.2.5` -> `file:vendor/...tgz` - regen lock bang `npm install --package-lock-only` (Owner duyet) - lockfile resolves file: + integrity sha512. Dong thoi don 115 entry stale (monaco/peggy/dompurify/marked cua cay local cu da xoa, khong con trong deps).
+- **Verify:** tarball mo ra du 3 file can thiet - `npm ci --dry-run` ok (lockfile nhat quan) - pre-push-gate 34/34 PASS.
+- **CHUA CHAY:** VPS docker build that (buoc tiep theo) - BE/FE suite (khong cham code).
+- **Ghi nhan ky thuat:** commit dung --no-verify co ly do trong body (deny-list package.json + Owner duyet, theo dung huong dan hook). De nghi dai han: Owner republish 1.2.5 (hoac scope moi) len npm thi revert ve registry spec.
+- **Lessons ap dung:** L-001 L-002 L-003 L-008 L-M02 L-V02.
+
+---
+## Entry 407: W1.4-salvage REFUTE - khong cuu views.py (view chet), giu fix bash-guard (2026-10-24)
+
+- **Claim:** `w14-salvage` - **Nhanh:** `feat/w14-salvage` -> `dev`. **Commit:** claim+plan `90918977d` + hook-fix `70a50fe1` + feat `722c9c86f` + revert `7219693e0` + plan-note `ce4d4bfe1` (+ claim-done + entry nay).
+- **Gia thuyet ban dau (L-V02: khong tin claim ke thua):** slice cu bao "chart endpoint tra None" -> can tinh that RSI/MACD/ATR. Tu doc code + test that thay vi tin.
+- **BANG CHUNG REFUTE (do that, khong doan):** (1) route chart (core_urls.py:62, public_urls.py:64) + test (329, 359) deu dung `StockManagementChartView` (stock_mgmt_native_views.py:1787) + helper `_compute_chart_technical_payload` (:805-859, da tinh that SMA20/50, RSI14, momentum, bias+label VI, latest_close) - khong phai `StockChartView` (views.py:177) ma slice sua; (2) `git grep StockChartView` = 1 hit duy nhat (dinh nghia) -> view chet, 0 route, 0 import; (3) VPS staging: 2 test chart PASS tren dev CHUA fix (base) lan tren slice -> khong co fail-before, khong co tac dung nguoi dung; (4) FE doc rsi_14 nhieu noi nhung qua endpoint/field khac, khong qua view chet.
+- **Quy dinh can thiep:** GIU fix bash-guard plugin (token + isLegacyCandidate, verify 4/4, unblock git add/commit BE that) - can thiet de slice commit duoc; HOAN TAC cherry-pick views.py (da verify byte-identical voi dev); KHONG them test moi cho view chet.
+- **GATE CHAY THAT:** manage.py check: no issues (local, DJANGO_DEBUG=1) - VPS: 2/2 chart test PASS tren base (fail-before THAT BAI -> refute) va tren slice (khong hoi quy) - DB tam w14_salvage da DROP, worktree tam da xoa - check-multi-agent exit 0 - normalize-eol OK - full pre-push-gate 34/34 PASS (2 lan: truoc revert va sau revert). Re-audit doc lap: AGREE, 0 blocker (5 reservation da xu ly). **CHUA CHAY:** full BE/FE suite (slice rugs ve docs + hook + revert; khong cham logic BE chay that).
+- **Bai hoc:** (a) fail-before la ran loc bat buoc truoc moi cuu code nguoi khac de lai - tiet kiem 1 PR vo dung; (b) sua file server dang watch phai atomic 1 write (bai hoc cu tu Entry 405, ap dung tot lan nay); (c) commit message chua literal backend//frontend se bi chinh guard chan - viet mo ta khong can literal path.
+- **Con lai ngoai scope (bao cao, khong lam):** tech-indicators goc van mo tren checkout cu (claim done nhung code chua merge); A1 pricing.utc + test envelope van do tren dev (phat hien khi doc); pm-w11 claim in-progress treo (chi 1 dong, khong code).
+- **Lessons ap dung:** L-001 L-002 L-003 L-007 L-008 L-M02 L-V02 L-V03 L-V04 L-A01.
+
+---
 ## Entry 406: workflow-dev-loop - vong kin mac dinh hoc erp-dev-loop, hieu chinh vninvest (2026-10-24)
 
 - **Claim:** `workflow-dev-loop` - **Nhanh:** `feat/workflow-dev-loop` -> `dev`. **Commit:** claim `32e0dbbc8` + skill `42db50faa` + AGENTS (`651a836ad`, --no-verify co ly do: Owner truc tiep yeu cau) + claim-done + entry nay.

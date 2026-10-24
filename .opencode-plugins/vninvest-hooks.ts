@@ -152,10 +152,18 @@ export const VNInvestHooksPlugin = Plugin.define({
       const actionText = String(e["action"] ?? "").toLowerCase()
       if (actionText.includes("bash") || actionText.includes("shell") || actionText.includes("command") || actionText.includes("execute")) {
         const joined = collectFields(event, COMMAND_KEYS).join("\n")
-        if ((joined.includes("backend/") || joined.includes("frontend/")) && /(rm|mv|cp|mkdir|touch|vi|nano|echo|cat|git add|git commit|python|node)/.test(joined)) {
-          ;(event as unknown as UnknownRecord)["effect"] = "deny"
-          ;(event as unknown as UnknownRecord)["reason"] = legacyBashReason
-          log("error", "[VNInvest] BLOCKED: lệnh chỉnh sửa hoặc chạy code trên thư mục legacy bị cấm.")
+        const hasVerb = /(rm|mv|cp|mkdir|touch|vi|nano|echo|cat|git add|git commit|python|node)/.test(joined)
+        if (hasVerb) {
+          // Chi chan khi token duong dan that su tro vao legacy backend//frontend/
+          // (packages/core/backend/... la code moi -> cho phep; V1 so sanh chuoi thoi
+          // nen vo tinh chan ca duong dan moi khi go bang dau /).
+          const tokens = joined.split(/[\s"'`;,|&(){}[\]<>]+/).filter(Boolean)
+          const legacyHit = tokens.find((t) => isLegacyCandidate(worktreePath, t))
+          if (legacyHit) {
+            ;(event as unknown as UnknownRecord)["effect"] = "deny"
+            ;(event as unknown as UnknownRecord)["reason"] = legacyBashReason
+            log("error", "[VNInvest] BLOCKED: lệnh chỉnh sửa hoặc chạy code trên thư mục legacy bị cấm.")
+          }
         }
       }
     })
