@@ -1867,3 +1867,4 @@ Claim duoc giu sau khi huy `portfolio-w3-api` (L277) + `owner-audit-fix` (L942) 
 
 
 | `workflow-dev-loop` | `feat/workflow-dev-loop` | Hoc erp-dev-loop (ERP-Edusuccess) hieu chinh cho vninvest, dat lam mac dinh | `.opencode/skills/workflow-dev-loop/SKILL.md` | done | 2026-10-24 | Lessons ap dung: L-001 L-002 L-003 L-008 L-M02 L-V02 L-V03. AGENTS.md can cho muc dich mac dinh (deny-list, Owner truc tiep yeu cau 2026-10-24 single-agent). |
+| `opencode-plugin-fix` | `feat/opencode-plugin-fix` | Fix server plugin failed err_d7cbbaf6 (plugin .opencode-plugins failed to load: ENOENT package.json + deprecated plugin key + V1 API) | `opencode.jsonc`, `.opencode-plugins/package.json`, `.opencode-plugins/vninvest-hooks.ts`, `.opencode-plugins/index.ts` | in-progress | 2026-10-24 | Lessons ap dung: L-001 L-002 L-003 L-008 L-M02 L-V02 L-V03. SCOPE 4 files. Fail-before: plugin list - - .opencode-plugins + log err_d7cbbaf6. |
