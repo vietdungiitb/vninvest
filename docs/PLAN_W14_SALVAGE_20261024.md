@@ -1,5 +1,7 @@
 # PLAN W1.4-salvage — cứu chỉ báo kỹ thuật thật ở chart endpoint (2026-10-24)
 
+> **KẾT LUẬN ĐIỀU TRA (fail-before BÁC BỎ):** 2 test chart PASS ngay trên dev chưa fix — route/test dùng `StockManagementChartView` + `_compute_chart_technical_payload` (đã tính thật), còn slice sửa `StockChartView` không được route (0 reference). Quyết định: HOÀN TÁC cherry-pick, KHÔNG salvage. Chi tiết: ledger Entry 407.
+
 `Lessons áp dụng: [L-001, L-002, L-003, L-007, L-008, L-M02, L-V02, L-V03, L-V04, L-A01]`
 
 ## 1. Mục tiêu & cơ sở (đã tự đọc code, không tin claim kế thừa)
