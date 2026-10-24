@@ -1,3 +1,15 @@
+## Entry 407: W1.4-salvage REFUTE - khong cuu views.py (view chet), giu fix bash-guard (2026-10-24)
+
+- **Claim:** `w14-salvage` - **Nhanh:** `feat/w14-salvage` -> `dev`. **Commit:** claim+plan `90918977d` + hook-fix `70a50fe1` + feat `722c9c86f` + revert `7219693e0` + plan-note `ce4d4bfe1` (+ claim-done + entry nay).
+- **Gia thuyet ban dau (L-V02: khong tin claim ke thua):** slice cu bao "chart endpoint tra None" -> can tinh that RSI/MACD/ATR. Tu doc code + test that thay vi tin.
+- **BANG CHUNG REFUTE (do that, khong doan):** (1) route chart (core_urls.py:62, public_urls.py:64) + test (329, 359) deu dung `StockManagementChartView` (stock_mgmt_native_views.py:1787) + helper `_compute_chart_technical_payload` (:805-859, da tinh that SMA20/50, RSI14, momentum, bias+label VI, latest_close) - khong phai `StockChartView` (views.py:177) ma slice sua; (2) `git grep StockChartView` = 1 hit duy nhat (dinh nghia) -> view chet, 0 route, 0 import; (3) VPS staging: 2 test chart PASS tren dev CHUA fix (base) lan tren slice -> khong co fail-before, khong co tac dung nguoi dung; (4) FE doc rsi_14 nhieu noi nhung qua endpoint/field khac, khong qua view chet.
+- **Quy dinh can thiep:** GIU fix bash-guard plugin (token + isLegacyCandidate, verify 4/4, unblock git add/commit BE that) - can thiet de slice commit duoc; HOAN TAC cherry-pick views.py (da verify byte-identical voi dev); KHONG them test moi cho view chet.
+- **GATE CHAY THAT:** manage.py check: no issues (local, DJANGO_DEBUG=1) - VPS: 2/2 chart test PASS tren base (fail-before THAT BAI -> refute) va tren slice (khong hoi quy) - DB tam w14_salvage da DROP, worktree tam da xoa - check-multi-agent exit 0 - normalize-eol OK - full pre-push-gate 34/34 PASS (2 lan: truoc revert va sau revert). Re-audit doc lap: AGREE, 0 blocker (5 reservation da xu ly). **CHUA CHAY:** full BE/FE suite (slice rugs ve docs + hook + revert; khong cham logic BE chay that).
+- **Bai hoc:** (a) fail-before la ran loc bat buoc truoc moi cuu code nguoi khac de lai - tiet kiem 1 PR vo dung; (b) sua file server dang watch phai atomic 1 write (bai hoc cu tu Entry 405, ap dung tot lan nay); (c) commit message chua literal backend//frontend se bi chinh guard chan - viet mo ta khong can literal path.
+- **Con lai ngoai scope (bao cao, khong lam):** tech-indicators goc van mo tren checkout cu (claim done nhung code chua merge); A1 pricing.utc + test envelope van do tren dev (phat hien khi doc); pm-w11 claim in-progress treo (chi 1 dong, khong code).
+- **Lessons ap dung:** L-001 L-002 L-003 L-007 L-008 L-M02 L-V02 L-V03 L-V04 L-A01.
+
+---
 ## Entry 406: workflow-dev-loop - vong kin mac dinh hoc erp-dev-loop, hieu chinh vninvest (2026-10-24)
 
 - **Claim:** `workflow-dev-loop` - **Nhanh:** `feat/workflow-dev-loop` -> `dev`. **Commit:** claim `32e0dbbc8` + skill `42db50faa` + AGENTS (`651a836ad`, --no-verify co ly do: Owner truc tiep yeu cau) + claim-done + entry nay.
