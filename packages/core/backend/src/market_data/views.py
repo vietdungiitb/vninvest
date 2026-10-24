@@ -217,7 +217,6 @@ class StockChartView(APIView):
                     'atr_14': None,
                     'volatility_20': None,
                     'volume_ratio': None,
-                    'latest_close': None,
                 },
             })
         
@@ -243,56 +242,7 @@ class StockChartView(APIView):
                 'volume': int(row.volume) if row.volume is not None else None,
             })
         
-        # Technical indicators computed from OHLCV points (real, no longer placeholder).
-        closes = [p.get('close') for p in points if p.get('close') is not None]
-        highs = [p.get('high') for p in points if p.get('high') is not None]
-        lows = [p.get('low') for p in points if p.get('low') is not None]
-        volumes = [p.get('volume') for p in points if p.get('volume') is not None]
-
-        def _rsi(vals, window=14):
-            if len(vals) <= window:
-                return None
-            deltas = [vals[i] - vals[i - 1] for i in range(1, len(vals))]
-            gains = [max(d, 0) for d in deltas]
-            losses = [abs(min(d, 0)) for d in deltas]
-            ag = sum(gains[-window:]) / window
-            al = sum(losses[-window:]) / window
-            if al == 0:
-                return 100.0 if ag > 0 else 50.0
-            return 100.0 - (100.0 / (1.0 + ag / al))
-
-        def _atr(hs, ls, cs, window=14):
-            if len(cs) <= window or len(hs) < len(cs) or len(ls) < len(cs):
-                return None
-            trs = []
-            for i in range(1, len(cs)):
-                tr = max(hs[i] - ls[i],
-                         abs(hs[i] - cs[i - 1]),
-                         abs(ls[i] - cs[i - 1]))
-                trs.append(tr)
-            if len(trs) < window:
-                return None
-            return sum(trs[-window:]) / window
-
-        def _macd(vals):
-            if len(vals) < 35:
-                return None, None
-            k12, k26, k9 = 2.0 / 13, 2.0 / 27, 2.0 / 10
-            ema12 = sum(vals[:12]) / 12
-            ema26 = sum(vals[:26]) / 26
-            macd_series = []
-            for i, v in enumerate(vals[1:], start=1):
-                ema12 = v * k12 + ema12 * (1 - k12)
-                ema26 = v * k26 + ema26 * (1 - k26)
-                if i >= 25:
-                    macd_series.append(ema12 - ema26)
-            if len(macd_series) < 9:
-                return None, None
-            signal = sum(macd_series[:9]) / 9
-            for m in macd_series[9:]:
-                signal = m * k9 + signal * (1 - k9)
-            return macd_series[-1], signal
-
+        # Basic technical indicators (placeholder)
         technical = {
             'change_percent': None,
             'rsi_14': None,
@@ -301,36 +251,15 @@ class StockChartView(APIView):
             'atr_14': None,
             'volatility_20': None,
             'volume_ratio': None,
-            'latest_close': None,
         }
-
-        if closes:
-            technical['latest_close'] = round(float(closes[-1]), 2)
-            first_close = closes[0]
-            last_close = closes[-1]
-            if first_close and last_close and first_close != 0:
+        
+        if points:
+            first_close = points[0].get('close')
+            last_close = points[-1].get('close')
+            if first_close and last_close:
                 technical['change_percent'] = round(
                     ((last_close - first_close) / first_close) * 100, 2
                 )
-            _rsi_val = _rsi(closes)
-            technical['rsi_14'] = round(float(_rsi_val), 2) if _rsi_val is not None else None
-            m, sig = _macd(closes)
-            technical['macd'] = round(float(m), 2) if m is not None else None
-            technical['macd_signal'] = round(float(sig), 2) if sig is not None else None
-            _atr_val = _atr(highs, lows, closes)
-            technical['atr_14'] = round(float(_atr_val), 2) if _atr_val is not None else None
-            # volatility 20d: std of last 20 closes / mean
-            window = closes[-20:]
-            if len(window) >= 5:
-                mean = sum(window) / len(window)
-                if mean:
-                    var = sum((c - mean) ** 2 for c in window) / len(window)
-                    technical['volatility_20'] = round((var ** 0.5 / mean) * 100, 2)
-            # volume ratio: last volume / avg of last 20
-            if volumes and len(volumes) >= 2:
-                avg_vol = sum(volumes[-20:]) / len(volumes[-20:])
-                if avg_vol:
-                    technical['volume_ratio'] = round(volumes[-1] / avg_vol, 2)
         
         return envelope({
             'symbol': symbol,
