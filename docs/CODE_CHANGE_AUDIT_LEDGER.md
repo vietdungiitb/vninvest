@@ -8,6 +8,16 @@
 - **CHUA CHAY:** BE/FE suite + build (cam local runbook 12.1; slice docs-only, khong cham code) - E2E.
 - **Lessons ap dung:** L-001 L-002 L-003 L-008 L-M02 L-V02 L-V03.
 
+## Entry 405: Fix OpenCode server plugin .opencode-plugins failed to load (err_d7cbbaf6) -> V2 (2026-10-24)
+
+- **Claim:** `opencode-plugin-fix` - **Nhanh:** `feat/opencode-plugin-fix` -> `dev`. **Commit:** claim `87555df49` + fix `d2bbf38a7` + precision `69bd904f2` (+ claim-done + entry).
+- **Goc re (log that):** opencode.log:12164 `ref=err_d7cbbaf6 cause=NpmInstallFailedError: ENOENT ... .opencode-plugins/package.json` (resolve ve HOME thay vi project). 3 lop: (1) `opencode.jsonc:4` key deprecated `plugin`, gia tri `.opencode-plugins` thieu `./` -> server hieu la npm registry (log ke tiep: Package checks only support registry and Git package specs); (2) thu muc plugin khong co package.json; (3) code V1 (@opencode-ai/plugin, return hooks object) - server v2.1.4 doi V2 `Plugin.define` (@opencode/plugin).
+- **Sua:** `opencode.jsonc:4` -> `plugins: ["./.opencode-plugins"]`; **TAO** `.opencode-plugins/package.json` (@opencode/plugin 2.1.4 pinned theo server); `vninvest-hooks.ts` V1->V2 (`ctx.tool.hook(execute.before)`, `ctx.permission.hook(evaluate)`, giu isLegacyPath backend//frontend/ + vnRegex + canh bao i18n); precision-fix: `isLegacyCandidate` relativize ve worktree (packages/core/backend khong bi chan nham), tach PATH_KEYS vs COMMAND_KEYS, sua dangling ref do half-rename.
+- **Verify (fail-before -> pass-after):** truoc: `opencode plugin list` = `- - .opencode-plugins` + err_305c2202/err_dd12b7d1 (V1 export, dung nhu du kien). Sau restart + fix: log `loading plugin .../.opencode-plugins entrypoint=file:///...index.ts` + 0 failed-to-load cho vninvest (2 loi con lai cua project vnsaas: err_1fa3156e/err_f060d284) + plugin list `vninvest-hooks local`. Functional check isLegacyCandidate 5/5 (backend/ deny, packages/core/backend allow).
+- **GATE CHAY THAT:** check-multi-agent exit 0 (170 claim hop le, 0 loi; warning giam 158->157) - normalize-eol OK (EOL LF, diff sach). **CHUA CHAY:** BE/FE suite + build (cam local - runbook 12.1; slice khong cham BE/FE) - E2E.
+- **Bai hoc (se ghi lesson neu coordinator duyet):** sua file plugin dang duoc server watch = half-save lam sap toan bo tool chain (permission hook throw tren moi eval). Quy tac tu rut: file duoc watch phai luon consistent sau moi save - 1 write atomic, khong tach nhieu edit nho giua chung khi server dang chay.
+- **Lessons ap dung:** L-001 L-002 L-003 L-008 L-M02 L-V02 L-V03.
+
 ---
 ## Entry 404: PM REVIEW - rà soát việc dang dở của đội code + kế hoạch thực hiện tiếp (Phase A/B/C) + 10 guardrail chống sai lệch (2026-10-22)
 
