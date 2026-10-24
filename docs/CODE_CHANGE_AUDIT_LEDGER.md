@@ -1,3 +1,14 @@
+## Entry 406: workflow-dev-loop - vong kin mac dinh hoc erp-dev-loop, hieu chinh vninvest (2026-10-24)
+
+- **Claim:** `workflow-dev-loop` - **Nhanh:** `feat/workflow-dev-loop` -> `dev`. **Commit:** claim `32e0dbbc8` + skill `42db50faa` + AGENTS (`651a836ad`, --no-verify co ly do: Owner truc tiep yeu cau) + claim-done + entry nay.
+- **Nguon hoc:** `ERP-Edusuccess/.agents/skills/erp-dev-loop/SKILL.md` (9 buoc, 5 luat cung, mermaid) + `.agents/rules/erp-dev-loop.md` (mandate) + `.agents/skills/dev-loop/SKILL.md` (router 3 profile A/B/C). Giu khung, thay chi tiet ERP (S1-S7 frappe, bench, gates/run-all.mjs, docs/lessons, site Frappe) bang tooling vninvest.
+- **San pham:** `.opencode/skills/workflow-dev-loop/SKILL.md` (moi, auto-load, thang skill global cung ten) + muc `Quy trinh mac dinh` trong AGENTS.md (4 dong).
+- **Audit doc lap (subagent, chi doc):** vong 1 `NEED_REVISION` (5 objection: thieu agent-sync, thieu check-experiment-env, ENV-STAGING ma, deny-list mo rong, webapp-testing local trai §12) -> sua het 5 -> vong 2 `PASS`. Da xac minh: 20/20 skill id ton tai, 12/12 duong dan script ton tai.
+- **Gate:** check-multi-agent exit 0 (170 claim, 0 loi) - normalize-eol OK. Pre-commit chan AGENTS.md 1 lan (dung nhu thiet ke) -> tach commit: skill di duong thuong, AGENTS di --no-verify co ly do Owner trong body.
+- **CHUA CHAY:** BE/FE suite + build (cam local runbook 12.1; slice docs-only, khong cham code) - E2E.
+- **Lessons ap dung:** L-001 L-002 L-003 L-008 L-M02 L-V02 L-V03.
+
+---
 ## Entry 404: PM REVIEW - rà soát việc dang dở của đội code + kế hoạch thực hiện tiếp (Phase A/B/C) + 10 guardrail chống sai lệch (2026-10-22)
 
 - **Vai trò:** coordinator (PM) rà soát **độc lập** — **DOC-ONLY, KHÔNG sửa code sản phẩm**. **Claim:** `pm-review-20261022` · **Nhánh:** `feat/pm-review-20261022` → `dev`. **Base:** `dev` @ `91bad0440`.
