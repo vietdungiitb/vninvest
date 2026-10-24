@@ -1,3 +1,14 @@
+## Entry 408: Vendor vninvestcharts-widget-1.2.5.tgz -> file: spec (unblock staging build, registry go go)
+
+- **Claim:** `vendor-charts-widget` - **Nhanh:** `feat/vendor-charts-widget` -> `dev`. **Commit:** claim `dc61a56af` + fix `8aa2b6e58` (+ claim-done + entry nay).
+- **Goc re:** staging deploy rot o `npm ci`: `vninvestcharts-widget@1.2.5.tgz` 404 - goi bi UNPUBLISH khoi npm registry ngay 2026-10-22 (xac minh local + VPS deu 404; scope `@vninvestcharts/widget` cung 404 - khong the thay ten). Local build con chay nho node_modules cu tu 14/10.
+- **Sua (Owner duyet huong vendor 2026-10-24):** `npm pack` tu dung node_modules da cai (byte-identical noi dung dang chay) -> `packages/web/vendor/vninvestcharts-widget-1.2.5.tgz` (2.6MB, co dist/index.js+index.css+package.json) - spec `^1.2.5` -> `file:vendor/...tgz` - regen lock bang `npm install --package-lock-only` (Owner duyet) - lockfile resolves file: + integrity sha512. Dong thoi don 115 entry stale (monaco/peggy/dompurify/marked cua cay local cu da xoa, khong con trong deps).
+- **Verify:** tarball mo ra du 3 file can thiet - `npm ci --dry-run` ok (lockfile nhat quan) - pre-push-gate 34/34 PASS.
+- **CHUA CHAY:** VPS docker build that (buoc tiep theo) - BE/FE suite (khong cham code).
+- **Ghi nhan ky thuat:** commit dung --no-verify co ly do trong body (deny-list package.json + Owner duyet, theo dung huong dan hook). De nghi dai han: Owner republish 1.2.5 (hoac scope moi) len npm thi revert ve registry spec.
+- **Lessons ap dung:** L-001 L-002 L-003 L-008 L-M02 L-V02.
+
+---
 ## Entry 407: W1.4-salvage REFUTE - khong cuu views.py (view chet), giu fix bash-guard (2026-10-24)
 
 - **Claim:** `w14-salvage` - **Nhanh:** `feat/w14-salvage` -> `dev`. **Commit:** claim+plan `90918977d` + hook-fix `70a50fe1` + feat `722c9c86f` + revert `7219693e0` + plan-note `ce4d4bfe1` (+ claim-done + entry nay).
