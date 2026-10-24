@@ -18,6 +18,10 @@ Owner chốt 2026-10-13. Mọi việc **"chạy thử / test / staging"** của 
 - Vietnamese labels full dấu, theo bảng thuật ngữ thống nhất.
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
+## Quy trình mặc định (workflow-dev-loop — Owner chốt 2026-10-24)
+
+Mọi nhiệm vụ liên quan code (tính năng, sửa lỗi, refactor, test, PR, solo hay song song) chạy vòng kín 9 bước của skill [`workflow-dev-loop`](.opencode/skills/workflow-dev-loop/SKILL.md) — học từ `erp-dev-loop` của ERP-Edusuccess, hiệu chỉnh cho tooling vninvest (`docs/AGENT_PROTOCOL.md`, `docs/CLAIMS.md`, `project-lessons`, `check-multi-agent`, VPS staging). Gọi skill **trước dòng code đầu tiên**. Skill repo thắng skill global cùng tên; file repo (`AGENTS.md`, `AGENT_PROTOCOL.md`, `CLAIMS.md`) thắng skill khi xung đột.
+
 ## Multi-agent (bắt buộc khi ≥ 2 agent cùng làm việc)
 
 **Đọc `docs/AGENT_PROTOCOL.md` trước khi sửa gì.** Quy trình đầy đủ ở §10.
