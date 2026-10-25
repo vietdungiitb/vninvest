@@ -35,7 +35,7 @@ const HERO_METRIC_DEFS = [
 function DataOpsContent() {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
-  const { activeSubTab, runs, inventory, loading } = state;
+  const { activeSubTab, runs, inventory, loading, error } = state;
 
   const resolveLabel = (tabKey: string): string => {
     const i18nKey = `soc.dataops.subtab.${tabKey}`;
@@ -119,6 +119,11 @@ function DataOpsContent() {
       createElement("h2", { className: styles.dataopsTitle }, t("soc.dataops.page_title")),
       createElement("p", { className: styles.dataopsDescription }, t("soc.dataops.page_description")),
     ),
+
+    /* ── 1.5 Error Banner ── */
+    error
+      ? createElement("div", { className: styles.bannerNotice, style: { marginBottom: "0.75rem" } }, error)
+      : null,
 
     /* ── 2. Summary Metrics ── */
     isLoading
