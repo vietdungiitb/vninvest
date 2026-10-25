@@ -174,12 +174,23 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   }, [refreshRuns]);
 
   useEffect(() => {
-    refreshInventory();
-    refreshRuns();
-    refreshCoverage();
-    refreshConfig();
-    const configPoll = setInterval(refreshConfig, 30000);
-    return () => clearInterval(configPoll);
+    const refreshAll = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      refreshInventory();
+      refreshRuns();
+      refreshCoverage();
+      refreshConfig();
+    };
+    refreshAll();
+    const interval = setInterval(refreshAll, 15000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshAll();
+    };
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [refreshInventory, refreshRuns, refreshCoverage, refreshConfig]);
 
   const actions = useMemo<DataOpsActions>(() => ({

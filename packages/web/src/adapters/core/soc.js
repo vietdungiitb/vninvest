@@ -172,6 +172,10 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/overview/");
     },
 
+    getSocSloOverview() {
+      return coreGet("/operator/soc/overview/slo-overview/");
+    },
+
     getSocServiceList(page = 1) {
       return coreGet(`/operator/soc/services/?page=${page}`);
     },

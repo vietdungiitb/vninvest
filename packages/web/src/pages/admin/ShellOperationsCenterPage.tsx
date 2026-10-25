@@ -1,4 +1,4 @@
-import { createElement, useState, useCallback, useEffect } from "react";
+import { createElement, useCallback } from "react";
 import { useSearchParams as useRouterSearchParams } from "react-router-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
@@ -21,8 +21,6 @@ interface ShellOperationsCenterPageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
-const STORAGE_KEY = "soc_active_tab";
-
 const SOC_TABS = [
   { key: "overview", icon: "BookOpen" },
   { key: "signals", icon: "TrendingUp" },
@@ -39,30 +37,10 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useRouterSearchParams();
 
-  const getInitialTab = () => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && SOC_TABS.some((tb) => tb.key === urlTab)) return urlTab;
-    try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-      if (saved && SOC_TABS.some((tb) => tb.key === saved)) return saved;
-    } catch { /* noop */ }
-    return "overview";
-  };
-
-  const [activeTab, setActiveTab] = useState(getInitialTab);
-
-  useEffect(() => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && urlTab !== activeTab && SOC_TABS.some((tb) => tb.key === urlTab)) {
-      setActiveTab(urlTab);
-    }
-  }, [searchParams, activeTab]);
+  const requestedTab = searchParams.get("tab");
+  const activeTab = SOC_TABS.some((tb) => tb.key === requestedTab) ? requestedTab! : "overview";
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    try {
-      localStorage.setItem(STORAGE_KEY, tab);
-    } catch { /* noop */ }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
