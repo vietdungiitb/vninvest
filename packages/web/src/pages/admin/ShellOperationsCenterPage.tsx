@@ -1,17 +1,18 @@
-import { createElement, useState, useCallback, useEffect } from "react";
+import { createElement, useCallback, lazy, Suspense } from "react";
 import { useSearchParams as useRouterSearchParams } from "react-router-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
-import { SocOverviewPanel } from "../../components/soc/SocOverviewPanel.js";
-import { SocSignalsPanel } from "../../components/soc/SocSignalsPanel.js";
-import { SocPrefetchPanel } from "../../components/soc/SocPrefetchPanel.js";
-import { SocScreenerPanel } from "../../components/soc/SocScreenerPanel.js";
-import { SocVnbrokerPanel } from "../../components/soc/SocVnbrokerPanel.js";
-import { SocDataOpsPanel } from "../../components/soc/SocDataOpsPanel.js";
-import { SocRuntimeKpiPanel } from "../../components/soc/SocRuntimeKpiPanel.js";
-import { SocDnseBackfillPanel } from "../../components/soc/SocDnseBackfillPanel.js";
-import { SocBrokerPanel } from "../../components/soc/SocBrokerPanel.js";
+
+const SocOverviewPanel = lazy(() => import("../../components/soc/SocOverviewPanel.js").then((m) => ({ default: m.SocOverviewPanel })));
+const SocSignalsPanel = lazy(() => import("../../components/soc/SocSignalsPanel.js").then((m) => ({ default: m.SocSignalsPanel })));
+const SocPrefetchPanel = lazy(() => import("../../components/soc/SocPrefetchPanel.js").then((m) => ({ default: m.SocPrefetchPanel })));
+const SocScreenerPanel = lazy(() => import("../../components/soc/SocScreenerPanel.js").then((m) => ({ default: m.SocScreenerPanel })));
+const SocVnbrokerPanel = lazy(() => import("../../components/soc/SocVnbrokerPanel.js").then((m) => ({ default: m.SocVnbrokerPanel })));
+const SocDataOpsPanel = lazy(() => import("../../components/soc/SocDataOpsPanel.js").then((m) => ({ default: m.SocDataOpsPanel })));
+const SocRuntimeKpiPanel = lazy(() => import("../../components/soc/SocRuntimeKpiPanel.js").then((m) => ({ default: m.SocRuntimeKpiPanel })));
+const SocDnseBackfillPanel = lazy(() => import("../../components/soc/SocDnseBackfillPanel.js").then((m) => ({ default: m.SocDnseBackfillPanel })));
+const SocBrokerPanel = lazy(() => import("../../components/soc/SocBrokerPanel.js").then((m) => ({ default: m.SocBrokerPanel })));
 
 interface ShellOperationsCenterPageProps {
   env?: Record<string, unknown>;
@@ -20,8 +21,6 @@ interface ShellOperationsCenterPageProps {
   autoLoad?: boolean;
   initialSnapshot?: Record<string, unknown> | null;
 }
-
-const STORAGE_KEY = "soc_active_tab";
 
 const SOC_TABS = [
   { key: "overview", icon: "BookOpen" },
@@ -39,30 +38,10 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useRouterSearchParams();
 
-  const getInitialTab = () => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && SOC_TABS.some((tb) => tb.key === urlTab)) return urlTab;
-    try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-      if (saved && SOC_TABS.some((tb) => tb.key === saved)) return saved;
-    } catch { /* noop */ }
-    return "overview";
-  };
-
-  const [activeTab, setActiveTab] = useState(getInitialTab);
-
-  useEffect(() => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && urlTab !== activeTab && SOC_TABS.some((tb) => tb.key === urlTab)) {
-      setActiveTab(urlTab);
-    }
-  }, [searchParams, activeTab]);
+  const requestedTab = searchParams.get("tab");
+  const activeTab = SOC_TABS.some((tb) => tb.key === requestedTab) ? requestedTab! : "overview";
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    try {
-      localStorage.setItem(STORAGE_KEY, tab);
-    } catch { /* noop */ }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
@@ -125,6 +104,6 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
       activeTab,
       onChange: handleTabChange,
     }),
-    renderTabContent(),
+    createElement(Suspense, { fallback: createElement("div", null, "Loading...") }, renderTabContent()),
   );
 }
