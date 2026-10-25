@@ -1,17 +1,18 @@
-import { createElement, useCallback } from "react";
+import { createElement, useCallback, lazy, Suspense } from "react";
 import { useSearchParams as useRouterSearchParams } from "react-router-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
-import { SocOverviewPanel } from "../../components/soc/SocOverviewPanel.js";
-import { SocSignalsPanel } from "../../components/soc/SocSignalsPanel.js";
-import { SocPrefetchPanel } from "../../components/soc/SocPrefetchPanel.js";
-import { SocScreenerPanel } from "../../components/soc/SocScreenerPanel.js";
-import { SocVnbrokerPanel } from "../../components/soc/SocVnbrokerPanel.js";
-import { SocDataOpsPanel } from "../../components/soc/SocDataOpsPanel.js";
-import { SocRuntimeKpiPanel } from "../../components/soc/SocRuntimeKpiPanel.js";
-import { SocDnseBackfillPanel } from "../../components/soc/SocDnseBackfillPanel.js";
-import { SocBrokerPanel } from "../../components/soc/SocBrokerPanel.js";
+
+const SocOverviewPanel = lazy(() => import("../../components/soc/SocOverviewPanel.js").then((m) => ({ default: m.SocOverviewPanel })));
+const SocSignalsPanel = lazy(() => import("../../components/soc/SocSignalsPanel.js").then((m) => ({ default: m.SocSignalsPanel })));
+const SocPrefetchPanel = lazy(() => import("../../components/soc/SocPrefetchPanel.js").then((m) => ({ default: m.SocPrefetchPanel })));
+const SocScreenerPanel = lazy(() => import("../../components/soc/SocScreenerPanel.js").then((m) => ({ default: m.SocScreenerPanel })));
+const SocVnbrokerPanel = lazy(() => import("../../components/soc/SocVnbrokerPanel.js").then((m) => ({ default: m.SocVnbrokerPanel })));
+const SocDataOpsPanel = lazy(() => import("../../components/soc/SocDataOpsPanel.js").then((m) => ({ default: m.SocDataOpsPanel })));
+const SocRuntimeKpiPanel = lazy(() => import("../../components/soc/SocRuntimeKpiPanel.js").then((m) => ({ default: m.SocRuntimeKpiPanel })));
+const SocDnseBackfillPanel = lazy(() => import("../../components/soc/SocDnseBackfillPanel.js").then((m) => ({ default: m.SocDnseBackfillPanel })));
+const SocBrokerPanel = lazy(() => import("../../components/soc/SocBrokerPanel.js").then((m) => ({ default: m.SocBrokerPanel })));
 
 interface ShellOperationsCenterPageProps {
   env?: Record<string, unknown>;
@@ -103,6 +104,6 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
       activeTab,
       onChange: handleTabChange,
     }),
-    renderTabContent(),
+    createElement(Suspense, { fallback: createElement("div", null, "Loading...") }, renderTabContent()),
   );
 }
