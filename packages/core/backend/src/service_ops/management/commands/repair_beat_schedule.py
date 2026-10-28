@@ -16,7 +16,6 @@ Handles:
 """
 from django.core.management.base import BaseCommand
 
-from service_ops.beat_reconcile import CRITICAL_JOBS
 
 class Command(BaseCommand):
     help = "Reconcile django_celery_beat_periodictask with settings.CELERY_BEAT_SCHEDULE (re-enable 4 critical, create missing)."

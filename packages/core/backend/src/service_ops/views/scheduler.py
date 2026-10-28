@@ -18,7 +18,6 @@ from rest_framework.response import Response
 from ..envelope import envelope, paginated_envelope
 from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_summary
 from ..ownership import build_ownership_matrix_from_db
-from ..models import ConfigChangeAudit, ServiceRunLog
 from .base import SOCBaseView
 from rest_framework.pagination import PageNumberPagination
 from vninvest_core.api_envelope import envelope_response
@@ -232,7 +231,7 @@ class SchedulerJobHistoryView(SOCBaseView):
     def get(self, request, job_key: str):
         from django.conf import settings
         from ..scheduler_catalog import CATALOG_JOB_METADATA
-        from ..models import ServiceRunLog, ServiceDefinition
+        from ..models import ServiceRunLog
 
         schedule_map = getattr(settings, 'CELERY_BEAT_SCHEDULE', {}) or {}
         if job_key not in schedule_map and job_key not in CATALOG_JOB_METADATA:

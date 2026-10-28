@@ -128,7 +128,7 @@ class OutboundNotificationService:
                 return False
 
             # In production, utilize pywebpush library dynamically to encrypt payload
-            from pywebpush import webpush, WebPushException
+            from pywebpush import webpush
 
             payload = {
                 "notification": {

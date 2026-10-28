@@ -7,7 +7,6 @@ determine go/no-go for production cutover.
 """
 
 from django.db import models
-from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 

@@ -17,7 +17,7 @@ from market_data.vnbroker_adapter import (
 )
 from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
 from service_ops.models import ScrapeMatrixCell
-from service_ops.models import ServiceConfig, ServiceHealth, ServiceHealthCheckLog, ServiceRunLog
+from service_ops.models import ServiceConfig, ServiceHealth, ServiceRunLog
 from service_ops.models import MarketDataParitySnapshot
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 from service_ops.tasks import (

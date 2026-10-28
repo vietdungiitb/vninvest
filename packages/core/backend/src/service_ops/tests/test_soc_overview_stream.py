@@ -1,5 +1,4 @@
 """SOC overview SSE stream tests — Overview P3 (F-OV-14/15)."""
-import json
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase

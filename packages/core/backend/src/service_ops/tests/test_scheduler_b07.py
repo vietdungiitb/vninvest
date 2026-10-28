@@ -10,9 +10,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, RequestFactory
+from django.test import TestCase
 
-from service_ops.models import BackfillExecutionRun
 from service_ops.registry import ensure_service_registry
 
 from service_ops.tests.envelope import unwrapped_json

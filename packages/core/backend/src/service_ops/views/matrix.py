@@ -17,7 +17,7 @@ from ..matrix_coordinator import (
     normalize_provider_list,
     normalize_symbol_group_ids,
 )
-from ..models import ScrapeMatrix, ScrapeMatrixCell
+from ..models import ScrapeMatrix
 from ..provider_catalog import (
     find_unsupported_provider_ids,
     get_unready_provider_messages,

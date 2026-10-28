@@ -54,7 +54,7 @@ class SignalAdminFlushView(APIView):
         for pattern in patterns:
             try:
                 cache.delete_pattern(pattern)
-            except (AttributeError, Exception):  # noqa: BLE001
+            except (AttributeError, Exception):
                 # delete_pattern not available on all cache backends (e.g. LocMemCache)
                 pass
 

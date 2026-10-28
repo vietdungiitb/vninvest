@@ -34,7 +34,7 @@ from rest_framework.response import Response
 
 from ops_audit.envelope import is_envelope
 
-__all__ = ['unwrapped', 'unwrapped_json', 'is_envelope']
+__all__ = ['is_envelope', 'unwrapped', 'unwrapped_json']
 
 
 def _open(body):

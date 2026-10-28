@@ -11,14 +11,12 @@ import hashlib
 import json
 import logging
 import time
-from typing import Dict, Any, Tuple
-from decimal import Decimal
+from typing import Any
 
 import httpx
 from celery import shared_task
 from django.db import transaction
-from django.utils import timezone
-from django.db.models import Avg, Min, Count, Q
+from django.db.models import Avg, Min
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +30,11 @@ logger = logging.getLogger(__name__)
 )
 def shadow_run_parity_check_task(
     self,
-    request_context: Dict[str, Any],
-    legacy_context: Dict[str, Any],
+    request_context: dict[str, Any],
+    legacy_context: dict[str, Any],
     core_api_base: str,
     shadow_timeout_s: float = 5.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Perform dual-read parity check: legacy response vs core API response.
     
@@ -157,7 +155,7 @@ def shadow_run_parity_check_task(
     time_limit=60,
     soft_time_limit=55,
 )
-def shadow_run_daily_parity_report() -> Dict[str, Any]:
+def shadow_run_daily_parity_report() -> dict[str, Any]:
     """
     EOD task: Aggregate daily parity logs and generate ParityReport.
     
@@ -176,7 +174,6 @@ def shadow_run_daily_parity_report() -> Dict[str, Any]:
     
     from ops_audit.models import ParityLog, ParityReport
     from django.utils import timezone
-    from datetime import timedelta
     
     logger.info("Starting daily parity report generation")
     
@@ -302,11 +299,11 @@ def _make_core_shadow_request(
     method: str,
     path: str,
     query_string: str,
-    headers: Dict[str, str],
+    headers: dict[str, str],
     core_api_base: str,
     timeout_s: float,
     x_request_id: str,
-) -> Dict[str, Any] | None:
+) -> dict[str, Any] | None:
     """
     Make HTTP request to core-api with same parameters as legacy request.
     
@@ -355,7 +352,7 @@ def _compare_responses(
     core_payload: str,
     legacy_elapsed_ms: float,
     core_elapsed_ms: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Compare legacy vs core response and compute parity score.
     

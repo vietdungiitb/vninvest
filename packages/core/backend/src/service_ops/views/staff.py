@@ -9,7 +9,7 @@ Không migration.
 import json
 import time
 
-from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from django.core.signing import TimestampSigner
 from vninvest_core.client_ip import get_client_ip
 
 from rest_framework.response import Response

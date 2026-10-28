@@ -10,7 +10,7 @@ Kiểm tra BackfillExecutionRun và BackfillExecutionBatch:
 - service_run_log FK được link khi service_run_log_id được cung cấp
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import TestCase
 

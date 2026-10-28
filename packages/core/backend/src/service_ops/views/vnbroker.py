@@ -705,7 +705,7 @@ class VnbrokerBenchmarkView(SOCBaseView):
 
         try:
             report = run_price_board_provider_benchmark(benchmark_payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return self.error_response(
                 request,
                 code='VNBROKER_BENCHMARK_FAILED',

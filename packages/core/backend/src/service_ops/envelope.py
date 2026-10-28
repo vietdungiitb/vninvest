@@ -48,7 +48,7 @@ lỗi sẽ phá `SOCBaseView.error_response` (chính là body lỗi chuẩn củ
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope']
+__all__ = ['adopt_envelope', 'envelope', 'paginated_envelope']
 
 
 def envelope(data, meta=None, *, status=None, headers=None) -> Response:

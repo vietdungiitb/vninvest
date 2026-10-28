@@ -15,21 +15,19 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 # Thresholds — SSOT ở order_flow_engine, alias ở đây để tương thích
 # ------------------------------------------------------------------
-from .order_flow_engine import (  # noqa: E402
+from .order_flow_engine import (
     WHALE_VALUE_MIN_VND        as _TICK_WHALE_VALUE_MIN_VND,
     DARK_FLOW_VALUE_MIN_VND    as _TICK_DARK_FLOW_VALUE_MIN_VND,
-    DARK_FLOW_BUY_RATIO_MIN    as _TICK_DARK_FLOW_BUY_RATIO_MIN,
-    DARK_FLOW_PRICE_CV_MAX     as _TICK_DARK_FLOW_PRICE_CV_MAX,
 )
 
 _TICK_MAX_SYMBOLS_PER_RUN = 500  # tối đa bao nhiêu symbol/lần chạy
 
 __all__ = [
+    'detect_and_store_global_whale_alerts',
+    'detect_order_flow',
     'materialize_unified_alerts',
     'materialize_whale_feed_aggregate',
     'run_signal_detection_job',
-    'detect_and_store_global_whale_alerts',
-    'detect_order_flow',
 ]
 
 
@@ -68,7 +66,6 @@ def detect_and_store_global_whale_alerts(
     D05: session_date (str "YYYY-MM-DD") cho phép backfill ngày lịch sử cụ thể.
          Nếu None, dùng session gần nhất như cũ (_get_latest_session_date()).
     """
-    from datetime import date as _date_type
     from django.utils.timezone import now
     from market_data.models import IntradayTick
     from signal_intelligence.models import OrderFlowEvent
@@ -232,7 +229,7 @@ def detect_and_store_global_whale_alerts(
                 )
                 total_order_flow_events += 1
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception('detect_and_store_global_whale_alerts: error for %s: %s', sym, exc)
             continue
 
@@ -480,7 +477,6 @@ def detect_order_flow(self, symbol: str | None = None):
             # ── CVD Divergence via absorption detection ───────────────────
             cvd_series_5m = get_cvd_series_list(sym, session_date, bucket_minutes=5)
             if cvd_series_5m:
-                import pandas as _pd
                 price_by_5m = (
                     df.groupby(df['timestamp'].dt.floor('5min'))['price']
                     .last()
@@ -510,7 +506,7 @@ def detect_order_flow(self, symbol: str | None = None):
                     )
                     created += 1
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception('detect_order_flow: error for %s: %s', sym, exc)
             continue
 

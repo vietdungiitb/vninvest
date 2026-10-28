@@ -786,7 +786,7 @@ class SignalsWhaleTestView(SOCBaseView):
 
         try:
             df = load_session_ticks_df(symbol, session_date)
-        except Exception as exc:  # noqa: BLE001 — endpoint phai bao loi ro
+        except Exception as exc:
             log.warning('soc_signals_whale_test: load tick that that: %s', exc)
             return envelope({
                 'symbol': symbol,

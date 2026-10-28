@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from .models import (
-    SenderRole,
     SupportTicket,
     TicketAttachment,
     TicketAuditLog,

@@ -102,7 +102,7 @@ def daily_db_backup(self):
 def _upload_to_s3(local_path: str, remote_key: str, bucket: str) -> None:
     """Upload backup file to S3-compatible storage (supports R2 via BACKUP_S3_ENDPOINT_URL)."""
     try:
-        import boto3  # type: ignore  # noqa: F401
+        import boto3  # type: ignore
     except ImportError:
         logger.warning('[backup] boto3 not installed — cannot upload to S3/R2')
         return

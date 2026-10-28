@@ -19,7 +19,7 @@ import logging
 import math
 import statistics
 from datetime import date, datetime, time, timedelta
-from typing import Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 from django.core.cache import cache
@@ -79,7 +79,7 @@ def load_session_ticks_df(symbol: str, session_date: date) -> pd.DataFrame:
 
     Không raise nếu không có data — trả về DataFrame rỗng với schema đúng.
     """
-    from market_data.models import IntradayTick  # noqa: PLC0415
+    from market_data.models import IntradayTick
 
     _empty_schema = ['timestamp', 'price', 'volume', 'side', 'value']
 

@@ -307,7 +307,6 @@ from vninvest_core.admin_ui import (
     VNAdminMixin,
     VNReadOnlyMixin,
 )
-from django.contrib import messages
 
 
 def _ws_badge(value, mapping=None):

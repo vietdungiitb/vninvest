@@ -60,7 +60,7 @@ def get_active_broker_config(*, strict: bool = False):
                     return cfg
                 logger.warning('broker_runtime: stored config invalid, using defaults: %s',
                                cfg.validate())
-    except Exception as exc:  # noqa: BLE001 - strict=True re-raises; xem docstring
+    except Exception as exc:
         if strict:
             raise
         logger.warning('broker_runtime: cannot read stored config, using defaults')
@@ -106,7 +106,7 @@ def check_kill_switch(scope: str = 'global', tenant=None, provider: str | None =
         # ném lên, không được rơi về default `kill_switch_write=False`.
         cfg = get_active_broker_config(strict=True)
         enabled = bool(cfg.kill_switch_write)
-    except Exception as exc:  # noqa: BLE001 — bất kỳ lỗi nào cũng phải chặn
+    except Exception as exc:
         logger.error(
             'broker_runtime: cannot determine kill-switch state, denying write '
             '(scope=%s tenant=%s provider=%s): %s',
@@ -188,7 +188,7 @@ def _tenant_kill_switch_enabled(tenant_public_id) -> bool:
                 str(tenant_public_id), False
             )
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.error(
             'broker_runtime: cannot read tenant kill-switch for %s — treating as ENABLED',
             tenant_public_id, exc_info=True,
@@ -215,7 +215,7 @@ def _provider_kill_switch_enabled(provider: str) -> bool:
                 str(provider), False
             )
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.error(
             'broker_runtime: cannot read provider kill-switch for %s — treating as ENABLED',
             provider, exc_info=True,

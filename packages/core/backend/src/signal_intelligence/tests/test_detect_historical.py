@@ -6,7 +6,6 @@ T-D3: session_date=None → fallback về _get_latest_session_date() như cũ.
 T-D4: session_date không có dữ liệu → trả về status='skipped' an toàn.
 """
 from unittest.mock import patch, MagicMock
-from datetime import date
 
 from django.test import TestCase
 

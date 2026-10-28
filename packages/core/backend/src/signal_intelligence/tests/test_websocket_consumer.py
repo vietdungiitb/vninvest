@@ -3,14 +3,10 @@ Tests for WebSocket consumer and symbol sanitization (C5 fix).
 
 Validates that symbol parameters are sanitized before use in Redis channel keys.
 """
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from channels.testing import WebsocketCommunicator
-from django.contrib.auth.models import User
 from django.test import TestCase
 
-from signal_intelligence.consumers import MarketTickerConsumer, _sanitize_symbol
+from signal_intelligence.consumers import _sanitize_symbol
 
 
 class SymbolSanitizationTests(TestCase):

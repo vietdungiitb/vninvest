@@ -11,7 +11,7 @@ T-F1: 10 BUY ticks × (50.000đ × 1.000 cp) = buy_value 500M → event phải c
       và sau materialize alert.value = 500.000.000 (KHÔNG phải 500.000).
 T-F2: SELL áp đảo (buy_ratio < 0.65) → không sinh dark_flow event.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 
 from django.test import TestCase
@@ -19,7 +19,7 @@ from django.test import TestCase
 
 def _make_ticks(symbol, day, price, volume, side, count, start_minute=0):
     from market_data.models import IntradayTick
-    base = datetime(day.year, day.month, day.day, 9, 0, 0, tzinfo=timezone.utc)
+    base = datetime(day.year, day.month, day.day, 9, 0, 0, tzinfo=UTC)
     rows = [
         IntradayTick(
             symbol=symbol,
@@ -113,7 +113,7 @@ def _make_old_style_event(symbol, day, price, volume, buy_value,
             'tick_count': volume + 4,
         }]},
         triggered_at=datetime(day.year, day.month, day.day, 14, 38,
-                              tzinfo=timezone.utc),
+                              tzinfo=UTC),
     )
 
 

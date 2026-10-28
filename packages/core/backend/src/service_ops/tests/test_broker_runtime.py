@@ -11,7 +11,6 @@ from django.test import TestCase
 from service_ops.broker_runtime import (
     BrokerWriteDisabled,
     check_kill_switch,
-    get_active_broker_config,
     in_quiet_hours,
     provider_for_purpose,
 )

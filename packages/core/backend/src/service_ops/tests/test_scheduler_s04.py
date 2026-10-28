@@ -135,7 +135,6 @@ class SchedulerCatalogInflightEnrichmentTests(TestCase):
             celery_task_id='test-inflight-catalog',
             status='running',
         )
-        import service_ops.scheduler_catalog as cat_mod
         schedule = {
             'market-data-queue-tier-scheduler-30s': {
                 'task': 'service_ops.run_market_data_queue_tier_scheduler',

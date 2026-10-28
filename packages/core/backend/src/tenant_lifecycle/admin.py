@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from vninvest_core.admin_ui import VNAdminMixin, VNReadOnlyMixin
+from vninvest_core.admin_ui import VNReadOnlyMixin
 
 from tenant_lifecycle.models import TenantLifecycleEvent
 

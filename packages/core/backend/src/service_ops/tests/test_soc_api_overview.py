@@ -1,6 +1,5 @@
 """Focused overview contract tests for the spec-aligned SOC overview endpoints."""
 
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase

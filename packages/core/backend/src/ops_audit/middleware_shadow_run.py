@@ -12,9 +12,7 @@ import json
 import logging
 import os
 import time
-from django.utils.decorators import sync_and_async_middleware
 from django.http import HttpRequest, HttpResponse
-from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 

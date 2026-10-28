@@ -8,13 +8,12 @@ Endpoints:
 - POST /api/phase3/phase-checkpoint/sign-off/ - Tech Lead sign-off (admin only)
 """
 
-from rest_framework import viewsets, status, generics
+from rest_framework import status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
-from django.db.models import Avg, Count, Q
-from datetime import timedelta
+from django.db.models import Avg
 
 from ops_audit.models import (
     ParityLog,
