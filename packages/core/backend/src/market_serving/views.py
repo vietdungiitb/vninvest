@@ -1,5 +1,3 @@
-import hashlib
-import json
 import logging
 
 from django.core.cache import cache

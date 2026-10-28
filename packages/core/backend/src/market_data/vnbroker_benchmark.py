@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import math
 import time
 from typing import Any
@@ -28,7 +28,7 @@ class _Counter:
     timeout_errors: int = 0
     transport_errors: int = 0
 
-    def merge(self, other: '_Counter') -> None:
+    def merge(self, other: _Counter) -> None:
         self.total_requests += other.total_requests
         self.success_requests += other.success_requests
         self.rate_limited_requests += other.rate_limited_requests
@@ -38,7 +38,7 @@ class _Counter:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _normalize_providers(raw: Any) -> list[str]:
@@ -90,7 +90,7 @@ def _run_worker_once(provider: str, symbol: str) -> _Counter:
             counter.success_requests += 1
         else:
             counter.failed_requests += 1
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if _is_rate_limited_error(exc):
             counter.rate_limited_requests += 1
         else:
@@ -124,7 +124,7 @@ def _benchmark_single_provider_concurrency(
             for future in as_completed(futures, timeout=max(timeout_seconds, 1) + 2):
                 try:
                     total.merge(future.result(timeout=0))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     total.total_requests += 1
                     total.failed_requests += 1
                     if 'timeout' in str(exc).lower():

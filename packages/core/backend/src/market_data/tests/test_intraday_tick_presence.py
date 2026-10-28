@@ -5,7 +5,7 @@ T-G1: bulk_create với ignore_conflicts=True không raise khi có duplicate.
 T-G2: filter(timestamp__date=date) trả về đúng ticks của ngày đó.
 T-G3: bulk_create 0 records khi ticks=[] trả về created=0.
 """
-from datetime import datetime, timezone, date
+from datetime import datetime, date, UTC
 
 from django.test import TestCase
 
@@ -27,7 +27,7 @@ class IntradayTickPresenceTest(TestCase):
         """T-G1: bulk_create với ignore_conflicts=True không raise khi có duplicate."""
         from market_data.models import IntradayTick
 
-        dt = datetime(2026, 5, 10, 9, 0, 0, tzinfo=timezone.utc)
+        dt = datetime(2026, 5, 10, 9, 0, 0, tzinfo=UTC)
         self._create_tick('ABC', dt)
 
         # Tạo object cùng primary key sẽ bị conflict → ignore
@@ -46,8 +46,8 @@ class IntradayTickPresenceTest(TestCase):
 
     def test_filter_by_timestamp_date(self):
         """T-G2: filter(timestamp__date=...) trả về đúng ticks của ngày."""
-        dt_today = datetime(2026, 5, 10, 10, 0, 0, tzinfo=timezone.utc)
-        dt_other = datetime(2026, 5, 9, 10, 0, 0, tzinfo=timezone.utc)
+        dt_today = datetime(2026, 5, 10, 10, 0, 0, tzinfo=UTC)
+        dt_other = datetime(2026, 5, 9, 10, 0, 0, tzinfo=UTC)
 
         self._create_tick('XYZ', dt_today)
         self._create_tick('XYZ', dt_other)

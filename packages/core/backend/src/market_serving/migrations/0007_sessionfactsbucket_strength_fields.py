@@ -1,6 +1,6 @@
 import math
 import statistics
-from datetime import timezone
+from datetime import UTC
 
 from django.db import migrations, models
 
@@ -39,7 +39,7 @@ def _compute_strength_map(rows, bucket_minutes):
         if executed_at is None:
             continue
         if executed_at.tzinfo is None:
-            executed_at = executed_at.replace(tzinfo=timezone.utc)
+            executed_at = executed_at.replace(tzinfo=UTC)
         bucket_ts = _floor_bucket(executed_at, bucket_minutes)
         bucket = buckets.setdefault(bucket_ts, {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0})
         value = float(matched_value or 0.0)

@@ -44,7 +44,7 @@ Data source: signal_intelligence.WhaleAlertCanonical
 import logging
 import math
 import statistics
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, UTC
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def _compute_session_facts_from_rows(
         if executed_at is None:
             continue
         if executed_at.tzinfo is None:
-            executed_at = executed_at.replace(tzinfo=timezone.utc)
+            executed_at = executed_at.replace(tzinfo=UTC)
         bucket_key = _floor_bucket(executed_at, bucket_minutes)
         if bucket_key not in buckets:
             buckets[bucket_key] = {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0}
@@ -301,7 +301,6 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
 
     Dùng bởi Celery task materialize_session_facts.
     """
-    from datetime import date as _date
     from django.utils.timezone import now
     from signal_intelligence.models import WhaleAlertCanonical
     from market_serving.models import SessionFacts, SessionFactsBucket

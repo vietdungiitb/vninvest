@@ -535,8 +535,8 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
     try:
         from data_ingest.tasks import _circuit_open as _ckt_open, _circuit_record as _ckt_record
     except Exception:
-        _ckt_open = lambda symbol: False  # noqa: E731
-        _ckt_record = lambda symbol, ok: None  # noqa: E731
+        _ckt_open = lambda symbol: False
+        _ckt_record = lambda symbol, ok: None
 
     for symbol in shard_symbols:
         try:
@@ -613,6 +613,6 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
 
 
 __all__ = [
-    'schedule_realtime_prefetch_shards',
     'prefetch_realtime_ticker_shard',
+    'schedule_realtime_prefetch_shards',
 ]

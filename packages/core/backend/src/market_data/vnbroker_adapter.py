@@ -1,12 +1,11 @@
 import logging
 import time
-import random
 import json
 from datetime import date as dt_date
 from datetime import timedelta as dt_timedelta
-from datetime import timezone as _dt_timezone
+from datetime import timezone as _dt_timezone, UTC
 from importlib import import_module
-from typing import Any, Optional
+from typing import Any
 
 # Asia/Ho_Chi_Minh = UTC+7, kh��ng đổi (VN không dùng DST).
 _VN_TZ = _dt_timezone(dt_timedelta(hours=7))
@@ -461,7 +460,7 @@ def _pick_latest_bar(frame: pd.DataFrame):
             ts = pd.to_datetime(frame['time'], errors='coerce')
             if ts.notna().any():
                 return frame.loc[ts.idxmax()]
-    except Exception:  # noqa: BLE001 — fallback an toàn
+    except Exception:
         pass
     return frame.iloc[0]
 
@@ -487,7 +486,7 @@ def _fetch_realtime_price_with_quote_class(
                 interval='1D',
                 show_log=False,
             )
-        except Exception as exc:  # noqa: BLE001 — thử lookback rộng hơn
+        except Exception as exc:
             last_error = exc
             frame = None
             continue
@@ -614,7 +613,7 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
             dfs = async_to_sync(_wait_coro)()
         else:
             dfs = raw_res
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error('fetch_price_board_snapshots_batch failed: %s', exc)
         record_provider_failure(normalized_source, str(exc))
         return {}
@@ -777,7 +776,7 @@ def fetch_daily_history(
                                 primary_source, current_source, symbol_upper)
                 return rows
             record_provider_failure(current_source, 'mọi dòng OHLCV đều lỗi')
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_error = exc
             record_provider_failure(current_source, str(exc))
             logger.warning('fetch_daily_history %s failed for %s: %s', current_source, symbol_upper, exc)
@@ -1094,10 +1093,10 @@ def fetch_intraday_tape_history(
                 utc_ts = (
                     ts.to_pydatetime()
                     .replace(tzinfo=_VN_TZ)
-                    .astimezone(_dt_timezone.utc)
+                    .astimezone(UTC)
                 )
             else:
-                utc_ts = ts.to_pydatetime().astimezone(_dt_timezone.utc)
+                utc_ts = ts.to_pydatetime().astimezone(UTC)
 
             side_raw = str(row.get('side') or '').strip().lower()
             if side_raw in _DNSE_SIDE_BUY:
@@ -1342,7 +1341,7 @@ def get_company_financials_response(symbol: str, force: bool = False) -> dict:
 
     try:
         fin = fetch_company_financials(symbol, source='KBS')
-    except Exception as e:  # noqa: BLE001 - vnbroker feed may be unreachable
+    except Exception as e:
         logger.error('get_company_financials_response: fetch failed for %s: %s', symbol, e)
         fin = {'ratio': [], 'income_statement': [], 'balance_sheet': []}
 

@@ -1,14 +1,14 @@
 from django.test import TestCase
 from django.core.cache import cache
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from market_data.models import GlobalSymbolRegistry
 from market_serving.realtime_prefetch import (
     _collect_universe_symbols,
-    REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY,
     REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX,
     DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS,
 )
+from datetime import UTC
 
 
 class RealtimePrefetchUniverseTestCase(TestCase):
@@ -236,8 +236,8 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
 
     def _ict(self, weekday, hour, minute=0):
         # 2026-09-21 la Thu 2. weekday: 0=T2 ... 5=T7, 6=CN.
-        from datetime import datetime, timedelta, timezone as dt_tz
-        base = datetime(2026, 9, 21, 3, 0, tzinfo=dt_tz.utc)  # Mon 10:00 ICT
+        from datetime import datetime, timedelta
+        base = datetime(2026, 9, 21, 3, 0, tzinfo=UTC)  # Mon 10:00 ICT
         delta_days = (weekday - 0) % 7
         target = base + timedelta(days=delta_days)
         target = target.replace(hour=hour - 7, minute=minute)

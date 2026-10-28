@@ -144,7 +144,6 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
             logger.warning("No active symbols found for vnbroker fetch")
             return {'status': 'ok', 'upserted': 0, 'source': 'vnbroker_native'}
         
-        import time as _time
 
         inserted = 0
         updated = 0

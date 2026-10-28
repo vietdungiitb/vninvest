@@ -756,7 +756,6 @@ def refresh_gap_scores(
     Chạy trong background task — không phải trên request path.
     Trả về số row đã update.
     """
-    from django.utils import timezone as _tz
 
     total_updated = 0
     qs = GlobalSymbolCoverage.objects.select_related('registry').filter(dataset=dataset)

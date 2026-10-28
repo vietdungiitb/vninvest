@@ -11,7 +11,7 @@ Graceful stubs return empty/null for features not yet fully native.
 from collections import defaultdict
 from copy import deepcopy
 from decimal import Decimal
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import datetime, time, timedelta, UTC
 from uuid import UUID
 
 from django.db import DatabaseError, connection
@@ -27,8 +27,6 @@ from rest_framework.views import APIView
 from vninvest_core.exceptions import (
     ValidationErrorException,
     NotFoundErrorException,
-    PermissionErrorException,
-    ConflictErrorException,
 )
 
 from advisory.models import AdvisoryRecord
@@ -38,10 +36,8 @@ from vninvest_core.api_envelope import envelope_response
 from identity_access.permissions import IsTenantActive
 from .envelope import adopt_envelope, envelope, envelope_schema, paginated_envelope
 from .global_symbol_planner import create_global_planner_run
-from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
-from .vnbroker_adapter import fetch_symbol_group_members
-from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
+from service_ops.models import CachedSymbolGroup
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 import math
 
@@ -73,7 +69,6 @@ from .default_groups import (
     get_group_lookup,
     get_color_palette,
     get_system_default_group_ids,
-    build_group_payload,
 )
 
 # Backwards compatibility - these are re-exported from default_groups
@@ -3896,14 +3891,14 @@ def _parse_ohlcv_ts(raw):
         return None
     try:
         ms = int(raw)
-        return datetime.fromtimestamp(ms / 1000.0, tz=dt_timezone.utc)
+        return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
     except (TypeError, ValueError, OSError, OverflowError):
         pass
     try:
         from django.utils.dateparse import parse_datetime as _parse_dt
         dt = _parse_dt(str(raw))
         if dt is not None:
-            return dt if dt.tzinfo else dt.replace(tzinfo=dt_timezone.utc)
+            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except (TypeError, ValueError):
         pass
     return None
@@ -3914,7 +3909,7 @@ def _dt_to_unix_ms(dt):
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=dt_timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return int(dt.timestamp() * 1000)
 
 
@@ -3930,7 +3925,7 @@ def _ohlcv_bar_from_intraday(bar):
 
 
 def _ohlcv_bar_from_daily(row):
-    dt = datetime.combine(row.date, time.min).replace(tzinfo=dt_timezone.utc)
+    dt = datetime.combine(row.date, time.min).replace(tzinfo=UTC)
     return {
         'timestamp': _dt_to_unix_ms(dt),
         'open': _to_float(row.open),
@@ -3967,7 +3962,7 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
             current['volume'] += _to_int(row.volume) or 0
     result = []
     for b in buckets:
-        dt = datetime.combine(b['date'], time.min).replace(tzinfo=dt_timezone.utc)
+        dt = datetime.combine(b['date'], time.min).replace(tzinfo=UTC)
         result.append({
             'timestamp': _dt_to_unix_ms(dt),
             'open': _to_float(b['open']),

@@ -12,7 +12,7 @@ Data sources:
 - UnifiedAlert: signal_intelligence domain (will compute from whale alerts later)
 """
 import logging
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from celery import shared_task
