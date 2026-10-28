@@ -1340,7 +1340,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
             else:
                 sync_results[exchange] = {"synced": 0, "symbols": [], "warning": "No symbols returned"}
         except Exception as e:
-            error_msg = f"Failed to sync {exchange}: {str(e)}"
+            error_msg = f"Failed to sync {exchange}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[exchange] = {"synced": 0, "error": str(e)}
@@ -1364,7 +1364,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
                 sync_results[sector] = {"synced": count, "symbols": symbols}
                 logger.info(f"Synced {count} symbols for sector {sector}")
         except Exception as e:
-            error_msg = f"Failed to sync sector {sector}: {str(e)}"
+            error_msg = f"Failed to sync sector {sector}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[sector] = {"synced": 0, "error": str(e)}
@@ -1388,7 +1388,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
                 sync_results[index_name] = {"synced": count, "symbols": symbols}
                 logger.info(f"Synced {count} symbols for index {index_name}")
         except Exception as e:
-            error_msg = f"Failed to sync index {index_name}: {str(e)}"
+            error_msg = f"Failed to sync index {index_name}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[index_name] = {"synced": 0, "error": str(e)}
@@ -1419,7 +1419,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
             )
             logger.info(f"Planner triggered: {planner_result.get('run_id')}")
         except Exception as e:
-            error_msg = f"Failed to trigger planner: {str(e)}"
+            error_msg = f"Failed to trigger planner: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
 
