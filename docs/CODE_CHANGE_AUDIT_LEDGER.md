@@ -1,3 +1,16 @@
+## Entry 416: Post-#299 handoff — trang thai dev + viec con lai cho phien ke tiep
+
+- **Trang thai:** local `dev` = VPS `/opt/vninvest` = `d150e5d` (PR #299 merged). Working tree sach 2 ben. Staging containers healthy, health 200, pgbouncer pool + DNSE key live.
+- **Da xong (Entry 415):** ruff 3281->2171, __date 7/7, BE baselines, 4 pre-existing fix, compose persist.
+- **Viec con lai (theo thu tu uu tien):**
+  1. Slice migration-harness: 22 fail pre-existing trong `user_workspace.tests` (ledger backfill thieu cot kind, schema/recorder leaf, capability count, abort) — pattern nhu fix 0008-provider, moi file 1 fail-before cycle.
+  2. God-file split theo seam plan (audit doc §8): pilot OHLCV truoc, 1 block/PR, giu re-export shim.
+  3. Ruff defer: RUF012/FURB157/BLE001/SIM117/RUF059/F841 — xet tay tung nhom nho, co test cover.
+  4. Build image staging tu dev (pipeline release) de dua code #295/#297/#299 len staging that.
+- **Luu y moi truong:** BE test bat buoc chay tren VPS container (`vninvest-core-api`, DB `vninvest-core-db:5432`), khong chay local (SQLite fail, khong co Postgres/venv BE). Service_ops/user_workspace nang — chay theo file, khong full.
+- **Can bao:** container staging chay image cu (code moi cho release); `/tmp` trong container mat khi recreate; `compose.staging.env` gitignored (sua truc tiep tren VPS).
+
+---
 ## Entry 415: Vet-finish — ruff batch-1/2, __date 7/7, BE baselines, 4 pre-existing fix, compose persist
 
 - **Claim:** `vet-finish` (`feat/vet-finish`). Lessons: L-001 L-002 L-003 L-007 L-008 L-M02 L-A01 L-V02 L-V03 L-G01 L-G02.
