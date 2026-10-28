@@ -46,10 +46,7 @@ export function SocRuntimeKpiPanel() {
       setLoading(true);
       setError("");
       try {
-        const adapter = defaultCoreApiAdapter as unknown as {
-          getSocSloOverview: () => Promise<{ services: SloServiceRow[] }>;
-        };
-        const result = await adapter.getSocSloOverview();
+        const result = await defaultCoreApiAdapter.getSocSloOverview();
         if (!mountedRef.current) return;
         setServices(result.services ?? []);
       } catch (err) {

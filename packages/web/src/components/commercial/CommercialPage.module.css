@@ -276,7 +276,7 @@
 .cm-table-head-cell,
 .cm-table-body-cell,
 .cm-table-row-header {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   padding: 10px var(--space-4, 1rem);
   text-align: left;
   border-bottom: 1px solid var(--border-default);

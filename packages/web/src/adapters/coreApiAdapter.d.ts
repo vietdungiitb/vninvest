@@ -198,6 +198,7 @@ export interface CoreApiAdapter {
   getMailConfig: () => Promise<any>;
   updateMailConfig: (data: any) => Promise<any>;
   sendTestEmail: (data: any) => Promise<any>;
+  getSocSloOverview: () => Promise<any>;
 
   // SOC Screener
   getSocScreenerConfig: () => Promise<any>;
