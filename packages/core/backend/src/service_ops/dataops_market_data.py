@@ -2,22 +2,36 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import timedelta
-import logging
 
 from django.db.models import Count, Exists, Max, OuterRef, Q
-from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
-from market_data.global_symbol_registry import build_system_default_source_ref, sync_system_default_symbol_group
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
-from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
+from market_data.global_symbol_registry import (
+    build_system_default_source_ref,
+    sync_system_default_symbol_group,
+)
+from market_data.models import (
+    GlobalSymbolCoverage,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+)
+from market_data.vnbroker_adapter import (
+    fetch_listing_symbols,
+    fetch_symbol_group_members,
+)
 
 from .domain_configs import MarketDataRuntimeConfig
-from .models import MarketDataParitySnapshot, ServiceConfig, ServiceDefinition, ServiceRunLog
+from .models import (
+    MarketDataParitySnapshot,
+    ServiceConfig,
+    ServiceDefinition,
+    ServiceRunLog,
+)
 from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
-
 
 logger = logging.getLogger(__name__)
 
@@ -717,6 +731,7 @@ def _read_broker_queue_depths() -> dict[str, int]:
     try:
         import redis as redis_module
         from django.conf import settings as dj_settings
+
         from vninvest_core.queue_policy import QUEUE_NAMES
         broker_url = (getattr(dj_settings, 'CELERY_BROKER_URL', None)
                       or getattr(dj_settings, 'REDIS_URL', None))

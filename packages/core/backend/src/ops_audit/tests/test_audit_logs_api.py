@@ -16,14 +16,13 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory, TestCase
 from django.utils import timezone
-
 from rest_framework.test import APIClient, force_authenticate
 
 from identity_access.models import CoreTenant, TenantMember
-from tenant_lifecycle.models import TenantLifecycleEvent
 from ops_audit.views import PartnerAuditLogsView
+from tenant_lifecycle.models import TenantLifecycleEvent
 
 User = get_user_model()
 

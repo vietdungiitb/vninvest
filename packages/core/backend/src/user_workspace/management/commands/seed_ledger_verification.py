@@ -342,7 +342,10 @@ class Command(BaseCommand):
         from django.db import connection
 
         from user_workspace.models import (
-            CashFlow, LedgerEntry, Portfolio, Transaction,
+            CashFlow,
+            LedgerEntry,
+            Portfolio,
+            Transaction,
         )
 
         with transaction.atomic():

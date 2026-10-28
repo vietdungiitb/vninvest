@@ -1,23 +1,22 @@
 from __future__ import annotations
 
+import logging
+import time
 from collections import defaultdict
 from copy import deepcopy
 from datetime import timedelta
-import logging
 from threading import Thread
 from typing import Any
 
+import httpx
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import caches
-from django.utils.dateparse import parse_datetime
 from django.utils import timezone
-import httpx
+from django.utils.dateparse import parse_datetime
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from vninvest_core.exceptions import ValidationErrorException
-import time
 
 from advisory.models import SystemAISettings
 from data_ingest.models import IngestJob, IngestRun
@@ -27,8 +26,10 @@ from market_serving.models import SessionFacts
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from user_workspace.models import Portfolio, Transaction, WatchlistItem
-from vninvest_core.monitoring.queue_metrics import build_scheduler_queue_metrics_snapshot
-
+from vninvest_core.exceptions import ValidationErrorException
+from vninvest_core.monitoring.queue_metrics import (
+    build_scheduler_queue_metrics_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +350,11 @@ def _get_celery_active_queues() -> list[str]:
 
 
 def _run_vnbroker_benchmark_background(payload: dict[str, Any], base_report: dict[str, Any]) -> None:
-    from market_data.vnbroker_benchmark import run_price_board_provider_benchmark, set_latest_price_board_benchmark_report, utc_now_iso
+    from market_data.vnbroker_benchmark import (
+        run_price_board_provider_benchmark,
+        set_latest_price_board_benchmark_report,
+        utc_now_iso,
+    )
 
     try:
         report = run_price_board_provider_benchmark(payload)
@@ -2159,7 +2164,11 @@ class AdminOpsVnbrokerBenchmarkLatestView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        from market_data.vnbroker_benchmark import get_latest_price_board_benchmark_report, set_latest_price_board_benchmark_report, utc_now_iso
+        from market_data.vnbroker_benchmark import (
+            get_latest_price_board_benchmark_report,
+            set_latest_price_board_benchmark_report,
+            utc_now_iso,
+        )
 
         report = get_latest_price_board_benchmark_report()
         if report is None:
@@ -2204,7 +2213,10 @@ class AdminOpsVnbrokerBenchmarkRunView(APIView):
 
     def post(self, request):
         from data_ingest.tasks import run_vnbroker_price_board_benchmark
-        from market_data.vnbroker_benchmark import set_latest_price_board_benchmark_report, utc_now_iso
+        from market_data.vnbroker_benchmark import (
+            set_latest_price_board_benchmark_report,
+            utc_now_iso,
+        )
 
         payload = request.data if isinstance(request.data, dict) else {}
         base_report = {

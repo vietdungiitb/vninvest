@@ -4,14 +4,14 @@ SOC Serializers — DRF model serializers cho 6 core models.
 from rest_framework import serializers
 
 from .models import (
-    ServiceDefinition,
-    ServiceConfig,
-    ServiceHealth,
-    ServiceRunLog,
-    OwnershipRecord,
     ConfigChangeAudit,
+    OwnershipRecord,
     ScrapeMatrix,
     ScrapeMatrixCell,
+    ServiceConfig,
+    ServiceDefinition,
+    ServiceHealth,
+    ServiceRunLog,
 )
 
 

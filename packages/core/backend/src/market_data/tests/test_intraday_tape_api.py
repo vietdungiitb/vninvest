@@ -7,9 +7,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_data.tests.envelope import unwrapped_json
-
 from market_data.models import IntradayTick
+from market_data.tests.envelope import unwrapped_json
 
 User = get_user_model()
 

@@ -104,7 +104,8 @@ class BrokerSyncServiceTests(TestCase):
 
     def test_for_user_missing_config_raises_code(self):
         from user_workspace.broker.sync_service import (
-            BrokerConfigMissingError, BrokerSyncService,
+            BrokerConfigMissingError,
+            BrokerSyncService,
         )
         with self.assertRaises(BrokerConfigMissingError) as ctx:
             BrokerSyncService.for_user(self.user, 'ssi', tenant=self.tenant)

@@ -1,19 +1,23 @@
 from django.urls import path
 
+from .admin_sync_views import (
+    AdminOpsMarketGroupsPreviewView,
+    AdminOpsMarketGroupsSyncView,
+    AdminOpsSystemDefaultsSeedView,
+)
 from .stock_mgmt_native_views import (
+    StockManagementAdvisoryCompDetailView,
+    StockManagementAdvisoryCompRefreshView,
+    StockManagementAdvisoryCompRestoreView,
+    StockManagementAdvisoryCompToggleView,
     StockManagementAIAdvisoryComponentsDeletedView,
     StockManagementAIAdvisoryComponentsGenerateView,
     StockManagementAIAdvisoryObservabilityView,
     StockManagementAIAdvisorySessionView,
     StockManagementAIAdvisorySummaryDetailView,
     StockManagementAIAdvisorySummaryRegenerateView,
-    StockManagementAdvisoryCompDetailView,
-    StockManagementAdvisoryCompRefreshView,
-    StockManagementAdvisoryCompRestoreView,
-    StockManagementAdvisoryCompToggleView,
     StockManagementChartView,
     StockManagementDarkMoneyHistoryView,
-    StockManagementOHLCVBarsView,
     StockManagementDetailView,
     StockManagementFinancialsView,
     StockManagementGroupDetailView,
@@ -22,12 +26,13 @@ from .stock_mgmt_native_views import (
     StockManagementItemDetailView,
     StockManagementNewsAISummaryView,
     StockManagementNewsView,
+    StockManagementOHLCVBarsView,
     StockManagementOrderFlowView,
     StockManagementOverviewView,
-    StockManagementPriceAlertDetailView,
-    StockManagementPriceAlertTriggerView,
-    StockManagementPriceAlertsView,
     StockManagementPortfolioNewsDigestView,
+    StockManagementPriceAlertDetailView,
+    StockManagementPriceAlertsView,
+    StockManagementPriceAlertTriggerView,
     StockManagementSeedView,
     StockManagementStockListView,
     StockManagementSyncView,
@@ -37,11 +42,6 @@ from .stock_mgmt_native_views import (
     StockManagementTrackedSymbolsView,
 )
 from .urls import urlpatterns as shared_urlpatterns
-from .admin_sync_views import (
-    AdminOpsMarketGroupsSyncView,
-    AdminOpsMarketGroupsPreviewView,
-    AdminOpsSystemDefaultsSeedView,
-)
 
 urlpatterns = [
     *shared_urlpatterns,

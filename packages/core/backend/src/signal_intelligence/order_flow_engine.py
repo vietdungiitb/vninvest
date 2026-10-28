@@ -18,8 +18,8 @@ from __future__ import annotations
 import logging
 import math
 import statistics
-from datetime import date, datetime, time, timedelta
 from collections.abc import Sequence
+from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 from django.core.cache import cache

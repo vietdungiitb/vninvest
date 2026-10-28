@@ -44,9 +44,12 @@ def get_active_broker_config(*, strict: bool = False):
     Với `strict=True`, mọi lỗi đọc được ném lại cho `check_kill_switch` chuyển
     thành `KillSwitchIndeterminate` (503) thay vì im lặng cho qua.
     """
-    from .domain_configs.broker import BrokerSystemConfig, get_default_broker_system_config
+    from .domain_configs.broker import (
+        BROKER_CONFIG_SERVICE_KEY,
+        BrokerSystemConfig,
+        get_default_broker_system_config,
+    )
     from .models import ServiceConfig, ServiceDefinition
-    from .domain_configs.broker import BROKER_CONFIG_SERVICE_KEY
 
     try:
         service = ServiceDefinition.objects.filter(
@@ -171,8 +174,8 @@ def _tenant_kill_switch_enabled(tenant_public_id) -> bool:
     Fail-closed: không xác định được thì coi như ĐANG bật, vì đây là nhánh
     quyết định có cho ghi hay không.
     """
-    from .models import ServiceConfig, ServiceDefinition
     from .domain_configs.broker import BROKER_CONFIG_SERVICE_KEY
+    from .models import ServiceConfig, ServiceDefinition
 
     try:
         service = ServiceDefinition.objects.filter(
@@ -198,8 +201,8 @@ def _tenant_kill_switch_enabled(tenant_public_id) -> bool:
 
 def _provider_kill_switch_enabled(provider: str) -> bool:
     """Provider có bật kill-switch riêng không? Fail-closed như trên."""
-    from .models import ServiceConfig, ServiceDefinition
     from .domain_configs.broker import BROKER_CONFIG_SERVICE_KEY
+    from .models import ServiceConfig, ServiceDefinition
 
     try:
         service = ServiceDefinition.objects.filter(

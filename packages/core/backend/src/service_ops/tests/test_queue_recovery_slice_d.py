@@ -8,12 +8,16 @@ Covers:
 - reconcile + drift-check pass end-to-end với queue mới
 """
 import inspect
-
-from django.test import TestCase
-from django.core.management import call_command
 from io import StringIO
 
-from vninvest_core.queue_policy import CELERY_TASK_QUEUES, QUEUE_NAMES, SCHEDULER_QUEUE_MAP
+from django.core.management import call_command
+from django.test import TestCase
+
+from vninvest_core.queue_policy import (
+    CELERY_TASK_QUEUES,
+    QUEUE_NAMES,
+    SCHEDULER_QUEUE_MAP,
+)
 
 
 class SchedulerQueueSplitTest(TestCase):

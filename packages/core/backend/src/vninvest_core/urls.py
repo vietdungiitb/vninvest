@@ -2,26 +2,29 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
-
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
 from . import views_health
-from .legacy_proxy import legacy_proxy_view
 
 # API-01 R1: 4 handler lỗi cấp Django. Xem giải thích dài ở cuối file.
 # `exceptions.py` không import `urls`, nên đặt ở đầu file không gây vòng import.
 from .exceptions import (
     problem_400 as _problem_400,
+)
+from .exceptions import (
     problem_403 as _problem_403,
+)
+from .exceptions import (
     problem_404 as _problem_404,
+)
+from .exceptions import (
     problem_500 as _problem_500,
 )
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-
+from .legacy_proxy import legacy_proxy_view
 
 
 @extend_schema(

@@ -1,10 +1,12 @@
 # Location: packages/core/backend/src/identity_access/management/commands/rotate_mail_credential_key.py
+import logging
 import os
+
+from cryptography.fernet import Fernet
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from cryptography.fernet import Fernet
+
 from identity_access.models import SystemMailConfig
-import logging
 
 logger = logging.getLogger(__name__)
 

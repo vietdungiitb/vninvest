@@ -1,8 +1,8 @@
 import base64
-from datetime import date
-from email.utils import formataddr
 import json
 import logging
+from datetime import date
+from email.utils import formataddr
 
 import httpx
 from django.conf import settings
@@ -12,7 +12,6 @@ from django.utils import timezone
 from .gmail_service import send_gmail_api_message
 from .google_oauth_service import refresh_google_access_token
 from .models import SystemMailConfig
-
 
 logger = logging.getLogger(__name__)
 

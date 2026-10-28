@@ -9,11 +9,12 @@ Exposed endpoints:
 """
 
 from django.urls import path
+
 from ops_audit.views_parity import (
-    ParityStatusView,
-    ParityReportListView,
     ParityLogListView,
     ParityPhaseCheckpointSignOffView,
+    ParityReportListView,
+    ParityStatusView,
 )
 
 app_name = 'ops_audit_parity'

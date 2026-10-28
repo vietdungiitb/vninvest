@@ -15,8 +15,20 @@ from vninvest_core.api_envelope import envelope_response
 from vninvest_core.pagination import CoreCursorPagination
 
 from .envelope import envelope
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, TenantSettings, UserProfile, TenantCustomRole
-from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
+from .models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    PATAuditLog,
+    TenantCustomRole,
+    TenantSettings,
+    UserProfile,
+)
+from .permissions import (
+    IsTenantActive,
+    require_human_session,
+    require_pat_scopes_or_human_session,
+)
 from .schema import (
     IssuedCorePATSerializer,
     PartnerPATUsageSerializer,
@@ -30,9 +42,14 @@ from .schema import (
     UserProfilePayloadSerializer,
     UserProfileWithTenantsSerializer,
 )
-from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from .utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 logger = logging.getLogger(__name__)
+from drf_spectacular.openapi import OpenApiTypes
+
 from .serializers import (
     CorePATCredentialSerializer,
     CoreServiceAccountSerializer,
@@ -40,12 +57,9 @@ from .serializers import (
     PartnerPATIssueSerializer,
     PartnerPATRevokeSerializer,
     PartnerPATRotateSerializer,
-    TenantSettingsSerializer,
     TenantCustomRoleSerializer,
+    TenantSettingsSerializer,
 )
-from drf_spectacular.openapi import OpenApiTypes
-
-
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 PARTNER_SCOPE_MANAGE_TENANT = 'manage_tenant'
@@ -334,6 +348,7 @@ class UserProfileView(APIView):
             },
         )
         from django.db.models import Q
+
         from .views.helpers import _build_abilities, _tenant_payload
         user_tenants = CoreTenant.objects.filter(Q(owner_user=user) | Q(members__user=user)).distinct()
         tenant = user_tenants.first()
@@ -862,7 +877,9 @@ class PartnerRoleDetailView(APIView):
         _require_tenant_permission(request, 'settings:write')
         role = self._get_role(request, role_id)
         if role.is_system:
-            from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
+            from rest_framework.exceptions import (
+                PermissionDenied as DRFPermissionDenied,
+            )
             raise DRFPermissionDenied('Không thể sửa vai trò hệ thống.')
         serializer = TenantCustomRoleSerializer(role, data=request.data, partial=True, tenant=role.tenant)
         serializer.is_valid(raise_exception=True)
@@ -888,7 +905,9 @@ class PartnerRoleDetailView(APIView):
         _require_tenant_permission(request, 'settings:write')
         role = self._get_role(request, role_id)
         if role.is_system:
-            from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
+            from rest_framework.exceptions import (
+                PermissionDenied as DRFPermissionDenied,
+            )
             raise DRFPermissionDenied('Không thể xoá vai trò hệ thống.')
         # Reassign members back to viewer before deleting
         role.members.update(custom_role=None)

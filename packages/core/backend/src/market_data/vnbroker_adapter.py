@@ -1,22 +1,23 @@
+import json
 import logging
 import time
-import json
 from datetime import date as dt_date
 from datetime import timedelta as dt_timedelta
-from datetime import timezone as _dt_timezone, UTC
+from datetime import timezone as _dt_timezone
 from importlib import import_module
 from typing import Any
 
 # Asia/Ho_Chi_Minh = UTC+7, kh��ng đổi (VN không dùng DST).
 _VN_TZ = _dt_timezone(dt_timedelta(hours=7))
 
-import pandas as pd
 import httpx
-from django.core.cache import cache
+import pandas as pd
 from django.conf import settings
-from django.db.utils import ProgrammingError, OperationalError
+from django.core.cache import cache
+from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
 from django.utils.timezone import now
+
 from .models import VnbrokerRuntimeConfig
 from .vnbroker_provider_health import (
     get_soc_vnbroker_config,
@@ -848,7 +849,9 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
     if group_id.startswith('custom_'):
         slug = group_id[len('custom_'):]
         try:
-            from service_ops.models import CustomSymbolGroup  # lazy import to avoid circular dep
+            from service_ops.models import (
+                CustomSymbolGroup,  # lazy import to avoid circular dep
+            )
             custom_group = CustomSymbolGroup.objects.get(slug=slug, is_active=True)
             symbols = custom_group.clean_symbols()
             if symbols:
@@ -929,8 +932,9 @@ def fetch_intraday_ohlcv(symbol: str, timeframe: str = '1H', days: int = 180) ->
     Fetch intraday OHLCV bars from native IntradayBar model.
     Phase 2: Direct DB query (no vnbroker API call yet).
     """
-    from .models import IntradayBar
     from datetime import timedelta
+
+    from .models import IntradayBar
     
     symbol_upper = symbol.upper()
     qs = IntradayBar.objects.filter(
@@ -1093,10 +1097,10 @@ def fetch_intraday_tape_history(
                 utc_ts = (
                     ts.to_pydatetime()
                     .replace(tzinfo=_VN_TZ)
-                    .astimezone(UTC)
+                    .astimezone(_dt_timezone.utc)
                 )
             else:
-                utc_ts = ts.to_pydatetime().astimezone(UTC)
+                utc_ts = ts.to_pydatetime().astimezone(_dt_timezone.utc)
 
             side_raw = str(row.get('side') or '').strip().lower()
             if side_raw in _DNSE_SIDE_BUY:

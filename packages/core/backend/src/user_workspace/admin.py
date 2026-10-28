@@ -16,14 +16,13 @@ from .models import (
     ScreenerRunHistory,
     ScreenerSchedule,
     SubAccount,
-    Transaction,
     TrackedSymbol,
+    Transaction,
     UserBrokerConfig,
     ValuationSnapshot,
     Watchlist,
-WatchlistItem,
+    WatchlistItem,
 )
-
 
 # ---------------------------------------------------------------------------
 # Inlines

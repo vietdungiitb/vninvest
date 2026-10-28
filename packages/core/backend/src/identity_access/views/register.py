@@ -7,12 +7,30 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.exceptions import APIException
 
-from ..models import CoreTenant, UserProfile, CoreServiceAccount, OutboxEvent, EmailVerificationToken
+from vninvest_core.exceptions import (
+    ConflictErrorException,
+    InternalErrorException,
+    RateLimitErrorException,
+    ValidationErrorException,
+)
+
+from ..models import (
+    CoreServiceAccount,
+    CoreTenant,
+    EmailVerificationToken,
+    OutboxEvent,
+    UserProfile,
+)
 from ..schema import F3SuccessResponseSerializer
 from ..security_utils import (
     atomic_bump,
@@ -25,15 +43,7 @@ from ..security_utils import (
     peek_rate_limit,
     value_bucket,
 )
-from vninvest_core.exceptions import (
-    ValidationErrorException,
-    ConflictErrorException,
-    RateLimitErrorException,
-    InternalErrorException,
-)
 from .helpers import success_response
-from drf_spectacular.openapi import OpenApiTypes
-
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -132,6 +142,7 @@ def register_view(request):
     Upgraded SaaS Native User Registration with 3-Layer Spam Shield and Transactional Outbox.
     """
     from django.db import transaction
+
     from ..serializers import SaaSRegisterSerializer
 
     # A5: was `request.META['HTTP_X_FORWARDED_FOR'].split(',')[0]`, i.e. the

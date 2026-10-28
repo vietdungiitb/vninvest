@@ -1,12 +1,12 @@
 import json
 import os
 import time
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from pathlib import Path
 
 
 def _now_isoformat():
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _health_file(default_path):

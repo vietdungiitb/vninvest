@@ -2,15 +2,16 @@
 Tests for StockManagementOHLCVBarsView — cursor-paginated OHLCV bars endpoint.
 GET /api/stock-management/stocks/<symbol>/bars/
 """
-from datetime import date, datetime, time, timedelta, UTC
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_data.tests.envelope import unwrapped_json
 from market_data.models import DailyPrice, IntradayBar, StockProfile
+from market_data.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -214,7 +215,7 @@ class OHLCVBarsCursorBeforeTestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def _ts_for_date(self, d):
-        dt = datetime.combine(d, time.min).replace(tzinfo=UTC)
+        dt = datetime.combine(d, time.min).replace(tzinfo=dt_timezone.utc)
         return int(dt.timestamp() * 1000)
 
     def test_cursor_before_returns_bars_before_timestamp(self):
@@ -286,7 +287,7 @@ class OHLCVBarsCursorAfterTestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def _ts_for_date(self, d):
-        dt = datetime.combine(d, time.min).replace(tzinfo=UTC)
+        dt = datetime.combine(d, time.min).replace(tzinfo=dt_timezone.utc)
         return int(dt.timestamp() * 1000)
 
     def test_cursor_after_returns_bars_after_timestamp(self):
@@ -334,7 +335,7 @@ class OHLCVBarsWindowModeTestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def _ts_for_date(self, d):
-        dt = datetime.combine(d, time.min).replace(tzinfo=UTC)
+        dt = datetime.combine(d, time.min).replace(tzinfo=dt_timezone.utc)
         return int(dt.timestamp() * 1000)
 
     def test_window_mode_returns_bars_in_range(self):
@@ -378,7 +379,7 @@ class OHLCVBarsIntradayTestCase(TestCase):
             industry='Banking',
             status=StockProfile.StatusChoices.ACTIVE,
         )
-        base_dt = datetime(2024, 5, 10, 9, 0, 0, tzinfo=UTC)
+        base_dt = datetime(2024, 5, 10, 9, 0, 0, tzinfo=dt_timezone.utc)
         for i in range(8):
             _make_intraday_bar('ACB', '1H', base_dt + timedelta(hours=i), c=24.0 + i * 0.1)
 

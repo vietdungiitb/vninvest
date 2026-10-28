@@ -12,8 +12,28 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import (analytics, audit, billing, broker, dataops, dataops_stream, matrix, overview,
-overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, staff, symbol_groups, usage, users, vnbroker)
+from .views import (
+  analytics,
+  audit,
+  billing,
+  broker,
+  dataops,
+  dataops_stream,
+  matrix,
+  overview,
+  overview_stream,
+  prefetch,
+  screener,
+  signals,
+  signals_rules,
+  signals_stream,
+  signals_triage,
+  staff,
+  symbol_groups,
+  usage,
+  users,
+  vnbroker,
+)
 
 # Overview endpoints (12)
 urlpatterns = [

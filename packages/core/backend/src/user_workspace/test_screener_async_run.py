@@ -14,8 +14,8 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
-from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
+from user_workspace.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -161,8 +161,9 @@ class ScreenerAsyncRunTestCase(TestCase):
 
     def test_throttle_rate_limit(self):
         # R5.1: override rate 3/min → 4th request → 429 (F-BE-04: throttle now uses get_rate())
-        from user_workspace.portfolio_analytics_views import ScreenerRunThrottle
         from django.core.cache import cache as throttle_cache
+
+        from user_workspace.portfolio_analytics_views import ScreenerRunThrottle
 
         throttle_cache.clear()
         dj_cache.clear()

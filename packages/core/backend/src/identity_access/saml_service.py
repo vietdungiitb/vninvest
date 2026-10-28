@@ -18,13 +18,9 @@ import base64
 import logging
 import os
 import uuid
-import base64
-import logging
-import os
-import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from lxml import etree
 
@@ -164,7 +160,7 @@ class SAMLService:
             (request_id, redirect_url, encoded_request)
         """
         request_id = f'_id-{uuid.uuid4().hex}'
-        issue_instant = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+        issue_instant = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
         nsmap = {
             'saml2p': SAML2P_NS,
@@ -291,7 +287,7 @@ class SAMLService:
                     if expiry:
                         try:
                             expiry_dt = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
-                            if datetime.now(UTC) > expiry_dt + self.clock_skew:
+                            if datetime.now(timezone.utc) > expiry_dt + self.clock_skew:
                                 raise SAMLParseError('SAML Response SubjectConfirmation has expired')
                         except (ValueError, TypeError):
                             pass
@@ -301,7 +297,7 @@ class SAMLService:
         if conditions_el is not None:
             not_before = conditions_el.get('NotBefore', '')
             not_on_or_after = conditions_el.get('NotOnOrAfter', '')
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             if not_before:
                 try:
                     nb_dt = datetime.fromisoformat(not_before.replace('Z', '+00:00'))

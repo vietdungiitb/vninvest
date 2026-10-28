@@ -7,21 +7,19 @@ Mọi write ghi ops_audit.AuditEvent. Không migration, không đụng B+A/abili
 """
 from django.contrib.auth.models import User
 from django.db.models import Q
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from vninvest_core.client_ip import get_client_ip
-
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.client_ip import get_client_ip
 from vninvest_core.pagination import StandardPageNumberPagination
 
 from ..envelope import envelope, paginated_envelope
 from .base import SOCBaseView
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 VALID_PLANS = {c for c, _ in CoreTenant.PlanChoices.choices}
 VALID_STATUSES = {'active', 'suspended', 'deprovisioned'}

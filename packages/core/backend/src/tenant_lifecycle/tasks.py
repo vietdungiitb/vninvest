@@ -12,7 +12,6 @@ from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from tenant_lifecycle.models import TenantLifecycleEvent
 
-
 logger = logging.getLogger(__name__)
 
 

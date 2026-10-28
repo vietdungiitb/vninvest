@@ -10,19 +10,17 @@ import json
 import time
 
 from django.core.signing import TimestampSigner
-from vninvest_core.client_ip import get_client_ip
-
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.client_ip import get_client_ip
 
 from ..envelope import envelope
 from .base import SOCBaseView
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 SIGN_SALT = 'staff-switch-v1'
 TOKEN_TTL_SECONDS = 30 * 60

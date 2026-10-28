@@ -22,7 +22,7 @@ thiếu `opening_balance` ⇒ `nav = None` + `nav_reason` khác rỗng.
 """
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 #: Đổi khi ngữ nghĩa thuật toán NAV đổi. Nằm trong `ValuationSnapshot` và trong
 #: `meta.calculation_version` để con số trả về luôn truy vết được bằng quy tắc nào.

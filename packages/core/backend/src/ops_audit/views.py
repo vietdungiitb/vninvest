@@ -1,11 +1,11 @@
 from rest_framework import generics, permissions
 
 from identity_access.permissions import IsCoreOperator, IsTenantActive
-from vninvest_core.pagination import CoreCursorPagination, AuditCursorPagination
+from tenant_lifecycle.models import TenantLifecycleEvent
+from vninvest_core.pagination import AuditCursorPagination, CoreCursorPagination
 
 from .models import AuditEvent
 from .serializers import AuditEventSerializer, TenantLifecycleEventSerializer
-from tenant_lifecycle.models import TenantLifecycleEvent
 
 
 class AuditLogListView(generics.ListAPIView):

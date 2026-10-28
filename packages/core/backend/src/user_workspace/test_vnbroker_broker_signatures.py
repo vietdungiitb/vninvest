@@ -48,6 +48,7 @@ class BrokerCallingConventionTests(SimpleTestCase):
 
     def test_ssi_called_with_kwargs_and_authenticate(self):
         from unittest.mock import MagicMock
+
         from user_workspace.broker import ssi as ssi_schema
 
         client = MagicMock()
@@ -68,6 +69,7 @@ class BrokerCallingConventionTests(SimpleTestCase):
     def test_ssi_wrong_method_name_fails(self):
         """Mô phỏng C1: stub thiếu method → AttributeError, không im lặng."""
         from unittest.mock import MagicMock
+
         from user_workspace.broker import ssi as ssi_schema
 
         client = MagicMock(spec=[])  # không có method nào
@@ -81,6 +83,7 @@ class BrokerCallingConventionTests(SimpleTestCase):
 
     def test_tcbs_unverified_never_claims_connected(self):
         from unittest.mock import MagicMock
+
         from user_workspace.broker import tcbs as tcbs_schema
 
         sentinel = MagicMock()

@@ -20,7 +20,6 @@ from django.test import TestCase, TransactionTestCase
 
 from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
 
-
 User = get_user_model()
 
 MIGRATION_MODULE = 'identity_access.migrations.0028_coreserviceaccount_uniq_core_service_account_tenant_name'

@@ -32,8 +32,8 @@ còn 5 chỗ cùng mẫu (`:79 :108 :139 :186 :282`) — Owner đã quyết đ�
 vì sửa chúng sẽ đổi response của 5 endpoint partner đang chạy từ 200-rỗng sang
 403. Không được coi test file này là bằng chứng cho partner namespace.
 """
-from datetime import date
 import inspect
+from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase

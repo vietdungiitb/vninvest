@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
+
 # P1-5: `status` phai co o module scope. Hai dong trong
 # `PortfolioScreenerRuleDetailView.put` dung `status.HTTP_400_BAD_REQUEST`
 # nhung chi co `permissions` duoc import o day; `status` chi duoc import
@@ -30,8 +31,10 @@ from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from vninvest_core.api_envelope import envelope_response
+
 from .endpoint_safety import UnsafeEndpointError, assert_safe_outbound_url
-from .permissions import WorkspacePermission
+from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
 from .ledger import (
     build_meta,
     get_cached_ledger,
@@ -40,8 +43,7 @@ from .ledger import (
     portfolio_valuation,
 )
 from .models import Portfolio
-from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
-from vninvest_core.api_envelope import envelope_response
+from .permissions import WorkspacePermission
 
 
 class AIEndpointProbeThrottle(BaseThrottle):
@@ -1318,6 +1320,7 @@ class PortfolioAICommandCenterView(APIView):
         expected_updated_at = payload.get('expected_updated_at')
         if expected_updated_at is not None and str(expected_updated_at).strip() != '':
             from datetime import datetime as _dt
+
             from django.utils import timezone as _tz
             try:
                 _expected = _dt.fromisoformat(str(expected_updated_at).strip())
@@ -1543,6 +1546,8 @@ class PortfolioAICommandCenterView(APIView):
         # R0.2: PUT cung tra canonical nhu GET (client luon thay v2 day du).
         from advisory.advisory_helpers import (
             _parse_prompt_config as _parse_pc_put,
+        )
+        from advisory.advisory_helpers import (
             build_ai_readiness as _build_readiness_put,
         )
         # M2: `ai_ready` lay tu `build_ai_readiness` — truoc day cong thuc rieng
@@ -1728,8 +1733,8 @@ class PortfolioAICommandCenterPolicyView(APIView):
         })
 
     def put(self, request):
-        from vninvest_core.exceptions import ValidationErrorException
         from advisory.models import AIAuditLog
+        from vninvest_core.exceptions import ValidationErrorException
 
         config = self._get_config()
         if config is None:
@@ -1966,8 +1971,8 @@ class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
     required_workspace_permission = 'portfolio_write'
 
     def post(self, request):
-        from advisory.models import SystemAISettings, UserAICredential
         from advisory.advisory_helpers import _append_prompt_config_history
+        from advisory.models import SystemAISettings, UserAICredential
         from vninvest_core.exceptions import ValidationErrorException
 
         payload = request.data if isinstance(request.data, dict) else {}
@@ -2040,9 +2045,10 @@ class PortfolioAICommandCenterTestView(APIView):
     throttle_classes = [AIEndpointProbeThrottle]
 
     def post(self, request):
-        from vninvest_core.exceptions import ValidationErrorException
-        from advisory.models import AIAuditLog
         import httpx
+
+        from advisory.models import AIAuditLog
+        from vninvest_core.exceptions import ValidationErrorException
 
         payload = request.data if isinstance(request.data, dict) else {}
         provider = str(payload.get('ai_provider') or '').strip().lower()
@@ -2140,7 +2146,7 @@ class PortfolioAICommandCenterTestView(APIView):
         # Resolve key: ưu tiên payload, fallback UserAICredential, fallback SystemAISettings
         resolved_key = api_key
         if not resolved_key:
-            from advisory.models import UserAICredential, SystemAISettings
+            from advisory.models import SystemAISettings, UserAICredential
             try:
                 user_cred = UserAICredential.objects.get(user=request.user)
                 if user_cred.encrypted_api_key:
@@ -3153,9 +3159,10 @@ class PortfolioAIAdvisoryListView(APIView):
     MAX_ITEMS = 200
 
     def get(self, request):
+        from django.utils import timezone
+
         from advisory.models import AdvisoryRecord
         from advisory.serializers import AdvisoryRecordSerializer
-        from django.utils import timezone
 
         symbol = str(request.query_params.get('symbol') or '').strip().upper()
         session_date = timezone.localdate()
@@ -3205,9 +3212,14 @@ class PortfolioAIAdvisorySymbolStatsView(APIView):
     MAX_SYMBOLS = 200
 
     def get(self, request):
-        from advisory.models import AdvisoryRecord
-        from advisory.signal_norm import normalize_confidence, normalize_signal, signal_to_side
         from django.utils import timezone
+
+        from advisory.models import AdvisoryRecord
+        from advisory.signal_norm import (
+            normalize_confidence,
+            normalize_signal,
+            signal_to_side,
+        )
 
         session_date = timezone.localdate()
 
@@ -3296,8 +3308,8 @@ def _parse_scan_params(request):
     Returns (has_params, sort, order, page, limit, include_ai, error_response).
     error_response is a DRF Response (400) when validation fails, else None.
     """
-    from rest_framework.response import Response as _Response
     from rest_framework import status as _status
+    from rest_framework.response import Response as _Response
 
     def _bad(msg):
         return _Response({'detail': msg}, status=_status.HTTP_400_BAD_REQUEST)
@@ -3358,7 +3370,6 @@ def _parse_scan_params(request):
 
 
 from django.conf import settings
-
 from rest_framework.throttling import UserRateThrottle
 
 
@@ -3456,18 +3467,22 @@ def _compute_scan(conditions, session_date, include_ai):
     """P1.2: full scan compute extracted from PortfolioScreenerRuleRunView.post
     (P1.4 will reuse it from the celery task). Returns
     (matched_unsorted, total_scanned, missing_counts_dict, window_days)."""
-    from market_serving.models import SymbolSnapshot, SessionFacts
-    from market_data.models import DailyPrice
-    from market_data.models import StockProfile
-    from market_data.vnbroker_adapter import get_company_financials_response
-    from user_workspace.screener_helpers import (
-        _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics,
-        _required_lookback_days, _lookback_calendar_days,
-    )
-    from user_workspace.ai_advisory_helpers import compute_ai_advisory
-    from django.core.cache import cache as _fin_cache
+    from collections import Counter, defaultdict
     from datetime import timedelta
-    from collections import defaultdict, Counter
+
+    from django.core.cache import cache as _fin_cache
+
+    from market_data.models import DailyPrice, StockProfile
+    from market_data.vnbroker_adapter import get_company_financials_response
+    from market_serving.models import SessionFacts, SymbolSnapshot
+    from user_workspace.ai_advisory_helpers import compute_ai_advisory
+    from user_workspace.screener_helpers import (
+        _apply_screener_condition,
+        _compute_fundamental_metrics,
+        _lookback_calendar_days,
+        _required_lookback_days,
+        _screener_build_technical,
+    )
 
     # P1.3: dynamic window from the rule's condition fields (D7 clamp [35, 90])
     # instead of a fixed 90 calendar days.
@@ -3661,11 +3676,13 @@ class PortfolioScreenerRuleRunView(APIView):
         if param_error is not None:
             return param_error
 
+        from datetime import date
+
         from market_serving.models import SymbolSnapshot
         from user_workspace.screener_helpers import (
-            _required_lookback_days, _lookback_calendar_days,
+            _lookback_calendar_days,
+            _required_lookback_days,
         )
-        from datetime import date
 
         latest_snap = SymbolSnapshot.objects.order_by('-session_date').first()
         if not latest_snap:
@@ -3690,9 +3707,13 @@ class PortfolioScreenerRuleRunView(APIView):
 
         # P1.2: result cache (Option B) — key has no sort/order; sorting and
         # paging apply to the cached full list below. TTL from settings (D4).
-        from django.core.cache import cache as _scan_cache
         from django.conf import settings as _scan_settings
-        from user_workspace.screener_helpers import _required_lookback_days, _lookback_calendar_days
+        from django.core.cache import cache as _scan_cache
+
+        from user_workspace.screener_helpers import (
+            _lookback_calendar_days,
+            _required_lookback_days,
+        )
         _scan_ttl = getattr(_scan_settings, "SCREENER_SCAN_CACHE_TTL", _SCAN_CACHE_TTL)
         # TEN-06: bind the scan cache to a tenant so a user in two tenants
         # cannot read the other tenant's cached scan result.
@@ -3727,9 +3748,10 @@ class PortfolioScreenerRuleRunView(APIView):
             window_days = _lookback_calendar_days(_required_lookback_days(conditions))
         else:
             # P1.4: async branch — cache miss + large universe or ?async=1 → 202 queued
-            from django.core.cache import cache as _job_cache
-            from django.conf import settings as _job_settings
             import uuid
+
+            from django.conf import settings as _job_settings
+            from django.core.cache import cache as _job_cache
             _sync_limit = getattr(_job_settings, "SCREENER_SYNC_SYMBOL_LIMIT", _SCREENER_SYNC_SYMBOL_LIMIT_DEFAULT)
             # Universe size check (cheap count, not full scan)
             try:
@@ -3927,8 +3949,9 @@ class PortfolioScreenerRuleRunStatusView(APIView):
     throttle_classes = [ScreenerStatusThrottle]
 
     def get(self, request, pk):
-        from user_workspace.models import ScreenerRule
         from django.core.cache import cache as _cache
+
+        from user_workspace.models import ScreenerRule
 
         tenant = getattr(request, "tenant", None)
         try:
@@ -4451,8 +4474,8 @@ class ScreenerHistoryBacktestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        from user_workspace.models import ScreenerRunHistory
         from market_data.models import DailyPrice
+        from user_workspace.models import ScreenerRunHistory
 
         tenant = getattr(request, 'tenant', None)
         try:

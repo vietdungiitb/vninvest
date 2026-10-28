@@ -6,10 +6,10 @@ IsCoreOperator: Only allow staff/superuser (operator-level access).
 """
 import logging
 
-from identity_access.models import CorePATCredential, CoreTenant
-
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
+
+from identity_access.models import CorePATCredential, CoreTenant
 
 logger = logging.getLogger(__name__)
 

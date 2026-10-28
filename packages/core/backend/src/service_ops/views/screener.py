@@ -13,14 +13,15 @@ POST /api/soc/screener/manual-scan/          — trigger manual scan
 """
 import uuid
 
-from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
-from drf_spectacular.utils import extend_schema, extend_schema_view
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from signal_intelligence.models import UnifiedAlert
+from vninvest_core.api_envelope import envelope_response
 
 from ..domain_configs import ScreenerDomainConfig
 from ..envelope import envelope, paginated_envelope
@@ -30,7 +31,6 @@ from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..serializers import ServiceConfigSerializer
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
-from vninvest_core.api_envelope import envelope_response
 
 
 class ScreenerConfigPayloadSerializer(serializers.Serializer):

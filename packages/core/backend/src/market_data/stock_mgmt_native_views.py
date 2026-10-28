@@ -8,10 +8,12 @@ handlers so `/api` and `/core/v1` stay aligned while tenant gating remains enfor
 All views require IsAuthenticated; symbol params are always uppercased.
 Graceful stubs return empty/null for features not yet fully native.
 """
+import math
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
-from datetime import datetime, time, timedelta, UTC
 from uuid import UUID
 
 from django.db import DatabaseError, connection
@@ -24,22 +26,21 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.exceptions import (
-    ValidationErrorException,
-    NotFoundErrorException,
-)
-
 from advisory.models import AdvisoryRecord
 from advisory.serializers import AdvisoryRecordSerializer
-
-from vninvest_core.api_envelope import envelope_response
 from identity_access.permissions import IsTenantActive
+from service_ops.models import CachedSymbolGroup
+from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.exceptions import (
+    NotFoundErrorException,
+    ValidationErrorException,
+)
+
 from .envelope import adopt_envelope, envelope, envelope_schema, paginated_envelope
 from .global_symbol_planner import create_global_planner_run
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
-from service_ops.models import CachedSymbolGroup
-from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
-import math
+
 
 def clean_nan(obj):
     if isinstance(obj, dict):
@@ -65,9 +66,9 @@ def clean_nan(obj):
     return obj
 
 from .default_groups import (
+    get_color_palette,
     get_default_groups,
     get_group_lookup,
-    get_color_palette,
     get_system_default_group_ids,
 )
 
@@ -1271,6 +1272,7 @@ def _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_rat
 
 from vninvest_core.pagination import CoreCursorPagination
 
+
 class StockManagementStockListCursorPagination(CoreCursorPagination):
     ordering = 'symbol'
     page_size = 100
@@ -1298,6 +1300,7 @@ class StockManagementStockListView(APIView):
             search_upper = search.upper()
             if not StockProfile.objects.filter(symbol=search_upper).exists():
                 from django.core.cache import cache
+
                 from market_data.vnbroker_adapter import fetch_listing_symbols
                 try:
                     # Cache listing symbols for 1 hour to avoid repeated provider calls
@@ -3589,9 +3592,11 @@ def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
     created_group_pks = set()
     added_symbols = 0
 
-    from .vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
-    from market_data.models import StockProfile
     import logging
+
+    from market_data.models import StockProfile
+
+    from .vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
     logger = logging.getLogger(__name__)
 
     # ── Ensure StockProfiles are populated ──
@@ -3891,14 +3896,14 @@ def _parse_ohlcv_ts(raw):
         return None
     try:
         ms = int(raw)
-        return datetime.fromtimestamp(ms / 1000.0, tz=UTC)
+        return datetime.fromtimestamp(ms / 1000.0, tz=dt_timezone.utc)
     except (TypeError, ValueError, OSError, OverflowError):
         pass
     try:
         from django.utils.dateparse import parse_datetime as _parse_dt
         dt = _parse_dt(str(raw))
         if dt is not None:
-            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+            return dt if dt.tzinfo else dt.replace(tzinfo=dt_timezone.utc)
     except (TypeError, ValueError):
         pass
     return None
@@ -3909,7 +3914,7 @@ def _dt_to_unix_ms(dt):
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
+        dt = dt.replace(tzinfo=dt_timezone.utc)
     return int(dt.timestamp() * 1000)
 
 
@@ -3925,7 +3930,7 @@ def _ohlcv_bar_from_intraday(bar):
 
 
 def _ohlcv_bar_from_daily(row):
-    dt = datetime.combine(row.date, time.min).replace(tzinfo=UTC)
+    dt = datetime.combine(row.date, time.min).replace(tzinfo=dt_timezone.utc)
     return {
         'timestamp': _dt_to_unix_ms(dt),
         'open': _to_float(row.open),
@@ -3962,7 +3967,7 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
             current['volume'] += _to_int(row.volume) or 0
     result = []
     for b in buckets:
-        dt = datetime.combine(b['date'], time.min).replace(tzinfo=UTC)
+        dt = datetime.combine(b['date'], time.min).replace(tzinfo=dt_timezone.utc)
         result.append({
             'timestamp': _dt_to_unix_ms(dt),
             'open': _to_float(b['open']),

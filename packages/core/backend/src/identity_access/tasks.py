@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3, default_retry_delay=300)
 def generate_and_deliver_report(self, report_id, is_test=False):
     """Generate report content and deliver via email."""
-    from identity_access.models import ScheduledReport, ReportDeliveryLog
     from identity_access.mail_service import send_report_email
+    from identity_access.models import ReportDeliveryLog, ScheduledReport
 
     try:
         report = ScheduledReport.objects.get(id=report_id)
@@ -69,7 +69,11 @@ def generate_and_deliver_report(self, report_id, is_test=False):
 def _generate_report_content(report):
     """Generate HTML and/or CSV content based on report type and format."""
     from commercial.models import Invoice, QuotaHistory
-    from identity_access.models import CorePATCredential, CoreServiceAccount, TenantMember
+    from identity_access.models import (
+        CorePATCredential,
+        CoreServiceAccount,
+        TenantMember,
+    )
 
     tenant = report.tenant
     today = date.today()
@@ -368,7 +372,13 @@ def deprovision_tenant_async(self, tenant_public_id: str):
     and autoretry_for makes a transient DB error recoverable instead of terminal.
     """
     from django.db import transaction
-    from identity_access.models import CoreTenant, TenantMember, TenantWebhookConfig, CorePATCredential
+
+    from identity_access.models import (
+        CorePATCredential,
+        CoreTenant,
+        TenantMember,
+        TenantWebhookConfig,
+    )
 
     try:
         tenant = CoreTenant.objects.get(public_id=tenant_public_id)
@@ -419,6 +429,7 @@ def flush_pat_audit_log(self):
     Entries whose PAT/tenant can no longer be resolved are dropped.
     """
     from django.core.cache import cache
+
     from identity_access.models import CorePATCredential, CoreTenant, PATAuditLog
 
     try:
@@ -505,8 +516,8 @@ def cross_ref_pat_audit_events(self, hours: int = 1):
     reliable match exists, the row is left untouched (PATAuditLog remains the
     source of truth for per-PAT queries).
     """
-    from ops_audit.models import AuditEvent
     from identity_access.models import PATAuditLog
+    from ops_audit.models import AuditEvent
 
     since = timezone.now() - timedelta(hours=hours)
     candidates = AuditEvent.objects.filter(

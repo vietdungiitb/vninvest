@@ -31,7 +31,12 @@ import dj_database_url
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from django.core.exceptions import ImproperlyConfigured
 
-from .env_validation import validate_production_settings, get_frontend_url, prod_cookie_security_settings
+from .env_validation import (
+    get_frontend_url,
+    prod_cookie_security_settings,
+    validate_production_settings,
+)
+
 
 # ---------------------------------------------------------------------------
 # Test-only: hasher nhanh. KHONG bao gio chay ngoai test runner.
@@ -315,6 +320,7 @@ ADVERTISING_ADMIN_ENABLED = os.environ.get(
 # Example: SOC_HEALTH_ENDPOINTS='{"vnbroker":"http://vnbroker:8080/health","prefetch":"http://prefetch:8080/health"}'
 # or per service_key: '{"vnbroker_quote":"http://..."}'. Empty = no HTTP probe (DB-only, legacy).
 import json as _json_health
+
 try:
     _raw_health_endpoints = _json_health.loads(os.environ.get('SOC_HEALTH_ENDPOINTS', '{}') or '{}')
     SOC_HEALTH_ENDPOINTS = _raw_health_endpoints if isinstance(_raw_health_endpoints, dict) else {}
@@ -510,6 +516,7 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_POOL_LIMIT = None
 
 import sys
+
 if TESTING:
     CELERY_TASK_ALWAYS_EAGER = True
     try:
@@ -922,8 +929,8 @@ del _LOG_FORMAT
 _sentry_dsn = os.environ.get('SENTRY_DSN', '')
 if _sentry_dsn:
     import sentry_sdk
-    from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[DjangoIntegration(), CeleryIntegration()],

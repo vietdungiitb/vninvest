@@ -5,7 +5,7 @@ T-D2: session_date không hợp lệ → trả về error ngay, không gọi DB.
 T-D3: session_date=None → fallback về _get_latest_session_date() như cũ.
 T-D4: session_date không có dữ liệu → trả về status='skipped' an toàn.
 """
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 

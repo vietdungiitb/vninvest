@@ -10,11 +10,11 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
 
 from vninvest_core.env_validation import (
-    get_required_env,
+    get_frontend_url,
     get_optional_env,
+    get_required_env,
     validate_production_settings,
     validate_turnstile_enforcement,
-    get_frontend_url,
 )
 
 

@@ -172,8 +172,9 @@ def shadow_run_daily_parity_report() -> dict[str, Any]:
         {'status': 'ok'|'error', 'reports_created': N, 'green_count': N, 'yellow_count': N, 'red_count': N}
     """
     
-    from ops_audit.models import ParityLog, ParityReport
     from django.utils import timezone
+
+    from ops_audit.models import ParityLog, ParityReport
     
     logger.info("Starting daily parity report generation")
     

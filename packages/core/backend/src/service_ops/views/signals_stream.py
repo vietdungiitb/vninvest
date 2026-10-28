@@ -21,12 +21,12 @@ import time
 
 from django.db import close_old_connections, connection
 from django.db.models import Max
-from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema
+from rest_framework.throttling import UserRateThrottle
 
 from signal_intelligence.models import UnifiedAlert
 
-from .base import SOCBaseView, EventStreamRenderer, SSEStreamingHttpResponse
+from .base import EventStreamRenderer, SOCBaseView, SSEStreamingHttpResponse
 from .signals import _latest_signal_session_date, _serialize_recent_alert
 
 

@@ -111,8 +111,9 @@ def _usage_totals(user, tenant, row: AIBudget, now=None) -> dict:
     toan bo chi phi cua user do - neu dem theo model cua len goi thi doi model
     la lot (AC7).
     """
-    from ai_analytics.models import AIUsageRecord
     from django.db.models import Sum
+
+    from ai_analytics.models import AIUsageRecord
 
     qs = AIUsageRecord.objects.filter(created_at__gte=period_start(row.period, now))
     if user is not None:

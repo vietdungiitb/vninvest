@@ -1150,7 +1150,9 @@ class ScreenerRunHistory(models.Model):
 
 def _compute_next_run(run_time, weekdays):
     """Next datetime (Asia/Ho_Chi_Minh naive→aware) matching run_time + weekdays."""
-    from datetime import timedelta, time as _time
+    from datetime import time as _time
+    from datetime import timedelta
+
     from django.utils import timezone
 
     now = timezone.now()
@@ -1227,7 +1229,6 @@ class ScreenerSchedule(models.Model):
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # WAVE 2 — LED-01..03 · LED-06

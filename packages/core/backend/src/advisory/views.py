@@ -8,19 +8,21 @@ Endpoints:
 """
 import logging
 import re
-from decimal import Decimal
 from calendar import monthrange
-from datetime import date as _date, timedelta
+from datetime import date as _date
+from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings as django_settings
 from django.core.cache import cache
 from django.db import models, transaction
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.openapi import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+
 from vninvest_core.api_envelope import envelope_response
 
 # Đặt TRƯỚC `logger = ...` để không cộng thêm một E402: các import còn lại dưới
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
+from market_data.models import DailyPrice
 from ops_audit.models import AuditEvent
 
 from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
@@ -44,8 +47,6 @@ from .signal_norm import (
     signal_to_side,
 )
 from .tasks import _sanitize_effective_context_for_session
-from market_data.models import DailyPrice
-
 
 _SYMBOL_RE = re.compile(r'^[A-Z0-9]{2,10}$')
 
@@ -783,6 +784,7 @@ class AdvisoryRefreshView(APIView):
 
 
 from vninvest_core.pagination import CoreCursorPagination
+
 
 class AdvisoryRecordCursorPagination(CoreCursorPagination):
     ordering = ('-generated_at', '-id')

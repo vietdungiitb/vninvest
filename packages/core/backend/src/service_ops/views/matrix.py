@@ -7,6 +7,8 @@ from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 
+from vninvest_core.api_envelope import envelope_response
+
 from ..envelope import envelope, paginated_envelope
 from ..matrix_coordinator import (
     DEFAULT_MATRIX_PROVIDERS,
@@ -26,8 +28,6 @@ from ..provider_catalog import (
 from ..serializers import ScrapeMatrixCellSerializer, ScrapeMatrixSerializer
 from ..tasks import run_scrape_cycle
 from ..views.base import SOCBaseView
-from vninvest_core.api_envelope import envelope_response
-
 
 PAGINATION_PARAMETERS = [
     OpenApiParameter(

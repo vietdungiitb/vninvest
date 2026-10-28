@@ -1,9 +1,9 @@
 """PAT-based rate limiting for tenant API access."""
 from __future__ import annotations
 
+import logging
 import os
 import time
-import logging
 
 from django.core.cache import cache
 from rest_framework.throttling import BaseThrottle

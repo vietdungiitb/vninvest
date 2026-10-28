@@ -7,11 +7,11 @@ from rest_framework import serializers
 
 from .models import (
     AdvisoryRecord,
-    SystemAISettings,
-    UserAICredential,
     AIAuditLog,
     AIDeployment,
     AITrace,
+    SystemAISettings,
+    UserAICredential,
 )
 from .signal_norm import (
     SIGNAL_UNKNOWN,
@@ -20,7 +20,6 @@ from .signal_norm import (
     normalize_signal,
     signal_to_side,
 )
-
 
 # ── API Key Masking ────────────────────────────────────────────────────────
 

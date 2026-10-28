@@ -10,7 +10,6 @@ HARD CONSTRAINT (AGENTS.md §8.1): Không ghi vào legacy DB từ core container
 """
 from typing import Optional
 
-
 # Apps that live in core DB
 _CORE_APPS = frozenset({
     'identity_access',

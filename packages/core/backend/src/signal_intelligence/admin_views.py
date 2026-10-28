@@ -22,8 +22,9 @@ class SignalAdminStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
 
     def get(self, request):
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         cutoff = timezone.now() - timedelta(hours=24)
         total_alerts = UnifiedAlert.objects.filter(created_at__gte=cutoff).count()

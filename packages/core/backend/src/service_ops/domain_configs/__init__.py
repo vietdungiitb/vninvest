@@ -1,4 +1,3 @@
-from .vnbroker import VnbrokerDomainConfig, VnbrokerTimeoutConfig
 from .broker import (
     BROKER_CONFIG_SERVICE_KEY,
     SUPPORTED_BROKER_PROVIDERS,
@@ -9,9 +8,10 @@ from .broker import (
     get_default_broker_system_config,
 )
 from .market_data import MarketDataRuntimeConfig, QueueTierRuntimeConfig
-from .prefetch import PrefetchTimePolicyConfig, VALID_PROFILES
-from .signals import SignalServicesDomainConfig
+from .prefetch import VALID_PROFILES, PrefetchTimePolicyConfig
 from .screener import ScreenerDomainConfig
+from .signals import SignalServicesDomainConfig
+from .vnbroker import VnbrokerDomainConfig, VnbrokerTimeoutConfig
 
 __all__ = [
     'BROKER_CONFIG_SERVICE_KEY',

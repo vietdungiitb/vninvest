@@ -12,10 +12,13 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from signal_intelligence.models import UnifiedAlert, UserAlertDelivery, UserAlertPreference
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped
+from signal_intelligence.models import (
+    UnifiedAlert,
+    UserAlertDelivery,
+    UserAlertPreference,
+)
 
 User = get_user_model()
 

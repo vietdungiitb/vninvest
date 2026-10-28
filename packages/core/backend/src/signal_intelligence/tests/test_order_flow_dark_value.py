@@ -11,7 +11,7 @@ T-F1: 10 BUY ticks × (50.000đ × 1.000 cp) = buy_value 500M → event phải c
       và sau materialize alert.value = 500.000.000 (KHÔNG phải 500.000).
 T-F2: SELL áp đảo (buy_ratio < 0.65) → không sinh dark_flow event.
 """
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from django.test import TestCase
@@ -19,7 +19,7 @@ from django.test import TestCase
 
 def _make_ticks(symbol, day, price, volume, side, count, start_minute=0):
     from market_data.models import IntradayTick
-    base = datetime(day.year, day.month, day.day, 9, 0, 0, tzinfo=UTC)
+    base = datetime(day.year, day.month, day.day, 9, 0, 0, tzinfo=timezone.utc)
     rows = [
         IntradayTick(
             symbol=symbol,
@@ -44,8 +44,9 @@ class DarkFlowValueUnitTests(TestCase):
     def test_dark_flow_event_uses_share_volume_not_tick_count(self):
         """T-F1: volume_at_signal = tổng shares; alert.value = window buy_value."""
         from datetime import date
-        from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
+
         from signal_intelligence.materializers import materialize_unified_alerts
+        from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
         day = date(2026, 9, 24)
         _make_ticks('TST', day, price=50000, volume=1000, side='BUY', count=10)
@@ -74,6 +75,7 @@ class DarkFlowValueUnitTests(TestCase):
     def test_sell_dominated_session_creates_no_dark_flow_event(self):
         """T-F2: buy_ratio < ngưỡng → không có dark_flow event."""
         from datetime import date
+
         from signal_intelligence.models import OrderFlowEvent
 
         day = date(2026, 9, 24)
@@ -94,6 +96,7 @@ def _make_old_style_event(symbol, day, price, volume, buy_value,
                           window_ts=None):
     """Event cũ kiểu pre-fix: volume = số đếm tick, windows thiếu buy_volume."""
     from datetime import datetime
+
     from signal_intelligence.models import OrderFlowEvent
     return OrderFlowEvent.objects.create(
         symbol=symbol,
@@ -113,7 +116,7 @@ def _make_old_style_event(symbol, day, price, volume, buy_value,
             'tick_count': volume + 4,
         }]},
         triggered_at=datetime(day.year, day.month, day.day, 14, 38,
-                              tzinfo=UTC),
+                              tzinfo=timezone.utc),
     )
 
 
@@ -121,7 +124,9 @@ class RecomputeDarkFlowValuesTests(TestCase):
     def test_estimate_path_without_ticks(self):
         """T-F3a: không còn ticks → ước lượng shares = buy_value / price."""
         from datetime import date
+
         from django.core.management import call_command
+
         from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
         day = date(2026, 9, 24)
@@ -141,7 +146,9 @@ class RecomputeDarkFlowValuesTests(TestCase):
     def test_ticks_path_recomputes_exact(self):
         """T-F3b: ticks còn → recompute chính xác VWAP + shares."""
         from datetime import date
+
         from django.core.management import call_command
+
         from signal_intelligence.models import OrderFlowEvent
 
         day = date(2026, 9, 24)

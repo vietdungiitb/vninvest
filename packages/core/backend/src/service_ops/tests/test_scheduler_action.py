@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """Tests for S02 + S03: Capability Matrix, Ownership Guard, Control Actions Executor."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()
@@ -146,7 +145,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
 
     def test_enable_toggles_periodic_task(self):
         """enable action sets PeriodicTask.enabled=True."""
-        from django_celery_beat.models import PeriodicTask, IntervalSchedule
+        from django_celery_beat.models import IntervalSchedule, PeriodicTask
         schedule, _ = IntervalSchedule.objects.get_or_create(
             every=30, period=IntervalSchedule.SECONDS
         )
@@ -165,7 +164,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
 
     def test_disable_toggles_periodic_task(self):
         """disable action sets PeriodicTask.enabled=False."""
-        from django_celery_beat.models import PeriodicTask, IntervalSchedule
+        from django_celery_beat.models import IntervalSchedule, PeriodicTask
         schedule, _ = IntervalSchedule.objects.get_or_create(
             every=30, period=IntervalSchedule.SECONDS
         )
@@ -175,8 +174,8 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
             interval=schedule,
             enabled=True,
         )
-        from service_ops.views.scheduler import _execute_scheduler_action
         from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
+        from service_ops.views.scheduler import _execute_scheduler_action
         meta = dict(CATALOG_JOB_METADATA.get('market-data-queue-tier-scheduler-30s', {}))
         result = _execute_scheduler_action(
             job_key='market-data-queue-tier-scheduler-30s-dis',
@@ -216,7 +215,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
 
     def test_abort_backfill_job_uses_catalog_service_key_mapping(self):
         """abort must resolve backfill service via CATALOG service_key, not job_key literal."""
-        from service_ops.models import ServiceRunLog, BackfillExecutionRun
+        from service_ops.models import BackfillExecutionRun, ServiceRunLog
         from service_ops.registry import get_registered_service
 
         service = get_registered_service('backfill_daily_prices')

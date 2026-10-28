@@ -12,19 +12,20 @@ GET /api/soc/prefetch/universe-groups/ — configured symbol groups
 GET /api/soc/prefetch/task-schedule/ — active task schedule
 GET /api/soc/prefetch/ownership/ — ownership status
 """
+from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
-from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
-from ..domain_configs import PrefetchTimePolicyConfig, VALID_PROFILES
+from vninvest_core.api_envelope import envelope_response
+
+from ..domain_configs import VALID_PROFILES, PrefetchTimePolicyConfig
 from ..envelope import envelope
 from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..serializers import ServiceConfigSerializer
-from vninvest_core.api_envelope import envelope_response
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
 
@@ -475,7 +476,12 @@ class PrefetchUniverseGroupsView(SOCBaseView):
     def get(self, request):
         """Return registry-first universe buckets with coverage and optional config hints."""
         from django.db.models import Max
-        from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry
+
+        from market_data.models import (
+            DailyPrice,
+            GlobalSymbolCoverage,
+            GlobalSymbolRegistry,
+        )
 
         config = _get_prefetch_config()
         selected_ids = set(config.universe_group_ids or [])

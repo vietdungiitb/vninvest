@@ -4,7 +4,9 @@ Stripe Billing Service Layer
 Encapsulates all Stripe API interactions for the VNInvest SaaS billing system.
 """
 import logging
+
 from django.conf import settings
+
 from identity_access.models import CoreTenant
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class StripeService:
 
     def get_price_id(self, plan_code: str) -> str:
         """Get Stripe Price ID for a plan code (delegate to plan_catalog)."""
-        from .plan_catalog import normalize_plan, get_stripe_price_id
+        from .plan_catalog import get_stripe_price_id, normalize_plan
 
         canonical = normalize_plan(plan_code)
         if not canonical:

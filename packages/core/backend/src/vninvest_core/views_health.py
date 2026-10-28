@@ -1,6 +1,6 @@
 """Health and capability-bootstrap views for core/v1."""
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
@@ -11,7 +11,7 @@ def health(request):
     return JsonResponse({
         'status': 'ok',
         'package': 'vninvest-core',
-        'timestamp': datetime.now(UTC).isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'request_id': request.META.get('X_REQUEST_ID', ''),
     })
 

@@ -17,17 +17,17 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
-from ..envelope import envelope
 from signal_intelligence import delivery_service
 from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
+from vninvest_core.api_envelope import envelope_response
 
 from ..domain_configs.signals import SignalServicesDomainConfig
+from ..envelope import envelope
 from ..models import ConfigChangeAudit
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from .base import SOCBaseView
 from .signals import _build_signals_ownership_payload, _get_signals_domain_config
 from .signals_triage import _serialize_delivery_with_context
-from vninvest_core.api_envelope import envelope_response
 
 FAMILY_ENABLED_FLAG = {
     'whale': 'whale_enabled',

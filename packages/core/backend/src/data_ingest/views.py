@@ -8,32 +8,35 @@ Endpoints:
 - GET  /core/v1/data-ingest/runs/                 : List recent ingest runs (paginated)
 """
 import logging
-from rest_framework import viewsets, status
+
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from vninvest_core.pagination import CoreCursorPagination
 from vninvest_core.exceptions import ValidationErrorException
+from vninvest_core.pagination import CoreCursorPagination
+
 
 class IngestRunCursorPagination(CoreCursorPagination):
     ordering = '-started_at'
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+
+from service_ops.models import ServiceRunLog
+from service_ops.registry import ensure_service_registry, get_registered_service
+from vninvest_core.api_envelope import envelope_response
+
 from .models import IngestJob, IngestRun
 from .serializers import (
     IngestJobSerializer,
     IngestRunSerializer,
-    TriggerIngestRequestSerializer,
     IngestTriggerResponseSerializer,
+    TriggerIngestRequestSerializer,
 )
-from .tasks import ingest_daily_prices, _USER_BACKFILL_MAX_DAYS
-from service_ops.models import ServiceRunLog
-from service_ops.registry import ensure_service_registry, get_registered_service
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
+from .tasks import _USER_BACKFILL_MAX_DAYS, ingest_daily_prices
 
 logger = logging.getLogger(__name__)
 
@@ -451,6 +454,7 @@ class SystemBackfillTriggerView(APIView):
 
         # ── Build (symbol, date) slots & apply missing-only filter via pandas ──
         import pandas as pd
+
         from .tasks import backfill_intraday_tick_system
 
         # All candidate slots as DataFrame
@@ -464,9 +468,11 @@ class SystemBackfillTriggerView(APIView):
             # Use IntradayBar (1H timeframe) for presence check as it is ~1000x smaller
             # and composite indexed on (symbol, timeframe, datetime)
             from datetime import datetime, time
+
             import pytz
             from django.db.models.functions import TruncDate
             from django.utils.timezone import make_aware
+
             from market_data.models import IntradayBar
 
             tz = pytz.timezone('Asia/Ho_Chi_Minh')

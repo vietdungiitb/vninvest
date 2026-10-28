@@ -64,8 +64,8 @@ Không có serializer nội bộ (payload dựng tay) thì bỏ tham số:
 200: envelope_response()          # data: free-form, meta: object
 ```
 """
-from rest_framework import serializers
 from drf_spectacular.utils import OpenApiResponse
+from rest_framework import serializers
 
 __all__ = ['EnvelopeMetaField', 'envelope_response']
 

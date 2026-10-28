@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+
 from celery import shared_task
 from django.utils import timezone
 
@@ -46,10 +47,12 @@ def _refund_advisory_quota(record) -> bool:
     if record.user_id is None:
         return False
 
+    from calendar import monthrange as _mr
+
+    from django.utils import timezone as _tz
+
     from commercial.models import QuotaRecord
     from identity_access.models import CoreTenant, TenantMember
-    from django.utils import timezone as _tz
-    from calendar import monthrange as _mr
 
     # Resolve the tenant that ACTUALLY consumed the quota.
     #
@@ -346,8 +349,8 @@ def _write_advisory_usage_record(
     Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
     """
     try:
-        from ai_analytics.models import AIUsageRecord
         from advisory.pricing import pricing_snapshot
+        from ai_analytics.models import AIUsageRecord
 
         snapshot = pricing_snapshot(
             provider or '', model or '', tokens_in or 0, tokens_out or 0,

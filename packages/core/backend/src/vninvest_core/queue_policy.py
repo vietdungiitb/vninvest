@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from kombu import Exchange, Queue
 
-
 QUEUE_NAMES = (
     'celery',
     'realtime_prefetch',

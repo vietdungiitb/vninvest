@@ -8,7 +8,6 @@ from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantWebhookConfig
 from ops_audit.models import AuditEvent
-
 from service_ops.tests.envelope import unwrapped_json
 
 SWITCH = '/api/soc/staff/switch/'

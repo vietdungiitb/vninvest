@@ -1,7 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.utils import timezone
-from datetime import timedelta
 from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -10,10 +11,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+
 from vninvest_core.api_envelope import envelope_response
 from vninvest_core.pagination import CoreCursorPagination
 
-from .models import SenderRole, SupportTicket, TicketAttachment, TicketAuditLog, TicketMessage, TicketStatus
+from .models import (
+    SenderRole,
+    SupportTicket,
+    TicketAttachment,
+    TicketAuditLog,
+    TicketMessage,
+    TicketStatus,
+)
 from .permissions import IsStaffUser, IsTicketOwnerOrStaff
 from .serializers import (
     CreateTicketSerializer,
@@ -23,7 +32,6 @@ from .serializers import (
     TicketReplySerializer,
 )
 from .services import queue_new_ticket_email, queue_ticket_reply_email
-
 
 ALLOWED_ATTACHMENT_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf', 'txt', 'csv'}
 ALLOWED_ATTACHMENT_MIME_PREFIXES = (

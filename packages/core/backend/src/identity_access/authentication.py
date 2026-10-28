@@ -1,12 +1,14 @@
 """PAT-based authentication for packages/core DRF views."""
-from drf_spectacular.extensions import OpenApiAuthenticationExtension
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
 import hmac
 import ipaddress
 
-from .models import CorePATCredential
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+
 from vninvest_core.client_ip import get_client_ip
+
+from .models import CorePATCredential
 
 
 class CorePATAuthentication(BaseAuthentication):

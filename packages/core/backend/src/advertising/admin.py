@@ -60,13 +60,14 @@ class AdClickLogAdmin(VNReadOnlyMixin, admin.ModelAdmin):
     ordering = ('-created_at',)
 
 # --- Import cho khoi WAVE 16 -------------------------------------
-from .models import (
-    TrademarkConfig,
-)
 from vninvest_core.admin_ui import (
-    badge_for,
     VNAdminMixin,
     VNReadOnlyMixin,
+    badge_for,
+)
+
+from .models import (
+    TrademarkConfig,
 )
 
 

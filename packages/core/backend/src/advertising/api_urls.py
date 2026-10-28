@@ -1,4 +1,5 @@
 from django.urls import path
+
 from advertising import views
 
 urlpatterns = [

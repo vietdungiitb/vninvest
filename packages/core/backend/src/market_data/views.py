@@ -8,21 +8,20 @@ Endpoints:
 """
 from datetime import timedelta
 
+from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
+
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.pagination import CoreCursorPagination
 
 from .envelope import envelope, paginated_envelope
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
-
-
-from vninvest_core.pagination import CoreCursorPagination
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
 
 
 class StockProfileCursorPagination(CoreCursorPagination):
@@ -186,7 +185,7 @@ class StockChartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
-        from datetime import timedelta, datetime, time
+        from datetime import datetime, time, timedelta
         
         symbol = symbol.upper()
         

@@ -1,9 +1,11 @@
 # Location: packages/core/backend/src/identity_access/management/commands/backfill_missing_tenants.py
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from identity_access.models import CoreTenant, CoreServiceAccount, UserProfile
 import logging
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from identity_access.models import CoreServiceAccount, CoreTenant, UserProfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

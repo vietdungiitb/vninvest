@@ -1,7 +1,11 @@
 from django.test import TestCase
 
 from service_ops.models import OwnershipRecord
-from service_ops.ownership import ServiceOwnershipMatrix, build_ownership_matrix_from_db, get_ownership_matrix
+from service_ops.ownership import (
+    ServiceOwnershipMatrix,
+    build_ownership_matrix_from_db,
+    get_ownership_matrix,
+)
 
 
 class ServiceOwnershipMatrixTestCase(TestCase):

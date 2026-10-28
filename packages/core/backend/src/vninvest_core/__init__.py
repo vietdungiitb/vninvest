@@ -1,5 +1,6 @@
 from .app_manifest import CORE_APP_MANIFEST, get_core_manifest
 
+
 # Lazy import of celery_app to avoid circular import during settings loading
 def __getattr__(name):
     if name == "celery_app":

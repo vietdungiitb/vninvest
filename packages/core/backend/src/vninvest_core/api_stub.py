@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -22,7 +22,7 @@ def _env_int(name, default):
 
 
 def _now_isoformat():
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _build_target():

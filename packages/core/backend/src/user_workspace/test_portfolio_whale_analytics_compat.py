@@ -12,7 +12,6 @@ from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapsh
 from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
 from user_workspace.tests.envelope import unwrapped_json
 
-
 User = get_user_model()
 
 

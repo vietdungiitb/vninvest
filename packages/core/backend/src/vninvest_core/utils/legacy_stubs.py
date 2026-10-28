@@ -14,7 +14,6 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -28,9 +27,9 @@ def _empty_paginated(request=None):
 
 
 from market_data.default_groups import (
+    get_color_palette,
     get_default_groups,
     get_group_lookup,
-    get_color_palette,
 )
 
 # Backwards compatibility - re-exported from default_groups

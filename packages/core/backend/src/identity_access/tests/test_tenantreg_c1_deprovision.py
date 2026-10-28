@@ -25,7 +25,6 @@ from identity_access.models import (
 )
 from identity_access.tasks import deprovision_tenant_async
 
-
 User = get_user_model()
 
 

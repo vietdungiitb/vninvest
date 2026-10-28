@@ -6,10 +6,12 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
-from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
-
+from service_ops.registry import (
+    SOC_DOMAIN_PRIMARY_SERVICE_KEYS,
+    ensure_service_registry,
+    get_registered_service,
+)
 from service_ops.tests.envelope import unwrapped_json
-
 
 User = get_user_model()
 

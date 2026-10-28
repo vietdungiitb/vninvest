@@ -27,7 +27,11 @@ from django.test import SimpleTestCase, TestCase
 
 from identity_access.models import CoreTenant  # noqa: F401 - used in docstring refs
 from user_workspace import portfolio_analytics_views as pav
-from user_workspace.permissions import WORKSPACE_PERMISSIONS, WorkspacePermission, _declared_permissions
+from user_workspace.permissions import (
+    WORKSPACE_PERMISSIONS,
+    WorkspacePermission,
+    _declared_permissions,
+)
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 _PA_VIEWS = pathlib.Path(__file__).resolve().parents[1] / 'portfolio_analytics_views.py'

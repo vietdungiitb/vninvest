@@ -26,7 +26,6 @@ from identity_access.models import CoreTenant
 from user_workspace.ledger.services import build_meta, get_cached_ledger
 from user_workspace.models import Portfolio, Transaction
 
-
 User = get_user_model()
 
 

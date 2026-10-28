@@ -1,7 +1,7 @@
 # Location: packages/core/backend/src/identity_access/tests/test_operator_mail_config.py
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Inject mock google modules into sys.modules BEFORE imports to avoid collection errors
 sys.modules['google'] = MagicMock()
@@ -11,14 +11,15 @@ sys.modules['googleapiclient'] = MagicMock()
 sys.modules['googleapiclient.discovery'] = MagicMock()
 
 import json
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
-from django.core.cache import cache
-from rest_framework.test import APIClient
-from rest_framework import status
-from cryptography.fernet import Fernet
 
-from identity_access.models import SystemMailConfig, MailConfigAuditLog
+from cryptography.fernet import Fernet
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.test import TestCase, override_settings
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from identity_access.models import MailConfigAuditLog, SystemMailConfig
 
 User = get_user_model()
 TEST_FERNET_KEY = Fernet.generate_key().decode()

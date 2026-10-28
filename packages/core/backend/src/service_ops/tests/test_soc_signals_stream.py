@@ -8,8 +8,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from signal_intelligence.models import UnifiedAlert
 from service_ops.registry import ensure_service_registry
+from signal_intelligence.models import UnifiedAlert
 
 User = get_user_model()
 

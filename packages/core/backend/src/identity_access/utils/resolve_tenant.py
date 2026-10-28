@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 
-from identity_access.models import CoreTenant, CoreServiceAccount, TenantMember
+from identity_access.models import CoreServiceAccount, CoreTenant, TenantMember
 
 logger = logging.getLogger(__name__)
 User = get_user_model()

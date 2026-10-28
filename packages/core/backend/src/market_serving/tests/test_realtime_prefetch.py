@@ -1,14 +1,15 @@
-from django.test import TestCase
-from django.core.cache import cache
+from datetime import UTC
 from unittest.mock import patch
+
+from django.core.cache import cache
+from django.test import TestCase
 
 from market_data.models import GlobalSymbolRegistry
 from market_serving.realtime_prefetch import (
-    _collect_universe_symbols,
-    REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX,
     DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS,
+    REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX,
+    _collect_universe_symbols,
 )
-from datetime import UTC
 
 
 class RealtimePrefetchUniverseTestCase(TestCase):
@@ -126,6 +127,7 @@ class RealtimePrefetchHydrateLegTestCase(TestCase):
         Nếu last_hydrate vừa được set (< interval), hydrate KHÔNG được enqueue lại.
         """
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import schedule_realtime_prefetch_shards
 
         # Giả lập đã enqueue hot hydrate 10 giây trước
@@ -145,6 +147,7 @@ class RealtimePrefetchHydrateLegTestCase(TestCase):
         Nếu elapsed > HOT_HYDRATE_INTERVAL, hydrate phải được enqueue lại.
         """
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import schedule_realtime_prefetch_shards
 
         # Giả lập last_hydrate đã quá interval
@@ -179,6 +182,7 @@ class RealtimePrefetchDedupGuardTestCase(TestCase):
     @patch('data_ingest.tasks.warm_intraday_universe.apply_async')
     def test_skipped_duplicate_when_previous_run_fresh(self, mock_hydrate, mock_prefetch):
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import (
             REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY,
             schedule_realtime_prefetch_shards,
@@ -257,6 +261,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
 
     def test_session_gate_disabled_flag(self):
         import os
+
         from market_serving.realtime_prefetch import _in_trading_session
         old = os.getenv('TICKER_PREFETCH_SESSION_ONLY')
         os.environ['TICKER_PREFETCH_SESSION_ONLY'] = 'false'
@@ -271,6 +276,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
     @patch('market_data.vnbroker_adapter.fetch_realtime_price')
     def test_shard_slow_symbol_timeout(self, fetch_mock):
         import time
+
         from market_serving.realtime_prefetch import prefetch_realtime_ticker_shard
 
         def _slow(symbol):
@@ -311,6 +317,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
     @patch('data_ingest.tasks.warm_intraday_universe.apply_async')
     def test_hydrate_warm_capped(self, mock_hydrate, mock_prefetch):
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import (
             REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY,
             schedule_realtime_prefetch_shards,

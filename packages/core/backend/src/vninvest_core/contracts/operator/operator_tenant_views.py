@@ -2,6 +2,8 @@
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,9 +11,6 @@ from rest_framework.views import APIView
 from identity_access.models import CorePATCredential, CoreTenant
 from ops_audit.models import AuditEvent
 from vninvest_core.pagination import StandardPageNumberPagination
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-
 
 
 def _envelope(data, summary_cards=None, object_label='operator_response'):

@@ -2,13 +2,15 @@
 
 from datetime import timedelta
 
-from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
-from drf_spectacular.utils import OpenApiExample, extend_schema
 from django.db.models import Count, Q
 from django.db.models.functions import TruncHour
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
+
+from vninvest_core.api_envelope import envelope_response
 
 from ..envelope import envelope, paginated_envelope
 from ..models import (
@@ -30,8 +32,6 @@ from ..serializers import (
     ServiceRunLogSerializer,
 )
 from .base import SOCBaseView
-from vninvest_core.api_envelope import envelope_response
-
 
 STANDARD_PAGINATION_PARAMETERS = [
     OpenApiParameter(
@@ -691,7 +691,8 @@ class ServiceCurrentConfigView(SOCBaseView):
 
         # Save config transactionally
         from django.db import transaction
-        from ..models import ServiceConfig, ConfigChangeAudit
+
+        from ..models import ConfigChangeAudit, ServiceConfig
 
         try:
             with transaction.atomic():
@@ -730,10 +731,10 @@ class ServiceCurrentConfigView(SOCBaseView):
     def _get_config_class_for_domain(self, domain: str):
         """Map domain to its config class."""
         from ..domain_configs import (
-            VnbrokerDomainConfig,
             PrefetchTimePolicyConfig,
-            SignalServicesDomainConfig,
             ScreenerDomainConfig,
+            SignalServicesDomainConfig,
+            VnbrokerDomainConfig,
         )
         domain_config_map = {
             'vnbroker': VnbrokerDomainConfig,

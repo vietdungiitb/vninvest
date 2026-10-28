@@ -218,6 +218,7 @@ class AggregateGuardLoopTests(TestCase):
     def _post_txn_forced(self, pid):
         from datetime import date
         from decimal import Decimal
+
         from user_workspace.models import Transaction
         return Transaction.objects.create(
             portfolio_id=pid, tenant=self.tenant,

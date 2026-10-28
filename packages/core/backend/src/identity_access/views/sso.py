@@ -17,12 +17,14 @@ from rest_framework.views import APIView
 
 from vninvest_core.api_envelope import envelope_response
 
+from ..envelope import envelope
 from ..models import (
     CorePATCredential,
     CoreServiceAccount,
     TenantMember,
     TenantSSOConfig,
 )
+from ..permissions import IsTenantActive, require_pat_scopes_or_human_session
 from ..saml_service import (
     SAMLParseError,
     SAMLRequestError,
@@ -35,9 +37,10 @@ from ..schema import (
     SSOTestLoginSerializer,
 )
 from ..serializers import TenantSSOConfigSerializer
-from ..envelope import envelope
-from ..permissions import IsTenantActive, require_pat_scopes_or_human_session
-from ..utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from ..utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from ..utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 logger = logging.getLogger(__name__)
 

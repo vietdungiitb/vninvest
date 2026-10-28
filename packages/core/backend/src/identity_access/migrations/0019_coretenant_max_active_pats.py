@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 
+
 def set_plan_defaults(apps, schema_editor):
     CoreTenant = apps.get_model('identity_access', 'CoreTenant')
     plan_limits = {

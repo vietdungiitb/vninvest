@@ -5,11 +5,22 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework import permissions
+from rest_framework import permissions, status
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.response import Response
+
+from data_ingest.tasks import send_password_reset_email
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.exceptions import (
+    RateLimitErrorException,
+    ValidationErrorException,
+)
 
 from ..envelope import envelope
 from ..models import PasswordResetToken
@@ -20,14 +31,6 @@ from ..security_utils import (
     revoke_user_human_sessions,
     value_bucket,
 )
-from vninvest_core.api_envelope import envelope_response
-from vninvest_core.exceptions import (
-    ValidationErrorException,
-    RateLimitErrorException,
-)
-from data_ingest.tasks import send_password_reset_email
-from drf_spectacular.openapi import OpenApiTypes
-
 
 logger = logging.getLogger(__name__)
 User = get_user_model()

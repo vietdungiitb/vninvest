@@ -64,6 +64,8 @@ from .validators import (
 )
 from .valuation import (
     CALCULATION_VERSION as VALUATION_CALCULATION_VERSION,
+)
+from .valuation import (
     NAV_REASON_NO_OPENING_BALANCE,
     NAV_REASON_TEXT,
     compute_nav,

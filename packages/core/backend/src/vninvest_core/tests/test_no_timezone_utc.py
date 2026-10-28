@@ -130,7 +130,7 @@ class DjangoTimezoneUtcRemovedTests(unittest.TestCase):
                             f'{rel}: timezone.utc was removed in Django 6.0.6 '
                             f'(use timezone.UTC)'
                         )
-                    elif not is_django and 'timezone.UTC' in text:
+                    elif not is_django and f'timezone.UTC' in text:
                         offenders.append(
                             f'{rel}: timezone.UTC but timezone is not imported from '
                             f'django.utils - check which module it is bound to'

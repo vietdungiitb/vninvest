@@ -7,21 +7,21 @@
 import base64
 import os
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from django.test import SimpleTestCase
 
 from identity_access.saml_service import (
-    SAMLService,
     SAMLParseError,
+    SAMLService,
     SAMLSignatureError,
     _default_signature_mode,
 )
 
 
 def _unsigned_response_b64(email='alice@corp.com'):
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     nb = (now - timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ')
     noa = (now + timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ')
     xml = (

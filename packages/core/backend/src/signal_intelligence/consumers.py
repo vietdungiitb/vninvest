@@ -36,6 +36,7 @@ async def _authenticate_token(token: str):
     Uses sync_to_async wrapper to call sync Django ORM.
     """
     from asgiref.sync import sync_to_async
+
     from identity_access.models import CorePATCredential
 
     @sync_to_async

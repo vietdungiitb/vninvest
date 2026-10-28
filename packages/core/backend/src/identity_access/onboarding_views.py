@@ -35,20 +35,19 @@ from datetime import timedelta
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from drf_spectacular.utils import extend_schema
+from tenant_lifecycle.models import TenantLifecycleEvent
 from vninvest_core.api_envelope import envelope_response
 
-from tenant_lifecycle.models import TenantLifecycleEvent
 from .envelope import envelope
 from .models import CoreTenant, UserProfile
 from .permissions import IsTenantActive
 from .serializers import CoreTenantSerializer
-from drf_spectacular.openapi import OpenApiTypes
-
 
 logger = logging.getLogger(__name__)
 

@@ -16,17 +16,16 @@ from datetime import date, datetime, time, timedelta
 
 from django.db.models import Avg, Max, Prefetch, Q
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from rest_framework.throttling import UserRateThrottle
-
 from market_data.models import IntradayTick
-from .models import SymbolSnapshot
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
 
+from .models import SymbolSnapshot
 
 logger = logging.getLogger(__name__)
 

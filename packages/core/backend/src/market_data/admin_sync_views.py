@@ -9,18 +9,18 @@ for data ingestion.
 import logging
 
 from django.conf import settings
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from user_workspace.permissions import TenantScopePermission
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope
 from .global_symbol_registry import sync_system_default_symbol_group
 from .vnbroker_adapter import fetch_symbol_group_members
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 logger = logging.getLogger(__name__)
 

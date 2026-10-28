@@ -17,13 +17,14 @@ GET /api/soc/signals/screener/recent/ — recent screener alerts
 GET /api/soc/signals/retention-policy/ — data retention settings
 GET /api/soc/signals/performance-metrics/ — detection performance
 """
+from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
+from vninvest_core.api_envelope import envelope_response
 
 from ..domain_configs import SignalServicesDomainConfig
 from ..envelope import envelope, paginated_envelope
@@ -32,7 +33,6 @@ from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..tasks import create_signal_job_run_log, run_signals_detection_workflow
 from .base import SOCBaseView
-from vninvest_core.api_envelope import envelope_response
 
 
 class SignalsOwnershipSerializer(serializers.Serializer):
@@ -771,6 +771,7 @@ class SignalsWhaleTestView(SOCBaseView):
         chay gi ⇒ operator tin nham da test. Bay phai bao so lieu that.
         """
         import logging as _logging
+
         from django.utils import timezone as _timezone
 
         # Lazy import: tranh keo pandas vao luc khoi dong server.

@@ -1,13 +1,14 @@
-import logging
 import datetime
-from django.conf import settings
-from django.utils import timezone
+import logging
+
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
+from advertising.models import AdCampaign, AdClickLog, AdDailySummary, AdImpressionLog
 from identity_access.models import CoreTenant
-from advertising.models import AdCampaign, AdDailySummary, AdImpressionLog, AdClickLog
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,7 @@ def aggregate_ad_metrics():
                 try:
                     timestamp_ms = int(msg_id.decode('utf-8').split('-')[0])
                     created_at = timezone.make_aware(
-                        datetime.datetime.fromtimestamp(timestamp_ms / 1000.0, tz=datetime.UTC)
+                        datetime.datetime.fromtimestamp(timestamp_ms / 1000.0, tz=datetime.timezone.utc)
                     )
                 except Exception:
                     created_at = timezone.now()

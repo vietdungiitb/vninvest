@@ -15,8 +15,8 @@ from django.test import TestCase
 from user_workspace.models import (
     AccountSnapshot,
     LedgerEntry,
-    PositionSnapshot,
     Portfolio,
+    PositionSnapshot,
     SubAccount,
     Transaction,
 )

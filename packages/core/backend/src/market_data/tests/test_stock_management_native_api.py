@@ -1,7 +1,6 @@
-from unittest.mock import patch
-
-from decimal import Decimal
 from datetime import timedelta
+from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -11,10 +10,17 @@ from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
 from identity_access.models import CoreTenant, UserProfile
+from market_data.models import (
+    DailyPrice,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+    IntradayBar,
+    IntradayTick,
+    StockProfile,
+)
 from market_data.tests.envelope import unwrapped_json
-from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
-from signal_intelligence.models import UnifiedAlert
 from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
+from signal_intelligence.models import UnifiedAlert
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 
 User = get_user_model()

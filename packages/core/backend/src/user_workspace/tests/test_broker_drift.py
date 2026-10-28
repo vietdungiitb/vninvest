@@ -66,8 +66,8 @@ class ReportDriftTests(TestCase):
 
     def test_report_persists_issues(self):
         from user_workspace.broker import drift as drift_mod
-        from user_workspace.broker.sync_service import BrokerSyncService
         from user_workspace.broker.adapters import BrokerAdapter
+        from user_workspace.broker.sync_service import BrokerSyncService
 
         class Stub(BrokerAdapter):
             provider_id = 'stub'
@@ -103,8 +103,8 @@ class ReportDriftTests(TestCase):
 
     def test_report_no_drift_no_rows(self):
         from user_workspace.broker import drift as drift_mod
-        from user_workspace.broker.sync_service import BrokerSyncService
         from user_workspace.broker.adapters import BrokerAdapter
+        from user_workspace.broker.sync_service import BrokerSyncService
 
         class Stub(BrokerAdapter):
             provider_id = 'stub'

@@ -5,7 +5,6 @@ from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
 from service_ops.domain_configs import MarketDataRuntimeConfig, QueueTierRuntimeConfig
-
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()

@@ -27,7 +27,7 @@ Nguyên tắc: **không dùng số 0 giả.** Thiếu dữ liệu ⇒ `None` kè
 không query giá.
 """
 
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 # Đổi khi ngữ nghĩa thuật toán đổi — response trả kèm để truy vết được số liệu
 # đã tính bằng quy tắc nào (audit P1-DATA-03 + §H3 `calculation_version`).

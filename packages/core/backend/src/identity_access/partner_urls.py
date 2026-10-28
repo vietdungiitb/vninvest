@@ -8,27 +8,33 @@ These paths mirror the frontend api/client.js partner/* calls.
 """
 from django.urls import path
 
-from . import views_dashboard
-from . import views_personal
-from . import views_alert_config
-from . import views_forecast
-from . import views_usage_trend
-from . import views_reports
-from . import views_security
-from . import views_webhooks
+from . import (
+    views_alert_config,
+    views_dashboard,
+    views_forecast,
+    views_personal,
+    views_reports,
+    views_security,
+    views_usage,
+    views_usage_trend,
+    views_webhooks,
+)
 from . import views_tenant as views
-from . import views_usage
 from .commercial_partner_views import (
     PartnerBillingInvoicesView,
     PartnerBillingSubscriptionView,
     PartnerCostTrendView,
+    PartnerStripeCheckoutSessionView,
+    PartnerStripePortalSessionView,
     PartnerUsageHistoryView,
     PartnerUsageMetersView,
     PartnerUsageQuotasView,
-    PartnerStripeCheckoutSessionView,
-    PartnerStripePortalSessionView,
 )
-from .views.sso import PartnerSSOConfigView, PartnerSSOTestConnectionView, PartnerSSOTestLoginView
+from .views.sso import (
+    PartnerSSOConfigView,
+    PartnerSSOTestConnectionView,
+    PartnerSSOTestLoginView,
+)
 
 urlpatterns = [
     # Tenant summary

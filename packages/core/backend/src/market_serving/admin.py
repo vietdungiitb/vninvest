@@ -51,13 +51,14 @@ class SessionFactsAdmin(VNAdminMixin, admin.ModelAdmin):
         return badge(decimal_vi(obj.whale_net_flow), tone)
 
 # --- Import cho khoi WAVE 16 -------------------------------------
-from .models import (
-    SessionFactsBucket,
-)
 from vninvest_core.admin_ui import (
-    badge_for,
     VNAdminMixin,
     VNReadOnlyMixin,
+    badge_for,
+)
+
+from .models import (
+    SessionFactsBucket,
 )
 
 

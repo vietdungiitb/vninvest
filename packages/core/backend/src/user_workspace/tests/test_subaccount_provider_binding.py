@@ -16,7 +16,6 @@ from django.test import TestCase
 from user_workspace.models import SubAccount, UserBrokerConfig
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
-
 BACKFILL_MIGRATION = '0025_auto_20261014_1713'
 
 

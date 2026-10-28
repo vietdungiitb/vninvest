@@ -1,9 +1,8 @@
 import math
 import statistics
-from datetime import UTC
+from datetime import timezone
 
 from django.db import migrations, models
-
 
 _BASELINE_WINDOW = 20
 _WHALE_THRESHOLD_VND = 200_000_000
@@ -39,7 +38,7 @@ def _compute_strength_map(rows, bucket_minutes):
         if executed_at is None:
             continue
         if executed_at.tzinfo is None:
-            executed_at = executed_at.replace(tzinfo=UTC)
+            executed_at = executed_at.replace(tzinfo=timezone.utc)
         bucket_ts = _floor_bucket(executed_at, bucket_minutes)
         bucket = buckets.setdefault(bucket_ts, {'buy': 0.0, 'sell': 0.0, 'total': 0.0, 'whale': 0.0})
         value = float(matched_value or 0.0)

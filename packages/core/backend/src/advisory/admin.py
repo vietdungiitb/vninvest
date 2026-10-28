@@ -6,10 +6,10 @@ from .models import (
     AdvisoryComponent,
     AdvisoryRecord,
     AdvisorySession,
+    AIBudget,
+    AICostRate,
     AIDeployment,
     AIFallbackChain,
-    AICostRate,
-    AIBudget,
     SystemAISettings,
     UserAICredential,
 )
@@ -79,14 +79,15 @@ class UserAICredentialAdmin(VNAdminMixin, admin.ModelAdmin):
         return decimal_vi(obj.fallback_quota_used_today, decimals=0)
 
 # --- Import cho khoi WAVE 16 -------------------------------------
+from vninvest_core.admin_ui import (
+    VNAdminMixin,
+    VNReadOnlyMixin,
+    badge_for,
+)
+
 from .models import (
     AdvisoryComponent,
     AIAuditLog,
-)
-from vninvest_core.admin_ui import (
-    badge_for,
-    VNAdminMixin,
-    VNReadOnlyMixin,
 )
 
 

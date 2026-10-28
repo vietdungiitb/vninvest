@@ -1,8 +1,10 @@
-import os
 import base64
 import hashlib
 import logging
-from datetime import datetime, UTC
+import os
+from datetime import datetime
+from datetime import timezone as dt_timezone
+
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 
@@ -40,7 +42,7 @@ def _parse_moment(raw: str):
         logger.warning('%s: khong doc duoc ISO-8601, bo qua.', CODE_KEY_EXPIRED)
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
+        return parsed.replace(tzinfo=dt_timezone.utc)
     return parsed
 
 
@@ -119,7 +121,7 @@ def _grace_open() -> bool:
     grace = _grace_until()
     if grace is None:
         return True
-    return datetime.now(UTC) < grace
+    return datetime.now(dt_timezone.utc) < grace
 
 
 def key_ring_status() -> dict:

@@ -4,6 +4,7 @@ Advisory helpers for packages/core backend.
 Includes prompt config parser & validator, and lookback window context builders.
 """
 import logging
+
 from market_data.models import DailyPrice
 from market_serving.models import SessionFacts
 

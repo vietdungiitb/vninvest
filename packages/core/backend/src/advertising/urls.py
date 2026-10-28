@@ -1,7 +1,9 @@
 from django.urls import re_path
 from rest_framework.routers import DefaultRouter
+
 from advertising import views
-from advertising.views import WidgetConfigView, WidgetAdView
+from advertising.views import WidgetAdView, WidgetConfigView
+
 
 # Disable format suffix patterns to avoid double registration during system checks
 class NoFormatSuffixRouter(DefaultRouter):

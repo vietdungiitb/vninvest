@@ -28,9 +28,9 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Optional
-from collections.abc import Callable
 
 import httpx
 

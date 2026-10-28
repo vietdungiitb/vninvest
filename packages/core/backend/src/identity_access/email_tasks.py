@@ -61,8 +61,8 @@ def send_welcome_email(self, user_id: int, tenant_public_id: str, lang: str = 'v
     """
     from django.contrib.auth import get_user_model
 
-    from identity_access.models import CoreTenant, UserProfile
     from identity_access.mail_service import send_system_email
+    from identity_access.models import CoreTenant, UserProfile
 
     try:
         tenant = CoreTenant.objects.get(public_id=tenant_public_id)
@@ -129,8 +129,8 @@ def send_welcome_email(self, user_id: int, tenant_public_id: str, lang: str = 'v
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_invite_email(self, invite_id: int, lang: str = 'vi'):
     """Send invitation email to invitee with accept link."""
-    from identity_access.models import TenantInvite
     from identity_access.mail_service import send_system_email
+    from identity_access.models import TenantInvite
 
     try:
         invite = TenantInvite.objects.select_related('tenant', 'inviter').get(id=invite_id)

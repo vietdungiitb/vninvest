@@ -1,10 +1,10 @@
 """BL-15: JSON formatter output parses with required keys + request_id."""
 import json
 import logging
+from unittest import mock
 
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
-from unittest import mock
 
 from vninvest_core.json_logging import JsonFormatter, request_id_var
 

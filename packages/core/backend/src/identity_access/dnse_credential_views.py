@@ -13,6 +13,7 @@ Hard rules (AGENTS.md §14):
 """
 import logging
 
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -20,20 +21,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from vninvest_core.api_envelope import envelope_response
-
 from vninvest_core.exceptions import (
-    ValidationErrorException,
-    PermissionErrorException,
-    NotFoundErrorException,
     InternalErrorException,
+    NotFoundErrorException,
+    PermissionErrorException,
+    ValidationErrorException,
 )
 
 from .envelope import envelope
 from .models import UserDNSECredential
-from .schema import DNSECredentialMetadataSerializer
 from .permissions import require_human_session
-from drf_spectacular.openapi import OpenApiTypes
-
+from .schema import DNSECredentialMetadataSerializer
 
 logger = logging.getLogger(__name__)
 

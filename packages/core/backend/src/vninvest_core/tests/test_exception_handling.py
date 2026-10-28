@@ -14,9 +14,8 @@ Scope: Focused on proven exception handling, not mocking fragile paths
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-
+from rest_framework.test import APIClient, APITestCase
 
 User = get_user_model()
 

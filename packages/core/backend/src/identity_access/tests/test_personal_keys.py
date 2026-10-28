@@ -9,7 +9,6 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from identity_access.tests.envelope import unwrapped_json
 from identity_access.models import (
     CorePATCredential,
     CoreServiceAccount,
@@ -17,6 +16,7 @@ from identity_access.models import (
     PATAuditLog,
     TenantMember,
 )
+from identity_access.tests.envelope import unwrapped_json
 
 BASE = '/core/v1/partner/me'
 

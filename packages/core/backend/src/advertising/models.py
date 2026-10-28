@@ -1,6 +1,8 @@
 import uuid
-from django.db import models
+
 from django.core.exceptions import ValidationError
+from django.db import models
+
 from identity_access.models import CoreTenant
 
 

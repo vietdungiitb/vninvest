@@ -39,8 +39,8 @@ from user_workspace.models import (
     CashFlow,
     LedgerEntry,
     LedgerEntryImmutable,
-    PositionSnapshot,
     Portfolio,
+    PositionSnapshot,
     Transaction,
     ValuationSnapshot,
 )

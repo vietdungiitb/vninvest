@@ -6,8 +6,8 @@ shadow run verification phase. Used to compute daily parity_score and
 determine go/no-go for production cutover.
 """
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class ParityLog(models.Model):

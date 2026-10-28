@@ -11,7 +11,6 @@ from rest_framework.test import APIClient
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from ops_audit.models import ApiCallRollup
-
 from service_ops.tests.envelope import unwrapped_json
 
 OVERVIEW = '/api/soc/usage/overview/'

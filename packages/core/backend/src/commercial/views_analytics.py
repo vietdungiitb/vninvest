@@ -4,23 +4,24 @@ Analytics views for partner billing cost trends.
 import logging
 from datetime import timedelta
 
-from django.db.models import Sum, Count
+from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
-from rest_framework import generics, permissions
 from drf_spectacular.utils import extend_schema
+from rest_framework import generics, permissions
 
+from identity_access.permissions import (
+    IsTenantActive,
+    require_pat_scopes_or_human_session,
+)
+from identity_access.utils.resolve_tenant import resolve_tenant
 from vninvest_core.api_envelope import envelope_response
 
-from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
-from identity_access.utils.resolve_tenant import resolve_tenant
-
 from .envelope import envelope
+from .permissions import RequiresTenantPermission
 from .schema import (
     PartnerCostTrendDataSerializer,
 )
-
-from .permissions import RequiresTenantPermission
 
 logger = logging.getLogger(__name__)
 

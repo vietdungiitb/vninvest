@@ -1,6 +1,5 @@
 import json
 
-
 # F-BE-06: bound scan-cache payload (memcached default 1MB/item; a full
 # 1200-symbol matched list with AI advisory reaches ~2.4MB and the write
 # silently fails). Tunable via Django settings SCREENER_SCAN_CACHE_MAX_BYTES /

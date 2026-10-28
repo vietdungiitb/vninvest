@@ -31,8 +31,8 @@ from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
-from ops_audit.models import AuditEvent
 from identity_access.models import CoreTenant
+from ops_audit.models import AuditEvent
 from user_workspace.tests.envelope import unwrapped_json
 
 ORDER_URL = '/core/v1/broker/dnse/place-order/'

@@ -240,6 +240,7 @@ class KillSwitchHasCallersTests(SimpleTestCase):
         """
         import ast
         import inspect
+
         from user_workspace import tasks as tasks_mod
 
         for name in (

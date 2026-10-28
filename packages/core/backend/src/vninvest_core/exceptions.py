@@ -25,15 +25,15 @@ và ở đây được thực hiện đúng nghĩa đó.
 """
 import logging
 import uuid
-from datetime import datetime, UTC
-from typing import Optional, Any
-
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.exceptions import APIException, ValidationError
+from datetime import datetime
+from datetime import timezone as dt_timezone
+from typing import Any, Optional
 
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
+from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,7 @@ class ProblemDetail:
         # Đây là regression do commit `59b459dd` gây ra, phát hiện khi audit
         # độc lập — bản đầu ghi sai "không regression" vì chỉ so 642 test của
         # `backend/tests/`, chưa từng chạy 2104 test trong `src/`.
-        self.timestamp = datetime.now(UTC).isoformat().replace(
+        self.timestamp = datetime.now(dt_timezone.utc).isoformat().replace(
             '+00:00', 'Z')
 
     def to_dict(self) -> dict:

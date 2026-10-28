@@ -1,8 +1,9 @@
 import hashlib
 import hmac
+import logging
 import urllib.parse
 from datetime import datetime
-import logging
+
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 

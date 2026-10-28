@@ -13,7 +13,7 @@ import re
 import secrets
 import threading
 from datetime import datetime, timedelta
-from datetime import UTC
+from datetime import timezone as dt_timezone
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -835,7 +835,7 @@ class TenantRegATenantWriteTests(TestCase):
         # checking against the sent value is what actually pins the read-only rule.
         self.assertNotEqual(
             self.tenant.activated_at,
-            datetime(2030, 1, 1, tzinfo=UTC),
+            datetime(2030, 1, 1, tzinfo=dt_timezone.utc),
             "client-supplied activated_at must not be written",
         )
         self.assertIsNone(self.tenant.suspended_at)

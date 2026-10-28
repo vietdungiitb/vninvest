@@ -22,7 +22,12 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember
+from identity_access.models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    TenantMember,
+)
 
 User = get_user_model()
 
@@ -126,8 +131,9 @@ class TenantRoleDeclarationTests(TestCase):
         editor_member = TenantMember.objects.get(tenant=self.tenant, user=self.editor_user)
         raw = self._human_pat(self.editor_user)
         # Decode via middleware path: simulate a request resolved by the PAT.
-        from identity_access.middleware import TenantResolutionMiddleware
         from django.test import RequestFactory
+
+        from identity_access.middleware import TenantResolutionMiddleware
         rf = RequestFactory()
         req = rf.post('/core/v1/partner/pats/issue/')
         req.META['HTTP_AUTHORIZATION'] = f'Bearer {raw}'
@@ -147,8 +153,9 @@ class TenantRoleDeclarationTests(TestCase):
             service_account=sa, scopes=['manage_tenant'], label='ci', audit_reason='ci',
             is_human_session=False, issued_for_member=None,
         )
-        from identity_access.middleware import TenantResolutionMiddleware
         from django.test import RequestFactory
+
+        from identity_access.middleware import TenantResolutionMiddleware
         rf = RequestFactory()
         req = rf.post('/x')
         req.META['HTTP_AUTHORIZATION'] = f'Bearer {raw}'
@@ -205,8 +212,9 @@ class TenantRoleDeclarationTests(TestCase):
         )
         self.assertTrue(pat.is_human_session)
         self.assertEqual(pat.issued_for_member_id, member.id)
-        from identity_access.middleware import TenantResolutionMiddleware
         from django.test import RequestFactory
+
+        from identity_access.middleware import TenantResolutionMiddleware
         rf = RequestFactory()
         req = rf.post('/x')
         req.META['HTTP_AUTHORIZATION'] = f'Bearer {raw}'

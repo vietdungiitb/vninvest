@@ -9,8 +9,9 @@ def _copy_system_dnse(apps, schema_editor):
     if row is None:
         return
     try:
-        from identity_access.models import _decrypt_credential, _encrypt_credential
         import json
+
+        from identity_access.models import _decrypt_credential, _encrypt_credential
         api_key = _decrypt_credential(bytes(row.api_key_encrypted or b''))
         api_secret = _decrypt_credential(bytes(row.api_secret_encrypted or b''))
     except Exception:

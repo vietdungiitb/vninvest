@@ -14,29 +14,28 @@ Tests cover:
 """
 import base64
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory, TestCase
+from lxml import etree
 from rest_framework import status
 
-from lxml import etree
-
-from identity_access.tests.envelope import unwrapped
 from identity_access.models import (
-    CoreTenant,
-    CoreServiceAccount,
     CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
     TenantMember,
     TenantSSOConfig,
 )
 from identity_access.saml_service import (
-    SAMLService,
-    SAMLParseError,
-    SAML2P_NS,
-    SAML2_NS,
     MD_NS,
+    SAML2_NS,
+    SAML2P_NS,
+    SAMLParseError,
+    SAMLService,
 )
+from identity_access.tests.envelope import unwrapped
 
 User = get_user_model()
 
@@ -54,7 +53,7 @@ def _make_saml_response_xml(
     status_success=True,
 ):
     """Build a minimal but valid SAML Response XML string."""
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     if not_on_or_after is None:
         not_on_or_after = now + timedelta(hours=1)
 
@@ -216,7 +215,7 @@ class SAMLServiceResponseParsingTests(TestCase):
         self.assertIn('not Success', str(ctx.exception))
 
     def test_parse_response_expired(self):
-        expired = datetime.now(UTC) - timedelta(hours=1)
+        expired = datetime.now(timezone.utc) - timedelta(hours=1)
         xml = _make_saml_response_xml(not_on_or_after=expired)
         encoded = _encode_saml_response(xml)
         with self.assertRaises(SAMLParseError) as ctx:
@@ -506,8 +505,9 @@ class SSOCallbackViewTests(SSOViewTestBase):
         self.assertEqual(member.role, TenantMember.RoleChoices.VIEWER)
 
     def test_callback_get_with_query_params(self):
-        from identity_access.views.sso import SSOCallbackView
         from urllib.parse import quote
+
+        from identity_access.views.sso import SSOCallbackView
         xml = _make_saml_response_xml(email='get_user@test.com')
         encoded = _encode_saml_response(xml)
         safe_encoded = quote(encoded, safe='')

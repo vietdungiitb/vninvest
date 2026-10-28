@@ -5,7 +5,13 @@ from django.test import TestCase
 
 from data_ingest.models import IngestRun
 from market_data.global_symbol_planner import create_global_planner_run
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick
+from market_data.models import (
+    GlobalSymbolCoverage,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+    IntradayBar,
+    IntradayTick,
+)
 from service_ops.models import ServiceRunLog
 from service_ops.registry import ensure_service_registry
 

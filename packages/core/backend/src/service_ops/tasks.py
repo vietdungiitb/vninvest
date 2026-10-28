@@ -10,16 +10,22 @@ from celery import current_app, shared_task
 from django.utils import timezone
 
 from market_data.global_symbol_planner import create_global_planner_run
-from market_data.vnbroker_adapter import fetch_price_board_snapshot, fetch_symbol_group_members
+from market_data.vnbroker_adapter import (
+    fetch_price_board_snapshot,
+    fetch_symbol_group_members,
+)
 from market_serving.materializers import materialize_session_facts
-from signal_intelligence.materializers import materialize_unified_alerts, materialize_whale_feed_aggregate
+from signal_intelligence.materializers import (
+    materialize_unified_alerts,
+    materialize_whale_feed_aggregate,
+)
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from .dataops_market_data import (
-    build_market_data_observability_summary,
-    cleanup_market_data_parity_snapshots,
     QUEUE_TIER_ORDER,
+    build_market_data_observability_summary,
     build_market_data_parity_snapshot,
+    cleanup_market_data_parity_snapshots,
     count_market_data_queue_tier_symbols,
     ensure_market_data_system_default_baseline,
     get_market_data_queue_tier_config,
@@ -29,11 +35,24 @@ from .dataops_market_data import (
     persist_market_data_parity_snapshot,
     select_market_data_queue_tier_symbols,
 )
-from .matrix_coordinator import MatrixCoordinator, normalize_provider_list, normalize_symbol_group_ids
-from .models import ScrapeMatrix, ServiceConfig, ServiceDefinition, ServiceHealth, ServiceHealthCheckLog, ServiceRunLog
-from signal_intelligence.models import UnifiedAlert
-from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
-
+from .matrix_coordinator import (
+    MatrixCoordinator,
+    normalize_provider_list,
+    normalize_symbol_group_ids,
+)
+from .models import (
+    ScrapeMatrix,
+    ServiceConfig,
+    ServiceDefinition,
+    ServiceHealth,
+    ServiceHealthCheckLog,
+    ServiceRunLog,
+)
+from .registry import (
+    SOC_DOMAIN_PRIMARY_SERVICE_KEYS,
+    ensure_service_registry,
+    get_registered_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +75,8 @@ STRICT_FRESH_MODE_QUEUE_TIERS = {
 
 
 try:
-    from httpx import get as _httpx_get, ConnectError, TimeoutException
+    from httpx import ConnectError, TimeoutException
+    from httpx import get as _httpx_get
 except ImportError:
     _httpx_get = None
     ConnectError = ConnectionError
@@ -1319,6 +1339,7 @@ def reconcile_beat_schedule_ssot():
     Calls shared logic from beat_reconcile.py (same as repair_beat_schedule command).
     """
     import logging
+
     from service_ops.beat_reconcile import reconcile_beat_schedule
     logger = logging.getLogger(__name__)
     result = reconcile_beat_schedule(dry_run=False)

@@ -11,8 +11,8 @@ Test cases:
   T-C7: POST /backfill/user/ — trade_date quá 180 ngày → 400.
 """
 import os
-from datetime import date, datetime, timedelta, UTC
-from unittest.mock import patch, MagicMock
+from datetime import date, datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 from cryptography.fernet import Fernet
 from django.contrib.auth.models import User
@@ -23,12 +23,12 @@ TEST_FERNET_KEY = Fernet.generate_key().decode()
 
 SAMPLE_TICKS = [
     {
-        'timestamp': datetime(2026, 5, 10, 2, 30, 0, tzinfo=UTC),
+        'timestamp': datetime(2026, 5, 10, 2, 30, 0, tzinfo=timezone.utc),
         'price': 25000.0, 'volume': 1000, 'side': 'buy',
         'match_type': 'NormalMatch', 'source': 'dnse_system',
     },
     {
-        'timestamp': datetime(2026, 5, 10, 2, 31, 0, tzinfo=UTC),
+        'timestamp': datetime(2026, 5, 10, 2, 31, 0, tzinfo=timezone.utc),
         'price': 25100.0, 'volume': 500, 'side': 'sell',
         'match_type': 'NormalMatch', 'source': 'dnse_system',
     },
@@ -113,8 +113,8 @@ class UserBackfillTaskTests(TestCase):
 
     def test_skip_when_data_exists(self):
         """T-C5: presence check → skip."""
-        from user_workspace.models import DNSECredential
         import data_ingest.tasks as tasks_module
+        from user_workspace.models import DNSECredential
 
         cred = DNSECredential(user=self.user)
         cred.set_client_id('api_key')
@@ -207,7 +207,7 @@ class SynthesizeBarsFromTicksTests(TestCase):
     def _make_ticks(self):
         """Tạo 4 IntradayTick trong DB để test tổng hợp bar."""
         from market_data.models import IntradayTick
-        base = datetime(2026, 5, 12, 2, 30, 0, tzinfo=UTC)
+        base = datetime(2026, 5, 12, 2, 30, 0, tzinfo=timezone.utc)
         rows = [
             IntradayTick(symbol=self._SYMBOL, timestamp=base,
                          price=25000, volume=1000, side='BUY',
@@ -234,8 +234,8 @@ class SynthesizeBarsFromTicksTests(TestCase):
 
     def test_d2_builds_intraday_bars_from_db_ticks(self):
         """T-D2: 4 ticks → IntradayBar được tổng hợp cho tất cả 6 timeframes."""
-        from market_data.models import IntradayBar
         from data_ingest.tasks import _synthesize_bars_from_db_ticks
+        from market_data.models import IntradayBar
 
         self._make_ticks()
         result = _synthesize_bars_from_db_ticks(self._SYMBOL, self._TRADE_DATE)
@@ -336,6 +336,7 @@ class RateLimitDetectionTests(TestCase):
     def test_c8_rate_limit_watcher_triggers_on_warning(self):
         """T-C8: _RateLimitWatcher bắt warning chứa 'rate limit'."""
         import logging
+
         from market_data.vnbroker_adapter import _RateLimitWatcher
 
         watcher = _RateLimitWatcher()
@@ -355,6 +356,7 @@ class RateLimitDetectionTests(TestCase):
     def test_c8_rate_limit_watcher_ignores_other_warnings(self):
         """T-C8b: _RateLimitWatcher không trigger với warning bình thường."""
         import logging
+
         from market_data.vnbroker_adapter import _RateLimitWatcher
 
         watcher = _RateLimitWatcher()

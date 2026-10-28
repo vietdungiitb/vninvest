@@ -3,10 +3,11 @@ Serializers for Phase 3 Shadow Run parity models.
 """
 
 from rest_framework import serializers
+
 from ops_audit.models import (
     ParityLog,
-    ParityReport,
     ParityPhaseCheckpoint,
+    ParityReport,
 )
 
 

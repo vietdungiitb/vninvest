@@ -1,5 +1,7 @@
 import os
+
 from cryptography.fernet import Fernet
+
 
 def get_crypto_cipher() -> Fernet:
     # Lấy key riêng biệt cho email từ biến môi trường

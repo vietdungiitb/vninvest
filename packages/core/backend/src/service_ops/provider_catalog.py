@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable
 
-
 PROVIDER_CATALOG = (
     {
         'id': 'vci',

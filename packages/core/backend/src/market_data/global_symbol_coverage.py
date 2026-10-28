@@ -11,7 +11,13 @@ from django.utils import timezone
 from market_serving.models import SessionFacts, SymbolSnapshot
 
 from .global_symbol_registry import normalize_symbol, refresh_global_symbol_registry
-from .models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick
+from .models import (
+    DailyPrice,
+    GlobalSymbolCoverage,
+    GlobalSymbolRegistry,
+    IntradayBar,
+    IntradayTick,
+)
 
 DATASET_ORDER = (
     GlobalSymbolCoverage.DatasetChoices.DAILY_PRICES,

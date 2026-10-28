@@ -1,6 +1,5 @@
-from datetime import date, timedelta
-from datetime import datetime
-from datetime import UTC
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -8,9 +7,21 @@ from django.test import TestCase
 from django.utils import timezone
 
 from data_ingest.models import IngestJob, IngestRun
-from data_ingest.tasks import backfill_daily_prices, backfill_pre5y_to_market_inception, fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
-from data_ingest.tasks import _fetch_and_upsert_bucket
-from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolRegistry, IntradayBar, IntradayTick
+from data_ingest.tasks import (
+    _fetch_and_upsert_bucket,
+    backfill_daily_prices,
+    backfill_pre5y_to_market_inception,
+    fetch_and_upsert_price_board,
+    ingest_daily_prices,
+    warm_intraday_universe,
+)
+from market_data.models import (
+    DailyPrice,
+    GlobalSymbolCoverage,
+    GlobalSymbolRegistry,
+    IntradayBar,
+    IntradayTick,
+)
 from market_serving.models import SymbolSnapshot
 from service_ops.models import BackfillExecutionRun, ServiceRunLog
 from service_ops.registry import ensure_service_registry, get_registered_service
@@ -168,7 +179,7 @@ class DataIngestBackfillTaskTests(TestCase):
         now_mock,
         backfill_daily_prices_run_mock,
     ):
-        now_mock.return_value = datetime(2026, 5, 21, tzinfo=UTC)
+        now_mock.return_value = datetime(2026, 5, 21, tzinfo=dt_timezone.utc)
         GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
         GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
         backfill_daily_prices_run_mock.return_value = {

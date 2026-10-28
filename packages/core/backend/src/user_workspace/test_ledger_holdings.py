@@ -30,8 +30,8 @@ from user_workspace.ledger import (
     invalidate_ledger_cache,
     money,
 )
-from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import Portfolio, Transaction
+from user_workspace.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -543,6 +543,7 @@ class PortfolioSummaryNavWiringTest(TestCase):
 
     def _set_prices(self, **by_symbol):
         from datetime import date as _date
+
         from market_serving.models import SymbolSnapshot
 
         for symbol, price in by_symbol.items():

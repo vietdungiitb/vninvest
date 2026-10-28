@@ -11,7 +11,6 @@ from rest_framework.test import APIClient
 
 from service_ops.domain_configs.broker import get_default_broker_system_config
 from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
-
 from service_ops.tests.envelope import unwrapped_json
 
 BASE = '/api/soc/broker'

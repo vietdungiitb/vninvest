@@ -295,7 +295,10 @@ def probe_provider(provider: str, symbol: str = 'VNM') -> dict[str, Any]:
     key = _normalize(provider)
     started = time.perf_counter()
     try:
-        from .vnbroker_adapter import _fetch_realtime_price_with_quote_class, _load_quote_class
+        from .vnbroker_adapter import (
+            _fetch_realtime_price_with_quote_class,
+            _load_quote_class,
+        )
 
         quote_class = _load_quote_class(key)
         # `record_outcome=False` — probe tự ghi 1 lần duy nhất với tổng độ trễ
