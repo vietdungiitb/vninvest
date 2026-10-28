@@ -54,7 +54,7 @@ Hotspot file lớn nhất (không tính i18n/static):
 | FE unit (vitest) | `npx vitest run` | ✅ PASS (172 files / 1184 tests) — sau khi fix commit dbb401a, 6a55f41, 3759241 |
 | FE unit (jest) | `npm test` | ✅ PASS (21 suites / 279 tests) — sau khi fix commit dbb401a, 6942bc7 |
 | BE style | `ruff check src` | ❌ 3.280 lỗi (1.713 auto-fix) |
-| BE tests (identity_access) | `python manage.py test identity_access` (VPS) | ⚠️ 427 tests, 1 fail: `test_flat_views_are_not_documented_as_envelope` (schema contract) |
+| BE tests (identity_access) | `python manage.py test identity_access` (VPS) | ✅ 427 tests PASS (sau PR #295) |
 | i18n scan | `npm run i18n:scan:strict` | Chưa chạy trong audit này |
 
 ---
