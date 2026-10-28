@@ -90,7 +90,7 @@ def _write_endpoints(ast_path: pathlib.Path) -> dict[str, ast.AST]:
 class Safe04PortfolioAnalyticsCapabilityTests(SimpleTestCase):
     """Mọi endpoint ghi trong `portfolio_analytics_views.py` phải khai báo quyền."""
 
-    def test_write_endpoint_count_is_unchanged(self):  # noqa: N802 - chuẩn của test cũ
+    def test_write_endpoint_count_is_unchanged(self):
         """Số endpoint ghi phải khớp bảng `EXPECTED`.
 
         Có test này vì `EXPECTED` là danh sách viết tay. Thêm endpoint ghi mà

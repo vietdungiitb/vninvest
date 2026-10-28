@@ -61,7 +61,6 @@ class HoldingsSourceTests(TestCase):
         self.assertEqual(row.get('source'), 'broker_backed')
 
     def test_meta_exposes_portfolio_kind(self):
-        from user_workspace.portfolio_analytics_views import PortfolioHoldingsView
 
         portfolio = _portfolio(_tenant('u3'), kind='aggregate')
         response = self._holdings_response(portfolio)

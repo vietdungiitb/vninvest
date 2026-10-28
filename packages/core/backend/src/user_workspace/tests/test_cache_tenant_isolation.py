@@ -22,7 +22,7 @@ from __future__ import annotations
 import datetime as dt
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 
 from user_workspace.ledger import services as ledger_services
 from user_workspace.portfolio_analytics_views import _scan_cache_key
@@ -207,7 +207,7 @@ class ScreenerScanCacheTenantTests(SimpleTestCase):
 
     def test_two_tenants_two_keys(self):
         """AC1: cung user + cung rule + cung ngay, 2 tenant => 2 key khac nhau."""
-        rule = _Rule(rule_id=42, updated_at=dt.datetime(2026, 9, 29, tzinfo=dt.timezone.utc))
+        rule = _Rule(rule_id=42, updated_at=dt.datetime(2026, 9, 29, tzinfo=dt.UTC))
         day = dt.date(2026, 9, 29)
         key_a = _scan_cache_key(7, rule, day, False, tenant_id='TEN-A')
         key_b = _scan_cache_key(7, rule, day, False, tenant_id='TEN-B')
@@ -217,7 +217,7 @@ class ScreenerScanCacheTenantTests(SimpleTestCase):
 
     def test_tenant_b_cannot_read_tenant_a_cached_scan(self):
         """AC2: cache đầy của A thì B vẫn phải tính lại, không đọc trong A."""
-        rule = _Rule(rule_id=42, updated_at=dt.datetime(2026, 9, 29, tzinfo=dt.timezone.utc))
+        rule = _Rule(rule_id=42, updated_at=dt.datetime(2026, 9, 29, tzinfo=dt.UTC))
         day = dt.date(2026, 9, 29)
         key_a = _scan_cache_key(7, rule, day, False, tenant_id='TEN-A')
         cache.set(key_a, ['symbol-A'], 60)
@@ -234,7 +234,6 @@ class ScreenerScanCacheTenantTests(SimpleTestCase):
         Bug này ĐÃ xảy ra: view lấy `request.tenant` còn task lấy `rule.tenant`.
         Test này khẳng định cả hai phải lấy tenant từ `rule.tenant`.
         """
-        import ast
         import pathlib
 
         backend_src = pathlib.Path(__file__).resolve().parents[2]

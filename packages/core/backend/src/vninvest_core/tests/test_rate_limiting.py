@@ -18,7 +18,6 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.core.cache import cache
 
-from vninvest_core.exceptions import RateLimitErrorException
 
 
 User = get_user_model()

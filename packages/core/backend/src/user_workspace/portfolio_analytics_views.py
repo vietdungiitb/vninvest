@@ -39,7 +39,7 @@ from .ledger import (
     money,
     portfolio_valuation,
 )
-from .models import Portfolio, Transaction
+from .models import Portfolio
 from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
 from vninvest_core.api_envelope import envelope_response
 
@@ -642,7 +642,7 @@ class PortfolioMetricsView(APIView):
         try:
             now = _tz.now()
             payload['freshness'] = freshness(as_of=now, now=now)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             payload['freshness'] = None
             payload['freshness_reason'] = type(exc).__name__
 
@@ -1047,7 +1047,6 @@ class PortfolioAICommandCenterView(APIView):
         # R0.2: default + normalize VE canonical v2 (khong dict phang,
         # khong key chet `lookback_unit`). Khong persist am tham o GET.
         from advisory.advisory_helpers import (
-            _get_default_prompt_config,
             _parse_prompt_config,
             build_ai_readiness,
         )
@@ -3662,17 +3661,11 @@ class PortfolioScreenerRuleRunView(APIView):
         if param_error is not None:
             return param_error
 
-        from market_serving.models import SymbolSnapshot, SessionFacts
-        from market_data.models import DailyPrice
+        from market_serving.models import SymbolSnapshot
         from user_workspace.screener_helpers import (
-            _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics,
             _required_lookback_days, _lookback_calendar_days,
         )
-        from user_workspace.ai_advisory_helpers import compute_ai_advisory
-        from market_data.models import StockProfile
-        from market_data.vnbroker_adapter import get_company_financials_response
-        from datetime import date, timedelta
-        from collections import defaultdict
+        from datetime import date
 
         latest_snap = SymbolSnapshot.objects.order_by('-session_date').first()
         if not latest_snap:
@@ -4460,7 +4453,6 @@ class ScreenerHistoryBacktestView(APIView):
     def get(self, request, pk):
         from user_workspace.models import ScreenerRunHistory
         from market_data.models import DailyPrice
-        from datetime import timedelta
 
         tenant = getattr(request, 'tenant', None)
         try:

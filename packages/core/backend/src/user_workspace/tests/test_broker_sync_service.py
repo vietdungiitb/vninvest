@@ -18,7 +18,7 @@ from user_workspace.broker.adapters import (
     BrokerPosition,
     get_broker_adapter,
 )
-from user_workspace.models import UserBrokerConfig, set_user_broker_secrets
+from user_workspace.models import set_user_broker_secrets
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 

@@ -10,10 +10,7 @@ Usage:
   OR
   docker exec vninvest-dev-core-api python /app/src/manage.py shell < /app/src/run_p3_shadow_test.py
 """
-import json
-from datetime import datetime, timedelta
-from django.utils import timezone
-from data_ingest.models import IngestJob, IngestRun
+from data_ingest.models import IngestRun
 from data_ingest.tasks import ingest_daily_prices
 from market_data.models import DailyPrice, StockProfile
 
@@ -42,8 +39,6 @@ print(f"  Sample: {list(active_symbols[:5])}")
 # Step 3: Check current DailyPrice counts by date
 print("\n[3] Current DailyPrice counts by date...")
 from django.db.models import Count
-from django.db.models.functions import Cast
-from django.db import models as django_models
 
 price_counts = (
     DailyPrice.objects
@@ -65,8 +60,8 @@ try:
     print(f"  ✓ Task queued: {task.id}")
     
     # Note: Celery result backend may not be available in dev, but task still executes
-    print(f"  Note: Task executes asynchronously in worker queue")
-    print(f"  Monitor task progress via: /core/v1/data-ingest/runs/ (paginated list)")
+    print("  Note: Task executes asynchronously in worker queue")
+    print("  Monitor task progress via: /core/v1/data-ingest/runs/ (paginated list)")
     
 except Exception as exc:
     print(f"  ✗ Task queue failed: {exc}")

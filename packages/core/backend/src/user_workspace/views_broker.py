@@ -77,7 +77,7 @@ def _remember_job_owner(job_id: str, user_id: int, tenant_id) -> None:
             {'user_id': user_id, 'tenant_id': tenant_id},
             JOB_OWNER_TTL_SECONDS,
         )
-    except Exception:  # noqa: BLE001 — cache hong khong duoc chan enqueue
+    except Exception:
         logger.warning('broker job owner map unavailable')
 
 
@@ -85,7 +85,7 @@ def _job_owner_mismatch(request, job_id: str) -> bool:
     """True = job co chu nhung khong phai nguoi dang hoi (404, khong lo ton tai)."""
     try:
         entry = cache.get(_job_owner_key(str(job_id)))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
     if not isinstance(entry, dict):
         return False
@@ -318,7 +318,7 @@ def broker_job_status_api(request, job_id):
     try:
         result = AsyncResult(str(job_id))
         state = result.state
-    except Exception:  # noqa: BLE001 — backend lỗi/không có coi như pending
+    except Exception:
         return envelope({'job_id': str(job_id), 'state': 'pending'})
     if state in ('PENDING', 'STARTED', 'RETRY'):
         return envelope({'job_id': str(job_id), 'state': 'pending'})
@@ -327,7 +327,7 @@ def broker_job_status_api(request, job_id):
         return envelope({'job_id': str(job_id), 'state': 'succeeded', 'result': payload})
     try:
         error = str(result.result)[:500] if result.result else 'failed'
-    except Exception:  # noqa: BLE001
+    except Exception:
         error = 'failed'
     return envelope({'job_id': str(job_id), 'state': 'failed', 'error': error})
 
@@ -638,7 +638,7 @@ def _audit_binding(request, portfolio, sub, operation, outcome, action, extra=No
     1 trong 6 gia tri `AuditEvent.ActionChoices` (cot hep + choices).
     """
     try:
-        from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy)
+        from ops_audit.models import AuditEvent
         metadata = {
             'operation': operation,
             'outcome': outcome,
@@ -658,7 +658,7 @@ def _audit_binding(request, portfolio, sub, operation, outcome, action, extra=No
             request_id=str(getattr(request, 'request_id', '') or '')[:36],
             metadata=metadata,
         )
-    except Exception:  # noqa: BLE001 — audit hong khong duoc lam vo request chinh
+    except Exception:
         logger.error(
             'AUDIT-BINDING-UNAVAILABLE operation=%s portfolio=%s',
             operation, getattr(portfolio, 'id', None), exc_info=True,
@@ -674,7 +674,7 @@ def _convert_portfolio_kind(request, portfolio, data):
     (ke ca no-op cung kind) deu ghi audit; audit hong ⇒ tu choi
     (`audit_unavailable`, fail-closed nhu luong dat lenh `views_dnse.py:759`).
     """
-    from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy, lay choices)
+    from ops_audit.models import AuditEvent
 
     target = str(data.get('kind', '')).strip().lower()
     if target not in _CONVERT_TARGETS:
@@ -752,7 +752,7 @@ def portfolio_broker_bindings_api(request, portfolio_id):
     B3.2-BE (Wave 3): action `convert` doi `kind` theo bang chuyen lan.
     GET giu `portfolio_write` nhu PATCH (panel vua doc vua gop/tach).
     """
-    from .models import PortfolioBrokerBinding  # noqa: PLC0415 (lazy)
+    from .models import PortfolioBrokerBinding
 
     tenant = getattr(request, 'tenant', None)
     try:
@@ -777,7 +777,7 @@ def portfolio_broker_bindings_api(request, portfolio_id):
     action = str(data.get('action', '')).strip().lower()
     if action == 'convert':
         return _convert_portfolio_kind(request, portfolio, data)
-    from ops_audit.models import AuditEvent  # noqa: PLC0415 (lazy, lay choices)
+    from ops_audit.models import AuditEvent
     sub_account_id = data.get('sub_account_id')
     sub = _get_sub_account_or_404(sub_account_id, request.user, tenant)
 

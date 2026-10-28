@@ -6,12 +6,11 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
+from identity_access.models import CorePATCredential, CoreTenant
 from ops_audit.models import AuditEvent
 from vninvest_core.pagination import StandardPageNumberPagination
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
 
 
 

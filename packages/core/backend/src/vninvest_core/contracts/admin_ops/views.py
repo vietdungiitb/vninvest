@@ -23,7 +23,7 @@ from advisory.models import SystemAISettings
 from data_ingest.models import IngestJob, IngestRun
 from identity_access.models import CoreTenant
 from market_data.models import VnbrokerRuntimeConfig
-from market_serving.models import SessionFacts, SymbolSnapshot
+from market_serving.models import SessionFacts
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from user_workspace.models import Portfolio, Transaction, WatchlistItem
@@ -357,7 +357,7 @@ def _run_vnbroker_benchmark_background(payload: dict[str, Any], base_report: dic
         report['execution_mode'] = base_report.get('execution_mode')
         report['task_id'] = base_report.get('task_id')
         set_latest_price_board_benchmark_report(report)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning('native benchmark background execution failed: %s', exc)
         set_latest_price_board_benchmark_report(
             {
@@ -1906,7 +1906,7 @@ class AdminOpsVnbrokerConfigChangelogView(APIView):
         limit = max(1, min(int(request.query_params.get('limit', 30)), 200))
         offset = max(0, int(request.query_params.get('offset', 0)))
         config = _get_or_create_active_vnbroker_config()
-        entries = list((_vnbroker_extra(config).get('changelog') or []))
+        entries = list(_vnbroker_extra(config).get('changelog') or [])
         total = len(entries)
         rows = entries[offset: offset + limit]
         return Response(

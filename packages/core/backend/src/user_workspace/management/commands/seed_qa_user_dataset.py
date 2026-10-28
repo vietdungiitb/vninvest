@@ -30,13 +30,12 @@ Usage:
 
 Lesson L-B03: stdout chi ASCII (khong dau tieng Viet).
 """
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils import timezone
 
 MARKER = "qa:dataset-v1"
 PASSWORD = "Test@12345"

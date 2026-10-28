@@ -14,7 +14,7 @@ TENANT ISOLATION:
   TenantScopePermission optional for backward compat; recommended for multi-tenant deployments.
 """
 from rest_framework import permissions, status
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -32,7 +32,7 @@ class WatchlistCursorPagination(CoreCursorPagination):
 
 class WatchlistItemCursorPagination(CoreCursorPagination):
     ordering = '-added_at'
-from .models import Portfolio, Transaction, Watchlist, WatchlistItem, PriceAlert, SubAccount, ScreenerRule
+from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, ScreenerRule
 from .permissions import (
     TenantScopePermission,
     WorkspacePermission,

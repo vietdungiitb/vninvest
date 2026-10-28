@@ -21,7 +21,6 @@ from .exceptions import (
 )
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
 
 
 

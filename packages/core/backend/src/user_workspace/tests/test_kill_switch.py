@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from unittest import mock
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
 
 from service_ops import broker_runtime
 from service_ops.broker_runtime import (

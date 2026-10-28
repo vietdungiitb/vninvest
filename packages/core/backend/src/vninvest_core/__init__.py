@@ -7,4 +7,4 @@ def __getattr__(name):
         return celery_app
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
-__all__ = ["CORE_APP_MANIFEST", "get_core_manifest", "celery_app"]
+__all__ = ["CORE_APP_MANIFEST", "celery_app", "get_core_manifest"]

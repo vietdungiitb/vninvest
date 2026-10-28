@@ -81,7 +81,7 @@ def has_workspace_permission(request, permission: str) -> bool:
         return False
     try:
         perms = get_tenant_permissions(request)
-    except Exception:  # noqa: BLE001 — lỗi phân giải quyền thì chặn
+    except Exception:
         logger.error(
             'has_workspace_permission: cannot resolve permissions - denying',
             exc_info=True,

@@ -42,7 +42,7 @@ class MarketRules:
     nó lọt vào đây.
     """
 
-    __slots__ = ('lot_size', 'enforce_lot')
+    __slots__ = ('enforce_lot', 'lot_size')
 
     def __init__(self, lot_size=None, enforce_lot=False):
         self.lot_size = lot_size
@@ -81,7 +81,7 @@ def _dec(value):
         return value
     try:
         return Decimal(str(value))
-    except Exception:  # noqa: BLE001 - dữ liệu bẩn không được làm sập validator
+    except Exception:
         return None
 
 

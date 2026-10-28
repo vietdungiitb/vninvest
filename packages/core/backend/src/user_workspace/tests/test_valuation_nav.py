@@ -10,7 +10,6 @@ phải so sánh "gần đúng", vì 1 đồng là 1 đồng.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
 from decimal import Decimal
 
 from django.test import SimpleTestCase

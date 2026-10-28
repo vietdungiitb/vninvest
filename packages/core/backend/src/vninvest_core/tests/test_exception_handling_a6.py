@@ -14,7 +14,7 @@ Cache is cleared between test classes to prevent rate limit cross-contamination
 
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase, APIClient

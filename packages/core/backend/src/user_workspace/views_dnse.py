@@ -13,7 +13,6 @@ from rest_framework.decorators import (
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.throttling import ScopedRateThrottle
-from django.utils import timezone
 
 import hashlib
 import json
@@ -31,7 +30,7 @@ from .dnse_adapter import (
     DNSECredentialMissingError,
     DNSEVnbrokerUnavailableError,
 )
-from .models import DNSECredential, get_user_broker_config, set_user_broker_secrets
+from .models import DNSECredential, get_user_broker_config
 from .services import idempotency
 from .tasks import (
     reconcile_dnse_transactions_task,
@@ -41,7 +40,6 @@ from .tasks import (
 from vninvest_core.exceptions import (
     ConflictErrorException,
     InternalErrorException,
-    NotFoundErrorException,
     PermissionErrorException,
     ServiceUnavailableException,
     ValidationErrorException,
@@ -117,7 +115,7 @@ def _read_volume(payload: dict) -> int:
         if len(set(coerced.values())) > 1:
             raise ValidationErrorException(
                 detail=(
-                    f"Khối lượng mâu thuẫn: "
+                    "Khối lượng mâu thuẫn: "
                     + ", ".join(f"{k}={v}" for k, v in sorted(coerced.items()))
                     + ". Gửi một giá trị duy nhất."
                 ),

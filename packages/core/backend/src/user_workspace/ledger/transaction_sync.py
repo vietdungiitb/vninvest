@@ -309,7 +309,7 @@ def _run_isolated(operation, transaction, *, actor=None):
     try:
         with db_transaction.atomic():
             return operation(transaction, actor=actor)
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Đường ghi `Transaction` phải sống sót. NAV sẽ bị chặn bằng
         # `nav_reason` thay vì trả số sai — đó là hành vi an toàn hơn là làm
         # hỏng việc ghi giao dịch chỉ vì sổ cái lỗi.

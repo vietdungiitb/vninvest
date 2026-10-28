@@ -74,11 +74,11 @@ def test_connection(secrets: dict) -> dict:
     except ImportError as exc:
         logger.warning('dnse test_connection: vnbroker unavailable — %s', type(exc).__name__)
         return {'ok': False, 'error': 'vnbroker_unavailable'}
-    except Exception as exc:  # noqa: BLE001 — mọi lỗi upstream đều thành error rõ, không raise
+    except Exception as exc:
         logger.warning('dnse test_connection failed — %s', type(exc).__name__)
         return {'ok': False, 'error': f'{type(exc).__name__}'}
     try:
         count = len(accounts) if hasattr(accounts, '__len__') else 0
-    except Exception:  # noqa: BLE001
+    except Exception:
         count = 0
     return {'ok': True, 'account_count': count}

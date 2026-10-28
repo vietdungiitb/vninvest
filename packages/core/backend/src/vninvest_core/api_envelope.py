@@ -67,7 +67,7 @@ Không có serializer nội bộ (payload dựng tay) thì bỏ tham số:
 from rest_framework import serializers
 from drf_spectacular.utils import OpenApiResponse
 
-__all__ = ['envelope_response', 'EnvelopeMetaField']
+__all__ = ['EnvelopeMetaField', 'envelope_response']
 
 #: Cache lớp envelope theo (tên, serializer, many).
 #:

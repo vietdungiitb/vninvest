@@ -46,9 +46,9 @@ class BrokerSyncService:
         return self.adapter.provider_id
 
     @classmethod
-    def for_config(cls, config, adapter_cls=None) -> 'BrokerSyncService':
+    def for_config(cls, config, adapter_cls=None) -> BrokerSyncService:
         """Dung service tu mot UserBrokerConfig (secrets giai ma tu DB)."""
-        from ..models import UserBrokerConfig as _UBC  # noqa: PLC0415 (lazy)
+        from ..models import UserBrokerConfig as _UBC
 
         if not isinstance(config, _UBC):
             raise BrokerAdapterError(
@@ -65,10 +65,10 @@ class BrokerSyncService:
 
     @classmethod
     def for_user(cls, user, provider: str, label: str = 'Mặc định',
-                 tenant=None) -> 'BrokerSyncService':
+                 tenant=None) -> BrokerSyncService:
         """Giai (user, provider[, label, tenant]) -> service. Thieu config
         => BrokerConfigMissingError (fail-closed, co code)."""
-        from ..models import get_user_broker_config  # noqa: PLC0415 (lazy)
+        from ..models import get_user_broker_config
 
         normalized = str(provider or '').strip().lower()
         config = get_user_broker_config(user, normalized, label, tenant=tenant)

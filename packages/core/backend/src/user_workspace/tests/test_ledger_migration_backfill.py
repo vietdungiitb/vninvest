@@ -136,7 +136,7 @@ class BackfillMigrationTests(TransactionTestCase):
             self.executor = MigrationExecutor(connection)
             self.executor.loader.build_graph()
             self.executor.migrate(self.executor.loader.graph.leaf_nodes())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Test DB bị huỷ ngay sau đó; chỉ cần không che mất lỗi của test.
             logger.info('tearDown: bo qua loi khoi phuc migration: %s', exc)
         _assert_schema_restored()

@@ -7,7 +7,7 @@ import os
 from unittest import mock
 
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from vninvest_core.env_validation import (
     get_required_env,

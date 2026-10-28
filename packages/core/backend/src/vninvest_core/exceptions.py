@@ -25,8 +25,8 @@ và ở đây được thực hiện đúng nghĩa đó.
 """
 import logging
 import uuid
-from datetime import datetime, timezone as dt_timezone
-from typing import Optional, Dict, Any
+from datetime import datetime, UTC
+from typing import Optional, Any
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -129,7 +129,7 @@ class ProblemDetail:
         detail: str,
         request_id: Optional[str] = None,
         instance: Optional[str] = None,
-        field_errors: Optional[Dict[str, list]] = None,
+        field_errors: Optional[dict[str, list]] = None,
         errors: Optional[list] = None,
         type_uri: Optional[str] = None,
         title: Optional[str] = None,
@@ -160,11 +160,11 @@ class ProblemDetail:
         # Đây là regression do commit `59b459dd` gây ra, phát hiện khi audit
         # độc lập — bản đầu ghi sai "không regression" vì chỉ so 642 test của
         # `backend/tests/`, chưa từng chạy 2104 test trong `src/`.
-        self.timestamp = datetime.now(dt_timezone.utc).isoformat().replace(
+        self.timestamp = datetime.now(UTC).isoformat().replace(
             '+00:00', 'Z')
 
     def to_dict(self) -> dict:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             'type': self.type,
             'title': self.title,
             'status': self.status,
@@ -252,7 +252,7 @@ class ProblemResponse(Response):
         return rendered
 
 
-def _field_errors_from_detail(detail) -> Dict[str, list]:
+def _field_errors_from_detail(detail) -> dict[str, list]:
     """Chuẩn hoá `exc.detail` của DRF về `{field: [message]}`.
 
     DRF cho phép `detail` là `str`, `list` hoặc `dict`. Trường hợp `dict`/`list`
@@ -271,7 +271,7 @@ def _field_errors_from_detail(detail) -> Dict[str, list]:
     return {}
 
 
-def _errors_from_field_errors(field_errors: Dict[str, list]) -> list:
+def _errors_from_field_errors(field_errors: dict[str, list]) -> list:
     """Chuyển `{field: [msg]}` → `[{field, code, message}]`."""
     out = []
     for field, messages in (field_errors or {}).items():
@@ -411,7 +411,7 @@ class StandardErrorEnvelope:
         code: str,
         timestamp: Optional[str] = None,
         request_id: Optional[str] = None,
-        field_errors: Optional[Dict[str, list]] = None,
+        field_errors: Optional[dict[str, list]] = None,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
     ):
         """
@@ -465,7 +465,7 @@ class CoreAPIException(APIException):
         detail: Optional[str] = None,
         code: Optional[str] = None,
         status_code: Optional[int] = None,
-        field_errors: Optional[Dict[str, list]] = None,
+        field_errors: Optional[dict[str, list]] = None,
         request_id: Optional[str] = None,
     ):
         """

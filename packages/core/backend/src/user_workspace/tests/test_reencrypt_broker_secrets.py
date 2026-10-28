@@ -17,7 +17,6 @@ from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
 from user_workspace.models import UserBrokerConfig
-from vninvest_core.utils.encryption import DEFAULT_CURRENT_VERSION
 
 KEY_A = "reenc-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 KEY_B = "reenc-key-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"

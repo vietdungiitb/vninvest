@@ -6,7 +6,7 @@ error responses follow standard envelope format per Constitutional R3 and R4.
 """
 import json
 from unittest.mock import patch
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework import status

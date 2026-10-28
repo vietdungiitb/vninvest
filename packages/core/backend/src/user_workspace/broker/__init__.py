@@ -18,8 +18,8 @@ __all__ = [
     'PROVIDER_SECRET_KEYS',
     'SCHEMAS',
     'dnse',
-    'ssi',
-    'tcbs',
     'mask_secrets_preview',
     'mask_value',
+    'ssi',
+    'tcbs',
 ]

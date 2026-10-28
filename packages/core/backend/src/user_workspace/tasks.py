@@ -39,7 +39,7 @@ ERR_TENANT_NOT_FOUND = 'tenant_not_found'
 
 def _beat_check_kill_switch(*, provider=None, tenant=None) -> None:
     """Wrapper de test patch TAI `user_workspace.tasks` (khong cham service_ops)."""
-    from service_ops.broker_runtime import check_kill_switch  # noqa: PLC0415 (lazy)
+    from service_ops.broker_runtime import check_kill_switch
 
     check_kill_switch('global')
     if tenant is not None:
@@ -50,7 +50,7 @@ def _beat_check_kill_switch(*, provider=None, tenant=None) -> None:
 
 def _beat_in_quiet_hours(now=None) -> bool:
     """Wrapper de test patch TAI `user_workspace.tasks` (khong cham service_ops)."""
-    from service_ops.broker_runtime import in_quiet_hours  # noqa: PLC0415 (lazy)
+    from service_ops.broker_runtime import in_quiet_hours
 
     return bool(in_quiet_hours(now=now))
 
@@ -387,7 +387,7 @@ def reconcile_dnse_transactions_task(self, user_id: int, days_back: int = 7):
 # beat sent `screener_scheduled_run` every 5m but workers rejected it with
 # "Received unregistered task" (same for `run_screener_scan_task.delay`
 # from run-now). Re-export here so autodiscovery picks them up.
-from .screener_tasks import (  # noqa: E402,F401
+from .screener_tasks import (  # noqa: F401
     run_screener_scan_task,
     screener_scheduled_run,
 )
@@ -466,7 +466,7 @@ def sync_all_broker_positions_task():
     SubAccount da lien ket (B1.3). Config thieu tenant => skip (khong doan).
     Guard: kill-switch global + quiet-hours (fail-closed, khong ghi gi).
     """
-    from service_ops.broker_runtime import BrokerWriteDisabled  # noqa: PLC0415
+    from service_ops.broker_runtime import BrokerWriteDisabled
 
     try:
         _beat_check_kill_switch()
@@ -476,9 +476,9 @@ def sync_all_broker_positions_task():
     if _beat_in_quiet_hours():
         return {'ok': True, 'triggered_count': 0, 'skipped': 'quiet_hours'}
 
-    from .broker.position_sync import sync_account_positions  # noqa: PLC0415
-    from .broker.sync_service import BrokerSyncService  # noqa: PLC0415
-    from .models import (  # noqa: PLC0415 (tranh circular import luc load)
+    from .broker.position_sync import sync_account_positions
+    from .broker.sync_service import BrokerSyncService
+    from .models import (
         BrokerSyncRun,
         SubAccount,
         UserBrokerConfig,
@@ -506,7 +506,7 @@ def sync_all_broker_positions_task():
                 merged['collisions'].extend(stats['collisions'])
             run.status = BrokerSyncRun.StatusChoices.SUCCEEDED
             run.stats = merged
-        except Exception as exc:  # noqa: BLE001 — 1 config hong khong chan config khac
+        except Exception as exc:
             logger.warning(
                 'sync_all_broker_positions: config %s loi — %s',
                 config.id, type(exc).__name__,
@@ -533,7 +533,7 @@ def sync_broker_account_task(self, config_id: int, sub_account_id: int):
     Ghi 1 BrokerSyncRun. Fail-closed: config/sub khong ton tai hoac lech
     tenant => loi ro, khong ghi gi. View POST .../sync/ enqueue task nay.
     """
-    from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch  # noqa: PLC0415
+    from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch
 
     try:
         check_kill_switch('global')
@@ -544,9 +544,9 @@ def sync_broker_account_task(self, config_id: int, sub_account_id: int):
         )
         return {'ok': False, 'error': 'broker_writes_disabled'}
 
-    from .broker.position_sync import sync_account_positions  # noqa: PLC0415
-    from .broker.sync_service import BrokerSyncService  # noqa: PLC0415
-    from .models import (  # noqa: PLC0415
+    from .broker.position_sync import sync_account_positions
+    from .broker.sync_service import BrokerSyncService
+    from .models import (
         BrokerSyncRun,
         SubAccount,
         UserBrokerConfig,
@@ -571,7 +571,7 @@ def sync_broker_account_task(self, config_id: int, sub_account_id: int):
         stats = sync_account_positions(service, sub)
         run.status = BrokerSyncRun.StatusChoices.SUCCEEDED
         run.stats = stats
-    except Exception as exc:  # noqa: BLE001 — that bai ghi run, khong no worker
+    except Exception as exc:
         logger.warning(
             'sync_broker_account_task: config %s sub %s loi — %s',
             config_id, sub_account_id, type(exc).__name__,

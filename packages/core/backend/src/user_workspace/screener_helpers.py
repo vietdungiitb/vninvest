@@ -1,8 +1,5 @@
 import json
 
-import numpy as np
-from decimal import Decimal
-from django.utils import timezone
 
 # F-BE-06: bound scan-cache payload (memcached default 1MB/item; a full
 # 1200-symbol matched list with AI advisory reaches ~2.4MB and the write
@@ -340,14 +337,14 @@ def _compute_fundamental_metrics(financials, close=None, outstanding_shares=None
             if len(ratios) >= 5:
                 eps_prev = ratios[4].get('eps') or ratios[4].get('basic_eps')
             if eps_current and eps_prev and float(eps_prev) != 0:
-                eps_growth_yoy = _safe_round(((float(eps_current) / float(eps_prev) - 1) * 100))
+                eps_growth_yoy = _safe_round((float(eps_current) / float(eps_prev) - 1) * 100)
 
         income_stmt = financials.get('income_statement', []) or []
         if income_stmt and len(income_stmt) >= 2:
             rev_current = income_stmt[0].get('revenue') or income_stmt[0].get('total_revenue')
             rev_prev = income_stmt[1].get('revenue') or income_stmt[1].get('total_revenue')
             if rev_current and rev_prev and float(rev_prev) > 0:
-                revenue_growth_yoy = _safe_round(((float(rev_current) / float(rev_prev) - 1) * 100))
+                revenue_growth_yoy = _safe_round((float(rev_current) / float(rev_prev) - 1) * 100)
 
         balance_sheet = financials.get('balance_sheet', []) or []
         if balance_sheet:

@@ -12,6 +12,7 @@ import logging
 
 from celery import shared_task
 from django.core.cache import cache as dj_cache
+from datetime import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +84,8 @@ def run_screener_scan_task(
             def __init__(self, rid, ts):
                 self.id = rid
                 if ts:
-                    from datetime import datetime, timezone as dt_tz
-                    self.updated_at = datetime.fromtimestamp(int(ts), tz=dt_tz.utc)
+                    from datetime import datetime
+                    self.updated_at = datetime.fromtimestamp(int(ts), tz=UTC)
                 else:
                     self.updated_at = None
 

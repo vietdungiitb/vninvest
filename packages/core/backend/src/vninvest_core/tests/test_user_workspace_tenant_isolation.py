@@ -10,7 +10,7 @@ Test scenario: 2 tenants (tenant_a, tenant_b), 3 users:
 from decimal import Decimal
 from datetime import date, timedelta
 
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient
