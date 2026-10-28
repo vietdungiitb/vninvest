@@ -247,6 +247,19 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
         self._ensure_not_last_active_service_account(instance, deleting=True)
         instance.delete()
 
+    @extend_schema(
+        summary='Xoa service account',
+        responses={
+            204: None,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
 
 class PATListView(generics.ListAPIView):
     serializer_class = CorePATCredentialSerializer
