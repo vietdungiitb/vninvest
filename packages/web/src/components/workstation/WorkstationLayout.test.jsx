@@ -3,8 +3,12 @@
  * Unit tests for the Workstation layout component
  */
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 // jest is available globally via setupTests.js
 import { WorkstationLayout } from './WorkstationLayout.jsx';
+
+const renderWithRouter = (ui, options = {}) =>
+  render(ui, { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>, ...options });
 
 // Mock window.matchMedia for responsive tests
 Object.defineProperty(window, 'matchMedia', {
@@ -38,7 +42,7 @@ describe('WorkstationLayout', () => {
   });
 
   test('renders legacy stack when feature disabled', () => {
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={false}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -55,7 +59,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 1024;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={true}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -74,7 +78,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 375;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={true}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -92,7 +96,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 375;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={true}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -121,7 +125,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 1024;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={false}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -136,7 +140,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 1024;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={false}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -152,7 +156,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 1024;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={false}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -166,7 +170,7 @@ describe('WorkstationLayout', () => {
     window.innerWidth = 375;
     window.dispatchEvent(new Event('resize'));
 
-    render(
+    renderWithRouter(
       <WorkstationLayout enabled={true}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
@@ -192,7 +196,7 @@ describe('WorkstationLayout', () => {
   test('cleanup on unmount removes resize listener', () => {
     const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
 
-    const { unmount } = render(
+    const { unmount } = renderWithRouter(
       <WorkstationLayout enabled={true}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
