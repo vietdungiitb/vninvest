@@ -333,7 +333,7 @@ def _resolve_backfill_symbols(symbols_group: str, custom_symbol: str) -> list[st
     try:
         members = fetch_symbol_group_members(group)
         return [s.upper() for s in members if s] if members else None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning('_resolve_backfill_symbols group=%s failed: %s', group, exc)
         return None
 
@@ -452,7 +452,6 @@ class SystemBackfillTriggerView(APIView):
         # ── Build (symbol, date) slots & apply missing-only filter via pandas ──
         import pandas as pd
         from .tasks import backfill_intraday_tick_system
-        from market_data.models import IntradayTick  # §14.5 presence check
 
         # All candidate slots as DataFrame
         all_slots = pd.DataFrame(

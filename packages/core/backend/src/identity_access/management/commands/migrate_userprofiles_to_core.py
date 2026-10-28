@@ -39,7 +39,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Mode: {"DRY-RUN" if dry_run else "EXECUTE"}  |  batch_size={batch_size}')
 
         # Import late to avoid module-level issues if DB not ready
-        from identity_access.models import CoreTenant, UserProfile  # noqa: PLC0415
+        from identity_access.models import UserProfile
 
         rows = self._fetch_legacy_userconfigs()
         total_legacy = len(rows)
@@ -94,7 +94,7 @@ class Command(BaseCommand):
                     else:
                         updated += 1
 
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     self.stderr.write(self.style.ERROR(
                         f'  [ERROR] legacy user_id={legacy_user_id}: {exc}'
                     ))

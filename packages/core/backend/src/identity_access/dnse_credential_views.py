@@ -13,7 +13,6 @@ Hard rules (AGENTS.md §14):
 """
 import logging
 
-from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -30,7 +29,7 @@ from vninvest_core.exceptions import (
 )
 
 from .envelope import envelope
-from .models import UserDNSECredential, _encrypt_credential
+from .models import UserDNSECredential
 from .schema import DNSECredentialMetadataSerializer
 from .permissions import require_human_session
 from drf_spectacular.openapi import OpenApiTypes

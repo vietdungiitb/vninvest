@@ -37,7 +37,6 @@ from .serializers import (
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 from .views.helpers import TENANT_PERMISSION_CLASSES
 from .views_tenant import (
-    _normalize_scope_codes,
     _reject_human_session_markers,
     _serialize_partner_pat,
     _validate_requested_pat_scopes,

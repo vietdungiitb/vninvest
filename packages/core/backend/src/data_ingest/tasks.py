@@ -10,9 +10,8 @@ import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 from decimal import Decimal
-from typing import Optional
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -2708,7 +2707,6 @@ def enqueue_dnse_quarterly_backfill(
     """
     from datetime import date, timedelta
 
-    from market_data.models import IntradayTick
     from service_ops.models import ServiceDefinition, ServiceRunLog
     from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
 
@@ -2921,8 +2919,7 @@ def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
     for row in tick_rows:
         ts = row['timestamp']
         if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
-            from datetime import timezone as _tz_utc
-            ts = ts.replace(tzinfo=_tz_utc.utc)
+            ts = ts.replace(tzinfo=UTC)
         normalized_trades.append({
             'symbol': symbol_upper,
             'timestamp': ts,
@@ -3292,8 +3289,6 @@ def consume_email_verification_event(event) -> None:
     into a lost Celery message.
     """
     from django.contrib.auth import get_user_model
-    from django.utils import timezone
-    from identity_access.models import OutboxEvent
 
     User = get_user_model()
     payload = event.payload or {}

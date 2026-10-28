@@ -14,14 +14,11 @@ Tests cover:
 """
 import base64
 import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
+from datetime import datetime, timedelta, UTC
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
-from django.test.utils import setup_test_environment
+from django.test import TestCase, RequestFactory
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from lxml import etree
 
@@ -35,13 +32,10 @@ from identity_access.models import (
 )
 from identity_access.saml_service import (
     SAMLService,
-    SAMLRequestError,
     SAMLParseError,
-    SAMLSignatureError,
     SAML2P_NS,
     SAML2_NS,
     MD_NS,
-    DS_NS,
 )
 
 User = get_user_model()
@@ -60,7 +54,7 @@ def _make_saml_response_xml(
     status_success=True,
 ):
     """Build a minimal but valid SAML Response XML string."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if not_on_or_after is None:
         not_on_or_after = now + timedelta(hours=1)
 
@@ -222,7 +216,7 @@ class SAMLServiceResponseParsingTests(TestCase):
         self.assertIn('not Success', str(ctx.exception))
 
     def test_parse_response_expired(self):
-        expired = datetime.now(timezone.utc) - timedelta(hours=1)
+        expired = datetime.now(UTC) - timedelta(hours=1)
         xml = _make_saml_response_xml(not_on_or_after=expired)
         encoded = _encode_saml_response(xml)
         with self.assertRaises(SAMLParseError) as ctx:

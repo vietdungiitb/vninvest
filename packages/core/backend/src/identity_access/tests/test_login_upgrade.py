@@ -1,7 +1,6 @@
 # Location: packages/core/backend/src/identity_access/tests/test_login_upgrade.py
-import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 # Inject mock google modules into sys.modules BEFORE rest of imports to prevent collection errors
 sys.modules['google'] = MagicMock()

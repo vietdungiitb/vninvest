@@ -33,7 +33,6 @@ from vninvest_core.exceptions import (
 )
 from .helpers import success_response
 from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
 
 
 logger = logging.getLogger(__name__)

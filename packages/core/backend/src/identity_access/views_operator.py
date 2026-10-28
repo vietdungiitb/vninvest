@@ -3,7 +3,6 @@ import json
 import uuid
 from django.utils import timezone
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -19,9 +18,7 @@ from identity_access.schema import (
     OperatorMailConfigCursorPageSerializer,
     OperatorSuccessResponseSerializer,
 )
-from vninvest_core.utils.crypto import encrypt_secret
 from django.core.mail import get_connection, send_mail
-from django.conf import settings
 from drf_spectacular.openapi import OpenApiTypes
 
 

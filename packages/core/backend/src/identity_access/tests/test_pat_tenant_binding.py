@@ -9,12 +9,10 @@ Tests cover:
 
 import json
 import uuid
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
+from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
-from django.utils import timezone
 
 from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember
 from identity_access.middleware import TenantResolutionMiddleware

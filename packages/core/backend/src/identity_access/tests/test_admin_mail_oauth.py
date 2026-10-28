@@ -4,7 +4,6 @@ Tests for SystemMailConfigAdmin Google OAuth2 connect/callback/revoke views.
 Covers: connect redirect, callback token save, revoke token clear, test-email action,
         non-staff access denial.
 """
-import os
 import uuid
 from unittest.mock import patch, MagicMock
 

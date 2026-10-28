@@ -11,7 +11,6 @@ sys.modules['googleapiclient'] = MagicMock()
 sys.modules['googleapiclient.discovery'] = MagicMock()
 
 import uuid
-import hashlib
 import json
 from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
@@ -21,7 +20,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from cryptography.fernet import Fernet
 
-from identity_access.models import SystemMailConfig, OutboxEvent, ProcessedEvent, MailConfigAuditLog, CoreTenant, CoreServiceAccount, UserProfile
+from identity_access.models import SystemMailConfig, OutboxEvent, ProcessedEvent, CoreTenant, CoreServiceAccount, UserProfile
 from data_ingest.tasks import trigger_email_verification_flow
 from identity_access.management.commands.backfill_missing_tenants import Command as BackfillCommand
 from identity_access.management.commands.rotate_mail_credential_key import Command as RotateCommand

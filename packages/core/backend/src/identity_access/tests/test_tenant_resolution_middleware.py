@@ -14,11 +14,10 @@ Tests cover:
 """
 
 import json
-import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
+from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
 
 from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember

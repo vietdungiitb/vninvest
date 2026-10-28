@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import csv
-import hashlib
-import hmac
 import io
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import httpx
 from celery import shared_task
@@ -71,7 +69,7 @@ def generate_and_deliver_report(self, report_id, is_test=False):
 def _generate_report_content(report):
     """Generate HTML and/or CSV content based on report type and format."""
     from commercial.models import Invoice, QuotaHistory
-    from identity_access.models import CoreTenant, CorePATCredential, CoreServiceAccount, TenantMember
+    from identity_access.models import CorePATCredential, CoreServiceAccount, TenantMember
 
     tenant = report.tenant
     today = date.today()
@@ -507,7 +505,6 @@ def cross_ref_pat_audit_events(self, hours: int = 1):
     reliable match exists, the row is left untouched (PATAuditLog remains the
     source of truth for per-PAT queries).
     """
-    from django.db.models import OuterRef, Subquery
     from ops_audit.models import AuditEvent
     from identity_access.models import PATAuditLog
 

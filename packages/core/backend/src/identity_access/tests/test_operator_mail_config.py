@@ -12,7 +12,6 @@ sys.modules['googleapiclient.discovery'] = MagicMock()
 
 import json
 from django.contrib.auth import get_user_model
-from django.db import transaction, IntegrityError
 from django.test import TestCase, override_settings
 from django.core.cache import cache
 from rest_framework.test import APIClient

@@ -13,7 +13,7 @@ import re
 import secrets
 import threading
 from datetime import datetime, timedelta
-from datetime import timezone as dt_timezone
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -665,7 +665,7 @@ class TenantRegAVerificationTests(TestCase):
             response = self.client.post(VERIFY_URL, {'token': 'not-a-real-token'}, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        token_hash = hashlib.sha256('not-a-real-token'.encode('utf-8')).hexdigest()
+        token_hash = hashlib.sha256(b'not-a-real-token').hexdigest()
         self.assertEqual(peek_rate_limit(f'ratelimit:verify-email:token:{token_hash}'), 3)
 
     def test_a11_expired_token_increments_the_stored_attempts(self):
@@ -835,7 +835,7 @@ class TenantRegATenantWriteTests(TestCase):
         # checking against the sent value is what actually pins the read-only rule.
         self.assertNotEqual(
             self.tenant.activated_at,
-            datetime(2030, 1, 1, tzinfo=dt_timezone.utc),
+            datetime(2030, 1, 1, tzinfo=UTC),
             "client-supplied activated_at must not be written",
         )
         self.assertIsNone(self.tenant.suspended_at)
@@ -957,7 +957,7 @@ class TenantRegATokenRetentionTests(TestCase):
         return EmailVerificationToken.objects.create(
             user=user,
             token_hash=hashlib.sha256(
-                f'retention{age_hours}{int(is_used)}'.encode('utf-8')
+                f'retention{age_hours}{int(is_used)}'.encode()
             ).hexdigest(),
             expires_at=timezone.now() - timedelta(hours=age_hours),
             is_used=is_used,

@@ -236,7 +236,7 @@ class LoginRecorder:
 
     @staticmethod
     def get_active_sessions(tenant):
-        from identity_access.models import CorePATCredential, CoreServiceAccount
+        from identity_access.models import CorePATCredential
         return CorePATCredential.objects.filter(
             service_account__tenant=tenant,
             is_human_session=True,

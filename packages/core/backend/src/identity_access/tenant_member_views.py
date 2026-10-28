@@ -21,7 +21,7 @@ from vninvest_core.api_envelope import envelope_response
 
 from tenant_lifecycle.models import TenantLifecycleEvent
 from .envelope import envelope
-from .models import CoreTenant, TenantMember, TenantInvite
+from .models import TenantMember, TenantInvite
 from .schema import TenantInviteListSerializer, TenantMemberListSerializer
 from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session

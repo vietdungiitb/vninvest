@@ -5,12 +5,10 @@ Uses saml_service.SAMLService for protocol-level operations (AuthnRequest,
 Response parsing, metadata generation). Signature verification is a stub
 pending python3-saml + xmlsec1 in production.
 """
-import base64
 import logging
 
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse, HttpResponseRedirect
-from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status

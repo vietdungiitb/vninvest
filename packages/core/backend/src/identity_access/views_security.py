@@ -5,7 +5,7 @@ Login Activity, Active Sessions, Session Revocation.
 from datetime import timedelta
 
 from django.db import connection
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +15,7 @@ from drf_spectacular.utils import extend_schema
 from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope, paginated_envelope
-from .models import CoreTenant, LoginAttempt
+from .models import LoginAttempt
 from .permissions import IsTenantActive, require_human_session
 from .schema import (
     DetailPayloadSerializer,

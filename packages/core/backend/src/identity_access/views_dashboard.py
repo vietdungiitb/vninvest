@@ -18,7 +18,7 @@ from drf_spectacular.utils import extend_schema
 from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant
+from .models import CorePATCredential, CoreServiceAccount
 from .permissions import IsTenantActive, require_human_session
 from .schema import PartnerDashboardUsageTrendSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission

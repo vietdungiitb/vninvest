@@ -6,8 +6,8 @@ T-E2: Ghi IntradayTick qua backfill_intraday_tick_user → verify DB.
 T-E3: Presence check idempotency — chạy 2 lần không tạo duplicate.
 T-E4: backfill_intraday_tick_system → detect_and_store_global_whale_alerts cùng ngày → whale alerts được tạo.
 """
-from datetime import datetime, timezone, date
-from unittest.mock import patch, MagicMock
+from datetime import datetime, UTC
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -21,7 +21,7 @@ def _make_ticks(symbol: str, trade_date: str, count: int = 5) -> list[dict]:
     for i in range(count):
         ticks.append({
             'symbol': symbol,
-            'timestamp': datetime(2026, 5, 10, 9, i, 0, tzinfo=timezone.utc),
+            'timestamp': datetime(2026, 5, 10, 9, i, 0, tzinfo=UTC),
             'price': 25000.0 + i * 100,
             'volume': 5_000_000_000,  # 5 tỷ → whale threshold
             'side': 'buy',
@@ -34,7 +34,6 @@ class BackfillSystemIntegrationTest(TestCase):
     """T-E1, T-E3, T-E4."""
 
     def setUp(self):
-        from identity_access.models import UserDNSECredential, _encrypt_credential
         from django.contrib.auth import get_user_model
         User = get_user_model()
         self.admin = User.objects.create_superuser('admin_d06', 'admin@test.com', 'pass1234')

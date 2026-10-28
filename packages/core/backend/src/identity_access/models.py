@@ -333,7 +333,6 @@ class CorePATCredential(models.Model):
 
     @classmethod
     def resolve_from_raw_secret(cls, raw_secret: str):
-        from django.utils import timezone
         prefix = _extract_pat_prefix(raw_secret)
         candidates = cls.objects.select_related(
             'service_account__tenant', 'issued_for_member'

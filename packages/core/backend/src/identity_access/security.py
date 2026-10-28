@@ -2,7 +2,7 @@ import os
 import base64
 import hashlib
 import logging
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, UTC
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 
@@ -40,7 +40,7 @@ def _parse_moment(raw: str):
         logger.warning('%s: khong doc duoc ISO-8601, bo qua.', CODE_KEY_EXPIRED)
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=dt_timezone.utc)
+        return parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -119,7 +119,7 @@ def _grace_open() -> bool:
     grace = _grace_until()
     if grace is None:
         return True
-    return datetime.now(dt_timezone.utc) < grace
+    return datetime.now(UTC) < grace
 
 
 def key_ring_status() -> dict:
@@ -233,7 +233,7 @@ def decrypt_user_api_key(encrypted_key: str) -> str:
             plain = Fernet(key).decrypt(token.encode('utf-8')).decode('utf-8')
         except InvalidToken:
             continue
-        except Exception as e:  # noqa: BLE001 - lỗi không dự kiến thì báo, không im
+        except Exception as e:
             logger.error(f'Lỗi giải mã khóa hệ thống ngoài dự kiến: {str(e)}')
             raise RuntimeError(f'Lỗi bảo mật khi xử lý giải mã khóa: {str(e)}') from e
         if version != active:

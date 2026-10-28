@@ -28,7 +28,6 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.test import RequestFactory, TestCase, override_settings
-from django.utils import timezone
 
 from rest_framework.exceptions import PermissionDenied
 
@@ -862,7 +861,6 @@ class B11StaffSwitchMutationTests(TenantFixtureMixin, TestCase):
     so it cannot reach the database. Documented, not changed."""
 
     def test_no_code_path_saves_request_user(self):
-        from identity_access.models import CorePATCredential
         from identity_access.utils.resolve_tenant import apply_pat_user_privileges
 
         pat = _machine_pat(self.tenant_a)[0]

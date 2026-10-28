@@ -4,7 +4,7 @@ API Usage Analytics views for tenant-admin (Phase 2).
 Queries pre-aggregated ApiCallRollup for fast group_by queries.
 Raw AuditEvent fallback for days <= 1 (per-endpoint precision).
 """
-from datetime import date, timedelta
+from datetime import timedelta
 from django.db import models
 from django.db.models import Sum, Count
 from django.http import StreamingHttpResponse
@@ -12,11 +12,9 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
 
 from drf_spectacular.utils import OpenApiTypes, extend_schema
 
-from .models import CoreTenant
 from .permissions import IsTenantActive, require_pat_scopes_or_human_session
 from .schema import PartnerApiTimelineSerializer, PartnerApiUsageSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission

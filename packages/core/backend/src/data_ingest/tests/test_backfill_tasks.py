@@ -11,24 +11,24 @@ Test cases:
   T-C7: POST /backfill/user/ — trade_date quá 180 ngày → 400.
 """
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from unittest.mock import patch, MagicMock
 
 from cryptography.fernet import Fernet
 from django.contrib.auth.models import User
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from rest_framework.test import APIClient
 
 TEST_FERNET_KEY = Fernet.generate_key().decode()
 
 SAMPLE_TICKS = [
     {
-        'timestamp': datetime(2026, 5, 10, 2, 30, 0, tzinfo=timezone.utc),
+        'timestamp': datetime(2026, 5, 10, 2, 30, 0, tzinfo=UTC),
         'price': 25000.0, 'volume': 1000, 'side': 'buy',
         'match_type': 'NormalMatch', 'source': 'dnse_system',
     },
     {
-        'timestamp': datetime(2026, 5, 10, 2, 31, 0, tzinfo=timezone.utc),
+        'timestamp': datetime(2026, 5, 10, 2, 31, 0, tzinfo=UTC),
         'price': 25100.0, 'volume': 500, 'side': 'sell',
         'match_type': 'NormalMatch', 'source': 'dnse_system',
     },
@@ -46,7 +46,6 @@ class SystemBackfillTaskTests(TestCase):
             # Patch inside task's local import scope
             with patch('identity_access.models.UserDNSECredential.objects') as mock_obj:
                 mock_obj.get.side_effect = Exception('no system provider')
-                from data_ingest.tasks import backfill_intraday_tick_system
                 # Patch directly via the models module
         with patch('identity_access.models.get_system_provider_credentials', return_value=None):
             # Force the task to use the patched version
@@ -208,7 +207,7 @@ class SynthesizeBarsFromTicksTests(TestCase):
     def _make_ticks(self):
         """Tạo 4 IntradayTick trong DB để test tổng hợp bar."""
         from market_data.models import IntradayTick
-        base = datetime(2026, 5, 12, 2, 30, 0, tzinfo=timezone.utc)
+        base = datetime(2026, 5, 12, 2, 30, 0, tzinfo=UTC)
         rows = [
             IntradayTick(symbol=self._SYMBOL, timestamp=base,
                          price=25000, volume=1000, side='BUY',

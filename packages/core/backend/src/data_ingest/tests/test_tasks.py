@@ -1,12 +1,11 @@
 from datetime import date, timedelta
 from datetime import datetime
-from datetime import timezone as dt_timezone
+from datetime import UTC
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 from data_ingest.models import IngestJob, IngestRun
 from data_ingest.tasks import backfill_daily_prices, backfill_pre5y_to_market_inception, fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
@@ -169,7 +168,7 @@ class DataIngestBackfillTaskTests(TestCase):
         now_mock,
         backfill_daily_prices_run_mock,
     ):
-        now_mock.return_value = datetime(2026, 5, 21, tzinfo=dt_timezone.utc)
+        now_mock.return_value = datetime(2026, 5, 21, tzinfo=UTC)
         GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
         GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
         backfill_daily_prices_run_mock.return_value = {

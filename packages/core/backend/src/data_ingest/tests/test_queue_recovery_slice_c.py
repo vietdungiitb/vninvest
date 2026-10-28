@@ -8,7 +8,6 @@ Covers:
 - bound số học: max_symbols × timeout < 600s
 """
 import time
-from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import TestCase
