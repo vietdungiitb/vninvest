@@ -10,7 +10,7 @@ export interface CommercialTableColumn {
 
 export interface CommercialTableRow {
   id?: string;
-  /** `data-testid` của `<tr>` — dùng khi test cần truy cập cả hàng (vd: cả 2 nút hành động). */
+  /** data-testid of the tr row, used when tests need access to the whole row. */
   testId?: string;
   cells: Record<string, ReactNode>;
 }

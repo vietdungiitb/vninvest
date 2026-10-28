@@ -3,6 +3,8 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CommercialPage } from "../commercial/CommercialPage.js";
+import { LangProvider } from "../../context/LangContext.js";
+import { PortfolioProvider } from "../../context/PortfolioContext.js";
 import { CommercialToolbar } from "../commercial/primitives/CommercialToolbar.js";
 import { CommercialState } from "../commercial/primitives/CommercialState.js";
 import { CommercialTable } from "../commercial/primitives/CommercialTable.js";
@@ -84,7 +86,13 @@ describe("UI Standardization W0 — CommercialPage contract (AC-3)", () => {
 
   it("AC-2: error khác rỗng ⇒ role=alert + nút Thử lại + text hướng khắc phục", () => {
     const onRetry = vi.fn();
-    render(<CommercialPage title="Lỗi" error="Không tải được dữ liệu." state={{ onRetry }} />);
+    render(
+      <PortfolioProvider>
+        <LangProvider>
+          <CommercialPage title="Lỗi" error="Không tải được dữ liệu." state={{ onRetry }} />
+        </LangProvider>
+      </PortfolioProvider>,
+    );
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toContain("Không tải được dữ liệu.");
