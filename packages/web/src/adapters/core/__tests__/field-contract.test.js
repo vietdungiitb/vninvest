@@ -28,9 +28,8 @@ import path from "node:path";
 // `.js` test file is transformed to CommonJS by babel-jest and `import.meta` is a
 // SyntaxError there. `__dirname` is the correct idiom for this suite.
 // Same fix applied to `route-contract.test.js` in this commit.
-const HERE = __dirname;
-// __tests__ -> core -> adapters -> src -> web -> packages -> repo root
-const REPO = path.resolve(HERE, "..", "..", "..", "..", "..", "..");
+// Jest runs from packages/web; repo root is two levels up.
+const REPO = path.resolve(process.cwd(), "..", "..");
 const SERIALIZERS_PY = path.join(
   REPO,
   "packages",
