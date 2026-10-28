@@ -342,7 +342,7 @@ def _get_celery_active_queues() -> list[str]:
         for worker_queues in active_qs.values():
             for q in worker_queues:
                 queues.add(q.get('name'))
-        return sorted(list(queues))
+        return sorted(queues)
     except Exception as e:
         logger.debug('_get_celery_active_queues: Celery inspect failed: %s', e)
         return []

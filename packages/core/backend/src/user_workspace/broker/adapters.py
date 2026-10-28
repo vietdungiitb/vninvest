@@ -305,9 +305,9 @@ class DnseBrokerAdapter(BrokerAdapter):
 
     def is_available(self) -> bool:
         try:
-            from user_workspace.vnbroker_dnse_compat import build_dnse_client
-            build_dnse_client
-            return True
+            from user_workspace import vnbroker_dnse_compat
+
+            return vnbroker_dnse_compat is not None
         except ImportError:
             return False
 
