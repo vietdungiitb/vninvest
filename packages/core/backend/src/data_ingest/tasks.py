@@ -2893,7 +2893,8 @@ def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
     from datetime import time as _time
 
     from django.utils import timezone as _tz_range
-    _day_start = _tz_range.make_aware(datetime.combine(trade_date, _time.min))
+    _trade_day = datetime.strptime(trade_date, '%Y-%m-%d').date()
+    _day_start = _tz_range.make_aware(datetime.combine(_trade_day, _time.min))
     _day_end = _day_start + timedelta(days=1)
     symbol_upper = symbol.strip().upper()
     tick_rows = list(
