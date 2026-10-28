@@ -2892,11 +2892,17 @@ def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
     """
     from market_data.models import IntradayBar, IntradayTick
 
+    from datetime import time as _time
+
+    from django.utils import timezone as _tz_range
+    _day_start = _tz_range.make_aware(datetime.combine(trade_date, _time.min))
+    _day_end = _day_start + timedelta(days=1)
     symbol_upper = symbol.strip().upper()
     tick_rows = list(
         IntradayTick.objects.filter(
             symbol=symbol_upper,
-            timestamp__date=trade_date,
+            timestamp__gte=_day_start,
+            timestamp__lt=_day_end,
         ).values('timestamp', 'price', 'volume', 'side', 'match_type', 'source')
         .order_by('timestamp')
     )

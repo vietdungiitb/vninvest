@@ -1184,8 +1184,10 @@ def _build_tick_distribution_payload(symbol, window_minutes):
         if latest_tick is not None:
             stale = True
             trade_date = timezone.localdate(latest_tick.timestamp)
+            _day_start = timezone.make_aware(datetime.combine(trade_date, time.min))
+            _day_end = _day_start + timedelta(days=1)
             tick_rows = list(
-                IntradayTick.objects.filter(symbol=symbol, timestamp__date=trade_date)
+                IntradayTick.objects.filter(symbol=symbol, timestamp__gte=_day_start, timestamp__lt=_day_end)
                 .only('timestamp', 'volume')
                 .order_by('-timestamp')[:500]
             )

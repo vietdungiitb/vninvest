@@ -12,7 +12,7 @@ import base64
 import hashlib
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.db.models import Avg, Max, Prefetch, Q
 from django.utils import timezone
@@ -215,8 +215,10 @@ class RealtimeIntradayView(APIView):
             })
 
         latest_trade_date = timezone.localdate(latest_tick.timestamp)
+        _day_start = timezone.make_aware(datetime.combine(latest_trade_date, time.min))
+        _day_end = _day_start + timedelta(days=1)
         tick_rows = list(
-            IntradayTick.objects.filter(symbol=symbol, timestamp__date=latest_trade_date)
+            IntradayTick.objects.filter(symbol=symbol, timestamp__gte=_day_start, timestamp__lt=_day_end)
             .order_by('-timestamp')[:page_size]
         )
         trades = [_serialize_intraday_tick(tick) for tick in tick_rows]

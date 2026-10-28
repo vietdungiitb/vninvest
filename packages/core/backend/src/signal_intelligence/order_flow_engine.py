@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import math
 import statistics
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from typing import Sequence
 
 import pandas as pd
@@ -83,9 +83,11 @@ def load_session_ticks_df(symbol: str, session_date: date) -> pd.DataFrame:
 
     _empty_schema = ['timestamp', 'price', 'volume', 'side', 'value']
 
+    _day_start = django_timezone.make_aware(datetime.combine(session_date, time.min))
+    _day_end = _day_start + timedelta(days=1)
     qs = (
         IntradayTick.objects
-        .filter(symbol=symbol.upper(), timestamp__date=session_date)
+        .filter(symbol=symbol.upper(), timestamp__gte=_day_start, timestamp__lt=_day_end)
         .values('timestamp', 'price', 'volume', 'side')
         .order_by('timestamp')
     )

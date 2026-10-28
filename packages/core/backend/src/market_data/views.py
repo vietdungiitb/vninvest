@@ -446,9 +446,13 @@ class IntradayTapeView(APIView):
                 'age_seconds': None,
             })
 
+        from datetime import datetime, time
+
         latest_trade_date = timezone.localdate(latest_tick.timestamp)
+        _day_start = timezone.make_aware(datetime.combine(latest_trade_date, time.min))
+        _day_end = _day_start + timedelta(days=1)
         tick_rows = list(
-            IntradayTick.objects.filter(symbol=symbol, timestamp__date=latest_trade_date)
+            IntradayTick.objects.filter(symbol=symbol, timestamp__gte=_day_start, timestamp__lt=_day_end)
             .order_by('-timestamp')[:page_size]
         )
         age_seconds = max(int((served_at - latest_tick.timestamp).total_seconds()), 0)
