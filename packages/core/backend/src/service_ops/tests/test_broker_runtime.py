@@ -2,10 +2,12 @@
 
 Chạy: python manage.py test service_ops.tests.test_broker_runtime
 """
+import os
 from datetime import datetime
 from unittest.mock import patch
 
 import pytz
+from cryptography.fernet import Fernet
 from django.test import TestCase
 
 from service_ops.broker_runtime import (
@@ -16,6 +18,10 @@ from service_ops.broker_runtime import (
 )
 
 ICT = pytz.timezone('Asia/Ho_Chi_Minh')
+
+# set_secrets() doc os.environ (giong test_dnse_credential.py) — khong phu
+# thuoc env that cua may chay.
+TEST_FERNET_KEY = Fernet.generate_key().decode()
 
 
 class BrokerRuntimeTests(TestCase):
@@ -65,6 +71,7 @@ class BrokerRuntimeTests(TestCase):
         self.assertEqual(r1.get('skipped'), 'quiet_hours')
         self.assertEqual(r2.get('skipped'), 'quiet_hours')
 
+    @patch.dict(os.environ, {'DNSE_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
     def test_system_backfill_prefers_system_credential(self):
         from identity_access.models import SystemBrokerCredential
         cred = SystemBrokerCredential(provider='dnse', allowed_purposes=['backfill'])

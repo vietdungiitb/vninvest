@@ -44,6 +44,7 @@ services:
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set - settings.py:462 raises when empty}
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
 
   # ══════════════════════════════════════════════════════════════════════
   # WORKERS — cùng bộ biến. `entrypoint.sh` KHÔNG chạy `migrate` cho
@@ -56,24 +57,28 @@ services:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
 
   core-worker-realtime-prefetch:
     environment:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
 
   core-worker-realtime-stream:
     environment:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
 
   core-beat:
     environment:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set - env_validation.py:123}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
 
   # ══════════════════════════════════════════════════════════════════════
   # FRONTEND — 2 việc:
