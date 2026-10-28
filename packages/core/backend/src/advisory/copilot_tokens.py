@@ -29,7 +29,8 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
+from collections.abc import Callable
 
 import httpx
 

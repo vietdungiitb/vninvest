@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Iterable, Optional
+from typing import Optional
+from collections.abc import Iterable
 
 from django.conf import settings as django_settings
 

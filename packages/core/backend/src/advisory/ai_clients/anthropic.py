@@ -18,7 +18,6 @@ SDK `anthropic` cho 1 provider là nợ phụ thuộc vô ích).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import time
@@ -27,7 +26,7 @@ from typing import Optional
 import httpx
 from django.conf import settings as django_settings
 
-from advisory.ai_clients.base import AiClient, ProviderHTTPError, parse_usage_dict
+from advisory.ai_clients.base import AiClient, ProviderHTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -268,9 +267,9 @@ class AnthropicClient(AiClient):
 
 
 __all__ = [
-    'AnthropicClient',
-    'AnthropicDisabledError',
     'ANTHROPIC_BASE_URL',
     'ANTHROPIC_VERSION',
+    'AnthropicClient',
+    'AnthropicDisabledError',
     'anthropic_enabled',
 ]

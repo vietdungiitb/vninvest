@@ -5,7 +5,6 @@ from celery import shared_task
 from django.utils import timezone
 
 from advisory.ai_clients import FactoryError, get_ai_client
-from advisory.copilot_tokens import CopilotTokenManager
 from advisory.models import AdvisoryComponent, AdvisorySession
 from advisory.orchestrator import (
     SIGNAL_UNPARSEABLE_CODE,
@@ -20,7 +19,6 @@ from advisory.signal_norm import (
     normalize_risk_level,
     normalize_signal,
 )
-from identity_access.models import UserProfile
 
 logger = logging.getLogger(__name__)
 

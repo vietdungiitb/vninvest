@@ -5,7 +5,6 @@ Chay lai nhieu lan khong nhan doi (update_or_create). Chua noi lich beat —
 bao coordinator noi `CELERY_BEAT_SCHEDULE` (bao hanh vi, khong tu sua schedule).
 """
 import logging
-from datetime import date
 
 from django.db.models import Avg, Count, Sum
 

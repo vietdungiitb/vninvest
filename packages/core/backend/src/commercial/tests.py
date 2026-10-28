@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from identity_access.models import CoreTenant
-from commercial.stripe_service import StripeService, stripe_service
+from commercial.stripe_service import StripeService
 
 # Mock stripe module before it's imported
 mock_stripe = Mock()

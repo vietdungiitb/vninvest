@@ -17,7 +17,6 @@ from identity_access.utils.resolve_tenant import resolve_tenant
 from vninvest_core.pagination import CoreCursorPagination
 from vninvest_core.exceptions import (
     ValidationErrorException,
-    ConflictErrorException,
     PermissionErrorException,
 )
 

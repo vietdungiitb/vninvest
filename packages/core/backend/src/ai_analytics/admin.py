@@ -16,11 +16,9 @@ sửa tay là sai số liệu tài chính.
 from django.contrib import admin
 
 from vninvest_core.admin_ui import (
-    VNAdminMixin,
     VNReadOnlyMixin,
     badge_for,
     decimal_vi,
-    money_vi,
 )
 
 from .models import AIUsageRecord, AIUsageSummary

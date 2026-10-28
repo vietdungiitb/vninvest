@@ -1,10 +1,9 @@
 """Commercial automation tasks for quota flushing, invoicing, and alert enforcement."""
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from celery import shared_task
@@ -16,8 +15,6 @@ from commercial.quota_period import (
     current_billing_period,
     month_counter_scan_pattern,
     month_counter_scan_pattern_for,
-    month_counter_ttl,
-    period_slug,
 )
 from commercial.plan_catalog import (
     PLAN_ENTITLEMENTS,
@@ -95,7 +92,7 @@ def build_usage_meters(tenant) -> dict:
             .order_by('-period_start')
             .first()
         )
-    except Exception as exc:  # noqa: BLE001 — bao ro, khong lam treo
+    except Exception as exc:
         return {
             'available': False,
             'reason': f'quota_source_unavailable: {exc.__class__.__name__}',

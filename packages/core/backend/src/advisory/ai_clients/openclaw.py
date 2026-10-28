@@ -177,13 +177,13 @@ class OpenClawClient(AiClient):
 
 
 __all__ = [
+    'ERROR_NOT_CONFIGURED',
+    'ERROR_SPEC_MISSING',
+    'SUPPORTED_PROTOCOLS',
     'OpenClawClient',
     'OpenClawNotConfiguredError',
     'OpenClawSpecMissingError',
     'openclaw_base_url',
     'openclaw_protocol',
     'resolve_config',
-    'ERROR_NOT_CONFIGURED',
-    'ERROR_SPEC_MISSING',
-    'SUPPORTED_PROTOCOLS',
 ]

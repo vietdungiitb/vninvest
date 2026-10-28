@@ -82,7 +82,7 @@ def _scope_source(row: AIBudget) -> str:
     return BUDGET_SOURCE_SYSTEM
 
 
-def _tenant_user_ids(tenant) -> 'set':
+def _tenant_user_ids(tenant) -> set:
     """User thuoc tenant = owner + TenantMember.
 
     `AIUsageRecord` khong co FK tenant (R0.7 da tu choi doan tenant thanh toan)

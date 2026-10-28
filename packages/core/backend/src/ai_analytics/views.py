@@ -10,7 +10,6 @@ from .models import AIUsageRecord, AIUsageSummary
 from .serializers import AIUsageRecordSerializer, AIUsageSummarySerializer
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.openapi import OpenApiTypes, OpenApiParameter
-from vninvest_core.api_envelope import envelope_response
 
 
 def _scope_to_requester(queryset, request):
@@ -182,9 +181,8 @@ class AIUsageSloView(APIView):
     ALLOWED_DAYS = (7, 30, 90)
 
     def get(self, request):
-        from django.db.models import Count, F, Q, Sum
+        from django.db.models import Count, Q, Sum
 
-        from drf_spectacular.openapi import OpenApiParameter
 
         from .percentiles import PercentileCont
 

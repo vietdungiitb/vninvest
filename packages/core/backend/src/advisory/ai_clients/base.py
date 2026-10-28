@@ -20,12 +20,12 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 
 from django.conf import settings as django_settings
 
 from advisory.health import (
-    DEFAULT_COOLDOWN_SECONDS,
     DEFAULT_FAILURE_THRESHOLD,
     ERROR_PROVIDER_CIRCUIT_OPEN,
     CircuitBreaker,
@@ -304,7 +304,7 @@ class AiClient(ABC):
                     max_tokens=max_tokens, timeout=timeout,
                     response_format=response_format,
                 )
-            except BaseException as exc:  # noqa: BLE001 - phân loại bên dưới
+            except BaseException as exc:
                 last_error = exc
                 if not is_retryable_error(exc):
                     breaker.record_failure()

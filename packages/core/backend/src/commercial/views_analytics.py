@@ -3,13 +3,11 @@ Analytics views for partner billing cost trends.
 """
 import logging
 from datetime import timedelta
-from decimal import Decimal
 
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from rest_framework import generics, permissions
-from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
 from vninvest_core.api_envelope import envelope_response
@@ -20,7 +18,6 @@ from identity_access.utils.resolve_tenant import resolve_tenant
 from .envelope import envelope
 from .schema import (
     PartnerCostTrendDataSerializer,
-    PartnerCostTrendEmptyDataSerializer,
 )
 
 from .permissions import RequiresTenantPermission

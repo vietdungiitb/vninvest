@@ -39,9 +39,7 @@ from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
 from .serializers import AdvisoryRecordSerializer
 from .signal_norm import (
     SIGNAL_BUY,
-    SIGNAL_HOLD,
     SIGNAL_SELL,
-    SIGNAL_UNKNOWN,
     normalize_signal,
     signal_to_side,
 )
@@ -460,7 +458,7 @@ class AdvisoryRefreshView(APIView):
             cache.delete(_lock_key)
             return Response(
                 {
-                    'detail': f'Ngân sách AI đã dùng hết trong kỳ này.',
+                    'detail': 'Ngân sách AI đã dùng hết trong kỳ này.',
                     'error_code': 'ai_budget_exhausted',
                     'tokens_used': budget_state['tokens_used'],
                     'token_budget': budget_state['token_budget'],

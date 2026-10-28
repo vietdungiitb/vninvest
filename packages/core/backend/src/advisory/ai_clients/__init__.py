@@ -111,13 +111,13 @@ def get_ai_client(
 
 __all__ = [
     'AiClient',
-    'FactoryError',
-    'ProviderHTTPError',
-    'parse_usage_dict',
-    'OpenAICompatClient',
-    'CopilotClient',
     'AnthropicClient',
+    'CopilotClient',
+    'FactoryError',
+    'OpenAICompatClient',
     'OpenClawClient',
-    'get_ai_client',
+    'ProviderHTTPError',
     '_resolve_chat_endpoint',
+    'get_ai_client',
+    'parse_usage_dict',
 ]
