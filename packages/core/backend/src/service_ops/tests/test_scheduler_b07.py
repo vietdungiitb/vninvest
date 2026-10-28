@@ -10,13 +10,10 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, RequestFactory
+from django.test import TestCase
 
-from service_ops.models import BackfillExecutionRun
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
-
 
 # ---------------------------------------------------------------------------
 # Unit: backfill_daily_prices — mode/trigger params via DB verification
@@ -31,8 +28,9 @@ class BackfillTaskModeParamTest(TestCase):
 
     def _create_run_directly(self, mode: str = 'daily_delta', trigger: str = 'beat_schedule'):
         """Create BackfillExecutionRun directly to verify mode/trigger field validation."""
-        from service_ops.models import BackfillExecutionRun
         import uuid
+
+        from service_ops.models import BackfillExecutionRun
         run = BackfillExecutionRun.objects.create(
             run_id=str(uuid.uuid4()),
             job_key='test-job',

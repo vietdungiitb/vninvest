@@ -4,16 +4,16 @@ Forward: copy DNSECredential (workspace) và UserDNSECredential user-thường (
 → UserBrokerConfig(provider='dnse', label='Mặc định'), đánh dấu prefs.migrated_from.
 Reverse: xóa đúng các row đã migrate (theo marker), bảng cũ giữ nguyên.
 """
-from django.db import migrations, models
 import django.db.models.deletion
-
+from django.db import migrations, models
 
 MIGRATED_MARKER = 'migrated_from'
 
 
 def _migrate_forward(apps, schema_editor):
-    from vninvest_core.utils.encryption import decrypt_string, encrypt_string
     import json
+
+    from vninvest_core.utils.encryption import decrypt_string, encrypt_string
 
     UserBrokerConfig = apps.get_model('user_workspace', 'UserBrokerConfig')
     WorkspaceDNSE = apps.get_model('user_workspace', 'DNSECredential')

@@ -188,7 +188,11 @@ def materialize_unified_alerts(self):
     """
     Native engine: sync UnifiedAlert từ WhaleAlertCanonical và DARK_FLOW OrderFlowEvent.
     """
-    from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
+    from signal_intelligence.models import (
+        OrderFlowEvent,
+        UnifiedAlert,
+        WhaleAlertCanonical,
+    )
 
     try:
         orphan_whales = WhaleAlertCanonical.objects.filter(
@@ -633,7 +637,11 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def materialize_ai_signal_alerts(self, symbol: str | None = None):
-    from signal_intelligence.models import AdvisorySignalEvent, OrderFlowEvent, UnifiedAlert
+    from signal_intelligence.models import (
+        AdvisorySignalEvent,
+        OrderFlowEvent,
+        UnifiedAlert,
+    )
 
     qs = OrderFlowEvent.objects.filter(
         signal_type=OrderFlowEvent.SignalTypeChoices.OTHER,
@@ -765,7 +773,11 @@ def _native_whale_detect(symbol: str | None = None):
     """
     Materialize WhaleAlertCanonical + UnifiedAlert từ native OrderFlowEvent facts.
     """
-    from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
+    from signal_intelligence.models import (
+        OrderFlowEvent,
+        UnifiedAlert,
+        WhaleAlertCanonical,
+    )
 
     qs = OrderFlowEvent.objects.filter(
         signal_type__in=[

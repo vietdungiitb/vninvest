@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 POLICY_TO_SCOPE_CODES = {
     'pol_market_read': ['market:read'],
     'pol_signals_read': ['signals:read'],

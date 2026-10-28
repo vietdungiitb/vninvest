@@ -2,14 +2,15 @@
 Tests for Stripe Billing Integration
 """
 import sys
-from unittest.mock import patch, MagicMock, Mock
-from django.test import TestCase, override_settings
-from django.contrib.auth.models import User
-from rest_framework.test import APIClient
-from rest_framework import status
+from unittest.mock import MagicMock, Mock, patch
 
+from django.contrib.auth.models import User
+from django.test import TestCase, override_settings
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from commercial.stripe_service import StripeService
 from identity_access.models import CoreTenant
-from commercial.stripe_service import StripeService, stripe_service
 
 # Mock stripe module before it's imported
 mock_stripe = Mock()

@@ -11,7 +11,6 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()
@@ -135,7 +134,6 @@ class SchedulerCatalogInflightEnrichmentTests(TestCase):
             celery_task_id='test-inflight-catalog',
             status='running',
         )
-        import service_ops.scheduler_catalog as cat_mod
         schedule = {
             'market-data-queue-tier-scheduler-30s': {
                 'task': 'service_ops.run_market_data_queue_tier_scheduler',
@@ -153,6 +151,7 @@ class SchedulerCatalogInflightEnrichmentTests(TestCase):
     def test_inflight_is_false_when_no_running_logs(self):
         """build_scheduler_catalog marks is_inflight=False when no running ServiceRunLog."""
         from django.core.cache import cache as _test_cache
+
         from service_ops.scheduler_catalog import build_scheduler_catalog
         # Clear LocMem cache bleed from earlier run_now tests (run_now writes
         # scheduler:inflight:{job_key} even with mocked broker).
@@ -194,24 +193,24 @@ class B01BackfillJobServiceKeyTests(TestCase):
         self.assertEqual(meta.get('service_key'), 'pre5y_history_backfill')
 
     def test_backfill_service_definition_exists(self):
-        from service_ops.registry import ensure_service_registry
         from service_ops.models import ServiceDefinition
+        from service_ops.registry import ensure_service_registry
         ensure_service_registry()
         svc = ServiceDefinition.objects.filter(service_key='backfill_daily_prices').first()
         self.assertIsNotNone(svc, 'ServiceDefinition for backfill_daily_prices must exist')
         self.assertEqual(svc.domain, 'dataops')
 
     def test_deep_history_service_definition_exists(self):
-        from service_ops.registry import ensure_service_registry
         from service_ops.models import ServiceDefinition
+        from service_ops.registry import ensure_service_registry
         ensure_service_registry()
         svc = ServiceDefinition.objects.filter(service_key='deep_history_bootstrap').first()
         self.assertIsNotNone(svc, 'ServiceDefinition for deep_history_bootstrap must exist')
         self.assertEqual(svc.domain, 'dataops')
 
     def test_pre5y_history_service_definition_exists(self):
-        from service_ops.registry import ensure_service_registry
         from service_ops.models import ServiceDefinition
+        from service_ops.registry import ensure_service_registry
         ensure_service_registry()
         svc = ServiceDefinition.objects.filter(service_key='pre5y_history_backfill').first()
         self.assertIsNotNone(svc, 'ServiceDefinition for pre5y_history_backfill must exist')
@@ -223,8 +222,9 @@ class B01RunNowCreatesRunLogTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        from service_ops.registry import ensure_service_registry
         from django.contrib.auth import get_user_model
+
+        from service_ops.registry import ensure_service_registry
         ensure_service_registry()
         User = get_user_model()
         cls.admin = User.objects.create_user(
@@ -320,9 +320,10 @@ class B01HistoryEndpointBackfillTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        from service_ops.registry import ensure_service_registry
-        from service_ops.models import ServiceDefinition, ServiceRunLog
         from django.contrib.auth import get_user_model
+
+        from service_ops.models import ServiceDefinition, ServiceRunLog
+        from service_ops.registry import ensure_service_registry
         ensure_service_registry()
         User = get_user_model()
         cls.admin = User.objects.create_user(
@@ -412,7 +413,9 @@ class B10StuckRunDetectionTests(TestCase):
     def _make_running_log(self, service_key: str, started_seconds_ago: int):
         """Tạo ServiceRunLog với status='running' và started_at trong quá khứ."""
         from datetime import timedelta
+
         from django.utils import timezone
+
         from service_ops.models import ServiceDefinition, ServiceRunLog
         svc = ServiceDefinition.objects.filter(service_key=service_key).first()
         if svc is None:
@@ -603,6 +606,7 @@ class B01InflightCacheCleared(TestCase):
 
     def test_b01_clear_inflight_cache_deletes_key(self):
         from django.core.cache import cache
+
         from data_ingest.tasks import _b01_clear_inflight_cache
         cache.set('scheduler:inflight:daily-backfill-prices-1700', 'celery-xyz', timeout=3600)
         self.assertTrue(bool(cache.get('scheduler:inflight:daily-backfill-prices-1700')))
@@ -616,8 +620,10 @@ class B01InflightCacheCleared(TestCase):
 
     def test_backfill_task_clears_cache_on_skipped(self):
         """backfill_daily_prices clears inflight cache marker when skipped (empty plan)."""
-        from django.core.cache import cache
         from unittest.mock import patch
+
+        from django.core.cache import cache
+
         from data_ingest.tasks import backfill_daily_prices
 
         cache.set('scheduler:inflight:daily-backfill-prices-1700', 'celery-fake', timeout=3600)

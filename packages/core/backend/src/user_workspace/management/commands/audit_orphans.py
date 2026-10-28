@@ -1,17 +1,20 @@
 import json
 import sys
+
 from django.core.management.base import BaseCommand
-from django.forms.models import model_to_dict
 from django.db import transaction
+from django.forms.models import model_to_dict
+
 from user_workspace.models import (
     Portfolio,
+    PriceAlert,
+    QuarantinedRecord,
+    SubAccount,
+    TrackedSymbol,
     Transaction,
     Watchlist,
-    TrackedSymbol,
-    PriceAlert,
-    SubAccount,
-    QuarantinedRecord
 )
+
 
 class Command(BaseCommand):
     help = "Quét kiểm toán tiền di trú và cô lập dữ liệu mồ côi (tenant_id is null) trong user_workspace."

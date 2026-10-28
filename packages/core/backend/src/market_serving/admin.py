@@ -51,15 +51,15 @@ class SessionFactsAdmin(VNAdminMixin, admin.ModelAdmin):
         return badge(decimal_vi(obj.whale_net_flow), tone)
 
 # --- Import cho khoi WAVE 16 -------------------------------------
+from vninvest_core.admin_ui import (
+    VNAdminMixin,
+    VNReadOnlyMixin,
+    badge_for,
+)
+
 from .models import (
     SessionFactsBucket,
 )
-from vninvest_core.admin_ui import (
-    badge_for,
-    VNAdminMixin,
-    VNReadOnlyMixin,
-)
-from django.contrib import messages
 
 
 def _ws_badge(value, mapping=None):

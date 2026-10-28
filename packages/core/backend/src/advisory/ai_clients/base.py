@@ -19,13 +19,13 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any
 
 from django.conf import settings as django_settings
 
 from advisory.health import (
-    DEFAULT_COOLDOWN_SECONDS,
     DEFAULT_FAILURE_THRESHOLD,
     ERROR_PROVIDER_CIRCUIT_OPEN,
     CircuitBreaker,
@@ -73,7 +73,7 @@ class FactoryError(ValueError):
 class ProviderHTTPError(Exception):
     """HTTP error từ provider, giữ status + body để caller map mã lỗi."""
 
-    def __init__(self, status: Optional[int], body: str = "", response: Any = None):
+    def __init__(self, status: int | None, body: str = "", response: Any = None):
         self.status_code = status
         self.body_text = body or ""
         # Response httpx gốc (có headers Retry-After) — None khi lỗi mạng.
@@ -106,7 +106,7 @@ def is_retryable_error(error: BaseException) -> bool:
     return isinstance(error, (httpx.TimeoutException, httpx.NetworkError))
 
 
-def parse_retry_after(response: Any) -> Optional[float]:
+def parse_retry_after(response: Any) -> float | None:
     """`Retry-After` giây (nếu có). Không parse được => None (dùng backoff luỹ thừa).
 
     Bằng chứng: Gemini **không** gửi `Retry-After` khi 429 hạn mức (probe
@@ -229,8 +229,8 @@ class AiClient(ABC):
         model: str,
         temperature: float,
         max_tokens: int,
-        timeout: Optional[float] = None,
-        response_format: Optional[str] = None,
+        timeout: float | None = None,
+        response_format: str | None = None,
     ) -> dict:
         """Một lượt gọi duy nhất (không retry). Trả:
         {'text': str, 'usage': {'input': int, 'output': int} | None, 'raw': dict,
@@ -244,13 +244,13 @@ class AiClient(ABC):
         """Kiểm tra sống: {'ok': bool, 'latency_ms': int, 'error_code': str, 'detail': str}."""
         return {'ok': False, 'latency_ms': 0, 'error_code': 'probe_not_implemented', 'detail': ''}
 
-    async def catalog(self) -> Optional[list]:
+    async def catalog(self) -> list | None:
         """Danh mục model provider trả (chuẩn R2.10); None = không hỗ trợ."""
         return None
 
     # ---------------------------------------------------- R2.9 retry/breaker
 
-    def breaker(self, policy: Optional[RetryPolicy] = None) -> CircuitBreaker:
+    def breaker(self, policy: RetryPolicy | None = None) -> CircuitBreaker:
         """Breaker **dùng chung theo provider**, không theo instance.
 
         3 sub-agent `asyncio.gather` cùng 1 client ⇒ 1 breaker. Tạo instance mới
@@ -272,12 +272,12 @@ class AiClient(ABC):
         model: str,
         temperature: float,
         max_tokens: int,
-        timeout: Optional[float] = None,
-        response_format: Optional[str] = None,
-        policy: Optional[RetryPolicy] = None,
-        breaker: Optional[CircuitBreaker] = None,
-        sleep: Optional[Callable[[float], Any]] = None,
-        clock: Optional[Callable[[], float]] = None,
+        timeout: float | None = None,
+        response_format: str | None = None,
+        policy: RetryPolicy | None = None,
+        breaker: CircuitBreaker | None = None,
+        sleep: Callable[[float], Any] | None = None,
+        clock: Callable[[], float] | None = None,
     ) -> dict:
         """`complete()` + retry/backoff + circuit breaker + deadline (R2.9).
 
@@ -292,7 +292,7 @@ class AiClient(ABC):
         clock_fn = clock or time.monotonic
         started = clock_fn()
 
-        last_error: Optional[BaseException] = None
+        last_error: BaseException | None = None
         for attempt in range(1, policy.num_retries + 2):
             if not breaker.allow():
                 raise ProviderCircuitOpenError(
@@ -304,7 +304,7 @@ class AiClient(ABC):
                     max_tokens=max_tokens, timeout=timeout,
                     response_format=response_format,
                 )
-            except BaseException as exc:  # noqa: BLE001 - phân loại bên dưới
+            except BaseException as exc:
                 last_error = exc
                 if not is_retryable_error(exc):
                     breaker.record_failure()

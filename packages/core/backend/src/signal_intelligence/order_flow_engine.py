@@ -18,8 +18,8 @@ from __future__ import annotations
 import logging
 import math
 import statistics
-from datetime import date, datetime
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 from django.core.cache import cache
@@ -79,13 +79,15 @@ def load_session_ticks_df(symbol: str, session_date: date) -> pd.DataFrame:
 
     Không raise nếu không có data — trả về DataFrame rỗng với schema đúng.
     """
-    from market_data.models import IntradayTick  # noqa: PLC0415
+    from market_data.models import IntradayTick
 
     _empty_schema = ['timestamp', 'price', 'volume', 'side', 'value']
 
+    _day_start = django_timezone.make_aware(datetime.combine(session_date, time.min))
+    _day_end = _day_start + timedelta(days=1)
     qs = (
         IntradayTick.objects
-        .filter(symbol=symbol.upper(), timestamp__date=session_date)
+        .filter(symbol=symbol.upper(), timestamp__gte=_day_start, timestamp__lt=_day_end)
         .values('timestamp', 'price', 'volume', 'side')
         .order_by('timestamp')
     )

@@ -3,8 +3,8 @@
 import threading
 from unittest.mock import Mock, patch
 
-from django.db import close_old_connections
 from django.contrib.auth import get_user_model
+from django.db import close_old_connections
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -12,7 +12,6 @@ from rest_framework.test import APIClient
 from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
 from service_ops.models import ScrapeMatrixCell
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()

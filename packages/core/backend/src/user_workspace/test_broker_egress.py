@@ -15,13 +15,13 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 
 from user_workspace.broker import tcbs as tcbs_schema
+from user_workspace.broker.adapters import BrokerEgressError, get_broker_adapter
 from user_workspace.broker.egress import (
     EgressPolicyError,
     allowed_hosts_for,
     resolve_base_url,
     validate_base_url,
 )
-from user_workspace.broker.adapters import BrokerEgressError, get_broker_adapter
 
 TCBS_PROD = 'https://openapi.tcbs.com.vn'
 TCBS_HOST = 'openapi.tcbs.com.vn'

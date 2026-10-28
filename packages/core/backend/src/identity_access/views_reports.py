@@ -3,23 +3,29 @@ Scheduled Reports CRUD views for partner namespace.
 """
 import logging
 
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
-from vninvest_core.api_envelope import envelope_response
-
 from identity_access.envelope import envelope
-from identity_access.models import CoreTenant, ScheduledReport, ReportDeliveryLog
-from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.models import CoreTenant, ReportDeliveryLog, ScheduledReport
+from identity_access.permissions import (
+    IsTenantActive,
+    require_pat_scopes_or_human_session,
+)
 from identity_access.schema import (
     ReportTestQueuedSerializer,
     ScheduledReportDetailSerializer,
 )
-from identity_access.serializers import ScheduledReportSerializer, ReportDeliveryLogSerializer
-from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
-from drf_spectacular.openapi import OpenApiTypes
-
+from identity_access.serializers import (
+    ReportDeliveryLogSerializer,
+    ScheduledReportSerializer,
+)
+from identity_access.utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from vninvest_core.api_envelope import envelope_response
 
 logger = logging.getLogger(__name__)
 

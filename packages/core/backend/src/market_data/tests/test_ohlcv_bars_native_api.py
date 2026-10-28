@@ -2,17 +2,16 @@
 Tests for StockManagementOHLCVBarsView — cursor-paginated OHLCV bars endpoint.
 GET /api/stock-management/stocks/<symbol>/bars/
 """
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from identity_access.models import CoreTenant, UserProfile
-from market_data.tests.envelope import unwrapped_json
 from market_data.models import DailyPrice, IntradayBar, StockProfile
+from market_data.tests.envelope import unwrapped_json
 
 User = get_user_model()
 

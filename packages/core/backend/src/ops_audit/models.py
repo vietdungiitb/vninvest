@@ -6,7 +6,6 @@ ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 import uuid
 
 from django.db import models
-from django.conf import settings
 
 
 class AuditEvent(models.Model):

@@ -13,18 +13,16 @@ Tests cover:
 
 import json
 from datetime import timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
+from django.test import RequestFactory, TestCase
 from django.utils import timezone
-
 from rest_framework.test import APIClient, force_authenticate
-from rest_framework import status
 
 from identity_access.models import CoreTenant, TenantMember
-from tenant_lifecycle.models import TenantLifecycleEvent
 from ops_audit.views import PartnerAuditLogsView
+from tenant_lifecycle.models import TenantLifecycleEvent
 
 User = get_user_model()
 

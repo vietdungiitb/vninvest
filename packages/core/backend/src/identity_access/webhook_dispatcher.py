@@ -46,8 +46,9 @@ class WebhookDispatcher:
 
 def _schedule_delivery(config, event_type: str, payload: dict) -> None:
     import uuid
-    from .tasks import deliver_webhook
+
     from .models import WebhookDelivery
+    from .tasks import deliver_webhook
 
     delivery = WebhookDelivery.objects.create(
         config=config,

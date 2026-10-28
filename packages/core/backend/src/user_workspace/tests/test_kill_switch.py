@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from unittest import mock
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
 
 from service_ops import broker_runtime
 from service_ops.broker_runtime import (
@@ -240,6 +240,7 @@ class KillSwitchHasCallersTests(SimpleTestCase):
         """
         import ast
         import inspect
+
         from user_workspace import tasks as tasks_mod
 
         for name in (

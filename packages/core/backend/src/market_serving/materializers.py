@@ -12,8 +12,8 @@ Data sources:
 - UnifiedAlert: signal_intelligence domain (will compute from whale alerts later)
 """
 import logging
-from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from celery import shared_task
 from django.db import OperationalError
@@ -34,7 +34,7 @@ def materialize_symbol_snapshot(self):
       (+ DailyPrice prev-close for reference_price, ceiling, floor)
     """
     from market_serving.vnbroker_materializer import (
-        materialize_symbol_snapshot_from_vnbroker
+        materialize_symbol_snapshot_from_vnbroker,
     )
     
     try:

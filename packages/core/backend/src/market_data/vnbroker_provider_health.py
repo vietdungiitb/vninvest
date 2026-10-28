@@ -80,7 +80,7 @@ def get_soc_vnbroker_config() -> dict[str, Any]:
         if current is None:
             return VnbrokerDomainConfig().to_dict()
         return VnbrokerDomainConfig.from_dict(current.config_payload or {}).to_dict()
-    except Exception as exc:  # noqa: BLE001 — runtime không được chết vì SOC config
+    except Exception as exc:
         logger.warning('get_soc_vnbroker_config failed, dùng mặc định: %s', exc)
         return _default_config()
 
@@ -295,7 +295,10 @@ def probe_provider(provider: str, symbol: str = 'VNM') -> dict[str, Any]:
     key = _normalize(provider)
     started = time.perf_counter()
     try:
-        from .vnbroker_adapter import _fetch_realtime_price_with_quote_class, _load_quote_class
+        from .vnbroker_adapter import (
+            _fetch_realtime_price_with_quote_class,
+            _load_quote_class,
+        )
 
         quote_class = _load_quote_class(key)
         # `record_outcome=False` — probe tự ghi 1 lần duy nhất với tổng độ trễ
@@ -306,7 +309,7 @@ def probe_provider(provider: str, symbol: str = 'VNM') -> dict[str, Any]:
             quote_class,
             record_outcome=False,
         )
-    except Exception as exc:  # noqa: BLE001 — probe không được làm sập endpoint
+    except Exception as exc:
         latency_ms = round((time.perf_counter() - started) * 1000, 2)
         message = str(exc)[:500]
         record_provider_failure(key, message)

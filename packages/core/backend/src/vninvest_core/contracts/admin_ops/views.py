@@ -1,34 +1,35 @@
 from __future__ import annotations
 
+import logging
+import time
 from collections import defaultdict
 from copy import deepcopy
 from datetime import timedelta
-import logging
 from threading import Thread
 from typing import Any
 
+import httpx
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import caches
-from django.utils.dateparse import parse_datetime
 from django.utils import timezone
-import httpx
+from django.utils.dateparse import parse_datetime
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from vninvest_core.exceptions import ValidationErrorException
-import time
 
 from advisory.models import SystemAISettings
 from data_ingest.models import IngestJob, IngestRun
 from identity_access.models import CoreTenant
 from market_data.models import VnbrokerRuntimeConfig
-from market_serving.models import SessionFacts, SymbolSnapshot
+from market_serving.models import SessionFacts
 from ops_audit.models import AuditEvent, RequestTrace
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from user_workspace.models import Portfolio, Transaction, WatchlistItem
-from vninvest_core.monitoring.queue_metrics import build_scheduler_queue_metrics_snapshot
-
+from vninvest_core.exceptions import ValidationErrorException
+from vninvest_core.monitoring.queue_metrics import (
+    build_scheduler_queue_metrics_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +342,7 @@ def _get_celery_active_queues() -> list[str]:
         for worker_queues in active_qs.values():
             for q in worker_queues:
                 queues.add(q.get('name'))
-        return sorted(list(queues))
+        return sorted(queues)
     except Exception as e:
         logger.debug('_get_celery_active_queues: Celery inspect failed: %s', e)
         return []
@@ -349,7 +350,11 @@ def _get_celery_active_queues() -> list[str]:
 
 
 def _run_vnbroker_benchmark_background(payload: dict[str, Any], base_report: dict[str, Any]) -> None:
-    from market_data.vnbroker_benchmark import run_price_board_provider_benchmark, set_latest_price_board_benchmark_report, utc_now_iso
+    from market_data.vnbroker_benchmark import (
+        run_price_board_provider_benchmark,
+        set_latest_price_board_benchmark_report,
+        utc_now_iso,
+    )
 
     try:
         report = run_price_board_provider_benchmark(payload)
@@ -357,7 +362,7 @@ def _run_vnbroker_benchmark_background(payload: dict[str, Any], base_report: dic
         report['execution_mode'] = base_report.get('execution_mode')
         report['task_id'] = base_report.get('task_id')
         set_latest_price_board_benchmark_report(report)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning('native benchmark background execution failed: %s', exc)
         set_latest_price_board_benchmark_report(
             {
@@ -1906,7 +1911,7 @@ class AdminOpsVnbrokerConfigChangelogView(APIView):
         limit = max(1, min(int(request.query_params.get('limit', 30)), 200))
         offset = max(0, int(request.query_params.get('offset', 0)))
         config = _get_or_create_active_vnbroker_config()
-        entries = list((_vnbroker_extra(config).get('changelog') or []))
+        entries = list(_vnbroker_extra(config).get('changelog') or [])
         total = len(entries)
         rows = entries[offset: offset + limit]
         return Response(
@@ -2159,7 +2164,11 @@ class AdminOpsVnbrokerBenchmarkLatestView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        from market_data.vnbroker_benchmark import get_latest_price_board_benchmark_report, set_latest_price_board_benchmark_report, utc_now_iso
+        from market_data.vnbroker_benchmark import (
+            get_latest_price_board_benchmark_report,
+            set_latest_price_board_benchmark_report,
+            utc_now_iso,
+        )
 
         report = get_latest_price_board_benchmark_report()
         if report is None:
@@ -2204,7 +2213,10 @@ class AdminOpsVnbrokerBenchmarkRunView(APIView):
 
     def post(self, request):
         from data_ingest.tasks import run_vnbroker_price_board_benchmark
-        from market_data.vnbroker_benchmark import set_latest_price_board_benchmark_report, utc_now_iso
+        from market_data.vnbroker_benchmark import (
+            set_latest_price_board_benchmark_report,
+            utc_now_iso,
+        )
 
         payload = request.data if isinstance(request.data, dict) else {}
         base_report = {

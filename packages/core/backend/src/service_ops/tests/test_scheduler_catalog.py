@@ -9,7 +9,6 @@ Verifies:
 """
 
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -155,6 +154,7 @@ class SchedulerCatalogUnitTests(TestCase):
 
     def test_daily_backfill_uses_daily_freshness_window(self):
         from django.core.cache import cache
+
         from service_ops.models import ServiceRunLog
         from service_ops.registry import get_registered_service
 
@@ -195,6 +195,7 @@ class SchedulerCatalogUnitTests(TestCase):
 
     def test_daily_backfill_reports_daily_threshold_when_truly_stale(self):
         from django.core.cache import cache
+
         from service_ops.models import ServiceRunLog
         from service_ops.registry import get_registered_service
 

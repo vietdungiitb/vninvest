@@ -7,11 +7,11 @@ ConfigApplyMixin quản lý:
   - Save config
   - Record audit trail
 """
+from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
-from django.db import transaction
 
-from ..models import ServiceDefinition, ServiceConfig, ConfigChangeAudit
+from ..models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import get_registered_service
 
@@ -118,7 +118,7 @@ class ConfigApplyMixin:
             return self.error_response(
                 request,
                 code='CONFIG_SAVE_FAILED',
-                detail=f"Lỗi lưu config: {str(e)}",
+                detail=f"Lỗi lưu config: {e!s}",
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

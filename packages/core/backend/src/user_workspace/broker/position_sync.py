@@ -31,7 +31,7 @@ def _money(value) -> Decimal | None:
 
 def sync_account_positions(service, sub_account, *, as_of_date=None) -> dict:
     """Dong bo 1 tieu khoan: vi the + so du. Tra stats (ghi DB o B1.4/B1.5)."""
-    from ..models import AccountSnapshot, PositionSnapshot  # noqa: PLC0415 (lazy)
+    from ..models import AccountSnapshot, PositionSnapshot
 
     today = as_of_date or timezone.now().date()
     stats: dict = {

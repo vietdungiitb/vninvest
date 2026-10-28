@@ -25,15 +25,15 @@ và ở đây được thực hiện đúng nghĩa đó.
 """
 import logging
 import uuid
-from datetime import datetime, timezone as dt_timezone
-from typing import Optional, Dict, Any
-
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.exceptions import APIException, ValidationError
+from datetime import datetime
+from datetime import timezone as dt_timezone
+from typing import Any
 
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
+from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
@@ -127,12 +127,12 @@ class ProblemDetail:
         code: str,
         status_code: int,
         detail: str,
-        request_id: Optional[str] = None,
-        instance: Optional[str] = None,
-        field_errors: Optional[Dict[str, list]] = None,
-        errors: Optional[list] = None,
-        type_uri: Optional[str] = None,
-        title: Optional[str] = None,
+        request_id: str | None = None,
+        instance: str | None = None,
+        field_errors: dict[str, list] | None = None,
+        errors: list | None = None,
+        type_uri: str | None = None,
+        title: str | None = None,
     ):
         resolved_type, resolved_title = ProblemTypes.resolve(code, status_code)
         self.type = type_uri or resolved_type
@@ -164,7 +164,7 @@ class ProblemDetail:
             '+00:00', 'Z')
 
     def to_dict(self) -> dict:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             'type': self.type,
             'title': self.title,
             'status': self.status,
@@ -252,7 +252,7 @@ class ProblemResponse(Response):
         return rendered
 
 
-def _field_errors_from_detail(detail) -> Dict[str, list]:
+def _field_errors_from_detail(detail) -> dict[str, list]:
     """Chuẩn hoá `exc.detail` của DRF về `{field: [message]}`.
 
     DRF cho phép `detail` là `str`, `list` hoặc `dict`. Trường hợp `dict`/`list`
@@ -271,7 +271,7 @@ def _field_errors_from_detail(detail) -> Dict[str, list]:
     return {}
 
 
-def _errors_from_field_errors(field_errors: Dict[str, list]) -> list:
+def _errors_from_field_errors(field_errors: dict[str, list]) -> list:
     """Chuyển `{field: [msg]}` → `[{field, code, message}]`."""
     out = []
     for field, messages in (field_errors or {}).items():
@@ -409,9 +409,9 @@ class StandardErrorEnvelope:
         self,
         detail: str,
         code: str,
-        timestamp: Optional[str] = None,
-        request_id: Optional[str] = None,
-        field_errors: Optional[Dict[str, list]] = None,
+        timestamp: str | None = None,
+        request_id: str | None = None,
+        field_errors: dict[str, list] | None = None,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
     ):
         """
@@ -462,11 +462,11 @@ class CoreAPIException(APIException):
     
     def __init__(
         self,
-        detail: Optional[str] = None,
-        code: Optional[str] = None,
-        status_code: Optional[int] = None,
-        field_errors: Optional[Dict[str, list]] = None,
-        request_id: Optional[str] = None,
+        detail: str | None = None,
+        code: str | None = None,
+        status_code: int | None = None,
+        field_errors: dict[str, list] | None = None,
+        request_id: str | None = None,
     ):
         """
         Initialize Core API exception.
@@ -603,7 +603,7 @@ def _request_id_for(request, meta) -> str:
     )
 
 
-def core_api_exception_handler(exc: Exception, context: dict) -> Optional[Response]:
+def core_api_exception_handler(exc: Exception, context: dict) -> Response | None:
     """
     DRF exception handler trả **RFC 9457** `application/problem+json`.
 

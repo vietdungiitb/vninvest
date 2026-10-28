@@ -9,17 +9,23 @@ Tests cover:
 
 import json
 import uuid
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
 from django.http import JsonResponse
-from django.utils import timezone
-
-from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember
-from identity_access.middleware import TenantResolutionMiddleware
-from identity_access.permissions import require_pat_scopes_or_human_session, is_machine_pat_request
+from django.test import RequestFactory, TestCase
 from rest_framework.exceptions import PermissionDenied
+
+from identity_access.middleware import TenantResolutionMiddleware
+from identity_access.models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    TenantMember,
+)
+from identity_access.permissions import (
+    is_machine_pat_request,
+    require_pat_scopes_or_human_session,
+)
 
 User = get_user_model()
 
@@ -270,8 +276,9 @@ class PATScopeTenantIsolationTests(TestCase):
 
     def test_drf_auth_reuses_middleware_credential_avoids_double_query(self):
         """DRF auth reuses request._pat_credential nếu prefix match — không gọi DB lần 2."""
-        from identity_access.authentication import CorePATAuthentication
         from unittest.mock import patch
+
+        from identity_access.authentication import CorePATAuthentication
 
         pat, raw_token = CorePATCredential.issue_for_service_account(
             service_account=self.sa_a, scopes=['manage_tenant'],

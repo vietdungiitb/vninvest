@@ -36,6 +36,7 @@ async def _authenticate_token(token: str):
     Uses sync_to_async wrapper to call sync Django ORM.
     """
     from asgiref.sync import sync_to_async
+
     from identity_access.models import CorePATCredential
 
     @sync_to_async
@@ -114,7 +115,7 @@ class MarketTickerConsumer(AsyncWebsocketConsumer):
                 logger.debug('[WS] Unknown message type from %s: %s', self.user.username if hasattr(self, 'user') else '?', msg_type)
         except json.JSONDecodeError as exc:
             logger.warning('[WS] Invalid JSON from %s: %s', self.user.username if hasattr(self, 'user') else '?', exc)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error('[WS] Unexpected error in receive for %s: %s', self.user.username if hasattr(self, 'user') else '?', exc)
 
     async def market_update(self, event):

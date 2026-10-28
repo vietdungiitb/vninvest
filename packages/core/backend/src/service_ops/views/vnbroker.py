@@ -9,28 +9,12 @@ POST /api/soc/vnbroker/test-connection/ — test provider connection
 GET /api/soc/vnbroker/providers/ — list configured providers
 GET /api/soc/vnbroker/circuit-breaker-status/ — circuit breaker state
 """
+from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
-from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
-from ..envelope import envelope
-from ..models import ServiceDefinition, ServiceConfig, ServiceHealth
-from ..ownership import build_ownership_matrix_from_db
-from ..serializers import ServiceConfigSerializer, ServiceHealthSerializer
-from ..domain_configs import VnbrokerDomainConfig
-from ..provider_catalog import (
-    find_unsupported_provider_ids,
-    get_default_provider_ids,
-    get_supported_provider_ids,
-    get_unready_provider_messages,
-    list_provider_statuses,
-    normalize_provider_id,
-)
-from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
-from .base import SOCBaseView
-from .mixins import ConfigApplyMixin
 from market_data.vnbroker_benchmark import (
     get_latest_price_board_benchmark_report,
     run_price_board_provider_benchmark,
@@ -42,6 +26,22 @@ from market_data.vnbroker_provider_health import (
 )
 from vninvest_core.api_envelope import envelope_response
 
+from ..domain_configs import VnbrokerDomainConfig
+from ..envelope import envelope
+from ..models import ServiceConfig, ServiceDefinition, ServiceHealth
+from ..ownership import build_ownership_matrix_from_db
+from ..provider_catalog import (
+    find_unsupported_provider_ids,
+    get_default_provider_ids,
+    get_supported_provider_ids,
+    get_unready_provider_messages,
+    list_provider_statuses,
+    normalize_provider_id,
+)
+from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
+from ..serializers import ServiceConfigSerializer, ServiceHealthSerializer
+from .base import SOCBaseView
+from .mixins import ConfigApplyMixin
 
 DEFAULT_VNBROKER_PRIMARY_PROVIDER = 'vci'
 DEFAULT_VNBROKER_FALLBACK_PROVIDERS = [
@@ -705,7 +705,7 @@ class VnbrokerBenchmarkView(SOCBaseView):
 
         try:
             report = run_price_board_provider_benchmark(benchmark_payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return self.error_response(
                 request,
                 code='VNBROKER_BENCHMARK_FAILED',

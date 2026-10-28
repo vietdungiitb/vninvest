@@ -8,7 +8,6 @@ Covers:
 - bound số học: max_symbols × timeout < 600s
 """
 import time
-from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -151,8 +150,9 @@ class CoverageRotationTest(TestCase):
 
 class WarmCircuitBreakerTest(TestCase):
     def test_three_fails_then_skip(self):
-        from data_ingest import tasks as ingest_tasks
         from django.core.cache import cache as _cache
+
+        from data_ingest import tasks as ingest_tasks
 
         _cache.clear()
 
@@ -172,8 +172,9 @@ class WarmCircuitBreakerTest(TestCase):
             self.assertEqual(r['failed_count'], 0)
 
     def test_success_resets_circuit(self):
-        from data_ingest import tasks as ingest_tasks
         from django.core.cache import cache as _cache
+
+        from data_ingest import tasks as ingest_tasks
 
         _cache.clear()
         ingest_tasks._circuit_record('X01', False)

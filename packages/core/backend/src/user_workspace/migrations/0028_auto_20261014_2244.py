@@ -7,7 +7,6 @@
 
 from django.db import migrations
 
-
 GUARDED_TABLES = (
     'user_workspace_transaction',
     'user_workspace_ledgerentry',

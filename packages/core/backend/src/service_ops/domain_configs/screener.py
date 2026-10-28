@@ -5,7 +5,6 @@ Rules list + validation.
 from dataclasses import dataclass, field
 from typing import Any
 
-
 VALID_RULE_TYPES = frozenset({
     'price_change_pct', 'volume_spike_ratio', 'cvd_threshold',
     'whale_count', 'dark_pool_ratio', 'rsi_level',

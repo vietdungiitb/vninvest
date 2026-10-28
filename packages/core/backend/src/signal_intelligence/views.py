@@ -1,13 +1,23 @@
 import logging
 import time
+from datetime import timedelta
 
+from django.core.cache import cache
+from django.db.models import (
+    Case,
+    Count,
+    DecimalField,
+    IntegerField,
+    Max,
+    Q,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from django.core.cache import cache
-from django.db.models import Case, Count, DecimalField, IntegerField, Max, Q, Sum, Value, When
-from django.db.models.functions import Coalesce
-from datetime import timedelta
-from django.utils import timezone
 from rest_framework import generics, permissions, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -70,11 +80,16 @@ class AlertCenterFeedCursorPagination(AlertCursorPagination):
             return ('type_priority', '-triggered_at', '-pk')
         return super().get_ordering(request, queryset, view)
 
+from vninvest_core.exceptions import NotFoundErrorException, ValidationErrorException
+
 from . import delivery_service
-from .sse import AlertCenterStreamEventRenderer, AlertCenterStreamingHttpResponse, sse_format
 from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from .serializers import OrderFlowEventSerializer, UnifiedAlertSerializer
-from vninvest_core.exceptions import NotFoundErrorException, ValidationErrorException
+from .sse import (
+    AlertCenterStreamEventRenderer,
+    AlertCenterStreamingHttpResponse,
+    sse_format,
+)
 
 
 class CursorPaginatedUnifiedAlertResponseSerializer(serializers.Serializer):
@@ -897,7 +912,6 @@ class AlertCenterStreamView(APIView):
                         yield sse_format(comment='ping')
                     except GeneratorExit:
                         break
-                    pass
 
                 if testing and max_loops is not None:
                     continue

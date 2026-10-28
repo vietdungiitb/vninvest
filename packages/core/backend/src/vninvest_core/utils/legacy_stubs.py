@@ -9,18 +9,10 @@ These views map legacy `/api/<legacy-path>/` routes to either:
 IMPORTANT: Every stub here is a placeholder.  As more domain functionality is
 migrated, replace the stub with the real core view.
 """
-import base64
-import hashlib
-import json
-from datetime import datetime, timedelta
 
-from django.contrib.auth.models import User
-from django.db.models import Max, Prefetch, Q
-from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -35,11 +27,9 @@ def _empty_paginated(request=None):
 
 
 from market_data.default_groups import (
+    get_color_palette,
     get_default_groups,
     get_group_lookup,
-    get_color_palette,
-    build_group_payload as _build_stock_management_group_payload,
-    _build_item_payload as _build_stock_management_item_payload,
 )
 
 # Backwards compatibility - re-exported from default_groups

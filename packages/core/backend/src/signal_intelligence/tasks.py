@@ -1,9 +1,9 @@
 """Celery task discovery shim for signal_intelligence materializers."""
 import logging
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from celery import shared_task
-from datetime import datetime, time, timedelta
 from django.db.models import Count
 from django.utils import timezone
 
@@ -15,21 +15,21 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 # Thresholds — SSOT ở order_flow_engine, alias ở đây để tương thích
 # ------------------------------------------------------------------
-from .order_flow_engine import (  # noqa: E402
-    WHALE_VALUE_MIN_VND        as _TICK_WHALE_VALUE_MIN_VND,
-    DARK_FLOW_VALUE_MIN_VND    as _TICK_DARK_FLOW_VALUE_MIN_VND,
-    DARK_FLOW_BUY_RATIO_MIN    as _TICK_DARK_FLOW_BUY_RATIO_MIN,
-    DARK_FLOW_PRICE_CV_MAX     as _TICK_DARK_FLOW_PRICE_CV_MAX,
+from .order_flow_engine import (
+    DARK_FLOW_VALUE_MIN_VND as _TICK_DARK_FLOW_VALUE_MIN_VND,
+)
+from .order_flow_engine import (
+    WHALE_VALUE_MIN_VND as _TICK_WHALE_VALUE_MIN_VND,
 )
 
 _TICK_MAX_SYMBOLS_PER_RUN = 500  # tối đa bao nhiêu symbol/lần chạy
 
 __all__ = [
+    'detect_and_store_global_whale_alerts',
+    'detect_order_flow',
     'materialize_unified_alerts',
     'materialize_whale_feed_aggregate',
     'run_signal_detection_job',
-    'detect_and_store_global_whale_alerts',
-    'detect_order_flow',
 ]
 
 
@@ -68,16 +68,16 @@ def detect_and_store_global_whale_alerts(
     D05: session_date (str "YYYY-MM-DD") cho phép backfill ngày lịch sử cụ thể.
          Nếu None, dùng session gần nhất như cũ (_get_latest_session_date()).
     """
-    from datetime import date as _date_type
     from django.utils.timezone import now
+
     from market_data.models import IntradayTick
     from signal_intelligence.models import OrderFlowEvent
     from signal_intelligence.order_flow_engine import (
-        load_session_ticks_df,
-        detect_whale_ticks,
-        detect_dark_flow_windows,
         compute_cvd_buckets_df,
+        detect_dark_flow_windows,
+        detect_whale_ticks,
         invalidate_cvd_cache,
+        load_session_ticks_df,
     )
 
     # D05: resolve session_date
@@ -232,7 +232,7 @@ def detect_and_store_global_whale_alerts(
                 )
                 total_order_flow_events += 1
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception('detect_and_store_global_whale_alerts: error for %s: %s', sym, exc)
             continue
 
@@ -397,13 +397,14 @@ def detect_order_flow(self, symbol: str | None = None):
     cvd_at_signal = CVD cumulative thực tế tại thời điểm signal.
     """
     from django.utils.timezone import now
+
     from market_data.models import IntradayTick
     from signal_intelligence.models import OrderFlowEvent
     from signal_intelligence.order_flow_engine import (
-        load_session_ticks_df,
         compute_cvd_buckets_df,
-        get_cvd_series_list,
         detect_absorption,
+        get_cvd_series_list,
+        load_session_ticks_df,
     )
 
     session_date = _get_latest_session_date()
@@ -480,7 +481,6 @@ def detect_order_flow(self, symbol: str | None = None):
             # ── CVD Divergence via absorption detection ───────────────────
             cvd_series_5m = get_cvd_series_list(sym, session_date, bucket_minutes=5)
             if cvd_series_5m:
-                import pandas as _pd
                 price_by_5m = (
                     df.groupby(df['timestamp'].dt.floor('5min'))['price']
                     .last()
@@ -510,7 +510,7 @@ def detect_order_flow(self, symbol: str | None = None):
                     )
                     created += 1
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception('detect_order_flow: error for %s: %s', sym, exc)
             continue
 
@@ -535,6 +535,7 @@ def _upsert_order_flow_event(
 ) -> bool:
     """Idempotent upsert cho OrderFlowEvent theo source_ref. Trả về True nếu tạo mới."""
     from decimal import Decimal
+
     from signal_intelligence.models import OrderFlowEvent
 
     existing = OrderFlowEvent.objects.filter(source_ref=source_ref).first()

@@ -4,7 +4,16 @@ User Workspace domain serializers.
 from decimal import Decimal
 
 from rest_framework import serializers
-from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, DNSECredential, ScreenerRule
+
+from .models import (
+    DNSECredential,
+    Portfolio,
+    ScreenerRule,
+    SubAccount,
+    Transaction,
+    Watchlist,
+    WatchlistItem,
+)
 
 
 class WatchlistItemSerializer(serializers.ModelSerializer):

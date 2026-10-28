@@ -20,7 +20,7 @@ from django.db.models import Count, Max
 
 from user_workspace.models import Transaction
 
-from .holdings import CALCULATION_VERSION, compute_ledger, money
+from .holdings import CALCULATION_VERSION, compute_ledger
 
 LEDGER_CACHE_PREFIX = f'ledger:{CALCULATION_VERSION}'
 LEDGER_CACHE_TTL_SECONDS = 60

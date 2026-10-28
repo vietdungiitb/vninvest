@@ -6,9 +6,13 @@ KHÔNG sửa orchestrator. Provider chưa có client => FactoryError loud (AC4),
 không rơi im lặng về OpenAI.
 """
 from advisory.ai_clients.anthropic import AnthropicClient
-from advisory.ai_clients.base import AiClient, FactoryError, ProviderHTTPError, parse_usage_dict
+from advisory.ai_clients.base import (
+    AiClient,
+    FactoryError,
+    ProviderHTTPError,
+    parse_usage_dict,
+)
 from advisory.ai_clients.copilot import CopilotClient
-from advisory.ai_clients.openclaw import OpenClawClient
 from advisory.ai_clients.openai_compat import (
     GEMINI_BASE_URL,
     LOCAL_BASE_URL,
@@ -17,6 +21,7 @@ from advisory.ai_clients.openai_compat import (
     _base_url_for,
     _resolve_chat_endpoint,
 )
+from advisory.ai_clients.openclaw import OpenClawClient
 
 _PROVIDERS: dict = {
     # provider -> (module, class, defaults). Module/class để AC6 test được
@@ -111,13 +116,13 @@ def get_ai_client(
 
 __all__ = [
     'AiClient',
-    'FactoryError',
-    'ProviderHTTPError',
-    'parse_usage_dict',
-    'OpenAICompatClient',
-    'CopilotClient',
     'AnthropicClient',
+    'CopilotClient',
+    'FactoryError',
+    'OpenAICompatClient',
     'OpenClawClient',
-    'get_ai_client',
+    'ProviderHTTPError',
     '_resolve_chat_endpoint',
+    'get_ai_client',
+    'parse_usage_dict',
 ]

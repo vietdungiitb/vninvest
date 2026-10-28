@@ -44,7 +44,7 @@ Data source: signal_intelligence.WhaleAlertCanonical
 import logging
 import math
 import statistics
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -301,10 +301,10 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
 
     Dùng bởi Celery task materialize_session_facts.
     """
-    from datetime import date as _date
     from django.utils.timezone import now
-    from signal_intelligence.models import WhaleAlertCanonical
+
     from market_serving.models import SessionFacts, SessionFactsBucket
+    from signal_intelligence.models import WhaleAlertCanonical
 
     target_date = session_date or now().date()
 
@@ -387,7 +387,9 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
     coverage_refreshed = 0
     if upserted_symbols:
         try:
-            from market_data.global_symbol_coverage import refresh_global_symbol_coverage
+            from market_data.global_symbol_coverage import (
+                refresh_global_symbol_coverage,
+            )
             for upserted_symbol in upserted_symbols:
                 try:
                     refresh_global_symbol_coverage(upserted_symbol, reference_trade_date=target_date)

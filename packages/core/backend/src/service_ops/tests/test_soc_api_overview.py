@@ -1,6 +1,5 @@
 """Focused overview contract tests for the spec-aligned SOC overview endpoints."""
 
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -16,8 +15,11 @@ from service_ops.models import (
     ServiceHealthCheckLog,
     ServiceRunLog,
 )
-from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
-
+from service_ops.registry import (
+    SOC_DOMAIN_PRIMARY_SERVICE_KEYS,
+    ensure_service_registry,
+    get_registered_service,
+)
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()

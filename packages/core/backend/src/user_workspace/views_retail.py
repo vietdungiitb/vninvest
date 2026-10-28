@@ -6,16 +6,15 @@ GET /core/v1/broker/retail/exchange-rate/?date=YYYY-MM-DD
 Cache 1h. Không secret, không write.
 """
 from django.core.cache import cache
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import ValidationErrorException
 
 from .envelope import envelope
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 GOLD_SOURCES = ('sjc', 'btmc')
 CACHE_TTL_SECONDS = 3600
@@ -40,7 +39,7 @@ def _frame_to_records(frame) -> list:
             return []
         rows = frame.to_dict('records')
         return rows if isinstance(rows, list) else []
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
@@ -71,7 +70,7 @@ def retail_gold_api(request):
         frame = _get_retail().gold(source=source, date=date)
     except ValueError as exc:
         raise ValidationErrorException(detail=str(exc), code='validation_error') from exc
-    except Exception as exc:  # noqa: BLE001 — lỗi upstream thành 502 ý nghĩa
+    except Exception as exc:
         raise ValidationErrorException(
             detail=f'Không lấy được giá vàng: {type(exc).__name__}',
             code='upstream_error') from exc
@@ -104,7 +103,7 @@ def retail_exchange_rate_api(request):
         frame = _get_retail().exchange_rate(date=date)
     except ValueError as exc:
         raise ValidationErrorException(detail=str(exc), code='validation_error') from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise ValidationErrorException(
             detail=f'Không lấy được tỷ giá: {type(exc).__name__}',
             code='upstream_error') from exc

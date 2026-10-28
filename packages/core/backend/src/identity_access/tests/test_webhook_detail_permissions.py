@@ -7,13 +7,13 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from identity_access.tests.envelope import unwrapped_json
 from identity_access.models import (
     CoreServiceAccount,
     CoreTenant,
     TenantMember,
     TenantWebhookConfig,
 )
+from identity_access.tests.envelope import unwrapped_json
 
 
 class WebhookDetailPermissionTests(TestCase):

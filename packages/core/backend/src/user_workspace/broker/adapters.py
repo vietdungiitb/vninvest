@@ -141,7 +141,7 @@ def _rows(payload) -> list[dict]:
             rows = payload.to_dict('records')
             if isinstance(rows, list):
                 return [r for r in rows if isinstance(r, dict)]
-        except Exception:  # noqa: BLE001
+        except Exception:
             return []
         return []
     if isinstance(payload, list):
@@ -269,7 +269,7 @@ class BrokerAdapter:
             return
         try:
             closer()
-        except Exception as exc:  # noqa: BLE001 — nuốt + log, không propagate
+        except Exception as exc:
             logger.warning('broker %s session close failed — %s',
                            self.provider_id, type(exc).__name__)
 
@@ -286,7 +286,7 @@ class BrokerAdapter:
                 'unverified': True,
                 'code': self._unverified_code or CODE_AUTH_UNSUPPORTED}
 
-    def __enter__(self) -> 'BrokerAdapter':
+    def __enter__(self) -> BrokerAdapter:
         return self
 
     def __exit__(self, exc_type, exc, traceback) -> bool:
@@ -305,9 +305,9 @@ class DnseBrokerAdapter(BrokerAdapter):
 
     def is_available(self) -> bool:
         try:
-            from user_workspace.vnbroker_dnse_compat import build_dnse_client
-            build_dnse_client  # noqa: B018 — chỉ check import được
-            return True
+            from user_workspace import vnbroker_dnse_compat
+
+            return vnbroker_dnse_compat is not None
         except ImportError:
             return False
 
@@ -553,7 +553,7 @@ class TcbsBrokerAdapter(BrokerAdapter):
         elif callable(probe):
             try:
                 self._token_valid = bool(probe())
-            except Exception:  # noqa: BLE001 — probe lỗi thì coi như chưa xác minh
+            except Exception:
                 self._token_valid = False
         else:
             self._token_valid = False

@@ -9,7 +9,7 @@ Tests for PasswordResetToken model (C1 fix):
 """
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase

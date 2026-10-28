@@ -28,8 +28,6 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.test import RequestFactory, TestCase, override_settings
-from django.utils import timezone
-
 from rest_framework.exceptions import PermissionDenied
 
 from identity_access.authentication import CorePATAuthentication
@@ -493,7 +491,10 @@ class B5TenantScopePermissionTests(TenantFixtureMixin, TestCase):
     def test_role_used_for_permission_check_is_the_headers_tenant_role(self):
         """B5's second half: a viewer in B must be judged viewer in B, not
         owner of A."""
-        from identity_access.utils.resolve_tenant import get_tenant_role, require_tenant_permission
+        from identity_access.utils.resolve_tenant import (
+            get_tenant_role,
+            require_tenant_permission,
+        )
 
         request = self._req(self.user, {'HTTP_X_TENANT_ID': str(self.tenant_b.public_id)})
         # Simulate the middleware having resolved the header tenant.
@@ -862,7 +863,6 @@ class B11StaffSwitchMutationTests(TenantFixtureMixin, TestCase):
     so it cannot reach the database. Documented, not changed."""
 
     def test_no_code_path_saves_request_user(self):
-        from identity_access.models import CorePATCredential
         from identity_access.utils.resolve_tenant import apply_pat_user_privileges
 
         pat = _machine_pat(self.tenant_a)[0]

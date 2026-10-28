@@ -7,7 +7,6 @@ R2.1: resolver deployment/fallback-chain.
   chain của user (rơi xuống tenant, rồi system). Chain rỗng/thiếu ⇒ [] (không
   failover — AC3).
 """
-from typing import Optional
 
 
 def pick_active_deployment(user):
@@ -64,7 +63,7 @@ def resolve_fallback_chain(user, tenant=None):
     return [found[pk] for pk in wanted if pk in found]
 
 
-def pick_deployment(user, tenant=None) -> Optional[object]:
+def pick_deployment(user, tenant=None) -> object | None:
     """Deployment hiệu lực: active đang bật > đầu chain > None (hành vi cũ)."""
     active = pick_active_deployment(user)
     if active is not None:

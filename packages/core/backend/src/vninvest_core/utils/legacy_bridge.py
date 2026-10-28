@@ -11,4 +11,4 @@ def legacy_bridge_response(request, legacy_path: str, *, unavailable_message: st
     Existing callers treat None as "bridge unavailable" and continue to
     native/stub behavior without raising NameError.
     """
-    return None
+    return

@@ -1,7 +1,6 @@
 """SOC signals SSE stream tests — P2c W2.1-long."""
 from datetime import timedelta
 from decimal import Decimal
-import json
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -9,8 +8,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from signal_intelligence.models import UnifiedAlert
 from service_ops.registry import ensure_service_registry
+from signal_intelligence.models import UnifiedAlert
 
 User = get_user_model()
 
@@ -238,7 +237,7 @@ class SignalsStreamFlushTestCase(SignalsStreamBaseTestCase):
     def test_last_event_id_resumes_after_last_id(self):
         # Lấy max id hiện tại
         max_id = UnifiedAlert.objects.order_by('-pk').first().pk
-        rsp = self.client.get(f'/api/soc/signals/stream/?max_loops=2', HTTP_LAST_EVENT_ID=str(max_id))
+        rsp = self.client.get('/api/soc/signals/stream/?max_loops=2', HTTP_LAST_EVENT_ID=str(max_id))
         content = _read_stream_content(rsp)
         # Không có alert mới hơn max_id → chỉ ping/retry, không có event signal mới
         # Có thể không có event nào, chỉ retry+ping
@@ -259,7 +258,6 @@ class SignalsStreamFlushTestCase(SignalsStreamBaseTestCase):
 
     def test_query_token_fallback_auth(self):
         # Tạo PAT cho admin user (dùng CorePATCredential)
-        from identity_access.models import CoreTenant, CorePATCredential
         from unittest.mock import patch
 
         # Tạo tenant giả cho PAT flow, nhưng test đơn giản: dùng query token với Bearer PAT

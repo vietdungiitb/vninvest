@@ -1,8 +1,7 @@
 """Focused SOC domain API contract tests for the current native routes."""
 
-from decimal import Decimal
 import json
-
+from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -11,8 +10,11 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
-from signal_intelligence.models import UnifiedAlert
+from market_data.models import (
+    GlobalSymbolCoverage,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+)
 from service_ops.models import (
     ConfigChangeAudit,
     MarketDataParitySnapshot,
@@ -29,6 +31,7 @@ from service_ops.registry import (
     get_registered_service,
 )
 from service_ops.tests.envelope import unwrapped_json
+from signal_intelligence.models import UnifiedAlert
 
 User = get_user_model()
 
@@ -618,7 +621,6 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         # (conditions array in rule `value`, user-engine format) against
         # latest snapshots instead of queueing a log nobody consumes.
         from datetime import date, timedelta
-
         from unittest import mock as _mock
 
         from market_data.models import DailyPrice

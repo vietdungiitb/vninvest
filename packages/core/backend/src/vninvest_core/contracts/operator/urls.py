@@ -1,12 +1,12 @@
 from django.urls import include, path
 
-from .views import OperatorHealthView, OperatorOverviewView
 from .operator_tenant_views import (
     OperatorTenantDetailView,
     OperatorTenantListView,
     OperatorTenantPATListView,
     OperatorTenantServiceAccountListView,
 )
+from .views import OperatorHealthView, OperatorOverviewView
 
 app_name = 'operator'
 

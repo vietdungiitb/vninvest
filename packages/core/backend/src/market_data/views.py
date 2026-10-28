@@ -8,21 +8,20 @@ Endpoints:
 """
 from datetime import timedelta
 
+from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
+
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.pagination import CoreCursorPagination
 
 from .envelope import envelope, paginated_envelope
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
-
-
-from vninvest_core.pagination import CoreCursorPagination
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
 
 
 class StockProfileCursorPagination(CoreCursorPagination):
@@ -186,7 +185,7 @@ class StockChartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
-        from datetime import timedelta, datetime, time
+        from datetime import datetime, time, timedelta
         
         symbol = symbol.upper()
         
@@ -446,9 +445,13 @@ class IntradayTapeView(APIView):
                 'age_seconds': None,
             })
 
+        from datetime import datetime, time
+
         latest_trade_date = timezone.localdate(latest_tick.timestamp)
+        _day_start = timezone.make_aware(datetime.combine(latest_trade_date, time.min))
+        _day_end = _day_start + timedelta(days=1)
         tick_rows = list(
-            IntradayTick.objects.filter(symbol=symbol, timestamp__date=latest_trade_date)
+            IntradayTick.objects.filter(symbol=symbol, timestamp__gte=_day_start, timestamp__lt=_day_end)
             .order_by('-timestamp')[:page_size]
         )
         age_seconds = max(int((served_at - latest_tick.timestamp).total_seconds()), 0)

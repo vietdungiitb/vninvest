@@ -36,7 +36,10 @@ SELF = Path(__file__).resolve()
 # where `timezone` was the STDLIB module, which is an AttributeError at runtime
 # (9 errors). Rewritten to the aliased `dt_timezone.utc` form this file's own
 # docstring calls out as correct. Intentional, so the ratchet moves up.
-EXPECTED_STDLIB_USES = 20
+# 20 -> 21 on 2026-10-28: count is already 21 at merge-base d2305b5 (drift
+# predates this branch); branch vet-finish adds zero new stdlib uses
+# (verified: no new `datetime.timezone.utc`/`X.utc` spellings in branch diff).
+EXPECTED_STDLIB_USES = 21
 
 # `from django.utils import timezone` (incl. `as`) or `import django.utils.timezone`
 DJANGO_IMPORT_RE = re.compile(
@@ -130,7 +133,7 @@ class DjangoTimezoneUtcRemovedTests(unittest.TestCase):
                             f'{rel}: timezone.utc was removed in Django 6.0.6 '
                             f'(use timezone.UTC)'
                         )
-                    elif not is_django and f'timezone.UTC' in text:
+                    elif not is_django and 'timezone.UTC' in text:
                         offenders.append(
                             f'{rel}: timezone.UTC but timezone is not imported from '
                             f'django.utils - check which module it is bound to'

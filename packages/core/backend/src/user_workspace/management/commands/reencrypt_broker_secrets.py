@@ -27,9 +27,7 @@ then drop the retained key.
 
 from __future__ import annotations
 
-import json
 from collections import Counter
-from typing import Dict
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -64,7 +62,7 @@ class Command(BaseCommand):
         )
 
     # ── reporting ───────────────────────────────────────────────────────
-    def _version_histogram(self) -> Dict[int, int]:
+    def _version_histogram(self) -> dict[int, int]:
         counts: Counter = Counter()
         rows = UserBrokerConfig.objects.exclude(secrets_cipher="").values_list(
             "secrets_cipher", flat=True

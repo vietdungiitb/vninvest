@@ -18,7 +18,7 @@ from user_workspace.broker.adapters import (
     BrokerPosition,
     get_broker_adapter,
 )
-from user_workspace.models import UserBrokerConfig, set_user_broker_secrets
+from user_workspace.models import set_user_broker_secrets
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 
@@ -104,7 +104,8 @@ class BrokerSyncServiceTests(TestCase):
 
     def test_for_user_missing_config_raises_code(self):
         from user_workspace.broker.sync_service import (
-            BrokerConfigMissingError, BrokerSyncService,
+            BrokerConfigMissingError,
+            BrokerSyncService,
         )
         with self.assertRaises(BrokerConfigMissingError) as ctx:
             BrokerSyncService.for_user(self.user, 'ssi', tenant=self.tenant)

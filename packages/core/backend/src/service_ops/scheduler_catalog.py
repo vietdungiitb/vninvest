@@ -322,7 +322,8 @@ def build_scheduler_catalog(
         list of SchedulerJob dicts với canonical fields.
     """
     from django_celery_beat.models import PeriodicTask
-    from .models import ServiceDefinition, ServiceRunLog
+
+    from .models import ServiceRunLog
 
     if schedule_map is None:
         schedule_map = dict(getattr(settings, 'CELERY_BEAT_SCHEDULE', {}))

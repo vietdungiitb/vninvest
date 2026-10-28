@@ -14,8 +14,8 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SessionFacts, SymbolSnapshot
-from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
+from user_workspace.tests.envelope import unwrapped_json
 
 User = get_user_model()
 

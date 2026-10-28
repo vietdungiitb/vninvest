@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
-from .models import AuditEvent
 from tenant_lifecycle.models import TenantLifecycleEvent
+
+from .models import AuditEvent
 
 
 class AuditEventSerializer(serializers.ModelSerializer):

@@ -7,7 +7,10 @@ from rest_framework.test import APIClient
 
 from identity_access.models import UserProfile
 from market_serving.models import SymbolSnapshot
-from signal_intelligence.materializers import materialize_market_anomaly_alerts, materialize_stale_quote_alerts
+from signal_intelligence.materializers import (
+    materialize_market_anomaly_alerts,
+    materialize_stale_quote_alerts,
+)
 from signal_intelligence.models import MarketAnomalyEvent, UnifiedAlert
 from user_workspace.models import Watchlist, WatchlistItem
 

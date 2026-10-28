@@ -28,7 +28,6 @@ from market_serving.models import SymbolSnapshot
 from user_workspace.models import Portfolio, Transaction
 from user_workspace.tests.envelope import unwrapped_json
 
-
 User = get_user_model()
 
 # Native co that khi co legacy backend that de doi chieu (BL-14).

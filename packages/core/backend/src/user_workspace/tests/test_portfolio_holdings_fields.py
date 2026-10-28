@@ -18,6 +18,7 @@ Fail-truoc/pass-sau: bo 4 field khoi payload => test nay FAIL.
 from decimal import Decimal
 
 from django.test import SimpleTestCase
+
 from user_workspace import portfolio_analytics_views as pav
 
 NEW_FIELDS = ('company_name', 'industry', 'industry_reason', 'weight_pct', 'price_change_pct')

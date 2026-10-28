@@ -4,14 +4,14 @@ File được build từ đầu (không tồn tại trong codebase cũ). Quy t�
 không dùng ML. Nếu tính toán lỗi hoặc thiếu tín hiệu cốt lõi → trả None
 (run view phải fallback, không crash scan).
 """
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
-def compute_ai_advisory(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def compute_ai_advisory(row: dict[str, Any]) -> dict[str, Any] | None:
     """Tính điểm AI 0-100 và hành động từ các tín hiệu kỹ thuật của một mã.
 
     Trả về dict {ai_score_0_100, strategy_action, risk_level, synthesis_text}

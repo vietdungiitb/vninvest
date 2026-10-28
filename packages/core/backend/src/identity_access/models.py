@@ -333,7 +333,6 @@ class CorePATCredential(models.Model):
 
     @classmethod
     def resolve_from_raw_secret(cls, raw_secret: str):
-        from django.utils import timezone
         prefix = _extract_pat_prefix(raw_secret)
         candidates = cls.objects.select_related(
             'service_account__tenant', 'issued_for_member'
@@ -348,8 +347,8 @@ class CorePATCredential(models.Model):
 
     @classmethod
     def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False, issued_for_member=None):
-        from django.utils import timezone
         from django.core.exceptions import ValidationError
+        from django.utils import timezone
 
         tenant = service_account.tenant
         if tenant.max_active_pats != -1:
@@ -1061,7 +1060,9 @@ def get_system_provider_credentials() -> 'tuple[str, str] | None':
 # SaaS Native User Registration & Dynamic Mail System (Slice 1)
 # ---------------------------------------------------------------------------
 import uuid
-from vninvest_core.utils.crypto import encrypt_secret, decrypt_secret
+
+from vninvest_core.utils.crypto import decrypt_secret, encrypt_secret
+
 
 class SystemMailConfig(models.Model):
     PROVIDER_SMTP = 'smtp'
@@ -1534,7 +1535,10 @@ def sync_core_tenant_plan_entitlement(sender, instance, raw=False, **kwargs):
     """
     if raw:
         return
-    from commercial.plan_catalog import get_api_calls_limit, is_plan_derived_api_calls_limit
+    from commercial.plan_catalog import (
+        get_api_calls_limit,
+        is_plan_derived_api_calls_limit,
+    )
 
     expected = get_api_calls_limit(instance.plan)
     if instance.api_calls_limit == expected:

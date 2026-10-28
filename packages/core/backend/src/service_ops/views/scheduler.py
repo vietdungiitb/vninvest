@@ -10,18 +10,24 @@ Endpoints:
 """
 
 from django.utils import timezone
-from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view
 from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import serializers, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from ..envelope import envelope, paginated_envelope
-from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_summary
-from ..ownership import build_ownership_matrix_from_db
-from ..models import ConfigChangeAudit, ServiceRunLog
-from .base import SOCBaseView
-from rest_framework.pagination import PageNumberPagination
 from vninvest_core.api_envelope import envelope_response
+
+from ..envelope import envelope, paginated_envelope
+from ..ownership import build_ownership_matrix_from_db
+from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_summary
+from .base import SOCBaseView
+
 
 class SchedulerJobHistoryPagination(PageNumberPagination):
     page_size = 20
@@ -231,8 +237,9 @@ class SchedulerJobHistoryView(SOCBaseView):
 
     def get(self, request, job_key: str):
         from django.conf import settings
+
+        from ..models import ServiceRunLog
         from ..scheduler_catalog import CATALOG_JOB_METADATA
-        from ..models import ServiceRunLog, ServiceDefinition
 
         schedule_map = getattr(settings, 'CELERY_BEAT_SCHEDULE', {}) or {}
         if job_key not in schedule_map and job_key not in CATALOG_JOB_METADATA:
@@ -388,6 +395,7 @@ class SchedulerJobActionView(SOCBaseView):
 
     def post(self, request, job_key: str):
         from django.conf import settings
+
         from ..scheduler_catalog import CATALOG_JOB_METADATA
 
         # 1. Validate job exists
@@ -485,11 +493,11 @@ def _execute_scheduler_action(
     run_now        → send_task() async + ServiceRunLog(queued)
     abort          → revoke inflight tasks + mark ServiceRunLog failed
     """
+    from celery import current_app as celery_app
     from django.conf import settings
     from django_celery_beat.models import PeriodicTask
-    from celery import current_app as celery_app
 
-    from ..models import ServiceDefinition, ServiceRunLog, ConfigChangeAudit
+    from ..models import ConfigChangeAudit, ServiceDefinition, ServiceRunLog
 
     executed_at = timezone.now()
     # task_path phải đọc từ CELERY_BEAT_SCHEDULE, không phải từ CATALOG_JOB_METADATA.

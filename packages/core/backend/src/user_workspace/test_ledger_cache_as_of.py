@@ -19,13 +19,12 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
 from identity_access.models import CoreTenant
 from user_workspace.ledger.services import build_meta, get_cached_ledger
 from user_workspace.models import Portfolio, Transaction
-
 
 User = get_user_model()
 

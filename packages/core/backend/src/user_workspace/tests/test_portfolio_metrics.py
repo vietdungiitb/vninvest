@@ -108,8 +108,8 @@ class MetricsHonestyTests(TestCase):
 
 class NavSeriesTests(TestCase):
     def test_days_missing_a_price_are_skipped_not_zeroed(self):
-        from user_workspace.portfolio_analytics_views import _nav_series
         from market_data.models import DailyPrice
+        from user_workspace.portfolio_analytics_views import _nav_series
 
         d0, d1 = date(2026, 1, 5), date(2026, 1, 6)
         DailyPrice.objects.create(symbol='VNM', date=d0, close=Decimal('70'),

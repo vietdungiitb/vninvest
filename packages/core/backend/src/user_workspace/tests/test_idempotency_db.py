@@ -87,10 +87,10 @@ class Safe02RequiredCases(_Fixture):
         Hai lần `create()` với cùng key: cái thứ hai phải bị database từ chối.
         Không có cách nào thắng được ở bất kỳ số process nào.
         """
-        fields = dict(
-            tenant=self.tenant, actor=self.user, scope=SCOPE, key='RACE',
-            request_hash='h', expires_at=timezone.now() + timedelta(days=7),
-        )
+        fields = {
+            'tenant': self.tenant, 'actor': self.user, 'scope': SCOPE, 'key': 'RACE',
+            'request_hash': 'h', 'expires_at': timezone.now() + timedelta(days=7),
+        }
         IdempotencyRecord.objects.create(**fields)
         with self.assertRaises(IntegrityError):
             with transaction.atomic():

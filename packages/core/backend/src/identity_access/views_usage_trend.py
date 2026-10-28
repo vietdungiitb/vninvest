@@ -4,21 +4,21 @@ Per-Meter Usage Trend views for tenant-admin.
 Provides historical daily consumption for specific meters (Phase 1 of Tenant Admin Upgrade Plan).
 """
 from datetime import date, timedelta
-from django.db.models import Sum
 
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
 
-from drf_spectacular.utils import extend_schema
 from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope
-from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
 from .schema import PartnerUsageTrendAllSerializer, PartnerUsageTrendSerializer
-from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from .utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 
 @extend_schema(

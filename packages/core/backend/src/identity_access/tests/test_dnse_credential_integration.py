@@ -7,6 +7,7 @@ T-F3: get_system_provider_credentials() trả về (key, secret) khi tồn tại
 T-F4: get_system_provider_credentials() trả về None khi không có.
 """
 import os
+
 from django.test import TestCase
 
 
@@ -46,8 +47,8 @@ class DNSECredentialEncryptionTest(TestCase):
 
     def test_get_system_provider_credentials_found(self):
         """T-F3: get_system_provider_credentials() trả về tuple khi tồn tại."""
-        from user_workspace.models import DNSECredential
         from identity_access.models import get_system_provider_credentials
+        from user_workspace.models import DNSECredential
         admin = self.User.objects.create_superuser('sysadmin_f3', 'f3@test.com', 'pass')
         cred = DNSECredential(user=admin, is_active=True)
         cred.set_client_id('SYS_KEY')

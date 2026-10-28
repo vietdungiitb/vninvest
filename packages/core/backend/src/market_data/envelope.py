@@ -97,8 +97,13 @@ tracked-symbol / price-alert, `{ok,message}` 400/404/409 ở
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope', 'is_envelope',
-           'envelope_schema']
+__all__ = [
+    'adopt_envelope',
+    'envelope',
+    'envelope_schema',
+    'is_envelope',
+    'paginated_envelope',
+]
 
 
 def is_envelope(body) -> bool:

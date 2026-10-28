@@ -12,13 +12,17 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.api_envelope import envelope_response
-
 from identity_access.envelope import adopt_envelope, envelope, paginated_envelope
-from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.permissions import (
+    IsTenantActive,
+    require_pat_scopes_or_human_session,
+)
 from identity_access.schema import PaginatedResultsSerializer
-from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
+from identity_access.utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
 from identity_access.utils.resolve_tenant import resolve_tenant
+from vninvest_core.api_envelope import envelope_response
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +72,8 @@ class PartnerUsageMetersView(generics.GenericAPIView):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
         try:
-            from django.db.models import Subquery, OuterRef
+            from django.db.models import OuterRef, Subquery
+
             from commercial.models import QuotaHistory
             from commercial.serializers import PartnerUsageMeterSerializer
 
@@ -97,7 +102,8 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
         try:
-            from django.db.models import Subquery, OuterRef
+            from django.db.models import OuterRef, Subquery
+
             from commercial.models import QuotaHistory
             from commercial.serializers import PartnerUsageMeterSerializer
 
@@ -310,10 +316,12 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
         # de client phan biet "khong duoc xem" voi "may loi".
         tenant = resolve_tenant(request)
         try:
+            from datetime import timedelta
+
+            from django.utils import timezone
+
             from commercial.models import QuotaHistory
             from commercial.serializers import QuotaHistorySerializer
-            from django.utils import timezone
-            from datetime import timedelta
             
             # Parse query params
             meter_code = request.query_params.get('meter_code')

@@ -1,7 +1,7 @@
 # Location: packages/core/backend/src/identity_access/tests/test_register_upgrade.py
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Inject mock google modules into sys.modules BEFORE rest of imports to prevent collection errors
 sys.modules['google'] = MagicMock()
@@ -10,21 +10,32 @@ sys.modules['google.oauth2.service_account'] = MagicMock()
 sys.modules['googleapiclient'] = MagicMock()
 sys.modules['googleapiclient.discovery'] = MagicMock()
 
-import uuid
-import hashlib
 import json
-from django.contrib.auth import get_user_model
-from django.db import transaction, IntegrityError
-from django.test import TestCase, override_settings
-from django.core.cache import cache
-from rest_framework.test import APIClient
-from rest_framework import status
-from cryptography.fernet import Fernet
+import uuid
 
-from identity_access.models import SystemMailConfig, OutboxEvent, ProcessedEvent, MailConfigAuditLog, CoreTenant, CoreServiceAccount, UserProfile
+from cryptography.fernet import Fernet
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.db import IntegrityError, transaction
+from django.test import TestCase, override_settings
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from data_ingest.tasks import trigger_email_verification_flow
-from identity_access.management.commands.backfill_missing_tenants import Command as BackfillCommand
-from identity_access.management.commands.rotate_mail_credential_key import Command as RotateCommand
+from identity_access.management.commands.backfill_missing_tenants import (
+    Command as BackfillCommand,
+)
+from identity_access.management.commands.rotate_mail_credential_key import (
+    Command as RotateCommand,
+)
+from identity_access.models import (
+    CoreServiceAccount,
+    CoreTenant,
+    OutboxEvent,
+    ProcessedEvent,
+    SystemMailConfig,
+    UserProfile,
+)
 
 User = get_user_model()
 

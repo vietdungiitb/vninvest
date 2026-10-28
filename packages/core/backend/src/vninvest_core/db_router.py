@@ -8,8 +8,6 @@ Routing rules:
 
 HARD CONSTRAINT (AGENTS.md §8.1): Không ghi vào legacy DB từ core containers.
 """
-from typing import Optional
-
 
 # Apps that live in core DB
 _CORE_APPS = frozenset({
@@ -42,12 +40,12 @@ class CoreRouter:
     Blocks any write operations against the 'legacy_readonly' database.
     """
 
-    def db_for_read(self, model, **hints) -> Optional[str]:
+    def db_for_read(self, model, **hints) -> str | None:
         if model._meta.app_label in _CORE_APPS:
             return 'default'
         return None
 
-    def db_for_write(self, model, **hints) -> Optional[str]:
+    def db_for_write(self, model, **hints) -> str | None:
         if model._meta.app_label in _CORE_APPS:
             return 'default'
         # Any other app tried to write: block
@@ -57,7 +55,7 @@ class CoreRouter:
             "(SM-P2.1 / AGENTS.md §8.1)"
         )
 
-    def allow_migrate(self, db, app_label, model_name=None, **hints) -> Optional[bool]:
+    def allow_migrate(self, db, app_label, model_name=None, **hints) -> bool | None:
         if db == 'legacy_readonly':
             # Never migrate legacy DB from core containers
             return False

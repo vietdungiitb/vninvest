@@ -4,12 +4,11 @@ Tests for SystemMailConfigAdmin Google OAuth2 connect/callback/revoke views.
 Covers: connect redirect, callback token save, revoke token clear, test-email action,
         non-staff access denial.
 """
-import os
-import uuid
-from unittest.mock import patch, MagicMock
-
 # Inject mock google modules BEFORE any import that might pull them
 import sys
+import uuid
+from unittest.mock import MagicMock, patch
+
 sys.modules.setdefault('google', MagicMock())
 sys.modules.setdefault('google.oauth2', MagicMock())
 sys.modules.setdefault('google.oauth2.service_account', MagicMock())
@@ -19,10 +18,10 @@ sys.modules.setdefault('googleapiclient.discovery', MagicMock())
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core import signing
-from django.test import TestCase, Client, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from identity_access.models import SystemMailConfig, MailConfigAuditLog
+from identity_access.models import MailConfigAuditLog, SystemMailConfig
 
 User = get_user_model()
 TEST_FERNET_KEY = Fernet.generate_key().decode()

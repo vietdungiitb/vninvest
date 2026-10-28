@@ -17,15 +17,9 @@ Conditions, SubjectConfirmation, Metadata).
 import base64
 import logging
 import os
-import sys
-import uuid
-import base64
-import logging
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from lxml import etree
 
@@ -209,7 +203,7 @@ class SAMLService:
     def parse_response(
         self,
         saml_response_b64: str,
-        expected_request_id: Optional[str] = None,
+        expected_request_id: str | None = None,
     ) -> dict:
         """Parse and validate a SAML Response.
 

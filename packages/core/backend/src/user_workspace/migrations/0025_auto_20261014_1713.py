@@ -10,7 +10,6 @@
 
 from django.db import migrations
 
-
 SOURCE_TO_PROVIDER = {
     'DNSE': 'dnse',
     'SSI': 'ssi',

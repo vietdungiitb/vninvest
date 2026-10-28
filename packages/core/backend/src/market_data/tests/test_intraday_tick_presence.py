@@ -5,7 +5,7 @@ T-G1: bulk_create với ignore_conflicts=True không raise khi có duplicate.
 T-G2: filter(timestamp__date=date) trả về đúng ticks của ngày đó.
 T-G3: bulk_create 0 records khi ticks=[] trả về created=0.
 """
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timezone
 
 from django.test import TestCase
 

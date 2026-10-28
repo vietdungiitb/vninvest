@@ -5,17 +5,18 @@ Login Activity, Active Sessions, Session Revocation.
 from datetime import timedelta
 
 from django.db import connection
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
 
-from drf_spectacular.utils import extend_schema
 from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope, paginated_envelope
-from .models import CoreTenant, LoginAttempt
+from .models import LoginAttempt
 from .permissions import IsTenantActive, require_human_session
 from .schema import (
     DetailPayloadSerializer,
@@ -23,9 +24,10 @@ from .schema import (
     PartnerLoginActivitySerializer,
 )
 from .security_utils import LoginRecorder
-from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
-from drf_spectacular.openapi import OpenApiTypes
-
+from .utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 
 def _query_daily_login_activity(tenant_id: int, since):

@@ -7,16 +7,22 @@ Test scenario: 2 tenants (tenant_a, tenant_b), 3 users:
   - user2: belongs to tenant_b only
   - user3: belongs to both tenant_a and tenant_b (cross-tenant edge case)
 """
-from decimal import Decimal
 from datetime import date, timedelta
+from decimal import Decimal
 
-from django.test import TestCase, Client
 from django.contrib.auth.models import User
+from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantMember
-from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount
+from user_workspace.models import (
+    Portfolio,
+    SubAccount,
+    Transaction,
+    Watchlist,
+    WatchlistItem,
+)
 from user_workspace.tests.envelope import unwrapped
 
 

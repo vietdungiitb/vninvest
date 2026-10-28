@@ -7,6 +7,7 @@ endpoints khác giữ nguyên. Middleware chặn no-tenant bằng 403 trước k
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
@@ -37,14 +38,11 @@ from .serializers import (
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 from .views.helpers import TENANT_PERMISSION_CLASSES
 from .views_tenant import (
-    _normalize_scope_codes,
+    _parse_days_param,
     _reject_human_session_markers,
     _serialize_partner_pat,
     _validate_requested_pat_scopes,
-    _parse_days_param,
 )
-from drf_spectacular.openapi import OpenApiTypes
-
 
 PERSONAL_LABEL_PREFIX = 'personal:'
 

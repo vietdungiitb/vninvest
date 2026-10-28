@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
-from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -942,7 +941,7 @@ class UserBrokerConfig(models.Model):
 
     def masked_preview(self) -> dict:
         """Preview an toàn cho response: secret → ****, non-secret giữ nguyên."""
-        from .broker import mask_secrets_preview  # noqa: PLC0415 (tránh circular import)
+        from .broker import mask_secrets_preview
         return mask_secrets_preview(self.provider, self.get_secrets())
 
 
@@ -1151,7 +1150,9 @@ class ScreenerRunHistory(models.Model):
 
 def _compute_next_run(run_time, weekdays):
     """Next datetime (Asia/Ho_Chi_Minh naive→aware) matching run_time + weekdays."""
-    from datetime import datetime, timedelta, time as _time
+    from datetime import time as _time
+    from datetime import timedelta
+
     from django.utils import timezone
 
     now = timezone.now()
@@ -1228,7 +1229,6 @@ class ScreenerSchedule(models.Model):
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # WAVE 2 — LED-01..03 · LED-06

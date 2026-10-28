@@ -51,7 +51,7 @@ def _build_vnbroker_dnse_client(client_id: str, client_secret: str):
         ) from exc
 
 
-def bootstrap_dnse_session(credential: "DNSECredential") -> dict:
+def bootstrap_dnse_session(credential: DNSECredential) -> dict:
     """
     Lấy Bearer access_token từ DNSE LightSpeed API bằng client_id + client_secret.
 

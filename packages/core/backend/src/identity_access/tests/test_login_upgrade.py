@@ -1,7 +1,6 @@
 # Location: packages/core/backend/src/identity_access/tests/test_login_upgrade.py
-import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 # Inject mock google modules into sys.modules BEFORE rest of imports to prevent collection errors
 sys.modules['google'] = MagicMock()
@@ -11,13 +10,18 @@ sys.modules['googleapiclient'] = MagicMock()
 sys.modules['googleapiclient.discovery'] = MagicMock()
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
 from django.core.cache import cache
+from django.test import TestCase, override_settings
 from django.utils import timezone
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
-from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, UserProfile
+from identity_access.models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    UserProfile,
+)
 
 User = get_user_model()
 

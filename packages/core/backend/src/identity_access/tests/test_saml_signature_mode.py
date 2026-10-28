@@ -13,8 +13,8 @@ from unittest import mock
 from django.test import SimpleTestCase
 
 from identity_access.saml_service import (
-    SAMLService,
     SAMLParseError,
+    SAMLService,
     SAMLSignatureError,
     _default_signature_mode,
 )

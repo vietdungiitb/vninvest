@@ -8,7 +8,6 @@ from ..provider_catalog import (
     normalize_provider_id,
 )
 
-
 SUPPORTED_VNBROKER_PROVIDERS = frozenset(get_supported_provider_ids('vnbroker'))
 DEFAULT_VNBROKER_PREFERRED_PROVIDER = 'vci'
 

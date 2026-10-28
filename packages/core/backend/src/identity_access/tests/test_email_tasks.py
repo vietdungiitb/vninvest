@@ -7,7 +7,7 @@ Tests for async email sending tasks:
 """
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
@@ -167,7 +167,8 @@ class SendWelcomeEmailTests(TestCase):
     def test_send_welcome_email_success(self, mock_send):
         mock_send.return_value = 1
         from django.contrib.auth.models import User as DjangoUser
-        from identity_access.models import UserProfile, CoreTenant
+
+        from identity_access.models import CoreTenant, UserProfile
         user = DjangoUser.objects.create_user(
             username='welcometest', email='welcome@test.com', password='pass123',
         )
@@ -196,7 +197,8 @@ class SendWelcomeEmailTests(TestCase):
     def test_send_welcome_email_send_failure_retries(self, mock_send):
         mock_send.side_effect = Exception('SMTP down')
         from django.contrib.auth.models import User as DjangoUser
-        from identity_access.models import UserProfile, CoreTenant
+
+        from identity_access.models import CoreTenant, UserProfile
         user = DjangoUser.objects.create_user(
             username='retrytest', email='retry@test.com', password='pass123',
         )
@@ -217,7 +219,8 @@ class SendInviteEmailTests(TestCase):
     def test_send_invite_email_success(self, mock_send):
         mock_send.return_value = 1
         from django.contrib.auth.models import User as DjangoUser
-        from identity_access.models import UserProfile, CoreTenant, TenantInvite
+
+        from identity_access.models import CoreTenant, TenantInvite, UserProfile
         user = DjangoUser.objects.create_user(
             username='inviter1', email='inviter@test.com', password='pass123',
         )
@@ -249,7 +252,8 @@ class SendInviteEmailTests(TestCase):
     @patch('identity_access.mail_service.send_system_email')
     def test_send_invite_email_already_accepted(self, mock_send):
         from django.contrib.auth.models import User as DjangoUser
-        from identity_access.models import UserProfile, CoreTenant, TenantInvite
+
+        from identity_access.models import CoreTenant, TenantInvite, UserProfile
         user = DjangoUser.objects.create_user(
             username='inviter2', email='inviter2@test.com', password='pass123',
         )

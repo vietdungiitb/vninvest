@@ -9,6 +9,7 @@ screener_tasks.py — P1.4 celery task cho scan dài (Entry 77).
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 
 from celery import shared_task
 from django.core.cache import cache as dj_cache
@@ -64,8 +65,11 @@ def run_screener_scan_task(
             session_date = date_cls.today()
 
         # Reuse _compute_scan (import lazily to avoid circular)
-        from user_workspace.portfolio_analytics_views import _compute_scan, _scan_cache_key
         from user_workspace.models import ScreenerRule
+        from user_workspace.portfolio_analytics_views import (
+            _compute_scan,
+            _scan_cache_key,
+        )
 
         # For progress simulation: we don't have per-200 hook in _compute_scan yet,
         # so we set running once, then compute, then completed.
@@ -83,8 +87,8 @@ def run_screener_scan_task(
             def __init__(self, rid, ts):
                 self.id = rid
                 if ts:
-                    from datetime import datetime, timezone as dt_tz
-                    self.updated_at = datetime.fromtimestamp(int(ts), tz=dt_tz.utc)
+                    from datetime import datetime
+                    self.updated_at = datetime.fromtimestamp(int(ts), tz=UTC)
                 else:
                     self.updated_at = None
 
@@ -119,7 +123,9 @@ def run_screener_scan_task(
         # P2.4: create server history (same shape as sync path) + new_symbols alert
         try:
             from django.contrib.auth import get_user_model as _get_user
-            from user_workspace.models import ScreenerRule as _Rule, ScreenerRunHistory as _Hist
+
+            from user_workspace.models import ScreenerRule as _Rule
+            from user_workspace.models import ScreenerRunHistory as _Hist
 
             _user = _get_user().objects.filter(pk=user_id).first()
             _rule = _Rule.objects.filter(pk=rule_id).first()

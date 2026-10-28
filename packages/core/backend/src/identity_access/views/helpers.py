@@ -1,17 +1,16 @@
-import os
-from datetime import timedelta
 import logging
+import os
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import permissions, status
-from rest_framework.throttling import UserRateThrottle
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
-from ..authentication import CorePATAuthentication
-from ..models import CorePATCredential, CoreServiceAccount, CoreTenant, PasswordResetToken, UserProfile, OutboxEvent, EmailVerificationToken
-from ..permissions import IsTenantActive, require_human_session
+from ..models import CorePATCredential, CoreServiceAccount, CoreTenant
+from ..permissions import IsTenantActive
 
 logger = logging.getLogger(__name__)
 

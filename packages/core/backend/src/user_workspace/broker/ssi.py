@@ -123,11 +123,11 @@ def test_connection(secrets: dict) -> dict:
         )
         client.authenticate()  # market-only, không OTP
         accounts = client.get_account_list()
-    except Exception as exc:  # noqa: BLE001 — mọi lỗi upstream thành error rõ
+    except Exception as exc:
         logger.warning('ssi test_connection failed — %s', type(exc).__name__)
         return {'ok': False, 'error': f'{type(exc).__name__}'}
     try:
         count = len(accounts) if hasattr(accounts, '__len__') else 0
-    except Exception:  # noqa: BLE001
+    except Exception:
         count = 0
     return {'ok': True, 'account_count': count}

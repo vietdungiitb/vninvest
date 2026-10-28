@@ -1,12 +1,26 @@
-import logging
-import json
 import asyncio
+import json
+import logging
+
 from django.conf import settings
-from market_serving.models import SymbolSnapshot, SessionFacts
+
+from advisory.ai_clients import get_ai_client
+
+# R2.2: client theo provider qua factory — orchestrator không còn nhánh
+# `if provider ==`. `_resolve_chat_endpoint` re-export từ adapter để test R0.6
+# (`from advisory.orchestrator import _resolve_chat_endpoint`) không phải sửa.
+from advisory.ai_clients.base import ProviderCircuitOpenError, ProviderHTTPError
+from advisory.ai_clients.openai_compat import _resolve_chat_endpoint
+
+# R3.1: trace helper import ở module level — `trace.py` chỉ import model **bên trong**
+# hàm nên không gây vòng import ngược với `advisory.models`.
+from advisory.trace import record_step_trace
+from market_serving.models import SessionFacts, SymbolSnapshot
+
 from .advisory_helpers import (
     _parse_prompt_config,
+    build_cvd_lookback_context,
     build_ohlcv_lookback_context,
-    build_cvd_lookback_context
 )
 from .signal_norm import (
     SIGNAL_UNKNOWN,
@@ -14,15 +28,6 @@ from .signal_norm import (
     normalize_risk_level,
     normalize_signal,
 )
-# R2.2: client theo provider qua factory — orchestrator không còn nhánh
-# `if provider ==`. `_resolve_chat_endpoint` re-export từ adapter để test R0.6
-# (`from advisory.orchestrator import _resolve_chat_endpoint`) không phải sửa.
-from advisory.ai_clients.base import ProviderCircuitOpenError, ProviderHTTPError
-from advisory.ai_clients import get_ai_client
-from advisory.ai_clients.openai_compat import _resolve_chat_endpoint
-# R3.1: trace helper import ở module level — `trace.py` chỉ import model **bên trong**
-# hàm nên không gây vòng import ngược với `advisory.models`.
-from advisory.trace import record_step_trace
 
 logger = logging.getLogger(__name__)
 

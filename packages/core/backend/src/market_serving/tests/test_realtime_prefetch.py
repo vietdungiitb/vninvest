@@ -1,13 +1,14 @@
-from django.test import TestCase
+from datetime import UTC
+from unittest.mock import patch
+
 from django.core.cache import cache
-from unittest.mock import patch, MagicMock
+from django.test import TestCase
 
 from market_data.models import GlobalSymbolRegistry
 from market_serving.realtime_prefetch import (
-    _collect_universe_symbols,
-    REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY,
-    REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX,
     DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS,
+    REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX,
+    _collect_universe_symbols,
 )
 
 
@@ -126,6 +127,7 @@ class RealtimePrefetchHydrateLegTestCase(TestCase):
         Nếu last_hydrate vừa được set (< interval), hydrate KHÔNG được enqueue lại.
         """
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import schedule_realtime_prefetch_shards
 
         # Giả lập đã enqueue hot hydrate 10 giây trước
@@ -145,6 +147,7 @@ class RealtimePrefetchHydrateLegTestCase(TestCase):
         Nếu elapsed > HOT_HYDRATE_INTERVAL, hydrate phải được enqueue lại.
         """
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import schedule_realtime_prefetch_shards
 
         # Giả lập last_hydrate đã quá interval
@@ -179,6 +182,7 @@ class RealtimePrefetchDedupGuardTestCase(TestCase):
     @patch('data_ingest.tasks.warm_intraday_universe.apply_async')
     def test_skipped_duplicate_when_previous_run_fresh(self, mock_hydrate, mock_prefetch):
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import (
             REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY,
             schedule_realtime_prefetch_shards,
@@ -236,8 +240,8 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
 
     def _ict(self, weekday, hour, minute=0):
         # 2026-09-21 la Thu 2. weekday: 0=T2 ... 5=T7, 6=CN.
-        from datetime import datetime, timedelta, timezone as dt_tz
-        base = datetime(2026, 9, 21, 3, 0, tzinfo=dt_tz.utc)  # Mon 10:00 ICT
+        from datetime import datetime, timedelta
+        base = datetime(2026, 9, 21, 3, 0, tzinfo=UTC)  # Mon 10:00 ICT
         delta_days = (weekday - 0) % 7
         target = base + timedelta(days=delta_days)
         target = target.replace(hour=hour - 7, minute=minute)
@@ -257,6 +261,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
 
     def test_session_gate_disabled_flag(self):
         import os
+
         from market_serving.realtime_prefetch import _in_trading_session
         old = os.getenv('TICKER_PREFETCH_SESSION_ONLY')
         os.environ['TICKER_PREFETCH_SESSION_ONLY'] = 'false'
@@ -271,6 +276,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
     @patch('market_data.vnbroker_adapter.fetch_realtime_price')
     def test_shard_slow_symbol_timeout(self, fetch_mock):
         import time
+
         from market_serving.realtime_prefetch import prefetch_realtime_ticker_shard
 
         def _slow(symbol):
@@ -311,6 +317,7 @@ class RealtimePrefetchCorrectiveTestCase(TestCase):
     @patch('data_ingest.tasks.warm_intraday_universe.apply_async')
     def test_hydrate_warm_capped(self, mock_hydrate, mock_prefetch):
         from django.utils import timezone
+
         from market_serving.realtime_prefetch import (
             REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY,
             schedule_realtime_prefetch_shards,

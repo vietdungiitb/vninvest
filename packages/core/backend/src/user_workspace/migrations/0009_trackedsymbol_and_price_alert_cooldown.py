@@ -1,8 +1,8 @@
 from decimal import Decimal
 
+import django.db.models.deletion
 from django.core.validators import MinValueValidator
 from django.db import migrations, models
-import django.db.models.deletion
 
 
 def backfill_tracked_symbols_from_default_watchlists(apps, schema_editor):

@@ -2,16 +2,16 @@ from django.urls import path
 
 from . import views
 from .native_views import (
-    RealtimeTickerView,
-    RealtimeTickerListView,
+    RealtimeBreadthView,
+    RealtimeDepthChartView,
     RealtimeIntradayView,
     RealtimePriceBoardView,
-    RealtimeBreadthView,
-    RealtimeWhaleFeedView,
-    RealtimeWhaleFeedAggregateView,
-    RealtimeSymbolInvestigationView,
     RealtimeRvolView,
-    RealtimeDepthChartView,
+    RealtimeSymbolInvestigationView,
+    RealtimeTickerListView,
+    RealtimeTickerView,
+    RealtimeWhaleFeedAggregateView,
+    RealtimeWhaleFeedView,
 )
 
 urlpatterns = [

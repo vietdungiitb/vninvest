@@ -13,12 +13,12 @@ from datetime import date
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
-from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
 
 from identity_access.utils.resolve_tenant import (
     first_eligible_tenant_for_user,
     owner_tenant_for_user,
 )
+from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
 
 logger = logging.getLogger(__name__)
 

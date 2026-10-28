@@ -68,7 +68,7 @@ def detect_position_drift(ledger_holdings: dict, broker_positions: list) -> list
 def report_drift_issues(portfolio, tenant, service, sub_account,
                         *, ledger_holdings, run=None) -> list:
     """Chay detect + persist BrokerSyncIssue. Tra list row da tao."""
-    from ..models import BrokerSyncIssue  # noqa: PLC0415 (lazy)
+    from ..models import BrokerSyncIssue
 
     account_no = (
         getattr(sub_account, 'external_id', '')

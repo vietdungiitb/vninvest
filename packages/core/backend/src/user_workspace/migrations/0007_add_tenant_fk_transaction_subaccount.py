@@ -1,8 +1,8 @@
 # Generated manually for SAAS-TDB-P1-T01
 # Adds tenant FK to Transaction and SubAccount models
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

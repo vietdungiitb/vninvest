@@ -5,7 +5,8 @@ TenantScopePermission ensures request.user has active tenant and attaches
 request.tenant for use in views.
 """
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 from rest_framework.permissions import BasePermission
 
 if TYPE_CHECKING:  # chi cho type checker — tránh import vong khi module load
@@ -81,7 +82,7 @@ def has_workspace_permission(request, permission: str) -> bool:
         return False
     try:
         perms = get_tenant_permissions(request)
-    except Exception:  # noqa: BLE001 — lỗi phân giải quyền thì chặn
+    except Exception:
         logger.error(
             'has_workspace_permission: cannot resolve permissions - denying',
             exc_info=True,
@@ -298,7 +299,7 @@ class TenantScopePermission(BasePermission):
         return True
 
 
-def _resolve_tenant(user, tenant_code_hint: Optional[str] = None) -> Optional['CoreTenant']:
+def _resolve_tenant(user, tenant_code_hint: str | None = None) -> Optional['CoreTenant']:
     """Resolve a tenant for ``user`` by DELEGATING to the shared SSOT.
 
     This used to be a fourth independent resolver: its own priority order

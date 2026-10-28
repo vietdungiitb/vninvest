@@ -9,10 +9,10 @@ send_password_reset_email: async email send for password reset.
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
-from datetime import date, datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -44,6 +44,7 @@ def _b02_mark_run_failed_on_crash(task_id, exc, traceback, *args, **kwargs):
         if exec_run_pk is None:
             return
         from django.utils import timezone as _tz
+
         from service_ops.models import BackfillExecutionRun
         BackfillExecutionRun.objects.filter(pk=exec_run_pk, status='running').update(
             status='failed',
@@ -876,7 +877,9 @@ def fetch_and_upsert_price_board(
         ) if job else None
         _attach_ingest_run_to_service_run_log(service_run_log, run)
 
-        from market_serving.vnbroker_materializer import materialize_symbol_snapshot_from_vnbroker
+        from market_serving.vnbroker_materializer import (
+            materialize_symbol_snapshot_from_vnbroker,
+        )
 
         # SM-P2.3 Native: Fetch price board from vnbroker adapter.
         # When explicit planner items exist, restrict writes to that subset.
@@ -1224,11 +1227,19 @@ def sync_market_groups(self, user_id=None, mode='active'):
     Native: Đồng bộ danh sách symbol niêm yết từ vnbroker và seed default watchlist.
     """
     import logging
+
     from django.conf import settings
-    from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
-    from market_data.models import StockProfile
-    from market_data.global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
+
     from market_data.global_symbol_planner import create_global_planner_run
+    from market_data.global_symbol_registry import (
+        sync_admin_group_symbol_set,
+        sync_system_default_symbol_group,
+    )
+    from market_data.models import StockProfile
+    from market_data.vnbroker_adapter import (
+        fetch_listing_symbols,
+        fetch_symbol_group_members,
+    )
 
     logger = logging.getLogger(__name__)
 
@@ -1292,7 +1303,9 @@ def sync_market_groups(self, user_id=None, mode='active'):
             from django.contrib.auth import get_user_model
             User = get_user_model()
             user = User.objects.get(pk=user_id)
-            from market_data.stock_mgmt_native_views import seed_default_watchlist_groups
+            from market_data.stock_mgmt_native_views import (
+                seed_default_watchlist_groups,
+            )
             logger.info(f"Re-seeding default watchlist groups for user {user.username}...")
             seed_default_watchlist_groups(user, force_recreate=True, mode=mode)
         except Exception as e:
@@ -1327,7 +1340,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
             else:
                 sync_results[exchange] = {"synced": 0, "symbols": [], "warning": "No symbols returned"}
         except Exception as e:
-            error_msg = f"Failed to sync {exchange}: {str(e)}"
+            error_msg = f"Failed to sync {exchange}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[exchange] = {"synced": 0, "error": str(e)}
@@ -1351,7 +1364,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
                 sync_results[sector] = {"synced": count, "symbols": symbols}
                 logger.info(f"Synced {count} symbols for sector {sector}")
         except Exception as e:
-            error_msg = f"Failed to sync sector {sector}: {str(e)}"
+            error_msg = f"Failed to sync sector {sector}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[sector] = {"synced": 0, "error": str(e)}
@@ -1375,7 +1388,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
                 sync_results[index_name] = {"synced": count, "symbols": symbols}
                 logger.info(f"Synced {count} symbols for index {index_name}")
         except Exception as e:
-            error_msg = f"Failed to sync index {index_name}: {str(e)}"
+            error_msg = f"Failed to sync index {index_name}: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
             sync_results[index_name] = {"synced": 0, "error": str(e)}
@@ -1406,7 +1419,7 @@ def sync_market_groups(self, user_id=None, mode='active'):
             )
             logger.info(f"Planner triggered: {planner_result.get('run_id')}")
         except Exception as e:
-            error_msg = f"Failed to trigger planner: {str(e)}"
+            error_msg = f"Failed to trigger planner: {e!s}"
             logger.error(error_msg)
             errors.append(error_msg)
 
@@ -1449,8 +1462,9 @@ def ingest_daily_prices(
     Returns:
         dict with 'status', 'upserted', 'failed', 'providers' keys
     """
-    from data_ingest.models import IngestJob, IngestRun
     from django.utils.timezone import now
+
+    from data_ingest.models import IngestJob, IngestRun
 
     service_run_log = None
     if service_run_log_id is not None:
@@ -1571,7 +1585,12 @@ def _b08_finalize_stale_running_runs(job_key: 'str | None', stale_after_seconds:
         return {'stale_run_logs': 0, 'stale_backfill_runs': 0}
     try:
         from django.utils import timezone as _tz
-        from service_ops.models import BackfillExecutionRun, ServiceDefinition, ServiceRunLog
+
+        from service_ops.models import (
+            BackfillExecutionRun,
+            ServiceDefinition,
+            ServiceRunLog,
+        )
         from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
 
         _meta = CATALOG_JOB_METADATA.get(job_key) or {}
@@ -1691,8 +1710,8 @@ def _backfill_daily_prices_impl(
                 _mark_run_log_running(service_run_log, _task_id)
         elif _scheduler_job_key:
             # Beat-triggered run: auto-create ServiceRunLog using catalog service_key.
-            from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
             from service_ops.registry import get_registered_service
+            from service_ops.scheduler_catalog import CATALOG_JOB_METADATA
             _catalog_entry = CATALOG_JOB_METADATA.get(_scheduler_job_key, {})
             _service_key = _catalog_entry.get('service_key', '')
             if _service_key:
@@ -1743,7 +1762,9 @@ def _backfill_daily_prices_impl(
     _exec_run = None
     try:
         import uuid as _uuid_mod
+
         from django.utils import timezone as _tz
+
         from service_ops.models import BackfillExecutionBatch, BackfillExecutionRun
         _run_id = f'backfill-{_uuid_mod.uuid4().hex[:16]}'
         # B07 — use explicit mode/trigger params; fall back to inferred values
@@ -1823,6 +1844,7 @@ def _backfill_daily_prices_impl(
     if _exec_run is not None:
         try:
             from django.utils import timezone as _tz
+
             from service_ops.models import BackfillExecutionBatch
             for _bi, (_prov, _bucket) in enumerate(non_empty_buckets):
                 _batch = BackfillExecutionBatch.objects.create(
@@ -1853,6 +1875,7 @@ def _backfill_daily_prices_impl(
             return
         try:
             from django.db.models import F
+
             from service_ops.models import BackfillExecutionRun
             BackfillExecutionRun.objects.filter(pk=_exec_run.pk).update(
                 completed_symbols_count=F('completed_symbols_count') + d_completed,
@@ -2308,8 +2331,9 @@ def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, em
     Fallback to static settings SMTP is preserved when no active config or dynamic provider fails.
     """
     from django.utils import timezone
-    from identity_access.models import OutboxEvent
+
     from identity_access.mail_service import send_system_email
+    from identity_access.models import OutboxEvent
 
     if not frontend_url:
         frontend_url = django_settings.FRONTEND_URL
@@ -2456,7 +2480,10 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     - Không log api_key / api_secret.
     """
     from market_data.models import IntradayTick
-    from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
+    from market_data.vnbroker_adapter import (
+        DnseRateLimitError,
+        fetch_intraday_tape_history,
+    )
 
     symbol_upper = str(symbol or '').strip().upper()
     if not symbol_upper or not trade_date:
@@ -2464,7 +2491,10 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
 
     # §14.4: Abort khi không có system provider credentials.
     # B2.4: đọc SystemBrokerCredential (purpose backfill) trước, fallback cách cũ (admin staff).
-    from identity_access.models import get_system_broker_secrets, get_system_provider_credentials
+    from identity_access.models import (
+        get_system_broker_secrets,
+        get_system_provider_credentials,
+    )
 
     api_key = api_secret = None
     system_secrets = get_system_broker_secrets('dnse', 'backfill')
@@ -2482,6 +2512,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     # §14.5: Presence check trước bulk_create using fast range query
     try:
         from datetime import datetime, time
+
         import pytz
         from django.utils.timezone import make_aware
 
@@ -2549,8 +2580,9 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     # cũng được tổng hợp từ historical ticks sau khi backfill.
     try:
         from celery import chain as celery_chain
-        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
+
         from market_serving.materializers import materialize_session_facts
+        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
         celery_chain(
             detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
             materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
@@ -2604,6 +2636,7 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     # §14.5: Presence check using fast range query
     try:
         from datetime import datetime, time
+
         import pytz
         from django.utils.timezone import make_aware
 
@@ -2659,8 +2692,9 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     # D06: thêm synthesize_intraday_bars_from_ticks để IntradayBar cũng được fill.
     try:
         from celery import chain as celery_chain
-        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
+
         from market_serving.materializers import materialize_session_facts
+        from signal_intelligence.tasks import detect_and_store_global_whale_alerts
         celery_chain(
             detect_and_store_global_whale_alerts.si(symbol=symbol_upper, session_date=trade_date),
             materialize_session_facts.si(symbol=symbol_upper, session_date=trade_date),
@@ -2708,7 +2742,6 @@ def enqueue_dnse_quarterly_backfill(
     """
     from datetime import date, timedelta
 
-    from market_data.models import IntradayTick
     from service_ops.models import ServiceDefinition, ServiceRunLog
     from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
 
@@ -2761,7 +2794,7 @@ def enqueue_dnse_quarterly_backfill(
             vn100_symbols = set()
 
         try:
-            from user_workspace.models import WatchlistItem, TrackedSymbol
+            from user_workspace.models import TrackedSymbol, WatchlistItem
             watchlist_symbols = {
                 s.strip().upper()
                 for s in WatchlistItem.objects.values_list('symbol', flat=True).distinct()
@@ -2807,9 +2840,11 @@ def enqueue_dnse_quarterly_backfill(
     existing_pairs: set[tuple[str, str]] = set()
     try:
         from datetime import datetime, time
+
         import pytz
         from django.db.models.functions import TruncDate
         from django.utils.timezone import make_aware
+
         from market_data.models import IntradayBar
 
         tz = pytz.timezone('Asia/Ho_Chi_Minh')
@@ -2890,13 +2925,20 @@ def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
 
     Returns dict với status, ticks_read, bars_computed, inserted, updated, skipped.
     """
-    from market_data.models import IntradayBar, IntradayTick
+    from datetime import time as _time
 
+    from django.utils import timezone as _tz_range
+
+    from market_data.models import IntradayBar, IntradayTick
+    _trade_day = datetime.strptime(trade_date, '%Y-%m-%d').date()
+    _day_start = _tz_range.make_aware(datetime.combine(_trade_day, _time.min))
+    _day_end = _day_start + timedelta(days=1)
     symbol_upper = symbol.strip().upper()
     tick_rows = list(
         IntradayTick.objects.filter(
             symbol=symbol_upper,
-            timestamp__date=trade_date,
+            timestamp__gte=_day_start,
+            timestamp__lt=_day_end,
         ).values('timestamp', 'price', 'volume', 'side', 'match_type', 'source')
         .order_by('timestamp')
     )
@@ -2915,8 +2957,7 @@ def _synthesize_bars_from_db_ticks(symbol: str, trade_date: str) -> dict:
     for row in tick_rows:
         ts = row['timestamp']
         if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
-            from datetime import timezone as _tz_utc
-            ts = ts.replace(tzinfo=_tz_utc.utc)
+            ts = ts.replace(tzinfo=UTC)
         normalized_trades.append({
             'symbol': symbol_upper,
             'timestamp': ts,
@@ -3067,8 +3108,9 @@ def process_outbox_events() -> dict:
     ``token_hash`` = SHA-256), so recovery mints a fresh token and invalidates the
     old one rather than trying to replay the original link.
     """
-    from django.utils import timezone
     from django.db import models, transaction
+    from django.utils import timezone
+
     from identity_access.models import OutboxEvent, ProcessedEvent
 
     now = timezone.now()
@@ -3262,6 +3304,7 @@ def _mint_verification_token(user):
     from datetime import timedelta as _timedelta
 
     from django.utils import timezone
+
     from identity_access.models import EmailVerificationToken
 
     raw_token = secrets.token_urlsafe(32)
@@ -3286,8 +3329,6 @@ def consume_email_verification_event(event) -> None:
     into a lost Celery message.
     """
     from django.contrib.auth import get_user_model
-    from django.utils import timezone
-    from identity_access.models import OutboxEvent
 
     User = get_user_model()
     payload = event.payload or {}
@@ -3363,9 +3404,15 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
     R2: Idempotent user registration provisioning consumer.
     Checks and creates dynamic provisioning assets atomically.
     """
-    from django.db import transaction
     from django.contrib.auth import get_user_model
-    from identity_access.models import CoreTenant, UserProfile, CoreServiceAccount, ProcessedEvent
+    from django.db import transaction
+
+    from identity_access.models import (
+        CoreServiceAccount,
+        CoreTenant,
+        ProcessedEvent,
+        UserProfile,
+    )
     
     User = get_user_model()
     user_id = payload.get('user_id')

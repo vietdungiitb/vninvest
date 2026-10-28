@@ -17,16 +17,17 @@ import logging
 import secrets
 
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
-from vninvest_core.api_envelope import envelope_response
-
 from identity_access.envelope import envelope
 from identity_access.models import CoreTenant, TenantWebhookConfig, WebhookDelivery
-from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
-from identity_access.utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from identity_access.permissions import (
+    IsTenantActive,
+    require_pat_scopes_or_human_session,
+)
 from identity_access.schema import (
     DetailResponseSerializer,
     PartnerBillingStatusSerializer,
@@ -34,11 +35,17 @@ from identity_access.schema import (
     WebhookConfigWithSecretSerializer,
     WebhookSecretResponseSerializer,
 )
-from identity_access.serializers import TenantWebhookConfigSerializer, WebhookDeliverySerializer
+from identity_access.serializers import (
+    TenantWebhookConfigSerializer,
+    WebhookDeliverySerializer,
+)
 from identity_access.tasks import deprovision_tenant_async
+from identity_access.utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from identity_access.utils.resolve_tenant import resolve_tenant as _get_request_tenant
 from identity_access.webhook_dispatcher import WebhookDispatcher
-from drf_spectacular.openapi import OpenApiTypes
-
+from vninvest_core.api_envelope import envelope_response
 
 logger = logging.getLogger(__name__)
 

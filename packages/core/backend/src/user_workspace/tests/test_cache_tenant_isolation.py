@@ -22,7 +22,7 @@ from __future__ import annotations
 import datetime as dt
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 
 from user_workspace.ledger import services as ledger_services
 from user_workspace.portfolio_analytics_views import _scan_cache_key
@@ -234,7 +234,6 @@ class ScreenerScanCacheTenantTests(SimpleTestCase):
         Bug này ĐÃ xảy ra: view lấy `request.tenant` còn task lấy `rule.tenant`.
         Test này khẳng định cả hai phải lấy tenant từ `rule.tenant`.
         """
-        import ast
         import pathlib
 
         backend_src = pathlib.Path(__file__).resolve().parents[2]

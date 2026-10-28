@@ -25,7 +25,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 
 from ..models import ServiceDefinition, ServiceHealth
-from .base import SOCBaseView, EventStreamRenderer, SSEStreamingHttpResponse
+from .base import EventStreamRenderer, SOCBaseView, SSEStreamingHttpResponse
 from .signals_stream import SOCStreamThrottle, _sse_format
 
 

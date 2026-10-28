@@ -6,10 +6,11 @@ Covers:
 - reconcile bật lại snapshot job bị tắt
 - drift-check báo ENABLED_DRIFT khi snapshot bị tắt
 """
-from django.test import TestCase
-from django.core.management import call_command
-from django_celery_beat.models import PeriodicTask
 from io import StringIO
+
+from django.core.management import call_command
+from django.test import TestCase
+from django_celery_beat.models import PeriodicTask
 
 
 class SnapshotCriticalProtectionTest(TestCase):

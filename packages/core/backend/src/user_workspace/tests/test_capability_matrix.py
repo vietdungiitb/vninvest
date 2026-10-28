@@ -103,7 +103,6 @@ class WorkspacePermissionMappingTests(TestCase):
         được cả 8 endpoint ghi tài chính. Đây là leo thang đặc quyền, nên
         phải chặn bằng test chứ không chỉ bằng đọc code.
         """
-        from identity_access.utils.resolve_tenant import SYSTEM_ROLE_PERMISSIONS
 
         for key, permission in WORKSPACE_PERMISSIONS.items():
             if not (key.endswith('_write') or key.endswith('_manage')):

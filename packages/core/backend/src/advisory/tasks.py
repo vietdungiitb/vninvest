@@ -1,11 +1,11 @@
 import json
 import logging
 import uuid
+
 from celery import shared_task
 from django.utils import timezone
 
 from advisory.ai_clients import FactoryError, get_ai_client
-from advisory.copilot_tokens import CopilotTokenManager
 from advisory.models import AdvisoryComponent, AdvisorySession
 from advisory.orchestrator import (
     SIGNAL_UNPARSEABLE_CODE,
@@ -20,7 +20,6 @@ from advisory.signal_norm import (
     normalize_risk_level,
     normalize_signal,
 )
-from identity_access.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +47,12 @@ def _refund_advisory_quota(record) -> bool:
     if record.user_id is None:
         return False
 
+    from calendar import monthrange as _mr
+
+    from django.utils import timezone as _tz
+
     from commercial.models import QuotaRecord
     from identity_access.models import CoreTenant, TenantMember
-    from django.utils import timezone as _tz
-    from calendar import monthrange as _mr
 
     # Resolve the tenant that ACTUALLY consumed the quota.
     #
@@ -348,8 +349,8 @@ def _write_advisory_usage_record(
     Ghi that bai (DB) khong duoc lam hong task chinh => nuot co log.
     """
     try:
-        from ai_analytics.models import AIUsageRecord
         from advisory.pricing import pricing_snapshot
+        from ai_analytics.models import AIUsageRecord
 
         snapshot = pricing_snapshot(
             provider or '', model or '', tokens_in or 0, tokens_out or 0,

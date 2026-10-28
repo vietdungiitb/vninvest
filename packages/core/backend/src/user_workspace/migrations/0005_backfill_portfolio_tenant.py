@@ -2,6 +2,7 @@
 
 from django.db import migrations
 
+
 def backfill_portfolio_tenant(apps, schema_editor):
     """
     Backfill tenant FK for Portfolio objects by mapping user -> CoreTenant.

@@ -1,5 +1,4 @@
 """Health and capability-bootstrap views for core/v1."""
-import json
 import os
 from datetime import datetime, timezone
 

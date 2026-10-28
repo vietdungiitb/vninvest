@@ -76,7 +76,6 @@ class SsiAdapterNormalizeTests(SimpleTestCase):
                                            'buySell': 'BUY', 'price': 30,
                                            'quantity': 100, 'status': 'Filled'}]
         client.list_accounts.return_value = [{'account': '1234561'}]
-        import sys as _sys
         factory2 = MagicMock(return_value=client)
         saved2 = _stub_module('vnbroker.broker.ssi.client', SSIBrokerClient=factory2)
         try:
@@ -100,7 +99,6 @@ class SsiAdapterNormalizeTests(SimpleTestCase):
     def test_unavailable_without_lane(self):
         # Giả lập lane thiếu bằng stub client KHÔNG có SSIBrokerClient
         # (pop sys.modules không đủ vì venv có vnbroker thật → re-import được)
-        import sys as _sys
         saved = _stub_module('vnbroker.broker.ssi.client')
         try:
             adapter = get_broker_adapter('ssi', api_key='K', api_secret='S')

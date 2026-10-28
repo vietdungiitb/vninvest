@@ -7,7 +7,6 @@ from django.conf import settings
 from django.utils import timezone
 from django_celery_beat.models import PeriodicTask
 
-
 FRESHNESS_FRESH_THRESHOLD_SECONDS = 120
 FRESHNESS_WARM_THRESHOLD_SECONDS = 600
 

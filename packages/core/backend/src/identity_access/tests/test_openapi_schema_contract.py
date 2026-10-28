@@ -224,7 +224,7 @@ class EnvelopeShapeInSchemaTest(IdentityAccessSchemaFixture):
             for method, op in item.items():
                 if method == 'parameters':
                     continue
-                for code, resp in ((op.get('responses') or {})).items():
+                for code, resp in (op.get('responses') or {}).items():
                     if not str(code).startswith(('4', '5')):
                         continue
                     for media in ((resp or {}).get('content') or {}).values():
@@ -240,7 +240,7 @@ class EnvelopeShapeInSchemaTest(IdentityAccessSchemaFixture):
             for method, op in item.items():
                 if method == 'parameters':
                     continue
-                for code, resp in ((op.get('responses') or {})).items():
+                for code, resp in (op.get('responses') or {}).items():
                     if str(code) in ('204', '205', '304') and (resp or {}).get('content'):
                         offenders.append(f'{method.upper()} {path} {code}')
         self.assertEqual(offenders, [], offenders[:5])

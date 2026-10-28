@@ -50,7 +50,7 @@ Chỉ bọc **response 2xx**. Ba response lỗi trong `views_parity.py` (`:248` 
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope', 'is_envelope']
+__all__ = ['adopt_envelope', 'envelope', 'is_envelope', 'paginated_envelope']
 
 
 def is_envelope(body) -> bool:

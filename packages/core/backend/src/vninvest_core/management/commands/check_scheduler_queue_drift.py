@@ -1,11 +1,11 @@
 """Check for queue drift + enabled/missing drift between code and DB scheduler."""
 import sys
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django_celery_beat.models import PeriodicTask
 
 from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP
-
 
 # Slice F (QueueRecovery): đồng bộ với service_ops.beat_reconcile.CRITICAL_JOBS —
 # materialize-symbol-snapshot-60s được bảo vệ khỏi tắt lặng lẽ.

@@ -15,34 +15,27 @@ Tests cover:
 import base64
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory, override_settings
-from django.test.utils import setup_test_environment
-from rest_framework import status
-from rest_framework.test import APIClient
-
+from django.test import RequestFactory, TestCase
 from lxml import etree
+from rest_framework import status
 
-from identity_access.tests.envelope import unwrapped
 from identity_access.models import (
-    CoreTenant,
-    CoreServiceAccount,
     CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
     TenantMember,
     TenantSSOConfig,
 )
 from identity_access.saml_service import (
-    SAMLService,
-    SAMLRequestError,
-    SAMLParseError,
-    SAMLSignatureError,
-    SAML2P_NS,
-    SAML2_NS,
     MD_NS,
-    DS_NS,
+    SAML2_NS,
+    SAML2P_NS,
+    SAMLParseError,
+    SAMLService,
 )
+from identity_access.tests.envelope import unwrapped
 
 User = get_user_model()
 
@@ -512,8 +505,9 @@ class SSOCallbackViewTests(SSOViewTestBase):
         self.assertEqual(member.role, TenantMember.RoleChoices.VIEWER)
 
     def test_callback_get_with_query_params(self):
-        from identity_access.views.sso import SSOCallbackView
         from urllib.parse import quote
+
+        from identity_access.views.sso import SSOCallbackView
         xml = _make_saml_response_xml(email='get_user@test.com')
         encoded = _encode_saml_response(xml)
         safe_encoded = quote(encoded, safe='')

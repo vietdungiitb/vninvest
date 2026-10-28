@@ -1,5 +1,7 @@
 import os
+
 from cryptography.fernet import Fernet
+
 
 def get_crypto_cipher() -> Fernet:
     # Lấy key riêng biệt cho email từ biến môi trường
@@ -21,7 +23,7 @@ def get_crypto_cipher() -> Fernet:
     try:
         return Fernet(key.encode() if isinstance(key, str) else key)
     except Exception as e:
-        raise RuntimeError(f"MAIL_CREDENTIAL_FERNET_KEY không hợp lệ: {str(e)}")
+        raise RuntimeError(f"MAIL_CREDENTIAL_FERNET_KEY không hợp lệ: {e!s}")
 
 def encrypt_secret(plaintext: str) -> bytes:
     if not plaintext:

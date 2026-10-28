@@ -1,12 +1,9 @@
 from django.urls import include, path
 
+from . import onboarding_views, tenant_member_views, views_auth, views_operator
 from . import views_tenant as views
-from . import views_auth
-from . import onboarding_views
-from . import views_operator
-from . import tenant_member_views
 from .dnse_credential_views import DNSECredentialView
-from .views.sso import SSOLoginInitiateView, SSOCallbackView, SSOMetadataView
+from .views.sso import SSOCallbackView, SSOLoginInitiateView, SSOMetadataView
 
 urlpatterns = [
     # Auth endpoints (Gate A2, A3)

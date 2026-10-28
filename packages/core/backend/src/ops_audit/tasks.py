@@ -3,15 +3,15 @@ Ops Audit tasks:
 1. daily_db_backup — SM-P5.5 daily DB backup (SM-P5.5)
 2. aggregate_api_call_rollup — API analytics rollup (Phase 2)
 """
+import gzip
 import logging
 import os
 import subprocess
 import tempfile
-import gzip
 from datetime import datetime, timedelta
 
-from celery import shared_task
 import dj_database_url
+from celery import shared_task
 from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
@@ -102,7 +102,7 @@ def daily_db_backup(self):
 def _upload_to_s3(local_path: str, remote_key: str, bucket: str) -> None:
     """Upload backup file to S3-compatible storage (supports R2 via BACKUP_S3_ENDPOINT_URL)."""
     try:
-        import boto3  # type: ignore  # noqa: F401
+        import boto3  # type: ignore
     except ImportError:
         logger.warning('[backup] boto3 not installed — cannot upload to S3/R2')
         return

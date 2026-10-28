@@ -57,7 +57,7 @@ def resolve_user_key_for_inference(credential, decrypt):
         return '', 'no_key'
     try:
         return decrypt(encrypted), ''
-    except Exception:  # noqa: BLE001 - lỗi giải mã do lỗi call site xử lý tiếp
+    except Exception:
         return '', 'decrypt_failed'
 
 

@@ -221,7 +221,6 @@ def check_onboarding_path_exempt(app_configs, **kwargs):
     that endpoint serves: someone with no tenant yet. The endpoint then looks
     implemented and tested while being unreachable in production.
     """
-    from django.conf import settings
 
     try:
         from identity_access.middleware import TenantResolutionMiddleware

@@ -82,7 +82,7 @@ def _scope_source(row: AIBudget) -> str:
     return BUDGET_SOURCE_SYSTEM
 
 
-def _tenant_user_ids(tenant) -> 'set':
+def _tenant_user_ids(tenant) -> set:
     """User thuoc tenant = owner + TenantMember.
 
     `AIUsageRecord` khong co FK tenant (R0.7 da tu choi doan tenant thanh toan)
@@ -111,8 +111,9 @@ def _usage_totals(user, tenant, row: AIBudget, now=None) -> dict:
     toan bo chi phi cua user do - neu dem theo model cua len goi thi doi model
     la lot (AC7).
     """
-    from ai_analytics.models import AIUsageRecord
     from django.db.models import Sum
+
+    from ai_analytics.models import AIUsageRecord
 
     qs = AIUsageRecord.objects.filter(created_at__gte=period_start(row.period, now))
     if user is not None:

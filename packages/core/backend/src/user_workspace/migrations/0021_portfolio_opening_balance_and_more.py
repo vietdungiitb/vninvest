@@ -14,9 +14,10 @@ trên cp1252 làm `migrate` fail giữa chừng và để lại DB ở trạng t
 Các phase còn lại của LED-05 (backfill → verify → cutover → contract) là những
 migration RIÊNG, không gộp vào đây.
 """
+from decimal import Decimal
+
 import django.core.validators
 import django.db.models.deletion
-from decimal import Decimal
 from django.conf import settings
 from django.db import migrations, models
 

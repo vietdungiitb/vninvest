@@ -14,8 +14,11 @@ from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
 from user_workspace.models import ScreenerRule
+from user_workspace.screener_helpers import (
+    _lookback_calendar_days,
+    _required_lookback_days,
+)
 from user_workspace.tests.envelope import unwrapped_json
-from user_workspace.screener_helpers import _lookback_calendar_days, _required_lookback_days
 
 User = get_user_model()
 

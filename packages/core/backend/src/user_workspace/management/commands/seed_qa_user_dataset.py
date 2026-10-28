@@ -30,13 +30,12 @@ Usage:
 
 Lesson L-B03: stdout chi ASCII (khong dau tieng Viet).
 """
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils import timezone
 
 MARKER = "qa:dataset-v1"
 PASSWORD = "Test@12345"
@@ -177,17 +176,26 @@ class Command(BaseCommand):
     def _seed(self, names):
         from django.utils import timezone as tz
         User = get_user_model()
+        from advisory.models import AdvisoryComponent, AdvisoryRecord, AdvisorySession
+        from commercial.models import QuotaRecord, Subscription
         from identity_access.models import CoreServiceAccount, CoreTenant
         from market_data.models import StockProfile
-        from user_workspace.models import (
-            AccountSnapshot, Portfolio, PriceAlert, ScreenerRule,
-            SubAccount, TrackedSymbol, Transaction, Watchlist, WatchlistItem,
-        )
         from signal_intelligence.models import (
-            OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical,
+            OrderFlowEvent,
+            UnifiedAlert,
+            WhaleAlertCanonical,
         )
-        from advisory.models import AdvisoryRecord, AdvisorySession, AdvisoryComponent
-        from commercial.models import QuotaRecord, Subscription
+        from user_workspace.models import (
+            AccountSnapshot,
+            Portfolio,
+            PriceAlert,
+            ScreenerRule,
+            SubAccount,
+            TrackedSymbol,
+            Transaction,
+            Watchlist,
+            WatchlistItem,
+        )
 
         prices = self._price_map()
         today = tz.now().date()
@@ -448,7 +456,11 @@ class Command(BaseCommand):
     @transaction.atomic
     def _delete(self):
         User = get_user_model()
-        from signal_intelligence.models import MarketAnomalyEvent, OrderFlowEvent, UnifiedAlert
+        from signal_intelligence.models import (
+            MarketAnomalyEvent,
+            OrderFlowEvent,
+            UnifiedAlert,
+        )
         OrderFlowEvent.objects.filter(source_ref__startswith=MARKER).delete()
         MarketAnomalyEvent.objects.filter(source_ref__startswith=MARKER).delete()
         UnifiedAlert.objects.filter(source_ref__startswith=MARKER).delete()

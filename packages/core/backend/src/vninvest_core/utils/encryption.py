@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import re
-from typing import Dict, Optional, Tuple
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
@@ -79,7 +78,7 @@ class SecretStore:
         # the module-level singleton then wrote v1 ciphertext no fresh store could
         # read back.
         self._cache_legacy = cache_legacy
-        self._legacy_cache: Dict[Tuple[int, str], Fernet] = {}
+        self._legacy_cache: dict[tuple[int, str], Fernet] = {}
 
     # ── key resolution ──────────────────────────────────────────────────
     def _resolve_key_material(self, version: int) -> str:
@@ -100,10 +99,10 @@ class SecretStore:
                     # số công khai. Encrypt bằng nó tệ hơn cả không mã hóa,
                     # vì code sẽ tin là đã tách khóa khỏi SECRET_KEY.
                     raise SecretKeyMissingError(
-                        f"BROKER_SECRET_KEY still holds the placeholder value from "
-                        f"the .example file. Generate a real Fernet key "
-                        f"(`python -c \"from cryptography.fernet import Fernet; "
-                        f"print(Fernet.generate_key().decode())\"`)."
+                        "BROKER_SECRET_KEY still holds the placeholder value from "
+                        "the .example file. Generate a real Fernet key "
+                        "(`python -c \"from cryptography.fernet import Fernet; "
+                        "print(Fernet.generate_key().decode())\"`)."
                     )
                 return broker_key + ":broker-workspace-key"
 
@@ -172,7 +171,7 @@ class SecretStore:
 
     # ── envelope helpers ────────────────────────────────────────────────
     @staticmethod
-    def split_envelope(cipher_text: str) -> Tuple[int, str]:
+    def split_envelope(cipher_text: str) -> tuple[int, str]:
         """Return ``(version, fernet_token)`` for a stored value.
 
         Values written before SEC-02 are bare Fernet tokens with no envelope; they
@@ -194,14 +193,14 @@ class SecretStore:
         return version, token
 
     # ── public API (R1) ─────────────────────────────────────────────────
-    def encrypt(self, plaintext: str, version: Optional[int] = None) -> str:
+    def encrypt(self, plaintext: str, version: int | None = None) -> str:
         if plaintext is None or plaintext == "":
             return ""
         target = self.write_version() if version is None else version
         token = self.get_key(target).encrypt(plaintext.encode("utf-8"))
         return json.dumps({"v": target, "c": token.decode("utf-8")})
 
-    def decrypt(self, cipher_text: str) -> Tuple[str, int]:
+    def decrypt(self, cipher_text: str) -> tuple[str, int]:
         """Return ``(plaintext, version)``.
 
         Fail-closed: a missing key, or a token that does not authenticate under the
@@ -226,7 +225,7 @@ class SecretStore:
             ) from exc
         return value.decode("utf-8"), version
 
-    def reencrypt(self, cipher_text: str, target_version: Optional[int] = None) -> str:
+    def reencrypt(self, cipher_text: str, target_version: int | None = None) -> str:
         """Re-wrap a value under another key version, e.g. to retire a key."""
         target = self.write_version() if target_version is None else target_version
         plaintext, old_version = self.decrypt(cipher_text)
@@ -244,7 +243,7 @@ class SecretStore:
 store = SecretStore()
 
 
-def encrypt_string(raw_text: str, version: Optional[int] = None) -> str:
+def encrypt_string(raw_text: str, version: int | None = None) -> str:
     return store.encrypt(raw_text, version=version)
 
 

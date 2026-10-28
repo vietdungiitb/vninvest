@@ -62,7 +62,7 @@ def _pick_primary_tenant_id(TenantMember, CoreTenant, user_id):
     # Không có membership nào ⇒ thử tenant do user sở hữu.
     try:
         owned = CoreTenant.objects.filter(owner_user_id=user_id).only('id').first()
-    except Exception:  # noqa: BLE001 — bảng CoreTenant có thể chưa có cột này
+    except Exception:
         return None
     return owned.id if owned is not None else None
 

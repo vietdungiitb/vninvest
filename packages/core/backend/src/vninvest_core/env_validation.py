@@ -8,6 +8,7 @@ C4 Fix: Remove hardcoded fallbacks and enforce environment validation.
 """
 import os
 import re
+
 from django.core.exceptions import ImproperlyConfigured
 
 #: Gia tri placeholder - "co" nhung KHONG phai secret.

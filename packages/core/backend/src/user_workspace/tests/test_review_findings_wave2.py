@@ -24,7 +24,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.db import DatabaseError, connection, transaction
 from django.test import TestCase, TransactionTestCase
 
 from identity_access.models import CoreTenant
@@ -39,8 +39,8 @@ from user_workspace.models import (
     CashFlow,
     LedgerEntry,
     LedgerEntryImmutable,
-    PositionSnapshot,
     Portfolio,
+    PositionSnapshot,
     Transaction,
     ValuationSnapshot,
 )

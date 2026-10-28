@@ -40,8 +40,8 @@ class SyncGuardTests(SimpleTestCase):
         self.assertEqual(ctx.exception.code, 'broker_quiet_hours')
 
     def test_kill_switch_blocks(self):
-        from user_workspace.broker import sync_guard
         from service_ops.broker_runtime import BrokerWriteDisabled
+        from user_workspace.broker import sync_guard
         from user_workspace.broker.sync_guard import BrokerSyncBlockedError
         with patch(
             'user_workspace.broker.sync_guard._check_kill_switch',

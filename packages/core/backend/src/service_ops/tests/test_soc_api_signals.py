@@ -1,8 +1,8 @@
 """Focused SOC signals API contract tests for bridge-write and runtime summaries."""
 
+import json
 from datetime import timedelta
 from decimal import Decimal
-import json
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -11,11 +11,10 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 from service_ops.models import OwnershipRecord
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
+from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 User = get_user_model()
 

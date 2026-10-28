@@ -12,7 +12,14 @@ from market_data.global_symbol_registry import (
     upsert_global_symbol_demand,
 )
 from market_data.models import GlobalSymbolDemandSource, GlobalSymbolRegistry
-from user_workspace.models import Portfolio, PriceAlert, TrackedSymbol, Transaction, Watchlist, WatchlistItem
+from user_workspace.models import (
+    Portfolio,
+    PriceAlert,
+    TrackedSymbol,
+    Transaction,
+    Watchlist,
+    WatchlistItem,
+)
 
 User = get_user_model()
 

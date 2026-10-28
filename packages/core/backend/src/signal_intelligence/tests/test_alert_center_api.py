@@ -220,7 +220,9 @@ class AlertCenterAPITests(TestCase):
 
     def test_signals_throttle_enforced(self):
         from unittest import mock
+
         from django.core.cache import cache
+
         from signal_intelligence.views import SignalRateThrottle
         # LocMemCache persists across tests: isolate throttle history.
         # NOTE: SimpleRateThrottle.THROTTLE_RATES binds at import time, so

@@ -7,10 +7,11 @@ ISOLATION RULES:
 3. Bulk operations must filter by tenant to prevent data leakage
 """
 
-from django.test import TestCase
 from django.contrib.auth.models import User
+from django.test import TestCase
+
 from identity_access.models import CoreTenant, TenantMember
-from user_workspace.models import Portfolio, Watchlist, WatchlistItem, PriceAlert
+from user_workspace.models import Portfolio, PriceAlert, Watchlist, WatchlistItem
 
 
 class PortfolioIsolationTest(TestCase):

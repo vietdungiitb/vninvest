@@ -8,12 +8,12 @@ Covers:
 - second run is idempotent (no changes)
 """
 import os
+from io import StringIO
 
 from django.conf import settings as dj_settings
-from django.test import TestCase
 from django.core.management import call_command
+from django.test import TestCase
 from django_celery_beat.models import PeriodicTask
-from io import StringIO
 
 
 def _env_int(name, default):

@@ -100,8 +100,15 @@ def _apply_intraday_depth_policy(
 
 
 def execute_global_planner_run(service_run_log_id: int) -> dict[str, Any]:
-    from data_ingest.tasks import fetch_and_upsert_price_board, ingest_daily_prices, warm_intraday_universe
-    from service_ops.tasks import _create_child_run_log, run_signal_session_facts_materialization
+    from data_ingest.tasks import (
+        fetch_and_upsert_price_board,
+        ingest_daily_prices,
+        warm_intraday_universe,
+    )
+    from service_ops.tasks import (
+        _create_child_run_log,
+        run_signal_session_facts_materialization,
+    )
 
     parent_run_log = ServiceRunLog.objects.select_related('service').get(pk=service_run_log_id)
     input_summary = dict(parent_run_log.input_summary or {})

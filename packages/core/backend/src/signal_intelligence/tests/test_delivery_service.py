@@ -7,7 +7,11 @@ from django.utils import timezone
 
 from identity_access.models import UserProfile
 from signal_intelligence import delivery_service
-from signal_intelligence.models import UnifiedAlert, UserAlertDelivery, UserAlertPreference
+from signal_intelligence.models import (
+    UnifiedAlert,
+    UserAlertDelivery,
+    UserAlertPreference,
+)
 from user_workspace.models import Watchlist, WatchlistItem
 
 

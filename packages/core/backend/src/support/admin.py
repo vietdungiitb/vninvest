@@ -35,7 +35,6 @@ from .models import (
     TicketMessage,
 )
 
-
 # ---------------------------------------------------------------------------
 # `TicketCategory`, `TicketPriority`, `TicketStatus`, `SenderRole` KHÔNG phải
 # model — chúng là `models.TextChoices`. Đo bằng script quét `models.py`:

@@ -1,6 +1,6 @@
-import httpx
 from urllib.parse import urlencode
 
+import httpx
 
 GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'

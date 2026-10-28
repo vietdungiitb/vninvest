@@ -5,23 +5,24 @@ Provides composite summary and usage trend data for the tenant admin
 dashboard home (Phase 0 of the Tenant Admin Upgrade Plan).
 """
 import logging
-
 from datetime import date, timedelta
 
 from django.db.models import Count
 from django.utils import timezone
-
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from drf_spectacular.utils import extend_schema
 from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant
+from .models import CorePATCredential, CoreServiceAccount
 from .permissions import IsTenantActive, require_human_session
 from .schema import PartnerDashboardUsageTrendSerializer
-from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from .utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 logger = logging.getLogger(__name__)
 

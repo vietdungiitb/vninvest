@@ -56,7 +56,12 @@ Hotspot file lớn nhất (không tính i18n/static):
 | BE style | `ruff check src` | ❌ 3.280 lỗi (1.713 auto-fix) |
 | BE tests (identity_access) | `python manage.py test identity_access` (VPS) | ✅ 427 tests PASS (sau PR #295) |
 | BE tests (signal materializers) | `python manage.py test signal_intelligence.tests.test_materializers --noinput` (VPS) | ✅ PASS (sau PR #297) |
-| BE tests (service_ops full) | `python manage.py test service_ops` (VPS) | ⛔ CHƯA CHẠY — process bị OOM `Killed` (cần chạy theo file hoặc tăng RAM) |
+| BE tests (service_ops, theo file) | `python manage.py test service_ops.tests.*` (VPS) | ✅ 508 PASS (183 + 325), gồm fix fernet (test mock + compose staging) |
+| BE tests (user_workspace root) | `python manage.py test user_workspace.test_*` (VPS) | ✅ 314/317 (3 pre-existing đã fix: 0008-provider + SSI timestamp) |
+| BE tests (user_workspace.tests) | `python manage.py test user_workspace.tests` (VPS) | ⚠️ 480/502 — 22 pre-existing (chứng minh fail y hệt trên dev): ledger backfill 14 (thiếu cột kind) + schema/recorder 6 + capability count 1 + abort 1 |
+| BE tests (12-app batch) | service_ops excluded (VPS) | ✅ 1074 PASS (sau fix: trade_date str, KNOWN_UNREADABLE -5, EXPECTED 20→21, pricing UTC) |
+| Ruff BE | `ruff check src` | ✅ 3281 → 2171 (-1110). Defer: RUF012/FURB157/BLE001/SIM117/RUF059/F841 (judgment/manual), UP017 (xung đột ratchet test_no_timezone_utc) |
+| God-file split | stock_mgmt(4815) / portfolio_analytics(4536) / tasks(3474) | ⏸️ DEFER có lý do: pilot OHLCV tangling (helper dùng chung 15+ nơi). Seam map + split plan bên dưới, slice riêng |
 | Perf intraday-tick | `signal_intelligence/tasks.py` range query | ✅ PR #297 merged; top slow query `__date` ở các chỗ khác vẫn còn |
 | i18n scan | `npm run i18n:scan:strict` | Chưa chạy trong audit này |
 
@@ -174,7 +179,15 @@ Hotspot file lớn nhất (không tính i18n/static):
 
 ---
 
-## 8. Lệnh đã chạy (evidence)
+## 8. God-file split plan (từ seam analysis 2026-10-28, chưa thực hiện)
+
+Seam map đầy đủ: xem `seams_out2.txt` (251 dòng: class/def theo file).
+- `stock_mgmt_native_views.py` (4815): watchlist/tracked/alerts/groups (~1-1500) · AI advisory (~1500-2500) · OHLCV/bars (3893-4270: 8 helpers + 1 view, pilot đề xuất) · price alerts/groups/items (~4270-4815). Blocker pilot: `_to_float/_to_int` dùng 15+ nơi, `TENANT_PERMISSION_CLASSES`, `_symbol_exists_for_stock_chart`, `_parse_dt`, const `_OHLCV_*` — tách phải mang shared helpers theo (old file import ngược lại, 1 chiều).
+- `portfolio_analytics_views.py` (4536): holdings/summary/chart · AI command center · whale analytics · screener (run/status/schedule/history).
+- `data_ingest/tasks.py` (3474): intraday hydration · daily prices · backfill · email/outbox.
+- Quy tắc slice: 1 block/PR + `manage.py check` + test file liên quan xanh + giữ import path cũ qua re-export shim 1 release.
+
+## 9. Lệnh đã chạy (evidence)
 
 ```
 npx tsc --noEmit                      # PASS

@@ -16,20 +16,20 @@ from datetime import timedelta
 
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
-from ..envelope import envelope, paginated_envelope
 from signal_intelligence import delivery_service
 from signal_intelligence.models import UserAlertDelivery
 from signal_intelligence.views import (
     AlertCenterMutePreferenceRequestSerializer,
     UserAlertDeliveryStateSerializer,
 )
-
-from .base import SOCBaseView
 from vninvest_core.api_envelope import envelope_response
+
+from ..envelope import envelope, paginated_envelope
+from .base import SOCBaseView
 
 
 class SignalsDeliveryMuteRequestSerializer(AlertCenterMutePreferenceRequestSerializer):

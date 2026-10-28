@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Invoice, QuotaRecord, Subscription, QuotaHistory
+from .models import Invoice, QuotaHistory, QuotaRecord, Subscription
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

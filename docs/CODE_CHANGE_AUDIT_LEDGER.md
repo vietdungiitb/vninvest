@@ -1,3 +1,16 @@
+## Entry 415: Vet-finish — ruff batch-1/2, __date 7/7, BE baselines, 4 pre-existing fix, compose persist
+
+- **Claim:** `vet-finish` (`feat/vet-finish`). Lessons: L-001 L-002 L-003 L-007 L-008 L-M02 L-A01 L-V02 L-V03 L-G01 L-G02.
+- **Ruff BE:** 3281 -> 2171 (-1110). Batch-1 (F401/I001/pyupgrade/F541/RUF022-23-100) + batch-2 (UP045/RUF010/PIE790/RET501/C408) + facade `__all__` (views_auth, dataops_base) + B018/C414. PHAT HIEN THAT: F401 xoa facade re-export (views_auth 11 names) + gut dataops_base hub (import * chain) — sua bang `__all__`, verify `manage.py check` 0 issues. UP017 REVERT toan bo (41): xung dot voi ratchet `test_no_timezone_utc` (thi repo giu spelling cu) — ly do trong entry.
+- **Defer co ly do:** RUF012 (839, Django idiom) · FURB157 (472, Decimal money semantics) · BLE001/S110 (judgment) · SIM117/RUF059/F841/F811 (manual) · UP017 (ratchet).
+- **__date -> range:** 7/7 diem IntradayTick (signal 2 + market 2 + stock_mgmt 1 + order_flow 1 + recompute 1 + data_ingest 1). Trade_date la str => parse ISO truoc khi combine (loi do toi, da sua).
+- **BE baselines (VPS, container):** identity_access 427 OK · market trio 620 OK · 12-app batch 1074 OK (sau 4 fix) · service_ops 508 OK (183+325) · user_workspace root 317 (314 OK + 3 pre-existing da fix) · user_workspace.tests 502 (480 OK + 22 pre-existing).
+- **Pre-existing (chung minh bang chay tren dev, fail y het):** ledger backfill 14 (thieu cot kind) · schema/recorder 6 · capability count 1 · abort 1 · 0008-provider 2 (DA FIX: them provider vao _NOT_NULL_TARGETS) · SSI last_verified_at 1 (DA FIX that: them vao update_fields — bug production that) · fernet env 1 (DA FIX 2 lop: test mock + compose staging them DNSE_CREDENTIAL_FERNET_KEY cho 5 service).
+- **Compose persist:** pgbouncer pool 50/10/20/1000 + DNSE key cho 5 service (staging yml, khong nam trong hook deny-list). Da deploy live: health 200, env co mat. compose.staging.env gitignored (persist tren disk).
+- **God-file:** KHONG split trong slice nay (pilot OHLCV tangling: _to_float/_to_int dung 15+ noi, TENANT_PERMISSION_CLASSES/shared constants). Seam map + split plan ghi trong audit doc — slice rieng.
+- **Bai hoc:** F401 tren facade/star-hub nguy hiem nhat (hong import-time, test don khong bat neu khong load URLconf) — luon chay `manage.py check` sau ruff.
+
+---
 ## Entry 414: Perf intraday-tick range query (PR #297) + VPS tuning handoff
 
 - **Code:** `packages/core/backend/src/signal_intelligence/tasks.py` — thay `timestamp__date=session_date` (2 cho) bang range `timestamp__gte/_lt` theo ngay (index-friendly). Khong cham `order_flow_engine.py` (giữ nguyen de tranh scope creep).

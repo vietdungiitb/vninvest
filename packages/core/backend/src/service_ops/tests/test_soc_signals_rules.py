@@ -3,9 +3,9 @@
 Bridge-write honored: request chỉ ghi ConfigChangeAudit(action='request'), không apply trực tiếp.
 Precision proxy per rule từ deliveries (ack = positive, muted/suppressed = negative), null khi thiếu data.
 """
+import uuid
 from datetime import timedelta
 from decimal import Decimal
-import uuid
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -13,11 +13,10 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
 from service_ops.models import ConfigChangeAudit
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped
+from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
 
 User = get_user_model()
 

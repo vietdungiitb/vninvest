@@ -14,7 +14,12 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember
+from identity_access.models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    TenantMember,
+)
 from identity_access.tests.envelope import unwrapped_json
 
 User = get_user_model()

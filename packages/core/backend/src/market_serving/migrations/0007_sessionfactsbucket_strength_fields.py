@@ -4,7 +4,6 @@ from datetime import timezone
 
 from django.db import migrations, models
 
-
 _BASELINE_WINDOW = 20
 _WHALE_THRESHOLD_VND = 200_000_000
 _EPS = 1e-9

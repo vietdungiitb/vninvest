@@ -1,9 +1,11 @@
 # Location: packages/core/backend/src/identity_access/management/commands/backfill_missing_tenants.py
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from identity_access.models import CoreTenant, CoreServiceAccount, UserProfile
 import logging
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from identity_access.models import CoreServiceAccount, CoreTenant, UserProfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -74,8 +76,8 @@ class Command(BaseCommand):
 
             except Exception as e:
                 error_count += 1
-                logger.error(f"Failed to backfill tenancy for user {user.username}: {str(e)}")
-                self.stderr.write(self.style.ERROR(f"  [x] Lỗi di cư tài khoản {user.username}: {str(e)}"))
+                logger.error(f"Failed to backfill tenancy for user {user.username}: {e!s}")
+                self.stderr.write(self.style.ERROR(f"  [x] Lỗi di cư tài khoản {user.username}: {e!s}"))
 
         self.stdout.write(self.style.SUCCESS(
             f"[+] BÀN GIAO HOÀN TẤT: Di cư thành công {success_count} tài khoản. Thất bại: {error_count}."

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from django.conf import settings as django_settings
 
@@ -92,7 +92,7 @@ def _cost_of(row: AIDeployment) -> float:
 
 def choose_deployment(
     deployments: Iterable[AIDeployment], *, strategy: str = STRATEGY_DEFAULT, seed: int = WEIGHTED_SEED,
-) -> Optional[AIDeployment]:
+) -> AIDeployment | None:
     """Chọn 1 deployment. Trả `None` nếu không có ứng viên nào (không âm thầm rơi về provider hỏng)."""
     rows = candidates(deployments, disabled=routing_disabled())
     if not rows:

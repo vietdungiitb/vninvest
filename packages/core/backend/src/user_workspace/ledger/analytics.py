@@ -537,10 +537,23 @@ def period_returns_from_navs(navs):
 
 
 __all__ = [
-    'TRADING_DAYS_PER_YEAR', 'DEFAULT_BENCHMARK', 'BENCHMARKS',
-    'FRESHNESS_SLA_MINUTES', 'UNKNOWN_SECTOR',
-    'chain_link', 'twr', 'xnpv', 'xirr', 'mwr', 'performance',
-    'benchmark_metrics', 'risk_metrics', 'allocation',
-    'is_vn_session', 'freshness', 'daily_series', 'period_returns_from_navs',
+    'BENCHMARKS',
+    'DEFAULT_BENCHMARK',
+    'FRESHNESS_SLA_MINUTES',
+    'TRADING_DAYS_PER_YEAR',
+    'UNKNOWN_SECTOR',
+    'allocation',
+    'benchmark_metrics',
+    'chain_link',
+    'daily_series',
+    'freshness',
+    'is_vn_session',
+    'mwr',
+    'performance',
+    'period_returns_from_navs',
+    'risk_metrics',
     'timedelta',
+    'twr',
+    'xirr',
+    'xnpv',
 ]

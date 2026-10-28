@@ -1,5 +1,7 @@
 import logging
+
 from django.utils import timezone
+
 from data_ingest.tasks import backfill_daily_prices
 
 logger = logging.getLogger(__name__)

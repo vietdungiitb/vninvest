@@ -21,10 +21,12 @@ Usage:
     python manage.py recompute_dark_flow_values --symbol DGW --limit 50
     python manage.py recompute_dark_flow_values --force --skip-materialize
 """
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 
 RECOMPUTE_FLAG = 'recomputed_v2'
 
@@ -133,8 +135,10 @@ class Command(BaseCommand):
         """Tính lại buy value/volume từ IntradayTick còn trong DB. None nếu hết data."""
         from market_data.models import IntradayTick
 
+        _day_start = timezone.make_aware(datetime.combine(event.session_date, time.min))
+        _day_end = _day_start + timedelta(days=1)
         ticks = IntradayTick.objects.filter(
-            symbol=event.symbol, timestamp__date=event.session_date, side='BUY',
+            symbol=event.symbol, timestamp__gte=_day_start, timestamp__lt=_day_end, side='BUY',
         ).values('timestamp', 'price', 'volume')
         rows = list(ticks)
         if not rows:

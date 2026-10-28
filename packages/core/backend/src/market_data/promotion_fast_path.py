@@ -15,7 +15,6 @@ trong khoảng thời gian SLA thì bỏ qua.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
@@ -97,7 +96,7 @@ def enqueue_promotion_repair(
         return {'enqueued': False, 'reason': f'tier_not_eligible:{tier}', 'symbol': symbol}
 
     try:
-        from data_ingest.tasks import backfill_daily_prices  # noqa: PLC0415
+        from data_ingest.tasks import backfill_daily_prices
 
         task_result = backfill_daily_prices.apply_async(
             kwargs={

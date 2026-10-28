@@ -7,12 +7,9 @@ but already-covered symbols.
 from __future__ import annotations
 
 from django.test import TestCase
-from django.utils import timezone
 
 from market_data.global_symbol_coverage import (
     build_global_planner_preview,
-    compute_gap_score,
-    refresh_gap_scores,
 )
 from market_data.models import GlobalSymbolCoverage, GlobalSymbolRegistry
 

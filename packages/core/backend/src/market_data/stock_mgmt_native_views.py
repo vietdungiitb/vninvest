@@ -8,10 +8,12 @@ handlers so `/api` and `/core/v1` stay aligned while tenant gating remains enfor
 All views require IsAuthenticated; symbol params are always uppercased.
 Graceful stubs return empty/null for features not yet fully native.
 """
+import math
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from uuid import UUID
 
 from django.db import DatabaseError, connection
@@ -24,26 +26,21 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.exceptions import (
-    ValidationErrorException,
-    NotFoundErrorException,
-    PermissionErrorException,
-    ConflictErrorException,
-)
-
 from advisory.models import AdvisoryRecord
 from advisory.serializers import AdvisoryRecordSerializer
-
-from vninvest_core.api_envelope import envelope_response
 from identity_access.permissions import IsTenantActive
+from service_ops.models import CachedSymbolGroup
+from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.exceptions import (
+    NotFoundErrorException,
+    ValidationErrorException,
+)
+
 from .envelope import adopt_envelope, envelope, envelope_schema, paginated_envelope
 from .global_symbol_planner import create_global_planner_run
-from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
-from .vnbroker_adapter import fetch_symbol_group_members
-from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
-from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
-import math
+
 
 def clean_nan(obj):
     if isinstance(obj, dict):
@@ -69,11 +66,10 @@ def clean_nan(obj):
     return obj
 
 from .default_groups import (
+    get_color_palette,
     get_default_groups,
     get_group_lookup,
-    get_color_palette,
     get_system_default_group_ids,
-    build_group_payload,
 )
 
 # Backwards compatibility - these are re-exported from default_groups
@@ -1184,8 +1180,10 @@ def _build_tick_distribution_payload(symbol, window_minutes):
         if latest_tick is not None:
             stale = True
             trade_date = timezone.localdate(latest_tick.timestamp)
+            _day_start = timezone.make_aware(datetime.combine(trade_date, time.min))
+            _day_end = _day_start + timedelta(days=1)
             tick_rows = list(
-                IntradayTick.objects.filter(symbol=symbol, timestamp__date=trade_date)
+                IntradayTick.objects.filter(symbol=symbol, timestamp__gte=_day_start, timestamp__lt=_day_end)
                 .only('timestamp', 'volume')
                 .order_by('-timestamp')[:500]
             )
@@ -1274,6 +1272,7 @@ def _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_rat
 
 from vninvest_core.pagination import CoreCursorPagination
 
+
 class StockManagementStockListCursorPagination(CoreCursorPagination):
     ordering = 'symbol'
     page_size = 100
@@ -1301,6 +1300,7 @@ class StockManagementStockListView(APIView):
             search_upper = search.upper()
             if not StockProfile.objects.filter(symbol=search_upper).exists():
                 from django.core.cache import cache
+
                 from market_data.vnbroker_adapter import fetch_listing_symbols
                 try:
                     # Cache listing symbols for 1 hour to avoid repeated provider calls
@@ -3592,9 +3592,11 @@ def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
     created_group_pks = set()
     added_symbols = 0
 
-    from .vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
-    from market_data.models import StockProfile
     import logging
+
+    from market_data.models import StockProfile
+
+    from .vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
     logger = logging.getLogger(__name__)
 
     # ── Ensure StockProfiles are populated ──

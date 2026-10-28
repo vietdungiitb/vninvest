@@ -1,7 +1,7 @@
 # Generated migration for Phase 3 Shadow Run parity models
 
-from django.db import migrations, models
 import django.core.validators
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

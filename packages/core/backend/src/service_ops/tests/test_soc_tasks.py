@@ -7,19 +7,31 @@ from django.test import TestCase
 from django.utils import timezone
 
 from data_ingest.models import IngestJob, IngestRun
-from market_data.models import GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry
+from market_data.models import (
+    GlobalSymbolCoverage,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+)
 from market_data.vnbroker_adapter import (
     fetch_daily_history,
+    fetch_listing_symbols,
     fetch_price_board_snapshot,
     fetch_realtime_price,
-    fetch_listing_symbols,
     fetch_symbol_group_members,
 )
 from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
-from service_ops.models import ScrapeMatrixCell
-from service_ops.models import ServiceConfig, ServiceHealth, ServiceHealthCheckLog, ServiceRunLog
-from service_ops.models import MarketDataParitySnapshot
-from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
+from service_ops.models import (
+    MarketDataParitySnapshot,
+    ScrapeMatrixCell,
+    ServiceConfig,
+    ServiceHealth,
+    ServiceRunLog,
+)
+from service_ops.registry import (
+    SOC_DOMAIN_PRIMARY_SERVICE_KEYS,
+    ensure_service_registry,
+    get_registered_service,
+)
 from service_ops.tasks import (
     cleanup_market_data_parity_snapshots_task,
     create_signal_job_run_log,
@@ -29,10 +41,10 @@ from service_ops.tasks import (
     run_market_data_queue_tier_scheduler,
     run_scrape_cycle,
     run_signal_session_facts_materialization,
-    scrape_cell_task,
     run_signal_unified_alert_materialization,
     run_signal_whale_materialization,
     run_signals_detection_workflow,
+    scrape_cell_task,
 )
 
 
@@ -108,8 +120,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertLess(slo['error_budget_remaining'], 1.0)
 
     def test_upsert_service_health_alert_creates_on_degradation(self):
-        from signal_intelligence.models import UnifiedAlert
         from service_ops.tasks import _upsert_service_health_alert
+        from signal_intelligence.models import UnifiedAlert
 
         result = _upsert_service_health_alert(
             'vnbroker_quote', 'healthy', 'unhealthy',
@@ -123,8 +135,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(alert.symbol, 'vnbroker_quote')
 
     def test_upsert_service_health_alert_dedup_on_cooldown(self):
-        from signal_intelligence.models import UnifiedAlert
         from service_ops.tasks import _upsert_service_health_alert
+        from signal_intelligence.models import UnifiedAlert
 
         first = _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
         second = _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
@@ -135,8 +147,8 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(UnifiedAlert.objects.filter(source_ref=first['alert_source_ref']).count(), 1)
 
     def test_upsert_service_health_alert_clears_on_recovery(self):
-        from signal_intelligence.models import UnifiedAlert
         from service_ops.tasks import _upsert_service_health_alert
+        from signal_intelligence.models import UnifiedAlert
 
         _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
         result = _upsert_service_health_alert('vnbroker_quote', 'unhealthy', 'healthy', {})
@@ -691,8 +703,10 @@ class ServiceOpsTasksTestCase(TestCase):
     @patch('service_ops.tasks.create_global_planner_run')
     def test_monitor_retention_health_task_emits_alert_when_threshold_exceeded(self, planner_run_mock, fetch_listing_symbols_mock):
         """When the last retention run is too old (beyond staleness threshold), a SYSTEM alert must be upserted."""
+        from service_ops.dataops_market_data import (
+            RETENTION_RUN_STALENESS_THRESHOLD_HOURS,
+        )
         from signal_intelligence.models import UnifiedAlert
-        from service_ops.dataops_market_data import RETENTION_RUN_STALENESS_THRESHOLD_HOURS
         matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
         # Create a stale retention run log (old enough to exceed threshold)
         stale_started_at = timezone.now() - timedelta(hours=int(RETENTION_RUN_STALENESS_THRESHOLD_HOURS) + 3)

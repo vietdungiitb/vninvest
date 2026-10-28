@@ -19,13 +19,16 @@ import logging
 import uuid
 from datetime import timedelta
 
-from django.utils import timezone
 from django.db.models import Count
 from django.http import StreamingHttpResponse
+from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from vninvest_core.client_ip import get_client_ip
-
 from rest_framework.response import Response
+
+from vninvest_core.api_envelope import envelope_response
+from vninvest_core.client_ip import get_client_ip
 
 from ..domain_configs.broker import (
     BROKER_CONFIG_SERVICE_KEY,
@@ -34,14 +37,10 @@ from ..domain_configs.broker import (
     BrokerSystemConfig,
     get_default_broker_system_config,
 )
-from ..models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 from ..envelope import envelope
+from ..models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ def _credential_expiry(is_verified: bool, last_verified_at) -> tuple[bool, str]:
         return True, 'chua_xac_minh'
     try:
         age = timezone.now() - last_verified_at
-    except Exception:  # noqa: BLE001 — naive/aware lech van fail-closed
+    except Exception:
         return True, 'chua_xac_minh'
     if age > timedelta(days=CREDENTIAL_STALE_DAYS):
         return True, 'qua_han_30_ngay'
@@ -78,7 +77,7 @@ def _broker_queue_depths() -> dict[str, int]:
     try:
         from ..tasks import _get_redis_queue_depth
         return {BROKER_SHARED_QUEUE: int(_get_redis_queue_depth(BROKER_SHARED_QUEUE) or 0)}
-    except Exception:  # noqa: BLE001 — Redis om khong duoc chan health
+    except Exception:
         logger.debug('broker health: queue depth unavailable, fail-open 0')
         return {BROKER_SHARED_QUEUE: 0}
 
@@ -179,7 +178,7 @@ def _current_payload() -> dict:
         current = ServiceConfig.objects.filter(service=service, is_current=True).first()
         if current and isinstance(current.config_payload, dict):
             return dict(current.config_payload)
-    except Exception:  # noqa: BLE001 — DB chưa migrate vẫn trả defaults
+    except Exception:
         logger.warning('broker config: cannot read current, using defaults')
     return get_default_broker_system_config().to_dict()
 
@@ -211,7 +210,7 @@ def _write_audit(request, action: str, before: dict | None, after: dict | None,
             change_summary=summary[:2000],
             request_id=request.META.get('HTTP_X_REQUEST_ID', '') or f'req_{uuid.uuid4().hex[:16]}',
         )
-    except Exception:  # noqa: BLE001 — audit không được chặn apply
+    except Exception:
         logger.exception('broker config: failed to write audit')
 
 

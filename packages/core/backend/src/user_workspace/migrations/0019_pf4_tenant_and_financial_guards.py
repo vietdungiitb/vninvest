@@ -33,10 +33,10 @@ row tenantless thì `migrate` vẫn nổ `FieldError` tại `0008` trước khi 
 mọi DB đã từng chạy `migrate` đều đã apply `0008`; DB mới luôn rỗng nên bypass.
 Xem `docs/evidence/portfolio-commercial/pa-4-gates.md`.
 """
-import django.core.validators
-import django.db.models.deletion
 from decimal import Decimal
 
+import django.core.validators
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 

@@ -11,24 +11,11 @@ Comprehensive test suite validating proper exception handling across the core AP
 Scope: Focused on proven exception handling, not mocking fragile paths
 """
 
-import json
-import logging
-from unittest.mock import patch, MagicMock
-from io import StringIO
 
-from django.test import TestCase, TransactionTestCase
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from django.core.cache import cache
-from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-
-from vninvest_core.exceptions import (
-    StandardErrorEnvelope,
-    ValidationErrorException,
-    RateLimitErrorException,
-)
+from rest_framework.test import APIClient, APITestCase
 
 User = get_user_model()
 

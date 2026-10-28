@@ -27,7 +27,11 @@ from django.test import SimpleTestCase, TestCase
 
 from identity_access.models import CoreTenant  # noqa: F401 - used in docstring refs
 from user_workspace import portfolio_analytics_views as pav
-from user_workspace.permissions import WORKSPACE_PERMISSIONS, WorkspacePermission, _declared_permissions
+from user_workspace.permissions import (
+    WORKSPACE_PERMISSIONS,
+    WorkspacePermission,
+    _declared_permissions,
+)
 from user_workspace.tests.tenant_test_helpers import grant_tenant
 
 _PA_VIEWS = pathlib.Path(__file__).resolve().parents[1] / 'portfolio_analytics_views.py'
@@ -90,7 +94,7 @@ def _write_endpoints(ast_path: pathlib.Path) -> dict[str, ast.AST]:
 class Safe04PortfolioAnalyticsCapabilityTests(SimpleTestCase):
     """Mọi endpoint ghi trong `portfolio_analytics_views.py` phải khai báo quyền."""
 
-    def test_write_endpoint_count_is_unchanged(self):  # noqa: N802 - chuẩn của test cũ
+    def test_write_endpoint_count_is_unchanged(self):
         """Số endpoint ghi phải khớp bảng `EXPECTED`.
 
         Có test này vì `EXPECTED` là danh sách viết tay. Thêm endpoint ghi mà

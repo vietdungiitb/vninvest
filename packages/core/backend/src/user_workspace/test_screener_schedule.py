@@ -7,8 +7,8 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant
-from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule, ScreenerSchedule
+from user_workspace.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -87,6 +87,7 @@ class ScreenerScheduleTestCase(TestCase):
 
         from django.core import mail
         from django.test import override_settings
+
         from market_data.models import DailyPrice
         from market_serving.models import SymbolSnapshot
 

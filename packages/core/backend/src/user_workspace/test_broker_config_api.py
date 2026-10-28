@@ -9,8 +9,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import DNSECredential, UserBrokerConfig
+from user_workspace.tests.envelope import unwrapped_json
 
 BASE = '/core/v1/broker'
 SECRET_ID = 'CID-TEST-001'

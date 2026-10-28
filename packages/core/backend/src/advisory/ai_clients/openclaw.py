@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Optional
 
 import httpx
 from django.conf import settings as django_settings
@@ -122,7 +121,7 @@ class OpenClawClient(AiClient):
         endpoint: str = '',
         timeout: float = 30.0,
         model: str = '',
-        transport: Optional[httpx.BaseTransport] = None,
+        transport: httpx.BaseTransport | None = None,
     ):
         super().__init__(
             api_key=api_key, base_url=base_url, endpoint=endpoint,
@@ -146,8 +145,8 @@ class OpenClawClient(AiClient):
         model: str,
         temperature: float,
         max_tokens: int,
-        timeout: Optional[float] = None,
-        response_format: Optional[str] = None,
+        timeout: float | None = None,
+        response_format: str | None = None,
     ) -> dict:
         self._config()  # raise nếu chưa cấu hình / chưa có protocol
         raise OpenClawSpecMissingError()  # pragma: no cover - chưa có protocol nào
@@ -177,13 +176,13 @@ class OpenClawClient(AiClient):
 
 
 __all__ = [
+    'ERROR_NOT_CONFIGURED',
+    'ERROR_SPEC_MISSING',
+    'SUPPORTED_PROTOCOLS',
     'OpenClawClient',
     'OpenClawNotConfiguredError',
     'OpenClawSpecMissingError',
     'openclaw_base_url',
     'openclaw_protocol',
     'resolve_config',
-    'ERROR_NOT_CONFIGURED',
-    'ERROR_SPEC_MISSING',
-    'SUPPORTED_PROTOCOLS',
 ]

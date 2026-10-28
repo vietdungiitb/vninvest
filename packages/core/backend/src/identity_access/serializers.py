@@ -1,12 +1,21 @@
-from rest_framework import serializers
 import ipaddress
 
-from .models import (
-    CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember,
-    TenantInvite, TenantSSOConfig, TenantSettings, ScheduledReport, ReportDeliveryLog,
-    TenantWebhookConfig, WebhookDelivery, TenantCustomRole,
-)
+from rest_framework import serializers
 
+from .models import (
+    CorePATCredential,
+    CoreServiceAccount,
+    CoreTenant,
+    ReportDeliveryLog,
+    ScheduledReport,
+    TenantCustomRole,
+    TenantInvite,
+    TenantMember,
+    TenantSettings,
+    TenantSSOConfig,
+    TenantWebhookConfig,
+    WebhookDelivery,
+)
 
 POLICY_TO_SCOPE_CODES = {
     'pol_market_read': ['market:read'],
@@ -378,9 +387,10 @@ class TenantSSOConfigSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 # SaaS Native User Registration & Anti-Spam Serializer (Slice 2)
 # ---------------------------------------------------------------------------
-import re
-import requests
 import logging
+import re
+
+import requests
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 
@@ -480,7 +490,7 @@ class SaaSRegisterSerializer(serializers.Serializer):
                 logger.warning(f"[SPAM_SHIELD] Turnstile verification failed. Error-codes: {result_json.get('error-codes')}")
                 raise serializers.ValidationError({"turnstile_token": "Xác thực Turnstile không hợp lệ hoặc hết hạn."})
         except requests.RequestException as e:
-            logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {str(e)}")
+            logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {e!s}")
             raise serializers.ValidationError({"turnstile_token": "Không thể kết nối máy chủ xác thực Turnstile. Vui lòng thử lại."})
 
 

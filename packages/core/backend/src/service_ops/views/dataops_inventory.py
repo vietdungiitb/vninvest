@@ -1,7 +1,8 @@
-from .dataops_base import *
+from vninvest_core.api_envelope import envelope_response
 
 from ..envelope import envelope
-from vninvest_core.api_envelope import envelope_response
+from .dataops_base import *
+
 
 class DataOpsInventoryView(SOCBaseView):
     """GET /api/soc/dataops/inventory/ — data warehouse inventory stats."""
@@ -13,11 +14,14 @@ class DataOpsInventoryView(SOCBaseView):
     )
     def get(self, request):
         from datetime import timedelta
-        from django.db.models import Min, Max, Count
+
+        from django.db.models import Count, Max, Min
         from django.db.models.functions import TruncYear
+
         from market_data.models import DailyPrice
-        from market_serving.models import SymbolSnapshot
         from market_data.vnbroker_adapter import fetch_symbol_group_members
+        from market_serving.models import SymbolSnapshot
+
         from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
         from ..models import CustomSymbolGroup
 

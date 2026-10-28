@@ -1,29 +1,25 @@
-import logging
 import json
+import logging
 import uuid
-from django.utils import timezone
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAdminUser
-from rest_framework.pagination import CursorPagination
 
-from vninvest_core.api_envelope import envelope_response
+from django.core.mail import get_connection, send_mail
+from django.db import transaction
+from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from identity_access.envelope import paginated_envelope
-from identity_access.models import SystemMailConfig, MailConfigAuditLog
+from identity_access.models import MailConfigAuditLog, SystemMailConfig
 from identity_access.schema import (
     OperatorMailConfigCursorPageSerializer,
     OperatorSuccessResponseSerializer,
 )
-from vninvest_core.utils.crypto import encrypt_secret
-from django.core.mail import get_connection, send_mail
-from django.conf import settings
-from drf_spectacular.openapi import OpenApiTypes
-
+from vninvest_core.api_envelope import envelope_response
 
 logger = logging.getLogger(__name__)
 
@@ -465,9 +461,10 @@ class OperatorMailConfigTestView(APIView):
                     fail_silently=False
                 )
             elif provider == 'gmail_api':
-                from googleapiclient.discovery import build
-                from email.mime.text import MIMEText
                 import base64
+                from email.mime.text import MIMEText
+
+                from googleapiclient.discovery import build
 
                 sa_info = json.loads(google_service_account_json)
                 scopes = ['https://www.googleapis.com/auth/gmail.send']
@@ -483,8 +480,12 @@ class OperatorMailConfigTestView(APIView):
                 else:
                     # Flow 2: OAuth2 Web Client với refresh_token
                     # Hỗ trợ cả format wrapped {"web": {...}} lẫn flat {"client_id": ...}
-                    from google.oauth2.credentials import Credentials as OAuthCredentials
-                    from google.auth.transport.requests import Request as GoogleAuthRequest
+                    from google.auth.transport.requests import (
+                        Request as GoogleAuthRequest,
+                    )
+                    from google.oauth2.credentials import (
+                        Credentials as OAuthCredentials,
+                    )
                     web_info = sa_info.get('web') or sa_info.get('installed') or sa_info
                     refresh_token = sa_info.get('refresh_token') or web_info.get('refresh_token')
                     if not refresh_token:

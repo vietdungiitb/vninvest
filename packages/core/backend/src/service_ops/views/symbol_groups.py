@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import re
 
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 
+from vninvest_core.api_envelope import envelope_response
+
 from ..envelope import envelope
 from ..models import CachedSymbolGroup, CustomSymbolGroup
 from ..views.base import SOCBaseView
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 
 def _slugify(name: str) -> str:

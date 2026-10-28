@@ -7,10 +7,9 @@ from .views import (
     StaffTicketReplyView,
     TicketDetailView,
     TicketListCreateView,
-    TicketReplyView,
     TicketReopenView,
+    TicketReplyView,
 )
-
 
 urlpatterns = [
     path('tickets/', TicketListCreateView.as_view(), name='support-ticket-list-create'),

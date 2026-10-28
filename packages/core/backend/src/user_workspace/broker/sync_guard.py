@@ -9,7 +9,7 @@ from .adapters import BrokerAdapterError
 
 
 def _check_kill_switch(*, provider=None, tenant=None) -> None:
-    from service_ops.broker_runtime import check_kill_switch  # noqa: PLC0415 (lazy)
+    from service_ops.broker_runtime import check_kill_switch
 
     check_kill_switch('global')
     if tenant is not None:
@@ -19,7 +19,7 @@ def _check_kill_switch(*, provider=None, tenant=None) -> None:
 
 
 def _in_quiet_hours(now=None) -> bool:
-    from service_ops.broker_runtime import in_quiet_hours  # noqa: PLC0415 (lazy)
+    from service_ops.broker_runtime import in_quiet_hours
 
     return bool(in_quiet_hours(now=now))
 
@@ -33,7 +33,7 @@ class BrokerSyncBlockedError(BrokerAdapterError):
 
 def assert_sync_allowed(*, provider=None, tenant=None, now=None) -> None:
     """Raise BrokerSyncBlockedError khi khong duoc sync luc nay."""
-    from service_ops.broker_runtime import BrokerWriteDisabled  # noqa: PLC0415
+    from service_ops.broker_runtime import BrokerWriteDisabled
 
     try:
         _check_kill_switch(provider=provider, tenant=tenant)

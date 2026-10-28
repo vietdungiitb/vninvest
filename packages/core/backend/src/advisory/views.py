@@ -8,19 +8,21 @@ Endpoints:
 """
 import logging
 import re
-from decimal import Decimal
 from calendar import monthrange
-from datetime import date as _date, timedelta
+from datetime import date as _date
+from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings as django_settings
 from django.core.cache import cache
 from django.db import models, transaction
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.openapi import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+
 from vninvest_core.api_envelope import envelope_response
 
 # Đặt TRƯỚC `logger = ...` để không cộng thêm một E402: các import còn lại dưới
@@ -33,21 +35,18 @@ logger = logging.getLogger(__name__)
 
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
+from market_data.models import DailyPrice
 from ops_audit.models import AuditEvent
 
 from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
 from .serializers import AdvisoryRecordSerializer
 from .signal_norm import (
     SIGNAL_BUY,
-    SIGNAL_HOLD,
     SIGNAL_SELL,
-    SIGNAL_UNKNOWN,
     normalize_signal,
     signal_to_side,
 )
 from .tasks import _sanitize_effective_context_for_session
-from market_data.models import DailyPrice
-
 
 _SYMBOL_RE = re.compile(r'^[A-Z0-9]{2,10}$')
 
@@ -460,7 +459,7 @@ class AdvisoryRefreshView(APIView):
             cache.delete(_lock_key)
             return Response(
                 {
-                    'detail': f'Ngân sách AI đã dùng hết trong kỳ này.',
+                    'detail': 'Ngân sách AI đã dùng hết trong kỳ này.',
                     'error_code': 'ai_budget_exhausted',
                     'tokens_used': budget_state['tokens_used'],
                     'token_budget': budget_state['token_budget'],
@@ -567,7 +566,7 @@ class AdvisoryRefreshView(APIView):
             except Exception as e:
                 logger.error(f"BYOK key decryption failed (legacy): {e}")
                 from rest_framework.exceptions import ValidationError
-                raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
+                raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {e!s}"]})
 
         effective_context = {
             'ai_model': user_ai_model or ai_settings.ai_model,
@@ -785,6 +784,7 @@ class AdvisoryRefreshView(APIView):
 
 
 from vninvest_core.pagination import CoreCursorPagination
+
 
 class AdvisoryRecordCursorPagination(CoreCursorPagination):
     ordering = ('-generated_at', '-id')

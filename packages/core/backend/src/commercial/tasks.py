@@ -1,33 +1,31 @@
 """Commercial automation tasks for quota flushing, invoicing, and alert enforcement."""
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from celery import shared_task
 from django.core.cache import cache
 from django.utils import timezone
 
-from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
-from commercial.quota_period import (
-    current_billing_period,
-    month_counter_scan_pattern,
-    month_counter_scan_pattern_for,
-    month_counter_ttl,
-    period_slug,
-)
+from commercial.models import Invoice, QuotaHistory, QuotaRecord, Subscription
 from commercial.plan_catalog import (
     PLAN_ENTITLEMENTS,
     get_api_calls_limit,
     get_meter_entitlement,
     is_plan_derived_api_calls_limit,
 )
+from commercial.quota_period import (
+    current_billing_period,
+    month_counter_scan_pattern,
+    month_counter_scan_pattern_for,
+)
 from identity_access.models import CoreTenant
-from signal_intelligence.outbound_notification_service import OutboundNotificationService
-
+from signal_intelligence.outbound_notification_service import (
+    OutboundNotificationService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +93,7 @@ def build_usage_meters(tenant) -> dict:
             .order_by('-period_start')
             .first()
         )
-    except Exception as exc:  # noqa: BLE001 — bao ro, khong lam treo
+    except Exception as exc:
         return {
             'available': False,
             'reason': f'quota_source_unavailable: {exc.__class__.__name__}',
@@ -764,8 +762,8 @@ def check_usage_thresholds(self):
 
 def _send_quota_alert_email(config, tenant: CoreTenant, meter_code: str, level: str, current_usage: int, limit: int):
     """Send quota alert email to configured recipient."""
-    from django.core.mail import send_mail
     from django.conf import settings
+    from django.core.mail import send_mail
     
     # notify_email is a boolean flag (not an email address); when enabled we
     # notify the tenant owner. Skip entirely when disabled.

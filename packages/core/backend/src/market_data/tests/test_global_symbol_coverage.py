@@ -4,9 +4,21 @@ from decimal import Decimal
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from market_data.global_symbol_coverage import build_global_coverage_summary, build_global_planner_preview, build_symbol_coverage_detail, refresh_global_symbol_coverage
+from market_data.global_symbol_coverage import (
+    build_global_coverage_summary,
+    build_global_planner_preview,
+    build_symbol_coverage_detail,
+    refresh_global_symbol_coverage,
+)
 from market_data.global_symbol_registry import upsert_global_symbol_demand
-from market_data.models import DailyPrice, GlobalSymbolCoverage, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick
+from market_data.models import (
+    DailyPrice,
+    GlobalSymbolCoverage,
+    GlobalSymbolDemandSource,
+    GlobalSymbolRegistry,
+    IntradayBar,
+    IntradayTick,
+)
 from market_serving.models import SessionFacts, SymbolSnapshot
 
 

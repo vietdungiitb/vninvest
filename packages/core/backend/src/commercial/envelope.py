@@ -32,7 +32,7 @@ Lỗi 4xx/5xx đi qua RFC 9457 `application/problem+json` và **không** đụng
 """
 from rest_framework.response import Response
 
-__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope']
+__all__ = ['adopt_envelope', 'envelope', 'paginated_envelope']
 
 
 def envelope(data, meta=None, *, status=None, headers=None) -> Response:

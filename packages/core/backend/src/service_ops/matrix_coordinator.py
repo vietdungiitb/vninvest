@@ -8,7 +8,6 @@ from django.utils import timezone
 from .models import ScrapeMatrix, ScrapeMatrixCell
 from .provider_catalog import get_default_provider_ids, normalize_provider_ids
 
-
 DEFAULT_MATRIX_PROVIDERS = get_default_provider_ids('matrix')
 SYMBOL_GROUP_ID_ALIASES = {
     'top100': 'vn100',

@@ -4,10 +4,11 @@ data_ingest URLs for core-api.
 Registered at: path('core/v1/', include(('data_ingest.urls', 'data_ingest'), namespace='data_ingest'))
 """
 from django.urls import path
+
 from .views import (
+    DataIngestAdminViewSet,
     IngestJobViewSet,
     IngestRunViewSet,
-    DataIngestAdminViewSet,
     SystemBackfillTriggerView,
     UserBackfillTriggerView,
 )

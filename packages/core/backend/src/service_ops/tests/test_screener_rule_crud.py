@@ -15,7 +15,6 @@ from rest_framework.test import APIClient
 
 from service_ops.models import ConfigChangeAudit, OwnershipRecord
 from service_ops.registry import ensure_service_registry
-
 from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()

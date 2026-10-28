@@ -21,8 +21,8 @@ from user_workspace.models import (
     IdempotencyRecord,
     LedgerEntry,
     LedgerEntryImmutable,
-    PositionSnapshot,
     Portfolio,
+    PositionSnapshot,
     Transaction,
     ValuationSnapshot,
 )

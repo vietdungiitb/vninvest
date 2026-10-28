@@ -13,7 +13,9 @@ from django.test import TestCase
 
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
-from market_serving.vnbroker_materializer import materialize_symbol_snapshot_from_vnbroker
+from market_serving.vnbroker_materializer import (
+    materialize_symbol_snapshot_from_vnbroker,
+)
 
 
 def _live(symbols, price='20.00'):

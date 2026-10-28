@@ -11,7 +11,6 @@ Isolation rules:
   - No direct vnbroker imports (use market_data.vnbroker_adapter only)
   - Never log request/response body — only event type + symbol
 """
-import json
 import logging
 
 from asgiref.sync import async_to_sync

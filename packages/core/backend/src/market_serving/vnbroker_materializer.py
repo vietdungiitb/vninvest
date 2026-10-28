@@ -6,9 +6,9 @@ instead of legacy portfolio_tickersessionclose table.
 
 This maintains the same SymbolSnapshot write contract.
 """
-from decimal import Decimal, ROUND_FLOOR, ROUND_CEILING
-from datetime import date, timedelta
 import logging
+from datetime import date, timedelta
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +81,9 @@ def fetch_realtime_tickers_from_vnbroker(symbols: list[str]) -> list[dict]:
     - reference_price (prev close), ceiling, floor (calculated)
     - market_status, fetched_at
     """
-    from market_data.vnbroker_adapter import fetch_realtime_price
     from datetime import date
+
+    from market_data.vnbroker_adapter import fetch_realtime_price
     tickers = []
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -134,8 +135,8 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
     Reads price from DailyPrice (canonical), prev-close for ceiling/floor.
     Writes same SymbolSnapshot contract (no downstream changes needed).
     """
-    from market_serving.models import SymbolSnapshot
     from market_data.models import DailyPrice
+    from market_serving.models import SymbolSnapshot
     
     try:
         target_symbols = _normalize_target_symbols(symbols)
@@ -144,7 +145,6 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
             logger.warning("No active symbols found for vnbroker fetch")
             return {'status': 'ok', 'upserted': 0, 'source': 'vnbroker_native'}
         
-        import time as _time
 
         inserted = 0
         updated = 0

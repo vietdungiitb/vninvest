@@ -11,7 +11,6 @@ from rest_framework.test import APIClient
 
 from commercial.models import Invoice, QuotaRecord, Subscription
 from identity_access.models import CoreTenant
-
 from service_ops.tests.envelope import unwrapped_json
 
 BASE = '/api/soc/analytics/growth/'

@@ -10,17 +10,16 @@ import csv
 
 from django.db.models import Q
 from django.http import StreamingHttpResponse
+from drf_spectacular.openapi import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from ops_audit.models import AuditEvent
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.pagination import StandardPageNumberPagination
 
 from ..envelope import paginated_envelope
 from .base import SOCBaseView
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.openapi import OpenApiTypes
-from vninvest_core.api_envelope import envelope_response
-
 
 VALID_ACTIONS = {c for c, _ in AuditEvent.ActionChoices.choices}
 

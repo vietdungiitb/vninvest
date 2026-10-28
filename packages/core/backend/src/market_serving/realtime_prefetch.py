@@ -169,7 +169,8 @@ def _fetch_with_timeout(fetch_fn, symbol: str, timeout_seconds: int | None, **kw
     """
     if not timeout_seconds or timeout_seconds <= 0:
         return fetch_fn(symbol, **kwargs), False
-    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f'shard-fetch-{symbol}')
     future = executor.submit(fetch_fn, symbol, **kwargs)
     try:
@@ -509,6 +510,7 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
     
     # Pre-fetch reference prices from SymbolSnapshot for change calculation
     from django.utils.timezone import localdate
+
     from market_serving.models import SymbolSnapshot as SnapshotModel
     today = localdate()
     ref_map: dict[str, float] = {}
@@ -533,10 +535,11 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
         'TICKER_SHARD_PER_SYMBOL_TIMEOUT_SECONDS', DEFAULT_SHARD_PER_SYMBOL_TIMEOUT_SECONDS)
     # Corrective v3: reuse circuit breaker từ data_ingest (single source of truth).
     try:
-        from data_ingest.tasks import _circuit_open as _ckt_open, _circuit_record as _ckt_record
+        from data_ingest.tasks import _circuit_open as _ckt_open
+        from data_ingest.tasks import _circuit_record as _ckt_record
     except Exception:
-        _ckt_open = lambda symbol: False  # noqa: E731
-        _ckt_record = lambda symbol, ok: None  # noqa: E731
+        _ckt_open = lambda symbol: False
+        _ckt_record = lambda symbol, ok: None
 
     for symbol in shard_symbols:
         try:
@@ -613,6 +616,6 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
 
 
 __all__ = [
-    'schedule_realtime_prefetch_shards',
     'prefetch_realtime_ticker_shard',
+    'schedule_realtime_prefetch_shards',
 ]

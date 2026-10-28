@@ -2,6 +2,7 @@
 
 from django.db import migrations
 
+
 def backfill_watchlist_tenant(apps, schema_editor):
     """
     Backfill tenant FK for Watchlist objects by mapping user -> CoreTenant.

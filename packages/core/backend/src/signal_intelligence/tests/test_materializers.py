@@ -5,6 +5,8 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
+from identity_access.models import UserProfile
+from market_serving.models import SymbolSnapshot
 from signal_intelligence.materializers import (
     materialize_ai_signal_alerts,
     materialize_market_anomaly_alerts,
@@ -12,12 +14,16 @@ from signal_intelligence.materializers import (
     materialize_unified_alerts,
     materialize_whale_feed_aggregate,
 )
-from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical, UserAlertDelivery
-from signal_intelligence.models import AdvisorySignalEvent, MarketAnomalyEvent
+from signal_intelligence.models import (
+    AdvisorySignalEvent,
+    MarketAnomalyEvent,
+    OrderFlowEvent,
+    UnifiedAlert,
+    UserAlertDelivery,
+    WhaleAlertCanonical,
+)
 from signal_intelligence.tests.envelope import unwrapped_json
 from signal_intelligence.views import AIAlertsFeedView, AlertCenterFeedView
-from market_serving.models import SymbolSnapshot
-from identity_access.models import UserProfile
 from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem
 
 

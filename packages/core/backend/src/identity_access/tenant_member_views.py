@@ -11,30 +11,40 @@ Endpoints:
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from vninvest_core.api_envelope import envelope_response
-
 from tenant_lifecycle.models import TenantLifecycleEvent
-from .envelope import envelope
-from .models import CoreTenant, TenantMember, TenantInvite
-from .schema import TenantInviteListSerializer, TenantMemberListSerializer
-from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
-from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
-from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import (
-    ValidationErrorException,
-    NotFoundErrorException,
     ConflictErrorException,
-    PermissionErrorException,
     CoreAPIException,
+    NotFoundErrorException,
+    PermissionErrorException,
+    ValidationErrorException,
 )
-from drf_spectacular.openapi import OpenApiTypes
 
+from .envelope import envelope
+from .models import TenantInvite, TenantMember
+from .permissions import (
+    IsTenantActive,
+    require_human_session,
+    require_pat_scopes_or_human_session,
+)
+from .schema import TenantInviteListSerializer, TenantMemberListSerializer
+from .serializers import (
+    TenantInviteCreateSerializer,
+    TenantInviteSerializer,
+    TenantMemberSerializer,
+)
+from .utils.resolve_tenant import (
+    require_tenant_permission as _require_tenant_permission,
+)
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant
 
 
 class InviteThrottle(UserRateThrottle):

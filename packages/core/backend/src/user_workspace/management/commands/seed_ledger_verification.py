@@ -82,7 +82,7 @@ class Command(BaseCommand):
             help='Giu du lieu sinh ra thay vi tu xoa khi xong (mac dinh xoa).')
 
     def handle(self, *args, **options):
-        from user_workspace.models import CashFlow, LedgerEntry, Portfolio, Transaction
+        from user_workspace.models import CashFlow, LedgerEntry, Transaction
 
         rng = random.Random(options['seed'])
         # Dọn tàn dư của lần chạy trước TRƯỚC khi sinh. Không có bước này thì
@@ -342,7 +342,10 @@ class Command(BaseCommand):
         from django.db import connection
 
         from user_workspace.models import (
-            CashFlow, LedgerEntry, Portfolio, Transaction,
+            CashFlow,
+            LedgerEntry,
+            Portfolio,
+            Transaction,
         )
 
         with transaction.atomic():

@@ -4,20 +4,24 @@ Sprint 4 Phase A: TenantCustomRole + permission resolution tests.
 Tests TenantCustomRole model, SYSTEM_ROLE_PERMISSIONS, get_tenant_permissions(),
 require_tenant_permission(), and F2 wiring of request.tenant_member.
 """
-import uuid
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory, TestCase
 from rest_framework.exceptions import PermissionDenied
 
 from identity_access.models import (
-    CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember, TenantCustomRole,
+    CoreServiceAccount,
+    CoreTenant,
+    TenantCustomRole,
     TenantInvite,
+    TenantMember,
 )
 from identity_access.tests.envelope import unwrapped
 from identity_access.utils.resolve_tenant import (
-    SYSTEM_ROLE_PERMISSIONS, KNOWN_PERMISSION_TOKENS,
-    get_tenant_role, get_tenant_permissions, require_tenant_permission,
+    KNOWN_PERMISSION_TOKENS,
+    SYSTEM_ROLE_PERMISSIONS,
+    get_tenant_permissions,
+    require_tenant_permission,
 )
 
 User = get_user_model()
@@ -380,7 +384,6 @@ class PartnerRoleCRUDAPITests(TestCase):
     """
 
     def setUp(self):
-        from rest_framework.test import APIClient
         self.owner = User.objects.create_user(
             username='crud_owner', email='crud_owner@test.com', password='testpass123',
         )
@@ -569,6 +572,7 @@ class InviteCustomRoleTests(TestCase):
 
     def test_accept_invite_propagates_custom_role(self):
         from datetime import timedelta
+
         from django.utils import timezone as tz
         from rest_framework.test import APIClient
         # Create invite with custom role
@@ -598,6 +602,7 @@ class InviteCustomRoleTests(TestCase):
 
     def test_accept_invite_without_custom_role(self):
         from datetime import timedelta
+
         from django.utils import timezone as tz
         from rest_framework.test import APIClient
         invite = TenantInvite.objects.create(

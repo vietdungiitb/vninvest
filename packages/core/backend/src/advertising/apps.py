@@ -7,4 +7,4 @@ class AdvertisingConfig(AppConfig):
     verbose_name = 'Advertising'
 
     def ready(self):
-        import advertising.signals  # Connect signals for Redis cache invalidation
+        pass  # Connect signals for Redis cache invalidation

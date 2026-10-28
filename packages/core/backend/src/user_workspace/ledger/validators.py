@@ -42,7 +42,7 @@ class MarketRules:
     nó lọt vào đây.
     """
 
-    __slots__ = ('lot_size', 'enforce_lot')
+    __slots__ = ('enforce_lot', 'lot_size')
 
     def __init__(self, lot_size=None, enforce_lot=False):
         self.lot_size = lot_size
@@ -81,7 +81,7 @@ def _dec(value):
         return value
     try:
         return Decimal(str(value))
-    except Exception:  # noqa: BLE001 - dữ liệu bẩn không được làm sập validator
+    except Exception:
         return None
 
 
@@ -219,7 +219,7 @@ def validate_entry(*, entry_type, symbol, quantity, price, fee=None, tax=None,
 def as_drf_validation_error(result):
     """Chuyển `errors[]` sang lỗi DRF để API trả 422 kèm đúng `field` (AC5)."""
     if not result['errors']:
-        return None
+        return
     field_map = {}
     for item in result['errors']:
         field = item.get('field') or 'non_field_errors'

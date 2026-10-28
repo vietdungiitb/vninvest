@@ -15,7 +15,6 @@ from .domain_configs import (
 from .models import OwnershipRecord, ServiceConfig, ServiceDefinition, ServiceHealth
 from .ownership import DEFAULT_DOMAIN_OWNERSHIP
 
-
 CANONICAL_SOC_SERVICES = (
     {
         'service_key': 'vnbroker_quote',

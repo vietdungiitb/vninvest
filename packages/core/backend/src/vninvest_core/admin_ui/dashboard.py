@@ -37,7 +37,7 @@ STALE_PRICE_HOURS = 24
 class _Safe:
     """Bọc một số liệu để lỗi không làm hỏng cả trang."""
 
-    __slots__ = ("value", "error", "hint")
+    __slots__ = ("error", "hint", "value")
 
     def __init__(self, value: Any = None, error: str | None = None, hint: str = ""):
         self.value = value
@@ -56,7 +56,7 @@ def _safe(label: str, compute, hint: str = "") -> _Safe:
     """
     try:
         return _Safe(value=compute())
-    except Exception as exc:  # noqa: BLE001 - cố ý bắt rộng, xem nguyên tắc 1
+    except Exception as exc:
         logger.warning("admin.dashboard: khong tinh duoc %s: %s", label, exc)
         return _Safe(error=str(exc), hint=hint or "Không tải được số liệu này")
 
@@ -245,7 +245,7 @@ def _can_view(request, app_label: str, model_name: str) -> bool:
         return False
     try:
         return bool(user.has_perm(f"{app_label}.view_{model_name}"))
-    except Exception:  # noqa: BLE001 - hỏng backend quyền không được phép lộ link
+    except Exception:
         return False
 
 

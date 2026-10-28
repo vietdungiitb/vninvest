@@ -9,12 +9,13 @@ Comprehensive test suite validating tenant isolation across core API:
 """
 
 from decimal import Decimal
-from django.test import TestCase
-from django.contrib.auth import get_user_model
 
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+
+from commercial.models import Invoice, QuotaRecord, Subscription
 from identity_access.models import CoreTenant, UserProfile
 from user_workspace.models import Portfolio, Transaction, Watchlist
-from commercial.models import Subscription, QuotaRecord, Invoice
 
 User = get_user_model()
 

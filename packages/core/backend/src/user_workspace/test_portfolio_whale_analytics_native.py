@@ -3,8 +3,8 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.utils import timezone
 from django.test.utils import override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -12,7 +12,6 @@ from market_data.models import DailyPrice
 from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
 from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
 from user_workspace.tests.envelope import unwrapped_json
-
 
 User = get_user_model()
 

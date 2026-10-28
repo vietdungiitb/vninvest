@@ -1,10 +1,12 @@
 # Location: packages/core/backend/src/identity_access/management/commands/rotate_mail_credential_key.py
+import logging
 import os
+
+from cryptography.fernet import Fernet
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from cryptography.fernet import Fernet
+
 from identity_access.models import SystemMailConfig
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ class Command(BaseCommand):
             old_cipher = Fernet(old_key.encode())
             new_cipher = Fernet(new_key.encode())
         except Exception as err:
-            self.stderr.write(self.style.ERROR(f"[x] Lỗi khởi tạo khóa mã hóa: {str(err)}"))
+            self.stderr.write(self.style.ERROR(f"[x] Lỗi khởi tạo khóa mã hóa: {err!s}"))
             return
 
         configs = SystemMailConfig.objects.all()
@@ -59,7 +61,7 @@ class Command(BaseCommand):
                             config.smtp_password_encrypted = new_cipher.encrypt(plain_bytes)
                             modified = True
                         except Exception as e:
-                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã mật khẩu SMTP cho config ID {config.id}: {str(e)}"))
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã mật khẩu SMTP cho config ID {config.id}: {e!s}"))
                             raise e
 
                     # 2. Rotate Google Service Account JSON
@@ -71,7 +73,7 @@ class Command(BaseCommand):
                             config.google_service_account_json_encrypted = new_cipher.encrypt(plain_bytes)
                             modified = True
                         except Exception as e:
-                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Service Account JSON cho config ID {config.id}: {str(e)}"))
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Service Account JSON cho config ID {config.id}: {e!s}"))
                             raise e
 
                     # 3. Rotate Google Client Secret
@@ -81,7 +83,7 @@ class Command(BaseCommand):
                             config.google_client_secret_encrypted = new_cipher.encrypt(plain_bytes)
                             modified = True
                         except Exception as e:
-                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Client Secret cho config ID {config.id}: {str(e)}"))
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Client Secret cho config ID {config.id}: {e!s}"))
                             raise e
 
                     # 4. Rotate Google Refresh Token
@@ -91,7 +93,7 @@ class Command(BaseCommand):
                             config.google_refresh_token_encrypted = new_cipher.encrypt(plain_bytes)
                             modified = True
                         except Exception as e:
-                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Refresh Token cho config ID {config.id}: {str(e)}"))
+                            self.stderr.write(self.style.ERROR(f"  [!] Lỗi giải mã Google Refresh Token cho config ID {config.id}: {e!s}"))
                             raise e
 
                     if modified:

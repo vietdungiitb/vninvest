@@ -4,12 +4,13 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
-from identity_access.tests.envelope import unwrapped
 from rest_framework.test import APIClient
+
+from identity_access.tests.envelope import unwrapped
+from vninvest_core.views_health import capability_bootstrap
 
 from ..models import CoreTenant
 from ..views.helpers import _build_abilities, _build_navigation
-from vninvest_core.views_health import capability_bootstrap
 
 
 class ServiceOpsCenterCapabilityTests(TestCase):

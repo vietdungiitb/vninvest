@@ -31,7 +31,12 @@ import dj_database_url
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from django.core.exceptions import ImproperlyConfigured
 
-from .env_validation import validate_production_settings, get_frontend_url, prod_cookie_security_settings
+from .env_validation import (
+    get_frontend_url,
+    prod_cookie_security_settings,
+    validate_production_settings,
+)
+
 
 # ---------------------------------------------------------------------------
 # Test-only: hasher nhanh. KHONG bao gio chay ngoai test runner.
@@ -187,7 +192,7 @@ USE_X_FORWARDED_HOST = True
 # client_ip holds the private-range default consumed by TRUSTED_PROXY_IPS below.
 # Imported here rather than duplicating the networks as a literal so there is
 # exactly one definition of "which peers do we trust by default".
-from vninvest_core import client_ip  # noqa: E402
+from vninvest_core import client_ip
 
 # Reverse proxies whose forwarded headers we are willing to believe.
 # Consumed by vninvest_core.client_ip.get_client_ip(), which is the single source
@@ -315,6 +320,7 @@ ADVERTISING_ADMIN_ENABLED = os.environ.get(
 # Example: SOC_HEALTH_ENDPOINTS='{"vnbroker":"http://vnbroker:8080/health","prefetch":"http://prefetch:8080/health"}'
 # or per service_key: '{"vnbroker_quote":"http://..."}'. Empty = no HTTP probe (DB-only, legacy).
 import json as _json_health
+
 try:
     _raw_health_endpoints = _json_health.loads(os.environ.get('SOC_HEALTH_ENDPOINTS', '{}') or '{}')
     SOC_HEALTH_ENDPOINTS = _raw_health_endpoints if isinstance(_raw_health_endpoints, dict) else {}
@@ -510,6 +516,7 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_POOL_LIMIT = None
 
 import sys
+
 if TESTING:
     CELERY_TASK_ALWAYS_EAGER = True
     try:
@@ -526,7 +533,7 @@ if TESTING:
 
 
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
-from celery.schedules import crontab  # noqa: E402
+from celery.schedules import crontab
 
 from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP, TASK_ROUTES
 
@@ -921,9 +928,9 @@ del _LOG_FORMAT
 # SM-P5.3: Sentry error tracking.
 _sentry_dsn = os.environ.get('SENTRY_DSN', '')
 if _sentry_dsn:
-    import sentry_sdk  # noqa: E402
-    from sentry_sdk.integrations.django import DjangoIntegration  # noqa: E402
-    from sentry_sdk.integrations.celery import CeleryIntegration  # noqa: E402
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[DjangoIntegration(), CeleryIntegration()],
