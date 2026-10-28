@@ -3,7 +3,9 @@ import logging
 from decimal import Decimal
 
 from celery import shared_task
+from datetime import datetime, time, timedelta
 from django.db.models import Count
+from django.utils import timezone
 
 from .broadcasting import broadcast_unified_alert
 from .materializers import materialize_unified_alerts, materialize_whale_feed_aggregate
@@ -96,7 +98,9 @@ def detect_and_store_global_whale_alerts(
     session_date = resolved_date  # rebind để code bên dưới dùng đúng
 
     # Lấy danh sách symbol cần xử lý
-    qs = IntradayTick.objects.filter(timestamp__date=session_date)
+    _day_start = timezone.make_aware(datetime.combine(session_date, time.min))
+    _day_end = _day_start + timedelta(days=1)
+    qs = IntradayTick.objects.filter(timestamp__gte=_day_start, timestamp__lt=_day_end)
     if symbol:
         symbols = [symbol.upper()]
     else:
@@ -407,7 +411,9 @@ def detect_order_flow(self, symbol: str | None = None):
         logger.warning('detect_order_flow: no IntradayTick data found, skipping')
         return {'status': 'skipped', 'reason': 'no_tick_data'}
 
-    qs = IntradayTick.objects.filter(timestamp__date=session_date)
+    _day_start = timezone.make_aware(datetime.combine(session_date, time.min))
+    _day_end = _day_start + timedelta(days=1)
+    qs = IntradayTick.objects.filter(timestamp__gte=_day_start, timestamp__lt=_day_end)
     if symbol:
         symbols = [symbol.upper()]
     else:
