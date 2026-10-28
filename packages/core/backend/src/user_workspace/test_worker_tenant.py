@@ -226,11 +226,11 @@ class TransactionValidatorMatrixTests(_WorkerFixtureMixin, TestCase):
             user=self.user, tenant=self.tenant, name='P')
 
     def _tx(self, **kwargs):
-        base = dict(
-            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
-            transaction_type=Transaction.TransactionType.BUY,
-            date='2026-02-02', price=Decimal('10500'), quantity=1000,
-        )
+        base = {
+            'portfolio': self.portfolio, 'tenant': self.tenant, 'symbol': 'VNM',
+            'transaction_type': Transaction.TransactionType.BUY,
+            'date': '2026-02-02', 'price': Decimal('10500'), 'quantity': 1000,
+        }
         base.update(kwargs)
         return Transaction(**base)
 

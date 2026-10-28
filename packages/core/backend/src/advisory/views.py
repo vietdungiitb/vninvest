@@ -566,7 +566,7 @@ class AdvisoryRefreshView(APIView):
             except Exception as e:
                 logger.error(f"BYOK key decryption failed (legacy): {e}")
                 from rest_framework.exceptions import ValidationError
-                raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
+                raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {e!s}"]})
 
         effective_context = {
             'ai_model': user_ai_model or ai_settings.ai_model,

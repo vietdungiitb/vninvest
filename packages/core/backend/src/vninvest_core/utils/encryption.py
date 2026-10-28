@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import re
-from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
@@ -194,7 +193,7 @@ class SecretStore:
         return version, token
 
     # ── public API (R1) ─────────────────────────────────────────────────
-    def encrypt(self, plaintext: str, version: Optional[int] = None) -> str:
+    def encrypt(self, plaintext: str, version: int | None = None) -> str:
         if plaintext is None or plaintext == "":
             return ""
         target = self.write_version() if version is None else version
@@ -226,7 +225,7 @@ class SecretStore:
             ) from exc
         return value.decode("utf-8"), version
 
-    def reencrypt(self, cipher_text: str, target_version: Optional[int] = None) -> str:
+    def reencrypt(self, cipher_text: str, target_version: int | None = None) -> str:
         """Re-wrap a value under another key version, e.g. to retire a key."""
         target = self.write_version() if target_version is None else target_version
         plaintext, old_version = self.decrypt(cipher_text)
@@ -244,7 +243,7 @@ class SecretStore:
 store = SecretStore()
 
 
-def encrypt_string(raw_text: str, version: Optional[int] = None) -> str:
+def encrypt_string(raw_text: str, version: int | None = None) -> str:
     return store.encrypt(raw_text, version=version)
 
 

@@ -76,8 +76,8 @@ class Command(BaseCommand):
 
             except Exception as e:
                 error_count += 1
-                logger.error(f"Failed to backfill tenancy for user {user.username}: {str(e)}")
-                self.stderr.write(self.style.ERROR(f"  [x] Lỗi di cư tài khoản {user.username}: {str(e)}"))
+                logger.error(f"Failed to backfill tenancy for user {user.username}: {e!s}")
+                self.stderr.write(self.style.ERROR(f"  [x] Lỗi di cư tài khoản {user.username}: {e!s}"))
 
         self.stdout.write(self.style.SUCCESS(
             f"[+] BÀN GIAO HOÀN TẤT: Di cư thành công {success_count} tài khoản. Thất bại: {error_count}."

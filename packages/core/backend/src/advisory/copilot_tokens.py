@@ -30,7 +30,6 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -70,7 +69,7 @@ class CopilotTokenExchangeError(RuntimeError):
 
     error_code = ERROR_TOKEN_EXCHANGE_FAILED
 
-    def __init__(self, user_message: str, *, status: Optional[int] = None,
+    def __init__(self, user_message: str, *, status: int | None = None,
                  error_code: str = ERROR_TOKEN_EXCHANGE_FAILED):
         self.user_message = user_message
         self.status = status
@@ -113,9 +112,9 @@ class CopilotTokenManager:
         exchange_url: str = '',
         api_base_override: str = '',
         integration_id: str = '',
-        refresh_margin: Optional[float] = None,
+        refresh_margin: float | None = None,
         timeout: float = DEFAULT_TIMEOUT,
-        transport: Optional[httpx.BaseTransport] = None,
+        transport: httpx.BaseTransport | None = None,
         now_fn: Callable[[], float] = time.monotonic,
     ):
         self.exchange_url = exchange_url or os.environ.get(ENV_EXCHANGE_URL) or DEFAULT_EXCHANGE_URL

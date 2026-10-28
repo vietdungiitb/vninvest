@@ -674,7 +674,7 @@ class ServiceCurrentConfigView(SOCBaseView):
                 return self.error_response(
                     request,
                     code='CONFIG_PARSE_FAILED',
-                    detail=f'Không thể parse config payload: {str(e)}',
+                    detail=f'Không thể parse config payload: {e!s}',
                     http_status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -722,7 +722,7 @@ class ServiceCurrentConfigView(SOCBaseView):
             return self.error_response(
                 request,
                 code='CONFIG_SAVE_FAILED',
-                detail=f'Lỗi lưu config: {str(e)}',
+                detail=f'Lỗi lưu config: {e!s}',
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

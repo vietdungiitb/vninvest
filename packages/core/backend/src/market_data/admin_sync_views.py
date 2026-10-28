@@ -144,7 +144,7 @@ class AdminOpsSystemDefaultsSeedView(APIView):
                 else:
                     results[group_id] = {"seeded": 0, "warning": "No symbols returned"}
             except Exception as e:
-                error_msg = f"Failed to seed {group_id}: {str(e)}"
+                error_msg = f"Failed to seed {group_id}: {e!s}"
                 logger.error(error_msg)
                 errors.append(error_msg)
                 results[group_id] = {"seeded": 0, "error": str(e)}

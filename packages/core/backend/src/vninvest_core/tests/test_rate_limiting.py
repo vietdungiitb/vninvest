@@ -460,4 +460,3 @@ class RateLimitDecoratorComplianceTests(TestCase):
         Per-email rate limiting is superior to per-IP for preventing user enumeration (OWASP A01).
         This is validated by the API tests above.
         """
-        pass

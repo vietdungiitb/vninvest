@@ -53,12 +53,10 @@ def _provider_available(source: str) -> bool:
 
 class VnbrokerAdapterError(Exception):
     """Base error for vnbroker adapter."""
-    pass
 
 
 class DnseRateLimitError(VnbrokerAdapterError):
     """DNSE API trả về Rate Limit Exceeded — caller nên retry sau delay."""
-    pass
 
 
 class _RateLimitWatcher(logging.Handler):

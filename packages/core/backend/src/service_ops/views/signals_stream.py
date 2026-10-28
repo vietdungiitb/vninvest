@@ -267,7 +267,6 @@ class SignalsStreamView(SOCBaseView):
                         yield _sse_format(comment="ping")
                     except GeneratorExit:
                         break
-                    pass
 
                 # Ngủ 3s (nhanh hơn materialize 2m để bắt kịp realtime prefetch 3s)
                 # Trong test, ngủ 0 để chạy nhanh

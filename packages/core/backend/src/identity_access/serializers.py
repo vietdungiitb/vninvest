@@ -490,7 +490,7 @@ class SaaSRegisterSerializer(serializers.Serializer):
                 logger.warning(f"[SPAM_SHIELD] Turnstile verification failed. Error-codes: {result_json.get('error-codes')}")
                 raise serializers.ValidationError({"turnstile_token": "Xác thực Turnstile không hợp lệ hoặc hết hạn."})
         except requests.RequestException as e:
-            logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {str(e)}")
+            logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {e!s}")
             raise serializers.ValidationError({"turnstile_token": "Không thể kết nối máy chủ xác thực Turnstile. Vui lòng thử lại."})
 
 

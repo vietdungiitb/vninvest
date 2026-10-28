@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 
 import httpx
 
@@ -48,9 +47,9 @@ class CopilotClient(AiClient):
         model: str = '',
         integration_id: str = '',
         api_base_override: str = '',
-        transport: Optional[httpx.BaseTransport] = None,
-        token_exchange_transport: Optional[httpx.BaseTransport] = None,
-        token_manager: Optional[CopilotTokenManager] = None,
+        transport: httpx.BaseTransport | None = None,
+        token_exchange_transport: httpx.BaseTransport | None = None,
+        token_manager: CopilotTokenManager | None = None,
         allow_raw_token_catalog_fallback: bool = True,
     ):
         super().__init__(api_key=api_key, base_url=base_url, endpoint=endpoint,
@@ -78,7 +77,7 @@ class CopilotClient(AiClient):
         }
 
     def _payload(self, system: str, user: str, model: str, temperature: float,
-                 max_tokens: int, response_format: Optional[str]) -> dict:
+                 max_tokens: int, response_format: str | None) -> dict:
         payload = {
             'model': model,
             'messages': [
@@ -108,8 +107,8 @@ class CopilotClient(AiClient):
         model: str,
         temperature: float,
         max_tokens: int,
-        timeout: Optional[float] = None,
-        response_format: Optional[str] = None,
+        timeout: float | None = None,
+        response_format: str | None = None,
     ) -> dict:
         session = await self._session()
         body = self._payload(system, user, model, temperature, max_tokens, response_format)

@@ -395,9 +395,9 @@ class VNPayIPNWebhookView(APIView):
             ipn_log.save(update_fields=['error_message'])
             return Response({"RspCode": "01", "Message": "Order not found"}, status=status.HTTP_200_OK)
         except Exception as exc:
-            ipn_log.error_message = f"Internal processing error: {str(exc)}"
+            ipn_log.error_message = f"Internal processing error: {exc!s}"
             ipn_log.save(update_fields=['error_message'])
-            return Response({"RspCode": "99", "Message": f"Internal Error: {str(exc)}"}, status=status.HTTP_200_OK)
+            return Response({"RspCode": "99", "Message": f"Internal Error: {exc!s}"}, status=status.HTTP_200_OK)
 
         return Response({"RspCode": "00", "Message": "Confirm success"}, status=status.HTTP_200_OK)
 
@@ -512,7 +512,7 @@ class StripeCheckoutSessionView(APIView):
         except stripe.error.StripeError as e:
             logger.error(f"Stripe error creating checkout session: {e}")
             raise ValidationErrorException(
-                detail=f"Lỗi Stripe: {str(e)}",
+                detail=f"Lỗi Stripe: {e!s}",
                 code="stripe_error"
             )
         except ValueError as e:
@@ -589,7 +589,7 @@ class StripePortalSessionView(APIView):
         except stripe.error.StripeError as e:
             logger.error(f"Stripe error creating portal session: {e}")
             raise ValidationErrorException(
-                detail=f"Lỗi Stripe: {str(e)}",
+                detail=f"Lỗi Stripe: {e!s}",
                 code="stripe_error"
             )
         except ValueError as e:

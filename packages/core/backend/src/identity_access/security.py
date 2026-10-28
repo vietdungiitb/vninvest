@@ -236,8 +236,8 @@ def decrypt_user_api_key(encrypted_key: str) -> str:
         except InvalidToken:
             continue
         except Exception as e:
-            logger.error(f'Lỗi giải mã khóa hệ thống ngoài dự kiến: {str(e)}')
-            raise RuntimeError(f'Lỗi bảo mật khi xử lý giải mã khóa: {str(e)}') from e
+            logger.error(f'Lỗi giải mã khóa hệ thống ngoài dự kiến: {e!s}')
+            raise RuntimeError(f'Lỗi bảo mật khi xử lý giải mã khóa: {e!s}') from e
         if version != active:
             logger.warning(
                 '%s: du lieu cu ma hoa bang %s, dang dung %s de giai ma (active=%s).',

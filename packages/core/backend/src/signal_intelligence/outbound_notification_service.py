@@ -41,7 +41,7 @@ class OutboundNotificationService:
             logger.info(f"Successfully sent email to={to_email} with subject='{subject}'")
             return True
         except Exception as exc:
-            logger.error(f"Failed to send email to={to_email}: {str(exc)}", exc_info=True)
+            logger.error(f"Failed to send email to={to_email}: {exc!s}", exc_info=True)
             return False
 
     @classmethod
@@ -105,7 +105,7 @@ class OutboundNotificationService:
                 return False
 
         except Exception as exc:
-            logger.error(f"Exception during FCM push to token={fcm_token[:15]}: {str(exc)}", exc_info=True)
+            logger.error(f"Exception during FCM push to token={fcm_token[:15]}: {exc!s}", exc_info=True)
             return False
 
     @classmethod
@@ -153,7 +153,7 @@ class OutboundNotificationService:
             return True
 
         except Exception as exc:
-            logger.error(f"Exception during WebPush delivery: {str(exc)}", exc_info=True)
+            logger.error(f"Exception during WebPush delivery: {exc!s}", exc_info=True)
             return False
 
     @classmethod

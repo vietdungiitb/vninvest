@@ -299,7 +299,7 @@ class TenantScopePermission(BasePermission):
         return True
 
 
-def _resolve_tenant(user, tenant_code_hint: Optional[str] = None) -> Optional['CoreTenant']:
+def _resolve_tenant(user, tenant_code_hint: str | None = None) -> Optional['CoreTenant']:
     """Resolve a tenant for ``user`` by DELEGATING to the shared SSOT.
 
     This used to be a fourth independent resolver: its own priority order

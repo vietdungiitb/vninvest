@@ -219,7 +219,7 @@ def validate_entry(*, entry_type, symbol, quantity, price, fee=None, tax=None,
 def as_drf_validation_error(result):
     """Chuyển `errors[]` sang lỗi DRF để API trả 422 kèm đúng `field` (AC5)."""
     if not result['errors']:
-        return None
+        return
     field_map = {}
     for item in result['errors']:
         field = item.get('field') or 'non_field_errors'

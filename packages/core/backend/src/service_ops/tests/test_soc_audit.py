@@ -14,9 +14,9 @@ BASE = '/api/soc/audit-events/'
 
 
 def _event(**kw):
-    defaults = dict(actor_user_id=None, actor_label='staff',
-                     tenant_id='', action='access', resource_type='core_user',
-                     resource_id='1', metadata={})
+    defaults = {'actor_user_id': None, 'actor_label': 'staff',
+                     'tenant_id': '', 'action': 'access', 'resource_type': 'core_user',
+                     'resource_id': '1', 'metadata': {}}
     defaults.update(kw)
     return AuditEvent.objects.create(**defaults)
 

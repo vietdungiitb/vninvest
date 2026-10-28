@@ -912,7 +912,6 @@ class AlertCenterStreamView(APIView):
                         yield sse_format(comment='ping')
                     except GeneratorExit:
                         break
-                    pass
 
                 if testing and max_loops is not None:
                     continue

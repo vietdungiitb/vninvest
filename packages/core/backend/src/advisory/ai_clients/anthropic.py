@@ -21,7 +21,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Optional
 
 import httpx
 from django.conf import settings as django_settings
@@ -62,7 +61,7 @@ def anthropic_enabled() -> bool:
     return bool(getattr(django_settings, ENV_ENABLE, False))
 
 
-def _parse_anthropic_usage(usage) -> Optional[dict]:
+def _parse_anthropic_usage(usage) -> dict | None:
     """AC2: `input_tokens`/`output_tokens`. Không có ⇒ `None`, không bịa 0.
 
     `parse_usage_dict` của R2.2 đọc shape OpenAI (`prompt_tokens`), nên không dùng
@@ -96,8 +95,8 @@ class AnthropicClient(AiClient):
         endpoint: str = '',
         timeout: float = 30.0,
         model: str = '',
-        transport: Optional[httpx.BaseTransport] = None,
-        enabled: Optional[bool] = None,
+        transport: httpx.BaseTransport | None = None,
+        enabled: bool | None = None,
     ):
         super().__init__(
             api_key=api_key, base_url=base_url, endpoint=endpoint,
@@ -149,8 +148,8 @@ class AnthropicClient(AiClient):
         model: str,
         temperature: float,
         max_tokens: int,
-        timeout: Optional[float] = None,
-        response_format: Optional[str] = None,
+        timeout: float | None = None,
+        response_format: str | None = None,
     ) -> dict:
         self._ensure_enabled()
         async with httpx.AsyncClient(transport=self._transport,

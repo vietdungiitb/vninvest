@@ -62,7 +62,6 @@ def copilot_to_system_default(apps, schema_editor):
 def noop(apps, schema_editor):
     """Chiều ngược giữ nguyên dữ liệu: không ghi được 'copilot' nữa nên không
     cố khôi phúc — hành vi đúng là để rollback thủ công."""
-    pass
 
 
 class Migration(migrations.Migration):
