@@ -44,8 +44,11 @@ from user_workspace.models import Portfolio, SubAccount, Transaction
 REPAIR_MODULE = 'user_workspace.migrations.0019_pf4_tenant_and_financial_guards'
 
 # Bảng/cột cần hạ NOT NULL tạm để seed được row tenantless như ở state 0007.
+# `provider` (subaccount, them tu 0024, khong co DB default) khong ton tai o
+# state 0007 — historical model INSERT thieu cot nay => NULL vi pham NOT NULL.
 _NOT_NULL_TARGETS = (
     ('user_workspace_subaccount', 'tenant_id'),
+    ('user_workspace_subaccount', 'provider'),
     ('user_workspace_transaction', 'tenant_id'),
 )
 

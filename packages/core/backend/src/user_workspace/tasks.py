@@ -454,7 +454,7 @@ def test_broker_connection_task(self, config_id: int, tenant_id: int | None = No
     else:
         config.status = UserBrokerConfig.StatusChoices.ERROR
         config.last_error = str(result.get('error', 'unknown'))[:500]
-    config.save(update_fields=['status', 'last_error', 'updated_at'])
+    config.save(update_fields=['status', 'last_verified_at', 'last_error', 'updated_at'])
     return result
 
 
