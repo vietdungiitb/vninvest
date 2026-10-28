@@ -1,3 +1,20 @@
+## Entry 411: Plan trien khai khac phuc audit - docs/PLAN_AUDIT_REMEDIATION_20261028.md
+
+- **Claim:** none (plan-only, khong sua code).
+- **Pham vi:** 5 phase, 11 task, tu hygiene -> test infra -> fix FE test -> standardization -> refactor -> verify/staging.
+- **Tai lieu:** docs/PLAN_AUDIT_REMEDIATION_20261028.md.
+- **Lessons ap dung:** L-G01 L-G02 L-G03 L-G04 L-F01 L-F09 L-F10.
+
+---
+## Entry 410: Audit toan bo hien trang codebase (PM) - bao cao docs/AUDIT_CODEBASE_20261028.md
+
+- **Claim:** none (audit-only, khong sua code).
+- **Pham vi:** Toan repo (packages/web, packages/core/backend, scripts, docs). Chay that: tsc (PASS), lint (0 err/4416 warn), vitest (2 file/5 test fail), jest (2 suite/9 test fail), ruff (3280 err), git status (6 file dirty).
+- **Ket luan chinh:** Build/type-check xanh, nhung FE test do 14 case, BE test chua chay (thieu DB/env), lint/ruff nhieu canh bao, co god files va type `any` rong o adapter. Working tree dirty 6 file SOC.
+- **Tai lieu:** docs/AUDIT_CODEBASE_20261028.md (findings 15 muc, risk register, khuyen nghi).
+- **CHUA CHAY:** BE tests, i18n scan strict, bundle size, security scan day du.
+
+---
 ## Entry 409: Staging xanh - vendored tarball + root file: deps (that bai 2 lan truoc khi dung)
 
 - **Claim:** `vendor-charts-widget` (van mo den khi verify xong; Entry 408 moi chi la claim-done giua chung). **Nhanh:** `feat/vendor-charts-widget`.
