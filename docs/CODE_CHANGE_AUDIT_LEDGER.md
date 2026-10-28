@@ -1,3 +1,12 @@
+## Entry 414: Perf intraday-tick range query (PR #297) + VPS tuning handoff
+
+- **Code:** `packages/core/backend/src/signal_intelligence/tasks.py` — thay `timestamp__date=session_date` (2 cho) bang range `timestamp__gte/_lt` theo ngay (index-friendly). Khong cham `order_flow_engine.py` (giữ nguyen de tranh scope creep).
+- **Verify:** VPS container `vninvest-core-api`: `signal_intelligence.tests.test_materializers --noinput` PASS (`OK`).
+- **VPS tuning (runtime-only, shared files KHONG commit theo deny-list):** cap CPU frappe-queue-worker 1 core; pgbouncer pool 50/min 10/reserve 20/max-client 1000; `CORE_API_MEM_LIMIT=512m`; `CORE_DB_MEM_LIMIT=2g`; `CORE_REDIS_MEM_LIMIT=1g`; DB `shared_buffers=512MB`, `work_mem=16MB`, `effective_cache_size=1GB`, `max_connections=100`, `pg_stat_statements` ON. Redis CPU 37% -> ~1% sau tang RAM.
+- **Top slow query ghi nhan:** `market_data_intraday_tick ... AT TIME ZONE ... GROUP BY symbol` ~3.5s (da fix 2 cho goi thuong xuyen nhat; cac cho `__date` con lai van ton tai).
+- **CHUA LAM:** ruff cleanup, god-file refactor, baseline service_ops/user_workspace (service_ops test bi OOM `Killed`), commit compose/env vao git.
+
+---
 ## Entry 411: Plan trien khai khac phuc audit - docs/PLAN_AUDIT_REMEDIATION_20261028.md
 
 - **Claim:** none (plan-only, khong sua code).

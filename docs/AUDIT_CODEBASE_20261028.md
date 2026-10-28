@@ -55,6 +55,9 @@ Hotspot file lớn nhất (không tính i18n/static):
 | FE unit (jest) | `npm test` | ✅ PASS (21 suites / 279 tests) — sau khi fix commit dbb401a, 6942bc7 |
 | BE style | `ruff check src` | ❌ 3.280 lỗi (1.713 auto-fix) |
 | BE tests (identity_access) | `python manage.py test identity_access` (VPS) | ✅ 427 tests PASS (sau PR #295) |
+| BE tests (signal materializers) | `python manage.py test signal_intelligence.tests.test_materializers --noinput` (VPS) | ✅ PASS (sau PR #297) |
+| BE tests (service_ops full) | `python manage.py test service_ops` (VPS) | ⛔ CHƯA CHẠY — process bị OOM `Killed` (cần chạy theo file hoặc tăng RAM) |
+| Perf intraday-tick | `signal_intelligence/tasks.py` range query | ✅ PR #297 merged; top slow query `__date` ở các chỗ khác vẫn còn |
 | i18n scan | `npm run i18n:scan:strict` | Chưa chạy trong audit này |
 
 ---
