@@ -64,6 +64,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _secret_key_default = 'dev-only-insecure-key-replace-in-production'
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _secret_key_default)
+_ad_signing_secret_default = 'dev-ad-signing-secret-replace-in-production'
+CORE_AD_SIGNING_SECRET = os.environ.get('CORE_AD_SIGNING_SECRET', _ad_signing_secret_default if DEBUG else '').strip() or (_ad_signing_secret_default if DEBUG else '')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes')
 
 # SM-P1.3: ALLOWED_HOSTS — must be explicitly set in production (no wildcard default).
@@ -865,7 +867,7 @@ CELERY_BEAT_SCHEDULE = {
     'materialize-unified-alerts-signal-2m': {
         'task': 'signal_intelligence.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
-        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-signal-2m', 'analytics_heavy')},
     },
     # === Signal intelligence: materialize AI signal alerts — every 5 minutes ===
     'materialize-ai-signal-alerts-5m': {

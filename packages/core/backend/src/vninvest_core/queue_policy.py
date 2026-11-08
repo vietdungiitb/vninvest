@@ -115,7 +115,7 @@ QUEUE_DOMAIN_MATRIX = {
             'signal_intelligence.materializers.materialize_ai_signal_alerts',
         ),
         'periodic_tasks': (
-            'materialize-unified-alerts-2m',
+            'materialize-unified-alerts-signal-2m',
             'detect_and_store_global_whale_alerts',
             'detect_order_flow',
             'materialize-ai-signal-alerts-5m',

@@ -36,12 +36,12 @@ SIDE_TO_SIGNAL = {
 # "MUA LUC" khớp cả "MUA LÚC" lẫn "mua lắc".
 BUY_TOKENS = frozenset({
     'BUY', 'MUA', 'TANG', 'TICH LUC', 'KHUYEN NGHI MUA',
-    'NEN MUA', 'DU KIEN MUA',
+    'NEN MUA', 'DU KIEN MUA', 'BULLISH', 'TICH CUC',
 })
 
 SELL_TOKENS = frozenset({
     'SELL', 'BAN', 'GIAM', 'CHOT LOI', 'HUY', 'THOAT',
-    'NEN BAN', 'DU KIEN BAN', 'CHOT LAI',
+    'NEN BAN', 'DU KIEN BAN', 'CHOT LAI', 'BEARISH', 'TIEU CUC',
 })
 
 FLAT_TOKENS = frozenset({

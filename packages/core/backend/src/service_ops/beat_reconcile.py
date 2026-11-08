@@ -40,7 +40,7 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
     for job_key, schedule_def in schedule_map.items():
         schedule_def = dict(schedule_def or {})
         desired_enabled = schedule_def.get("enabled", True)
-        if job_key == "ingest-daily-prices-1705":
+        if job_key == "ingest-daily-prices-1705" or job_key == "materialize-unified-alerts-2m":
             desired_enabled = False
 
         is_critical = job_key in CRITICAL_JOBS

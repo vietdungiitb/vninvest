@@ -851,9 +851,10 @@ Important: This is technical analysis only. Do not provide investment advice, bu
         if signal == SIGNAL_UNKNOWN:
             signal = normalize_signal(raw_recommendation)
 
-        _levels = parsed_json.get('levels') or {}
-        target_price = _coerce_float(_levels.get('support') if isinstance(_levels, dict) else None)
-        resistance = _coerce_float(_levels.get('resistance') if isinstance(_levels, dict) else None)
+        _levels = parsed_json.get('levels') if isinstance(parsed_json.get('levels'), dict) else {}
+        support = _coerce_float(_levels.get('support')) if isinstance(_levels, dict) else None
+        resistance = _coerce_float(_levels.get('resistance')) if isinstance(_levels, dict) else None
+        target_price = _coerce_float(parsed_json.get('target_price'))
 
         confidence = normalize_confidence(
             parsed_json.get('confidence_score', parsed_json.get('confidence'))
@@ -883,6 +884,9 @@ Important: This is technical analysis only. Do not provide investment advice, bu
             'rationale': parsed_json.get('rationale') or '',
             'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
             'target_price': target_price,
+            'support': support,
             'resistance': resistance,
+            'levels': {'support': support, 'resistance': resistance},
+            'posture': raw_posture if isinstance(raw_posture, str) else None,
         }
 
