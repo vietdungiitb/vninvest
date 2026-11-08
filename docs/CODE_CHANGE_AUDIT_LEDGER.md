@@ -1,3 +1,13 @@
+## Entry 424: Handoff đóng toàn bộ vòng UI/UX + full suite cuối (1198/1199) + dọn dẹp branch
+
+- **Loại:** docs (ledger + handoff) + chore (xoá branch đã merge, dọn file tạm). Không đổi code.
+- **Nội dung chính (đã hoàn thành tới phiên này):** PR #302–#305 đã merge vào `dev` (B2 6/6, B3 6 file, B4 gate scope, B5 scope/aria, C1/C2 widget defer, Register contract 66/66, AC4 canonical, verdict Phase B v4 = AGREE, staging verify PASS + public health 200). Full suite (`vitest run --exclude auth-forms-rhf-extra`, 66s): **177/178 files PASS, 1198/1199 tests PASS**. Fail duy nhất: `ai-cc-i18n-clean` AC5 — 93 dòng comment tiếng Việt trong 9 file AI CC (nợ đã ghi từ Entry 420, ngoài scope UI/UX, thuộc tracker AI CC).
+- **Handoff chi tiết cho phiên sau:** `docs/SESSION_HANDOFF_UIUX_20261108.md` (phạm vi, commit map, branch đã đóng, 3 nợ còn lại + cách tái hiện).
+- **Dọn dẹp:** xoá file tạm `test-components-full*.log`, script debug ở Temp; xoá các branch local đã merge (`feat/uiux-phase-a`, `fix/uiux-auth-closeout`, `fix/ai-cc-ac4-canonical`, `docs/uiux-phase-b-closeout`). **KHÔNG** đụng vào file `packages/core/backend/src/commercial/*` của agent khác trong worktree (claim của phiên khác — chỉ commit file thuộc vòng của mình).
+- **Lessons:** L-001 L-002 L-003 L-007 L-G02 L-V02. Bài học mới: a11y adornment trong `<label>` phá label matching exact; gate source-level phải lường keyword mới (RHF `defaultValues:`); full suite cần trừ file treo pre-existing mới có số liệu; kill worker `node` rò rỉ trước khi re-run để tránh dồn ẩu.
+
+---
+
 ## Entry 423: Đóng toàn bộ nợ UI/UX còn lại — Register/RHF contract (66/66), AC4 canonical, verdict v4 AGREE, staging verify PASS
 
 - **Loại:** FE fix (auth forms + FormField) + BE fix (AI CC canonical) + docs (verdict AGREE) + ops-side staging. PR #302 (Phase B), #303 (auth closeout), #304 (AC4) đã merge vào `dev`; verdict v4 ở nhánh `docs/uiux-phase-b-closeout`.
