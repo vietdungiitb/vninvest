@@ -3,6 +3,7 @@ import ta from "./TenantAdmin.module.css";
 import { ReactNode, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -227,7 +228,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         title={t("tenantBilling.title")}
         description={t("common.loading")}
       >
-        <div className={`${styles.panel}`}>{t("common.loading")}</div>
+        <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
   }
