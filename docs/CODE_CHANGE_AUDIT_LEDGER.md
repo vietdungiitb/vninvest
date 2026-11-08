@@ -1,3 +1,13 @@
+## Entry 419: W0-3 + W0-6 + W0-8 + W2-1 (2026-11-08) — audit fix batch (rev1)
+
+- **Loại:** FE code (W0-3) + BE code (W0-6, W0-8, W2-1). Claim `pm-review-20261108` (done).
+- **Diff:** `workspace.js` −55 (4 AI agent methods + comment); `route-contract.test.js` allowlist `KNOWN_MISSING_BE_ENDPOINTS` → empty; `AISliceE.i18n.component.test.js` spy removed (−24); `env_validation.py` +1 (CORE_AD_SIGNING_SECRET prod); `test_ad_signing_secret.py` new; `settings.py` −6 (NOOP beat); `orchestrator.py` prompt schema BUY/SELL/HOLD→posture/levels.
+- **TDD/Gates:** `route-contract` 4/4 PASS; `tsc --noEmit` 0; `check-multi-agent` PASS; `check-lessons` 57/60. **CHƯA CHẠY:** BE tests (ads, pricing, envelope, beat, orchestrator), FE vitest, VPS staging §12.1.
+- **Audit:** B3 PASS R4 (W0-2), B8 W0-1 PASS; W0-3/W0-6/W0-8/W2-1 không có auditor riêng — ghi `CHƯA CHẠY` theo L-007.
+- **Lessons:** L-001 L-002 L-003 L-007 L-V01 L-V02 L-V04 L-V09.
+
+---
+
 ## Entry 418: W0-1 partner double-mount fix (2026-11-08) — B5 claim → B6 code → B8 PASS
 
 - **Loại:** BE bugfix + manifest. Claim `pm-review-20261108` W0-1 (done).
