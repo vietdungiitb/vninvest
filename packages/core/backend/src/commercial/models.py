@@ -179,7 +179,7 @@ class LicenseKey(models.Model):
     issued_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     revoked_at = models.DateTimeField(null=True, blank=True)
-    issued_by = models.ForeignKey("identity_access.CoreUser", on_delete=models.SET_NULL, null=True, blank=True)
+    issued_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
