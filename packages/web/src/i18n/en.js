@@ -17,6 +17,7 @@ const en = {
     english: 'English',
     save: 'Save',
     cancel: 'Cancel',
+    close: 'Close',
     edit: 'Edit',
     delete: 'Delete',
     saving: 'Saving...',

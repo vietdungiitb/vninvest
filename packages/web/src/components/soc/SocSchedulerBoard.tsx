@@ -363,7 +363,7 @@ function JobHistoryDrawer({
           createElement("p", { className: styles.schedulerDrawerTitle }, t("soc.scheduler.history_drawer_title")),
           createElement("p", { className: styles.schedulerDrawerSub }, jobKey)
         ),
-        createElement(Button, { type: "button", variant: "ghost", size: "icon", onClick: onClose, className: styles.schedulerDrawerClose, "aria-label": "Close" }, "\u2715")
+        createElement(Button, { type: "button", variant: "ghost", size: "icon", onClick: onClose, className: styles.schedulerDrawerClose, "aria-label": t("common.close", { defaultValue: "Close" }) }, "\u2715")
       ),
       loading && createElement("p", { className: styles.schedulerDrawerCount }, t("common.loading")),
       error && createElement("p", { className: styles.schedulerDrawerCount, style: { color: toneColor("danger") } }, error),

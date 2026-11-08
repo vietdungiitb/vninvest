@@ -17,6 +17,7 @@ const vi = {
     english: 'English',
     save: 'Lưu',
     cancel: 'Hủy',
+    close: 'Đóng',
     edit: 'Sửa',
     delete: 'Xóa',
     saving: 'Đang lưu...',
