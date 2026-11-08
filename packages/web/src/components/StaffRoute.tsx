@@ -1,4 +1,4 @@
-import { createElement, useEffect } from "react";
+import { createElement, useEffect, useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { useI18n } from "../context/LangContext.js";
@@ -17,16 +17,14 @@ export function StaffRoute({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   const location = useLocation();
   const isStaff = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
-  // E4 (P1): this used to be the literal string "common.noPermission". There was
-  // no t() call anywhere in the file and ShellToast.tsx:119 renders {message}
-  // raw, so a non-staff user deep-linking to a staff route was shown the raw
-  // i18n key instead of a sentence.
+  const hasToastedRef = useRef(false);
   const noPermissionMessage = t("common.noPermission", {
     defaultValue: "Bạn không có quyền truy cập trang này.",
   });
 
   useEffect(() => {
-    if (!isStaff) {
+    if (!isStaff && !hasToastedRef.current) {
+      hasToastedRef.current = true;
       toast.warning(noPermissionMessage);
     }
   }, [isStaff, noPermissionMessage, toast]);

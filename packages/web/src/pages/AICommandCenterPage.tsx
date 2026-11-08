@@ -363,7 +363,12 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             e("div", { className: styles.toolbar }, [
               e("div", {
                 key: "quota-bar",
-                className: styles.quotaBar
+                className: styles.quotaBar,
+                role: "progressbar",
+                "aria-valuenow": quotaRemaining,
+                "aria-valuemin": 0,
+                "aria-valuemax": quotaMax,
+                "aria-label": t("aiCommandCenter.quotaLine", { remaining: quotaRemaining, max: quotaMax, used: quotaUsedToday, defaultValue: "Quota" }),
               }, [
                 e("div", {
                   style: {

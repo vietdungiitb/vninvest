@@ -559,8 +559,9 @@ function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: 
         {plans.map((p) => {
           const isActive = activePlan === p.id;
           return (
-            <div
+            <button
               key={p.id}
+              type="button"
               className={`plan-card ${isActive ? "active" : ""}`}
               onClick={() => handlePlanSelect(p.id, p.price)}
             >
@@ -574,7 +575,7 @@ function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: 
                 <span className="plan-card__period">{` / ${p.period}`}</span>
                 {p.savings ? <span className="plan-card__savings">{p.savings}</span> : null}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
