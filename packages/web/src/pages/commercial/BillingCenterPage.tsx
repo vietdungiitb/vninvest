@@ -399,10 +399,10 @@ export function BillingCenterPage() {
                 <table className="invoice-table">
                   <thead>
                     <tr>
-                      <th>{t('commercial.billingCenter.invoiceId')}</th>
-                      <th>{t('commercial.billingCenter.invoiceDate')}</th>
-                      <th>{t('commercial.billingCenter.invoiceAmount')}</th>
-                      <th>{t('commercial.billingCenter.invoiceStatus')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceId')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceDate')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceAmount')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceStatus')}</th>
                     </tr>
                   </thead>
                   <tbody>

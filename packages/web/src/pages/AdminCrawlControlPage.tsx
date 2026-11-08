@@ -161,9 +161,9 @@ export default function AdminCrawlControlPage() {
             <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
               <thead className="sticky top-0 bg-white dark:bg-gray-800 shadow-sm z-10 text-xs uppercase text-gray-500 dark:text-gray-400 pt-2">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t('adminCrawl.thService')}</th>
-                  <th className="px-4 py-3 font-medium">{t('adminCrawl.thStatus')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('adminCrawl.thActions')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('adminCrawl.thService')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('adminCrawl.thStatus')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-right">{t('adminCrawl.thActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -240,9 +240,9 @@ export default function AdminCrawlControlPage() {
             <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
               <thead className="sticky top-0 bg-white dark:bg-gray-800 shadow-sm z-10 text-xs uppercase text-gray-500 dark:text-gray-400 pt-2">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t('adminCrawl.thService')}</th>
-                  <th className="px-4 py-3 font-medium">{t('adminCrawl.thStatus')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('adminCrawl.thRunWindow')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('adminCrawl.thService')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('adminCrawl.thStatus')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-right">{t('adminCrawl.thRunWindow')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">

@@ -133,10 +133,10 @@ export function AIAuditPage() {
       <table className={styles.auditTable} data-testid="audit-table">
         <thead>
           <tr>
-            <th>{t("aiCommandCenter.auditColWhen")}</th>
-            <th>{t("aiCommandCenter.auditColAction")}</th>
-            <th>{t("aiCommandCenter.auditColActor")}</th>
-            <th>{t("aiCommandCenter.auditColReason")}</th>
+            <th scope="col">{t("aiCommandCenter.auditColWhen")}</th>
+            <th scope="col">{t("aiCommandCenter.auditColAction")}</th>
+            <th scope="col">{t("aiCommandCenter.auditColActor")}</th>
+            <th scope="col">{t("aiCommandCenter.auditColReason")}</th>
           </tr>
         </thead>
         <tbody>

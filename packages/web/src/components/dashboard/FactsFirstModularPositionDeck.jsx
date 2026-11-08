@@ -333,13 +333,13 @@ export default function FactsFirstModularPositionDeck({
                  <table className="w-full text-left border-collapse">
                    <thead>
                      <tr className="border-b border-slate-800/80 text-[10px] text-slate-500 uppercase tracking-wider">
-                       <th className="px-3 py-2">{t('modernDeck.headerSymbol', 'Mã')}</th>
-                       <th className="px-3 py-2">{t('modernDeck.headerSource', 'Nguồn')}</th>
-                       <th className="px-3 py-2 text-right">{t('modernDeck.headerCurrentPrice', 'Giá hiện tại')}</th>
-                       <th className="px-3 py-2 text-right">{t('modernDeck.headerChange', '% thay đổi')}</th>
-                       <th className="px-3 py-2 text-right">{t('modernDeck.headerQuantity', 'Số lượng')}</th>
-                       <th className="px-3 py-2 text-right">{t('modernDeck.headerAvgCost', 'Giá vốn TB')}</th>
-                       <th className="px-3 py-2 text-right">{t('modernDeck.headerMarketValue', 'Giá trị TT')}</th>
+                       <th scope="col" className="px-3 py-2">{t('modernDeck.headerSymbol', 'Mã')}</th>
+                       <th scope="col" className="px-3 py-2">{t('modernDeck.headerSource', 'Nguồn')}</th>
+                       <th scope="col" className="px-3 py-2 text-right">{t('modernDeck.headerCurrentPrice', 'Giá hiện tại')}</th>
+                       <th scope="col" className="px-3 py-2 text-right">{t('modernDeck.headerChange', '% thay đổi')}</th>
+                       <th scope="col" className="px-3 py-2 text-right">{t('modernDeck.headerQuantity', 'Số lượng')}</th>
+                       <th scope="col" className="px-3 py-2 text-right">{t('modernDeck.headerAvgCost', 'Giá vốn TB')}</th>
+                       <th scope="col" className="px-3 py-2 text-right">{t('modernDeck.headerMarketValue', 'Giá trị TT')}</th>
                      </tr>
                    </thead>
                    <tbody className="text-xs">
@@ -413,11 +413,11 @@ export default function FactsFirstModularPositionDeck({
                <table className="w-full text-left border-collapse">
                  <thead>
                    <tr className="border-b border-slate-800/80 text-[10px] text-slate-500 uppercase tracking-wider">
-                     <th className="px-3 py-2">Mã</th>
-                     <th className="px-3 py-2 text-right">RSI (14)</th>
-                     <th className="px-3 py-2 text-right">SMA20</th>
-                     <th className="px-3 py-2 text-right">SMA50</th>
-                     <th className="px-3 py-2 text-right">Momentum</th>
+                     <th scope="col" className="px-3 py-2">Mã</th>
+                     <th scope="col" className="px-3 py-2 text-right">RSI (14)</th>
+                     <th scope="col" className="px-3 py-2 text-right">SMA20</th>
+                     <th scope="col" className="px-3 py-2 text-right">SMA50</th>
+                     <th scope="col" className="px-3 py-2 text-right">Momentum</th>
                    </tr>
                  </thead>
                  <tbody className="text-xs">

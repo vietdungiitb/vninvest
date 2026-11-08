@@ -422,6 +422,7 @@ export function ShellMailConfigPage() {
               style: { padding: "6px 12px", fontSize: "16px" },
               onClick: handleCloseModal,
               type: "button",
+              "aria-label": t("common.close"),
             },
             "✕"
           )
