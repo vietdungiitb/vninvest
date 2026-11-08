@@ -3,6 +3,7 @@ import { Fragment, useState, useEffect, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useI18n } from "../../context/LangContext.js";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -70,6 +71,7 @@ const mailApi = coreApiAdapter as unknown as {
 };
 
 export function ShellMailConfigPage() {
+  const { t } = useI18n();
   const toast = useToast();
   const confirm = useConfirm();
   const [configs, setConfigs] = useState<MailConfig[]>([]);
@@ -98,7 +100,7 @@ export function ShellMailConfigPage() {
       const res = await mailApi.getOperatorMailConfigs();
       setConfigs(res.results || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tải danh sách cấu hình mail.");
+      setError(err instanceof Error ? err.message : t("shellMailConfig.loadListError", { defaultValue: "Không thể tải danh sách cấu hình mail." }));
     } finally {
       setLoading(false);
     }
@@ -109,14 +111,14 @@ export function ShellMailConfigPage() {
       await mailApi.activateOperatorMailConfig(id);
       fetchConfigs();
     } catch (err) {
-      toast.error("Lỗi khi kích hoạt: " + (err instanceof Error ? err.message : String(err)));
+      toast.error(t("shellMailConfig.activateError", { defaultValue: "Lỗi khi kích hoạt: " }) + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   const handleDelete = async (id: number) => {
     const ok = await confirm({
-      title: 'Xóa cấu hình mail',
-      message: 'Bạn có chắc chắn muốn xóa cấu hình này?',
+      title: t("shellMailConfig.deleteTitle", { defaultValue: "Xóa cấu hình mail" }),
+      message: t("shellMailConfig.deleteMessage", { defaultValue: "Bạn có chắc chắn muốn xóa cấu hình này?" }),
       variant: 'destructive',
     });
     if (!ok) return;
@@ -124,13 +126,13 @@ export function ShellMailConfigPage() {
       await mailApi.deleteOperatorMailConfig(id);
       fetchConfigs();
     } catch (err) {
-      toast.error("Lỗi khi xóa: " + (err instanceof Error ? err.message : String(err)));
+      toast.error(t("shellMailConfig.deleteError", { defaultValue: "Lỗi khi xóa: " }) + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   const handleTestConnection = async (config: MailConfig) => {
     if (!testEmail) {
-      toast.warning("Vui lòng nhập email nhận test.");
+      toast.warning(t("shellMailConfig.testEmailRequired", { defaultValue: "Vui lòng nhập email nhận test." }));
       return;
     }
     setTestLoading(true);
@@ -140,9 +142,9 @@ export function ShellMailConfigPage() {
         config_id: config.id,
         test_email: testEmail,
       });
-      setTestMessage({ type: "success", text: "Thử nghiệm kết nối thành công!" });
+      setTestMessage({ type: "success", text: t("shellMailConfig.testSuccess", { defaultValue: "Thử nghiệm kết nối thành công!" }) });
     } catch (err) {
-      setTestMessage({ type: "error", text: "Thử nghiệm thất bại: " + (err instanceof Error ? err.message : String(err)) });
+      setTestMessage({ type: "error", text: t("shellMailConfig.testFailed", { defaultValue: "Thử nghiệm thất bại: " }) + (err instanceof Error ? err.message : String(err)) });
     } finally {
       setTestLoading(false);
     }
@@ -224,7 +226,7 @@ export function ShellMailConfigPage() {
       handleCloseModal();
       fetchConfigs();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Lỗi khi lưu cấu hình.");
+      setFormError(err instanceof Error ? err.message : t("shellMailConfig.saveError", { defaultValue: "Lỗi khi lưu cấu hình." }));
     } finally {
       setFormLoading(false);
     }
@@ -235,13 +237,13 @@ export function ShellMailConfigPage() {
   const metrics = [
     createElement(ShellMetric, {
       key: "total",
-      label: "Tổng cấu hình",
+      label: t("shellMailConfig.metricTotal", { defaultValue: "Tổng cấu hình" }),
       value: loading ? "…" : String(configs.length),
     }),
     createElement(ShellMetric, {
       key: "active",
-      label: "Đang hoạt động",
-      value: activeConfig ? activeConfig.from_email || "ID " + activeConfig.id : "Chưa có",
+      label: t("shellMailConfig.metricActive", { defaultValue: "Đang hoạt động" }),
+      value: activeConfig ? activeConfig.from_email || "ID " + activeConfig.id : t("shellMailConfig.empty", { defaultValue: "Chưa có" }),
     }),
     createElement(ShellMetric, {
       key: "provider",
@@ -251,9 +253,9 @@ export function ShellMailConfigPage() {
   ];
 
   const configListContent = loading
-    ? createElement("p", { className: `${styles.empty}` }, "Đang tải cấu hình…")
+    ? createElement("p", { className: `${styles.empty}` }, t("shellMailConfig.loading", { defaultValue: "Đang tải cấu hình…" }))
     : configs.length === 0
-    ? createElement("div", { className: `${styles.empty}` }, "Chưa có cấu hình mail nào.")
+    ? createElement("div", { className: `${styles.empty}` }, t("shellMailConfig.emptyList", { defaultValue: "Chưa có cấu hình mail nào." }))
     : createElement(
         "div",
         { className: `${styles.list}` },
@@ -285,14 +287,14 @@ export function ShellMailConfigPage() {
                 "div",
                 { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } },
                 config.is_active
-                  ? createElement("span", { className: `${styles.pill}` }, "✓ Đang hoạt động")
+                  ? createElement("span", { className: `${styles.pill}` }, t("shellMailConfig.statusActive", { defaultValue: "✓ Đang hoạt động" }))
                   : createElement(
                       "span",
                       {
                         className: `${styles.pill}`,
                         style: { background: "rgba(16,42,67,0.08)", color: "var(--text-secondary)" },
                       },
-                      "Không hoạt động"
+                      t("shellMailConfig.statusInactive", { defaultValue: "Không hoạt động" })
                     ),
                 createElement(
                   "button",
@@ -301,7 +303,7 @@ export function ShellMailConfigPage() {
                     style: { padding: "6px 12px", fontSize: "13px" },
                     onClick: () => handleOpenEdit(config),
                   },
-                  "Sửa"
+                  t("shellMailConfig.edit", { defaultValue: "Sửa" })
                 ),
                 !config.is_active &&
                   createElement(
@@ -311,7 +313,7 @@ export function ShellMailConfigPage() {
                       style: { padding: "6px 12px", fontSize: "13px" },
                       onClick: () => handleActivate(config.id),
                     },
-                    "Kích hoạt"
+                    t("shellMailConfig.activate", { defaultValue: "Kích hoạt" })
                   ),
                 !config.is_active &&
                   createElement(
@@ -321,7 +323,7 @@ export function ShellMailConfigPage() {
                       style: { padding: "6px 12px", fontSize: "13px" },
                       onClick: () => handleDelete(config.id),
                     },
-                    "Xóa"
+                    t("shellMailConfig.delete", { defaultValue: "Xóa" })
                   )
               )
             )
@@ -333,7 +335,7 @@ export function ShellMailConfigPage() {
     "div",
     { className: `${styles.form}` },
     createElement(ShellField, {
-      label: "Email nhận test",
+      label: t("shellMailConfig.testEmail", { defaultValue: "Email nhận test" }),
       name: "testEmail",
       type: "email",
       value: testEmail,
@@ -355,8 +357,8 @@ export function ShellMailConfigPage() {
               disabled: testLoading || !testEmail,
             },
             testLoading
-              ? "Đang thử…"
-              : "Test " + (PROVIDER_LABELS[config.provider] || config.provider) + " #" + config.id
+              ? t("shellMailConfig.testing", { defaultValue: "Đang thử…" })
+              : t("shellMailConfig.testPrefix", { defaultValue: "Test " }) + (PROVIDER_LABELS[config.provider] || config.provider) + " #" + config.id
           )
         )
       ),
@@ -410,7 +412,7 @@ export function ShellMailConfigPage() {
             createElement(
               "h2",
               { className: `${styles.panelTitle}` },
-              editingConfig ? "Sửa cấu hình #" + editingConfig.id : "Tạo cấu hình mail mới"
+              editingConfig ? t("shellMailConfig.editTitle", { defaultValue: "Sửa cấu hình #" }) + editingConfig.id : t("shellMailConfig.createTitle", { defaultValue: "Tạo cấu hình mail mới" })
             )
           ),
           createElement(
@@ -482,12 +484,12 @@ export function ShellMailConfigPage() {
                   onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("smtp_username", e.target.value),
                 }),
                 createElement(ShellField, {
-                  label: editingConfig ? "SMTP Password (để trống = giữ nguyên)" : "SMTP Password",
+                  label: editingConfig ? t("shellMailConfig.smtpPasswordKeep", { defaultValue: "SMTP Password (để trống = giữ nguyên)" }) : t("shellMailConfig.smtpPassword", { defaultValue: "SMTP Password" }),
                   name: "smtp_password",
                   type: "password",
                   value: formData.smtp_password,
                   onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("smtp_password", e.target.value),
-                  placeholder: editingConfig ? "(Để trống nếu không đổi)" : "",
+                  placeholder: editingConfig ? t("shellMailConfig.keepPlaceholder", { defaultValue: "(Để trống nếu không đổi)" }) : "",
                 })
               ),
               createElement(
@@ -511,7 +513,7 @@ export function ShellMailConfigPage() {
                     checked: formData.smtp_use_tls,
                     onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("smtp_use_tls", e.target.checked),
                   }),
-                  "Dùng TLS"
+                  t("shellMailConfig.useTls", { defaultValue: "Dùng TLS" })
                 ),
                 createElement(
                   "label",
@@ -531,7 +533,7 @@ export function ShellMailConfigPage() {
                     checked: formData.smtp_use_ssl,
                     onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("smtp_use_ssl", e.target.checked),
                   }),
-                  "Dùng SSL"
+                  t("shellMailConfig.useSsl", { defaultValue: "Dùng SSL" })
                 )
               )
             ),
@@ -542,14 +544,14 @@ export function ShellMailConfigPage() {
               createElement(
                 "label",
                 { className: `${styles.field}` },
-                createElement("span", { className: `${styles.fieldLabel}` }, "Credentials JSON (Service Account hoặc OAuth2 Web Client)"),
+                createElement("span", { className: `${styles.fieldLabel}` }, t("shellMailConfig.credentialsLabel", { defaultValue: "Credentials JSON (Service Account hoặc OAuth2 Web Client)" })),
                 createElement("textarea", {
                   className: `${styles.input}`,
                   value: formData.google_service_account_json,
                   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => handleFormChange("google_service_account_json", e.target.value),
                   placeholder: editingConfig
-                    ? "(Để trống nếu không đổi)"
-                    : "Dán JSON từ Google Cloud Console\n(Service Account JSON hoặc OAuth2 Web Client JSON)",
+                    ? t("shellMailConfig.keepPlaceholder", { defaultValue: "(Để trống nếu không đổi)" })
+                    : t("shellMailConfig.pasteJsonPlaceholder", { defaultValue: "Dán JSON từ Google Cloud Console\n(Service Account JSON hoặc OAuth2 Web Client JSON)" }),
                   rows: 6,
                   style: { resize: "vertical" },
                 }),
@@ -563,7 +565,7 @@ export function ShellMailConfigPage() {
                       display: "block",
                     },
                   },
-                  'Service Account: type="service_account". OAuth2 Web Client: type không có / wrapper "web".'
+                  t("shellMailConfig.credentialsHint", { defaultValue: 'Service Account: type="service_account". OAuth2 Web Client: type không có / wrapper "web".' })
                 )
               ),
               createElement(ShellField, {
@@ -572,7 +574,7 @@ export function ShellMailConfigPage() {
                 type: "password",
                 value: formData.google_oauth2_refresh_token,
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("google_oauth2_refresh_token", e.target.value),
-                placeholder: "1//... (OAuth2 Web Client flow — để trống nếu dùng Service Account)",
+                placeholder: t("shellMailConfig.refreshTokenPlaceholder", { defaultValue: "1//... (OAuth2 Web Client flow — để trống nếu dùng Service Account)" }),
               }),
               createElement(ShellField, {
                 label: "Delegated User Email (Service Account DWD)",
@@ -580,7 +582,7 @@ export function ShellMailConfigPage() {
                 type: "email",
                 value: formData.google_delegated_user_email,
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleFormChange("google_delegated_user_email", e.target.value),
-                placeholder: "admin@yourdomain.com (chỉ cần với Service Account DWD)",
+                placeholder: t("shellMailConfig.delegatedPlaceholder", { defaultValue: "admin@yourdomain.com (chỉ cần với Service Account DWD)" }),
               })
             ),
           formError && createElement("div", { className: `${styles.banner} ${styles.bannerError}` }, formError),
@@ -595,7 +597,7 @@ export function ShellMailConfigPage() {
                 onClick: handleCloseModal,
                 disabled: formLoading,
               },
-              "Hủy"
+              t("shellMailConfig.cancel", { defaultValue: "Hủy" })
             ),
             createElement(
               "button",
@@ -604,7 +606,7 @@ export function ShellMailConfigPage() {
                 className: `${styles.button} ${styles.buttonPrimary}`,
                 disabled: formLoading,
               },
-              formLoading ? "Đang lưu…" : editingConfig ? "Cập nhật" : "Tạo mới"
+              formLoading ? t("shellMailConfig.saving", { defaultValue: "Đang lưu…" }) : editingConfig ? t("shellMailConfig.update", { defaultValue: "Cập nhật" }) : t("shellMailConfig.create", { defaultValue: "Tạo mới" })
             )
           )
         )
@@ -614,9 +616,9 @@ export function ShellMailConfigPage() {
   return createElement(
     ShellPageChrome,
     {
-      eyebrow: "Hệ thống · SOC",
-      title: "Quản trị Mail Vận Hành",
-      description: "Cấu hình email hệ thống dùng để gửi thông báo, cảnh báo và liên lạc vận hành.",
+      eyebrow: t("shellMailConfig.eyebrow", { defaultValue: "Hệ thống · SOC" }),
+      title: t("shellMailConfig.title", { defaultValue: "Quản trị Mail Vận Hành" }),
+      description: t("shellMailConfig.description", { defaultValue: "Cấu hình email hệ thống dùng để gửi thông báo, cảnh báo và liên lạc vận hành." }),
       badge: createElement(
         "button",
         {
@@ -624,7 +626,7 @@ export function ShellMailConfigPage() {
           onClick: handleOpenCreate,
           type: "button",
         },
-        "+ Tạo mới"
+        t("shellMailConfig.createNew", { defaultValue: "+ Tạo mới" })
       ),
       metrics: metrics,
       error: error || undefined,
@@ -635,16 +637,16 @@ export function ShellMailConfigPage() {
       createElement(
         ShellPanel,
         {
-          title: "Danh sách cấu hình",
-          subtitle: "Chọn Kích hoạt để đặt làm provider gửi mail mặc định của hệ thống.",
+          title: t("shellMailConfig.listTitle", { defaultValue: "Danh sách cấu hình" }),
+          subtitle: t("shellMailConfig.listSubtitle", { defaultValue: "Chọn Kích hoạt để đặt làm provider gửi mail mặc định của hệ thống." }),
         },
         configListContent
       ),
       createElement(
         ShellPanel,
         {
-          title: "Thử Nghiệm Kết Nối",
-          subtitle: "Gửi email thử để kiểm tra cấu hình đang hoạt động.",
+          title: t("shellMailConfig.testTitle", { defaultValue: "Thử Nghiệm Kết Nối" }),
+          subtitle: t("shellMailConfig.testSubtitle", { defaultValue: "Gửi email thử để kiểm tra cấu hình đang hoạt động." }),
         },
         testPanelContent
       )
