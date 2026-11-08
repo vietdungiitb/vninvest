@@ -7,7 +7,7 @@ export interface FormFieldProps {
   error?: string | null;
   hint?: ReactNode;
   required?: boolean;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**
