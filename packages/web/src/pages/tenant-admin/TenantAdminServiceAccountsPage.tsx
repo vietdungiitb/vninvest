@@ -1,8 +1,7 @@
-﻿import styles from "../../components/ShellPageTemplate.module.css";
+import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
-import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -126,7 +125,7 @@ export function TenantAdminServiceAccountsPage({
         title={t("tenantServiceAccounts.title")}
         description={t("common.loading")}
       >
-        <ShellSkeleton variant="card" count={3} />
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }

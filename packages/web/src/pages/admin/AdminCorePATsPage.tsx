@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -8,28 +8,28 @@ import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 /**
- * WAVE 4 / S4 â€” bá»™ lá»c Ä‘á»“ng bá»™ URL.
+ * WAVE 4 / S4 — bộ lọc đồng bộ URL.
  *
- * âš  `spec` vÃ  `defaults` khai **NGOÃ€I** component: truyá»n object literal trong
- * thÃ¢n render lÃ m `useMemo` trong `useUrlRecord` tÃ­nh láº¡i má»—i láº§n â‡’ `value` lÃ 
- * object má»›i má»—i render (AC-2.3 wave 3, bug Ä‘Ã£ xáº£y ra 1 láº§n á»Ÿ `boolCodec`).
+ * ⚠ `spec` và `defaults` khai **NGOÀI** component: truyền object literal trong
+ * thân render làm `useMemo` trong `useUrlRecord` tính lại mỗi lần ⇒ `value` là
+ * object mới mỗi render (AC-2.3 wave 3, bug đã xảy ra 1 lần ở `boolCodec`).
  *
- * âš  `filtersDraft` **Cá» Ã** khÃ´ng Ä‘á»“ng bá»™ URL â€” nÃ³ lÃ  Ã´ **Ä‘ang soáº¡n**, chÆ°a
- * Apply. Äá»“ng bá»™ cáº£ hai sáº½ thÃ nh vÃ²ng láº·p `useEffect`.
- * `expiresWithinDays` lÃ  Sá» â‡’ dÃ¹ng `intCodec`, khÃ´ng pháº£i `stringCodec`.
+ * ⚠ `filtersDraft` **CỐ Ý** không đồng bộ URL — nó là ô **đang soạn**, chưa
+ * Apply. Đồng bộ cả hai sẽ thành vòng lặp `useEffect`.
+ * `expiresWithinDays` là SỐ ⇒ dùng `intCodec`, không phải `stringCodec`.
  */
 /** `type` (khong phai `interface`): interface KHONG co implicit index signature
- *  â‡’ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
 type PatsFilters = {
   search: string;
   status: string;
   serviceAccountId: string;
   anomalyState: string;
   /**
-   * GIá»® KIá»‚U `string` â€” khÃ´ng Ä‘á»•i sang `number`. O input luÃ´n phÃ¡t ra chuá»—i vÃ 
-   * giÃ¡ trá»‹ nÃ y Ä‘i tháº³ng vÃ o `params.expires_within_days` cá»§a adapter (xem
-   * `loadTokens`). Äá»•i sang `number` sáº½ pháº£i sá»­a cáº£ form vÃ  chá»— Ä‘á»c, tÄƒng bá»
-   * máº·t mÃ  khÃ´ng Ä‘á»•i hÃ nh vi. Codec bÃªn dÆ°á»›i chá»‰ **lá»c** giÃ¡ trá»‹ khÃ´ng pháº£i sá»‘.
+   * GIỮ KIỂU `string` — không đổi sang `number`. O input luôn phát ra chuỗi và
+   * giá trị này đi thẳng vào `params.expires_within_days` của adapter (xem
+   * `loadTokens`). Đổi sang `number` sẽ phải sửa cả form và chỗ đọc, tăng bề
+   * mặt mà không đổi hành vi. Codec bên dưới chỉ **lọc** giá trị không phải số.
    */
   expiresWithinDays: string;
 };
@@ -46,8 +46,8 @@ const PATS_FILTERS_SPEC: { [K in keyof PatsFilters]: UrlStateCodec<PatsFilters[K
   serviceAccountId: stringCodec,
   anomalyState: stringCodec,
   expiresWithinDays: {
-    // Chá»‰ nháº­n chuá»—i toÃ n sá»‘ â‡’ `?expiresWithinDays=abc` bá»‹ coi nhÆ° **khÃ´ng lá»c**
-    // thay vÃ¬ Ä‘áº©y tháº³ng xuá»‘ng adapter.
+    // Chỉ nhận chuỗi toàn số ⇒ `?expiresWithinDays=abc` bị coi như **không lọc**
+    // thay vì đẩy thẳng xuống adapter.
     parse: (raw) => (/^\d+$/.test(raw ?? '') ? String(raw) : ''),
     serialize: (v) => (/^\d+$/.test(v) ? v : undefined),
   },
@@ -55,7 +55,7 @@ const PATS_FILTERS_SPEC: { [K in keyof PatsFilters]: UrlStateCodec<PatsFilters[K
 
 export function AdminCorePATsPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
-  // R6: read-only á»Ÿ phase nÃ y â€” khÃ´ng hardcode quyá»n (BE chÆ°a cÃ³ endpoint write).
+  // R6: read-only ở phase này — không hardcode quyền (BE chưa có endpoint write).
   const canIssue = false;
   const canRotate = false;
   const canRevoke = false;
@@ -70,13 +70,13 @@ export function AdminCorePATsPage() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [actionNote, setActionNote] = useState('');
   // Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
-  // lan Apply la mot buoc dieu huong co y nghia â‡’ phai `push` de nÃºt Back undo
+  // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
   // duoc thay doi bo loc vua Apply.
   const [filters, setFilters] = useUrlRecord<PatsFilters>(
     PATS_FILTERS_SPEC,
     PATS_FILTERS_DEFAULTS,
   );
-  // Xem ghi chÃº cÃ¹ng Ã½ á»Ÿ `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
   const [filtersDraft, setFiltersDraft] = useState<PatsFilters>(filters);
   const { t } = useI18n();
 
@@ -165,7 +165,7 @@ export function AdminCorePATsPage() {
     setRefreshTick((current) => current + 1);
   };
 
-  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n thÃªm.
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
@@ -242,9 +242,9 @@ export function AdminCorePATsPage() {
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetricCard card={{ label: t('adminCoreTenants.patCardTenant'), value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || 'â€”', detail: commercialSummary?.billing_cycle || 'â€”' }} />
-            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardStatus'), value: tenantSummary.status || 'â€”', status: tenantSummary.status }} />
-            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardSecurity'), value: securitySummary?.anomaly_state || 'â€”', status: securitySummary?.anomaly_state }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardStatus'), value: tenantSummary.status || '—', status: tenantSummary.status }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardSecurity'), value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -397,7 +397,7 @@ export function AdminCorePATsPage() {
                     <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thPatExpires')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thPatAnomaly')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thPatLastUsed')}</th>
-                    <th className="px-4 py-3" />
+                    <th className="px-4 py-3"  scope="col" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -424,7 +424,7 @@ export function AdminCorePATsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          {token.expires_at || 'â€”'}
+                          {token.expires_at || '—'}
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(token.anomaly_state)}`}>
@@ -432,7 +432,7 @@ export function AdminCorePATsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          {token.last_used_at || 'â€”'}
+                          {token.last_used_at || '—'}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <button
@@ -491,7 +491,7 @@ export function AdminCorePATsPage() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patExpiry')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.expires_at || 'â€”'}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.expires_at || '—'}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patGracePeriod')}</p>
@@ -503,16 +503,16 @@ export function AdminCorePATsPage() {
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patProperties')}</h3>
                 <AdminValueRow label={t('adminCoreTenants.patServiceAccount')} value={selectedServiceAccount?.name || selectedToken.service_account_id} />
                 <AdminValueRow label={t('adminCoreTenants.patServiceAccountCode')} value={selectedToken.service_account_id} />
-                <AdminValueRow label={t('adminCoreTenants.patScopeBundle')} value={Array.isArray(selectedToken.scope_codes) && selectedToken.scope_codes.length > 0 ? selectedToken.scope_codes.join(', ') : 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patIssuerType')} value={selectedToken.issuer_actor_type || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patIssuerId')} value={selectedToken.issuer_actor_id || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patLastUsed')} value={selectedToken.last_used_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patLastIp')} value={selectedToken.last_ip || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patLastIpCountry')} value={selectedToken.last_used_ip_country || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patLastAuditRequest')} value={selectedToken.last_audit_request_id || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patRevokedAt')} value={selectedToken.revoked_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patCreatedAt')} value={selectedToken.created_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreTenants.patUpdatedAt')} value={selectedToken.updated_at || 'â€”'} />
+                <AdminValueRow label={t('adminCoreTenants.patScopeBundle')} value={Array.isArray(selectedToken.scope_codes) && selectedToken.scope_codes.length > 0 ? selectedToken.scope_codes.join(', ') : '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patIssuerType')} value={selectedToken.issuer_actor_type || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patIssuerId')} value={selectedToken.issuer_actor_id || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patLastUsed')} value={selectedToken.last_used_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patLastIp')} value={selectedToken.last_ip || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patLastIpCountry')} value={selectedToken.last_used_ip_country || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patLastAuditRequest')} value={selectedToken.last_audit_request_id || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patRevokedAt')} value={selectedToken.revoked_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patCreatedAt')} value={selectedToken.created_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patUpdatedAt')} value={selectedToken.updated_at || '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

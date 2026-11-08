@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { downloadSocCsv } from './socCsv.js';
@@ -10,7 +10,7 @@ const fmtInt = (v: any) => new Intl.NumberFormat('vi-VN').format(Number(v || 0))
 
 export function AdminUsageFleetPage() {
   const { t } = useI18n();
-  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n + khÃ´ng fetch.
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [overview, setOverview] = useState<any>(null);
@@ -39,8 +39,8 @@ export function AdminUsageFleetPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!isStaffGate) {
-    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON â€” khong
-  // co `<h1>` â‡’ screen reader khong biet dang o trang nao. Dung
+    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON — khong
+  // co `<h1>` ⇒ screen reader khong biet dang o trang nao. Dung
   // `AdminPageHeader` nhu 4 trang admin con lai de moi trang luon co 1 h1.
   return (
     <div className="admin-no-permission">
@@ -114,7 +114,7 @@ export function AdminUsageFleetPage() {
           <ul className="mt-2 space-y-2">
             {near.map((r: any, i: number) => (
               <li key={`${r.tenant_code}-${i}`} className="flex items-center justify-between rounded-xl bg-amber-500/10 px-4 py-2 text-sm">
-                <span>{r.display_name || r.tenant_code} Â· {r.meter}</span>
+                <span>{r.display_name || r.tenant_code} · {r.meter}</span>
                 <span className="font-semibold text-amber-700 dark:text-amber-300">{r.used_pct}%</span>
               </li>
             ))}

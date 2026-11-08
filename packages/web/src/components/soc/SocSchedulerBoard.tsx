@@ -1,10 +1,10 @@
-﻿import { createElement, useCallback, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button.js";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
-// WAVE 6 / NAV-1 â€” hook URL cÃ³ sáºµn; `useUrlValue` â‡’ cáº§n `<Router>` (test Ä‘Ã£ bá»c).
+// WAVE 6 / NAV-1 — hook URL có sẵn; `useUrlValue` ⇒ cần `<Router>` (test đã bọc).
 import { useUrlValue, intCodec, stringCodec } from "../../hooks/useUrlState";
 import styles from "./soc.module.css";
 
@@ -102,7 +102,7 @@ const getFreshnessColor = (freshness?: string) => {
 };
 
 function formatLag(seconds?: number) {
-  if (seconds == null) return "â€”";
+  if (seconds == null) return "—";
   const s = Math.round(seconds);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -117,8 +117,8 @@ function formatLag(seconds?: number) {
 
 function formatNextRun(dateStr?: string, triggerType?: string) {
   if (!dateStr) {
-    if (triggerType === "cron") return "â€”";
-    return "â€”";
+    if (triggerType === "cron") return "—";
+    return "—";
   }
   try {
     const d = new Date(dateStr);
@@ -137,7 +137,7 @@ function domainBadgeClass(domain: string): string {
   return styles.schedulerDomainBadgePlatform;
 }
 
-// â”€â”€â”€ Health summary strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Health summary strip ─────────────────────────────────────────────────────
 function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t: (key: string, o?: any) => string }) {
   if (!health) return null;
   const healthColor = health.overall_health === "healthy"
@@ -191,7 +191,7 @@ function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t
   );
 }
 
-// â”€â”€â”€ Action Button row for a single job â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Action Button row for a single job ───────────────────────────────────────
 function JobActionButtons({
   job,
   onAction,
@@ -216,7 +216,7 @@ function JobActionButtons({
     if (mode === "platform_managed") {
       return [];
     }
-    // COC-54: don't grant abort by default â€” only if capabilities explicitly allow it
+    // COC-54: don't grant abort by default — only if capabilities explicitly allow it
     return ["enable", "disable", "run_now"];
   })();
 
@@ -251,7 +251,7 @@ function JobActionButtons({
   );
 }
 
-// â”€â”€â”€ Confirm action modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Confirm action modal ────────────────────────────────────────────────────
 function ActionConfirmModal({
   job,
   action,
@@ -311,7 +311,7 @@ function ActionConfirmModal({
   );
 }
 
-// â”€â”€â”€ Job history drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Job history drawer ───────────────────────────────────────────────────────
 function JobHistoryDrawer({
   jobKey,
   onClose,
@@ -322,7 +322,7 @@ function JobHistoryDrawer({
   t: (key: string, o?: any) => string;
 }) {
   const [history, setHistory] = useState<JobRunHistory | null>(null);
-  // WAVE 6 / NAV-1 â€” lá»‹ch sá»­ cháº¡y: phÃ¢n trang Ä‘á»“ng bá»™ URL.
+  // WAVE 6 / NAV-1 — lịch sử chạy: phân trang đồng bộ URL.
   const [page, setPage] = useUrlValue("sched_hist_page", intCodec, 1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -430,7 +430,7 @@ function JobHistoryDrawer({
               {
                 type: "button",
                 disabled: !history.previous,
-                // WAVE 6: setter `useUrlValue` nháº­n giÃ¡ trá»‹, khÃ´ng pháº£i updater lambda.
+                // WAVE 6: setter `useUrlValue` nhận giá trị, không phải updater lambda.
                 onClick: () => setPage(Math.max(1, page - 1)),
                 className: styles.pageBtnSmall,
               },
@@ -453,15 +453,15 @@ function JobHistoryDrawer({
   );
 }
 
-// â”€â”€â”€ Main SchedulerBoard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main SchedulerBoard ──────────────────────────────────────────────────────
 export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitle }: SocSchedulerBoardProps) {
   const { t } = useI18n();
   const [plan, setPlan] = useState<{ jobs?: SchedulerJob[]; generated_at?: string } | null>(null);
   const [health, setHealth] = useState<SchedulerHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // WAVE 6 / NAV-1 â€” lá»c theo domain Ä‘á»“ng bá»™ URL (`replace` vÃ¬ Ä‘Ã¢y lÃ  control
-  // chá»n, má»—i láº§n Ä‘á»•i khÃ´ng nÃªn táº¡o history entry dÃ i).
+  // WAVE 6 / NAV-1 — lọc theo domain đồng bộ URL (`replace` vì đây là control
+  // chọn, mỗi lần đổi không nên tạo history entry dài).
   const [domainFilter, setDomainFilter] = useUrlValue("sched_domain", stringCodec, "all", { replace: true });
   const [confirmModal, setConfirmModal] = useState<{ job: SchedulerJob; action: string } | null>(null);
   const [historyJob, setHistoryJob] = useState<string | null>(null);
@@ -555,7 +555,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     "div",
     { className: styles.schedulerWrap },
 
-    // Health strip â€” always visible (COC-20: DataOps embedded needs strip)
+    // Health strip — always visible (COC-20: DataOps embedded needs strip)
     createElement(SchedulerHealthStrip, { health, t }),
 
     // Action banner
@@ -585,7 +585,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           "p",
           { className: styles.schedulerTimestamp, style: { fontSize: "var(--fs-xs)", opacity: 0.85 } },
           embedded
-            ? `${t("soc.scheduler.filter_count", { filtered: filteredJobs.length, total: totalJobs })} â€” ${showAllDomains ? t("soc.scheduler.filter_all_domains") : domainProp}`
+            ? `${t("soc.scheduler.filter_count", { filtered: filteredJobs.length, total: totalJobs })} — ${showAllDomains ? t("soc.scheduler.filter_all_domains") : domainProp}`
             : `${t("soc.scheduler.health_total")}: ${totalJobs}`
         ),
         embedded && totalJobs > 0 && createElement(

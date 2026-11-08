@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -8,18 +8,18 @@ import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 function formatDateTime(value: any) {
   if (!value) {
-    return 'â€”';
+    return '—';
   }
-  return value || 'â€”';
+  return value || '—';
 }
 
 function formatNumber(value: any, localeTag = 'vi-VN') {
   if (value === null || value === undefined) {
-    return 'â€”';
+    return '—';
   }
 
   if (value < 0) {
-    return 'âˆž';
+    return '∞';
   }
 
   return new Intl.NumberFormat(localeTag).format(value);
@@ -109,7 +109,7 @@ export function AdminCoreUsagePage() {
     setRefreshTick((current) => current + 1);
   };
 
-  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n thÃªm.
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
@@ -180,7 +180,7 @@ export function AdminCoreUsagePage() {
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardTenant'), value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <AdminMetricCard card={{ label: t('adminCoreUsage.cardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || 'â€”', detail: commercialSummary?.billing_cycle || 'â€”' }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardUsageRisk'), value: usageRisk, status: usageRisk }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemaining'), value: formatNumber(totalRemaining, localeTag), detail: t('adminCoreUsage.cardRemainingDetail', { critical: criticalCount, warning: warningCount }) }} />
           </div>
@@ -224,7 +224,7 @@ export function AdminCoreUsagePage() {
                     <th className="px-4 py-3" scope="col">{t('adminCoreUsage.thRemaining')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreUsage.thRisk')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreUsage.thUpdated')}</th>
-                    <th className="px-4 py-3" />
+                    <th className="px-4 py-3"  scope="col" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -237,7 +237,7 @@ export function AdminCoreUsagePage() {
                             <p className="font-semibold text-slate-950 dark:text-white">{meter.display_name}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400">{meter.meter_code}</p>
                             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                              {meter.unit} â€¢ {meter.aggregation_window}
+                              {meter.unit} • {meter.aggregation_window}
                             </p>
                           </div>
                         </td>
@@ -311,7 +311,7 @@ export function AdminCoreUsagePage() {
                 <AdminValueRow label={t('adminCoreUsage.propResetAt')} value={formatDateTime(selectedMeter.reset_at)} />
                 <AdminValueRow label={t('adminCoreUsage.propPeriodStart')} value={formatDateTime(selectedMeter.period_start)} />
                 <AdminValueRow label={t('adminCoreUsage.propPeriodEnd')} value={formatDateTime(selectedMeter.period_end)} />
-                <AdminValueRow label={t('adminCoreUsage.propProjectedExhaustion')} value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : 'â€”'} />
+                <AdminValueRow label={t('adminCoreUsage.propProjectedExhaustion')} value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

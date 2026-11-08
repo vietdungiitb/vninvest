@@ -1,4 +1,4 @@
-﻿import { formatNumber } from "../../i18n";
+import { formatNumber } from "../../i18n";
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -10,17 +10,17 @@ import { SocRetentionHealthPanel } from "./SocRetentionHealthPanel.js";
 import { SocAnomalyGuardPanel } from "./SocAnomalyGuardPanel.js";
 import { useDataOpsStream } from "../../hooks/useDataOpsStream.js";
 import { toneColor } from "./socStatusColors.js";
-// WAVE 6 / NAV-1 â€” hook URL cÃ³ sáºµn; `useUrlState` â‡’ cáº§n `<Router>` (test Ä‘Ã£ bá»c).
+// WAVE 6 / NAV-1 — hook URL có sẵn; `useUrlState` ⇒ cần `<Router>` (test đã bọc).
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from "../../hooks/useUrlState";
 
-/** WAVE 6 â€” spec á»Ÿ MODULE SCOPE: `useUrlState` memo hoÃ¡ theo `spec`/`defaults`. */
+/** WAVE 6 — spec ở MODULE SCOPE: `useUrlState` memo hoá theo `spec`/`defaults`. */
 type GapsUrl = { page: number; dataset: string; freshness: string };
 const GAPS_URL_SPEC: { [K in keyof GapsUrl]: UrlStateCodec<GapsUrl[K]> } = {
   page: intCodec,
   dataset: stringCodec,
   freshness: stringCodec,
 };
-/** Fallback = Ä‘Ãºng giÃ¡ trá»‹ `useState` cÅ©. */
+/** Fallback = đúng giá trị `useState` cũ. */
 const GAPS_URL_DEFAULTS: GapsUrl = { page: 1, dataset: "all", freshness: "all" };
 import styles from "./soc.module.css";
 
@@ -60,7 +60,7 @@ interface ObservabilityData {
     };
   };
   parity_gates?: any;
-  // Slice G (QueueRecovery): Ä‘á»™ sÃ¢u broker queue tá»« observability endpoint.
+  // Slice G (QueueRecovery): độ sâu broker queue từ observability endpoint.
   queue_depths?: Record<string, number>;
   parity_history?: any;
   retention_health?: any;
@@ -144,7 +144,7 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
 
 const COVERAGE_STATE_ORDER = ["fresh", "warm", "stale", "missing", "error", "unknown"];
 
-// Slice G (QueueRecovery): ngÆ°á»¡ng Ä‘á» khá»›p queue-drain-monitor (docker-compose threshold 200).
+// Slice G (QueueRecovery): ngưỡng đỏ khớp queue-drain-monitor (docker-compose threshold 200).
 const QUEUE_DEPTH_ALERT_THRESHOLD = 200;
 const QUEUE_DEPTH_WARN_THRESHOLD = 50;
 
@@ -193,7 +193,7 @@ export function SocDataOpsMonitorSection() {
   const [observability, setObservability] = useState<ObservabilityData | null>(null);
   const [queueTiersError, setQueueTiersError] = useState("");
   const [observabilityError, setObservabilityError] = useState("");
-  // WAVE 6 / NAV-1 â€” gaps: phÃ¢n trang + 2 bá»™ lá»c Ä‘á»“ng bá»™ URL (1 patch = 1 history entry).
+  // WAVE 6 / NAV-1 — gaps: phân trang + 2 bộ lọc đồng bộ URL (1 patch = 1 history entry).
   const [gapsState, setGapsState] = useUrlState(GAPS_URL_SPEC, GAPS_URL_DEFAULTS, {
     replaceKeys: ["dataset", "freshness"],
   });
@@ -476,10 +476,10 @@ export function SocDataOpsMonitorSection() {
     ) : null,
     renderActiveRunBanner(),
 
-    // Stream status indicator (Live/Polling) â€” realtime <5s vs poll 30s
+    // Stream status indicator (Live/Polling) — realtime <5s vs poll 30s
     streamStatusLabel ? createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "0.5rem" } },
       createElement("span", { style: { width: "6px", height: "6px", borderRadius: "999px", background: streamStatusLabel === "Live" ? "var(--soc-c-34d399)" : streamStatusLabel === "Connecting" ? "var(--soc-c-fbbf24)" : "var(--soc-c-94a3b8)", display: "inline-block" } }),
-      createElement("span", null, streamStatusLabel === "Live" ? `${t("soc.dataops.stream_live") || "Live"} Â· ${t("soc.dataops.stream_realtime") || "Realtime 5s"}` : streamStatusLabel)
+      createElement("span", null, streamStatusLabel === "Live" ? `${t("soc.dataops.stream_live") || "Live"} · ${t("soc.dataops.stream_realtime") || "Realtime 5s"}` : streamStatusLabel)
     ) : null,
 
     // Matrix Monitor Section
@@ -503,11 +503,11 @@ export function SocDataOpsMonitorSection() {
       matrixExpanded ? createElement(SocMatrixScrapeMonitor) : null
     ),
 
-    // Hero 4 â€” commercial (Backlog | Fail 1h | Fail 24h | Starved)
+    // Hero 4 — commercial (Backlog | Fail 1h | Fail 24h | Starved)
     observability ? createElement("div", { className: styles.metricGrid, style: { marginBottom: "1rem" } },
       renderMetricCard((t as unknown as (k: string, o?: Record<string, unknown>) => string)("soc.dataops.backlog_total", { defaultValue: "Backlog" }), String((observability.backlog?.by_dataset || []).reduce((s: number, r: { backlog_count: number }) => s + (r.backlog_count || 0), 0)), toneColor("warning")),
-      renderMetricCard(t("soc.dataops.fail_rate_1h"), oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(1)}%` : "â€”", oneHourWindow && (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")),
-      renderMetricCard(t("soc.dataops.fail_rate_24h"), twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(1)}%` : "â€”", twentyFourHourWindow && (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")),
+      renderMetricCard(t("soc.dataops.fail_rate_1h"), oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(1)}%` : "—", oneHourWindow && (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")),
+      renderMetricCard(t("soc.dataops.fail_rate_24h"), twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(1)}%` : "—", twentyFourHourWindow && (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")),
       renderMetricCard((t as unknown as (k: string, o?: Record<string, unknown>) => string)("soc.dataops.starved_tiers", { defaultValue: "Starved tiers" }), String((observability.starvation || []).filter((s) => s.is_starved && s.seconds_since_last_progress != null).length), (observability.starvation || []).some((s) => s.is_starved && s.seconds_since_last_progress != null) ? toneColor("danger") : toneColor("success")),
     ) : null,
 
@@ -560,12 +560,12 @@ export function SocDataOpsMonitorSection() {
               { className: styles.metricGrid,  },
               renderMetricCard(
                 t("soc.dataops.fail_rate_1h"),
-                oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%` : "â€”",
+                oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%` : "—",
                  oneHourWindow && (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")
               ),
               renderMetricCard(
                 t("soc.dataops.fail_rate_24h"),
-                twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(2)}%` : "â€”",
+                twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(2)}%` : "—",
                  twentyFourHourWindow && (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")
               )
             ),
@@ -750,8 +750,8 @@ export function SocDataOpsMonitorSection() {
           : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_observability"))
     ),
 
-    // Queue Depth Panel â€” Slice G (QueueRecovery): Ä‘á»™ sÃ¢u broker queue realtime.
-    // Backend: build_market_data_observability_summary().queue_depths (fail-open {} khi Redis á»‘m).
+    // Queue Depth Panel — Slice G (QueueRecovery): độ sâu broker queue realtime.
+    // Backend: build_market_data_observability_summary().queue_depths (fail-open {} khi Redis ốm).
     (() => {
       const depths = observability?.queue_depths;
       if (!depths || typeof depths !== "object") return null;
@@ -907,14 +907,14 @@ export function SocDataOpsMonitorSection() {
                         bg = ratio > 0.2 ? "rgba(var(--soc-rgb-f59e0b) / 0.18)" : "rgba(var(--soc-rgb-f59e0b) / 0.06)";
                         col = "var(--soc-c-fbbf24)";
                       } else {
-                        // fresh/warm â€” higher ratio is good (green), but low count muted
+                        // fresh/warm — higher ratio is good (green), but low count muted
                         bg = ratio > 0.5 ? "rgba(var(--soc-rgb-22d3ee) / 0.14)" : ratio > 0.15 ? "rgba(var(--soc-rgb-34d399) / 0.12)" : "rgba(var(--soc-rgb-22d3ee) / 0.06)";
                         col = "var(--soc-c-34d399)";
                       }
                       return createElement(
                         "td",
                         { key: stateKey, title: total > 0 ? `${count} / ${total} (${(ratio * 100).toFixed(1)}%)` : undefined, style: { background: bg, color: count > 0 ? col : undefined, fontWeight: ratio > 0.2 ? 700 : 400, textAlign: "center" as const } },
-                        count > 0 ? formatNumber(count, localeTag) : "â€”"
+                        count > 0 ? formatNumber(count, localeTag) : "—"
                       );
                     }),
                     createElement("td", { }, formatNumber(total, localeTag))
@@ -1014,7 +1014,7 @@ export function SocDataOpsMonitorSection() {
                     createElement(
                       "td",
                       { },
-                      gap.next_recommended_action ? t(ACTION_LABEL_KEYS[gap.next_recommended_action] || "soc.dataops.action_unknown") : "â€”"
+                      gap.next_recommended_action ? t(ACTION_LABEL_KEYS[gap.next_recommended_action] || "soc.dataops.action_unknown") : "—"
                     )
                   )
                 )
@@ -1025,7 +1025,7 @@ export function SocDataOpsMonitorSection() {
             ? renderPagination(
                 gapsPage,
                 gapsPage * 20 < filteredGaps.length,
-                // WAVE 6: setter cá»§a `useUrlState` nháº­n **giÃ¡ trá»‹**, khÃ´ng pháº£i updater lambda.
+                // WAVE 6: setter của `useUrlState` nhận **giá trị**, không phải updater lambda.
                 () => setGapsPage(Math.max(1, gapsPage - 1)),
                 () => setGapsPage(gapsPage + 1),
                 t

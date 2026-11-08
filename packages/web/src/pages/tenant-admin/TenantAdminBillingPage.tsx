@@ -1,9 +1,8 @@
-﻿import styles from "../../components/ShellPageTemplate.module.css";
+import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { ReactNode, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
-import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -73,8 +72,8 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt,
   projectedNext: number | null;
   projectedChangePct: number | null;
   tt: (k: string, opts?: object) => string;
-  // FU-04: CostTrendChart lÃ  component RIÃŠNG (khÃ´ng gá»i useI18n) nÃªn pháº£i nháº­n
-  // formatter tá»« cha thay vÃ¬ `.toLocaleString()` theo locale mÃ¡y ngÆ°á»i dÃ¹ng.
+  // FU-04: CostTrendChart là component RIÊNG (không gọi useI18n) nên phải nhận
+  // formatter từ cha thay vì `.toLocaleString()` theo locale máy người dùng.
   formatNumber: (n: number, opts?: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => string;
 }): ReactNode {
   if (!data || data.length === 0) {
@@ -117,7 +116,7 @@ interface TenantAdminBillingPageProps {
 }
 
 /**
- * W0.10 gap-1 â€” dung HTML de in hoa don (khong can thu vien PDF server-side).
+ * W0.10 gap-1 — dung HTML de in hoa don (khong can thu vien PDF server-side).
  * BE khong co route tai hoa don PDF va image khong co thu vien PDF nao
  * (da probe VPS staging: reportlab/xhtml2pdf/weasyprint/fpdf/PIL deu "no")
  * => khong goi URL BE khong ton tai (404) ma IN TRUC TIEP tu du lieu hoa don da co.
@@ -228,7 +227,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         title={t("tenantBilling.title")}
         description={t("common.loading")}
       >
-        <ShellSkeleton variant="card" count={3} />
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -408,7 +407,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                           style={{ fontSize: 11, padding: "4px 8px", border: "1px solid rgba(0,180,216,0.2)" }}
                           title={t("tenantBilling.downloadInvoice")}
                         >
-                          â†“
+                          ↓
                         </button>
                       </div>
                       {invoice.payment_method && <span className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>{invoice.payment_method}</span>}
@@ -419,7 +418,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
             </div>
           </ShellPanel>
 
-          {/* Phase 4 â€” Upgrade / Plan Comparison */}
+          {/* Phase 4 — Upgrade / Plan Comparison */}
           <ShellPanel title={t("tenantBilling.upgradePanelTitle")} subtitle={t("tenantBilling.upgradePanelDesc")}>
             <PlanComparisonTable planCode={subscription?.plan_code || "free"} t={t} />
           </ShellPanel>

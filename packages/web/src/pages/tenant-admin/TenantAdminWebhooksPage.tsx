@@ -1,4 +1,4 @@
-﻿import styles from "../../components/ShellPageTemplate.module.css";
+import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";

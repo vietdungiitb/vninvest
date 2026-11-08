@@ -1,4 +1,4 @@
-﻿import { createElement, useEffect, useRef } from "react";
+import { createElement, useEffect, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { changedLeafKeys, type DiffRow } from "../../lib/diffUtil.js";
 import styles from "./soc.module.css";
@@ -10,7 +10,7 @@ interface SocConfigPreviewModalProps {
   impactWarnings?: string[];
   validationErrors?: string[];
   diff?: DiffRow[];
-  /** data-testid cho nÃºt xÃ¡c nháº­n â€” panel cha truyá»n id riÃªng Ä‘á»ƒ test báº¯t Ä‘Ãºng chá»—. */
+  /** data-testid cho nút xác nhận — panel cha truyền id riêng để test bắt đúng chỗ. */
   confirmTestId?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -51,12 +51,12 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
   const changedLeaves = diff ? changedLeafKeys(diff) : new Set<string>();
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
-  // Giá»¯ callback trong ref Ä‘á»ƒ effect khÃ´ng cháº¡y láº¡i (má»—i render cá»§a parent táº¡o
-  // arrow function má»›i â‡’ focus sáº½ nháº£y lung tung náº¿u Ä‘á»ƒ trong deps).
+  // Giữ callback trong ref để effect không chạy lại (mỗi render của parent tạo
+  // arrow function mới ⇒ focus sẽ nhảy lung tung nếu để trong deps).
   const cancelRef = useRef(onCancel);
   cancelRef.current = onCancel;
 
-  // Dialog tháº­t: focus vÃ o nÃºt xÃ¡c nháº­n, Escape Ä‘Ã³ng, focus tráº£ vá» nÃºt Ä‘Ã£ má»Ÿ.
+  // Dialog thật: focus vào nút xác nhận, Escape đóng, focus trả về nút đã mở.
   useEffect(() => {
     previousFocus.current = (document.activeElement as HTMLElement | null) ?? null;
     confirmRef.current?.focus();

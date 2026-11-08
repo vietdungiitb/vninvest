@@ -106,7 +106,7 @@ export function Breadcrumb({ labelMap }: { labelMap?: Record<string, string> }) 
       }
 
       if (isLast) {
-        parts.push(createElement('span', { key: `label-${i}`, 'aria-current': 'page' }, crumb.label));
+        parts.push(createElement('span', { key: `label-${i}` }, crumb.label));
       } else {
         parts.push(
           createElement(

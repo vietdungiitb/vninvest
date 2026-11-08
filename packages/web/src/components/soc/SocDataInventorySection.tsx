@@ -1,4 +1,4 @@
-﻿import { formatNumber } from "../../i18n";
+import { formatNumber } from "../../i18n";
 import { createElement, useEffect, useState } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -225,7 +225,7 @@ export function SocDataInventorySection() {
                       ),
                     ),
                     createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "var(--color-warning-500, #fbbf24)" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 }, title: g.calendar_days != null && g.calendar_days < 30 ? t("soc.dataops.calendar_days_warning") : undefined },
-                      g.calendar_days != null ? `${formatNumber(g.calendar_days, localeTag)} ngÃ y${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
+                      g.calendar_days != null ? `${formatNumber(g.calendar_days, localeTag)} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
                     ),
                     createElement("td", { style: { fontWeight: 600 } }, formatNumber(g.total_rows, localeTag)),
                     createElement("td", { style: { whiteSpace: "nowrap", fontSize: "var(--fs-xs)" } },

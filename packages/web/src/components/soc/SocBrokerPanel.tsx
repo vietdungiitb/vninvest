@@ -1,4 +1,4 @@
-﻿import { createElement, useCallback, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
@@ -139,22 +139,22 @@ export function SocBrokerPanel() {
   const [testing, setTesting] = useState("");
 
   const wv = (key: string, defaultValue: string) => t(`brokerWave4.ops.${key}`, { defaultValue });
-  const fmtNum = (v: number | null | undefined) => (v === null || v === undefined ? "â€”" : String(v));
+  const fmtNum = (v: number | null | undefined) => (v === null || v === undefined ? "—" : String(v));
   const fmtPct = (v: number | null | undefined) =>
-    (v === null || v === undefined ? "â€”" : `${(Number(v) * 100).toFixed(1)}%`);
+    (v === null || v === undefined ? "—" : `${(Number(v) * 100).toFixed(1)}%`);
 
   function expiryBadge(reason?: string) {
     if (!reason) {
       return e("span", { className: `${styles.brokerBadge} ${styles.brokerBadgeOk}` },
-        wv("verifiedOk", "ÄÃ£ xÃ¡c minh"));
+        wv("verifiedOk", "Đã xác minh"));
     }
     const label = reason === "chua_cau_hinh"
-      ? wv("staleNoCred", "ChÆ°a cáº¥u hÃ¬nh credential")
+      ? wv("staleNoCred", "Chưa cấu hình credential")
       : reason === "qua_han_30_ngay"
-        ? wv("staleExpired", "QuÃ¡ 30 ngÃ y chÆ°a xÃ¡c minh láº¡i")
-        : wv("staleUnverified", "ChÆ°a xÃ¡c minh káº¿t ná»‘i");
+        ? wv("staleExpired", "Quá 30 ngày chưa xác minh lại")
+        : wv("staleUnverified", "Chưa xác minh kết nối");
     return e("span", { className: `${styles.brokerBadge} ${styles.brokerBadgeWarn}` },
-      `${wv("needsVerify", "Cáº§n xÃ¡c minh")}: ${label}`);
+      `${wv("needsVerify", "Cần xác minh")}: ${label}`);
   }
 
   const reload = useCallback(async () => {
@@ -213,11 +213,11 @@ export function SocBrokerPanel() {
     if (!!config.kill_switch_write !== loadedKill) {
       const turningOn = !!config.kill_switch_write;
       const ok = await confirm({
-        title: t("brokerWave4.ops.killTitle", { defaultValue: "XÃ¡c nháº­n kill-switch ghi" }),
+        title: t("brokerWave4.ops.killTitle", { defaultValue: "Xác nhận kill-switch ghi" }),
         message: turningOn
-          ? t("brokerWave4.ops.killOnBody", { defaultValue: "Báº¬T kill-switch: má»i lá»‡nh ghi order/sync sáº½ tráº£ 503. Tiáº¿p tá»¥c?" })
-          : t("brokerWave4.ops.killOffBody", { defaultValue: "Táº®T kill-switch: cho phÃ©p ghi trá»Ÿ láº¡i. Tiáº¿p tá»¥c?" }),
-        confirmText: t("brokerWave4.ops.killConfirm", { defaultValue: "XÃ¡c nháº­n kill-switch" }),
+          ? t("brokerWave4.ops.killOnBody", { defaultValue: "BẬT kill-switch: mọi lệnh ghi order/sync sẽ trả 503. Tiếp tục?" })
+          : t("brokerWave4.ops.killOffBody", { defaultValue: "TẮT kill-switch: cho phép ghi trở lại. Tiếp tục?" }),
+        confirmText: t("brokerWave4.ops.killConfirm", { defaultValue: "Xác nhận kill-switch" }),
         variant: "destructive",
       });
       if (!ok) return;
@@ -284,12 +284,12 @@ export function SocBrokerPanel() {
   }
 
   async function handleExportCsv() {
-    // B4.3: CSV tu may chu (scope service, â‰¤5000 dong) thay vi dung client-side.
+    // B4.3: CSV tu may chu (scope service, ≤5000 dong) thay vi dung client-side.
     try {
       await downloadSocCsv("/operator/soc/broker/audit/", { limit: 5000 }, "soc-broker-audit.csv");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("brokerWave4.ops.csvFail", {
-        defaultValue: "KhÃ´ng táº£i Ä‘Æ°á»£c CSV tá»« mÃ¡y chá»§.",
+        defaultValue: "Không tải được CSV từ máy chủ.",
       }));
     }
   }
@@ -330,18 +330,18 @@ export function SocBrokerPanel() {
               enabled: e("input", {
                 type: "checkbox",
                 checked: !!en.enabled,
-                "aria-label": `${t("soc.broker.enabled")} â€” ${p.toUpperCase()}`,
+                "aria-label": `${t("soc.broker.enabled")} — ${p.toUpperCase()}`,
                 onChange: (ev: { target: { checked: boolean } }) => updateEntry(p, { enabled: ev.target.checked }),
               }),
               routing: e("input", {
                 type: "number", min: 0, max: 9, value: en.routing_order ?? 0,
-                "aria-label": `${t("soc.broker.routing")} â€” ${p.toUpperCase()}`,
+                "aria-label": `${t("soc.broker.routing")} — ${p.toUpperCase()}`,
                 onChange: (ev: { target: { value: string } }) => updateEntry(p, { routing_order: Number(ev.target.value) }),
                 className: styles.searchInput,
               }),
               rpm: e("input", {
                 type: "number", min: 1, value: en.requests_per_minute ?? 60,
-                "aria-label": `${t("soc.broker.rpm")} â€” ${p.toUpperCase()}`,
+                "aria-label": `${t("soc.broker.rpm")} — ${p.toUpperCase()}`,
                 onChange: (ev: { target: { value: string } }) => updateEntry(p, { requests_per_minute: Number(ev.target.value) }),
                 className: styles.searchInput,
               }),
@@ -367,14 +367,14 @@ export function SocBrokerPanel() {
           e("input", {
             type: "time", value: config.quiet_hours_start || "",
             placeholder: "17:00",
-            "aria-label": `${t("soc.broker.quiet")} (báº¯t Ä‘áº§u)`,
+            "aria-label": `${t("soc.broker.quiet")} (bắt đầu)`,
             onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_start: ev.target.value })),
             className: styles.searchInput,
-          }), " â€“ ",
+          }), " – ",
           e("input", {
             type: "time", value: config.quiet_hours_end || "",
             placeholder: "08:30",
-            "aria-label": `${t("soc.broker.quiet")} (káº¿t thÃºc)`,
+            "aria-label": `${t("soc.broker.quiet")} (kết thúc)`,
             onChange: (ev: { target: { value: string } }) => setConfig((c) => ({ ...c, quiet_hours_end: ev.target.value })),
             className: styles.searchInput,
           })),
@@ -404,43 +404,43 @@ export function SocBrokerPanel() {
           return e("div", { key: String(p.provider), className: styles.metricCard },
             e("p", { className: styles.metricLabel }, e("strong", null, String(p.provider).toUpperCase())),
             e("p", { className: styles.metricValue },
-              (p.enabled ? "â— " : "â—‹ ") + (p.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified"))),
+              (p.enabled ? "● " : "○ ") + (p.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified"))),
             // Chi hien badge khi NOI them thong tin: "Chua xac minh" + badge "Chua xac minh ket noi" la LAP.
             p.needs_verification && (p.is_verified || p.stale_reason === "chua_cau_hinh")
               ? e("span", null, " ", expiryBadge(p.stale_reason))
               : null,
             e("p", { className: styles.metricLabel },
-              `${wv("lastRun", "Láº§n cháº¡y cuá»‘i")}: `,
+              `${wv("lastRun", "Lần chạy cuối")}: `,
               last
-                ? `${last.status || "?"}${last.error ? ` â€” ${last.error}` : ""}`
-                : wv("noRuns", "ChÆ°a cÃ³ láº§n cháº¡y nÃ o trong 24h.")),
+                ? `${last.status || "?"}${last.error ? ` — ${last.error}` : ""}`
+                : wv("noRuns", "Chưa có lần chạy nào trong 24h.")),
             e("div", { className: styles.brokerLaneCard },
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("runs24h", "Sá»‘ láº§n cháº¡y 24h")),
-                e("span", null, `${fmtNum(runs.total)} (${wv("succeeded", "ThÃ nh cÃ´ng")} ${fmtNum(runs.succeeded)} / ${wv("failed", "Tháº¥t báº¡i")} ${fmtNum(runs.failed)})`)),
+                e("span", null, wv("runs24h", "Số lần chạy 24h")),
+                e("span", null, `${fmtNum(runs.total)} (${wv("succeeded", "Thành công")} ${fmtNum(runs.succeeded)} / ${wv("failed", "Thất bại")} ${fmtNum(runs.failed)})`)),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("errorRate", "Tá»‰ lá»‡ lá»—i")),
+                e("span", null, wv("errorRate", "Tỉ lệ lỗi")),
                 e("span", null, fmtPct(lane.error_rate_24h))),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("avgLatency", "Äá»™ trá»… TB")),
+                e("span", null, wv("avgLatency", "Độ trễ TB")),
                 e("span", null, lane.avg_latency_s_24h === null || lane.avg_latency_s_24h === undefined
-                  ? "â€”" : `${Number(lane.avg_latency_s_24h).toFixed(1)}s`)),
+                  ? "—" : `${Number(lane.avg_latency_s_24h).toFixed(1)}s`)),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("retriesCfg", "Retry cáº¥u hÃ¬nh")),
+                e("span", null, wv("retriesCfg", "Retry cấu hình")),
                 e("span", null, fmtNum(lane.retries_configured))),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("consecFails", "Lá»—i liÃªn tiáº¿p")),
+                e("span", null, wv("consecFails", "Lỗi liên tiếp")),
                 e("span", null, fmtNum(lane.consecutive_failures))),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("unresolved", "ChÆ°a xá»­ lÃ½")),
-                e("span", null, `${fmtNum(issues.total)} (lá»—i ${fmtNum(issues.error)})`)),
+                e("span", null, wv("unresolved", "Chưa xử lý")),
+                e("span", null, `${fmtNum(issues.total)} (lỗi ${fmtNum(issues.error)})`)),
               e("div", { className: styles.brokerLaneRow },
-                e("span", null, wv("queueDepth", "Äá»™ sÃ¢u hÃ ng Ä‘á»£i")),
+                e("span", null, wv("queueDepth", "Độ sâu hàng đợi")),
                 e("span", null, fmtNum(p.queue_depth)))),
             (lane.top_errors || []).length > 0
               ? e("p", { className: styles.metricLabel },
-                  `${wv("topErrors", "Lá»—i hÃ ng Ä‘áº§u")}: `,
-                  (lane.top_errors || []).map((te) => `${te.code} Ã—${te.count}`).join(" Â· "))
+                  `${wv("topErrors", "Lỗi hàng đầu")}: `,
+                  (lane.top_errors || []).map((te) => `${te.code} ×${te.count}`).join(" · "))
               : null,
             e("button", {
               type: "button", className: styles.actionBtn,
@@ -451,21 +451,21 @@ export function SocBrokerPanel() {
         })),
       Object.keys(health.queues || {}).length > 0
         ? e("div", { className: styles.metricCard },
-            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "HÃ ng Ä‘á»£i Celery"))),
+            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "Hàng đợi Celery"))),
             Object.entries(health.queues || {}).map(([q, d]) =>
               e("div", { key: q, className: styles.brokerLaneRow },
                 e("span", null, q), e("span", null, fmtNum(d)))),
           )
         : e("div", { className: styles.metricCard },
-            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "HÃ ng Ä‘á»£i Celery"))),
+            e("p", { className: styles.metricLabel }, e("strong", null, wv("queuesTitle", "Hàng đợi Celery"))),
             e("p", { className: styles.metricLabel }, t("soc.broker.no_queues")),
           ),
       (health.top_errors || []).length > 0
         ? e("div", { className: styles.metricCard },
-            e("p", { className: styles.metricLabel }, e("strong", null, wv("topErrors", "Lá»—i hÃ ng Ä‘áº§u"))),
+            e("p", { className: styles.metricLabel }, e("strong", null, wv("topErrors", "Lỗi hàng đầu"))),
             (health.top_errors || []).map((te) =>
               e("div", { key: te.code || "", className: styles.brokerLaneRow },
-                e("span", null, te.code || ""), e("span", null, `Ã—${fmtNum(te.count)}`))),
+                e("span", null, te.code || ""), e("span", null, `×${fmtNum(te.count)}`))),
           )
         : null,
     ),
@@ -474,13 +474,13 @@ export function SocBrokerPanel() {
       e("h3", { className: styles.sectionCardTitle }, t("soc.broker.cred_title")),
       creds.map((c) => e("div", { key: c.provider || "", className: styles.metricCard },
         e("p", { className: styles.metricLabel },
-          e("strong", null, (c.provider || "").toUpperCase()), " Â· ",
-          (c.allowed_purposes || []).map((pu) => t(PURPOSE_LABELS[pu] || pu)).join(", "), " Â· ",
-          (c.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified")), " Â· ",
+          e("strong", null, (c.provider || "").toUpperCase()), " · ",
+          (c.allowed_purposes || []).map((pu) => t(PURPOSE_LABELS[pu] || pu)).join(", "), " · ",
+          (c.is_verified ? t("soc.broker.verified") : t("soc.broker.unverified")), " · ",
           formatTime(c.last_verified_at, tag), " ",
           expiryBadge(c.needs_verification ? c.stale_reason : undefined)),
         e("p", { className: styles.metricLabel },
-          Object.entries(c.preview || {}).map(([k, v]) => `${k}: ${String(v)}`).join(" Â· ")),
+          Object.entries(c.preview || {}).map(([k, v]) => `${k}: ${String(v)}`).join(" · ")),
         e("button", {
           type: "button", className: styles.actionBtn, onClick: () => handleDeleteCred(c.provider || ""),
         }, t("soc.broker.cred_delete")),
@@ -495,7 +495,7 @@ export function SocBrokerPanel() {
           value: credSecrets,
           onChange: (ev: { target: { value: string } }) => setCredSecrets(ev.target.value),
           className: styles.configEditor, rows: 3,
-          placeholder: '{\n  "api_key": "â€¦",\n  "api_secret": "â€¦"\n}',
+          placeholder: '{\n  "api_key": "…",\n  "api_secret": "…"\n}',
           "aria-label": t("soc.broker.cred_secrets"),
         }),
         e("div", { className: styles.metricLabel }, t("soc.broker.purposes") + ": ",
@@ -511,18 +511,18 @@ export function SocBrokerPanel() {
     ),
 
     e("div", { className: styles.sectionCard },
-      e("h3", { className: styles.sectionCardTitle }, wv("auditTableTitle", "Nháº­t kÃ½ audit")),
+      e("h3", { className: styles.sectionCardTitle }, wv("auditTableTitle", "Nhật ký audit")),
       e("button", { type: "button", className: styles.actionBtn, onClick: handleExportCsv },
-        wv("csvServer", "Táº£i CSV tá»« mÃ¡y chá»§ (â‰¤5000)")),
+        wv("csvServer", "Tải CSV từ máy chủ (≤5000)")),
       audits.length === 0
         ? e("p", { className: styles.metricLabel }, t("soc.broker.audit_empty"))
         : e("table", null,
             e("thead", null, e("tr", null,
-              e("th", { scope: "col" }, wv("colTime", "Thá»i gian")),
-              e("th", { scope: "col" }, wv("colActor", "NgÆ°á»i thá»±c hiá»‡n")),
-              e("th", { scope: "col" }, wv("colAction", "HÃ nh Ä‘á»™ng")),
-              e("th", { scope: "col" }, wv("colSummary", "TÃ³m táº¯t thay Ä‘á»•i")),
-              e("th", { scope: "col" }, wv("colRequest", "MÃ£ yÃªu cáº§u")))),
+              e("th", { scope: "col" }, wv("colTime", "Thời gian")),
+              e("th", { scope: "col" }, wv("colActor", "Người thực hiện")),
+              e("th", { scope: "col" }, wv("colAction", "Hành động")),
+              e("th", { scope: "col" }, wv("colSummary", "Tóm tắt thay đổi")),
+              e("th", { scope: "col" }, wv("colRequest", "Mã yêu cầu")))),
             e("tbody", null, audits.map((a, i) => e("tr", { key: i },
               e("td", null, formatTime(a.timestamp, tag)),
               e("td", null, a.actor || ""),

@@ -1,8 +1,7 @@
-﻿import styles from "../../components/ShellPageTemplate.module.css";
+import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
-import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -20,7 +19,7 @@ const MEMBERS_TABS: readonly MembersTab[] = ["members", "invites"];
 // `useMemo([params, spec, defaults])` trong `useUrlState.ts:117` moi memo hoa duoc.
 const MEMBERS_URL_SPEC: { [K in keyof MembersUrlState]: UrlStateCodec<MembersUrlState[K]> } = {
   searchQuery: stringCodec,
-  // 'all' la mac dinh â‡’ serialize tra `undefined` cho 'all' (khong ghi tham so).
+  // 'all' la mac dinh ⇒ serialize tra `undefined` cho 'all' (khong ghi tham so).
   roleFilter: { parse: stringCodec.parse, serialize: (v: string) => (v === "all" ? undefined : v) },
   activeTab: {
     parse: (raw) =>
@@ -83,7 +82,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const confirm = useConfirm();
 
   // W3-2 (AC-2.1): 3 state nay la loc + tab cua bang thanh vien. Truoc day chi
-  // trong RAM â‡’ gui link cho nguoi khac thi ho thay trang CHUA loc.
+  // trong RAM ⇒ gui link cho nguoi khac thi ho thay trang CHUA loc.
   // `spec`/`defaults` o CAP MODULE (AC-2.3) de identity on dinh giua render.
   const [{ searchQuery, roleFilter, activeTab }, setUrlState] = useUrlState(
     MEMBERS_URL_SPEC,
@@ -184,7 +183,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
         title={t("tenantMembers.title")}
         description={t("common.loading")}
       >
-        <ShellSkeleton variant="card" count={3} />
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }

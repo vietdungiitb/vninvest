@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -9,7 +9,7 @@ import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUr
 
 const DEFAULT_LIMIT = 25;
 /** `type` (khong phai `interface`): interface KHONG co implicit index signature
- *  â‡’ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+ *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
 type JobFilters = {
   search: string;
   kind: string;
@@ -24,7 +24,7 @@ const DEFAULT_FILTERS: JobFilters = {
   serviceDomain: '',
   serviceCode: '',
 };
-/** WAVE 4 / S4 â€” khai NGOAI component: literal trong render phÃ¡ `useMemo` (AC-2.3). */
+/** WAVE 4 / S4 — khai NGOAI component: literal trong render phá `useMemo` (AC-2.3). */
 const JOB_FILTERS_SPEC: { [K in keyof JobFilters]: UrlStateCodec<JobFilters[K]> } = {
   search: stringCodec,
   kind: stringCodec,
@@ -40,13 +40,13 @@ function kindLabel(kind: any, t: (key: string) => string) {
   if (kind === 'crawl_run') {
     return t('adminCoreJobs.kindCrawl');
   }
-  return kind || 'â€”';
+  return kind || '—';
 }
 
 function formatPercentValue(value: any) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return 'â€”';
+    return '—';
   }
   return `${numeric.toFixed(1)}%`;
 }
@@ -71,12 +71,12 @@ export function AdminCoreJobsPage() {
     JOB_FILTERS_SPEC,
     DEFAULT_FILTERS,
   );
-  // WAVE 4 (audit Stage 5, ID-2) â€” seed draft Tá»ª URL.
-  // TrÆ°á»›c Ä‘Ã¢y `filters` lÃ  `useState` â‡’ deep-link `?search=fpt` **khÃ´ng** lá»c
-  // báº£ng. Nay `useUrlRecord` lá»c báº£ng Ä‘Ãºng, nhÆ°ng náº¿u `filtersDraft` váº«n khá»Ÿi
-  // táº¡o rá»—ng thÃ¬ form trá»‘ng trong khi báº£ng Ä‘Ã£ lá»c, vÃ  **má»™t láº§n báº¥m Apply lÃ 
-  // xoÃ¡ sáº¡ch bá»™ lá»c trong link**. `useState(filters)` láº¥y giÃ¡ trá»‹ Ä‘Ã£ phÃ¢n tÃ­ch
-  // tá»« URL ngay á»Ÿ render Ä‘áº§u â‡’ form vÃ  báº£ng luÃ´n khá»›p.
+  // WAVE 4 (audit Stage 5, ID-2) — seed draft TỪ URL.
+  // Trước đây `filters` là `useState` ⇒ deep-link `?search=fpt` **không** lọc
+  // bảng. Nay `useUrlRecord` lọc bảng đúng, nhưng nếu `filtersDraft` vẫn khởi
+  // tạo rỗng thì form trống trong khi bảng đã lọc, và **một lần bấm Apply là
+  // xoá sạch bộ lọc trong link**. `useState(filters)` lấy giá trị đã phân tích
+  // từ URL ngay ở render đầu ⇒ form và bảng luôn khớp.
   const [filtersDraft, setFiltersDraft] = useState<JobFilters>(filters);
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -173,7 +173,7 @@ export function AdminCoreJobsPage() {
     setCursor({ startingAfter: '', endingBefore: prevCursor });
   };
 
-  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n thÃªm.
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
@@ -357,7 +357,7 @@ export function AdminCoreJobsPage() {
                     <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thStatus')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thSummary')}</th>
                     <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thTime')}</th>
-                    <th className="px-4 py-3" />
+                    <th className="px-4 py-3"  scope="col" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -373,7 +373,7 @@ export function AdminCoreJobsPage() {
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(job.status_category || job.status)}`}>
-                            {job.status_display || job.status || 'â€”'}
+                            {job.status_display || job.status || '—'}
                           </span>
                         </td>
                         <td className="px-4 py-4">
@@ -381,9 +381,9 @@ export function AdminCoreJobsPage() {
                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{job.source_model}</p>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          <p>{job.created_at || 'â€”'}</p>
+                          <p>{job.created_at || '—'}</p>
                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {job.kind === 'signal_run' ? formatPercentValue(job.progress_pct) : job.trigger_type_display || job.trigger_type || 'â€”'}
+                            {job.kind === 'signal_run' ? formatPercentValue(job.progress_pct) : job.trigger_type_display || job.trigger_type || '—'}
                           </p>
                         </td>
                         <td className="px-4 py-4 text-right">
@@ -424,7 +424,7 @@ export function AdminCoreJobsPage() {
                     {kindLabel(selectedJob.kind, t)}
                   </span>
                   <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(selectedJob.status_category || selectedJob.status)}`}>
-                    {selectedJob.status_display || selectedJob.status || 'â€”'}
+                    {selectedJob.status_display || selectedJob.status || '—'}
                   </span>
                 </div>
               </div>
@@ -433,33 +433,33 @@ export function AdminCoreJobsPage() {
                 <AdminValueRow label={t('adminCoreJobs.rowRequestId')} value={selectedJob.request_id} />
                 <AdminValueRow label={t('adminCoreJobs.rowSourceModel')} value={selectedJob.source_model} />
                 <AdminValueRow label={t('adminCoreJobs.rowSummary')} value={selectedJob.summary} />
-                <AdminValueRow label={t('adminCoreJobs.rowStatus')} value={selectedJob.status_display || selectedJob.status || 'â€”'} />
-                <AdminValueRow label={t('adminCoreJobs.rowCreatedAt')} value={selectedJob.created_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreJobs.rowUpdatedAt')} value={selectedJob.updated_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreJobs.rowStartedAt')} value={selectedJob.started_at || 'â€”'} />
-                <AdminValueRow label={t('adminCoreJobs.rowFinishedAt')} value={selectedJob.finished_at || 'â€”'} />
+                <AdminValueRow label={t('adminCoreJobs.rowStatus')} value={selectedJob.status_display || selectedJob.status || '—'} />
+                <AdminValueRow label={t('adminCoreJobs.rowCreatedAt')} value={selectedJob.created_at || '—'} />
+                <AdminValueRow label={t('adminCoreJobs.rowUpdatedAt')} value={selectedJob.updated_at || '—'} />
+                <AdminValueRow label={t('adminCoreJobs.rowStartedAt')} value={selectedJob.started_at || '—'} />
+                <AdminValueRow label={t('adminCoreJobs.rowFinishedAt')} value={selectedJob.finished_at || '—'} />
               </div>
 
               {selectedJob.kind === 'signal_run' ? (
                 <DetailBlock title={t('adminCoreJobs.detailSignalTitle')}>
-                  <AdminValueRow label={t('adminCoreJobs.rowServiceDomain')} value={selectedJob.service_domain_display || selectedJob.service_domain || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowRunType')} value={selectedJob.run_type_display || selectedJob.run_type || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowTaskId')} value={selectedJob.task_id || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowCreatedBy')} value={selectedJob.created_by_username || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowServiceDomain')} value={selectedJob.service_domain_display || selectedJob.service_domain || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowRunType')} value={selectedJob.run_type_display || selectedJob.run_type || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowTaskId')} value={selectedJob.task_id || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowCreatedBy')} value={selectedJob.created_by_username || '—'} />
                   <AdminValueRow label={t('adminCoreJobs.rowProgress')} value={formatPercentValue(selectedJob.progress_pct)} />
-                  <AdminValueRow label={t('adminCoreJobs.rowProcessed')} value={String(selectedJob.processed_items ?? 'â€”')} />
-                  <AdminValueRow label={t('adminCoreJobs.rowStored')} value={String(selectedJob.stored_items ?? 'â€”')} />
-                  <AdminValueRow label={t('adminCoreJobs.rowFailed')} value={String(selectedJob.failed_items ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreJobs.rowProcessed')} value={String(selectedJob.processed_items ?? '—')} />
+                  <AdminValueRow label={t('adminCoreJobs.rowStored')} value={String(selectedJob.stored_items ?? '—')} />
+                  <AdminValueRow label={t('adminCoreJobs.rowFailed')} value={String(selectedJob.failed_items ?? '—')} />
                 </DetailBlock>
               ) : null}
 
               {selectedJob.kind === 'crawl_run' ? (
                 <DetailBlock title={t('adminCoreJobs.detailCrawlTitle')}>
-                  <AdminValueRow label={t('adminCoreJobs.rowServiceCode')} value={selectedJob.service_code || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowJobDescription')} value={selectedJob.job_description || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowTriggerType')} value={selectedJob.trigger_type_display || selectedJob.trigger_type || 'â€”'} />
-                  <AdminValueRow label={t('adminCoreJobs.rowJobId')} value={String(selectedJob.job_id ?? 'â€”')} />
-                  <AdminValueRow label={t('adminCoreJobs.rowTaskId')} value={selectedJob.task_id || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowServiceCode')} value={selectedJob.service_code || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowJobDescription')} value={selectedJob.job_description || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowTriggerType')} value={selectedJob.trigger_type_display || selectedJob.trigger_type || '—'} />
+                  <AdminValueRow label={t('adminCoreJobs.rowJobId')} value={String(selectedJob.job_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreJobs.rowTaskId')} value={selectedJob.task_id || '—'} />
                 </DetailBlock>
               ) : null}
 
