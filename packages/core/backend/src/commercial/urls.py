@@ -19,4 +19,12 @@ urlpatterns = [
 
     # Stripe Webhook (public endpoint)
     path('billing/stripe/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    # License Key Management (License Portal MVP)
+    path('licenses/', views.LicenseKeyListView.as_view(), name='license-key-list'),
+    path('licenses/quota/', views.LicenseKeyQuotaView.as_view(), name='license-key-quota'),
+    path('licenses/status/', views.LicenseKeyStatusView.as_view(), name='license-key-status'),
+    path('licenses/<uuid:pk>/', views.LicenseKeyDetailView.as_view(), name='license-key-detail'),
+    path('licenses/<uuid:pk>/revoke/', views.LicenseKeyRevokeView.as_view(), name='license-key-revoke'),
+    path('licenses/<uuid:pk>/renew/', views.LicenseKeyRenewView.as_view(), name='license-key-renew'),
+    path('licenses/<uuid:pk>/reveal/', views.LicenseKeyRevealView.as_view(), name='license-key-reveal'),
 ]

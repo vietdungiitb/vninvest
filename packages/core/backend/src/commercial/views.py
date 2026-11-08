@@ -21,7 +21,7 @@ from vninvest_core.exceptions import (
 from vninvest_core.pagination import CoreCursorPagination
 
 from .envelope import envelope
-from .models import Invoice, PaymentTransaction, QuotaRecord, Subscription, VNPayIPNLog
+from .models import Invoice, LicenseKey, PaymentTransaction, QuotaRecord, Subscription, VNPayIPNLog
 from .permissions import RequiresTenantPermission
 from .plan_catalog import (
     CANONICAL_PLANS,
@@ -38,10 +38,12 @@ from .schema import (
 )
 from .serializers import (
     InvoiceSerializer,
+    LicenseKeySerializer,
     QuotaRecordSerializer,
     SubscriptionSerializer,
 )
 from .stripe_service import stripe_service
+from .license_service import LicenseService
 from .vnpay_service import VNPayService
 
 logger = logging.getLogger(__name__)
@@ -598,3 +600,162 @@ class StripePortalSessionView(APIView):
                 detail=str(e),
                 code="stripe_error"
             )
+
+# ---------------------------------------------------------------------------
+# License Key Views (License Portal MVP)
+# ---------------------------------------------------------------------------
+
+
+class LicenseKeyListView(generics.ListCreateAPIView):
+    serializer_class = LicenseKeySerializer
+    required_tenant_permissions = ("billing:read",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+
+    def get_queryset(self):
+        tenant = resolve_tenant(self.request)
+        return LicenseKey.objects.filter(tenant=tenant).order_by("-issued_at")
+
+    def perform_create(self, serializer):
+        tenant = resolve_tenant(self.request)
+        active_count = LicenseKey.objects.filter(tenant=tenant, revoked_at__isnull=True).count()
+        plan = getattr(tenant, "subscription", None)
+        plan_code = plan.plan if plan else "free"
+        quota = {"free": 0, "starter": 0, "pro": 5, "enterprise": 50, "custom": 100, "internal": 1000}.get(plan_code, 0)
+        if active_count >= quota:
+            raise ValidationErrorException(detail=f"License key quota exceeded ({active_count}/{quota}). Upgrade plan to issue more keys.")
+
+        from django.utils import timezone
+        from datetime import timedelta
+
+        tier = self.request.data.get("tier", "pro")
+        domain = self.request.data.get("domain_binding", "")
+        dev_email = self.request.data.get("dev_email", "")
+        duration_days = int(self.request.data.get("duration_days", 365))
+
+        plan_tier_map = {
+            "starter": [],
+            "pro": ["pro", "academic"],
+            "enterprise": ["pro", "enterprise", "academic"],
+            "custom": ["pro", "enterprise", "academic"],
+            "internal": ["pro", "enterprise", "academic"],
+        }
+        allowed_tiers = plan_tier_map.get(plan_code, [])
+        if tier not in allowed_tiers:
+            raise ValidationErrorException(detail=f'Tier "{tier}" not allowed for plan "{plan_code}". Upgrade plan.')
+
+        expires_at = timezone.now() + timedelta(days=duration_days)
+
+        from .license_service import LicenseService
+        import os
+        key_path = os.environ.get("LICENSE_PRIVATE_KEY_PATH", "/secrets/license-private.pem")
+        svc = LicenseService(key_path)
+        capabilities = self.request.data.get("capabilities", None)
+        blob = svc.mint(tier=tier, domain=domain, expires_at=expires_at, capabilities=capabilities)
+
+        serializer.save(
+            tenant=tenant,
+            key_blob=blob,
+            tier=tier,
+            domain_binding=domain,
+            expires_at=expires_at,
+            issued_by=self.request.user if hasattr(self.request, "user") else None,
+            metadata={"dev_email": dev_email, "duration_days": duration_days},
+        )
+
+
+class LicenseKeyDetailView(generics.RetrieveAPIView):
+    serializer_class = LicenseKeySerializer
+    required_tenant_permissions = ("billing:read",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        tenant = resolve_tenant(self.request)
+        return LicenseKey.objects.filter(tenant=tenant)
+
+
+class LicenseKeyRevokeView(APIView):
+    required_tenant_permissions = ("billing:write",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+
+    def post(self, request, pk):
+        tenant = resolve_tenant(request)
+        key = get_object_or_404(LicenseKey, id=pk, tenant=tenant)
+        if key.is_revoked:
+            return Response(envelope(data={"message": "Already revoked"}), status=status.HTTP_200_OK)
+        from django.utils import timezone
+        key.revoked_at = timezone.now()
+        key.save(update_fields=["revoked_at"])
+        return Response(envelope(data={"message": "Revoked", "id": str(key.id)}), status=status.HTTP_200_OK)
+
+
+class LicenseKeyRenewView(APIView):
+    required_tenant_permissions = ("billing:write",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+
+    def post(self, request, pk):
+        tenant = resolve_tenant(request)
+        old_key = get_object_or_404(LicenseKey, id=pk, tenant=tenant)
+        if old_key.is_revoked:
+            return Response(envelope(data={"error": "Cannot renew revoked key"}), status=status.HTTP_400_BAD_REQUEST)
+
+        duration_days = int(request.data.get("duration_days", 365))
+        from django.utils import timezone
+        from datetime import timedelta
+        new_expires = timezone.now() + timedelta(days=duration_days)
+
+        from .license_service import LicenseService
+        import os
+        key_path = os.environ.get("LICENSE_PRIVATE_KEY_PATH", "/secrets/license-private.pem")
+        svc = LicenseService(key_path)
+        blob = svc.mint(tier=old_key.tier, domain=old_key.domain_binding, expires_at=new_expires, capabilities=old_key.metadata.get("capabilities"))
+
+        old_key.revoked_at = timezone.now()
+        old_key.save(update_fields=["revoked_at"])
+
+        new_key = LicenseKey.objects.create(
+            tenant=tenant,
+            key_blob=blob,
+            tier=old_key.tier,
+            domain_binding=old_key.domain_binding,
+            expires_at=new_expires,
+            issued_by=request.user if hasattr(request, "user") else None,
+            metadata={**old_key.metadata, "renewed_from": str(old_key.id), "duration_days": duration_days},
+        )
+        return Response(envelope(data={"id": str(new_key.id), "expires_at": new_expires.isoformat(), "message": "Renewed"}), status=status.HTTP_201_CREATED)
+
+
+class LicenseKeyRevealView(APIView):
+    required_tenant_permissions = ("billing:write",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+
+    def get(self, request, pk):
+        tenant = resolve_tenant(request)
+        key = get_object_or_404(LicenseKey, id=pk, tenant=tenant)
+        if key.is_revoked:
+            return Response(envelope(data={"error": "Key is revoked"}), status=status.HTTP_400_BAD_REQUEST)
+        return Response(envelope(data={"id": str(key.id), "key_blob": key.key_blob}), status=status.HTTP_200_OK)
+
+
+class LicenseKeyQuotaView(APIView):
+    required_tenant_permissions = ("billing:read",)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
+
+    def get(self, request):
+        tenant = resolve_tenant(request)
+        active_count = LicenseKey.objects.filter(tenant=tenant, revoked_at__isnull=True).count()
+        plan = getattr(tenant, "subscription", None)
+        plan_code = plan.plan if plan else "free"
+        quota = {"free": 0, "starter": 0, "pro": 5, "enterprise": 50, "custom": 100, "internal": 1000}.get(plan_code, 0)
+        return Response(envelope(data={"used": active_count, "limit": quota, "plan": plan_code}), status=status.HTTP_200_OK)
+
+
+class LicenseKeyStatusView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        blob_hash = request.query_params.get("hash", "")
+        if not blob_hash:
+            return Response(envelope(data={"error": "hash required"}), status=status.HTTP_400_BAD_REQUEST)
+        revoked = LicenseKey.objects.filter(key_blob__contains=blob_hash[:20], revoked_at__isnull=False).exists()
+        return Response(envelope(data={"revoked": revoked}), status=status.HTTP_200_OK)

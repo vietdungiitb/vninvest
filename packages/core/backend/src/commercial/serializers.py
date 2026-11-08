@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Invoice, QuotaHistory, QuotaRecord, Subscription
+from .models import Invoice, LicenseKey, QuotaHistory, QuotaRecord, Subscription
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -65,3 +65,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = ['tenant_id', 'invoice_number', 'invoice_id', 'status', 'amount_due', 'amount',
                   'currency', 'period_start', 'period_end', 'due_date', 'paid_at', 'created_at']
+
+
+class LicenseKeySerializer(serializers.ModelSerializer):
+    tenant_id = serializers.CharField(source='tenant.public_id', read_only=True)
+    is_revoked = serializers.BooleanField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = LicenseKey
+        fields = ['id', 'tenant_id', 'tier', 'domain_binding', 'issued_at',
+                  'expires_at', 'revoked_at', 'is_revoked', 'is_expired', 'metadata']
+        read_only_fields = ['id', 'tenant_id', 'issued_at', 'revoked_at', 'is_revoked', 'is_expired']
