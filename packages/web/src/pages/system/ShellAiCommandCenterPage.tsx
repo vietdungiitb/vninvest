@@ -25,6 +25,7 @@ import {
   AICommandCenterTransport,
 } from "../../components/AICommandCenterForm.js";
 import { createTranslator } from "../../i18n/index.js";
+import { useI18n } from "../../context/LangContext.js";
 
 interface ShellAiCommandCenterPageProps {
   env?: Record<string, unknown>;
@@ -43,14 +44,15 @@ export function ShellAiCommandCenterPage({
   autoLoad = true,
   initialSnapshot = null,
 }: ShellAiCommandCenterPageProps) {
+  const { t } = useI18n();
   const { viewState, handleRefresh } = useCoreShellPageSnapshot({
     env,
     fetchImpl,
     bootstrapLoader,
     autoLoad,
     initialSnapshot: initialSnapshot as null | undefined,
-    fallbackErrorMessage: "Không thể tải snapshot điều hành AI từ core runtime.",
-    refreshNotice: "Đã làm mới snapshot điều hành AI từ core runtime.",
+    fallbackErrorMessage: t("shellAiCommandCenter.fallbackError", { defaultValue: "Không thể tải snapshot điều hành AI từ core runtime." }),
+    refreshNotice: t("shellAiCommandCenter.refreshNotice", { defaultValue: "Đã làm mới snapshot điều hành AI từ core runtime." }),
   });
 
   const {
@@ -70,17 +72,17 @@ export function ShellAiCommandCenterPage({
     {
       key: "show_ai_command_center",
       label: "show_ai_command_center",
-      detail: "Flag chính xác nhận runtime đang mở lane điều hành AI cho shell hiện tại.",
+      detail: t("shellAiCommandCenter.flagCommandCenter", { defaultValue: "Flag chính xác nhận runtime đang mở lane điều hành AI cho shell hiện tại." }),
     },
     {
       key: "show_operations_center",
       label: "show_operations_center",
-      detail: "Cho biết lane SOC có đồng thời bật để phối hợp với control center AI hay không.",
+      detail: t("shellAiCommandCenter.flagOperationsCenter", { defaultValue: "Cho biết lane SOC có đồng thời bật để phối hợp với control center AI hay không." }),
     },
     {
       key: "show_vip_shell",
       label: "show_vip_shell",
-      detail: "Dùng để đối chiếu xem shell AI hiện tại có đang nằm trong build target VIP hay không.",
+      detail: t("shellAiCommandCenter.flagVipShell", { defaultValue: "Dùng để đối chiếu xem shell AI hiện tại có đang nằm trong build target VIP hay không." }),
     },
   ]);
   const aiAbilities = filterAbilitiesBySubject(abilities, "ai");
@@ -91,14 +93,14 @@ export function ShellAiCommandCenterPage({
   const transport: AICommandCenterTransport = {
     getConfig: async () => {
       const impl = fetchRef.current;
-      if (!impl) throw new Error("Không thể tải cấu hình AI từ core runtime.");
+      if (!impl) throw new Error(t("shellAiCommandCenter.loadConfigError", { defaultValue: "Không thể tải cấu hình AI từ core runtime." }));
       const res = await impl("/core/v1/workspace/ai-command-center/");
-      if (!res.ok) throw new Error("Không thể tải cấu hình AI từ core runtime.");
+      if (!res.ok) throw new Error(t("shellAiCommandCenter.loadConfigError", { defaultValue: "Không thể tải cấu hình AI từ core runtime." }));
       return (await res.json()) as AISettings;
     },
     updateConfig: async (payload) => {
       const impl = fetchRef.current;
-      if (!impl) throw new Error("Lỗi kết nối khi lưu cấu hình.");
+      if (!impl) throw new Error(t("shellAiCommandCenter.saveConnectError", { defaultValue: "Lỗi kết nối khi lưu cấu hình." }));
       const res = await impl("/core/v1/workspace/ai-command-center/", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -106,13 +108,13 @@ export function ShellAiCommandCenterPage({
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Lỗi khi lưu cấu hình AI.");
+        throw new Error(errorData.message || t("shellAiCommandCenter.saveConfigError", { defaultValue: "Lỗi khi lưu cấu hình AI." }));
       }
       return (await res.json()) as AISettings;
     },
     testConnection: async (payload) => {
       const impl = fetchRef.current;
-      if (!impl) throw new Error("Lỗi mạng khi thử nghiệm kết nối.");
+      if (!impl) throw new Error(t("shellAiCommandCenter.testNetworkError", { defaultValue: "Lỗi mạng khi thử nghiệm kết nối." }));
       const res = await impl("/core/v1/workspace/ai-command-center/test-connection/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,14 +122,14 @@ export function ShellAiCommandCenterPage({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        return { ok: false, message: data.message || "Kết nối thất bại." };
+        return { ok: false, message: data.message || t("shellAiCommandCenter.testFailed", { defaultValue: "Kết nối thất bại." }) };
       }
-      return { ok: true, message: data.message || "Kết nối thành công!", ...data };
+      return { ok: true, message: data.message || t("shellAiCommandCenter.testSuccess", { defaultValue: "Kết nối thành công!" }), ...data };
     },
   };
 
   const metrics = [
-    renderShellMetric("Build target", buildMeta?.target || capabilities?.build?.target || "n/a"),
+    renderShellMetric(t("shellAiCommandCenter.metricBuildTarget", { defaultValue: "Build target" }), buildMeta?.target || capabilities?.build?.target || "n/a"),
     renderShellMetric("AI Provider", "…"),
     renderShellMetric("AI Model", "…"),
     renderShellMetric("Runtime Ready", "…"),
@@ -136,16 +138,16 @@ export function ShellAiCommandCenterPage({
   const summaryCards = [
     renderSummaryCard({
       key: "ai-session",
-      title: "Operator và session hiện tại",
+      title: t("shellAiCommandCenter.sessionTitle", { defaultValue: "Operator và session hiện tại" }),
       rows: [
-        { label: "Username", value: identity.username || session?.principal?.username || "Chưa có" },
+        { label: "Username", value: identity.username || session?.principal?.username || t("shellAiCommandCenter.empty", { defaultValue: "Chưa có" }) },
         { label: "Plan", value: capabilities?.build?.plan || "n/a" },
-        { label: "Session ID", value: session?.session_id || "Chưa có" },
+        { label: "Session ID", value: session?.session_id || t("shellAiCommandCenter.empty", { defaultValue: "Chưa có" }) },
       ],
     }),
     renderSummaryCard({
       key: "ai-runtime",
-      title: "Core runtime và adapter",
+      title: t("shellAiCommandCenter.runtimeTitle", { defaultValue: "Core runtime và adapter" }),
       rows: [
         { label: "Service", value: health?.service || "core-api" },
         { label: "Environment", value: health?.environment || "foundation" },
@@ -156,25 +158,25 @@ export function ShellAiCommandCenterPage({
 
   const groupFlags = buildVisibilityFlags(visibleGroups, {
     activeItem: "system",
-    activeDetail: "Đây là group gating chính chứa route AI command center.",
-    visibleDetail: "Group này vẫn đi cùng session AI hiện tại.",
+    activeDetail: t("shellAiCommandCenter.groupActiveDetail", { defaultValue: "Đây là group gating chính chứa route AI command center." }),
+    visibleDetail: t("shellAiCommandCenter.groupVisibleDetail", { defaultValue: "Group này vẫn đi cùng session AI hiện tại." }),
   });
 
   const routeFlags = buildVisibilityFlags(aiRoutes, {
     activeItem: "ai-command-center",
-    activeDetail: "Đây là route AI command center chính đang được shell mở cho session hiện tại.",
-    visibleDetail: "Route này đang được runtime cho phép xuất hiện trong shell hiện tại.",
+    activeDetail: t("shellAiCommandCenter.routeActiveDetail", { defaultValue: "Đây là route AI command center chính đang được shell mở cho session hiện tại." }),
+    visibleDetail: t("shellAiCommandCenter.routeVisibleDetail", { defaultValue: "Route này đang được runtime cho phép xuất hiện trong shell hiện tại." }),
   });
 
   return (
     <ShellPageChrome
-      eyebrow="Core AI command center"
-      title="Trung tâm điều hành AI shell"
-      description="Trang này cho phép cấu hình Nhà cung cấp AI và Mô hình AI tương ứng trực tiếp cho core runtime, kết nối đồng bộ an toàn qua SaaS-native endpoints."
+      eyebrow={t("shellAiCommandCenter.eyebrow", { defaultValue: "Core AI command center" })}
+      title={t("shellAiCommandCenter.title", { defaultValue: "Trung tâm điều hành AI shell" })}
+      description={t("shellAiCommandCenter.description", { defaultValue: "Trang này cho phép cấu hình Nhà cung cấp AI và Mô hình AI tương ứng trực tiếp cho core runtime, kết nối đồng bộ an toàn qua SaaS-native endpoints." })}
       badge={(
         <div className={`${styles.heroBadge}`}>
           <span className={`${styles.statusDot}`} />
-          {viewState.loading ? "Đang đồng bộ..." : "Sẵn sàng hoạt động"}
+          {viewState.loading ? t("shellAiCommandCenter.syncing", { defaultValue: "Đang đồng bộ..." }) : t("shellAiCommandCenter.ready", { defaultValue: "Sẵn sàng hoạt động" })}
         </div>
       )}
       metrics={metrics}
@@ -184,9 +186,9 @@ export function ShellAiCommandCenterPage({
       <section className={`${styles.bodyGrid}`}>
         <div className={`${styles.stack}`}>
           <ShellPanel
-            title="Cấu hình AI Runtime"
-            subtitle="Thiết lập nhà cung cấp AI, lựa chọn mô hình và API key an toàn."
-            actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading, label: "Làm mới form" })}
+            title={t("shellAiCommandCenter.configTitle", { defaultValue: "Cấu hình AI Runtime" })}
+            subtitle={t("shellAiCommandCenter.configSubtitle", { defaultValue: "Thiết lập nhà cung cấp AI, lựa chọn mô hình và API key an toàn." })}
+            actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading, label: t("shellAiCommandCenter.refreshForm", { defaultValue: "Làm mới form" }) })}
           >
             {/* F8: shared form — 0 field drift vs AICommandCenterPage */}
             <AICommandCenterForm
@@ -200,8 +202,8 @@ export function ShellAiCommandCenterPage({
           </ShellPanel>
 
           <ShellPanel
-            title="Snapshot operator và runtime"
-            subtitle="Đọc nhanh session, build meta và runtime health trước khi nối các control AI thật vào page này."
+            title={t("shellAiCommandCenter.snapshotTitle", { defaultValue: "Snapshot operator và runtime" })}
+            subtitle={t("shellAiCommandCenter.snapshotSubtitle", { defaultValue: "Đọc nhanh session, build meta và runtime health trước khi nối các control AI thật vào page này." })}
           >
             <section className={`${styles.summaryGrid}`}>
               {summaryCards}
@@ -210,21 +212,21 @@ export function ShellAiCommandCenterPage({
         </div>
 
         <ShellPanel
-          title="Surface flags và AI abilities"
-          subtitle="Giữ cùng một viewport cho auditor đọc tình trạng flag AI, route exposure và quyền liên quan."
+          title={t("shellAiCommandCenter.flagsTitle", { defaultValue: "Surface flags và AI abilities" })}
+          subtitle={t("shellAiCommandCenter.flagsSubtitle", { defaultValue: "Giữ cùng một viewport cho auditor đọc tình trạng flag AI, route exposure và quyền liên quan." })}
           actions={renderHealthStatusPill(health)}
         >
           <div key="ai-groups-block">
-            <h3 className={`${styles.itemTitle}`}>AI Groups & Routes</h3>
-            {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "ai-groups")}
+            <h3 className={`${styles.itemTitle}`}>{t("shellAiCommandCenter.aiGroupsRoutes", { defaultValue: "AI Groups & Routes" })}</h3>
+            {renderFlagList(groupFlags, t("shellAiCommandCenter.noGroups", { defaultValue: "Session hiện chưa mở group điều hướng nào." }), "ai-groups")}
             <div className="h-2.5" />
-            {renderFlagList(routeFlags, "Runtime hiện chưa expose route AI nào.", "ai-routes")}
+            {renderFlagList(routeFlags, t("shellAiCommandCenter.noAiRoutes", { defaultValue: "Runtime hiện chưa expose route AI nào." }), "ai-routes")}
           </div>
-          {renderFlagList(aiFlags, "Runtime chưa công bố surface flag AI nào.", "ai-flags")}
+          {renderFlagList(aiFlags, t("shellAiCommandCenter.noAiFlags", { defaultValue: "Runtime chưa công bố surface flag AI nào." }), "ai-flags")}
           {renderBuildMetaCard({ key: "ai-build-meta", buildMeta })}
           {renderAbilityList({
             abilities: aiAbilities,
-            emptyText: "Runtime hiện chưa trả về ability AI lane nào cho route này.",
+            emptyText: t("shellAiCommandCenter.noAbilities", { defaultValue: "Runtime hiện chưa trả về ability AI lane nào cho route này." }),
             keyPrefix: "ai-ability",
           })}
         </ShellPanel>
