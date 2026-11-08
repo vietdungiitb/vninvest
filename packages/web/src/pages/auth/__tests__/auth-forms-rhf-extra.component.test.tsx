@@ -12,10 +12,9 @@ vi.mock("../../../adapters/coreApiAdapter.js", () => ({
 vi.mock("../../../components/auth/TurnstileWidget.js", () => ({
   TurnstileWidget: ({ onVerify }: { onVerify?: (t: string) => void }) => {
     const { useEffect } = require("react");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
       onVerify?.("test-token");
-    }, []);
+    }, [onVerify]);
     return null;
   },
 }));
