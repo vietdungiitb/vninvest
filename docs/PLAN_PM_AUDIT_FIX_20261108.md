@@ -124,16 +124,16 @@ git commit -m "fix(partner): remove duplicate include, 110 partner/partner route
 - Modify: `packages/core/backend/src/market_serving/native_views.py:515-527` (doc only, no new field)
 
 **Interfaces:**
-- Consumes: DepthChart returns `{is_mock: true, data_quality: 'estimated', source: 'synthetic_from_snapshot', note: 'UOC TINH ...'}` (`native_views.py:522-526`). **No** `estimated`/`delta_seconds` field exists — do not add it. Badge reads `is_mock && data_quality === 'estimated'`.
+- Consumes: DepthChart returns `{is_mock: true, data_quality: 'estimated', source: 'synthetic_from_snapshot', note: 'UOC TINH ...'}` (`native_views.py:522-526`). **No** `estimated`/`delta_seconds` field exists — do not add it. Code FE chỉ đọc `orderBook?.is_mock` (`StockOrderBookWidget.jsx:153`) — **không đọc `data_quality`** (Interfaces cũ ghi cả `data_quality` là sai).
 - Produces: `StockOrderBookWidget.jsx:153-161` badge hiển thị khi `is_mock:true`, ẩn khi `false` (đã có — task là verify + thêm test render, không tính là red→green mới).
 
 **Acceptance (Given/When/Then):** Given `useOrderBook` trả `is_mock:true`, When `StockOrderBookWidget` render, Then badge hiển thị (đã có tại `:153-161`); When `is_mock:false`, không badge. Nếu badge đã đủ thì task kết thúc ở verify-only + component test, không sửa BE.
 
 - [ ] **Step 1: Write failing render test (new)**
 ```js
-render(<StockOrderBookWidget data={{ is_mock: true }} />); expect(screen.getByText(/Estimates/)).toBeTruthy(); // fails if badge missing
+render(<StockOrderBookWidget orderBook={{ is_mock: true }} />); expect(screen.getByText(/Dữ liệu ước tính|workstation\.orderBook\.estimatedBadge/)).toBeTruthy(); // fails if badge missing
 ```
-- [ ] **Step 2: Run (FAIL or PASS?)** `npm run test -- StockOrderBookWidget.estimated --run` — EXPECT: PASS already (badge tồn tại). Nếu PASS thì ghi verify-only, không sửa code; nếu FAIL thì sửa `StockOrderBookWidget.jsx` (tokens `--soc-text-muted`, `role="note"` + `aria-label`, i18n `t('chart.depth.estimated', { defaultValue: 'Estimates — not live book' })`, AA ≥ 4.5:1, screenshot 360/768/1280)
+- [ ] **Step 2: Run (FAIL or PASS?)** `npm run test -- StockOrderBookWidget.estimated --run` — EXPECT: PASS already (badge tồn tại tại `:153-161`). Nếu PASS thì ghi verify-only, không sửa code; nếu FAIL thì sửa `StockOrderBookWidget.jsx` (tính năng hiện có: `t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" })` tại `:161` + tooltip `t("workstation.orderBook.estimatedTooltip", ...)` tại `:158`, `role="note"` + badge hiện khi `orderBook?.is_mock`, AA ≥ 4.5:1, screenshot 360/768/1280)
 - [ ] **Step 3: Record external-widget [X] note** in `docs/evidence/w0-2-depth-external.md` (file vendor cần đọc là gì) — **CHƯA XÁC MINH** đến khi đọc vendor file.
 - [ ] **Step 4: Commit (only if code changed)** `fix(chart): depth estimated badge everywhere`
 
