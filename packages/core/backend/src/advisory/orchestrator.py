@@ -719,15 +719,15 @@ You are the Lead Analyst. Review and synthesize the following sub-agent inputs f
 
 You must respond strictly as a JSON object (without markdown blocks like ```json ... ```).
 The output JSON keys must be:
-- "signal": exactly one of "BUY", "SELL", "HOLD". No other text in this field.
+- "posture": exactly one of "BULLISH", "BEARISH", "NEUTRAL". No other text in this field. (Technical bias only — not an investment recommendation.)
 - "confidence_score": a number between 0 and 1 (1.0 = maximum certainty). No unit, no percent sign.
-- "target_price": a number (VND) or null when the data does not support a target.
+- "levels": an object with optional "support", "resistance" (numbers in VND) or null when the data does not support a level. No target price or forecast.
 - "risk_level": exactly one of "low", "medium", "high".
-- "recommendation": Final calibrated action, target parameters, risks, and guidelines.
+- "recommendation": Final technical note, risk parameters, and guidelines (technical only — not buy/sell advice).
 - "summary": A concise, final summary (under 100 words).
-- "rationale": 2-4 sentences explaining why the signal follows from the inputs above.
+- "rationale": 2-4 sentences explaining why the posture follows from the inputs above.
 
-Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
+Important: This is technical analysis only. Do not provide investment advice, buy/sell/hold recommendations, or price targets. all text in {"Vietnamese" if language == 'vi' else "English"}.
 """
         
         # Call Synthesis Agent (R2.2: qua AiClient — adapter tự quyết
@@ -842,16 +842,19 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
             res_data.get('usage')
         )
 
-        # R0.2 — signal là enum nghiêm ngặt, không đoán. Thứ tự: ưu tiên
-        # `signal` do model trả, fallback sang `recommendation` (mô hình cũ
-        # chỉ trả key này), cuối cùng mới fail-closed.
-        raw_signal = parsed_json.get('signal')
+        # R0.2 — posture là enum nghiêm ngặt (technical bias only, không khuyến nghị).
+        # parse posture mới, fallback sang signal cũ (mô hình cũ chỉ trả key này)
+        # để không phá dữ liệu cũ.
+        raw_posture = parsed_json.get('posture', parsed_json.get('signal'))
         raw_recommendation = parsed_json.get('recommendation')
-        signal = normalize_signal(raw_signal)
+        signal = normalize_signal(raw_posture)  # reuse enum mapping for posture
         if signal == SIGNAL_UNKNOWN:
             signal = normalize_signal(raw_recommendation)
 
-        target_price = _coerce_float(parsed_json.get('target_price'))
+        _levels = parsed_json.get('levels') or {}
+        target_price = _coerce_float(_levels.get('support') if isinstance(_levels, dict) else None)
+        resistance = _coerce_float(_levels.get('resistance') if isinstance(_levels, dict) else None)
+
         confidence = normalize_confidence(
             parsed_json.get('confidence_score', parsed_json.get('confidence'))
         )
@@ -875,10 +878,11 @@ Please write all text in {"Vietnamese" if language == 'vi' else "English"}.
             'recommendation': raw_recommendation or "",
             'summary': parsed_json.get('summary') or "",
             'signal': signal,
-            'signal_raw': raw_signal or '',
+            'signal_raw': (raw_posture or '') if isinstance(raw_posture, str) else '',
             'confidence_score': confidence,
             'rationale': parsed_json.get('rationale') or '',
             'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
             'target_price': target_price,
+            'resistance': resistance,
         }
 
