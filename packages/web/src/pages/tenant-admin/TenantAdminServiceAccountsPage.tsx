@@ -2,6 +2,7 @@
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
@@ -125,7 +126,7 @@ export function TenantAdminServiceAccountsPage({
         title={t("tenantServiceAccounts.title")}
         description={t("common.loading")}
       >
-        <div className={`${styles.panel}`}>{t("common.loading")}</div>
+        <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
   }
