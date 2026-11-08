@@ -109,7 +109,7 @@ function useTransactions({ portfolioId, t }: { portfolioId?: string | number; t:
       setTransactions((res?.results ?? []) as Transaction[]);
     } catch (err: unknown) {
       if (!mountedRef.current || requestId !== requestIdRef.current) return;
-      setError(err && typeof err === 'object' && 'message' in err ? (err as Error).message : t("transactions.loadError", { defaultValue: "Không thể tải giao dịch." }));
+      setError(err && typeof err === 'object' && 'message' in err ? (err as Error).message : t("transactionsPage.loadError", { defaultValue: "Không thể tải giao dịch." }));
     } finally {
       if (mountedRef.current && requestId === requestIdRef.current) setLoading(false);
     }
@@ -174,7 +174,7 @@ export function TransactionsPage({ portfolioId: portfolioIdProp, className = "" 
       setForm((f) => ({ ...f, symbol: "", quantity: "", price: "", fee: "0", tax: "0", note: "" }));
       await reload();
     } catch (err: unknown) {
-      setCreateError(err && typeof err === 'object' && 'message' in err ? (err as Error).message : t("transactions.createError", { defaultValue: "Không thể tạo giao dịch." }));
+      setCreateError(err && typeof err === 'object' && 'message' in err ? (err as Error).message : t("transactionsPage.createError", { defaultValue: "Không thể tạo giao dịch." }));
     } finally {
       setCreating(false);
     }
@@ -188,16 +188,16 @@ export function TransactionsPage({ portfolioId: portfolioIdProp, className = "" 
 
   if (!portfolioId && portfolios.length === 0) {
     return e("div", pageProps,
-      e(ShellEmptyState, { description: t("transactions.noPortfolios", { defaultValue: "Chưa có danh mục nào. Hãy tạo danh mục trước." }) }),
-      e("a", { href: "/portfolios", className: "core-link" }, t("transactions.goToPortfolios", { defaultValue: "Đi tới Danh mục" }))
+      e(ShellEmptyState, { description: t("transactionsPage.noPortfolios", { defaultValue: "Chưa có danh mục nào. Hãy tạo danh mục trước." }) }),
+      e("a", { href: "/portfolios", className: "core-link" }, t("transactionsPage.goToPortfolios", { defaultValue: "Đi tới Danh mục" }))
     );
   }
 
   return e("div", pageProps,
     e("header", { className: "core-page-header" },
-      e("h1", null, t("transactions.title", { defaultValue: "Giao dịch" })),
+      e("h1", null, t("transactionsPage.title", { defaultValue: "Giao dịch" })),
       portfolios.length > 1
-        ? e("label", null, t("transactions.portfolioLabel", { defaultValue: "Danh mục: " }),
+        ? e("label", null, t("transactionsPage.portfolioLabel", { defaultValue: "Danh mục: " }),
             e("select", {
               name: "portfolioId",
               value: String(portfolioId ?? ""),
@@ -207,39 +207,39 @@ export function TransactionsPage({ portfolioId: portfolioIdProp, className = "" 
         : null
     ),
     !portfolioId
-      ? e("p", { className: "core-empty" }, t("transactions.selectPortfolio", { defaultValue: "Vui lòng chọn danh mục." }))
+      ? e("p", { className: "core-empty" }, t("transactionsPage.selectPortfolio", { defaultValue: "Vui lòng chọn danh mục." }))
       : e("form", { className: "core-create-form", onSubmit: handleCreate },
-          e("h2", null, t("transactions.createTitle", { defaultValue: "Thêm giao dịch mới" })),
-          e("label", null, t("transactions.symbol", { defaultValue: "Mã CP:" }), e("input", { name: "symbol", type: "text", value: form.symbol, onChange: handleFormChange, maxLength: 10, required: true })),
-          e("label", null, t("transactions.side", { defaultValue: "Chiều:" }),
+          e("h2", null, t("transactionsPage.createTitle", { defaultValue: "Thêm giao dịch mới" })),
+          e("label", null, t("transactionsPage.symbol", { defaultValue: "Mã CP:" }), e("input", { name: "symbol", type: "text", value: form.symbol, onChange: handleFormChange, maxLength: 10, required: true })),
+          e("label", null, t("transactionsPage.side", { defaultValue: "Chiều:" }),
             e("select", { name: "transaction_type", value: form.transaction_type, onChange: handleFormChange },
-              e("option", { value: "BUY" }, t("transactions.buy", { defaultValue: "Mua" })),
-              e("option", { value: "SELL" }, t("transactions.sell", { defaultValue: "Bán" })),
-              e("option", { value: "DIVIDEND" }, t("transactions.dividend", { defaultValue: "Cổ tức tiền mặt" }))
+              e("option", { value: "BUY" }, t("transactionsPage.buy", { defaultValue: "Mua" })),
+              e("option", { value: "SELL" }, t("transactionsPage.sell", { defaultValue: "Bán" })),
+              e("option", { value: "DIVIDEND" }, t("transactionsPage.dividend", { defaultValue: "Cổ tức tiền mặt" }))
             )
           ),
-          e("label", null, t("transactions.quantity", { defaultValue: "Số lượng:" }), e("input", { name: "quantity", type: "number", min: "1", step: "1", value: form.quantity, onChange: handleFormChange, required: true })),
-          e("label", null, t("transactions.price", { defaultValue: "Giá:" }), e("input", { name: "price", type: "number", min: "0", step: "0.01", value: form.price, onChange: handleFormChange, required: true })),
-          e("label", null, t("transactions.fee", { defaultValue: "Phí:" }), e("input", { name: "fee", type: "number", min: "0", step: "0.01", value: form.fee, onChange: handleFormChange })),
-          e("label", null, t("transactions.tax", { defaultValue: "Thuế:" }), e("input", { name: "tax", type: "number", min: "0", step: "0.01", value: form.tax, onChange: handleFormChange })),
-          e("label", null, t("transactions.date", { defaultValue: "Ngày GD:" }), e("input", { name: "date", type: "date", value: form.date, onChange: handleFormChange, required: true })),
-          e("label", null, t("transactions.note", { defaultValue: "Ghi chú:" }), e("input", { name: "note", type: "text", value: form.note, onChange: handleFormChange, maxLength: 255 })),
-          e("button", { type: "submit", disabled: creating }, creating ? t("transactions.saving", { defaultValue: "Đang lưu..." }) : t("transactions.create", { defaultValue: "Thêm giao dịch" })),
+          e("label", null, t("transactionsPage.quantity", { defaultValue: "Số lượng:" }), e("input", { name: "quantity", type: "number", min: "1", step: "1", value: form.quantity, onChange: handleFormChange, required: true })),
+          e("label", null, t("transactionsPage.price", { defaultValue: "Giá:" }), e("input", { name: "price", type: "number", min: "0", step: "0.01", value: form.price, onChange: handleFormChange, required: true })),
+          e("label", null, t("transactionsPage.fee", { defaultValue: "Phí:" }), e("input", { name: "fee", type: "number", min: "0", step: "0.01", value: form.fee, onChange: handleFormChange })),
+          e("label", null, t("transactionsPage.tax", { defaultValue: "Thuế:" }), e("input", { name: "tax", type: "number", min: "0", step: "0.01", value: form.tax, onChange: handleFormChange })),
+          e("label", null, t("transactionsPage.date", { defaultValue: "Ngày GD:" }), e("input", { name: "date", type: "date", value: form.date, onChange: handleFormChange, required: true })),
+          e("label", null, t("transactionsPage.note", { defaultValue: "Ghi chú:" }), e("input", { name: "note", type: "text", value: form.note, onChange: handleFormChange, maxLength: 255 })),
+          e("button", { type: "submit", disabled: creating }, creating ? t("transactionsPage.saving", { defaultValue: "Đang lưu..." }) : t("transactionsPage.create", { defaultValue: "Thêm giao dịch" })),
           createError ? e("p", { className: "core-error" }, createError) : null
         ),
     loading ? e(ShellSkeleton, { variant: "table-row", count: 3 }) : null,
     error ? e("p", { className: "core-error" }, error) : null,
-    (!loading && !error && transactions.length === 0 && portfolioId) ? e(ShellEmptyState, { description: t("transactions.empty", { defaultValue: "Chưa có giao dịch nào." }) }) : null,
+    (!loading && !error && transactions.length === 0 && portfolioId) ? e(ShellEmptyState, { description: t("transactionsPage.empty", { defaultValue: "Chưa có giao dịch nào." }) }) : null,
     (!loading && transactions.length > 0) ? e("table", { className: "core-transactions-table" },
       e("thead", null, e("tr", null,
-        e("th", { scope: "col" }, t("transactions.colSymbol", { defaultValue: "Mã CP" })), e("th", { scope: "col" }, t("transactions.colSide", { defaultValue: "Chiều" })), e("th", { scope: "col" }, t("transactions.colQuantity", { defaultValue: "Số lượng" })),
-        e("th", { scope: "col" }, t("transactions.colPrice", { defaultValue: "Giá" })), e("th", { scope: "col" }, t("transactions.colFee", { defaultValue: "Phí" })), e("th", { scope: "col" }, t("transactions.colTax", { defaultValue: "Thuế" })),
-        e("th", { scope: "col" }, t("transactions.colDate", { defaultValue: "Ngày GD" })), e("th", { scope: "col" }, t("transactions.colNote", { defaultValue: "Ghi chú" }))
+        e("th", { scope: "col" }, t("transactionsPage.colSymbol", { defaultValue: "Mã CP" })), e("th", { scope: "col" }, t("transactionsPage.colSide", { defaultValue: "Chiều" })), e("th", { scope: "col" }, t("transactionsPage.colQuantity", { defaultValue: "Số lượng" })),
+        e("th", { scope: "col" }, t("transactionsPage.colPrice", { defaultValue: "Giá" })), e("th", { scope: "col" }, t("transactionsPage.colFee", { defaultValue: "Phí" })), e("th", { scope: "col" }, t("transactionsPage.colTax", { defaultValue: "Thuế" })),
+        e("th", { scope: "col" }, t("transactionsPage.colDate", { defaultValue: "Ngày GD" })), e("th", { scope: "col" }, t("transactionsPage.colNote", { defaultValue: "Ghi chú" }))
       )),
       e("tbody", null, transactions.map((row: Transaction) =>
         e("tr", { key: row.id, className: "core-tx-row core-side-" + row.transaction_type },
           e("td", null, row.symbol),
-          e("td", null, row.transaction_type === "BUY" ? t("transactions.buy", { defaultValue: "Mua" }) : row.transaction_type === "SELL" ? t("transactions.sell", { defaultValue: "Bán" }) : t("transactions.dividendShort", { defaultValue: "Cổ tức" })),
+          e("td", null, row.transaction_type === "BUY" ? t("transactionsPage.buy", { defaultValue: "Mua" }) : row.transaction_type === "SELL" ? t("transactionsPage.sell", { defaultValue: "Bán" }) : t("transactionsPage.dividendShort", { defaultValue: "Cổ tức" })),
           e("td", null, Number(row.quantity).toLocaleString("vi-VN")),
           e("td", null, Number(row.price).toLocaleString("vi-VN")),
           e("td", null, Number(row.fee ?? 0).toLocaleString("vi-VN")),

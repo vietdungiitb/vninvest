@@ -7535,7 +7535,7 @@ aiUsageAnalytics: 'AI Usage',
     role_vip_admin: 'VIP Administrator',
     role_vip_superuser: 'VIP Superuser',
   },
-  transactions: {
+  transactionsPage: {
     loadError: 'Could not load transactions.',
     createError: 'Could not create a transaction.',
     noPortfolios: 'No portfolios yet. Create a portfolio first.',

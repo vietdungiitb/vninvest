@@ -7567,7 +7567,7 @@ noPermission: 'Bạn không có quyền truy cập trang này.',
     role_vip_admin: 'Quản trị viên VIP',
     role_vip_superuser: 'Siêu quản trị VIP',
   },
-  transactions: {
+  transactionsPage: {
     loadError: 'Không thể tải giao dịch.',
     createError: 'Không thể tạo giao dịch.',
     noPortfolios: 'Chưa có danh mục nào. Hãy tạo danh mục trước.',
