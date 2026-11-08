@@ -2,6 +2,7 @@ import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { ShellPageChrome, ShellPanel, ShellField } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { useI18n } from "../../context/LangContext.js";
 import { PLAN_OPTIONS, VIP_TO_CANONICAL, type VipPlan } from "../../constants/planCatalog.js";
 const BILLING_CUSTOM_STYLES = `
@@ -365,9 +366,8 @@ export function BillingCenterPage() {
         title={t('commercial.billingCenter.titleShort')}
         description={t('commercial.billingCenter.loading')}
       >
-        <div style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
-          {t('commercial.billingCenter.loading')}
-        </div>
+        <ShellSkeleton variant="metric" count={4} />
+        <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
   }
