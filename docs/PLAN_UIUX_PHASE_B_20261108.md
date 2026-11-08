@@ -61,9 +61,11 @@ Commit đã xong trước plan này (không tính lại):
 
 ---
 
-### Task 1 — B1 `uiux-page-error-boundary` (M) — tổng quát hoá primitive + wrapper ở layout
+### Task 1 — B1 `uiux-page-error-boundary` (M) — ĐÃ LÀM (giữ)
 
-**Files:**
+> **Trạng thái 2026-11-08:** ĐÃ LÀM ở `485b1d06a` — `PageErrorBoundary.tsx:28-53` không còn log `"[StockDetailPage]"`, không CSS `sdp-*`, copy qua caller; `FullLayout.tsx:47-54,114` đã wrap `Outlet` + `key=pathname` + focus `#main-content`; test `page-error-boundary.component.test.tsx:7-40` tồn tại. Không re-implement; chỉ bổ sung test reset/`preventScroll`/EN nếu cần (tính năng bổ sung, không thay Task này).
+
+**Files (đã làm):**
 - Modify: `packages/web/src/components/PageErrorBoundary.tsx`
 - Modify: `packages/web/src/layouts/full/FullLayout.tsx:89-103`
 - Test: `packages/web/src/components/__tests__/page-error-boundary.component.test.tsx` (new)
@@ -108,9 +110,26 @@ git commit -m "feat(uiux): B1 uiux-page-error-boundary - generalize primitive + 
 
 ### Task 2 — B2 `uiux-states-top12` (M) — bổ states thiếu cho 12 route ưu tiên
 
+> **Rev. 2026-11-08 (audit OBJ-3):** bảng 12 route → file → trạng thái → việc còn lại. Test đại diện chọn route **thiếu** skeleton (Billing), không chọn Dashboard đã có `LoadingSkeleton`.
+
+| # | Route | File | Trạng thái hiện tại (file:line) | Việc còn lại |
+|---|---|---|---|---|
+| 1 | `/dashboard` | `packages/web/src/pages/DashboardPage.tsx` | `LoadingSkeleton` local `:87-91`, `showSkeleton` `:289` — đã có skeleton từng slot `:346-347` | Bổ empty/error hiển thị nếu thiếu |
+| 2 | `/stocks/:symbol` | `packages/web/src/pages/StockDetailPage.tsx` | Empty `:237-248`, error `:250-270` — đã có | Không đổi; giữ |
+| 3 | `/alert-center` | `packages/web/src/pages/AlertCenterPage.tsx` | `ShellSkeleton` `:653` + empty/error — đã có | Không đổi; giữ |
+| 4 | `/screener` | `packages/web/src/pages/ScreenerPage.tsx` | Skeleton `:596-603` + empty `:604-610` + error `:558-571` — đã có | Không đổi; giữ |
+| 5 | `/portfolios` (overview) | `packages/web/src/pages/portfolio/PortfolioOverviewPage.tsx` | Chưa đo skeleton/empty/error trong plan gốc — cần đọc thực tế ở mục này | Đọc + bổ nếu thiếu |
+| 6 | `/portfolios/manage` | `packages/web/src/pages/PortfoliosPage.tsx` | Error/empty branches `:331-367` (theo code mới) | Đọc lại, bổ skeleton nếu thiếu |
+| 7 | `/settings` | `packages/web/src/pages/UserSettingsPage.tsx` | loading `:60-76` manual `setLoading`, chưa dùng `ShellSkeleton` | Thay text loading bằng `ShellSkeleton` |
+| 8 | `/operations-center` | `packages/web/src/pages/admin/ShellOperationsCenterPage.tsx` | Lazy panel + `Suspense` `:7-15,52-75` (đọc code khi implement) | Đọc + bổ nếu thiếu |
+| 9 | `/admin/tenants` | `packages/web/src/pages/admin/AdminCoreTenantsPage.tsx` | Admin kit `AdminPanel`/`AdminEmptyState` | Đọc + bổ skeleton/error |
+| 10 | `/commercial/billing` | `packages/web/src/pages/commercial/BillingCenterPage.tsx` | Text loading `:362-372` (không skeleton) | Thay text loading bằng `ShellSkeleton` |
+| 11 | `/ai-advisory` | `packages/web/src/pages/signals/WhaleAdvisoryPage.tsx` | `pageLoading` `:166`, grep `Skeleton` = 0 hit | Thêm `ShellSkeleton` |
+| 12 | `/watchlist` | `packages/web/src/pages/WatchlistPage.tsx` | Cần đọc thực tế (Watchlist provider + workspace) | Đọc + bổ nếu thiếu |
+
 **Files:**
-- Modify (đọc trước, sửa tối thiểu): `src/pages/DashboardPage.tsx`, `src/pages/StockDetailPage.tsx`, `src/pages/AlertCenterPage.tsx`, `src/pages/ScreenerPage.tsx`, `src/pages/PortfoliosPage.tsx`, `src/pages/UserSettingsPage.tsx`, `src/pages/admin/ShellOperationsCenterPage.tsx`, `src/pages/admin/AdminCoreTenantsPage.tsx`, `src/pages/commercial/BillingCenterPage.tsx`, `src/pages/signals/WhaleAdvisoryPage.tsx`
-- Test: `src/pages/__tests__/uiux-states-top12.component.test.tsx` (new; đại diện 1 route, không sửa layout khi có dữ liệu)
+- Modify (theo bảng trên, sửa tối thiểu từng file): `src/pages/DashboardPage.tsx`, `src/pages/StockDetailPage.tsx`, `src/pages/AlertCenterPage.tsx`, `src/pages/ScreenerPage.tsx`, `src/pages/PortfoliosPage.tsx`, `src/pages/portfolio/PortfolioOverviewPage.tsx`, `src/pages/WatchlistPage.tsx`, `src/pages/UserSettingsPage.tsx`, `src/pages/admin/ShellOperationsCenterPage.tsx`, `src/pages/admin/AdminCoreTenantsPage.tsx`, `src/pages/commercial/BillingCenterPage.tsx`, `src/pages/signals/WhaleAdvisoryPage.tsx`
+- Test: `src/pages/__tests__/uiux-states-top12.component.test.tsx` (new; đại diện **BillingCenter** — route thiếu skeleton, không chọn Dashboard đã có)
 
 **Interfaces:**
 - Consumes: `ShellSkeleton`, `ShellEmptyState`, `PageErrorBoundary` (Task 1).
@@ -134,7 +153,7 @@ git commit -m "feat(uiux): B2 uiux-states-top12 - loading/empty/error for 12 pri
 **Files:**
 - Modify: 8 page ở errata E3 (`ShellMailConfigPage`, `VipLocalControlPage`, `BrokerHubPage`, `TransactionsPage`, `ShellAiCommandCenterPage`, `ShellSettingsPage`, `ShellSupportPage`, `PortfolioWorkspacePage`). `PaymentReturnPage` đã xong ở `ff90ffb28`.
 - Modify: `packages/web/src/i18n/vi.js`, `packages/web/src/i18n/en.js` (thêm key cùng lúc; không đổi nghĩa toàn cục; key reuse xử lý bằng key namespace riêng)
-- Test: `src/i18n/__tests__/uiux-i18n-pages.test.ts` (new; grep chuỗi Việt trong JSX 8 file → 0 hit trừ comment)
+- Test: `src/i18n/__tests__/uiux-i18n-pages.test.ts` (new; **tái dùng script** `check-i18n-hardcoded.mjs` qua `spawnSync` per-file, không viết grep riêng — mirror `classifyLine` ở `packages/web/scripts/check-i18n-hardcoded.mjs:79-122`: bỏ dòng có `t(`/`defaultValue`, bỏ comment/className/test-file. `TOTAL_HARDCODED_VI` kỳ vọng per-file, ví dụ `ShellMailConfigPage.tsx:101,112,118-119` là hit thật)
 
 **Interfaces:**
 - Consumes: `t(key, { defaultValue })` + `LangContext`.
@@ -156,8 +175,8 @@ git commit -m "feat(uiux): B3 uiux-i18n-pages - remove hardcoded strings in 8 pa
 ### Task 4 — B4 `uiux-i18n-gate-scope` (S/M) — mở gate hardcoded khỏi 5 path
 
 **Files:**
-- Create: `packages/web/scripts/check-i18n-hardcoded-scope.mjs` (baseline JSON + `--all`)
-- Modify: `scripts/pre-push-gate.mjs` (gọi wrapper; KHÔNG sửa `package.json` — deny-list)
+- Create: `packages/web/scripts/check-i18n-hardcoded-scope.mjs` (baseline JSON + `--all`) — chốt đường dẫn này (01/01 cạnh script gốc `packages/web/scripts/check-i18n-hardcoded.mjs` để tái dùng `classifyLine`-tương tự
+- Modify: `scripts/pre-push-gate.mjs` — gọi wrapper với `cwd = packages/web` qua hàm `run()` (`existsSync`-guard, SKIP≠PASS, `:74-80`). KHÔNG sửa `packages/web/package.json` (deny-list)
 
 **Interfaces:**
 - Consumes: `node scripts/check-i18n-hardcoded.mjs` hiện hữu (5 path cố định).
@@ -178,11 +197,16 @@ git commit -m "feat(uiux): B4 uiux-i18n-gate-scope - baseline wrapper for hardco
 
 ### Task 5 — B5 `uiux-a11y-quickwins` (M) — phần còn lại
 
+> **Rev. 2026-11-08 (OBJ-4):** `scope="col"` ĐÃ LÀM ở Phase A (`ff90ffb28` — đã 100+ hit, không làm lại); chỉ bổ sung khi còn `<th>` thiếu `scope` (đếm lại bằng grep trước commit). `AuthLoginPage.tsx:129,141` là 2 nhánh `<main>` có điều kiện (giữ nguyên; test render cả 2 nhánh). `ShellToast.tsx:81` có `"Close"` hardcode cùng pattern với `SocSchedulerBoard.tsx:366` — đưa cả 2 vào Files (không giới hạn grep một file).
+
 **Files:**
 - Modify: `src/components/soc/SocSchedulerBoard.tsx:366` (`aria-label: "Close"` → `t("common.close")`)
-- Modify: icon-button ở 10 page đông tương tác (thêm `aria-label` qua `t()`; danh sách định nghĩa bằng grep `aria-label` trước khi sửa)
-- Modify (nếu cần): `src/pages/auth/AuthLoginPage.tsx:129,141` — 2 nhánh `<main>` có điều kiện (giữ nguyên cấu trúc 2 nhánh; ghi chú trong code; không gộp nhánh)
-- Test: `src/components/__tests__/uiux-a11y-quickwins.component.test.tsx` (new)
+- Modify: `src/components/ShellToast.tsx:81` (`"Close"` → `t("common.close")` + thêm `useI18n` nếu chưa có)
+- Modify: icon-button ở 10 page đông tương tác — danh sách chốt bằng lệnh trước khi sửa (attach kết quả vào evidence):
+  `Select-String -Path "packages/web/src/pages" -Pattern "<button" | Where-Object { $_.Line -notmatch "aria-label|aria-labelledby" } | Group-Object Path | Sort-Object Count -Descending | Select-Object -First 10 Name, Count`
+  (lưu output vào `docs/evidence/uiux-remediation/B5-icon-button-grep.txt` trong cùng commit; implementer không tự liệt kê từ trí nhớ)
+- Modify (giữ nguyên): `src/pages/auth/AuthLoginPage.tsx:129,141` — ghi chú trong code, không gộp nhánh
+- Test: `src/components/__tests__/uiux-a11y-quickwins.component.test.tsx` (new; render cả 2 nhánh `<main>`: `isCheckingSession=true` và `false`)
 
 **Interfaces:**
 - Consumes: `t()` + `LangContext`.
@@ -201,12 +225,19 @@ git commit -m "feat(uiux): B5 uiux-a11y-quickwins - close label + icon-button ar
 
 ---
 
-### Task 6 — B6 `uiux-forms-auth` (L) — chuẩn hoá form auth bằng RHF + zod
+### Task 6 — B6 `uiux-forms-auth` (L) — phần còn lại: Reset + change-password
 
-**Files:**
-- Modify: `src/pages/auth/AuthLoginPage.tsx`, `src/pages/auth/AuthRegisterPage.tsx`, `src/pages/auth/AuthResetPasswordPage.tsx`, form đổi mật khẩu (nằm trong `AuthResetPasswordPage.tsx` hoặc `UserSettingsPage.tsx` — đọc code thật trước khi chốt)
+> **Rev. 2026-11-08 (OBJ-2):** `AuthLoginPage.tsx:3-4,42` và `AuthRegisterPage.tsx:3-4,32-33` ĐÃ migrate (`dbf165656`, `df03e9007`) — không liệt kê 2 file này vào commit tiếp theo. Chỉ còn:
+> - (a) `AuthResetPasswordPage.tsx:36-42` (vẫn `useState`) → migrate sang `useForm` + `resetRequestSchema` (`authResetSchema.ts:5-8` đã tạo, hiện `-- untracked (0 importer) — dùng nó trong cùng slice, không để file chết lơ lửng).
+> - (b) change-password thực tế ở `UserSettingsPage.tsx:249` (`userSettings.passwordSuccess`) — đọc thêm hàm đổi mật khẩu để ghi `file:line` chính xác trước khi claim slice này (chưa đọc trong vòng này).
+> AC "4 form dùng `useForm`" sửa thành: **Login + Register (đã xong) + Reset (slice này) = 3 form**; UserSettings change-password là form thứ 4 (chốt file trước khi claim).
+
+**Files (phần còn lại):**
+- Modify: `src/pages/auth/AuthResetPasswordPage.tsx`
+- Create (đã tạo, chưa dùng): `src/pages/auth/authResetSchema.ts` — dùng ngay trong slice này
+- Modify: `src/pages/UserSettingsPage.tsx` (chỉ khi đã đọc xác nhận hàm đổi mật khẩu là form password-change; không sửa nếu ngoài scope)
 - Modify: `src/components/ui/FormField.tsx` (nhận `error` từ RHF)
-- Test: `src/pages/auth/__tests__/auth-forms-rhf.component.test.tsx` (new)
+- Test: `src/pages/auth/__tests__/auth-forms-rhf.component.test.tsx` (new; chỉ cho Reset + UserSettings nếu nằm trong scope)
 
 **Interfaces:**
 - Consumes: `authPolicy.js` (SSOT rule: `PASSWORD_MIN_LENGTH = 10`, `USERNAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/`, `normalizeUsername`, `isValidUsername`) + `authErrors.js` (`parseAuthError`) + `FormField` (Task đã xong ở `55d6e80d7`).
