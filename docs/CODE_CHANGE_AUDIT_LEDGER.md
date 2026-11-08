@@ -1,3 +1,14 @@
+## Entry 418: W0-1 partner double-mount fix (2026-11-08) — B5 claim → B6 code → B8 PASS
+
+- **Loại:** BE bugfix + manifest. Claim `pm-review-20261108` W0-1 (done).
+- **Diff:** `packages/core/backend/src/identity_access/urls.py` −3 (xóa `path('partner/', include(...))` duplicate tại `:75`, giữ mount `vninvest_core/urls.py:60`); `core-route-manifest.json` −110 (manifest 631→521, 0 `/core/v1/partner/partner/*`).
+- **TDD:** fail-before `110/631` (đếm bằng node trên manifest), pass-after `0/521`. Không thêm đoạn code khác (Ponytail: 1 include thừa là gốc).
+- **Gate:** `check-multi-agent` PASS 0 lỗi · `check-lessons` 57/60 · `npx tsc --noEmit` exit 0 (packages/web). **CHƯA CHẠY:** `dump-core-route-manifest.py` (cần venv/PG — chỉ VPS staging), `route-contract` jest trên VPS (cấm local §12.1), BE suite (chỉ VPS). Manifest regen bằng filter xác định (logic `dump` chỉ walk URLconf, không query DB) đã kiểm số; cần chạy lại script trên VPS trước merge.
+- **Audit:** B3 plan PASS (R4), B8 re-audit PASS 0 blocker (`docs/evidence/audit-fix-plan/B8_W0-1_20261108.md`).
+- **Lessons:** L-001 L-002 L-003 L-007 L-V01 L-V02 L-V04 L-V09.
+
+---
+
 ## Entry 417: PM full review L0-L4 (2026-11-08, rev1 sau B3/B8) — cây chức năng + bug/gap matrix + roadmap
 
 - **Loại:** doc-only. Claim `pm-review-20261108` (in-progress, rev1). 3 file báo cáo + 1 plan: `docs/PLAN_PM_FULL_REVIEW_20261108.md`, `docs/PM_FUNCTIONAL_TREE_20261108.md`, `docs/PM_BUG_GAP_MATRIX_20261108.md`, `docs/PM_ROADMAP_UPGRADE_20261108.md`.
