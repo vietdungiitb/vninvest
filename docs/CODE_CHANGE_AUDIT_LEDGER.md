@@ -1,3 +1,15 @@
+## Entry 417: PM full review L0-L4 (2026-11-08, rev1 sau B3/B8) — cây chức năng + bug/gap matrix + roadmap
+
+- **Loại:** doc-only. Claim `pm-review-20261108` (in-progress, rev1). 3 file báo cáo + 1 plan: `docs/PLAN_PM_FULL_REVIEW_20261108.md`, `docs/PM_FUNCTIONAL_TREE_20261108.md`, `docs/PM_BUG_GAP_MATRIX_20261108.md`, `docs/PM_ROADMAP_UPGRADE_20261108.md`.
+- **Phương pháp:** static read-only 4 subagents + B3/B8 audit `NEED_REVISION` (ses_e47195254d6f61c1, 6 blocker) → rev1 đã sửa. Mọi khẳng định có file:line hoặc ghi CHƯA XÁC MINH.
+- **6 blocker đã sửa:** (1) SOC prefix/capability bị bác bỏ → partner mount trùng 110 route (`identity_access/urls.py:75` + `vninvest_core/urls.py:60` → 110 `/core/v1/partner/partner/...` trong `core-route-manifest.json:306-415`); (2) SAFE-04 **đã đóng** PR #75 (`b59027a14`) + NameError `6d805fb8d` (13 class/15 write methods có gate `:913-4417`, import `:24`); (3) `loadError` đã có đủ `en.js:5639` + `vi.js:5710` → gỡ M6-04/M9-04/C4; (4) `market_data/urls.py:1-13` 6 route unpack `core_urls.py:44-47` = 41 route → gỡ M2-05; (5) W0.5 đã xong PR #281 (`SCAN_ROOTS` adapters/pages/context `:46-55` + test `:201-208`) → M9-02 hạ P2; (6) nhánh sạch trên `dev` `983b8c270` (gỡ 13 commit uiux `0b42f2ad8`, conflict ledger xử lý bằng reset + re-apply).
+- **Số thật đã điền (thay CHƯA XÁC MINH):** partner **110 `path()`** (`partner_urls.py:22-195`, tăng từ 108 do W0.10 thêm cặp detail `:57-58`) + `ops_audit` +2; `api_urls.py` **15 `path()`** (`:14-28`); `CORE_AD_SIGNING_SECRET` **xác nhận chưa chặn** (0 hit `env_validation.py`/`settings.py`/`checks.py`, chỉ đọc ở `advertising/views.py:158`); Shell 7 file **1263 LOC** trên `dev` (`workspace/ShellDashboardPage.tsx:173` + `ShellPortfoliosPage.tsx:176` + `ShellTransactionsPage.tsx:174` + `ShellWatchlistPage.tsx:186` + `system/ShellSettingsPage.tsx:146` + `ShellSupportPage.tsx:171` + `ShellAiCommandCenterPage.tsx:237`) hoặc **1026** không tính AIC; `10/10 exports` đã sửa W0.3; chartAdapter path `packages/web/src/adapters/chartAdapter.js` (không phải `adapters/core/`); beat NOOP `settings.py:669-673` song song task thật `signal_intelligence` `:871-875` (ghi "Overrides the NOOP placeholder") — chỉ xóa NOOP ở W1.4.
+- **Mới từ Entry 404/407 + Entry 415:** `advisory/pricing.py:160` `timezone.utc` đã gỡ ở Django 6 (đỏ `test_no_timezone_utc.py`) → M2-06; `KNOWN_UNREADABLE` bỏ qua 5 endpoint `views_broker` → M2-07; baseline Entry 415 VPS (`427+620+1074+508+314+32 OK`, PR #299 `d150e5d`) đã gom vào roadmap.
+- **Lessons:** L-001 L-002 L-003 L-007 L-V01 L-V02 L-V04 L-V09 (đã tick ở plan `docs/PLAN_PM_FULL_REVIEW_20261108.md` §5).
+- **Gate (rev1 đo lại trên `dev` sạch nhánh):** `check-multi-agent` **PASS** · `tsc --noEmit` **exit 0** · `check-lessons` **exit 0** (14 file | 57/60). BE/FE test/build ghi CHƯA CHẠY (static). Cần B8 re-audit độc lập verdict PASS → B9 claim done + push/PR.
+
+---
+
 ## Entry 416: Post-#299 handoff — trang thai dev + viec con lai cho phien ke tiep
 
 - **Trang thai:** local `dev` = VPS `/opt/vninvest` = `d150e5d` (PR #299 merged). Working tree sach 2 ben. Staging containers healthy, health 200, pgbouncer pool + DNSE key live.
