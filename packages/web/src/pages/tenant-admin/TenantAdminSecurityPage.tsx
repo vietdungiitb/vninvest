@@ -5,6 +5,7 @@ import { AlertCircle, UserCircle } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
@@ -170,7 +171,21 @@ export function TenantAdminSecurityPage({
         title={t("tenantSecurity.title")}
         description={t("common.loading")}
       >
-        <div className={`${styles.panel}`}>{t("common.loading")}</div>
+        <ShellSkeleton variant="metric" count={4} />
+        <ShellSkeleton variant="chart" count={1} />
+      </ShellPageChrome>
+    );
+  }
+
+  if (error) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantSecurity.eyebrow")}
+        title={t("tenantSecurity.title")}
+        description={t("tenantSecurity.loadError")}
+        error={error}
+      >
+        <ShellEmptyState description={t("tenantSecurity.loadError")} />
       </ShellPageChrome>
     );
   }
