@@ -7,6 +7,8 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { changePasswordSchema, type ChangePasswordValues } from "./changePasswordSchema.js";
 import { FormField } from "../components/ui/FormField.js";
+import { ShellSkeleton } from "../components/ShellSkeleton.js";
+import { ShellEmptyState } from "../components/ShellEmptyState.js";
 import "./UserSettingsPage.css";
 
 const e = createElement;
@@ -169,11 +171,11 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
   });
 
   if (loading) return e("div", { className: "core-user-settings-page " + className },
-    e("p", { className: "core-loading" }, t("userSettings.loading", { defaultValue: "Đang tải cài đặt tài khoản..." }))
+    e(ShellSkeleton, { variant: "card", count: 3 })
   );
 
   if (error) return e("div", { className: "core-user-settings-page " + className },
-    e("p", { className: "core-error" }, error)
+    e(ShellEmptyState, { description: error })
   );
 
   if (!form) return null;

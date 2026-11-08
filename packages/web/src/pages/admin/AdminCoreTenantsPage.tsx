@@ -5,6 +5,7 @@ import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
+import { ShellSkeleton } from '../../components/ShellSkeleton.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
@@ -328,9 +329,11 @@ export function AdminCoreTenantsPage() {
                 </tbody>
               </table>
             </div>
+          ) : loadingRegistry ? (
+            <ShellSkeleton variant="table-row" count={5} />
           ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loadingRegistry ? t('adminCoreTenants.loading') : t('adminCoreTenants.noTenants')}
+            {t('adminCoreTenants.noTenants')}
             </p>
           )}
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -447,9 +450,13 @@ export function AdminCoreTenantsPage() {
                 </div>
               </div>
             ) : (
+              loadingDetail ? (
+                <ShellSkeleton variant="card" count={2} />
+              ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {loadingDetail ? t('adminCoreTenants.loading') : t('adminCoreTenants.noDetailData')}
+                {t('adminCoreTenants.noDetailData')}
               </p>
+              )
             )
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

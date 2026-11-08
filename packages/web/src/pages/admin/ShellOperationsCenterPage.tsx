@@ -2,6 +2,7 @@ import { createElement, useCallback, lazy, Suspense } from "react";
 import { useSearchParams as useRouterSearchParams } from "react-router-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
 
 const SocOverviewPanel = lazy(() => import("../../components/soc/SocOverviewPanel.js").then((m) => ({ default: m.SocOverviewPanel })));
@@ -104,6 +105,6 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
       activeTab,
       onChange: handleTabChange,
     }),
-    createElement(Suspense, { fallback: createElement("div", null, "Loading...") }, renderTabContent()),
+    createElement(Suspense, { fallback: createElement(ShellSkeleton, { variant: "card", count: 3 }) }, renderTabContent()),
   );
 }
