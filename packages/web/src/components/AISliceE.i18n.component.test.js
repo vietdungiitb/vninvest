@@ -144,30 +144,6 @@ beforeEach(() => {
     ],
     total: 1,
   });
-  vi.spyOn(coreApiAdapter, "getAIAgents").mockResolvedValue({
-    results: [
-      {
-        id: 1,
-        name: "Sector Analyst",
-        agent_type: "analyst",
-        provider: "openai",
-        model: "gpt-4o-mini",
-        capabilities: ["analysis"],
-        system_prompt: "sys",
-        is_active: true,
-      },
-      {
-        id: 2,
-        name: "Screener Bot",
-        agent_type: "screener",
-        provider: "openai",
-        model: "gpt-4o-mini",
-        capabilities: ["screen"],
-        system_prompt: "sys",
-        is_active: false,
-      },
-    ],
-  });
   vi.spyOn(LangContext, "useI18n").mockReturnValue(EN);
 });
 

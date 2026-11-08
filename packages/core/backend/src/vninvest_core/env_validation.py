@@ -122,6 +122,9 @@ def validate_production_settings(debug: bool):
         # unusable or the check is silently skipped. Fail at boot instead of
         # shipping an unprotected public signup form.
         get_required_env('TURNSTILE_SECRET_KEY', 'Cloudflare Turnstile secret for registration bot protection')
+        ad_secret = get_required_env('CORE_AD_SIGNING_SECRET', 'HMAC signing secret for advertising impression/click tracking')
+        if ad_secret == 'dev-ad-signing-secret-replace-in-production':
+            raise ImproperlyConfigured('CORE_AD_SIGNING_SECRET must not use the dev default in production')
     except ImproperlyConfigured as e:
         raise ImproperlyConfigured(f"Production validation failed: {e}") from e
 

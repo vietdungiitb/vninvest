@@ -40,7 +40,7 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
     for job_key, schedule_def in schedule_map.items():
         schedule_def = dict(schedule_def or {})
         desired_enabled = schedule_def.get("enabled", True)
-        if job_key == "ingest-daily-prices-1705":
+        if job_key == "ingest-daily-prices-1705" or job_key == "materialize-unified-alerts-2m":
             desired_enabled = False
 
         is_critical = job_key in CRITICAL_JOBS
@@ -184,5 +184,8 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
                     queue_fixed.append(f"{job_key}: crontab timezone -> Asia/Ho_Chi_Minh")
         except Exception:
             pass
+
+    if not dry_run:
+        PeriodicTask.objects.filter(name="materialize-unified-alerts-2m", enabled=True).update(enabled=False)
 
     return {"re_enabled": re_enabled, "created": created, "queue_fixed": queue_fixed}

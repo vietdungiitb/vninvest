@@ -167,6 +167,7 @@ class TurnstileEnforcementValidationTests(TestCase):
             'CORE_PAT_PEPPER': 'test-pepper',
             'DJANGO_ALLOWED_HOSTS': 'example.com',
             'TURNSTILE_SECRET_KEY': 'test-turnstile',
+            'CORE_AD_SIGNING_SECRET': 'test-ad-secret',
             'STRICT_TURNSTILE_ENFORCEMENT': 'on',
         }
         with mock.patch.dict(os.environ, required, clear=False):
@@ -181,6 +182,7 @@ class TurnstileEnforcementValidationTests(TestCase):
             'CORE_PAT_PEPPER': 'test-pepper',
             'DJANGO_ALLOWED_HOSTS': 'example.com',
             'TURNSTILE_SECRET_KEY': 'test-turnstile',
+            'CORE_AD_SIGNING_SECRET': 'test-ad-secret',
             'STRICT_TURNSTILE_ENFORCEMENT': 'false',
         }
         with mock.patch.dict(os.environ, required, clear=False):

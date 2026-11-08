@@ -158,17 +158,7 @@ const PREFIX_INTERPOLATIONS = {
  */
 const KNOWN_MISSING_BE_ENDPOINTS = [
   // W0.10 (2026-10-22): chi con 1 gap — `/ai/agents/*`.
-  //   gap-1 /partner/billing/invoices/{id}/pdf/ -> FE in truc tiep tu du lieu (khong goi BE)
-  //   gap-2 /partner/service-accounts/{id}/    -> route da dang ky (partner-sa-detail)
-  //   gap-3 /ai/agents/*                      -> app ai_agents RONG (0 route) NHUNG FE UI
-  //                                             (AISliceE) VAN GOI => 404 THAT tren UI.
-  //                                             Can Owner chot: implement BE registry
-  //                                             hay go khoi UI. KHONG duoc xoa method
-  //                                             adapter khi FE con goi.
-  {
-    pattern: /^\/core\/v1\/ai\/agents(?:\/[^/]*)?\/?$/,
-    why: "app ai_agents rong (0 route) nhung FE UI AISliceE van goi => 404 that tren UI (W0.10 gap-3 — can Owner chot)",
-  },
+  // W0-3 (2026-11-08): gap-3 dong — FE khong con goi /ai/agents/ va app ai_agents rong (settings.py:131 van con INSTALLED_APPS — M8-03). Allowlist trong.
 ];
 
 /**

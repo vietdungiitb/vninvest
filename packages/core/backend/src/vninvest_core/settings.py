@@ -66,6 +66,9 @@ _secret_key_default = 'dev-only-insecure-key-replace-in-production'
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _secret_key_default)
 DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes')
 
+_ad_signing_secret_default = 'dev-ad-signing-secret-replace-in-production'
+CORE_AD_SIGNING_SECRET = os.environ.get('CORE_AD_SIGNING_SECRET', _ad_signing_secret_default if DEBUG else '').strip() or (_ad_signing_secret_default if DEBUG else '')
+
 # SM-P1.3: ALLOWED_HOSTS — must be explicitly set in production (no wildcard default).
 _allowed_hosts_raw = os.environ.get('DJANGO_ALLOWED_HOSTS', '*' if DEBUG else '').split(',')
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_raw if h.strip()]
@@ -666,12 +669,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 300.0,  # every 5 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-session-facts-5m']},
     },
-    'materialize-unified-alerts-2m': {
-        'task': 'market_serving.materializers.materialize_unified_alerts',
-        'schedule': 120.0,  # every 2 minutes
-        'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-unified-alerts-2m']},
-    },
-    
     # === Native SaaS realtime prefetch (replaces legacy portfolio prefetch) ===
     # Slice B (QueueRecovery): expire_seconds = per-message TTL (giây) mà beat_reconcile.py
     # đồng bộ vào PeriodicTask.expire_seconds (django-celery-beat 2.9+: worker discard tin quá hạn
@@ -871,7 +868,7 @@ CELERY_BEAT_SCHEDULE = {
     'materialize-unified-alerts-signal-2m': {
         'task': 'signal_intelligence.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
-        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-signal-2m', 'analytics_heavy')},
     },
     # === Signal intelligence: materialize AI signal alerts — every 5 minutes ===
     'materialize-ai-signal-alerts-5m': {
