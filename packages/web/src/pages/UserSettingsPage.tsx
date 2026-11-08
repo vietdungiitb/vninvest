@@ -1,8 +1,12 @@
 import { createElement, ChangeEvent, FormEvent, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { changePasswordSchema, type ChangePasswordValues } from "./changePasswordSchema.js";
+import { FormField } from "../components/ui/FormField.js";
 import "./UserSettingsPage.css";
 
 const e = createElement;
@@ -45,11 +49,6 @@ interface UserSettingsForm {
   whale_alert_threshold: string;
 }
 
-interface PasswordForm {
-  current_password: string;
-  new_password: string;
-  new_password_confirm: string;
-}
 
 interface UserSettingsPageProps {
   className?: string;
@@ -95,9 +94,18 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [form, setForm] = useState<UserSettingsForm | null>(null);
-  const [pwForm, setPwForm] = useState<PasswordForm>({ current_password: "", new_password: "", new_password_confirm: "" });
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwError, setPwError] = useState<string | null>(null);
+  const {
+    register: registerPw,
+    handleSubmit: handlePwSubmit,
+    formState: { errors: pwErrors, isSubmitting: pwSaving },
+    reset: resetPw,
+    setError: setPwFieldError,
+  } = useForm<ChangePasswordValues>({
+    resolver: zodResolver(changePasswordSchema),
+    mode: "onSubmit",
+    defaultValues: { current_password: "", new_password: "", new_password_confirm: "" },
+  });
+  const [pwError, setPwErrorMsg] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
@@ -140,32 +148,25 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
     }
   }
 
-  function handlePwChange(ev: ChangeEvent<HTMLInputElement>) {
-    const { name, value } = ev.target;
-    setPwForm((f) => ({ ...f, [name]: value }));
-  }
-
-  async function handlePasswordSave(ev: FormEvent) {
-    ev.preventDefault();
-    setPwError(null);
+  const onPasswordSubmit = handlePwSubmit(async (values) => {
+    setPwErrorMsg(null);
     setPwSuccess(false);
-    if (pwForm.new_password !== pwForm.new_password_confirm) {
-      setPwError(t("userSettings.passwordMismatch", { defaultValue: "Mật khẩu mới nhập lại không khớp." }));
+    if (values.new_password !== values.new_password_confirm) {
+      const mismatch = t("userSettings.passwordMismatch", { defaultValue: "Mật khẩu mới nhập lại không khớp." }) as string;
+      setPwErrorMsg(mismatch);
+      setPwFieldError("new_password_confirm", { message: mismatch });
       return;
     }
-    setPwSaving(true);
     try {
-      await coreApiAdapter.changeUserPassword(pwForm);
+      await coreApiAdapter.changeUserPassword(values);
       setPwSuccess(true);
-      setPwForm({ current_password: "", new_password: "", new_password_confirm: "" });
+      resetPw();
     } catch (err: unknown) {
-      setPwError(err && typeof err === 'object' && 'message' in err
+      setPwErrorMsg(err && typeof err === 'object' && 'message' in err
         ? (err as Error).message
-        : t("userSettings.saveError", { defaultValue: "Không thể lưu cài đặt." }));
-    } finally {
-      setPwSaving(false);
+        : t("userSettings.saveError", { defaultValue: "Không thể lưu cài đặt." }) as string);
     }
-  }
+  });
 
   if (loading) return e("div", { className: "core-user-settings-page " + className },
     e("p", { className: "core-loading" }, t("userSettings.loading", { defaultValue: "Đang tải cài đặt tài khoản..." }))
@@ -222,30 +223,51 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
     e("hr", { className: "core-divider" }),
     e("section", { className: "core-settings-password" },
       e("h2", null, t("userSettings.passwordTitle", { defaultValue: "Đổi mật khẩu" })),
-      e("form", { className: "core-settings-form", onSubmit: handlePasswordSave },
-        e("label", null, t("userSettings.currentPassword", { defaultValue: "Mật khẩu hiện tại:" }),
+      e("form", { className: "core-settings-form", onSubmit: onPasswordSubmit, noValidate: true },
+        e(FormField, {
+          label: t("userSettings.currentPassword", { defaultValue: "Mật khẩu hiện tại:" }),
+          htmlFor: "user-settings-current-password",
+          error: pwErrors.current_password?.message,
+          required: true,
+        },
           e("input", {
-            name: "current_password", type: "password", value: pwForm.current_password,
-            onChange: handlePwChange, autoComplete: "current-password",
+            id: "user-settings-current-password",
+            autoComplete: "current-password",
+            type: "password",
+            ...registerPw("current_password"),
           })
         ),
-        e("label", null, t("userSettings.newPassword", { defaultValue: "Mật khẩu mới (≥10 ký tự):" }),
+        e(FormField, {
+          label: t("userSettings.newPassword", { defaultValue: "Mật khẩu mới (≥10 ký tự):" }),
+          htmlFor: "user-settings-new-password",
+          error: pwErrors.new_password?.message,
+          required: true,
+        },
           e("input", {
-            name: "new_password", type: "password", value: pwForm.new_password,
-            onChange: handlePwChange, minLength: 10, autoComplete: "new-password",
+            id: "user-settings-new-password",
+            autoComplete: "new-password",
+            type: "password",
+            ...registerPw("new_password"),
           })
         ),
-        e("label", null, t("userSettings.newPasswordConfirm", { defaultValue: "Nhập lại mật khẩu mới:" }),
+        e(FormField, {
+          label: t("userSettings.newPasswordConfirm", { defaultValue: "Nhập lại mật khẩu mới:" }),
+          htmlFor: "user-settings-new-password-confirm",
+          error: pwErrors.new_password_confirm?.message,
+          required: true,
+        },
           e("input", {
-            name: "new_password_confirm", type: "password", value: pwForm.new_password_confirm,
-            onChange: handlePwChange, minLength: 10, autoComplete: "new-password",
+            id: "user-settings-new-password-confirm",
+            autoComplete: "new-password",
+            type: "password",
+            ...registerPw("new_password_confirm"),
           })
         ),
         e("button", { type: "submit", disabled: pwSaving },
           pwSaving
             ? t("userSettings.passwordSaving", { defaultValue: "Đang đổi..." })
             : t("userSettings.passwordSave", { defaultValue: "Đổi mật khẩu" })),
-        pwError ? e("p", { className: "core-error" }, pwError) : null,
+        pwError ? e("p", { className: "core-error", role: "alert", "aria-live": "assertive" }, pwError) : null,
         pwSuccess ? e("p", { className: "core-success" }, t("userSettings.passwordSuccess", { defaultValue: "Đã đổi mật khẩu thành công." })) : null
       )
     ),
