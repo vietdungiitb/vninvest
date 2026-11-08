@@ -124,6 +124,9 @@ describe("R1.3: i18n sạch AI CC", () => {
     const bad: string[] = [];
     for (const f of SRC9) {
       let src = readFileSync(resolve(process.cwd(), f), "utf8");
+      // Chuẩn hoá EOL trước khi strip: máy autocrlf=true (Windows) checkout CRLF,
+      // khiến regex //.*$ không khớp (.* không nuốt \r) → báo giả hit comment.
+      src = src.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       // loại comment (// và /* */) — contract chỉ soi chuỗi chạy thật
       src = src.replace(/\/\*[\s\S]*?\*\//g, "");
       src = src.split("\n").map((ln) => ln.replace(/\/\/.*$/, "")).join("\n");
