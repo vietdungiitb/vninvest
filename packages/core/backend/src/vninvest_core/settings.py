@@ -64,9 +64,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _secret_key_default = 'dev-only-insecure-key-replace-in-production'
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _secret_key_default)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes')
+
 _ad_signing_secret_default = 'dev-ad-signing-secret-replace-in-production'
 CORE_AD_SIGNING_SECRET = os.environ.get('CORE_AD_SIGNING_SECRET', _ad_signing_secret_default if DEBUG else '').strip() or (_ad_signing_secret_default if DEBUG else '')
-DEBUG = os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes')
 
 # SM-P1.3: ALLOWED_HOSTS — must be explicitly set in production (no wildcard default).
 _allowed_hosts_raw = os.environ.get('DJANGO_ALLOWED_HOSTS', '*' if DEBUG else '').split(',')

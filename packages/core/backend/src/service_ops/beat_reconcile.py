@@ -185,4 +185,7 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
         except Exception:
             pass
 
+    if not dry_run:
+        PeriodicTask.objects.filter(name="materialize-unified-alerts-2m", enabled=True).update(enabled=False)
+
     return {"re_enabled": re_enabled, "created": created, "queue_fixed": queue_fixed}

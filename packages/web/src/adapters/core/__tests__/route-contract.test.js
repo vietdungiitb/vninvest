@@ -158,7 +158,7 @@ const PREFIX_INTERPOLATIONS = {
  */
 const KNOWN_MISSING_BE_ENDPOINTS = [
   // W0.10 (2026-10-22): chi con 1 gap — `/ai/agents/*`.
-  // W0-3 (2026-11-08): gap-3 dong — FE khong con goi /ai/agents/ va app ai_agents rong da go khoi INSTALLED_APPS (W0.10 S3). Allowlist trong.
+  // W0-3 (2026-11-08): gap-3 dong — FE khong con goi /ai/agents/ va app ai_agents rong (settings.py:131 van con INSTALLED_APPS — M8-03). Allowlist trong.
 ];
 
 /**
