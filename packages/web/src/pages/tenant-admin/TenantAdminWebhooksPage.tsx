@@ -1,4 +1,4 @@
-import styles from "../../components/ShellPageTemplate.module.css";
+﻿import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
@@ -344,13 +344,13 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                         <table className={ta.whk_15}>
                           <thead>
                             <tr className={ta.whk_16}>
-                              <th className={ta.whk_17}>{t("tenantWebhooks.thTime")}</th>
-                              <th className={ta.whk_18}>{t("tenantWebhooks.thEvent")}</th>
-                              <th className={ta.whk_19}>{t("tenantWebhooks.thStatus")}</th>
-                              <th className={ta.whk_20}>HTTP</th>
-                              <th className={ta.whk_21}>{t("tenantWebhooks.thAttempts")}</th>
-                              <th className={ta.whk_22}>{t("tenantWebhooks.thDuration")}</th>
-                              <th className={ta.whk_23}></th>
+                              <th className={ta.whk_17} scope="col">{t("tenantWebhooks.thTime")}</th>
+                              <th className={ta.whk_18} scope="col">{t("tenantWebhooks.thEvent")}</th>
+                              <th className={ta.whk_19} scope="col">{t("tenantWebhooks.thStatus")}</th>
+                              <th className={ta.whk_20} scope="col">HTTP</th>
+                              <th className={ta.whk_21} scope="col">{t("tenantWebhooks.thAttempts")}</th>
+                              <th className={ta.whk_22} scope="col">{t("tenantWebhooks.thDuration")}</th>
+                              <th className={ta.whk_23} scope="col"></th>
                             </tr>
                           </thead>
                           <tbody>

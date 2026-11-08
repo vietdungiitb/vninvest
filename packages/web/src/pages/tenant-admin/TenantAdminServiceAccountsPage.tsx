@@ -1,4 +1,4 @@
-import styles from "../../components/ShellPageTemplate.module.css";
+﻿import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
@@ -197,7 +197,7 @@ export function TenantAdminServiceAccountsPage({
                       t("tenantServiceAccounts.tableHeaderCreatedAt"),
                       t("tenantServiceAccounts.tableHeaderActions"),
                     ].map(h => (
-                      <th key={h} className={ta.sa_4}>
+                      <th key={h} className={ta.sa_4} scope="col">
                         {h}
                       </th>
                     ))}

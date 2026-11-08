@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -9,7 +9,7 @@ import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUr
 
 const DEFAULT_LIMIT = 25;
 /** `type` (khong phai `interface`): interface KHONG co implicit index signature
- *  ⇒ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
+ *  â‡’ khong thoa `Record<string, unknown>` ma constraint cua hook yeu cau. */
 type AuditTraceFilters = {
   search: string;
   kind: string;
@@ -28,7 +28,7 @@ const DEFAULT_FILTERS: AuditTraceFilters = {
   symbol: '',
   serviceCode: '',
 };
-/** WAVE 4 / S4 — khai NGOAI component: literal trong render phá `useMemo` (AC-2.3). */
+/** WAVE 4 / S4 â€” khai NGOAI component: literal trong render phÃ¡ `useMemo` (AC-2.3). */
 const AUDIT_TRACE_FILTERS_SPEC: { [K in keyof AuditTraceFilters]: UrlStateCodec<AuditTraceFilters[K]> } = {
   search: stringCodec,
   kind: stringCodec,
@@ -53,12 +53,12 @@ function kindLabel(kind: any, t: (key: string) => string) {
   if (normalized === 'crawl_audit') {
     return t('adminCoreAuditTrace.kindCrawlAudit');
   }
-  return kind || '—';
+  return kind || 'â€”';
 }
 
 function stringifyValue(value: any) {
   if (value === null || value === undefined || value === '') {
-    return '—';
+    return 'â€”';
   }
 
   if (typeof value === 'object') {
@@ -91,9 +91,9 @@ export function AdminCoreAuditTracePage() {
     AUDIT_TRACE_FILTERS_SPEC,
     DEFAULT_FILTERS,
   );
-  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2): draft
-  // phải seed từ URL, nếu không deep-link lọc bảng còn form trống và 1 lần
-  // Apply sẽ xoá sạch bộ lọc trong link.
+  // Xem ghi chÃº cÃ¹ng Ã½ á»Ÿ `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2): draft
+  // pháº£i seed tá»« URL, náº¿u khÃ´ng deep-link lá»c báº£ng cÃ²n form trá»‘ng vÃ  1 láº§n
+  // Apply sáº½ xoÃ¡ sáº¡ch bá»™ lá»c trong link.
   const [filtersDraft, setFiltersDraft] = useState<AuditTraceFilters>(filters);
   const [cursor, setCursor] = useState({ startingAfter: '', endingBefore: '' });
   const [selectedRequestId, setSelectedRequestId] = useState('');
@@ -236,7 +236,7 @@ export function AdminCoreAuditTracePage() {
     setCursor({ startingAfter: '', endingBefore: prevCursor });
   };
 
-  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n thÃªm.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
@@ -431,11 +431,11 @@ export function AdminCoreAuditTracePage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thKind')}</th>
-                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thAction')}</th>
-                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thActor')}</th>
-                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thSummary')}</th>
-                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thTime')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreAuditTrace.thKind')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreAuditTrace.thAction')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreAuditTrace.thActor')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreAuditTrace.thSummary')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreAuditTrace.thTime')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -450,14 +450,14 @@ export function AdminCoreAuditTracePage() {
                           </span>
                           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.request_id}</p>
                         </td>
-                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{row.action || row.event || '—'}</td>
-                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{row.actor || '—'}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{row.action || row.event || 'â€”'}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{row.actor || 'â€”'}</td>
                         <td className="px-4 py-4">
                           <p className="font-semibold text-slate-950 dark:text-white">{row.summary}</p>
                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{row.source_model}</p>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          {(row.created_at || row.timestamp) || '—'}
+                          {(row.created_at || row.timestamp) || 'â€”'}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <button
@@ -515,15 +515,15 @@ export function AdminCoreAuditTracePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <AdminValueRow label={t('adminCoreAuditTrace.rowRequestId')} value={selectedRequest.request_id} />
                 <AdminValueRow label={t('adminCoreAuditTrace.rowKind')} value={kindLabel(selectedRequest.kind, t)} />
-                <AdminValueRow label={t('adminCoreAuditTrace.rowAction')} value={selectedRequest.action || selectedRequest.event || '—'} />
-                <AdminValueRow label={t('adminCoreAuditTrace.rowActor')} value={selectedRequest.actor || '—'} />
-                <AdminValueRow label={t('adminCoreAuditTrace.rowReason')} value={selectedRequest.reason || '—'} />
-                <AdminValueRow label={t('adminCoreAuditTrace.rowTime')} value={(selectedRequest.created_at || selectedRequest.timestamp) || '—'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowAction')} value={selectedRequest.action || selectedRequest.event || 'â€”'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowActor')} value={selectedRequest.actor || 'â€”'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowReason')} value={selectedRequest.reason || 'â€”'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowTime')} value={(selectedRequest.created_at || selectedRequest.timestamp) || 'â€”'} />
               </div>
 
               {selectedRequest.kind === 'system_ai_settings' ? (
                 <DetailBlock title={t('adminCoreAuditTrace.detailAiSettingsTitle')}>
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowSettingsId')} value={String(selectedRequest.settings_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowSettingsId')} value={String(selectedRequest.settings_id ?? 'â€”')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
@@ -531,10 +531,10 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'whale_config' ? (
                 <DetailBlock title={t('adminCoreAuditTrace.detailWhaleTitle')}>
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowDraftId')} value={String(selectedRequest.draft_id ?? '—')} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowVersionId')} value={String(selectedRequest.version_id ?? '—')} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowRolloutId')} value={String(selectedRequest.rollout_id ?? '—')} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowTicketRef')} value={selectedRequest.ticket_ref || '—'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowDraftId')} value={String(selectedRequest.draft_id ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowVersionId')} value={String(selectedRequest.version_id ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowRolloutId')} value={String(selectedRequest.rollout_id ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowTicketRef')} value={selectedRequest.ticket_ref || 'â€”'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
@@ -542,9 +542,9 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'advisory' ? (
                 <DetailBlock title={t('adminCoreAuditTrace.detailAdvisoryTitle')}>
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowSymbol')} value={selectedRequest.symbol || '—'} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowActorId')} value={selectedRequest.actor_id || '—'} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowUserId')} value={String(selectedRequest.user_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowSymbol')} value={selectedRequest.symbol || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowActorId')} value={selectedRequest.actor_id || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowUserId')} value={String(selectedRequest.user_id ?? 'â€”')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.metadata_json)}</pre>
@@ -553,10 +553,10 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'crawl_audit' ? (
                 <DetailBlock title={t('adminCoreAuditTrace.detailCrawlTitle')}>
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowEvent')} value={selectedRequest.event || '—'} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowRunId')} value={String(selectedRequest.run_id ?? '—')} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowJobId')} value={String(selectedRequest.job_id ?? '—')} />
-                  <AdminValueRow label={t('adminCoreAuditTrace.rowServiceCode')} value={selectedRequest.service_code || '—'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowEvent')} value={selectedRequest.event || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowRunId')} value={String(selectedRequest.run_id ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowJobId')} value={String(selectedRequest.job_id ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowServiceCode')} value={selectedRequest.service_code || 'â€”'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.payload)}</pre>
                 </DetailBlock>
               ) : null}

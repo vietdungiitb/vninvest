@@ -1,4 +1,4 @@
-import styles from "../../components/ShellPageTemplate.module.css";
+﻿import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { ReactNode, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -72,8 +72,8 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt,
   projectedNext: number | null;
   projectedChangePct: number | null;
   tt: (k: string, opts?: object) => string;
-  // FU-04: CostTrendChart là component RIÊNG (không gọi useI18n) nên phải nhận
-  // formatter từ cha thay vì `.toLocaleString()` theo locale máy người dùng.
+  // FU-04: CostTrendChart lÃ  component RIÃŠNG (khÃ´ng gá»i useI18n) nÃªn pháº£i nháº­n
+  // formatter tá»« cha thay vÃ¬ `.toLocaleString()` theo locale mÃ¡y ngÆ°á»i dÃ¹ng.
   formatNumber: (n: number, opts?: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => string;
 }): ReactNode {
   if (!data || data.length === 0) {
@@ -116,7 +116,7 @@ interface TenantAdminBillingPageProps {
 }
 
 /**
- * W0.10 gap-1 — dung HTML de in hoa don (khong can thu vien PDF server-side).
+ * W0.10 gap-1 â€” dung HTML de in hoa don (khong can thu vien PDF server-side).
  * BE khong co route tai hoa don PDF va image khong co thu vien PDF nao
  * (da probe VPS staging: reportlab/xhtml2pdf/weasyprint/fpdf/PIL deu "no")
  * => khong goi URL BE khong ton tai (404) ma IN TRUC TIEP tu du lieu hoa don da co.
@@ -141,7 +141,7 @@ export function buildInvoicePrintHtml(invoice: unknown, tenantName: string): str
     "<h2>Hoa don " + number + "</h2>",
     "<p><b>Khach hang:</b> " + tenantName + "</p>",
     "<p><b>Trang thai:</b> " + status + "</p>",
-    "<table><tr><th>So tien</th><th>Loai tien</th></tr>",
+    "<table><tr><th scope='col'>So tien</th><th scope='col'>Loai tien</th></tr>",
     "<tr><td>" + amount + "</td><td>" + currency + "</td></tr>",
     "</table></body></html>",
   ].join("");
@@ -407,7 +407,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                           style={{ fontSize: 11, padding: "4px 8px", border: "1px solid rgba(0,180,216,0.2)" }}
                           title={t("tenantBilling.downloadInvoice")}
                         >
-                          ↓
+                          â†“
                         </button>
                       </div>
                       {invoice.payment_method && <span className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>{invoice.payment_method}</span>}
@@ -418,7 +418,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
             </div>
           </ShellPanel>
 
-          {/* Phase 4 — Upgrade / Plan Comparison */}
+          {/* Phase 4 â€” Upgrade / Plan Comparison */}
           <ShellPanel title={t("tenantBilling.upgradePanelTitle")} subtitle={t("tenantBilling.upgradePanelDesc")}>
             <PlanComparisonTable planCode={subscription?.plan_code || "free"} t={t} />
           </ShellPanel>
@@ -448,9 +448,9 @@ function PlanComparisonTable({ planCode, t }: { planCode: string; t: (k: string,
       <table className={ta.bill_21}>
         <thead>
           <tr className={ta.bill_22}>
-            <th className={ta.bill_23}>{t("tenantBilling.rowName")}</th>
+            <th className={ta.bill_23} scope="col">{t("tenantBilling.rowName")}</th>
             {plans.map(p => (
-              <th key={p} className={ta.bill_24}>
+              <th key={p} className={ta.bill_24} scope="col">
                 {t(`tenantBilling.column${p.charAt(0).toUpperCase() + p.slice(1)}`)}
                 {p === planCode && (
                   <span className={ta.bill_25}>

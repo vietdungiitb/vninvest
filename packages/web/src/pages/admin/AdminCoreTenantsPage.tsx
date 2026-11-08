@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -21,12 +21,12 @@ const TENANTS_URL_DEFAULTS: TenantsUrlState = { search: '', status: '', page: 1 
 export function AdminCoreTenantsPage() {
   const { t, localeTag } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
-  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
+  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n + khÃ´ng fetch.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [searchDraft, setSearchDraft] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
-  // W3-2 (AC-2.1): `searchDraft`/`statusDraft` la O DANG SOAN — giu o local
+  // W3-2 (AC-2.1): `searchDraft`/`statusDraft` la O DANG SOAN â€” giu o local
   // (dong bo ca hai se gay `useEffect` loop). Chi `search`/`status`/`page` da
   // AP DUNG moi vao URL.
   const [{ search, status, page }, setUrlState] = useUrlState(
@@ -150,7 +150,7 @@ export function AdminCoreTenantsPage() {
           tenant: res?.tenant || { id: switchTarget.id },
           expires_at: res?.expires_at || null,
         }));
-      } catch { /* private mode — token vẫn hiển thị 1 lần */ }
+      } catch { /* private mode â€” token váº«n hiá»ƒn thá»‹ 1 láº§n */ }
       setSwitchMsg(t('adminCoreTenants.switchSuccess'));
       setSwitchTarget(null);
       setSwitchReason('');
@@ -161,7 +161,7 @@ export function AdminCoreTenantsPage() {
     }
   };
 
-  // R0: chặn render khi không staff (fetch đã skip ở trên).
+  // R0: cháº·n render khi khÃ´ng staff (fetch Ä‘Ã£ skip á»Ÿ trÃªn).
   if (!isStaffGate) {
     return (<p>{t('common.noPermission')}</p>);
   }
@@ -281,11 +281,11 @@ export function AdminCoreTenantsPage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">{t('adminCoreTenants.thTenant')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thPlan')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thStatus')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thRisk')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thUpdated')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thTenant')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thPlan')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thStatus')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thRisk')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thUpdated')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -312,7 +312,7 @@ export function AdminCoreTenantsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          {tenantRow.updated_at || '—'}
+                          {tenantRow.updated_at || 'â€”'}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <Link
@@ -414,17 +414,17 @@ export function AdminCoreTenantsPage() {
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.commercialInfo')}</h3>
-                  <AdminValueRow label={t('adminCoreTenants.detailBillingCycle')} value={selectedCommercial?.billing_cycle || '—'} />
-                  <AdminValueRow label={t('adminCoreTenants.detailNextInvoice')} value={selectedCommercial?.next_invoice_date || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailBillingCycle')} value={selectedCommercial?.billing_cycle || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailNextInvoice')} value={selectedCommercial?.next_invoice_date || 'â€”'} />
                 </div>
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.securityInfo')}</h3>
-                  <AdminValueRow label={t('adminCoreTenants.detailServiceAccounts')} value={String(selectedSecurity?.service_account_count ?? '—')} />
-                  <AdminValueRow label={t('adminCoreTenants.detailActivePats')} value={String(selectedSecurity?.active_pat_count ?? '—')} />
-                  <AdminValueRow label={t('adminCoreTenants.detailRotationsDue')} value={String(selectedSecurity?.rotations_due_count ?? '—')} />
-                  <AdminValueRow label={t('adminCoreTenants.detailAnomalyState')} value={selectedSecurity?.anomaly_state || '—'} />
-                  <AdminValueRow label={t('adminCoreTenants.detailLatestPatUse')} value={selectedSecurity?.latest_pat_last_used_at || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailServiceAccounts')} value={String(selectedSecurity?.service_account_count ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailActivePats')} value={String(selectedSecurity?.active_pat_count ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailRotationsDue')} value={String(selectedSecurity?.rotations_due_count ?? 'â€”')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailAnomalyState')} value={selectedSecurity?.anomaly_state || 'â€”'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailLatestPatUse')} value={selectedSecurity?.latest_pat_last_used_at || 'â€”'} />
                 </div>
 
                 <div>
@@ -436,7 +436,7 @@ export function AdminCoreTenantsPage() {
                           <p className="text-sm font-semibold text-slate-950 dark:text-white">{action.summary}</p>
                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             {action.action}
-                            {action.at ? ` • ${action.at}` : ''}
+                            {action.at ? ` â€¢ ${action.at}` : ''}
                           </p>
                         </div>
                       ))}

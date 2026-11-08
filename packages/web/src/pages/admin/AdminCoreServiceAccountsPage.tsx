@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
@@ -8,9 +8,9 @@ import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 import { useUrlRecord, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
 /**
- * WAVE 4 / S4 — bộ lọc đồng bộ URL. Xem `AdminCorePATsPage.tsx` cùng thư mục để
- * biết vì sao `spec`/`defaults` khai ngoài component và vì sao `filtersDraft`
- * cố ý KHÔNG đồng bộ URL.
+ * WAVE 4 / S4 â€” bá»™ lá»c Ä‘á»“ng bá»™ URL. Xem `AdminCorePATsPage.tsx` cÃ¹ng thÆ° má»¥c Ä‘á»ƒ
+ * biáº¿t vÃ¬ sao `spec`/`defaults` khai ngoÃ i component vÃ  vÃ¬ sao `filtersDraft`
+ * cá»‘ Ã½ KHÃ”NG Ä‘á»“ng bá»™ URL.
  */
 type ServiceAccountFilters = {
   search: string;
@@ -33,7 +33,7 @@ const SA_FILTERS_SPEC: { [K in keyof ServiceAccountFilters]: UrlStateCodec<Servi
 export function AdminCoreServiceAccountsPage() {
   const { t } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
-  // R6: read-only ở phase này — không hardcode quyền (BE chưa có endpoint write).
+  // R6: read-only á»Ÿ phase nÃ y â€” khÃ´ng hardcode quyá»n (BE chÆ°a cÃ³ endpoint write).
   const canCreate = false;
   const canUpdate = false;
   const tenantIdStr = tenantId || '';
@@ -45,13 +45,13 @@ export function AdminCoreServiceAccountsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
 // Ghi URL 1 LAN cho ca ban ghi khi Apply. KHONG truyen `replaceKeys`: mot
-  // lan Apply la mot buoc dieu huong co y nghia ⇒ phai `push` de nút Back undo
+  // lan Apply la mot buoc dieu huong co y nghia â‡’ phai `push` de nÃºt Back undo
   // duoc thay doi bo loc vua Apply.
   const [filters, setFilters] = useUrlRecord<ServiceAccountFilters>(
     SA_FILTERS_SPEC,
     SA_FILTERS_DEFAULTS,
   );
-  // Xem ghi chú cùng ý ở `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
+  // Xem ghi chÃº cÃ¹ng Ã½ á»Ÿ `AdminCoreJobsPage.tsx` (audit Stage 5, ID-2).
   const [filtersDraft, setFiltersDraft] = useState<ServiceAccountFilters>(filters);
   const [actionNote, setActionNote] = useState('');
 
@@ -135,7 +135,7 @@ export function AdminCoreServiceAccountsPage() {
     setRefreshTick((current) => current + 1);
   };
 
-  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n thÃªm.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
@@ -206,9 +206,9 @@ export function AdminCoreServiceAccountsPage() {
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <AdminMetricCard card={{ label: 'Status', value: tenantSummary.status || '—', status: tenantSummary.status }} />
-            <AdminMetricCard card={{ label: 'Security', value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
+            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || 'â€”', detail: commercialSummary?.billing_cycle || 'â€”' }} />
+            <AdminMetricCard card={{ label: 'Status', value: tenantSummary.status || 'â€”', status: tenantSummary.status }} />
+            <AdminMetricCard card={{ label: 'Security', value: securitySummary?.anomaly_state || 'â€”', status: securitySummary?.anomaly_state }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -332,12 +332,12 @@ export function AdminCoreServiceAccountsPage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaName')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaEnvironment')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaStatus')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaPat')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaRotation')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thSaUpdated')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaName')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaEnvironment')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaStatus')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaPat')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaRotation')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thSaUpdated')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -370,7 +370,7 @@ export function AdminCoreServiceAccountsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                          {serviceAccount.updated_at || '—'}
+                          {serviceAccount.updated_at || 'â€”'}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <button
@@ -437,11 +437,11 @@ export function AdminCoreServiceAccountsPage() {
 
               <div>
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.saProperties')}</h3>
-                <AdminValueRow label={t('adminCoreTenants.saPolicyBundle')} value={Array.isArray(selectedServiceAccount.policy_ids) && selectedServiceAccount.policy_ids.length > 0 ? selectedServiceAccount.policy_ids.join(', ') : '—'} />
-                <AdminValueRow label={t('adminCoreTenants.saLatestPatUsed')} value={selectedServiceAccount.latest_pat_last_used_at || '—'} />
-                <AdminValueRow label={t('adminCoreTenants.saLastOperatorAction')} value={selectedServiceAccount.last_operator_action_at || '—'} />
-                <AdminValueRow label={t('adminCoreTenants.saCreatedAt')} value={selectedServiceAccount.created_at || '—'} />
-                <AdminValueRow label={t('adminCoreTenants.saUpdatedAt')} value={selectedServiceAccount.updated_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saPolicyBundle')} value={Array.isArray(selectedServiceAccount.policy_ids) && selectedServiceAccount.policy_ids.length > 0 ? selectedServiceAccount.policy_ids.join(', ') : 'â€”'} />
+                <AdminValueRow label={t('adminCoreTenants.saLatestPatUsed')} value={selectedServiceAccount.latest_pat_last_used_at || 'â€”'} />
+                <AdminValueRow label={t('adminCoreTenants.saLastOperatorAction')} value={selectedServiceAccount.last_operator_action_at || 'â€”'} />
+                <AdminValueRow label={t('adminCoreTenants.saCreatedAt')} value={selectedServiceAccount.created_at || 'â€”'} />
+                <AdminValueRow label={t('adminCoreTenants.saUpdatedAt')} value={selectedServiceAccount.updated_at || 'â€”'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

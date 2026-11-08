@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
@@ -31,7 +31,7 @@ const AUDIT_URL_DEFAULTS: AuditUrlState = {
 
 export function AdminAuditPage() {
   const { t } = useI18n();
-  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
+  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n + khÃ´ng fetch.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [rows, setRows] = useState<any[]>([]);
@@ -43,7 +43,7 @@ export function AdminAuditPage() {
   const [{ page, tenantId, actor, action, resourceType, dateFrom, dateTo }, setUrlState] =
     useUrlState(AUDIT_URL_SPEC, AUDIT_URL_DEFAULTS, {
       // Major 2: `tenantId` va `actor` la O NHAP VAN BAN gan thang `onChange`
-      // (L109-110) ⇒ `push` se tao 1 history entry cho MOI KY TU. Hai key do
+      // (L109-110) â‡’ `push` se tao 1 history entry cho MOI KY TU. Hai key do
       // `replace`. Cac key con lai (page/action/resourceType/dateFrom/dateTo)
       // giu `push` de nut Back van quay lai duoc bo loc truoc do.
       replaceKeys: ["tenantId", "actor"],
@@ -89,8 +89,8 @@ export function AdminAuditPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!isStaffGate) {
-    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON — khong
-  // co `<h1>` ⇒ screen reader khong biet dang o trang nao. Dung
+    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON â€” khong
+  // co `<h1>` â‡’ screen reader khong biet dang o trang nao. Dung
   // `AdminPageHeader` nhu 4 trang admin con lai de moi trang luon co 1 h1.
   return (
     <div className="admin-no-permission">
@@ -145,21 +145,21 @@ export function AdminAuditPage() {
         {rows.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
             <thead><tr className="text-left text-xs uppercase tracking-widest text-slate-500">
-              <th className="px-3 py-2">{t('adminAudit.thTime')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thActor')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thAction')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thResource')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thTenant')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thTime')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thActor')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thAction')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thResource')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thTenant')}</th>
               <th className="px-3 py-2" />
             </tr></thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {rows.map((r: any) => (
                 <tr key={r.event_id}>
-                  <td className="px-3 py-2 font-mono text-xs">{r.occurred_at || '—'}</td>
-                  <td className="px-3 py-2">{r.actor_label || `#${r.actor_user_id ?? '—'}`}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{r.occurred_at || 'â€”'}</td>
+                  <td className="px-3 py-2">{r.actor_label || `#${r.actor_user_id ?? 'â€”'}`}</td>
                   <td className="px-3 py-2">{r.action}</td>
                   <td className="px-3 py-2 font-mono text-xs">{r.resource_type}/{r.resource_id}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{(r.tenant_id || '').slice(0, 8) || '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{(r.tenant_id || '').slice(0, 8) || 'â€”'}</td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" onClick={() => setOpenId(openId === r.event_id ? null : r.event_id)} className="text-xs font-semibold text-blue-600 hover:underline">{t('adminAudit.detail')}</button>
                   </td>
@@ -174,9 +174,9 @@ export function AdminAuditPage() {
           <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-200">{JSON.stringify(openRow, null, 2)}</pre>
         ) : null}
         <div className="mt-3 flex items-center justify-between">
-          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
+          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">â€¹</button>
           <span className="text-xs text-slate-500">{t('adminAudit.pageOf', { page, pages: totalPages, total: count })}</span>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
+          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">â€º</button>
         </div>
       </div>
     </div>

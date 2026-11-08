@@ -1,4 +1,4 @@
-import styles from "../../components/ShellPageTemplate.module.css";
+﻿import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
@@ -19,7 +19,7 @@ const MEMBERS_TABS: readonly MembersTab[] = ["members", "invites"];
 // `useMemo([params, spec, defaults])` trong `useUrlState.ts:117` moi memo hoa duoc.
 const MEMBERS_URL_SPEC: { [K in keyof MembersUrlState]: UrlStateCodec<MembersUrlState[K]> } = {
   searchQuery: stringCodec,
-  // 'all' la mac dinh ⇒ serialize tra `undefined` cho 'all' (khong ghi tham so).
+  // 'all' la mac dinh â‡’ serialize tra `undefined` cho 'all' (khong ghi tham so).
   roleFilter: { parse: stringCodec.parse, serialize: (v: string) => (v === "all" ? undefined : v) },
   activeTab: {
     parse: (raw) =>
@@ -82,7 +82,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const confirm = useConfirm();
 
   // W3-2 (AC-2.1): 3 state nay la loc + tab cua bang thanh vien. Truoc day chi
-  // trong RAM ⇒ gui link cho nguoi khac thi ho thay trang CHUA loc.
+  // trong RAM â‡’ gui link cho nguoi khac thi ho thay trang CHUA loc.
   // `spec`/`defaults` o CAP MODULE (AC-2.3) de identity on dinh giua render.
   const [{ searchQuery, roleFilter, activeTab }, setUrlState] = useUrlState(
     MEMBERS_URL_SPEC,
@@ -305,22 +305,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table className={ta.mem_7}>
                     <thead>
                       <tr className={ta.mem_8}>
-                        <th className={[`${styles.itemMeta}`, ta.mem_9].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_9].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderUsername")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_10].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_10].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_11].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_11].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_12].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_12].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_13].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_13].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.joinedAtLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_14].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_14].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
@@ -416,22 +416,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table className={ta.mem_27}>
                     <thead>
                       <tr className={ta.mem_28}>
-                        <th className={[`${styles.itemMeta}`, ta.mem_29].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_29].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_30].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_30].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_31].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_31].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_32].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_32].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.metricInvites")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_33].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_33].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.expiresAtLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_34].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_34].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>

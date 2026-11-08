@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { downloadSocCsv } from './socCsv.js';
@@ -22,7 +22,7 @@ const BILLING_URL_DEFAULTS: BillingUrlState = { page: 1, status: '', plan: '', s
 
 export function AdminBillingFleetPage() {
   const { t, localeTag } = useI18n();
-  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
+  // R0 defense-in-depth: route Ä‘Ã£ bá»c StaffRoute, page tá»± cháº·n + khÃ´ng fetch.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [overview, setOverview] = useState<any>(null);
@@ -30,23 +30,23 @@ export function AdminBillingFleetPage() {
   const [count, setCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
-  // W3-2 (AC-2.1): bo loc + phan trang cua bang hoa don ⇒ deep-link bang URL.
+  // W3-2 (AC-2.1): bo loc + phan trang cua bang hoa don â‡’ deep-link bang URL.
   const [{ page, status, plan, search }, setUrlState] = useUrlState(
     BILLING_URL_SPEC,
     BILLING_URL_DEFAULTS,
-    // Major 2: `search` la o nhap van ban gan thang `onChange` (L139) ⇒ `push`
+    // Major 2: `search` la o nhap van ban gan thang `onChange` (L139) â‡’ `push`
     // se tao 1 history entry cho moi ky tu. Chi `search` `replace`; `page`,
     // `status`, `plan` giu `push` de nut Back van quay lai duoc.
     { replaceKeys: ["search"] },
   );
-  // ⚠ WAVE 4 (audit Stage 5, ID-1) — `onChange` **KHÔNG** được gọi 2 setter.
-  // `useSearchParams` của react-router-dom@6.30.3 đóng trên `searchParams` của
-  // lần render đó (không có ref sống) ⇒ hai `setUrlState` trong CÙNG một tick
-  // thì lần hai đọc `prev` cũ và **xoá mất** kết quả lần một. Trước đây
-  // `setStatus(v); setPage(1);` ⇒ đổi trạng thái hoá đơn **không ghi được vào
-  // URL** ⇒ chọn trạng thái im lặng không có tác dụng. Đây là lỗi CÓ SẴN từ
-  // wave 2 (audit đã tái lập trên code `dev`), không phải hồi quy.
-  // ⇒ `status`/`plan` gộp vào MỘT lệnh `setUrlState` ngay tại `onChange`.
+  // âš  WAVE 4 (audit Stage 5, ID-1) â€” `onChange` **KHÃ”NG** Ä‘Æ°á»£c gá»i 2 setter.
+  // `useSearchParams` cá»§a react-router-dom@6.30.3 Ä‘Ã³ng trÃªn `searchParams` cá»§a
+  // láº§n render Ä‘Ã³ (khÃ´ng cÃ³ ref sá»‘ng) â‡’ hai `setUrlState` trong CÃ™NG má»™t tick
+  // thÃ¬ láº§n hai Ä‘á»c `prev` cÅ© vÃ  **xoÃ¡ máº¥t** káº¿t quáº£ láº§n má»™t. TrÆ°á»›c Ä‘Ã¢y
+  // `setStatus(v); setPage(1);` â‡’ Ä‘á»•i tráº¡ng thÃ¡i hoÃ¡ Ä‘Æ¡n **khÃ´ng ghi Ä‘Æ°á»£c vÃ o
+  // URL** â‡’ chá»n tráº¡ng thÃ¡i im láº·ng khÃ´ng cÃ³ tÃ¡c dá»¥ng. ÄÃ¢y lÃ  lá»—i CÃ“ Sáº´N tá»«
+  // wave 2 (audit Ä‘Ã£ tÃ¡i láº­p trÃªn code `dev`), khÃ´ng pháº£i há»“i quy.
+  // â‡’ `status`/`plan` gá»™p vÃ o Má»˜T lá»‡nh `setUrlState` ngay táº¡i `onChange`.
   const setPage = (v: number) => setUrlState({ page: v });
   const setSearch = (v: string) => setUrlState({ search: v });
   const [loading, setLoading] = useState(false);
@@ -95,8 +95,8 @@ export function AdminBillingFleetPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!isStaffGate) {
-    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON — khong
-  // co `<h1>` ⇒ screen reader khong biet dang o trang nao. Dung
+    // FU-02c: nhanh "khong co quyen" truoc day tra ve mot `<p>` TRON â€” khong
+  // co `<h1>` â‡’ screen reader khong biet dang o trang nao. Dung
   // `AdminPageHeader` nhu 4 trang admin con lai de moi trang luon co 1 h1.
   return (
     <div className="admin-no-permission">
@@ -116,10 +116,10 @@ export function AdminBillingFleetPage() {
       />
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr, localeTag)}đ`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr, localeTag) })} />
-        <AdminMetricCard label={t('adminBillingFleet.trials')} value={String(overview?.trials_active ?? '—')} />
-        <AdminMetricCard label={t('adminBillingFleet.failed')} value={String(overview?.invoices_failed_30d ?? '—')} />
-        <AdminMetricCard label={t('adminBillingFleet.plans')} value={String((overview?.plan_mix || []).length)} detail={(overview?.plan_mix || []).map((p: any) => `${p.plan}:${p.count}`).join(' · ')} />
+        <AdminMetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr, localeTag)}Ä‘`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr, localeTag) })} />
+        <AdminMetricCard label={t('adminBillingFleet.trials')} value={String(overview?.trials_active ?? 'â€”')} />
+        <AdminMetricCard label={t('adminBillingFleet.failed')} value={String(overview?.invoices_failed_30d ?? 'â€”')} />
+        <AdminMetricCard label={t('adminBillingFleet.plans')} value={String((overview?.plan_mix || []).length)} detail={(overview?.plan_mix || []).map((p: any) => `${p.plan}:${p.count}`).join(' Â· ')} />
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-base font-semibold">{t('adminBillingFleet.revenueTitle')}</h2>
@@ -153,11 +153,11 @@ export function AdminBillingFleetPage() {
         {invoices.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
             <thead><tr className="text-left text-xs uppercase tracking-widest text-slate-500">
-              <th className="px-3 py-2">{t('adminBillingFleet.thInvoice')}</th>
-              <th className="px-3 py-2">{t('adminBillingFleet.thTenant')}</th>
-              <th className="px-3 py-2">{t('adminBillingFleet.thAmount')}</th>
-              <th className="px-3 py-2">{t('adminBillingFleet.thStatus')}</th>
-              <th className="px-3 py-2">{t('adminBillingFleet.thPaid')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminBillingFleet.thInvoice')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminBillingFleet.thTenant')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminBillingFleet.thAmount')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminBillingFleet.thStatus')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminBillingFleet.thPaid')}</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {invoices.map((inv: any) => (
@@ -166,7 +166,7 @@ export function AdminBillingFleetPage() {
                   <td className="px-3 py-2"><Link className="text-blue-600 hover:underline" to={`/admin/tenants/${inv.tenant_id}/billing`}>{inv.tenant_name || inv.tenant_code}</Link></td>
                   <td className="px-3 py-2">{fmtVND(inv.amount_due, localeTag)} {inv.currency}</td>
                   <td className="px-3 py-2">{inv.status}</td>
-                  <td className="px-3 py-2">{inv.paid_at || '—'}</td>
+                  <td className="px-3 py-2">{inv.paid_at || 'â€”'}</td>
                 </tr>
               ))}
             </tbody>
@@ -175,9 +175,9 @@ export function AdminBillingFleetPage() {
           <AdminEmptyState>{loading ? t('adminBillingFleet.loading') : t('adminBillingFleet.empty')}</AdminEmptyState>
         )}
         <div className="mt-3 flex items-center justify-between">
-          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>
+          <button type="button" disabled={!hasPrev || loading} onClick={() => setPage(Math.max(1, page - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">â€¹</button>
           <span className="text-xs text-slate-500">{t('adminBillingFleet.pageOf', { page, pages: totalPages, total: count })}</span>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">›</button>
+          <button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">â€º</button>
         </div>
       </div>
     </div>
