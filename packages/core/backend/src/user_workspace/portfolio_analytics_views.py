@@ -1047,13 +1047,14 @@ class PortfolioAICommandCenterView(APIView):
         metadata = config.metadata or {}
 
         # R0.2: default + normalize VE canonical v2 (khong dict phang,
-        # khong key chet `lookback_unit`). Khong persist am tham o GET.
+        # khong key chet lookback). Khong persist am tham o GET.
         from advisory.advisory_helpers import (
+            _get_default_prompt_config,
             _parse_prompt_config,
             build_ai_readiness,
         )
         prompt_config = _parse_prompt_config(
-            metadata.get('ai_prompt_config'))
+            metadata.get('ai_prompt_config') or _get_default_prompt_config())
 
         # Read user credential (BYOK SSOT). Giữ read-only (không get-or-create):
         # user legacy chưa có cred vẫn đọc được prefs cũ ở nhánh else bên dưới.
