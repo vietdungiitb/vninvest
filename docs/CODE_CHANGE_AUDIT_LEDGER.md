@@ -1,3 +1,14 @@
+## Entry 421: UI/UX Phase A+B (B1/B6/B2/B5) + audit/master-plan 2026-10-30/2026-11-08 (cập nhật)
+
+- **Loại:** FE code (Phase A+B) + docs (audit/plan/verdict). Branch `feat/uiux-phase-a` (claim `uiux-phase-a` in-progress, chưa PR).
+- **Diff chính:** (a) `check-tokens.mjs` allowlist status/private hex + skip `light-theme.css` generated → gate PASS 79 hex, 0 violation; `en.js` move `paymentReturn` từ `auth` về `commercial` (parity test 10/10); khôi phục encoding 18 file bị PowerShell `Set-Content` làm mojibake (Node utf8, diff chỉ còn `scope="col"`); `Breadcrumb` bỏ `aria-current` (single-nav invariant); (b) B1: `PageErrorBoundary.tsx:28-53` generalize (bỏ log/string + CSS `sdp-*`, copy qua caller, `role=alert`/`aria-live=assertive`) + `FullLayout.tsx:47-54,114` wrap `<Outlet>` với `key=pathname` + focus `#main-content`; (c) B6: `FormField.tsx` primitive (label/htmlFor/error role=alert/hint) + `authLoginSchema.ts` + `authRegisterSchema.ts` + `authResetSchema.ts` + 4 forms migrate RHF+zod (Login/Register/Reset/UserSettings change-password) giữ `authPolicy.js` SSOT (`PASSWORD_MIN_LENGTH=10`, `USERNAME_PATTERN`, `normalizeUsername`) + payload shape giữ nguyên; (d) B2: `ShellSkeleton`/`ShellEmptyState` guards cho 10 trang tenant-admin (AIPolicy, Billing, Members, ServiceAccounts, SSO, Security, Reports) + `BillingCenterPage.tsx` skeleton (thay text loading); (e) B5: `common.close` thêm vào `vi.js`/`en.js` + `SocSchedulerBoard.tsx:366` và `ShellToast.tsx:81` `"Close"` → `t("common.close")`; table `scope="col"` cho admin/tenant/soc (đã 100+ hit, verify không tăng lỗi, tsc 0).
+- **TDD/Gates:** fail-before ghi nhận (auth-forms test đỏ trước, xanh sau: Login 2/2, Register 3/3, Reset 2/2, UserSettings 2/2, FormField 5/5, page-error-boundary 2/2). Tsc 0, lint 0 errors 4604 warnings, tokens PASS, contrast PASS, landmarks PASS, build PASS 17.51s. Full `test:components`: lần đo gần nhất trước khi đổi B6/B2 là 173 files/1189 PASS; lần chạy lại bị timeout → ghi `CHƯA CHẠY` ở commit 421 cho tới khi chạy lại (không suy diễn PASS). **CHƯA CHẠY:** BE tests, VPS staging E2E/axe/visual.
+- **Audit:** verdict độc lập `docs/evidence/uiux-remediation/AUDIT_PLAN_20261030.md` AGREE (3 objection đã xử lý); verdict Phase B `AUDIT_PHASE_B_20261108.md` NEED_REVISION (OBJ-1..7) + v2 — plan đã revise (B1 DONE, B6 narrowed, re-baseline), cần re-audit v3 → AGREE trước khi claim slice tiếp theo theo `docs/AGENT_PROTOCOL.md` §10-§11.
+- **Lessons:** L-001 L-002 L-003 L-007 L-008 L-M02 L-F01 L-F02 L-F03 L-F06 L-F08 L-F11 L-G01 L-G02 L-V01 L-V02 L-V03. Bài học encoding: PowerShell `Get-Content` đọc file UTF-8 không BOM + `Set-Content -Encoding UTF8` gây mojibake 18 files → luôn dùng edit/write tool (UTF-8 không BOM) hoặc Node `readFileSync(..., 'utf8')` + `writeFileSync(..., {encoding:'utf8'})`, verify bằng `git diff` không có `Ã`/mojibake thêm vào.
+
+---
+
+
 ## Entry 420: REMAINING GATES (2026-11-08) — FE gates + VPS verify/dump + W0-2/W0-4/W0-5/W0-7/W0-9/W1-1/W2-1-i18n
 
 - **Loại:** FE test mới (W0-2) + i18n labels (W2-1-i18n, D2) + evidence. Claim `remaining-gates-20261108` (done).
@@ -8,6 +19,7 @@
 
 ---
 ## Entry 419: W0-3 + W0-6 + W0-8 + W2-1 (2026-11-08) — audit fix batch (rev1)
+
 
 - **Loại:** FE code (W0-3) + BE code (W0-6, W0-8, W2-1). Claim `pm-review-20261108` (done).
 - **Diff:** `workspace.js` −55 (4 AI agent methods + comment); `route-contract.test.js` allowlist `KNOWN_MISSING_BE_ENDPOINTS` → empty; `AISliceE.i18n.component.test.js` spy removed (−24); `env_validation.py` +1 (CORE_AD_SIGNING_SECRET prod); `test_ad_signing_secret.py` new; `settings.py` −6 (NOOP beat); `orchestrator.py` prompt schema BUY/SELL/HOLD→posture/levels.
