@@ -91,9 +91,9 @@ export function AuthRegisterPage() {
         locale === "vi" && serverMessage.trim() ? serverMessage.trim() : t("auth.registerSuccess"),
       );
       const serverUsername = String(nested?.username ?? payloadData.username ?? "");
+      reset();
       if (serverUsername) setValue("username", serverUsername);
       setRegisteredEmail(String(nested?.email ?? payloadData.email ?? values.email).trim());
-      reset();
       setTurnstileToken("");
       setServerFieldErrors({});
     } catch (error) {
@@ -163,6 +163,7 @@ export function AuthRegisterPage() {
               className={inputClass("password")}
               placeholder={t("auth.registerPasswordPlaceholder")}
               aria-invalid={!!fieldErr("password")}
+              minLength={PASSWORD_MIN_LENGTH}
               {...register("password")}
             />
           </FormField>
@@ -189,6 +190,7 @@ export function AuthRegisterPage() {
               className={inputClass("password_confirm")}
               placeholder={t("auth.registerPasswordConfirmPlaceholder")}
               aria-invalid={!!fieldErr("password_confirm")}
+              minLength={PASSWORD_MIN_LENGTH}
               {...register("passwordConfirm")}
             />
           </FormField>

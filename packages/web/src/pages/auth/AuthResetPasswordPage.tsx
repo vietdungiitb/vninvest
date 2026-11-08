@@ -140,6 +140,7 @@ export function AuthResetPasswordPage() {
                   className={inputClass(!!clientErr("newPassword", ["new_password"]))}
                   placeholder={t("auth.resetNewPasswordPlaceholder")}
                   aria-invalid={!!clientErr("newPassword", ["new_password"])}
+                  minLength={PASSWORD_MIN_LENGTH}
                   {...register("newPassword")}
                 />
               </FormField>
@@ -161,6 +162,7 @@ export function AuthResetPasswordPage() {
                   className={inputClass(!!clientErr("newPasswordConfirm", ["new_password_confirm"]))}
                   placeholder={t("auth.resetConfirmPasswordPlaceholder")}
                   aria-invalid={!!clientErr("newPasswordConfirm", ["new_password_confirm"])}
+                  minLength={PASSWORD_MIN_LENGTH}
                   {...register("newPasswordConfirm")}
                 />
               </FormField>

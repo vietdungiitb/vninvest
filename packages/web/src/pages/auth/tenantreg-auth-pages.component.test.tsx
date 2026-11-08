@@ -475,7 +475,9 @@ describe("tenantreg D9 — no inline Vietnamese defaults in the auth screens", (
     ];
     files.forEach((name) => {
       const code = codeOnly(readFileSync(join(dir, name), "utf8"));
-      expect(code, `${name} still inlines a defaultValue`).not.toMatch(/defaultValue/);
+      // `defaultValues:` is the react-hook-form option name, not the t() default
+      // copy key — exclude the plural so RHF useForm does not trip the check.
+      expect(code, `${name} still inlines a defaultValue`).not.toMatch(/defaultValue(?!\w)/);
     });
   });
 
