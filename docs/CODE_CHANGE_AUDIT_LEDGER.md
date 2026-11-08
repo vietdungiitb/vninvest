@@ -12,6 +12,16 @@
 - **Lessons áp dụng:** [L-001, L-002, L-003, L-007, L-V01, L-V02, L-V04]
 - **Evidence:** `docs/PLAN_GATES_FIX_20261108.md` (B2 + B3/B4 verdicts + rev2) · `docs/evidence/gates-fix/AUDIT_PLAN_GATES_20261108.md` (B3 NEED_REVISION 3 OBJ) · `AUDIT_PLAN_GATES_v2_20261108.md` (B4 PASS) · `AUDIT_B8_GATES_20261108.md` (B8 NEED_REVISION 1 blocker + 1 major) · `AUDIT_B8_GATES_v2_20261108.md` (B8 PASS 0 blocker/0 major).
 
+## Entry 426: T1 ai-cc-i18n-clean AC5 — fix gốc CRLF (B4 PASS, B8 PASS, 7/7 PASS, tsc 0)
+
+- **Loại:** FE test fix (1 file) + docs (plan + evidence + ledger). Branch `feat/nextphase-1108` (claim `nextphase-1108` done). Không đổi production code. Nợ còn lại của plan (`docs/PLAN_NEXT_PHASE_20261108.md`): T3 (agent-*.ps1 PS 5.1 parse) → T2 (auth-forms-rhf-extra treo) → T4 (BE/Axe/visual, C3/D1/D2 chờ owner) — **mở ticket riêng, không gộp vào PR này**.
+- **Diff chính:** `ai-cc-i18n-clean.component.test.ts:127-129` +3 dòng: chuẩn hoá EOL (`\r\n`/`\r` → `\n`) trước khi strip comment của AC5. Nợ "93 dòng comment" từ Entry 420/424 bị **refute** (L-V02): phân loại B1 trên 7 file `SRC9` cho **0 hit runtime**; toàn bộ 93 hit thô đều là comment. Gốc rễ thật: máy Windows `autocrlf=true` checkout CRLF (Form 1010 CRLF), regex strip `//.*$` không khớp dòng CRLF (`.*` không nuốt `\r`) → AC5 báo giả cả hit comment.
+- **TDD:** fail-before: `npx vitest run src/components/__tests__/ai-cc-i18n-clean.component.test.ts` → **1 failed | 6 passed** (AC5, 93 hit). Pass-after: **7/7 PASS** (6.55s), `npx tsc --noEmit` exit 0. Không cần rescope i18n (0 runtime hit); không thêm test dương tính (L-V04 n/a — không có key mới).
+- **Audit:** B3 NEED_REVISION (OBJ-1..3) → plan sửa; B4 v2 **PASS** (`AUDIT_PLAN_20261108_v2.md`); B8 re-audit **PASS** 0 blocker (`AUDIT_B8_T1_20261108.md`). Evidence B1+B6: `docs/evidence/next-phase/T1_AC5_EVIDENCE_20261108.md`.
+- **CHƯA CHẠY:** full `test:components` re-measure, BE suite, VPS staging verify (B7 trước merge theo plan §12; PR này là test-only, re-audit chấp nhận kèm ĐĂNG KÝ B7 bắt buộc ở coordinator/merge).
+- **Lessons:** L-001 L-002 L-003 L-007 L-V01 L-V02 L-V03 L-V04. Bài học mới: test đọc nguồn bằng `readFileSync` + strip theo dòng là **phụ thuộc EOL của máy checkout** — phải chuẩn hoá `\r\n`→`\n` trước khi dùng regex neo cuối dòng, nếu không Windows báo giả hàng loạt; `normalize-eol --fix` **không sửa được file mixed** (ghi LF nhưng báo mixed → loop vô hạn) — cách đúng là `checkout HEAD` + append bằng Edit tool giữ byte gốc.
+e074038e5 (docs(ledger): Entry 425 T1 AC5 CRLF fix (B8 PASS) + re-audit evidence)
+
 ---
 
 ## Entry 424: Handoff đóng toàn bộ vòng UI/UX + full suite cuối (1198/1199) + dọn dẹp branch
