@@ -13,9 +13,9 @@
     {
       "id": "C-002",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "117 model",
+      "docQuote": "118 model",
       "fact": "models",
-      "expected": 117,
+      "expected": 118,
       "why": "Model moi doi ERD (D02 s4) va 06.01."
     },
     {
@@ -37,9 +37,9 @@
     {
       "id": "C-005",
       "doc": "docs/system-design/01-SYSTEM-OVERVIEW/01.01-tom-tat-dieu-hanh.md",
-      "docQuote": "46 lịch Celery beat",
+      "docQuote": "45 lịch Celery beat",
       "fact": "beatEntries",
-      "expected": 46,
+      "expected": 45,
       "why": "Lich beat moi doi hanh vi nen (ingest/warmup) va 05.01."
     },
     {

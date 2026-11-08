@@ -235,8 +235,11 @@ if (existsSync(join(REPO, "scripts/audit-status-claims.mjs"))) {
 // guard: chi chay khi tool ton tai; tool fail-closed tren drift that
 // (inventory/links/citations/dups/claims). Xem 00.03-quy-trinh-dong-bo.md.
 if (existsSync(join(REPO, "docs/system-design/_meta/tools/check-system-design.mjs"))) {
+  // Tool contract: 0 = sach, 1 = drift, 2 = KHONG VERIFY DUOC (catalog can
+  // Django runtime ma may nay khong co → SKIP trung thuc, khong nuot vao PASS).
   const r = run(process.execPath, ["docs/system-design/_meta/tools/check-system-design.mjs", "--check"]);
-  if (r.code !== 0) bad("system-design", r.out);
+  if (r.code === 2) skip("system-design", "catalog CHUA CHAY (thieu Django runtime tren may nay) — chay VPS");
+  else if (r.code !== 0) bad("system-design", r.out);
   else ok("system-design", "inventory/links/cites/dups/claims khop");
 } else skip("system-design", "khong co docs/system-design/_meta/tools/check-system-design.mjs");
 
@@ -432,13 +435,22 @@ const openapiBudget = join(
   "packages/core/backend/scripts/check-openapi-schema-budget.py",
 );
 if (existsSync(openapiBudget)) {
-  const r = run(PY, [openapiBudget], join(REPO, "packages/core/backend"));
-  if (r.code !== 0) {
-    bad("openapi-budget", r.out.split("\n").slice(0, 8).join("\n"));
+  // Probe chinh xac: chi SKIP khi PY khong import duoc django (thieu runtime
+  // tren may nay — CHUA CHAY, chay VPS). Import duoc → chay budget nhu cu,
+  // loi spectacular that van FAIL (khong cho SKIP che drift).
+  const probe = run(PY, ["-c", "import django"], join(REPO, "packages/core/backend"));
+  const djangoMissing = probe.code !== 0 && /No module named ['"]django['"]/.test(probe.out || "");
+  if (djangoMissing) {
+    skip("openapi-budget", "django chua co tren may nay — CHUA CHAY; chay tren VPS staging");
   } else {
+    const r = run(PY, [openapiBudget], join(REPO, "packages/core/backend"));
+    if (r.code !== 0) {
+      bad("openapi-budget", r.out.split("\n").slice(0, 8).join("\n"));
+    } else {
     // So no con lai, doc tu output that chu khong phai mo ta tinh.
     const left = (r.out.match(/NO CON: Errors=(\d+), Warnings=(\d+)/) || [])[0];
     ok("openapi-budget", left ? `${left} (no san, da baseline)` : "OK");
+    }
   }
 } else skip("openapi-budget", "khong co check-openapi-schema-budget.py");
 

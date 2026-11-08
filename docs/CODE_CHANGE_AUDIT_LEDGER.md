@@ -1,3 +1,19 @@
+## Entry 425: Gates-fix — fix đúng 4 pre-push gate fail (B4/B8 PASS, pre-push 34 PASS/2 SKIP/0 FAIL)
+
+- **Loại:** FE gate fix (`check-ai-cc.mjs` CRLF) + docs (`01.01`, `claims.json`, freshness/inventory regen) + honest SKIP (`check-system-design.mjs`, `pre-push-gate.mjs`) + hygiene (đóng 3 dòng claim stale giữ `pre-push-gate.mjs`). Branch `feat/gates-1108` (claim `gates-1108` done). Không đổi production code. Nợ ngoài scope vẫn giữ theo `docs/PLAN_NEXT_PHASE_20261108.md`: T3 (agent-*.ps1 PS 5.1 parse) → T2 (auth-forms-rhf-extra treo) → T4 (BE/Axe/visual, C3/D1/D2 chờ owner).
+- **Diff chính — 4 cổng (đều đã chứng minh pre-existing trên cây sạch `agent-baseline-check` = `origin/dev`, và đúng gốc rễ):**
+  1. AC11: strip comment của gate hỏng trên CRLF (cùng lớp lỗi T1) → `check-ai-cc.mjs:271-275` chuẩn hoá EOL trước khi strip. Gate SẠCH 12/12, self-test 20/20 (mutation drift vẫn bắt được).
+  2. system-design C-002/C-005: `LicenseKey` (`205867b84`) +1 model → 118; Entry 419 gỡ NOOP beat → 45. Sửa doc+`claims.json` atomically + `--write` regen (chỉ `inventory.json`+`freshness-report.md`).
+  3. catalog READ thiếu django: predicate hẹp (chỉ `No module named 'django'`) + exit-2 lan truyền + self-test tích hợp (fake gen requests→FAIL, django→SKIP). Không còn nuốt FAIL thật.
+  4. `pre-push-gate.mjs`: handler exit-2→skip (catalog) + probe `django` → skip (openapi-budget); lỗi thật vẫn FAIL như cũ. Hygiene: 3 dòng stale `in-progress` (Oct 21-22, PR #272/#278/#279 đã merge) → `superseded` (1 từ/dòng, tiền lệ `uiux-w9-stale-claims` 20 dòng).
+- **Gates:** `pre-push-gate` **34 PASS / 2 SKIP / 0 FAIL** (exit 0) — 2 SKIP trung thực (`system-design` catalog + `openapi-budget`), không bịa PASS (L-V01/L-V02/L-V04). `check-system-design --check` exit 2 (KHONG VERIFY DUOC) + `--self-test` PASS 9/9; `verify-global-config` 7 OK (G1 deploy machine-local).
+- **CHƯA CHẠY (ghi rõ):** catalog regen thật + openapi schema budget + BE suite trên VPS (thiếu django local theo quy tắc BE-on-VPS); full `test:components` re-measure (thuộc T1 branch, B7 trước merge).
+- **Bài học mới:** (a) Test nào đọc nguồn theo dòng + strip regex neo cuối dòng đều là EOL-dependent — trên Windows phải chuẩn hoá `\r\n`→`\n` trước khi strip, nếu không cả AC5 (T1) lẫn AC11 đều báo giả trên cùng cây CRLF. (b) Khi làm cho gate "không chạy được" trung thực, phải lan truyền qua **exit code** (2) đến gate cha (`skip` có lý do) — nuốt trong output là "gate xanh giá". (c) `status===2` của script con không tự đồng nghĩa "thiếu runtime": phải khẳng định bằng output (regex hẹp), và bổ sung self-test **tích hợp** (fake gen), không chỉ test hàm thuần.
+- **Lessons áp dụng:** [L-001, L-002, L-003, L-007, L-V01, L-V02, L-V04]
+- **Evidence:** `docs/PLAN_GATES_FIX_20261108.md` (B2 + B3/B4 verdicts + rev2) · `docs/evidence/gates-fix/AUDIT_PLAN_GATES_20261108.md` (B3 NEED_REVISION 3 OBJ) · `AUDIT_PLAN_GATES_v2_20261108.md` (B4 PASS) · `AUDIT_B8_GATES_20261108.md` (B8 NEED_REVISION 1 blocker + 1 major) · `AUDIT_B8_GATES_v2_20261108.md` (B8 PASS 0 blocker/0 major).
+
+---
+
 ## Entry 424: Handoff đóng toàn bộ vòng UI/UX + full suite cuối (1198/1199) + dọn dẹp branch
 
 - **Loại:** docs (ledger + handoff) + chore (xoá branch đã merge, dọn file tạm). Không đổi code.

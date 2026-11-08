@@ -268,7 +268,11 @@ const CUSTOM_CHECKS = [
       // BO COMMENT truoc khi quet: comment cua route sau nhac `StaffRoute` se bi
       // statement route truoc "an" vao (đang xay ra: `/settings/ai/slo` nham co guard
       // chi vi comment 2 dong tren route `settings/ai/audit`).
+      // Chuẩn hoá EOL trước khi strip: main.tsx trên may autocrlf=true (Windows)
+      // là CRLF, khiến per-line `//.*$` không khớp (`.*` không nuốt \r) → comment
+      // nhắc `StaffRoute` vẫn ở lại → route truoc nham co guard (false drift AC11).
       const mainNoComment = main
+        .replace(/\r\n/g, "\n").replace(/\r/g, "\n")
         .split("\n")
         .map((l) => l.replace(/\/\/.*$/, ""))
         .join("\n");
