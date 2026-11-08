@@ -1,4 +1,4 @@
-import 'vninvestcharts-widget/dist/index.css';
+// C2: CSS widget tách khỏi bundle chính; tải cùng lúc với widget JS khi vào viewport (xem effect bên dưới).
 import React, { createElement, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
@@ -48,11 +48,36 @@ export default function VNStockChartPanel({
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
+  const chartContainerRef = useRef(null);
+  // C2: defer widget chunk (2.1MB) cho tới khi panel gần viewport.
+  // shortcut: khung giữ spinner khi chưa vào viewport; nâng cấp sau nếu cần placeholder "cuộn để tải".
+  const [inView, setInView] = useState(false);
 
   useEffect(() => {
+    if (inView) return;
+    const el = chartContainerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setInView(true);
+        io.disconnect();
+      }
+    }, { rootMargin: '240px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [inView]);
+
+  useEffect(() => {
+    if (!inView) return;
     let active = true;
-    import('vninvestcharts-widget')
-      .then((mod) => {
+    Promise.all([
+      import('vninvestcharts-widget'),
+      import('vninvestcharts-widget/dist/index.css'),
+    ])
+      .then(([mod]) => {
         if (active) setWidgetModule(mod);
       })
       .catch((err) => {
@@ -61,7 +86,7 @@ export default function VNStockChartPanel({
     return () => {
       active = false;
     };
-  }, []);
+  }, [inView]);
 
   const VNInvestCharts = widgetModule?.VNInvestCharts;
   const VNInvestMultiCharts = widgetModule?.VNInvestMultiCharts;
@@ -229,7 +254,6 @@ export default function VNStockChartPanel({
     onBarsChange?.(bars);
   }, [onBarsChange]);
 
-  const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
 
   const chartComponent = VNInvestCharts;
