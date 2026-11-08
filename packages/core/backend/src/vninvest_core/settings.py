@@ -666,12 +666,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 300.0,  # every 5 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-session-facts-5m']},
     },
-    'materialize-unified-alerts-2m': {
-        'task': 'market_serving.materializers.materialize_unified_alerts',
-        'schedule': 120.0,  # every 2 minutes
-        'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-unified-alerts-2m']},
-    },
-    
     # === Native SaaS realtime prefetch (replaces legacy portfolio prefetch) ===
     # Slice B (QueueRecovery): expire_seconds = per-message TTL (giây) mà beat_reconcile.py
     # đồng bộ vào PeriodicTask.expire_seconds (django-celery-beat 2.9+: worker discard tin quá hạn
