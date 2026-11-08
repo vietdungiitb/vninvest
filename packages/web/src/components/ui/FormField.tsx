@@ -30,8 +30,8 @@ export function FormField({ label, htmlFor, error, hint, required, children }: F
   return e("div", { className: "form-field" }, [
     e("label", { key: "label", htmlFor, className: "form-field__label" }, [
       label,
-      required ? e("span", { key: "req", className: "form-field__required", "aria-hidden": "true" }, " *") : null,
     ]),
+    required ? e("span", { key: "req", className: "form-field__required", "aria-hidden": "true" }, " *") : null,
     e("div", { key: "control", className: "form-field__control" }, children),
     hint ? e("p", { key: "hint", id: hintId, className: "form-field__hint" }, hint) : null,
     error
