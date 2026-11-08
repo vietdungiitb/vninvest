@@ -515,6 +515,12 @@ function checkClaims(dir = SD) {
 
 /* ------------------------------------------------------- catalog (Lop 2) */
 
+/** Predicate hẹp: chi "thieu Django runtime" moi duoc SKIP trung thuc (L-G02).
+ *  Bat ky ModuleNotFoundError nao khac (bug that trong script gen) van FAIL. */
+function isMissingDjangoOutput(blob) {
+  return /No module named ['"]django['"]/.test(blob || '');
+}
+
 function checkGenerated(genName, targetRel, okNote) {
   const gen = join(META, 'tools', genName);
   const target = join(SD, targetRel);
@@ -533,7 +539,15 @@ function checkGenerated(genName, targetRel, okNote) {
     return { code: 2, out: [`catalog: khong chay duoc python (${r.error.code}) — KHONG verify duoc`] };
   }
   const out = ((r.stdout ?? '') + (r.stderr ?? '')).trim().split('\n').filter(Boolean);
-  if (r.status !== 0) return { code: 1, out };
+  if (r.status !== 0) {
+    // G4: chi SKIP khi dung module thieu la `django`. Moi loi khac (ke ca gen
+    // tu exit 2 cho exception la — catch-all cua gen script) van la code 1.
+    const blob = out.join('\n');
+    if (isMissingDjangoOutput(blob)) {
+      return { code: 2, out: ['catalog: CHUA CHAY (thieu Django runtime tren may nay) — chay lenh gen tren VPS co Django'] };
+    }
+    return { code: 1, out };
+  }
   return { code: 0, out: [out[out.length - 1] ?? okNote] };
 }
 
@@ -615,11 +629,23 @@ function runCheck(dir = SD) {
   // 6. danh muc API sinh lai (can Python + Django runtime; thieu thi SKIP
   //    trung thuc chu khong bao xanh — L-G02)
   // 7. danh muc model sinh lai (tuong tu)
-  if (dir === SD) {
+  // B8-01: chi chay catalog khi script gen TON TAI trong thu muc dang check
+  // (repo that co; fixture hermetic khong co). Cho fixture, checkGenerated
+  // thuong tra code 2 "thieu gen/target" — neu lan truyen nhu SKIP that thi
+  // CONTROL fixture sạch ra exit 2, phá vỡ self-test (regression).
+  const genApi = join(META, 'tools', 'gen-endpoint-catalog.py');
+  const genModel = join(META, 'tools', 'gen-model-catalog.py');
+  if (dir === SD && existsSync(genApi) && existsSync(genModel)) {
+    // OBJ-2: SKIP (thieu Django) phai lo ra ngoai qua exit code, khong nuot:
+    // catalog code 2 → tong code = 2 (KHONG VERIFY DUOC) de pre-push phan biet
+    // SKIP trung thuc (skip) khoi drift that (fail). Neu chi console.log thi
+    // caller (pre-push) chi thay "PASS" co dinh va nghi catalog da verify.
+    let skipped = false;
     const cat = checkCatalog();
     all.push(...cat.out);
     if (cat.code === 2) {
       for (const line of cat.out) console.log('  SKIP  ' + line);
+      skipped = true;
     } else if (cat.code !== 0) {
       code = Math.max(code, cat.code);
     }
@@ -627,9 +653,11 @@ function runCheck(dir = SD) {
     all.push(...mcat.out);
     if (mcat.code === 2) {
       for (const line of mcat.out) console.log('  SKIP  ' + line);
+      skipped = true;
     } else if (mcat.code !== 0) {
       code = Math.max(code, mcat.code);
     }
+    if (skipped && code === 0) code = 2;
   }
   for (const line of all) {
     if (/^FAIL/.test(line)) console.error(line);
@@ -727,11 +755,55 @@ function selfTest() {
     '_meta/retired-citations.json': { retired: [] },
   }, ['--check'], 'SAI');
 
+  // Predicate hep (G4): django-missing → SKIP duoc, module khac van FAIL.
+  const okA = isMissingDjangoOutput("Traceback ... ModuleNotFoundError: No module named 'django'");
+  const okB = !isMissingDjangoOutput("Traceback ... ModuleNotFoundError: No module named 'requests'");
+  if (okA && okB) console.log('  ok   PREDICATE: django-missing SKIP, module khac FAIL');
+  else {
+    failures++;
+    console.error(`  FAIL  PREDICATE: django=${okA} requests=${okB} (expected true/false)`);
+  }
+
+  // CATALOG tích hợp (B8-02): fake gen trong fixture — dir===SD và gen tồn tại
+  // nen catalog CHAY THẬT tren fixture. Assert exit code CHINH XAC (2 cho SKIP
+  // trung thuc khi thieu django, 1 cho FAIL khi module khac, 0 khi gen OK).
+  {
+    const fakeGen = (stderrLine, code) =>
+      `import sys\nsys.stderr.write(${JSON.stringify(stderrLine + '\n')})\nsys.exit(${code})\n`;
+    const catFiles = (genBody) => ({
+      'a.md': '# A\n',
+      '_meta/claims.json': { claims: [] },
+      '_meta/retired-citations.json': { retired: [] },
+      '_meta/tools/gen-endpoint-catalog.py': genBody,
+      '_meta/tools/gen-model-catalog.py': genBody,
+      '07-API-SPEC/07.02-danh-muc-api.md': '# catalog\n',
+      '06-DATA-ARCHITECTURE/06.02-danh-muc-model.md': '# catalog\n',
+    });
+    const runCat = (files) => {
+      const d = build(files);
+      spawnSync(process.execPath, [SELF, '--dir', d, '--write'], { encoding: 'utf8', shell: false, windowsHide: true });
+      const r = spawnSync(process.execPath, [SELF, '--dir', d, '--check'], { encoding: 'utf8', shell: false, windowsHide: true });
+      rmSync(d, { recursive: true, force: true });
+      return { status: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') };
+    };
+    const c1 = runCat(catFiles(fakeGen('OK', 0)));
+    const c2 = runCat(catFiles(fakeGen("ModuleNotFoundError: No module named 'django'", 1)));
+    const c3 = runCat(catFiles(fakeGen("ModuleNotFoundError: No module named 'requests'", 2)));
+    const c1ok = c1.status === 0;
+    const c2ok = c2.status === 2 && c2.out.includes('CHUA CHAY');
+    const c3ok = c3.status === 1 && c3.out.includes("No module named 'requests'") && !c3.out.includes('CHUA CHAY');
+    if (c1ok && c2ok && c3ok) console.log('  ok   CATALOG: gen-ok exit0, django exit2-SKIP, requests exit1-FAIL');
+    else {
+      failures++;
+      console.error(`  FAIL  CATALOG: ok=${c1ok}(${c1.status}) django=${c2ok}(${c2.status}) requests=${c3ok}(${c3.status})`);
+    }
+  }
+
   if (failures > 0) {
     console.error(`\nSELF-TEST FAILED: ${failures} case. Gate khong duoc tin.`);
     process.exit(1);
   }
-  console.log('\nSELF-TEST PASS: 5 case (1 control + 4 bat loi).');
+  console.log('\nSELF-TEST PASS: 7 case (1 control + 4 bat loi + 1 predicate + 1 catalog).');
 }
 
 /* ------------------------------------------------------------------ main */
