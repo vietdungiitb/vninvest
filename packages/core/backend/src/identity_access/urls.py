@@ -71,9 +71,6 @@ urlpatterns = [
     path('tenant-members/<str:member_id>/', tenant_member_views.TenantMemberRemoveView.as_view(), name='tenant-members-remove'),
     path('tenant-members/', tenant_member_views.TenantMemberListView.as_view(), name='tenant-members-list'),
 
-    # Partner / tenant-admin native mount — frontend calls /core/v1/partner/*
-    path('partner/', include(('identity_access.partner_urls', 'identity_access_partner'), namespace='identity_access_partner')),
-
     # Operator Dynamic Mail Configurations (singular - backward compat per INV-06)
     path('operator/mail-config/', views_operator.OperatorMailConfigListView.as_view(), name='operator-mail-config-list-singular'),
     path('operator/mail-config/<int:pk>/', views_operator.OperatorMailConfigDetailView.as_view(), name='operator-mail-config-detail-singular'),
