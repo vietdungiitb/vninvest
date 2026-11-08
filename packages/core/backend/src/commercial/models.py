@@ -1,3 +1,4 @@
+import uuid
 """
 Commercial models: Subscription, QuotaRecord, Invoice.
 
@@ -160,3 +161,40 @@ class QuotaHistory(models.Model):
 
     def __str__(self):
         return f'{self.tenant} — {self.meter_code} on {self.date}: {self.consumed_amount}/{self.entitled_amount}'
+
+import uuid
+
+
+class LicenseKey(models.Model):
+    class TierChoices(models.TextChoices):
+        PRO = "pro", "Pro"
+        ENTERPRISE = "enterprise", "Enterprise"
+        ACADEMIC = "academic", "Academic"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name="license_keys")
+    key_blob = models.TextField(help_text="Signed license blob")
+    tier = models.CharField(max_length=20, choices=TierChoices.choices)
+    domain_binding = models.CharField(max_length=255, blank=True, help_text="Allowed hostname")
+    issued_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    issued_by = models.ForeignKey("identity_access.CoreUser", on_delete=models.SET_NULL, null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "License Key"
+        ordering = ["-issued_at"]
+        indexes = [models.Index(fields=["tenant", "revoked_at"])]
+
+    def __str__(self):
+        return f"{self.tenant} - {self.tier} (expires {self.expires_at.date()})"
+
+    @property
+    def is_revoked(self):
+        return self.revoked_at is not None
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return self.expires_at < timezone.now()
