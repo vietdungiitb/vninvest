@@ -27,7 +27,7 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
 
   componentDidCatch(error: Error, info: unknown) {
     if (typeof console !== "undefined") {
-      console.error("[StockDetailPage]", error, info);
+      console.error(error, info);
     }
   }
 
@@ -40,17 +40,16 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
     if (this.state.hasError) {
       return e(
         "div",
-        { className: "sdp-page sdp-error-state" },
-        e("div", { className: "sdp-error-icon" }, "⚠️"),
-        e("p", { className: "sdp-error-text" }, this.state.error?.message || this.props.errorMessage || "Lỗi không xác định."),
+        { role: "alert", "aria-live": "assertive", className: "page-error-boundary" },
+        e("h2", null, this.props.fallbackTitle || "Something went wrong"),
+        e("p", null, this.props.errorMessage || this.state.error?.message || "An error occurred."),
         e(
           "button",
           {
-            className: "sdp-retry-btn",
             type: "button",
             onClick: this.handleRetry,
           },
-          this.props.retryLabel || "Thử lại"
+          this.props.retryLabel || "Retry"
         )
       );
     }
