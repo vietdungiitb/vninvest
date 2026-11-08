@@ -1,3 +1,12 @@
+## Entry 420: REMAINING GATES (2026-11-08) — FE gates + VPS verify/dump + W0-2/W0-4/W0-5/W0-7/W0-9/W1-1/W2-1-i18n
+
+- **Loại:** FE test mới (W0-2) + i18n labels (W2-1-i18n, D2) + evidence. Claim `remaining-gates-20261108` (done).
+- **Diff:** `StockOrderBookWidget.estimated.component.test.tsx` new (2 case badge `is_mock` hiện/ẩn); `en.js` 16 chuỗi + `vi.js` 21 chuỗi đổi `Recommendation`/`Khuyến nghị` → `Technical analysis`/`Phân tích kỹ thuật` (giữ key `recommendation_*` là identifier telemetry, không phải label); audit B3 R1→R2→R3→R4 (NEED_REVISION → AGREE → NEED_REVISION minor → PASS) + B8 re-audit.
+- **Gate thật (worktree này, 2026-11-08):** `check-multi-agent` PASS · `check-lessons` 57/60 · `tsc` 0 · `normalize-eol` OK · `i18n:scan:strict` exit 0 · W0-2 test 2/2 PASS · FE vitest full 172 pass / 1 fail (`ai-cc-i18n-clean` AC5, Vietnamese comments, pre-existing ngoài diff) · `npm run build` ✓ built 15.93s · `npm run lint` 0 errors / 4417 warnings · VPS `bash scripts/deploy-staging.sh --verify` PASS (health 2xx, 0 dead containers) · dump VPS `core=521` = local 521 (diff 0) · BE regression (VPS docker exec): env+ads 25 OK, saml 10 OK, signal_norm+orchestrator 40 OK, beat schedule 4 OK, HandlerResolvability 2 OK, pricing guard 1 OK.
+- **CHƯA CHẠY:** `test_api_envelope_schema` toàn file (timeout 120s ×3 — có HandlerResolvabilityTest thay thế); full BE suite; E2E/visual QA; deploy image mới lên VPS (image staging còn cũ 9 ngày); sửa `ai-cc-i18n-clean` AC5 (93 dòng comment tiếng Việt, pre-existing debt).
+- **Lessons:** L-001 L-002 L-003 L-V01 L-V02.
+
+---
 ## Entry 419: W0-3 + W0-6 + W0-8 + W2-1 (2026-11-08) — audit fix batch (rev1)
 
 - **Loại:** FE code (W0-3) + BE code (W0-6, W0-8, W2-1). Claim `pm-review-20261108` (done).
