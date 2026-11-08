@@ -1,34 +1,7 @@
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
-interface I18nContext {
-  t: (key: string, options?: { defaultValue?: string }) => string;
-  language: string;
-}
-
-function useI18n(): I18nContext {
-  return {
-    t: (key: string, options?: { defaultValue?: string }) => {
-      const map: Record<string, string> = {
-        'commercial.paymentReturn.title': 'Kết quả thanh toán',
-        'commercial.paymentReturn.loading': 'Đang xác thực trạng thái giao dịch từ máy chủ...',
-        'commercial.paymentReturn.errorNoTxnRef': 'Không tìm thấy mã giao dịch (txn_ref) trong URL.',
-        'commercial.paymentReturn.errorInvalidResponse': 'Phản hồi từ máy chủ không hợp lệ.',
-        'commercial.paymentReturn.errorCheckStatus': 'Không thể kiểm tra trạng thái giao dịch.',
-        'commercial.paymentReturn.errorTitle': 'Lỗi xác thực',
-        'commercial.paymentReturn.backToBilling': 'Quay lại Trung tâm Thanh toán',
-        'commercial.paymentReturn.successTitle': 'Thanh toán thành công',
-        'commercial.paymentReturn.failureTitle': 'Thanh toán thất bại',
-        'commercial.paymentReturn.txnRefLabel': 'Mã giao dịch: ',
-        'commercial.paymentReturn.amountLabel': 'Số tiền: ',
-        'commercial.paymentReturn.reasonLabel': 'Lý do: ',
-        'commercial.paymentReturn.reasonDefault': 'Giao dịch bị từ chối hoặc đã hủy',
-      };
-      return map[key] || options?.defaultValue || key;
-    },
-    language: 'vi',
-  };
-}
 
 const RETURN_CUSTOM_STYLES = `
 .return-card-container {

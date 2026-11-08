@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { createVipAppControlClient } from "../../adapters/vip-app/vipAppAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 import {
   ShellField,
   ShellPageChrome,
@@ -15,12 +16,20 @@ import {
   renderShellMetric,
 } from "../../components/ShellPageTemplate.js";
 import { loadShellBootstrap } from "../../context/bootstrapClient.js";
-const ROLE_OPTIONS = Object.freeze([
-  { key: "vip_viewer", label: "Người xem VIP" },
-  { key: "vip_operator", label: "Điều phối viên VIP" },
-  { key: "vip_admin", label: "Quản trị viên VIP" },
-  { key: "vip_superuser", label: "Siêu quản trị VIP" },
-]);
+
+type Translate = (key: string, opts?: Record<string, unknown>) => string;
+
+const ROLE_KEYS = Object.freeze(["vip_viewer", "vip_operator", "vip_admin", "vip_superuser"]);
+
+function roleLabel(roleKey: string, tr: Translate): string {
+  const key = `vipLocalControl.role_${roleKey}`;
+  const fallback = roleKey === "vip_viewer" ? tr(key, { defaultValue: "Người xem VIP" })
+    : roleKey === "vip_operator" ? tr(key, { defaultValue: "Điều phối viên VIP" })
+    : roleKey === "vip_admin" ? tr(key, { defaultValue: "Quản trị viên VIP" })
+    : roleKey === "vip_superuser" ? tr(key, { defaultValue: "Siêu quản trị VIP" })
+    : roleKey;
+  return fallback;
+}
 
 interface Credentials {
   username: string;
@@ -80,11 +89,6 @@ interface ViewState extends ControlSnapshot {
   working: boolean;
   error: string;
   notice: string;
-}
-
-interface RoleOption {
-  key: string;
-  label: string;
 }
 
 type BootstrapLoader = (options: { adapter: string; env: Record<string, unknown>; fetchImpl?: unknown }) => Promise<{
@@ -168,17 +172,17 @@ function createInitialViewState(initialSnapshot: Partial<ControlSnapshot> | null
   };
 }
 
-function normalizeErrorMessage(error: unknown): string {
+function normalizeErrorMessage(error: unknown, tr: Translate): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  return "Không thể hoàn tất thao tác điều khiển VIP cục bộ.";
+  return tr("vipLocalControl.genericError", { defaultValue: "Không thể hoàn tất thao tác điều khiển VIP cục bộ." });
 }
 
-function formatTimestamp(value: string | null | undefined): string {
+function formatTimestamp(value: string | null | undefined, tr: Translate): string {
   if (!value) {
-    return "Chưa có mốc thời gian";
+    return tr("vipLocalControl.noTimestamp", { defaultValue: "Chưa có mốc thời gian" });
   }
 
   const timestamp = new Date(value);
@@ -192,9 +196,8 @@ function formatTimestamp(value: string | null | undefined): string {
   }).format(timestamp);
 }
 
-function getRoleLabel(roleKey: string): string {
-  const roleEntry = ROLE_OPTIONS.find((candidate: RoleOption) => candidate.key === roleKey);
-  return roleEntry ? roleEntry.label : roleKey;
+function getRoleLabel(roleKey: string, tr: Translate): string {
+  return roleLabel(roleKey, tr);
 }
 
 async function loadControlSnapshot({
@@ -225,9 +228,9 @@ async function loadControlSnapshot({
   };
 }
 
-function renderUserItem(user: User) {
+function renderUserItem(user: User, tr: Translate) {
   const roleKeys = Array.isArray(user.role_keys) ? user.role_keys : [];
-  const roleText = roleKeys.length > 0 ? roleKeys.map(getRoleLabel).join(" • ") : "Chưa gán vai trò";
+  const roleText = roleKeys.length > 0 ? roleKeys.map((key) => getRoleLabel(key, tr)).join(" • ") : tr("vipLocalControl.noRole", { defaultValue: "Chưa gán vai trò" });
 
   return (
     <li className={`${styles.listItem}`} key={`${user.user_id}:${user.username}`}>
@@ -235,19 +238,19 @@ function renderUserItem(user: User) {
         <h3 className={`${styles.itemTitle}`}>{user.username}</h3>
         <span className={`${styles.pill}`}>{roleText}</span>
       </div>
-      <p className={`${styles.itemMeta}`}>{user.email || "Chưa có email"} · Mã người dùng {user.user_id}</p>
+      <p className={`${styles.itemMeta}`}>{user.email || tr("vipLocalControl.noEmail", { defaultValue: "Chưa có email" })} · {tr("vipLocalControl.userIdPrefix", { defaultValue: "Mã người dùng" })} {user.user_id}</p>
     </li>
   );
 }
 
-function renderAuditItem(entry: AuditEntry) {
+function renderAuditItem(entry: AuditEntry, tr: Translate) {
   return (
     <li className={`${styles.listItem}`} key={`${entry.audit_id}:${entry.action}`}>
       <div className={`${styles.listItemHeader}`}>
         <h3 className={`${styles.itemTitle}`}>{entry.action}</h3>
-        <span className={`${styles.pill}`}>{formatTimestamp(entry.created_at)}</span>
+        <span className={`${styles.pill}`}>{formatTimestamp(entry.created_at, tr)}</span>
       </div>
-      <p className={`${styles.itemMeta}`}>Tác nhân: {entry.actor_username || "system"}</p>
+      <p className={`${styles.itemMeta}`}>{tr("vipLocalControl.actor", { defaultValue: "Tác nhân" })}: {entry.actor_username || "system"}</p>
     </li>
   );
 }
@@ -263,6 +266,7 @@ export function VipLocalControlPage({
   initialUserDraft = {},
   initialSnapshot = null,
 }: VipLocalControlPageProps) {
+  const { t } = useI18n();
   const clientRef = useRef<ControlClient | null>(controlClient);
   const envRef = useRef(env);
   const fetchImplRef = useRef(fetchImpl);
@@ -352,7 +356,7 @@ export function VipLocalControlPage({
           ...previous,
           loading: false,
           working: false,
-          error: normalizeErrorMessage(error),
+          error: normalizeErrorMessage(error, t),
         }));
       }
     }
@@ -380,7 +384,7 @@ export function VipLocalControlPage({
       setViewState((previous) => ({
         ...previous,
         working: false,
-        error: normalizeErrorMessage(error),
+        error: normalizeErrorMessage(error, t),
       }));
       return null;
     }
@@ -393,7 +397,7 @@ export function VipLocalControlPage({
     if (!username || !credentials.password) {
       setViewState((previous) => ({
         ...previous,
-        error: "Vui lòng nhập tên đăng nhập và mật khẩu trước khi vào phiên cục bộ.",
+        error: t("vipLocalControl.credentialsRequired", { defaultValue: "Vui lòng nhập tên đăng nhập và mật khẩu trước khi vào phiên cục bộ." }),
       }));
       return;
     }
@@ -402,7 +406,7 @@ export function VipLocalControlPage({
       () => controlPlaneClient.login({ username, password: credentials.password }),
       (payload: unknown) => {
         const p = payload as { session: SessionInfo };
-        return `Đã đăng nhập bằng tài khoản ${p.session.principal!.username}.`;
+        return t("vipLocalControl.loggedInAs", { defaultValue: "Đã đăng nhập bằng tài khoản " }) + p.session.principal!.username + ".";
       },
     );
   }
@@ -410,7 +414,7 @@ export function VipLocalControlPage({
   async function handleLogout() {
     await runAction(
       () => controlPlaneClient.logout(),
-      "Đã đóng phiên cục bộ và trả shell về trạng thái chờ.",
+      t("vipLocalControl.loggedOut", { defaultValue: "Đã đóng phiên cục bộ và trả shell về trạng thái chờ." }),
     );
   }
 
@@ -419,7 +423,7 @@ export function VipLocalControlPage({
       () => controlPlaneClient.resetSession(),
       (payload: unknown) => {
         const p = payload as { session: SessionInfo };
-        return `Đã khôi phục phiên mặc định cho ${p.session.principal!.username}.`;
+        return t("vipLocalControl.sessionRestored", { defaultValue: "Đã khôi phục phiên mặc định cho " }) + p.session.principal!.username + ".";
       },
     );
   }
@@ -427,7 +431,7 @@ export function VipLocalControlPage({
   async function handleRefresh() {
     await runAction(
       async () => ({ ok: true }),
-      "Đã làm mới snapshot đăng nhập, danh sách người dùng và nhật ký audit.",
+      t("vipLocalControl.refreshed", { defaultValue: "Đã làm mới snapshot đăng nhập, danh sách người dùng và nhật ký audit." }),
     );
   }
 
@@ -438,7 +442,7 @@ export function VipLocalControlPage({
     if (!username) {
       setViewState((previous) => ({
         ...previous,
-        error: "Tên đăng nhập cho người dùng VIP không được để trống.",
+        error: t("vipLocalControl.usernameRequired", { defaultValue: "Tên đăng nhập cho người dùng VIP không được để trống." }),
       }));
       return;
     }
@@ -463,8 +467,8 @@ export function VipLocalControlPage({
       (payload: unknown) => {
         const p = payload as { user: User; created: boolean };
         return p.created
-          ? `Đã tạo người dùng ${p.user.username} trong local backend.`
-          : `Đã cập nhật người dùng ${p.user.username}.`;
+          ? t("vipLocalControl.userCreated", { defaultValue: "Đã tạo người dùng " }) + p.user.username + t("vipLocalControl.userCreatedSuffix", { defaultValue: " trong local backend." })
+          : t("vipLocalControl.userUpdated", { defaultValue: "Đã cập nhật người dùng " }) + p.user.username + ".";
       },
     );
 
@@ -473,8 +477,8 @@ export function VipLocalControlPage({
     }
   }
 
-  const currentSessionUsername = viewState.session?.principal?.username || "Chưa đăng nhập";
-  const currentSessionId = viewState.session?.session_id || "Không có phiên";
+  const currentSessionUsername = viewState.session?.principal?.username || t("vipLocalControl.notLoggedIn", { defaultValue: "Chưa đăng nhập" });
+  const currentSessionId = viewState.session?.session_id || t("vipLocalControl.noSession", { defaultValue: "Không có phiên" });
   const abilityCount = Array.isArray(viewState.capabilities?.abilities)
     ? viewState.capabilities.abilities.length
     : 0;
@@ -483,44 +487,44 @@ export function VipLocalControlPage({
     : 0;
 
   const metrics = [
-    renderShellMetric("Phiên hiện tại", currentSessionUsername),
-    renderShellMetric("Người dùng cục bộ", String(viewState.users.length)),
-    renderShellMetric("Bản ghi audit", String(viewState.auditLogs.length)),
-    renderShellMetric("Quyền đã nạp", String(abilityCount)),
+    renderShellMetric(t("vipLocalControl.metricSession", { defaultValue: "Phiên hiện tại" }), currentSessionUsername),
+    renderShellMetric(t("vipLocalControl.metricLocalUsers", { defaultValue: "Người dùng cục bộ" }), String(viewState.users.length)),
+    renderShellMetric(t("vipLocalControl.metricAuditRecords", { defaultValue: "Bản ghi audit" }), String(viewState.auditLogs.length)),
+    renderShellMetric(t("vipLocalControl.metricLoadedAbilities", { defaultValue: "Quyền đã nạp" }), String(abilityCount)),
   ];
 
   const sessionCards = (
     <>
       <article className={`${styles.surfaceCard}`} key="session">
-        <h3 className={`${styles.itemTitle}`}>Tóm tắt phiên local</h3>
-        <p className={`${styles.itemMeta}`}>Tài khoản: {currentSessionUsername}</p>
-        <p className={`${styles.itemMeta}`}>Mã phiên: {currentSessionId}</p>
+        <h3 className={`${styles.itemTitle}`}>{t("vipLocalControl.sessionSummary", { defaultValue: "Tóm tắt phiên local" })}</h3>
+        <p className={`${styles.itemMeta}`}>{t("vipLocalControl.accountLabel", { defaultValue: "Tài khoản" })}: {currentSessionUsername}</p>
+        <p className={`${styles.itemMeta}`}>{t("vipLocalControl.sessionIdLabel", { defaultValue: "Mã phiên" })}: {currentSessionId}</p>
       </article>
       <article className={`${styles.surfaceCard}`} key="surface">
-        <h3 className={`${styles.itemTitle}`}>Health và route đang mở</h3>
-        <p className={`${styles.itemMeta}`}>Dịch vụ: {viewState.health?.service || "vip-app-local-api"}</p>
-        <p className={`${styles.itemMeta}`}>Route nhìn thấy: {visibleRouteCount}</p>
+        <h3 className={`${styles.itemTitle}`}>{t("vipLocalControl.healthRoutesTitle", { defaultValue: "Health và route đang mở" })}</h3>
+        <p className={`${styles.itemMeta}`}>{t("vipLocalControl.serviceLabel", { defaultValue: "Dịch vụ" })}: {viewState.health?.service || "vip-app-local-api"}</p>
+        <p className={`${styles.itemMeta}`}>{t("vipLocalControl.visibleRoutesLabel", { defaultValue: "Route nhìn thấy" })}: {visibleRouteCount}</p>
       </article>
     </>
   );
 
   const userList = viewState.users.length > 0
-    ? <ul className={`${styles.list}`} key="user-list">{viewState.users.map(renderUserItem)}</ul>
-    : <div className={`${styles.empty}`} key="user-empty">Local backend chưa có người dùng nào ngoài seed user.</div>;
+    ? <ul className={`${styles.list}`} key="user-list">{viewState.users.map((user) => renderUserItem(user, t))}</ul>
+    : <div className={`${styles.empty}`} key="user-empty">{t("vipLocalControl.noUsers", { defaultValue: "Local backend chưa có người dùng nào ngoài seed user." })}</div>;
 
   const auditList = viewState.auditLogs.length > 0
-    ? <ol className={`${styles.list}`} key="audit-list">{viewState.auditLogs.map(renderAuditItem)}</ol>
-    : <div className={`${styles.empty}`} key="audit-empty">Nhật ký audit chưa có bản ghi nào để hiển thị.</div>;
+    ? <ol className={`${styles.list}`} key="audit-list">{viewState.auditLogs.map((entry) => renderAuditItem(entry, t))}</ol>
+    : <div className={`${styles.empty}`} key="audit-empty">{t("vipLocalControl.noAuditLogs", { defaultValue: "Nhật ký audit chưa có bản ghi nào để hiển thị." })}</div>;
 
   return (
     <ShellPageChrome
-      eyebrow="VIP local control"
-      title="Trung tâm điều khiển VIP cục bộ"
-      description="Bề mặt này neo trực tiếp vào local backend của VIP để đăng nhập thử, rà soát tài khoản con và đọc chuỗi audit gần nhất mà không cần tự ghép URL ngoài adapter seam."
+      eyebrow={t("vipLocalControl.eyebrow", { defaultValue: "VIP local control" })}
+      title={t("vipLocalControl.title", { defaultValue: "Trung tâm điều khiển VIP cục bộ" })}
+      description={t("vipLocalControl.description", { defaultValue: "Bề mặt này neo trực tiếp vào local backend của VIP để đăng nhập thử, rà soát tài khoản con và đọc chuỗi audit gần nhất mà không cần tự ghép URL ngoài adapter seam." })}
       badge={
         <div className={`${styles.heroBadge}`}>
           <span className={`${styles.statusDot}`} />
-          {viewState.loading || viewState.working ? "Đang đồng bộ local backend" : "Local backend sẵn sàng cho audit"}
+          {viewState.loading || viewState.working ? t("vipLocalControl.syncing", { defaultValue: "Đang đồng bộ local backend" }) : t("vipLocalControl.ready", { defaultValue: "Local backend sẵn sàng cho audit" })}
         </div>
       }
       metrics={metrics}
@@ -530,8 +534,8 @@ export function VipLocalControlPage({
       <section className={`${styles.bodyGrid}`}>
         <div className={`${styles.stack}`}>
           <ShellPanel
-            title="Đăng nhập và phục hồi phiên"
-            subtitle="Dùng seed account mặc định hoặc đăng nhập bằng sub-user đã tạo ngay trong local backend."
+            title={t("vipLocalControl.loginPanelTitle", { defaultValue: "Đăng nhập và phục hồi phiên" })}
+            subtitle={t("vipLocalControl.loginPanelSubtitle", { defaultValue: "Dùng seed account mặc định hoặc đăng nhập bằng sub-user đã tạo ngay trong local backend." })}
             actions={
               <div className={`${styles.actions}`}>
                 <button
@@ -540,7 +544,7 @@ export function VipLocalControlPage({
                   onClick={handleRefresh}
                   disabled={viewState.working}
                 >
-                  Làm mới snapshot
+                  {t("vipLocalControl.refreshSnapshot", { defaultValue: "Làm mới snapshot" })}
                 </button>
               </div>
             }
@@ -551,7 +555,7 @@ export function VipLocalControlPage({
             <form className={`${styles.form}`} onSubmit={handleLogin} key="login-form">
               <div className={`${styles.formGrid}`}>
                 <ShellField
-                  label="Tên đăng nhập local"
+                  label={t("vipLocalControl.localUsername", { defaultValue: "Tên đăng nhập local" })}
                   name="vip-local-username"
                   value={credentials.username}
                   placeholder="vip-local-admin"
@@ -562,7 +566,7 @@ export function VipLocalControlPage({
                   }}
                 />
                 <ShellField
-                  label="Mật khẩu local"
+                  label={t("vipLocalControl.localPassword", { defaultValue: "Mật khẩu local" })}
                   name="vip-local-password"
                   type="password"
                   value={credentials.password}
@@ -580,7 +584,7 @@ export function VipLocalControlPage({
                   className={`${styles.button} ${styles.buttonPrimary}`}
                   disabled={viewState.working}
                 >
-                  Đăng nhập local
+                  {t("vipLocalControl.loginLocal", { defaultValue: "Đăng nhập local" })}
                 </button>
                 <button
                   type="button"
@@ -588,7 +592,7 @@ export function VipLocalControlPage({
                   onClick={handleResetSession}
                   disabled={viewState.working}
                 >
-                  Khôi phục phiên seed
+                  {t("vipLocalControl.resetSeed", { defaultValue: "Khôi phục phiên seed" })}
                 </button>
                 <button
                   type="button"
@@ -596,19 +600,19 @@ export function VipLocalControlPage({
                   onClick={handleLogout}
                   disabled={viewState.working}
                 >
-                  Đóng phiên
+                  {t("vipLocalControl.logout", { defaultValue: "Đóng phiên" })}
                 </button>
               </div>
             </form>
           </ShellPanel>
           <ShellPanel
-            title="Danh sách người dùng cục bộ"
-            subtitle="Tạo nhanh sub-user để test lane operator/admin trước khi dựng các surface sâu hơn."
+            title={t("vipLocalControl.usersTitle", { defaultValue: "Danh sách người dùng cục bộ" })}
+            subtitle={t("vipLocalControl.usersSubtitle", { defaultValue: "Tạo nhanh sub-user để test lane operator/admin trước khi dựng các surface sâu hơn." })}
           >
             <form className={`${styles.form}`} onSubmit={handleUserSubmit} key="user-form">
               <div className={`${styles.formGrid}`}>
                 <ShellField
-                  label="Tên đăng nhập mới"
+                  label={t("vipLocalControl.newUsername", { defaultValue: "Tên đăng nhập mới" })}
                   name="vip-user-username"
                   value={userDraft.username}
                   placeholder="vip-operator"
@@ -619,7 +623,7 @@ export function VipLocalControlPage({
                   }}
                 />
                 <ShellField
-                  label="Email hiển thị"
+                  label={t("vipLocalControl.displayEmail", { defaultValue: "Email hiển thị" })}
                   name="vip-user-email"
                   type="email"
                   value={userDraft.email}
@@ -631,21 +635,21 @@ export function VipLocalControlPage({
                   }}
                 />
                 <ShellSelectField
-                  label="Vai trò local"
+                  label={t("vipLocalControl.localRole", { defaultValue: "Vai trò local" })}
                   name="vip-user-role"
                   value={userDraft.roleKey}
-                  options={ROLE_OPTIONS}
+                  options={ROLE_KEYS.map((key) => ({ key, label: roleLabel(key, t) }))}
                   onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
                     const nextValue = event.target.value;
                     setUserDraft((previous) => ({ ...previous, roleKey: nextValue }));
                   }}
                 />
                 <ShellField
-                  label="Mật khẩu mới (tuỳ chọn)"
+                  label={t("vipLocalControl.newPassword", { defaultValue: "Mật khẩu mới (tuỳ chọn)" })}
                   name="vip-user-password"
                   type="password"
                   value={userDraft.password}
-                  placeholder="Để trống để dùng mật khẩu seed"
+                  placeholder={t("vipLocalControl.newPasswordPlaceholder", { defaultValue: "Để trống để dùng mật khẩu seed" })}
                   autoComplete="new-password"
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                     const nextValue = event.target.value;
@@ -659,7 +663,7 @@ export function VipLocalControlPage({
                   className={`${styles.button} ${styles.buttonPrimary}`}
                   disabled={viewState.working}
                 >
-                  Lưu người dùng local
+                  {t("vipLocalControl.saveLocalUser", { defaultValue: "Lưu người dùng local" })}
                 </button>
               </div>
             </form>
@@ -667,11 +671,11 @@ export function VipLocalControlPage({
           </ShellPanel>
         </div>
         <ShellPanel
-          title="Nhật ký audit gần nhất"
-          subtitle="Theo dõi nhanh chuỗi đăng nhập, reset phiên và thay đổi RBAC để auditor có thể kiểm tra ngay trên route local control."
+          title={t("vipLocalControl.auditTitle", { defaultValue: "Nhật ký audit gần nhất" })}
+          subtitle={t("vipLocalControl.auditSubtitle", { defaultValue: "Theo dõi nhanh chuỗi đăng nhập, reset phiên và thay đổi RBAC để auditor có thể kiểm tra ngay trên route local control." })}
           actions={
             <div className={`${styles.actions}`}>
-              <span className={`${styles.pill}`}>Health: {viewState.health?.ok ? "OK" : "Chưa xác nhận"}</span>
+              <span className={`${styles.pill}`}>{t("vipLocalControl.healthLabel", { defaultValue: "Health" })}: {viewState.health?.ok ? "OK" : t("vipLocalControl.unconfirmed", { defaultValue: "Chưa xác nhận" })}</span>
             </div>
           }
         >

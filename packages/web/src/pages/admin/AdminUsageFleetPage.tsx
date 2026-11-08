@@ -90,9 +90,9 @@ export function AdminUsageFleetPage() {
         {top.length > 0 ? (
           <table className="mt-3 min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
             <thead><tr className="text-left text-xs uppercase tracking-widest text-slate-500">
-              <th className="px-3 py-2">{t('adminUsageFleet.thTenant')}</th>
-              <th className="px-3 py-2">{t('adminUsageFleet.thCalls')}</th>
-              <th className="px-3 py-2">{t('adminUsageFleet.thErrors')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminUsageFleet.thTenant')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminUsageFleet.thCalls')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminUsageFleet.thErrors')}</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {top.map((r: any) => (

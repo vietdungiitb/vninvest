@@ -141,7 +141,7 @@ export function buildInvoicePrintHtml(invoice: unknown, tenantName: string): str
     "<h2>Hoa don " + number + "</h2>",
     "<p><b>Khach hang:</b> " + tenantName + "</p>",
     "<p><b>Trang thai:</b> " + status + "</p>",
-    "<table><tr><th>So tien</th><th>Loai tien</th></tr>",
+    "<table><tr><th scope='col'>So tien</th><th scope='col'>Loai tien</th></tr>",
     "<tr><td>" + amount + "</td><td>" + currency + "</td></tr>",
     "</table></body></html>",
   ].join("");
@@ -448,9 +448,9 @@ function PlanComparisonTable({ planCode, t }: { planCode: string; t: (k: string,
       <table className={ta.bill_21}>
         <thead>
           <tr className={ta.bill_22}>
-            <th className={ta.bill_23}>{t("tenantBilling.rowName")}</th>
+            <th className={ta.bill_23} scope="col">{t("tenantBilling.rowName")}</th>
             {plans.map(p => (
-              <th key={p} className={ta.bill_24}>
+              <th key={p} className={ta.bill_24} scope="col">
                 {t(`tenantBilling.column${p.charAt(0).toUpperCase() + p.slice(1)}`)}
                 {p === planCode && (
                   <span className={ta.bill_25}>

@@ -136,9 +136,9 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
                 createElement(
                   "tr",
                   null,
-                  createElement("th", null, t("soc.config_preview.col_field")),
-                  createElement("th", null, t("soc.config_preview.col_before_after")),
-                  createElement("th", null, t("soc.config_preview.col_impact")),
+                  createElement("th", { scope: "col" }, t("soc.config_preview.col_field")),
+                  createElement("th", { scope: "col" }, t("soc.config_preview.col_before_after")),
+                  createElement("th", { scope: "col" }, t("soc.config_preview.col_impact")),
                 ),
               ),
               createElement(

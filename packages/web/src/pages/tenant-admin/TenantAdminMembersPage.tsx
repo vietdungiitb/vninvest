@@ -305,22 +305,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table className={ta.mem_7}>
                     <thead>
                       <tr className={ta.mem_8}>
-                        <th className={[`${styles.itemMeta}`, ta.mem_9].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_9].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderUsername")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_10].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_10].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_11].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_11].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_12].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_12].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_13].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_13].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.joinedAtLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_14].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_14].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
@@ -416,22 +416,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table className={ta.mem_27}>
                     <thead>
                       <tr className={ta.mem_28}>
-                        <th className={[`${styles.itemMeta}`, ta.mem_29].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_29].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_30].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_30].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_31].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_31].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_32].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_32].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.metricInvites")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_33].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_33].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.expiresAtLabel")}
                         </th>
-                        <th className={[`${styles.itemMeta}`, ta.mem_34].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_34].filter(Boolean).join(" ")} style={{ fontSize: "12px" }} scope="col">
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>

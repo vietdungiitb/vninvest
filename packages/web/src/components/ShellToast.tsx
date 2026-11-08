@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button.js";
+import { useI18n } from "../context/LangContext.js";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -76,9 +77,10 @@ function ToastContainer({ toasts, removeToast }: { toasts: ToastItem[]; removeTo
 
 function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }) {
   const { type, message } = toast;
+  const { t } = useI18n();
 
   // W4: keep jsx-no-literals count flat (props via object, not JSX literals).
-  const closeBtnProps = { variant: "ghost", size: "icon", "aria-label": "Close" } as const;
+  const closeBtnProps = { variant: "ghost", size: "icon", "aria-label": t("common.close", { defaultValue: "Close" }) } as const;
 
   const config = {
     success: {

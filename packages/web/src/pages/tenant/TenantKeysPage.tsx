@@ -240,14 +240,14 @@ export function TenantKeysPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-2">{t("tenantKeys.colName")}</th>
-                  <th className="px-4 py-2">{t("tenantKeys.colStatus")}</th>
-                  <th className="px-4 py-2">{t("tenantKeys.colPrefix")}</th>
-                  <th className="px-4 py-2">{t("tenantKeys.colScopes")}</th>
-                  <th className="px-4 py-2">{t("tenantKeys.colExpires")}</th>
-                  <th className="px-4 py-2">{t("tenantKeys.colLastUsed")}</th>
-                  <th className="px-4 py-2 text-right">{t("tenantKeys.colCalls")}</th>
-                  <th className="px-4 py-2 text-right">{t("tenantKeys.colActions")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colName")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colStatus")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colPrefix")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colScopes")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colExpires")}</th>
+                  <th scope="col" className="px-4 py-2">{t("tenantKeys.colLastUsed")}</th>
+                  <th scope="col" className="px-4 py-2 text-right">{t("tenantKeys.colCalls")}</th>
+                  <th scope="col" className="px-4 py-2 text-right">{t("tenantKeys.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

@@ -5,6 +5,7 @@ import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
+import { ShellSkeleton } from '../../components/ShellSkeleton.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 import { useUrlState, intCodec, stringCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
@@ -281,12 +282,12 @@ export function AdminCoreTenantsPage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">{t('adminCoreTenants.thTenant')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thPlan')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thStatus')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thRisk')}</th>
-                    <th className="px-4 py-3">{t('adminCoreTenants.thUpdated')}</th>
-                    <th className="px-4 py-3" />
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thTenant')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thPlan')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thStatus')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thRisk')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreTenants.thUpdated')}</th>
+                    <th className="px-4 py-3"  scope="col" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -328,9 +329,11 @@ export function AdminCoreTenantsPage() {
                 </tbody>
               </table>
             </div>
+          ) : loadingRegistry ? (
+            <ShellSkeleton variant="table-row" count={5} />
           ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loadingRegistry ? t('adminCoreTenants.loading') : t('adminCoreTenants.noTenants')}
+            {t('adminCoreTenants.noTenants')}
             </p>
           )}
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -447,9 +450,13 @@ export function AdminCoreTenantsPage() {
                 </div>
               </div>
             ) : (
+              loadingDetail ? (
+                <ShellSkeleton variant="card" count={2} />
+              ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {loadingDetail ? t('adminCoreTenants.loading') : t('adminCoreTenants.noDetailData')}
+                {t('adminCoreTenants.noDetailData')}
               </p>
+              )
             )
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

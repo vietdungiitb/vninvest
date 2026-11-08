@@ -781,8 +781,8 @@ export function SocDataOpsMonitorSection() {
           createElement("table", { className: styles.coverageTable },
             createElement("thead", null,
               createElement("tr", null,
-                createElement("th", null, t("soc.dataops.queue_depth_queue")),
-                createElement("th", null, t("soc.dataops.queue_depth_count"))
+                createElement("th", { scope: "col" }, t("soc.dataops.queue_depth_queue")),
+                createElement("th", { scope: "col" }, t("soc.dataops.queue_depth_count"))
               )
             ),
             createElement("tbody", null,

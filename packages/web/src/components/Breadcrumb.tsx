@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '@/context/LangContext.js';
 const BREADCRUMB_CSS = `
 .breadcrumb {
@@ -95,7 +95,7 @@ export function Breadcrumb({ labelMap }: { labelMap?: Record<string, string> }) 
 
   return createElement(
     'nav',
-    { className: 'breadcrumb' },
+    { className: 'breadcrumb', 'aria-label': 'Breadcrumb' },
     createElement('style', null, BREADCRUMB_CSS),
     ...crumbs.map((crumb, i) => {
       const isLast = i === crumbs.length - 1;
@@ -110,8 +110,8 @@ export function Breadcrumb({ labelMap }: { labelMap?: Record<string, string> }) 
       } else {
         parts.push(
           createElement(
-            'a',
-            { key: `link-${i}`, href: crumb.to, className: 'breadcrumb__link' },
+            Link,
+            { key: `link-${i}`, to: crumb.to, className: 'breadcrumb__link' },
             crumb.label,
           ),
         );

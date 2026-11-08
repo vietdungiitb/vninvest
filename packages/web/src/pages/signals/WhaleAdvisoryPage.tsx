@@ -15,6 +15,8 @@ import { RecommendationHistoryMini } from '../../components/advisory/Recommendat
 import { AdvisoryBacktestPanel } from '../../components/advisory/AdvisoryBacktestPanel.js';
 import { Button } from '../../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { ShellSkeleton } from '../../components/ShellSkeleton.js';
+import { ShellEmptyState } from '../../components/ShellEmptyState.js';
 
 interface RefreshInfo {
   tokens_used?: number;
@@ -351,11 +353,11 @@ export function WhaleAdvisoryPage() {
       ) : null}
 
       {pageLoading && itemList.length === 0 ? (
-        <div className="space-y-4" aria-busy="true">
-          {[1, 2, 3].map((row) => (
-            <div key={row} className="h-24 animate-pulse rounded-2xl bg-slate-800/50" />
-          ))}
-        </div>
+        <ShellSkeleton variant="card" count={3} />
+      ) : null}
+
+      {!pageLoading && pageError && itemList.length === 0 ? (
+        <ShellEmptyState description={pageError} />
       ) : null}
 
       {!pageLoading && refreshInfoError ? (

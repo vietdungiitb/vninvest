@@ -504,6 +504,8 @@ for (const uiGate of [
 for (const extraGate of [
   { name: "check-light-theme", args: [] },
   { name: "check-portfolio-contrast", args: [] },
+  { name: "check-i18n-hardcoded-scope", args: ["--all"] },
+  { name: "check-i18n-hardcoded-scope", args: ["--self-test"], label: "check-i18n-hardcoded-scope-selftest" },
   { name: "check-page-registry", args: [] },
   { name: "check-page-registry", args: ["--self-test"], label: "check-page-registry-selftest" },
 ]) {

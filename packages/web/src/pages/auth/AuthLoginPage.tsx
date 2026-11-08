@@ -1,9 +1,12 @@
 import { createElement, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { authTokenStorage, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { parseAuthError } from "./authErrors.js";
+import { loginSchema, toLoginPayload, type LoginValues } from "./authLoginSchema.js";
+import { FormField } from "../../components/ui/FormField.js";
 import "./AuthRegisterPage.css";
 
 function readTokenPayload(payload: unknown): { access: string; refresh: string } | null {
@@ -25,13 +28,19 @@ function readTokenPayload(payload: unknown): { access: string; refresh: string }
 
 /**
  * tenantreg-d (slice D) — D5, D3, D9, D10.
+ * B6: RHF + zod (authLoginSchema) instead of hand-rolled useState.
+ * Validation rules stay in authPolicy.js (SSOT); parseAuthError still owns server errors.
  */
 export function AuthLoginPage() {
   const { t, locale } = useI18n();
   const location = useLocation();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), mode: "onSubmit" });
+  const username = watch("username") ?? "";
   const [errorMessage, setErrorMessage] = useState("");
   const [errorCode, setErrorCode] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(() => authTokenStorage.hasTokens());
@@ -54,8 +63,10 @@ export function AuthLoginPage() {
     coreApiAdapter
       .getTenantLifecycle()
       .then(() => {
-        if (mounted && typeof window !== "undefined") {
-          window.location.assign("/dashboard");
+        if (mounted) {
+          if (typeof window !== "undefined") {
+            window.location.assign("/dashboard");
+          }
         }
       })
       .catch(() => {
@@ -75,25 +86,12 @@ export function AuthLoginPage() {
     };
   }, [hasStoredTokens]);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!username.trim() || !password || isSubmitting) {
-      return;
-    }
-
-    setIsSubmitting(true);
+  const onSubmit = handleSubmit(async (values) => {
     setErrorMessage("");
     setErrorCode("");
 
     try {
-      const payload = await coreApiAdapter.loginUser({
-        // D10: the adapter lowercases this. The backend stores usernames
-        // lowercased (serializers.py:388) but authenticates with the exact
-        // string it receives (views/login.py:124), so a mixed-case sign-in
-        // otherwise fails with "invalid credentials" on a correct password.
-        username: username.trim(),
-        password,
-      });
+      const payload = await coreApiAdapter.loginUser(toLoginPayload(values));
 
       const tokenPayload = readTokenPayload(payload);
       if (!tokenPayload?.access || !tokenPayload?.refresh) {
@@ -104,10 +102,6 @@ export function AuthLoginPage() {
         window.location.assign(destination);
       }
     } catch (error) {
-      // D5: a 429 previously rendered the backend's raw Vietnamese `detail`, so
-      // an EN user read Vietnamese, and no countdown was shown even though the
-      // login endpoint is limited to 3/min per user and 5/min per IP
-      // (views/login.py:76-104).
       const parsed = parseAuthError(error as any, t, {
         fieldMap: {},
         fallbackKey: "auth.loginFailed",
@@ -115,13 +109,9 @@ export function AuthLoginPage() {
       });
       setErrorMessage(parsed.globalMessage);
       setErrorCode(parsed.code);
-    } finally {
-      setIsSubmitting(false);
     }
-  }
+  });
 
-  // Only offer the resend path when the server actually said the account is
-  // unverified, and only prefill when the user typed something email-shaped.
   const canResend = errorCode === "user_inactive" && username.includes("@");
 
   if (isCheckingSession) {
@@ -137,6 +127,9 @@ export function AuthLoginPage() {
     );
   }
 
+  const inputCls =
+    "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500";
+
   return createElement(
     "main",
     { className: "min-h-screen bg-gray-950 flex items-center justify-center px-4" },
@@ -149,45 +142,41 @@ export function AuthLoginPage() {
         "form",
         {
           className: "mt-6 space-y-4",
-          onSubmit: handleSubmit,
+          onSubmit: onSubmit,
         },
         createElement(
-          "div",
-          null,
-          createElement(
-            "label",
-            { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-username" },
-            t("auth.loginUsernameLabel"),
-          ),
+          FormField,
+          {
+            label: t("auth.loginUsernameLabel"),
+            htmlFor: "auth-login-username",
+            error: errors.username?.message,
+            required: true,
+          },
           createElement("input", {
             id: "auth-login-username",
-            name: "username",
             autoComplete: "username",
-            value: username,
-            onChange: (event) => setUsername((event.target as HTMLInputElement).value),
-            className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
             placeholder: t("auth.loginUsernamePlaceholder"),
-            required: true,
+            className: inputCls,
+            "aria-invalid": !!errors.username,
+            ...register("username"),
           }),
         ),
         createElement(
-          "div",
-          null,
-          createElement(
-            "label",
-            { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-password" },
-            t("auth.loginPasswordLabel"),
-          ),
+          FormField,
+          {
+            label: t("auth.loginPasswordLabel"),
+            htmlFor: "auth-login-password",
+            error: errors.password?.message,
+            required: true,
+          },
           createElement("input", {
             id: "auth-login-password",
-            name: "password",
             type: "password",
             autoComplete: "current-password",
-            value: password,
-            onChange: (event) => setPassword((event.target as HTMLInputElement).value),
-            className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
             placeholder: t("auth.loginPasswordPlaceholder"),
-            required: true,
+            className: inputCls,
+            "aria-invalid": !!errors.password,
+            ...register("password"),
           }),
         ),
         errorMessage
@@ -244,3 +233,5 @@ export function AuthLoginPage() {
     ),
   );
 }
+
+export default AuthLoginPage;

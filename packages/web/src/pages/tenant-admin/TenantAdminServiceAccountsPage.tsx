@@ -197,7 +197,7 @@ export function TenantAdminServiceAccountsPage({
                       t("tenantServiceAccounts.tableHeaderCreatedAt"),
                       t("tenantServiceAccounts.tableHeaderActions"),
                     ].map(h => (
-                      <th key={h} className={ta.sa_4}>
+                      <th key={h} className={ta.sa_4} scope="col">
                         {h}
                       </th>
                     ))}

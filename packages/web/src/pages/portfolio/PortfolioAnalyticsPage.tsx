@@ -20,9 +20,10 @@
  * vào cửa không có người nghe (audit M12).
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, lazy, Suspense } from "react";
 import { useI18n } from "../../context/LangContext";
-import { PortfolioChart, type NavPoint } from "../../components/portfolio/PortfolioChart";
+import type { NavPoint } from "../../components/portfolio/PortfolioChart";
+const PortfolioChart = lazy(() => import("../../components/portfolio/PortfolioChart").then((m) => ({ default: m.PortfolioChart })));
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
@@ -205,6 +206,7 @@ export function PortfolioAnalyticsPage({
         <h2 id="pf-analytics-curve">
           {t("portfolioWorkspace.analytics.navHeading", { defaultValue: "Chuỗi NAV dùng để tính" })}
         </h2>
+        <Suspense fallback={<div className="pf-chart-skeleton">Đang tải biểu đồ...</div>}>
         <PortfolioChart
           kind="line"
           points={curve}
@@ -216,6 +218,7 @@ export function PortfolioAnalyticsPage({
             defaultValue: "Chưa đủ chuỗi NAV để tính chỉ số",
           })}
         />
+      </Suspense>
       </section>
     </div>
   );

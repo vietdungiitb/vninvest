@@ -55,7 +55,7 @@ export function StatsTable(props: StatsTableProps) {
   const renderSortTh = (key: "count" | "value" | "time", labelKey: string, alignRight = false) => {
     const active = props.sortKey === key;
     return (
-      <th aria-sort={active ? (props.sortDir === "desc" ? "descending" : "ascending") : "none"}
+      <th scope="col" aria-sort={active ? (props.sortDir === "desc" ? "descending" : "ascending") : "none"}
         style={alignRight ? { textAlign: "right" } : undefined}>
         <button
           type="button"
@@ -83,10 +83,10 @@ export function StatsTable(props: StatsTableProps) {
       <table className={`${soc.coverageTable}`}>
         <thead>
           <tr>
-            <th>{t("alertCenter.colSymbol")}</th>
+            <th scope="col">{t("alertCenter.colSymbol")}</th>
             {renderSortTh("count", "alertCenter.colCount")}
-            <th>{t("alertCenter.colBuySell")}</th>
-            <th>{t("alertCenter.colFreq")}</th>
+            <th scope="col">{t("alertCenter.colBuySell")}</th>
+            <th scope="col">{t("alertCenter.colFreq")}</th>
             {renderSortTh("value", "alertCenter.colValue", true)}
           </tr>
         </thead>

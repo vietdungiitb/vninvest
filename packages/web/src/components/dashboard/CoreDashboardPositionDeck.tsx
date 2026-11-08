@@ -355,13 +355,13 @@ export function CoreDashboardPositionDeck({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800/80 text-[var(--fs-2xs)] text-slate-500 uppercase tracking-wider">
-                      <th className="px-3 py-2">Mã</th>
-                      <th className="px-3 py-2">Nguồn</th>
-                      <th className="px-3 py-2 text-right">Giá hiện tại</th>
-                      <th className="px-3 py-2 text-right">% thay đổi</th>
-                      <th className="px-3 py-2 text-right">Số lượng</th>
-                      <th className="px-3 py-2 text-right">Giá vốn TB</th>
-                      <th className="px-3 py-2 text-right">Giá trị TT</th>
+                      <th scope="col" className="px-3 py-2">Mã</th>
+                      <th scope="col" className="px-3 py-2">Nguồn</th>
+                      <th scope="col" className="px-3 py-2 text-right">Giá hiện tại</th>
+                      <th scope="col" className="px-3 py-2 text-right">% thay đổi</th>
+                      <th scope="col" className="px-3 py-2 text-right">Số lượng</th>
+                      <th scope="col" className="px-3 py-2 text-right">Giá vốn TB</th>
+                      <th scope="col" className="px-3 py-2 text-right">Giá trị TT</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs">
@@ -435,11 +435,11 @@ export function CoreDashboardPositionDeck({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800/80 text-[var(--fs-2xs)] text-slate-500 uppercase tracking-wider">
-                    <th className="px-3 py-2">Mã</th>
-                    <th className="px-3 py-2 text-right">RSI (14)</th>
-                    <th className="px-3 py-2 text-right">SMA20</th>
-                    <th className="px-3 py-2 text-right">SMA50</th>
-                    <th className="px-3 py-2 text-right">Momentum</th>
+                    <th scope="col" className="px-3 py-2">Mã</th>
+                    <th scope="col" className="px-3 py-2 text-right">RSI (14)</th>
+                    <th scope="col" className="px-3 py-2 text-right">SMA20</th>
+                    <th scope="col" className="px-3 py-2 text-right">SMA50</th>
+                    <th scope="col" className="px-3 py-2 text-right">Momentum</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs">

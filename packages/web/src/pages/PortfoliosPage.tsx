@@ -28,6 +28,7 @@ import { Link } from "react-router-dom";
 import { useConfirm } from "../components/ConfirmModal.js";
 import { useToast } from "../components/ShellToast.js";
 import { ShellPageChrome } from "../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../components/ShellSkeleton.js";
 import { useI18n } from "../context/LangContext.js";
 import "../components/soc/soc.tokens.css";
 import { PortfolioFormDialog } from "./portfolio/manage/PortfolioFormDialog";
@@ -234,9 +235,7 @@ export function PortfoliosPage({ className = "", adapter }: PortfoliosPageProps)
       )}
 
       {!error && loading && portfolios.length === 0 && (
-        <p className="pfm-state" role="status">
-          {t("portfoliosManage.state.loading", { defaultValue: "Đang tải danh mục..." })}
-        </p>
+        <ShellSkeleton variant="card" count={3} />
       )}
 
       {!error && !loading && portfolios.length === 0 && (

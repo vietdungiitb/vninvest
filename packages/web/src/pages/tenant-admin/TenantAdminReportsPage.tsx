@@ -185,6 +185,19 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
     );
   }
 
+  if (error && reports.length === 0) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantReports.eyebrow")}
+        title={t("tenantReports.title")}
+        description={t("tenantReports.loadError", { defaultValue: "Không thể tải dữ liệu" })}
+        error={(error as Error)?.message || t("tenantReports.loadError", { defaultValue: "Không thể tải dữ liệu" })}
+      >
+        <ShellEmptyState description={t("tenantReports.loadError", { defaultValue: "Không thể tải dữ liệu" })} />
+      </ShellPageChrome>
+    );
+  }
+
   return (
     <ShellPageChrome
       eyebrow={t("tenantReports.eyebrow")}

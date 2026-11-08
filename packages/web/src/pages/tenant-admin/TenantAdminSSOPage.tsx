@@ -3,6 +3,7 @@ import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
@@ -182,7 +183,7 @@ export function TenantAdminSSOPage({
         title={t("tenantSSO.title")}
         description={t("common.loading")}
       >
-        <div className={`${styles.panel}`}>{t("common.loading")}</div>
+        <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
   }

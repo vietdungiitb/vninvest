@@ -10,9 +10,10 @@
  * test nào khẳng định số 0 đó là sai.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, lazy, Suspense } from "react";
 import { useI18n } from "../../context/LangContext";
-import { PortfolioChart, type NavPoint } from "../../components/portfolio/PortfolioChart";
+import type { NavPoint } from "../../components/portfolio/PortfolioChart";
+const PortfolioChart = lazy(() => import("../../components/portfolio/PortfolioChart").then((m) => ({ default: m.PortfolioChart })));
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
@@ -137,6 +138,7 @@ export function PortfolioOverviewPage({
         <h2 id="pf-nav-heading">
           {t("portfolioWorkspace.navHeading", { defaultValue: "Biến động giá trị danh mục" })}
         </h2>
+        <Suspense fallback={<div className="pf-chart-skeleton">Đang tải biểu đồ...</div>}>
         <PortfolioChart
           kind="line"
           points={curve}
@@ -147,6 +149,7 @@ export function PortfolioOverviewPage({
             ? t("portfolioWorkspace.chart.noCurve", { defaultValue: "Chưa có dữ liệu giá để vẽ đường cong" })
             : t("portfolioWorkspace.chart.empty", { defaultValue: "Chưa có dữ liệu để hiển thị" })}
         />
+      </Suspense>
       </section>
     </div>
   );

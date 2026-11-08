@@ -136,14 +136,14 @@ export function AISloDashboardPage(): JSX.Element {
         <table className={styles.table} data-testid="slo-table">
           <thead>
             <tr>
-              <th className={styles.th}>{t("aiCommandCenter.sloModel")}</th>
-              <th className={styles.th}>{t("aiCommandCenter.sloRequests")}</th>
-              <th className={styles.th}>{t("aiCommandCenter.sloSuccessRate")}</th>
-              <th className={styles.th}>p50</th>
-              <th className={styles.th}>p95</th>
-              <th className={styles.th}>p99</th>
-              <th className={styles.th}>{t("aiCommandCenter.sloTokensPerDay")}</th>
-              <th className={styles.th}>{t("aiCommandCenter.sloCostPerDay")}</th>
+              <th scope="col" className={styles.th}>{t("aiCommandCenter.sloModel")}</th>
+              <th scope="col" className={styles.th}>{t("aiCommandCenter.sloRequests")}</th>
+              <th scope="col" className={styles.th}>{t("aiCommandCenter.sloSuccessRate")}</th>
+              <th scope="col" className={styles.th}>p50</th>
+              <th scope="col" className={styles.th}>p95</th>
+              <th scope="col" className={styles.th}>p99</th>
+              <th scope="col" className={styles.th}>{t("aiCommandCenter.sloTokensPerDay")}</th>
+              <th scope="col" className={styles.th}>{t("aiCommandCenter.sloCostPerDay")}</th>
             </tr>
           </thead>
           <tbody>

@@ -3,6 +3,7 @@ import { useWatchlist } from "./WatchlistContext";
 import { WatchlistTable } from "./WatchlistTable";
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../../context/LangContext.js";
+import { ShellSkeleton } from "../../../components/ShellSkeleton.js";
 import styles from "../../../components/soc/soc.module.css";
 
 const api = coreApiAdapter;
@@ -349,12 +350,8 @@ export function WatchlistMainWorkspace() {
     loading && activeItems.length === 0
       ? createElement(
           "div",
-          { style: { display: "flex", flexDirection: "column", gap: "10px", padding: "8px 0" }, "data-testid": "watchlist-skeleton" },
-          createElement("div", { style: { height: "14px", width: "30%", background: "rgba(148,163,184,0.12)", borderRadius: "6px", animation: "pulse 1.5s infinite" } }),
-          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
-          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
-          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
-          createElement("div", { style: { height: "14px", width: "40%", background: "rgba(148,163,184,0.10)", borderRadius: "6px", marginTop: "8px" } })
+          { "data-testid": "watchlist-skeleton" },
+          createElement(ShellSkeleton, { variant: "table-row", count: 4 })
         )
       : createElement(WatchlistTable, { density })
   );

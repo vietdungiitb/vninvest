@@ -353,11 +353,11 @@ export function AdminCoreJobsPage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">{t('adminCoreJobs.thKind')}</th>
-                    <th className="px-4 py-3">{t('adminCoreJobs.thStatus')}</th>
-                    <th className="px-4 py-3">{t('adminCoreJobs.thSummary')}</th>
-                    <th className="px-4 py-3">{t('adminCoreJobs.thTime')}</th>
-                    <th className="px-4 py-3" />
+                    <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thKind')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thStatus')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thSummary')}</th>
+                    <th className="px-4 py-3" scope="col">{t('adminCoreJobs.thTime')}</th>
+                    <th className="px-4 py-3"  scope="col" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">

@@ -1,5 +1,5 @@
 import "./StockDetailPage.css";
-import { createElement, useCallback, useState, useMemo, useEffect } from "react";
+import { createElement, useCallback, useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
@@ -17,7 +17,7 @@ function getPageAdapter(env: any) {
 }
 import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
 import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
-import VNStockChartPanel from "../components/VNStockChartPanel.js";
+const VNStockChartPanel = lazy(() => import("../components/VNStockChartPanel.js"));
 import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 import WhaleBubbleChart from "../components/WhaleBubbleChart.jsx";
 import { StockDetailTabs } from "../features/stock-detail/components/StockDetailTabs.js";
@@ -275,7 +275,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
     e(
       "div",
       { className: "sdp-chart-wrapper" },
-      e(VNStockChartPanel, {
+      e(Suspense, { fallback: e("div", { className: "sdp-chart-skeleton" }, "Đang tải biểu đồ...") },
+        e(VNStockChartPanel, {
         symbol,
         env,
         onBarsChange: setChartBars,
@@ -289,7 +290,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
         orderFlowData,
         whaleSignals: whaleFeed,
         workspaceId: `stock-${symbol}`,
-      })
+      }))
     ),
     e(
       "div",

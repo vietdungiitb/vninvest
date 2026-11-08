@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, ShellField } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
+import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
@@ -94,6 +96,25 @@ export function TenantAdminAIPolicyPage() {
 
   if (policyQuery.isLoading) {
     return <ShellPageChrome title={t("tenantAIPolicy.title")}><ShellPanel><p>{t("common.loading")}</p></ShellPanel></ShellPageChrome>;
+  }
+
+  if (policyQuery.isLoading) {
+    return (
+      <ShellPageChrome title={t("tenantAIPolicy.title")}>
+        <ShellSkeleton variant="card" count={3} />
+      </ShellPageChrome>
+    );
+  }
+
+  if (policyQuery.error) {
+    return (
+      <ShellPageChrome
+        title={t("tenantAIPolicy.title")}
+        error={policyQuery.error?.message || t("tenantAIPolicy.loadError", { defaultValue: "Không tải được dữ liệu" })}
+      >
+        <ShellEmptyState description={t("tenantAIPolicy.loadError", { defaultValue: "Không tải được dữ liệu" })} />
+      </ShellPageChrome>
+    );
   }
 
   return (

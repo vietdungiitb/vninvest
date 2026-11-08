@@ -2,6 +2,7 @@ import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { ShellPageChrome, ShellPanel, ShellField } from "../../components/ShellPageTemplate.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { useI18n } from "../../context/LangContext.js";
 import { PLAN_OPTIONS, VIP_TO_CANONICAL, type VipPlan } from "../../constants/planCatalog.js";
 const BILLING_CUSTOM_STYLES = `
@@ -365,9 +366,8 @@ export function BillingCenterPage() {
         title={t('commercial.billingCenter.titleShort')}
         description={t('commercial.billingCenter.loading')}
       >
-        <div style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
-          {t('commercial.billingCenter.loading')}
-        </div>
+        <ShellSkeleton variant="metric" count={4} />
+        <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
   }
@@ -399,10 +399,10 @@ export function BillingCenterPage() {
                 <table className="invoice-table">
                   <thead>
                     <tr>
-                      <th>{t('commercial.billingCenter.invoiceId')}</th>
-                      <th>{t('commercial.billingCenter.invoiceDate')}</th>
-                      <th>{t('commercial.billingCenter.invoiceAmount')}</th>
-                      <th>{t('commercial.billingCenter.invoiceStatus')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceId')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceDate')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceAmount')}</th>
+                      <th scope="col">{t('commercial.billingCenter.invoiceStatus')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -559,8 +559,9 @@ function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: 
         {plans.map((p) => {
           const isActive = activePlan === p.id;
           return (
-            <div
+            <button
               key={p.id}
+              type="button"
               className={`plan-card ${isActive ? "active" : ""}`}
               onClick={() => handlePlanSelect(p.id, p.price)}
             >
@@ -574,7 +575,7 @@ function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: 
                 <span className="plan-card__period">{` / ${p.period}`}</span>
                 {p.savings ? <span className="plan-card__savings">{p.savings}</span> : null}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

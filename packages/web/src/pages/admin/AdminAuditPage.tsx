@@ -145,12 +145,12 @@ export function AdminAuditPage() {
         {rows.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
             <thead><tr className="text-left text-xs uppercase tracking-widest text-slate-500">
-              <th className="px-3 py-2">{t('adminAudit.thTime')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thActor')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thAction')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thResource')}</th>
-              <th className="px-3 py-2">{t('adminAudit.thTenant')}</th>
-              <th className="px-3 py-2" />
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thTime')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thActor')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thAction')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thResource')}</th>
+              <th className="px-3 py-2" scope="col">{t('adminAudit.thTenant')}</th>
+              <th className="px-3 py-2"  scope="col" />
             </tr></thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {rows.map((r: any) => (

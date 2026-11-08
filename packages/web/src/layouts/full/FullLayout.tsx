@@ -1,8 +1,9 @@
 import { createElement, useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './vertical/sidebar/Sidebar';
 import { Header } from './vertical/header/Header';
 import { StaffSwitchBanner } from '../../components/StaffSwitchBanner.js';
+import { PageErrorBoundary } from '../../components/PageErrorBoundary.js';
 import { isNewLayoutEnabled } from '../../lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ export function FullLayout() {
   const newLayout = isNewLayoutEnabled();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(newLayout ? false : true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const location = useLocation();
 
   const toggleSidebar = () => {
     if (newLayout) {
@@ -41,6 +43,15 @@ export function FullLayout() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Close mobile drawer on route change + move focus to main (B1).
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('main-content');
+      el?.focus({ preventScroll: true });
+    }
+  }, [location.pathname]);
 
   return e(
     'div',
@@ -99,7 +110,8 @@ export function FullLayout() {
           className: 'flex-1 p-[var(--sp-6,1.5rem)] overflow-auto',
           role: 'main'
         },
-        e('div', { className: 'max-w-[var(--layout-content-max-width,80rem)] mx-auto' }, e(Outlet))
+        e('div', { className: 'max-w-[var(--layout-content-max-width,80rem)] mx-auto' },
+          e(PageErrorBoundary, { key: location.pathname }, e(Outlet)))
       )
     )
   );

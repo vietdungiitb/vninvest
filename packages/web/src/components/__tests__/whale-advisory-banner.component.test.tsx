@@ -58,7 +58,9 @@ describe("WhaleAdvisory banner + skeleton + quota (S10)", () => {
 
   it("shows skeleton on first load", async () => {
     const { container } = await renderPage();
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    // B2: WhaleAdvisoryPage renders ShellSkeleton (shellPulse keyframes) on first load,
+    // not hand-rolled animate-pulse divs. Assert real skeleton DOM, not title fallback.
+    expect(container.innerHTML.includes("shellPulse") || container.innerHTML.includes("shellShimmer")).toBeTruthy();
   }, 30000);
 
   it("shows budgetSoftWarning banner when tokens run low", async () => {

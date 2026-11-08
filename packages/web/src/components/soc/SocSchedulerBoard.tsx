@@ -363,7 +363,7 @@ function JobHistoryDrawer({
           createElement("p", { className: styles.schedulerDrawerTitle }, t("soc.scheduler.history_drawer_title")),
           createElement("p", { className: styles.schedulerDrawerSub }, jobKey)
         ),
-        createElement(Button, { type: "button", variant: "ghost", size: "icon", onClick: onClose, className: styles.schedulerDrawerClose, "aria-label": "Close" }, "\u2715")
+        createElement(Button, { type: "button", variant: "ghost", size: "icon", onClick: onClose, className: styles.schedulerDrawerClose, "aria-label": t("common.close", { defaultValue: "Close" }) }, "\u2715")
       ),
       loading && createElement("p", { className: styles.schedulerDrawerCount }, t("common.loading")),
       error && createElement("p", { className: styles.schedulerDrawerCount, style: { color: toneColor("danger") } }, error),
@@ -386,10 +386,10 @@ function JobHistoryDrawer({
                 createElement(
                   "tr",
                   null,
-                  createElement("th", null, t("soc.scheduler.history_col_status")),
-                  createElement("th", null, t("soc.scheduler.history_col_started")),
-                  createElement("th", null, t("soc.scheduler.history_col_duration")),
-                  createElement("th", null, t("soc.scheduler.history_col_task_id"))
+                  createElement("th", { scope: "col" }, t("soc.scheduler.history_col_status")),
+                  createElement("th", { scope: "col" }, t("soc.scheduler.history_col_started")),
+                  createElement("th", { scope: "col" }, t("soc.scheduler.history_col_duration")),
+                  createElement("th", { scope: "col" }, t("soc.scheduler.history_col_task_id"))
                 )
               ),
               createElement(
@@ -655,14 +655,14 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           createElement(
             "tr",
             null,
-            createElement("th", null, t("soc.scheduler.col_job")),
-            createElement("th", null, t("soc.scheduler.col_domain")),
-            createElement("th", null, t("soc.scheduler.col_status")),
-            createElement("th", null, t("soc.scheduler.col_freshness")),
-            createElement("th", null, t("soc.scheduler.col_next_run")),
-            createElement("th", null, t("soc.scheduler.col_lag")),
-            createElement("th", null, t("soc.scheduler.col_actions")),
-            createElement("th", null, t("soc.scheduler.col_history"))
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_job")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_domain")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_status")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_freshness")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_next_run")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_lag")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_actions")),
+            createElement("th", { scope: "col" }, t("soc.scheduler.col_history"))
           )
         ),
         createElement(
