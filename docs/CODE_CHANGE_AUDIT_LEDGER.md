@@ -1,3 +1,10 @@
+## Entry 431: Dong vong scripts-ps51 T3 (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: Bugfix scripts (PS5.1 parse) - Evidence: docs/SESSION_HANDOFF_20261109_T3.md + docs/evidence/scripts-ps51/AUDIT_B8_20261109.md (PASS) + PR #310
+- **Ban giao**: B5 claim 6a8b379e8 + B6 em dash `--` (agent-sync 18, cleanup 3) fail-before 1+3 parse error → probe 0 error + normalize-eol --fix LF + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL pre-existing) + B8 PASS 0 blocker/0 major. CHUA CHAY: tsc/BE/VPS/PWSh7-runtime.
+- **Next (phien sau theo SESSION_HANDOFF_20261109_T3)**: agent-pr.ps1 11 em dash (slice rieng) → P0-1 bump redis (coordinator deny-list) → A1 re-verify VPS → A5/B1/B2.
+
 ## Entry 430: Dong vong docs-audit-plan-1109 (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
