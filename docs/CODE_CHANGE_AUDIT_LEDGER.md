@@ -1,3 +1,10 @@
+## Entry 432: Dong vong agent-pr-ps51 T3-pr (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: Bugfix scripts (agent-pr.ps1 PS5.1 parse) - Evidence: docs/SESSION_HANDOFF_20261109_T3_PR.md + docs/evidence/agent-pr-ps51/AUDIT_B8_20261109.md (PASS) + PR #311
+- **Ban giao**: B5 claim ee41c67af + B6 em dash `--` (11) + trailing-space here-string (3 dong 110/121/123) = diff 14, fail-before 2 parse errors → probe 0 error ca LF/CRLF (2 lop goc: em dash + backtick-LF nuot newline) + normalize-eol OK LF + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL pre-existing) + B8 PASS. CHUA CHAY: tsc/BE/VPS/PWSh7-runtime.
+- **Next (phien sau theo SESSION_HANDOFF_20261109_T3_PR)**: P0-1 bump redis (coordinator deny-list, cho Owner Q1) → P0-2/3 pull staging → A1 re-verify VPS → A5/B1/B2.
+
 ## Entry 431: Dong vong scripts-ps51 T3 (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
