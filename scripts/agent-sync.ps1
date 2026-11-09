@@ -6,13 +6,13 @@
 .DESCRIPTION
   Chạy đúng thứ tự này, KHÔNG đảo. Mỗi bước có lý do cụ thể:
 
-   1. Kiểm tra worktree sạch        — rebase trên code bẩn sẽ tạo conflict ở chỗ lạ
-   2. git fetch origin              — luôn lấy dev mới nhất từ remote
-   3. Rebase lên origin/dev         — đưa code của agent lên trên dev mới
-   4. ĐÁNH SỐ LẠI MIGRATION        — SAU rebase, dev có thể đã có migration mới
+   1. Kiểm tra worktree sạch        -- rebase trên code bẩn sẽ tạo conflict ở chỗ lạ
+   2. git fetch origin              -- luôn lấy dev mới nhất từ remote
+   3. Rebase lên origin/dev         -- đưa code của agent lên trên dev mới
+   4. ĐÁNH SỐ LẠI MIGRATION        -- SAU rebase, dev có thể đã có migration mới
                                      mà worktree không thấy (đã xảy ra thật:
                                      aicc_r0 145 vs vninvest_core 147)
-   5. Chạy gate                    — rebase xong thì gate trước đó không còn đáng tin
+   5. Chạy gate                    -- rebase xong thì gate trước đó không còn đáng tin
 
   Bước 4 là bước hay bị bỏ, và là bước đã phá deploy trong phiên 2026-09-26.
 
@@ -49,7 +49,7 @@ Step 1 "Kiem tra worktree sach"
 $dirty = git status --porcelain | Where-Object { $_ -notmatch 'node_modules|\.venv' }
 if ($dirty) {
   Write-Host $dirty -ForegroundColor DarkGray
-  Die "Worktree chua sach. Commit hoac stash truoc khi sync — rebase tren code ban se gay conflict o cho la."
+  Die "Worktree chua sach. Commit hoac stash truoc khi sync -- rebase tren code ban se gay conflict o cho la."
 }
 Ok "sach"
 
@@ -62,7 +62,7 @@ $ahead  = git rev-list --count origin/dev..HEAD
 Ok "origin/dev: commit chua co o local=$behind, commit chua push=$ahead"
 
 if ($behind -eq 0) {
-  Ok "Da o bang voi origin/dev — khong co gi de sync."
+  Ok "Da o bang voi origin/dev -- khong co gi de sync."
 }
 
 # ── 3. rebase / merge ────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ if ($behind -gt 0) {
   if ($Merge) { git merge --no-edit origin/dev } else { git rebase origin/dev }
   if ($LASTEXITCODE -ne 0) {
     Write-Host "    Conflict. Giai quyet TAY, xong roi chay lai script nay." -ForegroundColor Yellow
-    Die "rebase/merge that bai — xem git status"
+    Die "rebase/merge that bai -- xem git status"
   }
   Ok "xong, commit moi: " + (git rev-parse --short HEAD)
 }
@@ -115,7 +115,7 @@ Get-ChildItem $migRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object
 }
 
 # ── 5. gates ─────────────────────────────────────────────────────────────────
-if ($SkipGates) { Warn "SkipGates — KHONG chay gate. Chi dung khi debug."; exit 0 }
+if ($SkipGates) { Warn "SkipGates -- KHONG chay gate. Chi dung khi debug."; exit 0 }
 
 Step 5 "Chay gate"
 & node packages/web/scripts/check-multi-agent.mjs
@@ -124,12 +124,12 @@ if ($LASTEXITCODE -ne 0) { Die "check:multi-agent that bai" }
 # 5a. So Entry cua ledger phai khong TRUNG MOI.
 #
 # 2026-10-08 (W3-0): ledger co san 59 so Entry trung (305 header, 243 so khac
-# nhau) — Hazard 2 cua skill multi-agent-workflow: agent tu doan so Entry thay vi
+# nhau) -- Hazard 2 cua skill multi-agent-workflow: agent tu doan so Entry thay vi
 # doc head that, hai agent cung prepend o dau file => mot hunk khong tach duoc.
 # Cong nay CHAN TRUNG MOI, KHONG chan 59 nhom co san (khong chan moi agent).
 # KHONG danh so lai lich su: se lam hong moi trich dan "Entry N".
 & node docs/audit-uiux/scripts/check-ledger-entry.mjs
-if ($LASTEXITCODE -ne 0) { Die "check-ledger-entry that bai — co so Entry TRUNG MOI (dung --next-entry de lay so moi)" }
+if ($LASTEXITCODE -ne 0) { Die "check-ledger-entry that bai -- co so Entry TRUNG MOI (dung --next-entry de lay so moi)" }
 
 $touchedBE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'packages/core/backend/*' }
 $touchedFE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'packages/web/*' -or $_ -like 'packages/web/*' }
@@ -144,21 +144,21 @@ if ($touchedFE) {
   #
   # 2026-09-27: Wave 2 (PR #27) import `alertCenterFormat.js` nhung file that la
   # `.ts`. `tsc` PASS (tu map `.js`->`.ts` theo allowJs) va `vitest` PASS 52/52
-  # (resolver dev/test lenient hon Rollup) — CHI `vite build` bat. `dev` khong
+  # (resolver dev/test lenient hon Rollup) -- CHI `vite build` bat. `dev` khong
   # bundle duoc, hotfix bang PR #28. Ba wave lien tiep deu bo qua vi tsc+vitest
   # deu xanh tren code lam hong build.
   #
   # Rollup resolve that hon cac gate kia, nen day moi la gate chung ta can.
   Step 5b2 "npm run build (bat Rollup resolve)"
   npm run build --silent
-  if ($LASTEXITCODE -ne 0) { Pop-Location; Die "npm run build that bai — code se khong bundle duoc tren dev" }
+  if ($LASTEXITCODE -ne 0) { Pop-Location; Die "npm run build that bai -- code se khong bundle duoc tren dev" }
   Pop-Location
   Ok "build thanh cong"
 }
 
 if ($touchedBE) {
   if (-not $env:CORE_DATABASE_URL) {
-    Warn "Branch sua backend nhung CORE_DATABASE_URL chua set — BO QUA test BE."
+    Warn "Branch sua backend nhung CORE_DATABASE_URL chua set -- BO QUA test BE."
     Warn "Khong duoc bao cao 'test PASS' khi chua chay. Xem AGENT_PROTOCOL.md §4."
   } else {
     Step 5c "manage.py check + test BE"
@@ -183,11 +183,11 @@ if ($touchedBE) {
 #
 # Ly do: 200/200 run gan nhat that bai, khong mot run xanh nao. Nguyen nhan goc
 # la billing ("recent account payments have failed"), job fail sau 2-3 giay voi
-# `steps=0` — runner chua chay buoc nao. Ca run cua `dev` cung fail nen CI
+# `steps=0` -- runner chua chay buoc nao. Ca run cua `dev` cung fail nen CI
 # khong bao gio co tin hieu. Xem `.github/workflows-disabled/README.md`.
 #
 # Logic gate nam trong script PowerShell local, KHONG nam trong YAML, nen tat
-# Actions khong mat logic — chi mat lop thuc thi tu dong.
+# Actions khong mat logic -- chi mat lop thuc thi tu dong.
 # ---------------------------------------------------------------------------
 
 Step 5c "OpenCore doc sync gate"
@@ -197,10 +197,10 @@ if ($LASTEXITCODE -ne 0) { Die "OpenCore doc sync gate that bai" }
 Ok "OpenCore doc sync PASS"
 
 # CHI CANH BAO, khong chan. Script dang FAIL tren `dev` (exit 1) vi no den
-# 77 file — trong do nhiều file thuocc cay legacy `frontend/` da bi thay bang
+# 77 file -- trong do nhiều file thuocc cay legacy `frontend/` da bi thay bang
 # `packages/web/`. Gate nay CHUA BAO GIO chay xanh tren CI nen chua ai thay
 # vie pham; bat chan ngay bay se chan moi agent vi no ton do, gate se bi bo qua
-# — te hon khong co gate. Nang len chan khi no duoc xu ly xong.
+# -- te hon khong co gate. Nang len chan khi no duoc xu ly xong.
 Step 5d "Large file guard (CANH BAO, khong chan)"
 $lf = & pwsh -File scripts/quality/check_large_files.ps1 `
   -WarnLines 700 -FailLines 1000 -AllowListPath scripts/quality/large_file_allowlist.txt 2>&1

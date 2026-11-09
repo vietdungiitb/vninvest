@@ -24,7 +24,7 @@ param(
 
 # Mac dinh KHONG xoa. Script huuy dien phai do -Execute moi chay that.
 # That tai 2026-09-26: khong co -Execute, lenh da xoa worktree ma report
-# "Permission denied" — git van xoa registration va .git, chi la thu muc con lai.
+# "Permission denied" -- git van xoa registration va .git, chi la thu muc con lai.
 $ErrorActionPreference = 'Stop'
 function Die($m) { Write-Host "X  $m" -ForegroundColor Red; exit 1 }
 function Ok($m)  { Write-Host "OK  $m" -ForegroundColor Green }
@@ -44,7 +44,7 @@ if (-not $path) {
 if (-not $path) { Die "Khong tim thay worktree cho branch '$Branch'." }
 if (-not (Test-Path $path)) { Die "Thu muc khong ton tai: $path" }
 if (-not (Test-Path (Join-Path $path ".git"))) {
-  Die "'$path' khong con .git — worktree da bi khuyet. Khong xoa them, tao lai bang 'git worktree add'."
+  Die "'$path' khong con .git -- worktree da bi khuyet. Khong xoa them, tao lai bang 'git worktree add'."
 }
 
 # GUARD 1: dang dung chinh trong thu muc can xoa
@@ -89,7 +89,7 @@ if (Test-Path $claim) {
   }
 }
 
-# GUARD 5: junction / symlink ben trong — git worktree remove co the lam hong
+# GUARD 5: junction / symlink ben trong -- git worktree remove co the lam hong
 # chung vi no xoa recursive
 $junctions = Get-ChildItem $path -Recurse -Directory -Force -ErrorAction SilentlyContinue |
              Where-Object { $_.LinkType } | Select-Object -First 5
