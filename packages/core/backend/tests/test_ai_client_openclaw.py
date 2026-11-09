@@ -30,7 +30,7 @@ import django
 
 django.setup()
 
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework.test import APIClient
 
 from advisory.advisory_helpers import build_ai_readiness
@@ -236,3 +236,25 @@ class OpenClawUsageRecordTests(TestCase):
         self.assertEqual(cost, 0)
         self.assertFalse(available)
         self.assertFalse(is_tiered_provider('openclaw'))
+
+
+class OpenClawSupportPositioningTests(SimpleTestCase):
+    """A5 (D4): fail-closed phải định vị "tính năng hỗ trợ" — không để user tưởng AI chính chết.
+
+    AC W1.7 (`docs/ROADMAP_MASTER_2026Q4_2027.md:336`): 503 + `error_code` +
+    message tiếng Việt chứa nguyên văn "tính năng hỗ trợ đang chưa bật" +
+    phân biệt AI chính không bị ảnh hưởng. Assert 2 cụm thật (case-insensitive),
+    không tautology (L-V04). Tái dùng `_NoEnv` để cô lập `OPENCLAW_*` env.
+
+    `SimpleTestCase` (không chạm DB): `probe()` chỉ đọc env/settings,
+    không cần test DB — chạy được trên VPS staging.
+    """
+
+    def test_a5_probe_detail_positions_support_feature_not_dead_ai(self):
+        with _NoEnv():
+            result = __import__('asyncio').run(OpenClawClient().probe())
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error_code'], ERROR_NOT_CONFIGURED)
+        detail = result['detail'].lower()
+        self.assertIn('tính năng hỗ trợ đang chưa bật', detail)
+        self.assertIn('ai chính không bị ảnh hưởng', detail)
