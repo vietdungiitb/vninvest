@@ -442,10 +442,9 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         # side=UNKNOWN cho mọi tín hiệu.
         structured = _build_structured_output(orch_res, record.advisory_text)
 
-        # R0.2/R0.10 — signal không đọc được thì fail-closed: KHÔNG ghi record
-        # là `generated` vì như vậy UI sẽ hiển thị một khuyến nghị không có
-        # chiều, và order ticket sẽ bị chặn ở trạng thái giả.
-        if structured.get('signal') == SIGNAL_UNKNOWN:
+        # B1: fail-closed khi posture không đọc được — không ghi 'generated'
+        # với phân tích không chiều.
+        if structured.get('posture') == SIGNAL_UNKNOWN:
             record.status = 'failed'
             record.error_message = SIGNAL_UNPARSEABLE_MESSAGE
             record.structured_output = {
@@ -453,14 +452,14 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
                 'error': {
                     'error_code': SIGNAL_UNPARSEABLE_CODE,
                     'user_message': SIGNAL_UNPARSEABLE_MESSAGE,
-                    'signal_raw': orch_res.get('signal_raw') or '',
+                    'posture': orch_res.get('posture') or '',
                 },
             }
             record.save()
             logger.warning(
-                "advisory.generate_advisory_task: signal unparseable for %s (%s); "
+                "advisory.generate_advisory_task: posture unparseable for %s (%s); "
                 "record marked failed instead of emitting a directionless signal",
-                symbol, structured.get('signal_raw') or orch_res.get('signal_raw') or '',
+                symbol, orch_res.get('posture') or '',
             )
             return
 
