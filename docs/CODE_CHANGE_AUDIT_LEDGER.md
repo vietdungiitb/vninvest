@@ -1,3 +1,10 @@
+## Entry 433: Dong vong a1-verify A1 re-verify VPS (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: Test VPS (BE) + closeout - Evidence: docs/SESSION_HANDOFF_20261109_A1.md + docs/evidence/a1-verify/AUDIT_B8_20261109.md (PASS, staging-only) + PR #312
+- **Ban giao**: B5 claim 30db0e94d + B6 VPS docker-exec staging 5f9422694 (tre 26 commits): Ran 3 tests OK (54.5s) + makemigrations No changes + test_no_timezone_utc rieng OK → A1 dong bang "khong con bug", khong sua code (Step 1 re-verify-first, khong bia fail-before) + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL pre-existing) + B8 PASS. CHUA CHAY: BE suite dev moi, tsc, PWSh7-runtime.
+- **Next (phien sau theo SESSION_HANDOFF_20261109_A1)**: P0-1 bump redis coordinator deny-list (Owner Q1, worker 2796/beat 1575) → P0-3 pull staging → re-verify dev moi → A5/B1/B2.
+
 ## Entry 432: Dong vong agent-pr-ps51 T3-pr (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
