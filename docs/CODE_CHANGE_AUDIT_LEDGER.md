@@ -1,3 +1,10 @@
+## Entry 434: Dong vong a5-openclaw A5 OpenClaw D4 BE-only (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: BE fail-closed message + closeout - Evidence: docs/evidence/a5-openclaw/EVIDENCE_B6_VPS_GATES_20261109.md + docs/evidence/a5-openclaw/AUDIT_B8_20261109.md (PASS, 0 blocker/0 major) + PR #313+
+- **Ban giao**: B5 claim 5be163ffb + B6 TDD VPS staging (@5f9422694): RED (test moi FAIL tren code cu) → GREEN (OK) → full file `tests.test_ai_client_openclaw` Ran 17 tests OK (exit 0; bypass pgbouncer bang env override per-exec, Django tu tao+drop test DB; DB-dependent AC4/AC5 chay that qua ket noi truc tiep) + restore container (md5 khop 2f6c4ee7..., rm /app/src/tests, VPS tree chi con dirty san co) + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL/32/2SKIP pre-existing) + B8 PASS. `_MSG_NOT_CONFIGURED` doi thanh "Tinh nang ho tro dang chua bat ... AI chinh khong bi anh huong" (nguyen van AC W1.7), error_code/status giu nguyen 503. CHUA CHAY: FE/locale (deferred, claim stale), models.py:250 (can migration, coordinator), P0-1 (deny-list), tsc, E2E.
+- **Next (phien sau)**: P0-1 bump redis coordinator deny-list (Owner Q1, worker 2796/beat 1575) → P0-3 pull staging → B1 orchestrator `:845-891` → B2 live order 4xx.
+
 ## Entry 433: Dong vong a1-verify A1 re-verify VPS (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
