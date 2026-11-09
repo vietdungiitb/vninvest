@@ -1,3 +1,27 @@
+## Entry 429: Plan huong tiep theo P0 → Phase A → Phase B (B2, doc-only)
+
+- **Date**: 2026-11-09
+- **Type**: Plan (doc-only) - Evidence: docs/PLAN_NEXT_DIRECTION_20261109.md + docs/EVALUATION_HANDOFF_20261109.md (Entry 428)
+- **Context**: Plan B2 de giao doi code theo thu tu P0 staging (AUD-01 bump redis requirements.txt:9 / AUD-02 patch --verify RestartCount / AUD-03 pull 26e44d203) → Phase A A1-A5 (MASTER_TRACKING §6, 2 lo i that + ve sinh claim + backfill + dinh chinh + OpenClaw D4) → Phase B B1-B5 song song 2 lane file-disjoint (B1 AI contract posture/levels / B2 go order live / B3 depth badge / B4 W1.4 / B5 whale proxy). T2/T3/T4 + SAML/broker/free + rotate/CI defer (cho Owner Q1-Q8).
+- **Gates phien lap plan**: check-multi-agent PASS, check-lessons 57/60 (phien audit). CHUA CHAY: tsc / suite / BE / VPS verify trong phien plan (ghi ro o PLAN §Baseline). Plan la B2, chua B3/B4 — can auditor doc lap ghi verdict van ban truoc khi khai claim (luat #6).
+- **Next**: Coordinator B3/B4 → P0-1 deny-list (requirements) → 2 agent song song A1/A5 → B1 ∥ B2.
+
+## Entry 428: Audit tong the + handoff 2026-11-09 (read-only, khong doi runtime)
+
+- **Date**: 2026-11-09
+- **Type**: Audit (doc-only) - Evidence: docs/EVALUATION_HANDOFF_20261109.md + docs/AUDIT_VPS_STAGING_VS_LOCAL_20261109.md (untracked) + Entry 427 pending
+- **Context**: Local dev @26e44d203 (= origin/dev, PR #308); staging @5f9422694 tre 16 commits. Tong hop handoff UI/UX (Entry 424), next-phase T1-T4, PM review rev1 (Entry 417), W0 foundation. Phat hien mo: (1) P0 workers crash-loop redis 5.3.1 vs kombu >=6.1.0 (requirements.txt:9 vs pyproject.toml:19) + --verify xanh gia; (2) MASTER_TRACKING stale tu Oct-22; (3) 3 claim pm-review-20261108 stale in-progress; (4) T2/T3/T4 van mo; (5) staging 1 host + CI [X] billing.
+- **Gates phien nay (chay that)**: check-multi-agent PASS (0 loi) · check-lessons 57/60 sach · requirements/pyproject pin khop Entry 427. CHUA CHAY: tsc / vitest full / BE suite VPS / --verify / E2E axe visual (ghi ro o EVALUATION_HANDOFF §E, L-007).
+- **Next (coordinator)**: AUD-01 bump redis + rebuild (deny-list) → AUD-02 patch --verify RestartCount → AUD-03 pull staging len 26e44d203 → Phase A A1-A5 (MASTER_TRACKING §6) → Phase B W1 B1-B5; Q1-Q8 cho Owner (EVALUATION_HANDOFF §J).
+
+## Entry 427: Audit local(dev) vs VPS staging - phat hien P0 workers crash-loop (read-only, khong doi code)
+
+- **Date**: 2026-11-09
+- **Type**: Audit (SSH read-only 14.225.255.47, key auth) - Evidence: docs/AUDIT_VPS_STAGING_VS_LOCAL_20261109.md
+- **Context**: saas.edusuccess.vn va 14.225.255.47 la CUNG 1 may (hostname edusuccess-xyjn). Local da chuyen main (chet tu Sep-27, khong chung lich su voi dev) sang dev @26e44d203 (sach, = origin/dev). Staging: dev @5f9422694 + dirty M docker-compose.staging.yml (5 insertions CORE_AD_SIGNING_SECRET - da document o Entry 423) + 5 untracked; tre origin/dev 16 commits (thieu LP1 backend 205867b84). Health API 200 status:ok; api RestartCount=0.
+- **P0 NEW (F1)**: 4 workers + beat crash-loop tu deploy Nov-08 (worker RestartCount=1486, beat=837). docker logs: kombu.exceptions.VersionMismatch (can redis-py>=6.1.0, co 5.3.1). Root: packages/core/backend/requirements.txt:9 pin redis>=5.0,<6.0 vs packages/core/pyproject.toml:19 celery>=5.4,<6.0 keo kombu moi. 16 commits thieu khong cham requirements -> pull khong sua. --verify PASS sot vi container restarting hien Up (gap verify).
+- **Next (can coordinator, requirements deny-list - KHONG tu sua)**: bump redis>=6.1.0 (check channels-redis) + rebuild image staging; bo sung check RestartCount/uptime vao deploy-staging.sh --verify; commit wire secret (khong value); sua default branch enterprise->dev o 2 deploy scripts; pull staging len 26e44d203.
+
 ## Entry 425: Gates-fix — fix đúng 4 pre-push gate fail (B4/B8 PASS, pre-push 34 PASS/2 SKIP/0 FAIL)
 
 - **Loại:** FE gate fix (`check-ai-cc.mjs` CRLF) + docs (`01.01`, `claims.json`, freshness/inventory regen) + honest SKIP (`check-system-design.mjs`, `pre-push-gate.mjs`) + hygiene (đóng 3 dòng claim stale giữ `pre-push-gate.mjs`). Branch `feat/gates-1108` (claim `gates-1108` done). Không đổi production code. Nợ ngoài scope vẫn giữ theo `docs/PLAN_NEXT_PHASE_20261108.md`: T3 (agent-*.ps1 PS 5.1 parse) → T2 (auth-forms-rhf-extra treo) → T4 (BE/Axe/visual, C3/D1/D2 chờ owner).
