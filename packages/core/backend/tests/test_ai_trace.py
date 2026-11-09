@@ -20,10 +20,9 @@ from django.utils import timezone
 User = get_user_model()
 
 SYNTH_OK = json.dumps({
-    'signal': 'BUY',
+    'posture': 'BULLISH',
+    'levels': {'support': 50000, 'resistance': 60000},
     'summary': 'Tong hop kien nghi',
-    'recommendation': 'MUA',
-    'target_price': 55000,
     'confidence_score': 0.72,
 })
 

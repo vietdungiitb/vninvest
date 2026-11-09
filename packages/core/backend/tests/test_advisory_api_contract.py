@@ -151,6 +151,17 @@ class AdvisorySymbolStatsTests(TestCase):
         self.assertEqual(row['side'], 'SELL')
         self.assertEqual(row['confidence_score'], 0.82)
 
+    def test_posture_only_record_derives_side(self):
+        """B1: record chỉ có `posture` (không còn `signal`) → side đúng (không UNKNOWN)."""
+        self._record(
+            self.user, 'VNM', AdvisoryRecord.StatusChoices.GENERATED,
+            structured={'posture': 'BULLISH', 'confidence_score': 0.9},
+        )
+        response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
+        row = unwrapped(response)['stats'][0]
+        self.assertEqual(row['side'], 'BUY')
+        self.assertEqual(row['signal'], 'BUY')
+
     def test_failed_and_pending_records_excluded(self):
         self._record(self.user, 'AAA', AdvisoryRecord.StatusChoices.FAILED)
         self._record(self.user, 'BBB', AdvisoryRecord.StatusChoices.PENDING)

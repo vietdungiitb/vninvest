@@ -629,8 +629,19 @@ class AdvisoryOrchestrator:
             
             logger.info("Using simulated fallback response in DEBUG mode")
             trend_label = "MUA" if cvd > 0.1 else "BÁN" if cvd < -0.1 else "TRUNG LẬP"
+            mock_posture = (
+                _normalize_posture(trend_label)
+                if cvd > 0.1 else (
+                    'BEARISH' if cvd < -0.1 else 'NEUTRAL'
+                )
+            )
             if language == 'en':
                 trend_label = "BUY" if cvd > 0.1 else "SELL" if cvd < -0.1 else "NEUTRAL"
+                mock_posture = (
+                    'BULLISH' if cvd > 0.1 else (
+                        'BEARISH' if cvd < -0.1 else 'NEUTRAL'
+                    )
+                )
                 text = (
                     f"AI analysis for {symbol} (Price: {price:,.0f} VND, {price_change_pct:+.2f}%). "
                     f"Whale flow registered {whale_flow:,.0f} VND with CVD at {cvd:.2f}. "
@@ -647,8 +658,9 @@ class AdvisoryOrchestrator:
                     'technical_analysis': f"Technical analysis for {symbol} shows price trading between {low_price:,.0f} and {high_price:,.0f} VND. Support is established at {low_price:,.0f} VND.",
                     'whale_analysis': f"Whale flow analysis shows net flow of {whale_flow:,.0f} VND. Institutional strength is calibrated at {inst_strength * 100:.1f}%.",
                     'sentiment_analysis': f"Market sentiment for {symbol} is currently {trend_label.lower()} with normalized CVD of {cvd:.2f}.",
-                    'recommendation': f"Recommendation is to maintain a {trend_label.lower()} bias. Monitor resistance level near {high_price:,.0f} VND.",
-                    'summary': text
+                    'summary': text,
+                    'posture': mock_posture,
+                    'levels': {'support': float(low_price), 'resistance': float(high_price)},
                 }
             else:
                 text = (
@@ -667,8 +679,9 @@ class AdvisoryOrchestrator:
                     'technical_analysis': f"Phân tích kỹ thuật mã {symbol} ghi nhận biên độ giao động từ {low_price:,.0f} đến {high_price:,.0f} VND. Ngưỡng hỗ trợ tĩnh hình thành quanh {low_price:,.0f} VND.",
                     'whale_analysis': f"Dòng tiền lớn (Whale Flow) ghi nhận ròng {whale_flow:,.0f} VND. Cường độ tổ chức (Institutional Strength) duy trì ở mức {inst_strength * 100:.1f}%.",
                     'sentiment_analysis': f"Tâm lý chung đối với {symbol} nghiêng về trạng thái {trend_label.lower()} với lực mua ròng đạt {buy_strength * 100:.1f}% tổng khớp.",
-                    'recommendation': f"Khuyến nghị duy trì trạng thái {trend_label.lower()}. Tiếp tục quan sát biến động quanh ngưỡng kháng cự {high_price:,.0f} VND.",
-                    'summary': text
+                    'summary': text,
+                    'posture': mock_posture,
+                    'levels': {'support': float(low_price), 'resistance': float(high_price)},
                 }
 
         # Resolve endpoints (R0.6: custom_endpoint user nhap phai qua SSRF guard).
@@ -776,7 +789,6 @@ The output JSON keys must be:
 - "confidence_score": a number between 0 and 1 (1.0 = maximum certainty). No unit, no percent sign.
 - "levels": an object with optional "support", "resistance" (numbers in VND) or null when the data does not support a level. No target price or forecast.
 - "risk_level": exactly one of "low", "medium", "high".
-- "recommendation": Final technical note, risk parameters, and guidelines (technical only — not buy/sell advice).
 - "summary": A concise, final summary (under 100 words).
 - "rationale": 2-4 sentences explaining why the posture follows from the inputs above.
 
