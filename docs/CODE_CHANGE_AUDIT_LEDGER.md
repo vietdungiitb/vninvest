@@ -1,3 +1,10 @@
+## Entry 435: Dong vong b2-live-guard B2 order placement W1.2 re-verify VPS (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: Re-verify VPS (giong A1) - Evidence: docs/evidence/b2-live-guard/EVIDENCE_B6_VPS_GATES_20261109.md + docs/evidence/b2-live-guard/AUDIT (B3 v2 PASS) + PR #315
+- **Ban giao**: B5 claim d298c0a88 + B6 VPS docker cp staging 5f9422694: full `user_workspace.test_order_safety` Ran 49 tests OK (skipped=3, TEST_EXIT 0) + live 6 explicit OK (live->403+live_ordering_disabled+broker rong; paper->200+dry_run=True; OTP/token 403) + restore md5 khop (8681a255/bd4eedd1) + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL/32/2SKIP pre-existing) + B8 PASS. Dong slice bang "khong con bug" (pattern A1), 0 file code doi, khong bia fail-before. CHUA CHAY: workspace.js nhan FE (2 claim in-progress stale :1826,:1886), B1 orchestrator, P0-1, tsc, E2E, BE suite full.
+- **Next (phien sau)**: P0-1 bump redis coordinator deny-list (Owner Q1) → P0-3 pull staging → B1 orchestrator :845-891 (L-size, serializer+i18n+tasks cascade) → B3/B4/B5.
+
 ## Entry 434: Dong vong a5-openclaw A5 OpenClaw D4 BE-only (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
