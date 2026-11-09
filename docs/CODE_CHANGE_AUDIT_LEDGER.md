@@ -1,3 +1,10 @@
+## Entry 436: Dong vong b1-ai-contract B1 AI contract BE core (B9, claim done + handoff)
+
+- **Date**: 2026-11-09
+- **Type**: BE refactor contract (orchestrator return schema + tasks structured_output + serializers) - Evidence: docs/evidence/b1-ai-contract/EVIDENCE_B6_VPS_GATES_20261109.md + docs/evidence/b1-ai-contract/AUDIT_B8_20261109.md (PASS, 0 blocker/0 major) + PR #316
+- **Ban giao**: B5 claim b2a1a3a37 + B6 TDD RED (4 tests: KeyError posture/levels, ImportError _assemble_advisory_result) -> GREEN (Ran 99 tests OK, TEST_EXIT 0) + fail-closed theo posture + B1 prompt signal-free + ai_trace/runtime fixtures posture + B7 gates (check-multi-agent PASS, check-lessons 57/60, pre-push 2 FAIL pre-existing) + B8 PASS. `side` giu derived tu posture (backfill legacy signal, khong ghi moi). Contract moi: posture (BULLISH/BEARISH/NEUTRAL) + levels {support,resistance}, khong con signal/target_price/recommendation. CHUA CHAY: FE (vitest ai-cc-i18n-clean, labels, disclaimer, tsc, E2E), BE suite full.
+- **Next (phien sau)**: P0-1 bump redis coordinator deny-list (Owner Q1, worker 2796/beat 1575) → P0-3 pull staging → re-verify dev moi → B1-FE (FOLLOW parity) → B3/B4/B5.
+
 ## Entry 435: Dong vong b2-live-guard B2 order placement W1.2 re-verify VPS (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
