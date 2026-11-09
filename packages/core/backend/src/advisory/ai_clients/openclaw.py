@@ -43,8 +43,9 @@ ERROR_SPEC_MISSING = 'openclaw_spec_missing'
 SUPPORTED_PROTOCOLS: tuple = ()
 
 _MSG_NOT_CONFIGURED = (
-    'Dịch vụ OpenClaw chưa được cấu hình trên máy chủ '
-    f'({ENV_BASE_URL} chưa đặt). Hãy liên hệ quản trị viên hệ thống.'
+    'Tính năng hỗ trợ đang chưa bật (OpenClaw, '
+    f'{ENV_BASE_URL} chưa đặt). Đây là tính năng phụ trợ — '
+    'AI chính không bị ảnh hưởng. Nếu cần, hãy liên hệ quản trị viên hệ thống.'
 )
 _MSG_SPEC_MISSING = (
     'Cấu hình OpenClaw thiếu thông tin protocol. Cần Owner xác nhận D-03c: '
