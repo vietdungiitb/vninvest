@@ -902,14 +902,13 @@ _BACKTEST_MAX_SAMPLES = 200
 def _extract_backtest_side(record: AdvisoryRecord):
     """R0.1 — dùng SSOT `signal_norm.normalize_signal` thay vì regex tại chỗ.
 
-    Regex cũ `re.compile(r'[^A-Z ]')` xoá dấu tiếng Việt nên `BÁN` thành
-    `B N` -> `None` (mất sạch tín hiệu SELL tiếng Việt) và `KHÔNG MUA` thành
-    `KHNG MUA` -> khớp BUY (ngược chiều). Đã kiểm chứng 5/14 case MISMATCH.
+    B1: đọc `posture` trước (BULLISH→BUY, BEARISH→SELL, NEUTRAL→HOLD),
+    fallback `signal` legacy cho record cũ. Bỏ `recommendation` (không còn ghi).
     """
     structured = getattr(record, 'structured_output', None) or {}
     if not isinstance(structured, dict):
         return None
-    for key in ('signal', 'recommendation'):
+    for key in ('posture', 'signal'):
         value = structured.get(key)
         if not isinstance(value, str) or not value.strip():
             continue

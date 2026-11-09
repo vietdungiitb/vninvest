@@ -41,11 +41,12 @@ def _make_prices(symbol, start, days, base=100.0, step=1.0):
     DailyPrice.objects.bulk_create(rows)
 
 
-def _make_record(user, symbol, session_date, signal='BUY'):
+def _make_record(user, symbol, session_date, signal='BUY', posture=None):
+    structured = {'signal': signal} if posture is None else {'posture': posture}
     return AdvisoryRecord.objects.create(
         user=user, symbol=symbol, session_date=session_date,
         status=AdvisoryRecord.StatusChoices.GENERATED,
-        structured_output={'signal': signal},
+        structured_output=structured,
         generated_at=timezone.now(),
     )
 
@@ -131,6 +132,16 @@ class AdvisoryBacktestApiTests(TestCase):
         for raw, expected in cases.items():
             with self.subTest(signal=raw):
                 record = _make_record(self.user, 'FPT', self.today, signal=raw)
+                self.assertEqual(_extract_backtest_side(record), expected)
+                record.delete()
+
+    def test_posture_backtest_side(self):
+        """B1: posture-only side derivation (BULLISH→BUY, BEARISH→SELL)."""
+        from advisory.views import _extract_backtest_side
+
+        for posture, expected in (('BULLISH', 'BUY'), ('BEARISH', 'SELL'), ('NEUTRAL', None)):
+            with self.subTest(posture=posture):
+                record = _make_record(self.user, 'FPT', self.today, posture=posture)
                 self.assertEqual(_extract_backtest_side(record), expected)
                 record.delete()
 

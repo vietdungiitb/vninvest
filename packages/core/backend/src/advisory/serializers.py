@@ -21,6 +21,37 @@ from .signal_norm import (
     signal_to_side,
 )
 
+
+def _resolve_posture(structured: dict):
+    """Derive posture enum for API contract. Backfills legacy signal via SSOT."""
+    if not isinstance(structured, dict):
+        return None
+    posture = structured.get('posture')
+    if isinstance(posture, str) and posture.strip().upper() in ('BULLISH', 'BEARISH', 'NEUTRAL'):
+        return posture.strip().upper()
+    signal = normalize_signal(structured.get('signal') or '')
+    if signal == SIGNAL_UNKNOWN:
+        return None
+    return {'BUY': 'BULLISH', 'SELL': 'BEARISH', 'HOLD': 'NEUTRAL'}.get(signal)
+
+
+def _resolve_levels(structured: dict):
+    """Derive levels {support, resistance} dict. Legacy: top-level support/resistance."""
+    if not isinstance(structured, dict):
+        return {'support': None, 'resistance': None}
+    levels = structured.get('levels')
+    if isinstance(levels, dict) and any(k in levels for k in ('support', 'resistance')):
+        return {
+            'support': levels.get('support'),
+            'resistance': levels.get('resistance'),
+        }
+    if any(k in structured for k in ('support', 'resistance')):
+        return {
+            'support': structured.get('support'),
+            'resistance': structured.get('resistance'),
+        }
+    return {'support': None, 'resistance': None}
+
 # ── API Key Masking ────────────────────────────────────────────────────────
 
 SENSITIVE_KEY_PATTERNS = re.compile(
@@ -99,16 +130,14 @@ def _mask_sensitive_value(value: str) -> str:
 
 
 class AdvisoryRecordSerializer(serializers.ModelSerializer):
-    """Contract chuẩn cho FE.
+    """Contract kỹ thuật-only (B1, W1.1): `posture` + `levels` là nguồn sự thật.
 
-    R0.4 — trước đây `get_signal`/`get_confidence_score` đọc thẳng
-    `structured_output.signal` trong khi orchestrator không hề ghi key đó
-    (xem `tasks.py:_build_structured_output` và `orchestrator.py`), nên hai
-    field này trả `None` vĩnh viễn và FE suy ra `side=UNKNOWN` cho mọi mã.
-    Giờ đọc qua `signal_norm` và fallback sang `recommendation`.
+    `side` giữ derived từ posture (backfill legacy `signal` qua SSOT) để
+    không phá FE chưa cập nhật (follow-up FE/i18n).
     """
 
-    signal = serializers.SerializerMethodField()
+    posture = serializers.SerializerMethodField()
+    levels = serializers.SerializerMethodField()
     confidence_score = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
     rationale = serializers.SerializerMethodField()
@@ -116,9 +145,7 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
     side = serializers.SerializerMethodField()
     error_code = serializers.SerializerMethodField()
     user_message = serializers.SerializerMethodField()
-    recommendation = serializers.SerializerMethodField()
     risk_level = serializers.SerializerMethodField()
-    target_price = serializers.SerializerMethodField()
     feature_attribution = serializers.SerializerMethodField()
     input_snapshot = serializers.SerializerMethodField()
     schema_version = serializers.SerializerMethodField()
@@ -138,14 +165,13 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
             'ai_provider',
             'advisory_text',
             'structured_output',
-            'signal',
+            'posture',
+            'levels',
             'side',
             'confidence_score',
             'summary',
             'rationale',
-            'recommendation',
             'risk_level',
-            'target_price',
             'components',
             'feature_attribution',
             'input_snapshot',
@@ -203,15 +229,17 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
 
     # -- fields --------------------------------------------------------------
 
-    def get_signal(self, obj):
-        structured = self._structured(obj)
-        signal = normalize_signal(structured.get('signal'))
-        if signal == SIGNAL_UNKNOWN:
-            signal = normalize_signal(structured.get('recommendation'))
-        return signal
+    def get_posture(self, obj):
+        return _resolve_posture(self._structured(obj))
+
+    def get_levels(self, obj):
+        return _resolve_levels(self._structured(obj))
 
     def get_side(self, obj):
-        return signal_to_side(self.get_signal(obj))
+        posture = self.get_posture(obj)
+        if posture is not None:
+            return signal_to_side(normalize_signal(posture))
+        return SIGNAL_UNKNOWN
 
     def get_confidence_score(self, obj):
         return normalize_confidence(self._structured(obj).get('confidence_score'))
@@ -225,14 +253,8 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
     def get_rationale(self, obj):
         return self._structured(obj).get('rationale') or ''
 
-    def get_recommendation(self, obj):
-        return self._structured(obj).get('recommendation') or ''
-
     def get_risk_level(self, obj):
         return normalize_risk_level(self._structured(obj).get('risk_level'))
-
-    def get_target_price(self, obj):
-        return self._structured(obj).get('target_price')
 
     def get_feature_attribution(self, obj):
         structured = self._structured(obj)
@@ -294,7 +316,12 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
         `structured_output['components']` thuộc chính record nên vẫn an toàn.
         """
         structured_components = self._structured(obj).get('components')
-        has_result = normalize_signal(self._structured(obj).get('signal')) != SIGNAL_UNKNOWN
+        structured = self._structured(obj)
+        posture = _resolve_posture(structured)
+        has_result = (
+            posture is not None and posture != 'UNKNOWN'
+            or normalize_signal(structured.get('signal') or '') != SIGNAL_UNKNOWN
+        )
         if not has_result:
             if isinstance(structured_components, list):
                 return structured_components
