@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   PR body duoc sinh tu commit thuc te + gate thuc te, nhung CHUA tu dien
-  "PASS" — nguoi ta phai xac nhan. Muc dich chong bao cao "PASS" khi chua verify.
+  "PASS" -- nguoi ta phai xac nhan. Muc dich chong bao cao "PASS" khi chua verify.
 
   Quy trinh review bat buoc (xem §10 AGENT_PROTOCOL.md):
     - File trong deny list §2 co bi keo vao PR khong?
@@ -35,11 +35,11 @@ if ($branch -in @('main','dev','master')) { Die "Dang o '$branch'. Phai tren fea
 # ── 1. pre-flight: gate truoc khi tao PR ────────────────────────────────────
 Write-Host "[1/4] Gate truoc khi tao PR" -ForegroundColor Cyan
 & node packages/web/scripts/check-multi-agent.mjs
-if ($LASTEXITCODE -ne 0) { Die "Gate that bai — khong tao PR. Xem loi o tren." }
+if ($LASTEXITCODE -ne 0) { Die "Gate that bai -- khong tao PR. Xem loi o tren." }
 
 # ── 2. dinh danh file ───────────────────────────────────────────────────────
 $files = @(git diff --name-only "$Base...HEAD")
-if ($files.Count -eq 0) { Die "Branch khong co gi khac $Base — khong co gi de review." }
+if ($files.Count -eq 0) { Die "Branch khong co gi khac $Base -- khong co gi de review." }
 
 $deny = @('AGENTS.md','packages/web/package.json',
           'pyproject.toml','requirements.txt','package-lock.json',
@@ -88,26 +88,26 @@ $fileList
 | Tai lieu (`docs/`) | $($docs.Count) |
 | **Tong** | **$($files.Count)** |
 
-## Gate — NHA SUA DONG NAY, KHONG DE TRONG
+## Gate -- NHA SUA DONG NAY, KHONG DE TRONG
 
 Xac nhan bang cach chay lai. Khong danh PASS cho thu chua chay.
 
-- [ ] `node packages/web/scripts/check-multi-agent.mjs` — ket qua: ______
-- [ ] `npx tsc --noEmit` (neu co doi tuoi packages/web) — ket qua: ______
-- [ ] `npx eslint <file da doi>` — ket qua: ______
-- [ ] `python manage.py check` (neu co doi tuoi backend) — ket qua: ______
-- [ ] `python manage.py test tests` — ket qua: ______
-- [ ] `npm run build` — ket qua: ______
+- [ ] `node packages/web/scripts/check-multi-agent.mjs` -- ket qua: ______
+- [ ] `npx tsc --noEmit` (neu co doi tuoi packages/web) -- ket qua: ______
+- [ ] `npx eslint <file da doi>` -- ket qua: ______
+- [ ] `python manage.py check` (neu co doi tuoi backend) -- ket qua: ______
+- [ ] `python manage.py test tests` -- ket qua: ______
+- [ ] `npm run build` -- ket qua: ______
 
 > Khong set ``CORE_DATABASE_URL`` / ``DJANGO_DEBUG=1`` thi test BE **khong chay duoc**.
-> Neu chua chay, ghi "CHUA CHAY" o tren — khong ghi PASS.
+> Neu chua chay, ghi "CHUA CHAY" o tren -- khong ghi PASS.
 
 ## Check list reviewer (bat buoc)
 
 1. [ ] Khong file nao trong deny list AGENT_PROTOCOL.md §2
 2. [ ] Moi file sua deu duoc claim trong `docs/CLAIMS.md` cua branch nay
 3. [ ] So migration khong trung voi bat ky branch nao khac
-4. [ ] `docs/CLAIMS.md` da chuyen tu `in-progress` sang `done`
+4. [ ] `docs/CLAIMS.md` da chuyen tu `in-progress` sang `done` 
 5. [ ] Da chay `pwsh -File scripts/agent-sync.ps1` **sau** khi lam xong, va gate chay lai **sau** do
 6. [ ] Cac muc "CHUA CHAY" tren da duoc doc va chap nhan
 
@@ -118,9 +118,9 @@ Xac nhan bang cach chay lai. Khong danh PASS cho thu chua chay.
 
 ## Commit
 
-```
+``` 
 $commits
-```
+``` 
 "@ | Set-Content -Path $tmp -Encoding utf8
 
 gh pr create --base $Base --head $branch --title $Title --body-file $tmp
