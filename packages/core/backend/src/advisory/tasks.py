@@ -23,15 +23,30 @@ from advisory.signal_norm import (
 
 logger = logging.getLogger(__name__)
 
-#: key bắt buộc có mặt trong `structured_output` (schema v2)
+
+# B1 (W1.1): posture = enum kỹ thuật (BULLISH/BEARISH/NEUTRAL) — nguồn sự thật
+# của structured_output + serializer contract. Signal (`BUY/SELL/HOLD`) chỉ còn
+# tồn tại như fallback đọc dữ liệu legacy, không còn được ghi mới.
+_POSTURE_BY_SIGNAL = {'BUY': 'BULLISH', 'SELL': 'BEARISH', 'HOLD': 'NEUTRAL'}
+_POSTURE_ENUMS = {'BULLISH', 'BEARISH', 'NEUTRAL'}
+
+
+def _normalize_posture(raw) -> str:
+    """Chuẩn hoá posture phân tích kỹ thuật thành BULLISH/BEARISH/NEUTRAL/UNKNOWN."""
+    token = str(raw or '').strip().upper()
+    if token in _POSTURE_ENUMS:
+        return token
+    signal = normalize_signal(raw)
+    return _POSTURE_BY_SIGNAL.get(signal, SIGNAL_UNKNOWN)
+
+#: Ngưỡng R2.6. Tắt sớm = mất dịch vụ khi provider đang deploy; bật lại sớm =
 REQUIRED_STRUCTURED_KEYS = (
-    'signal',
+    'posture',
+    'levels',
     'confidence_score',
     'summary',
     'rationale',
-    'recommendation',
     'risk_level',
-    'target_price',
     'schema_version',
 )
 
@@ -104,18 +119,17 @@ def _refund_advisory_quota(record) -> bool:
 def _build_structured_output(orch_res: dict, advisory_text: str = '') -> dict:
     """Dựng `structured_output` từ kết quả orchestrator + fallback JSON parse.
 
-    - Ưu tiên giá trị orchestrator đã chuẩn hoá (`signal`, `confidence_score`).
-    - Nếu orchestrator chưa có `signal` (model cũ chỉ trả `recommendation`),
-      fallback sang `recommendation` rồi mới về `advisory_text` nếu nó thực sự
-      là JSON object.
-    - Không tự bịa `confidence_score`: thiếu thì để `None`.
+    B1 (W1.1): contract kỹ thuật-only — `posture` (enum BULLISH/BEARISH/NEUTRAL)
+    + `levels` (support/resistance, số hoặc None). Không còn ghi `signal`,
+    `recommendation`, `target_price` (order placement); chỉ đọc legacy key đó
+    khi orchestrator cũ/API cũ trả về để backfill posture.
     """
     result = dict(orch_res or {})
     parsed_extra = {}
 
     # advisory_text chỉ parse được khi bản thân nó là JSON object (mô hình cũ
     # hay trả nguyên JSON). Trước đây mọi lần parse đều raise rồi bị nuốt.
-    if not result.get('signal') and advisory_text:
+    if not (result.get('posture') or result.get('signal')) and advisory_text:
         try:
             maybe_json = json.loads(advisory_text)
             if isinstance(maybe_json, dict):
@@ -129,30 +143,33 @@ def _build_structured_output(orch_res: dict, advisory_text: str = '') -> dict:
             value = parsed_extra.get(key, default)
         return value
 
-    raw_signal = result.get('signal') or parsed_extra.get('signal') or ''
-    signal = normalize_signal(raw_signal) if raw_signal not in (None, '') else SIGNAL_UNKNOWN
-    if signal == SIGNAL_UNKNOWN:
-        signal = normalize_signal(pick('recommendation') or '')
-    if signal == SIGNAL_UNKNOWN:
-        signal = normalize_signal(pick('signal_raw') or '')
+    # Nguồn posture: posture mới trước, fallback legacy `signal`/`recommendation`
+    # của model cũ qua SSOT normalize (chỉ đọc backfill, không ghi lại key cũ).
+    raw_posture = pick('posture') or pick('signal') or pick('recommendation') or ''
+    posture = _normalize_posture(raw_posture)
+
+    from advisory.orchestrator import _coerce_float
+    _levels_raw = pick('levels') if isinstance(pick('levels'), dict) else {}
+    levels = {
+        'support': _coerce_float(_levels_raw.get('support')),
+        'resistance': _coerce_float(_levels_raw.get('resistance')),
+    }
 
     return {
-        'signal': signal,
-        'signal_raw': str(pick('signal_raw', '') or ''),
+        'posture': posture,
+        'levels': levels,
         'confidence_score': normalize_confidence(
             result.get('confidence_score', parsed_extra.get('confidence_score'))
         ),
         'summary': str(pick('summary', '') or ''),
         'rationale': str(pick('rationale', '') or ''),
-        'recommendation': str(pick('recommendation', '') or ''),
         'risk_level': normalize_risk_level(pick('risk_level')),
-        'target_price': _coerce_float(pick('target_price')),
         'feature_attribution': pick('feature_attribution', {}) or {},
         'input_snapshot': pick('input_snapshot', {}) or {},
         'components': pick('components', []) or [],
         'advisory_text': str(advisory_text or ''),
         'schema_version': SCHEMA_VERSION,
-        'normalized_by': 'signal_norm.normalize_signal',
+        'normalized_by': 'advisory.tasks._normalize_posture',
     }
 
 
@@ -425,10 +442,9 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         # side=UNKNOWN cho mọi tín hiệu.
         structured = _build_structured_output(orch_res, record.advisory_text)
 
-        # R0.2/R0.10 — signal không đọc được thì fail-closed: KHÔNG ghi record
-        # là `generated` vì như vậy UI sẽ hiển thị một khuyến nghị không có
-        # chiều, và order ticket sẽ bị chặn ở trạng thái giả.
-        if structured.get('signal') == SIGNAL_UNKNOWN:
+        # B1: fail-closed khi posture không đọc được — không ghi 'generated'
+        # với phân tích không chiều.
+        if structured.get('posture') == SIGNAL_UNKNOWN:
             record.status = 'failed'
             record.error_message = SIGNAL_UNPARSEABLE_MESSAGE
             record.structured_output = {
@@ -436,14 +452,14 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
                 'error': {
                     'error_code': SIGNAL_UNPARSEABLE_CODE,
                     'user_message': SIGNAL_UNPARSEABLE_MESSAGE,
-                    'signal_raw': orch_res.get('signal_raw') or '',
+                    'posture': orch_res.get('posture') or '',
                 },
             }
             record.save()
             logger.warning(
-                "advisory.generate_advisory_task: signal unparseable for %s (%s); "
+                "advisory.generate_advisory_task: posture unparseable for %s (%s); "
                 "record marked failed instead of emitting a directionless signal",
-                symbol, structured.get('signal_raw') or orch_res.get('signal_raw') or '',
+                symbol, orch_res.get('posture') or '',
             )
             return
 

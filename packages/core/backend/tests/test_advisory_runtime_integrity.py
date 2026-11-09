@@ -230,7 +230,7 @@ class N2StaleComponentLeakTest(TestCase):
             structured_output={},
         )
         data = self._serializer_for(failed)
-        self.assertEqual(data["signal"], "UNKNOWN")
+        self.assertIsNone(data["posture"])
         self.assertEqual(data["components"], [])
         # Session cu van ton tai trong DB - chi la KHONG duoc tra ra ngoai.
         self.assertTrue(self.session.components.exists())

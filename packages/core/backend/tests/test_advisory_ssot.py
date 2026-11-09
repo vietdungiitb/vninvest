@@ -156,17 +156,16 @@ class AdvisorySsotContextMergeTests(TestCase):
         self._create_quota_record(used=0, limit=5)
 
         with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
-            # R0.2: orchestrator nay luôn trả `signal` + `confidence_score`.
+            # B1: orchestrator nay trả posture + levels (không còn signal/recommendation/target_price).
             mock_run.return_value = {
                 'advisory_text': 'Multi-turn advisory summary',
                 'ai_model': 'gpt-4o-mini',
                 'tokens_used': 120,
-                'signal': 'BUY',
-                'signal_raw': 'MUA',
+                'posture': 'BULLISH',
+                'levels': {'support': 9000.0, 'resistance': 12000.0},
                 'confidence_score': 0.78,
                 'summary': 'Multi-turn advisory summary',
                 'rationale': 'Dòng tiền tích cực.',
-                'recommendation': 'MUA LÚC',
                 'risk_level': 'medium',
             }
 
@@ -183,25 +182,30 @@ class AdvisorySsotContextMergeTests(TestCase):
         self.assertEqual(session.context_snapshot['effective_ai_context']['api_key'], '[redacted]')
 
         components = AdvisoryComponent.objects.filter(session=session).order_by('order')
-        # R0.2: contract mới có `recommendation` nên materialize thêm component
-        # RECOMMENDATION (RAW_CONTEXT, SUMMARY, RECOMMENDATION).
-        self.assertEqual(components.count(), 3)
+        # B1: contract mới không còn `recommendation` nên chỉ materialize
+        # RAW_CONTEXT + SUMMARY (không còn RECOMMENDATION).
+        self.assertEqual(components.count(), 2)
         self.assertEqual(components[0].component_type, AdvisoryComponent.ComponentType.RAW_CONTEXT)
         self.assertIn('[redacted]', components[0].content)
         self.assertEqual(components[1].component_type, AdvisoryComponent.ComponentType.SUMMARY)
         self.assertIn('Multi-turn advisory summary', components[1].content)
-        self.assertEqual(components[2].component_type, AdvisoryComponent.ComponentType.RECOMMENDATION)
-        self.assertIn('MUA LÚC', components[2].content)
 
-        # R0.3: structured_output phải đủ key và signal phải dùng được.
+        # R0.3: structured_output phải đủ key và posture phải dùng được.
         self.assertEqual(record.status, AdvisoryRecord.StatusChoices.GENERATED)
-        self.assertEqual(record.structured_output['signal'], 'BUY')
+        self.assertEqual(record.structured_output['posture'], 'BULLISH')
+        self.assertEqual(
+            record.structured_output['levels'],
+            {'support': 9000.0, 'resistance': 12000.0},
+        )
+        self.assertNotIn('signal', record.structured_output)
+        self.assertNotIn('recommendation', record.structured_output)
+        self.assertNotIn('target_price', record.structured_output)
         self.assertEqual(record.structured_output['confidence_score'], 0.78)
         self.assertEqual(record.structured_output['schema_version'], 2)
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_unparseable_signal_marks_failed_instead_of_fake_direction(self):
-        """R0.2 fail-closed: không đọc được signal thì KHÔNG ghi 'generated'."""
+        """Fail-closed: posture không đọc được thì KHÔNG ghi 'generated'."""
         self._create_quota_record(used=0, limit=5)
 
         with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
@@ -209,9 +213,7 @@ class AdvisorySsotContextMergeTests(TestCase):
                 'advisory_text': 'Mô hình trả về một đoạn văn không có khuyến nghị rõ ràng.',
                 'ai_model': 'gpt-4o-mini',
                 'tokens_used': 50,
-                'signal': 'UNKNOWN',
-                'signal_raw': 'không rõ',
-                'recommendation': '',
+                'posture': 'UNKNOWN',
                 'summary': 'Không kết luận được.',
             }
 

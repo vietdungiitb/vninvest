@@ -365,6 +365,59 @@ def _error_code_of(exc) -> str:
     return exc.__class__.__name__[:64] or 'unknown_error'
 
 
+# B1 (W1.1): posture = enum kỹ thuật (BULLISH/BEARISH/NEUTRAL) — nguồn sự thật
+# của return schema + structured output. Signal (BUY/SELL/HOLD) chỉ còn tồn tại
+# để backfill dữ liệu legacy (đọc signal cũ → map sang posture qua normalize).
+_POSTURE_ENUMS = ('BULLISH', 'BEARISH', 'NEUTRAL')
+_SIGNAL_TO_POSTURE = {'BUY': 'BULLISH', 'SELL': 'BEARISH', 'HOLD': 'NEUTRAL'}
+
+
+def _normalize_posture(raw) -> str:
+    """Chuẩn hoá posture → BULLISH/BEARISH/NEUTRAL/UNKNOWN."""
+    token = str(raw or '').strip().upper()
+    if token in _POSTURE_ENUMS:
+        return token
+    signal = normalize_signal(raw)
+    return _SIGNAL_TO_POSTURE.get(signal, 'UNKNOWN')
+
+
+def _assemble_advisory_result(parsed_json: dict, *, ai_model: str, tokens_used: int,
+                              usage: tuple, metrics: dict, input_snapshot: dict,
+                              feature_attribution: dict, is_stale: bool,
+                              tech_res: str, flow_res: str, sent_res: str) -> dict:
+    """Contract kỹ thuật-only của orchestrator (B1, W1.1): posture + levels."""
+    raw_posture = parsed_json.get('posture', parsed_json.get('signal'))
+    posture = _normalize_posture(raw_posture)
+    _levels = parsed_json.get('levels') if isinstance(parsed_json.get('levels'), dict) else {}
+    support = _coerce_float(_levels.get('support')) if isinstance(_levels, dict) else None
+    resistance = _coerce_float(_levels.get('resistance')) if isinstance(_levels, dict) else None
+    return {
+        'advisory_text': parsed_json.get('summary') or '',
+        'ai_model': ai_model,
+        'tokens_used': tokens_used,
+        'usage': {
+            'prompt_tokens': usage[0],
+            'completion_tokens': usage[1],
+            'usage_unavailable': usage[2],
+        },
+        'metrics': metrics,
+        'input_snapshot': input_snapshot,
+        'feature_attribution': feature_attribution,
+        'is_stale': is_stale,
+        'technical_analysis': tech_res,
+        'whale_analysis': flow_res,
+        'sentiment_analysis': sent_res,
+        'summary': parsed_json.get('summary') or '',
+        'confidence_score': normalize_confidence(
+            parsed_json.get('confidence_score', parsed_json.get('confidence'))
+        ),
+        'rationale': parsed_json.get('rationale') or '',
+        'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
+        'posture': posture,
+        'levels': {'support': support, 'resistance': resistance},
+    }
+
+
 class AdvisoryOrchestrator:
     @classmethod
     def run(cls, effective_context: dict, symbol: str, trace_ctx=None) -> dict:
@@ -576,8 +629,19 @@ class AdvisoryOrchestrator:
             
             logger.info("Using simulated fallback response in DEBUG mode")
             trend_label = "MUA" if cvd > 0.1 else "BÁN" if cvd < -0.1 else "TRUNG LẬP"
+            mock_posture = (
+                _normalize_posture(trend_label)
+                if cvd > 0.1 else (
+                    'BEARISH' if cvd < -0.1 else 'NEUTRAL'
+                )
+            )
             if language == 'en':
                 trend_label = "BUY" if cvd > 0.1 else "SELL" if cvd < -0.1 else "NEUTRAL"
+                mock_posture = (
+                    'BULLISH' if cvd > 0.1 else (
+                        'BEARISH' if cvd < -0.1 else 'NEUTRAL'
+                    )
+                )
                 text = (
                     f"AI analysis for {symbol} (Price: {price:,.0f} VND, {price_change_pct:+.2f}%). "
                     f"Whale flow registered {whale_flow:,.0f} VND with CVD at {cvd:.2f}. "
@@ -594,8 +658,9 @@ class AdvisoryOrchestrator:
                     'technical_analysis': f"Technical analysis for {symbol} shows price trading between {low_price:,.0f} and {high_price:,.0f} VND. Support is established at {low_price:,.0f} VND.",
                     'whale_analysis': f"Whale flow analysis shows net flow of {whale_flow:,.0f} VND. Institutional strength is calibrated at {inst_strength * 100:.1f}%.",
                     'sentiment_analysis': f"Market sentiment for {symbol} is currently {trend_label.lower()} with normalized CVD of {cvd:.2f}.",
-                    'recommendation': f"Recommendation is to maintain a {trend_label.lower()} bias. Monitor resistance level near {high_price:,.0f} VND.",
-                    'summary': text
+                    'summary': text,
+                    'posture': mock_posture,
+                    'levels': {'support': float(low_price), 'resistance': float(high_price)},
                 }
             else:
                 text = (
@@ -614,8 +679,9 @@ class AdvisoryOrchestrator:
                     'technical_analysis': f"Phân tích kỹ thuật mã {symbol} ghi nhận biên độ giao động từ {low_price:,.0f} đến {high_price:,.0f} VND. Ngưỡng hỗ trợ tĩnh hình thành quanh {low_price:,.0f} VND.",
                     'whale_analysis': f"Dòng tiền lớn (Whale Flow) ghi nhận ròng {whale_flow:,.0f} VND. Cường độ tổ chức (Institutional Strength) duy trì ở mức {inst_strength * 100:.1f}%.",
                     'sentiment_analysis': f"Tâm lý chung đối với {symbol} nghiêng về trạng thái {trend_label.lower()} với lực mua ròng đạt {buy_strength * 100:.1f}% tổng khớp.",
-                    'recommendation': f"Khuyến nghị duy trì trạng thái {trend_label.lower()}. Tiếp tục quan sát biến động quanh ngưỡng kháng cự {high_price:,.0f} VND.",
-                    'summary': text
+                    'summary': text,
+                    'posture': mock_posture,
+                    'levels': {'support': float(low_price), 'resistance': float(high_price)},
                 }
 
         # Resolve endpoints (R0.6: custom_endpoint user nhap phai qua SSRF guard).
@@ -723,7 +789,6 @@ The output JSON keys must be:
 - "confidence_score": a number between 0 and 1 (1.0 = maximum certainty). No unit, no percent sign.
 - "levels": an object with optional "support", "resistance" (numbers in VND) or null when the data does not support a level. No target price or forecast.
 - "risk_level": exactly one of "low", "medium", "high".
-- "recommendation": Final technical note, risk parameters, and guidelines (technical only — not buy/sell advice).
 - "summary": A concise, final summary (under 100 words).
 - "rationale": 2-4 sentences explaining why the posture follows from the inputs above.
 
@@ -842,51 +907,16 @@ Important: This is technical analysis only. Do not provide investment advice, bu
             res_data.get('usage')
         )
 
-        # R0.2 — posture là enum nghiêm ngặt (technical bias only, không khuyến nghị).
-        # parse posture mới, fallback sang signal cũ (mô hình cũ chỉ trả key này)
-        # để không phá dữ liệu cũ.
-        raw_posture = parsed_json.get('posture', parsed_json.get('signal'))
-        raw_recommendation = parsed_json.get('recommendation')
-        signal = normalize_signal(raw_posture)  # reuse enum mapping for posture
-        if signal == SIGNAL_UNKNOWN:
-            signal = normalize_signal(raw_recommendation)
-
-        _levels = parsed_json.get('levels') if isinstance(parsed_json.get('levels'), dict) else {}
-        support = _coerce_float(_levels.get('support')) if isinstance(_levels, dict) else None
-        resistance = _coerce_float(_levels.get('resistance')) if isinstance(_levels, dict) else None
-        target_price = _coerce_float(parsed_json.get('target_price'))
-
-        confidence = normalize_confidence(
-            parsed_json.get('confidence_score', parsed_json.get('confidence'))
+        # B1 (W1.1): contract kỹ thuật-only — posture enum + levels.
+        return _assemble_advisory_result(
+            parsed_json,
+            ai_model=ai_model,
+            tokens_used=tokens_used,
+            usage=(_tokens_in, _tokens_out, _usage_unavailable),
+            metrics=metrics,
+            input_snapshot=input_snapshot,
+            feature_attribution=feature_attribution,
+            is_stale=is_stale,
+            tech_res=tech_res, flow_res=flow_res, sent_res=sent_res,
         )
-
-        return {
-            'advisory_text': parsed_json.get('summary') or parsed_json.get('recommendation') or "",
-            'ai_model': ai_model,
-            'tokens_used': tokens_used,
-            'usage': {
-                'prompt_tokens': _tokens_in,
-                'completion_tokens': _tokens_out,
-                'usage_unavailable': _usage_unavailable,
-            },
-            'metrics': metrics,
-            'input_snapshot': input_snapshot,
-            'feature_attribution': feature_attribution,
-            'is_stale': is_stale,
-            'technical_analysis': tech_res,
-            'whale_analysis': flow_res,
-            'sentiment_analysis': sent_res,
-            'recommendation': raw_recommendation or "",
-            'summary': parsed_json.get('summary') or "",
-            'signal': signal,
-            'signal_raw': (raw_posture or '') if isinstance(raw_posture, str) else '',
-            'confidence_score': confidence,
-            'rationale': parsed_json.get('rationale') or '',
-            'risk_level': normalize_risk_level(parsed_json.get('risk_level')),
-            'target_price': target_price,
-            'support': support,
-            'resistance': resistance,
-            'levels': {'support': support, 'resistance': resistance},
-            'posture': raw_posture if isinstance(raw_posture, str) else None,
-        }
 

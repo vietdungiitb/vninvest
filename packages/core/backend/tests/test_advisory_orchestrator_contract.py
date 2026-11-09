@@ -40,71 +40,88 @@ class _BuildStructuredOutputTests(SimpleTestCase):
                 self.assertIn(key, structured)
         self.assertEqual(structured['schema_version'], SCHEMA_VERSION)
 
-    def test_signal_from_orchestrator_field(self):
+    def test_posture_from_orchestrator_field(self):
         structured = _build_structured_output(
-            {'signal': 'SELL', 'confidence_score': 0.8, 'summary': 'x'}, 'x',
+            {'posture': 'BEARISH', 'levels': {'support': 10, 'resistance': 20},
+             'confidence_score': 0.8, 'summary': 'x'}, 'x',
         )
-        self.assertEqual(structured['signal'], 'SELL')
+        self.assertEqual(structured['posture'], 'BEARISH')
+        self.assertEqual(structured['levels'], {'support': 10.0, 'resistance': 20.0})
+        self.assertNotIn('signal', structured)
+        self.assertNotIn('recommendation', structured)
+        self.assertNotIn('target_price', structured)
         self.assertEqual(structured['confidence_score'], 0.8)
 
-    def test_signal_falls_back_to_recommendation(self):
-        """Model cũ chỉ trả `recommendation` — vẫn phải ra signal dùng được."""
+    def test_b1_posture_levels_only_contract(self):
+        structured = _build_structured_output(
+            {'posture': 'BULLISH', 'levels': {'support': 10, 'resistance': 20}},
+            '',
+        )
+        self.assertEqual(structured['posture'], 'BULLISH')
+        self.assertEqual(structured['levels'], {'support': 10.0, 'resistance': 20.0})
+        for legacy in ('signal', 'recommendation', 'target_price'):
+            with self.subTest(legacy=legacy):
+                self.assertNotIn(legacy, structured)
+
+    def test_levels_coerced_or_none(self):
+        structured = _build_structured_output(
+            {'posture': 'NEUTRAL', 'levels': {'support': '10,5', 'resistance': 'n/a'}},
+            '',
+        )
+        self.assertEqual(structured['levels'], {'support': 10.5, 'resistance': None})
+
+    def test_posture_from_legacy_signal_fallback(self):
+        """Orchestrator cũ chỉ trả `signal` — vẫn phải ra posture dùng được (backfill không ghi mới)."""
+        structured = _build_structured_output(
+            {'signal': 'SELL', 'confidence_score': 0.7}, '',
+        )
+        self.assertEqual(structured['posture'], 'BEARISH')
+
+    def test_posture_falls_back_to_recommendation(self):
+        """Model cũ chỉ trả `recommendation` — vẫn phải ra posture dùng được."""
         structured = _build_structured_output(
             {'recommendation': 'BÁN LỤC', 'summary': 'x'}, 'x',
         )
-        self.assertEqual(structured['signal'], 'SELL')
-
-    def test_vietnamese_recommendation_parsed(self):
-        structured = _build_structured_output({'recommendation': 'BÁN'}, '')
-        self.assertEqual(structured['signal'], 'SELL')
+        self.assertEqual(structured['posture'], 'BEARISH')
 
     def test_advisory_text_json_is_parsed(self):
         structured = _build_structured_output(
-            {}, '{"signal": "BUY", "confidence_score": 0.7, "summary": "mua"}',
+            {}, '{"posture": "BULLISH", "confidence_score": 0.7, "summary": "mua"}',
         )
-        self.assertEqual(structured['signal'], 'BUY')
+        self.assertEqual(structured['posture'], 'BULLISH')
         self.assertEqual(structured['confidence_score'], 0.7)
 
     def test_plain_text_advisory_text_is_not_crashed(self):
         structured = _build_structured_output({}, 'Đây là một đoạn văn bình thường.')
-        self.assertEqual(structured['signal'], SIGNAL_UNKNOWN)
+        self.assertEqual(structured['posture'], 'UNKNOWN')
         self.assertEqual(structured['advisory_text'], 'Đây là một đoạn văn bình thường.')
 
     def test_confidence_never_invented(self):
-        structured = _build_structured_output({'signal': 'BUY'}, '')
+        structured = _build_structured_output({'posture': 'BULLISH'}, '')
         self.assertIsNone(structured['confidence_score'])
 
     def test_confidence_out_of_range_becomes_none(self):
         for raw in (1.5, -0.2, 82, 'abc'):
             with self.subTest(raw=raw):
                 structured = _build_structured_output(
-                    {'signal': 'BUY', 'confidence_score': raw}, '',
+                    {'posture': 'BULLISH', 'confidence_score': raw}, '',
                 )
                 self.assertIsNone(structured['confidence_score'])
 
     def test_risk_level_normalized(self):
         self.assertEqual(
-            _build_structured_output({'signal': 'BUY', 'risk_level': 'HIGH'})['risk_level'],
+            _build_structured_output({'posture': 'BULLISH', 'risk_level': 'HIGH'})['risk_level'],
             'high',
         )
         self.assertEqual(
-            _build_structured_output({'signal': 'BUY', 'risk_level': 'weird'})['risk_level'],
+            _build_structured_output({'posture': 'BULLISH', 'risk_level': 'weird'})['risk_level'],
             'unknown',
-        )
-
-    def test_target_price_coerced_or_none(self):
-        self.assertEqual(
-            _build_structured_output({'signal': 'BUY', 'target_price': '15300'})['target_price'],
-            15300.0,
-        )
-        self.assertIsNone(
-            _build_structured_output({'signal': 'BUY', 'target_price': 'n/a'})['target_price'],
         )
 
     def test_normalized_by_marker_present(self):
         self.assertEqual(
-            _build_structured_output({'signal': 'BUY'})['normalized_by'],
-            'signal_norm.normalize_signal',
+            _build_structured_output({'posture': 'BULLISH'})['normalized_by'],
+            'advisory.tasks._normalize_posture',
         )
 
 

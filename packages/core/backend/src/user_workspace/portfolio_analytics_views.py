@@ -3247,10 +3247,11 @@ class PortfolioAIAdvisorySymbolStatsView(APIView):
             if row.symbol in latest_by_symbol:
                 continue
             structured = row.structured_output if isinstance(row.structured_output, dict) else {}
+            posture = structured.get('posture') or structured.get('signal')
             latest_by_symbol[row.symbol] = {
                 'symbol': row.symbol,
-                'side': signal_to_side(normalize_signal(structured.get('signal'))),
-                'signal': normalize_signal(structured.get('signal')),
+                'side': signal_to_side(normalize_signal(posture)),
+                'signal': normalize_signal(posture),
                 'confidence_score': normalize_confidence(structured.get('confidence_score')),
                 'is_discovery': bool(structured.get('is_discovery') or False),
                 'updated_at': (

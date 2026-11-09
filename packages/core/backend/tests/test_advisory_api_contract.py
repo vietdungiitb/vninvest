@@ -29,14 +29,12 @@ from advisory.models import AdvisoryComponent, AdvisoryRecord, AdvisorySession
 from advisory.tests.envelope import unwrapped
 
 FULL_STRUCTURED = {
-    'signal': 'SELL',
-    'signal_raw': 'BÁN',
+    'posture': 'BEARISH',
+    'levels': {'support': 14000.0, 'resistance': 16000.0},
     'confidence_score': 0.82,
     'summary': 'Dòng tiền thoát mạnh, nên giảm tỷ trọng.',
     'rationale': 'CVD âm kéo dài, sức mạnh tổ chức suy yếu.',
-    'recommendation': 'BÁN LỤC',
     'risk_level': 'high',
-    'target_price': 15300.0,
     'matched_value': 14500,
     'schema_version': 2,
 }
@@ -65,11 +63,23 @@ class AdvisoryRecordContractTests(TestCase):
         # giu nguyen neu khong, nen test pass o ca hai trang thai.
         return unwrapped(response)
 
-    def test_signal_read_from_structured_output(self):
-        self.assertEqual(self._payload()['signal'], 'SELL')
+    def test_posture_read_from_structured_output(self):
+        payload = self._payload()
+        self.assertEqual(payload['posture'], 'BEARISH')
+        self.assertEqual(payload['levels'], {'support': 14000.0, 'resistance': 16000.0})
+        for legacy in ('signal', 'recommendation', 'target_price'):
+            with self.subTest(legacy=legacy):
+                self.assertNotIn(legacy, payload)
 
-    def test_side_derived_from_signal(self):
+    def test_side_derived_from_posture(self):
         self.assertEqual(self._payload()['side'], 'SELL')
+
+    def test_side_derived_from_legacy_signal(self):
+        """Record legacy chỉ có `signal` vẫn ra side (backfill đọc SSOT)."""
+        self.record.structured_output = {'signal': 'SELL'}
+        self.record.save()
+        self.assertEqual(self._payload()['side'], 'SELL')
+        self.assertEqual(self._payload()['posture'], 'BEARISH')
 
     def test_confidence_score_exposed(self):
         self.assertEqual(self._payload()['confidence_score'], 0.82)
@@ -77,31 +87,17 @@ class AdvisoryRecordContractTests(TestCase):
     def test_all_new_fields_present(self):
         payload = self._payload()
         for field in (
-            'signal', 'side', 'confidence_score', 'summary', 'rationale',
-            'recommendation', 'risk_level', 'target_price', 'components',
+            'posture', 'levels', 'side', 'confidence_score', 'summary', 'rationale',
+            'risk_level', 'components',
             'feature_attribution', 'input_snapshot', 'schema_version',
             'matched_value', 'is_discovery', 'whale_intensity', 'error_code',
             'user_message',
         ):
             with self.subTest(field=field):
                 self.assertIn(field, payload)
-
-    def test_vietnamese_sell_survives_serializer(self):
-        """Ký lại: `BÁN` (có dấu) phải ra SELL, không phải None."""
-        self.record.structured_output = {'recommendation': 'BÁN'}
-        self.record.save()
-        self.assertEqual(self._payload()['signal'], 'SELL')
-
-    def test_negated_buy_is_unknown_not_buy(self):
-        self.record.structured_output = {'recommendation': 'KHÔNG MUA'}
-        self.record.save()
-        self.assertEqual(self._payload()['signal'], 'UNKNOWN')
-        self.assertEqual(self._payload()['side'], 'UNKNOWN')
-
-    def test_confidence_never_invents_value(self):
-        self.record.structured_output = {'signal': 'BUY'}
-        self.record.save()
-        self.assertIsNone(self._payload()['confidence_score'])
+        for legacy in ('signal', 'recommendation', 'target_price'):
+            with self.subTest(legacy=legacy):
+                self.assertNotIn(legacy, payload)
 
     def test_components_from_advisory_component_table(self):
         session = AdvisorySession.objects.create(
@@ -154,6 +150,17 @@ class AdvisorySymbolStatsTests(TestCase):
         self.assertEqual(row['symbol'], 'VNM')
         self.assertEqual(row['side'], 'SELL')
         self.assertEqual(row['confidence_score'], 0.82)
+
+    def test_posture_only_record_derives_side(self):
+        """B1: record chỉ có `posture` (không còn `signal`) → side đúng (không UNKNOWN)."""
+        self._record(
+            self.user, 'VNM', AdvisoryRecord.StatusChoices.GENERATED,
+            structured={'posture': 'BULLISH', 'confidence_score': 0.9},
+        )
+        response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
+        row = unwrapped(response)['stats'][0]
+        self.assertEqual(row['side'], 'BUY')
+        self.assertEqual(row['signal'], 'BUY')
 
     def test_failed_and_pending_records_excluded(self):
         self._record(self.user, 'AAA', AdvisoryRecord.StatusChoices.FAILED)
@@ -233,6 +240,9 @@ class AdvisoryListViewTests(TestCase):
         self._record(self.user, 'VNM')
         response = self.client.get('/core/v1/portfolio/ai-advisory/')
         item = unwrapped(response)['items'][0]
-        self.assertEqual(item['signal'], 'SELL')
+        self.assertEqual(item['posture'], 'BEARISH')
+        self.assertNotIn('signal', item)
+        self.assertNotIn('target_price', item)
+        self.assertNotIn('recommendation', item)
         self.assertEqual(item['side'], 'SELL')
         self.assertEqual(item['confidence_score'], 0.82)
