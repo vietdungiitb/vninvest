@@ -33,6 +33,10 @@ export default function VNStockChartPanel({
   enableCVD = false,
   enableInstitutionalStrength = false,
   workspaceId,
+  tier = 'free',
+  enablePaperTrade = false,
+  enableSettings = false,
+  enableDrawingDock = false,
 }) {
   const { t: globalT, locale } = useI18n();
   const t = useCallback((key, options) => {
@@ -45,6 +49,13 @@ export default function VNStockChartPanel({
   const theme = typeof document !== "undefined" && document.documentElement?.getAttribute("data-theme") === "light"
     ? "light"
     : "dark";
+
+  // Tier gating (free / pro / enterprise). Pro+ features: drawing dock, paper trade, settings.
+  const isPro = tier === 'pro' || tier === 'enterprise';
+  const isEnterprise = tier === 'enterprise';
+  const showPaperTrade = enablePaperTrade || isEnterprise;
+  const showSettings = enableSettings || isPro;
+  const showDrawingDock = enableDrawingDock || isPro;
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
@@ -75,9 +86,9 @@ export default function VNStockChartPanel({
     let active = true;
     Promise.all([
       import('@vninvestcharts/widget'),
-      import('@vninvestcharts/widget/dist/index.css'),
     ])
       .then(([mod]) => {
+        try { mod?.injectVNInvestChartsCSS?.(); } catch (_) { /* css inject optional */ }
         if (active) setWidgetModule(mod);
       })
       .catch((err) => {
@@ -91,6 +102,11 @@ export default function VNStockChartPanel({
   const VNInvestCharts = widgetModule?.VNInvestCharts;
   const VNInvestMultiCharts = widgetModule?.VNInvestMultiCharts;
   const widgetMessagesVi = widgetModule?.widgetMessagesVi;
+  const WidgetI18nProvider = widgetModule?.WidgetI18nProvider;
+  const PaperTradePanel = widgetModule?.PaperTradePanel;
+  const SettingsModal = widgetModule?.SettingsModal;
+  const DrawingDock = widgetModule?.DrawingDock;
+  const injectVNInvestChartsCSS = widgetModule?.injectVNInvestChartsCSS;
 
   const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
 
@@ -331,9 +347,25 @@ onSymbolChange: (sym) => {
           },
       );
 
+  const panels = [];
+  if (showDrawingDock && DrawingDock) {
+    panels.push(e(DrawingDock, { key: 'drawing-dock', workspaceId: workspaceId ?? `stock-${symbol}` }));
+  }
+  if (showPaperTrade && PaperTradePanel) {
+    panels.push(e(PaperTradePanel, { key: 'paper-trade', symbol }));
+  }
+  if (showSettings && SettingsModal) {
+    panels.push(e(SettingsModal, { key: 'settings', open: false }));
+  }
+
+  const chartTree = WidgetI18nProvider
+    ? e(WidgetI18nProvider, { messages: widgetMessagesVi }, chartBody)
+    : chartBody;
+
   return e(
     'div',
     { ref: chartContainerRef, className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
-    e('div', { className: 'flex-1 h-full relative' }, chartBody),
+    e('div', { className: 'flex-1 h-full relative' }, chartTree),
+    ...panels,
   );
 }
