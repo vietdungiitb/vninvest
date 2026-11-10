@@ -1,5 +1,9 @@
 /**
  * W0.9 / W1.4 / W2.1 — "mo khoa du lieu chart dang bi tat trong chinh repo".
+ * Rev 2026-11-10 (widget 0.4.1): widget doi API — 2 prop cu chet + custom
+ * 4-pane gay de legend (xem docs/PLAN_WIDGET_UI_FIX_20261110.md). Test giu
+ * Y DO goc (du lieu mo, khong bat mu) nhung khop hop dong MOI:
+ * DEFAULT_PANES + khong side tape panel + khong corporate events.
  *
  * D1 (Owner 2026-10-21): retail mua "charts" la nhu cau #1. Widget
  * `vninvestcharts-widget@1.2.5` co san 59 indicator + tape panel + workspace
@@ -24,22 +28,22 @@ const src = readFileSync(PANEL_SRC, "utf8");
 const vi = readFileSync(VI_I18N, "utf8");
 const en = readFileSync(EN_I18N, "utf8");
 
-describe("W0.9 — chart data unlock (tape + workspace toolbar + pane chi bao)", () => {
-  it("S1 — bat showTapePanel (du lieu tick THAT co san o BE)", () => {
-    expect(src).toMatch(/showTapePanel:\s*true/);
-    expect(src).not.toMatch(/showTapePanel:\s*false/);
+describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
+  it("S1 — TAT showTapePanel side panel (demo-parity; Ban/Mua nam o footer)", () => {
+    expect(src).toMatch(/showTapePanel:\s*false/);
+    expect(src).not.toMatch(/showTapePanel:\s*true/);
   });
 
-  it("S2 — bat showWorkspaceToolbar (co prop nay trong type decl widget)", () => {
-    expect(src).toMatch(/showWorkspaceToolbar:\s*true/);
+  it("S2 — KHONG truyen showWorkspaceToolbar (prop chet o widget 0.4.1 API)", () => {
+    // Da xac minh: grep 0 hit trong VNInvestChartsProps.d.ts (306 dong).
+    expect(src).not.toMatch(/showWorkspaceToolbar/);
+    expect(src).not.toMatch(/showSymbolBadges/);
   });
 
-  it("S3 — co pane 'indicators' voi >= 6 indicator mac dinh", () => {
-    const start = src.indexOf("id: 'indicators'");
-    expect(start).toBeGreaterThan(-1);
-    const block = src.slice(start, src.indexOf("\n    },", start) > 0 ? src.indexOf("\n    },", start) : start + 4000);
-    const seriesCount = (block.match(/type:\s*'/g) || []).length;
-    expect(seriesCount).toBeGreaterThanOrEqual(6);
+  it("S3 — dung DEFAULT_PANES cua widget (khong custom pane de legend)", () => {
+    // Custom 4 pane cu tong heightRatio 1.23 > 1 gay de legend (screenshot).
+    expect(src).not.toMatch(/id: 'indicators'/);
+    expect(src).not.toMatch(/panes:\s*customPanes/);
   });
 
   it("S4 — label i18n 'chartIndicators' co o CA vi.js va en.js", () => {
