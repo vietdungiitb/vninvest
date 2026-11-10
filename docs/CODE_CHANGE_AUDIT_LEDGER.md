@@ -1,3 +1,10 @@
+## Entry 439: Widget P3b feature enablement (WidgetI18nProvider + injectCSS + tier-gated panels) + VPS deploy
+
+- **Date**: 2026-11-10
+- **Type**: FE feature enablement. Evidence: tsc 0, npm run build OK (20.98s), vitest vnstock-chart-panel 5/5 PASS, deploy-staging.sh --verify PASS.
+- **Ban giao**: PR #324 (feat/widget-p3b-enablement) MERGED. VNStockChartPanel.js: WidgetI18nProvider wrap, injectVNInvestChartsCSS (thay dynamic CSS import), tier prop (free/pro/enterprise) + showPaperTrade/showSettings/showDrawingDock flags, PaperTradePanel/SettingsModal/DrawingDock render conditionally. VPS deploy verify PASS, core-api healthy, workers 0 restart. CHUA CHAY: P3.4 full pro extension registration (registerProExtension wiring), VPS chart render manual, E2E.
+- **Next (phien sau)**: P3.4 pro extension wiring (registerProExtension + isProExtensionActive gate), VPS chart render verify (can auth), E2E. Tier source-of-truth backend chua co — tier default 'free'.
+
 ## Entry 438: Widget registry integration — Phase 1+2+3a + Docker build auth + VPS deploy
 
 - **Date**: 2026-11-10
