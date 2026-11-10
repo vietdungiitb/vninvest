@@ -14,6 +14,7 @@
   - Khôi phục `import('@vninvestcharts/widget/dist/index.css')` + sửa inject thành `injectVNInvestChartsCSS(document)` (fallback an toàn).
   - **Bỏ prop `panes`** → dùng `DEFAULT_PANES` của widget (demo-parity); giữ whale/CVD props (overlay lên default pane).
   - Xoá `showWorkspaceToolbar`, `showSymbolBadges`; `showTapePanel: false`.
+  - `showNonTradingDays: false` (demo-parity: chart liền mạch, không khoảng trống ngày nghỉ như demo).
   - Giữ `WidgetI18nProvider` nhưng truyền đủ `locale + messages`.
   - Giữ tier-gating P3b (mặc định free = không panel phụ).
 - Non-goals: không đổi adapter/BE, không đụng engine, không thêm feature mới.

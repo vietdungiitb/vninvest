@@ -6,8 +6,8 @@
  * DEFAULT_PANES + khong side tape panel + khong corporate events.
  *
  * D1 (Owner 2026-10-21): retail mua "charts" la nhu cau #1. Widget
- * `vninvestcharts-widget@1.2.5` co san 59 indicator + tape panel + workspace
- * toolbar, nhung app chi truyen 7 series va 3 flag `show*` = false.
+ * `@vninvestcharts/widget@0.4.1` co san indicator + tape panel + workspace,
+ * app phai truyen dung hop dong API moi (khong prop chet, khong pane tran).
  *
  * Test nay QUET NGUON (khong render widget) — cung pattern voi
  * `commercial-page.component.test.tsx` trong repo. Ly do: widget la npm package
