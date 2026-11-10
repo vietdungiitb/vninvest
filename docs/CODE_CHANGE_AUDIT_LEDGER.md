@@ -1,3 +1,12 @@
+## Entry 445: P3.4 license passthrough (licenseKey prop + secret-guard) — app-side readiness, pro-path BLOCKED (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE (panel prop + tests). Evidence: docs/PLAN_P34_LICENSE_20261110.md (rev3) + docs/evidence/p34-license/EVIDENCE_OFFLINE_VERIFY_20261110.md + PR #338/#340.
+- **Quyết định** (Owner: nghiên cứu + áp dụng pro tier từ key vnsaas đã cấp): app-side `licenseKey`/`onLicenseDiagnostic` passthrough (optional); KHÔNG `registerProExtension` (cần module engine-pro + key, fail-closed no-op); KHÔNG `tenantPat`/`client` (envelope mismatch `{data:{...}}` vs raw `M.plan` + thiếu client → widget-internal server tier không chạy); KHÔNG đụng BE.
+- **Kết quả nghiên cứu (load-bearing)**: re-issue key thật qua `POST /api/v1/licenses` → parse OK (`t=pro/p=vninvestcharts_widget/caps=40/e=17-11`) nhưng `verifyLicenseKey` → NULL. Hai chốt độc lập trong widget 0.4.1/engine 0.5.5: (1) payload `k="primary"` vs embedded kids `["prod-2026-10-17","e2e-2026-10-31","prod-2026-11-09"]` → candidates rỗng; (2) `p="vninvestcharts_widget"` vs `LICENSE_PRODUCT="vninvestcharts"` → reject. Mọi key vnsaas cấp hiện tại đều không verify được → end-to-end unlock cần Owner quyết hướng (A) server ký kid+p widget chấp nhận, (B) widget chấp nhận alias + republish, (C) owner cấp public JWK kid primary (chỉ gỡ chốt kid).
+- **Ban giao**: code passthrough + S8/S9 (secret-guard regex blob thật) RED→GREEN 13/13; tsc 0; build OK; check-multi-agent PASS; deploy staging verify PASS (0 restart). Live: free-path unchanged + garbage-key fail-closed êm (4 canvas, stacked ẩn 3/3, inline 4/4, 0 pageerror mới). Pro-path E2E = CHƯA CHẠY (blocked, đã chứng minh — không phải "chưa thử"). Dọn staging: 2 license rows probe (`c08e0310…`, `85e47857…`) đã revoke (204); key gốc handoff `023b6d9c…` giữ nguyên. KHÔNG commit key/PAT (L-S01/S02). B3 NEED_REVISION×2→sửa hết→B8 PASS.
+- **Next**: Owner quyết hướng (A)/(B)/(C) → verify lại; tenant subscription pro test cho app-tier panels; E2E full.
+
 ## Entry 444: P3.4 app-side tier gating via Subscription.plan (B9, claim done + handoff)
 
 - **Date**: 2026-11-10
