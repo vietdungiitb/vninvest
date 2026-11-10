@@ -1,13 +1,13 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files and npm auth (GitHub Packages) and install dependencies
 COPY package*.json ./
-# Vendored tarball (registry unpublished 2026-10-22): must exist before npm ci resolves file: deps
-COPY vendor ./vendor
+COPY .npmrc ./
+ARG GITHUB_TOKEN=
+ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm ci --legacy-peer-deps
-
 
 # Copy the rest of the application source code
 COPY . .
