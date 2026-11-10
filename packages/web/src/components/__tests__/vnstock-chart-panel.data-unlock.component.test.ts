@@ -72,8 +72,13 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     // hash cua build 0.4.1 (package.json pin exact) — bump widget phai verify lai.
     expect(src).toMatch(/VNStockChartPanel\.css/);
     const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
-    expect(css).toMatch(/\.rsc-indicator-legend/);
+    expect(css).toMatch(/\.rsc-engine-surface\s+\.Gc/);
     expect(css).toMatch(/\.Gc/);
     expect(css).toMatch(/display:\s*none/);
+    // Hover-reveal (user chon "chi hien khi hover"): hover header `.fr`
+    // hoac hover chinh cum chips `.Cc` thi hien lai inline-flex.
+    expect(css).toMatch(/\.fr:hover/);
+    expect(css).toMatch(/\.Cc:hover/);
+    expect(css).toMatch(/display:\s*inline-flex/);
   });
 });

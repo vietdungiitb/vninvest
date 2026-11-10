@@ -1,14 +1,16 @@
-/* VNStockChartPanel — an legend chips cua widget (gia tri da co o hover crosshair).
- * Giu lai indicator lines (EMA/BB tren chart). Classes rsc-/vnsc- la stable
- * (khong minify) trong @vninvestcharts/widget dist CSS. Rieng `.Gc` la
- * indicatorRow hash cua build 0.4.1 (thay trong dist/index.js style map
- * `indicatorRow:"Gc"`) — package.json pin exact 0.4.1 nen on dinh; khi bump
- * widget phai verify lai (mo DevTools tim class cua chip). Scope hep trong
- * .vnstock-chart-panel de khong anh huong cho khac. */
-.vnstock-chart-panel .rsc-indicator-legend,
-.vnstock-chart-panel .rsc-pane-header__legend,
-.vnstock-chart-panel .vnsc-indicator-legend,
-.vnstock-chart-panel .vnsc-pane-header__legend,
+/* VNStockChartPanel — legend chips an mac dinh, chi hien khi hover header.
+ * Ly do: gia tri da co o hover crosshair (tranh trung lap); user chon
+ * "chi hien khi hover" thay vi an han hay chips xep chong.
+ * Co che: widget 0.4.1 khong co prop tat legend (grep 0 hit `legend` trong
+ * VNInvestChartsProps.d.ts) nen dung CSS. `.fr` = header hang symbol/OHLC,
+ * `.Cc` = legend overlay, `.Gc` = indicatorRow (style map trong dist/index.js
+ * build 0.4.1; package.json pin exact) — bump widget phai verify lai 3 class.
+ * Scope hep trong .vnstock-chart-panel. Luu y mobile (khong co hover):
+ * legend khong hien, nhung crosshair drag van co gia tri. */
 .vnstock-chart-panel .rsc-engine-surface .Gc {
   display: none !important;
+}
+.vnstock-chart-panel .fr:hover ~ div .rsc-engine-surface .Gc,
+.vnstock-chart-panel .rsc-engine-surface .Cc:hover .Gc {
+  display: inline-flex !important;
 }
