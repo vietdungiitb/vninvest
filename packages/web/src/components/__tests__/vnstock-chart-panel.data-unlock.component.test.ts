@@ -68,10 +68,12 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
 
   it("S7 — an legend chips (hover crosshair da co gia tri, khong hien trung)", () => {
     // Widget 0.4.1 khong co prop tat legend (grep 0 hit legend trong
-    // VNInvestChartsProps.d.ts) → an bang CSS override class stable rsc-/vnsc-.
+    // VNInvestChartsProps.d.ts) → an bang CSS override. `.Gc` la indicatorRow
+    // hash cua build 0.4.1 (package.json pin exact) — bump widget phai verify lai.
     expect(src).toMatch(/VNStockChartPanel\.css/);
     const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
     expect(css).toMatch(/\.rsc-indicator-legend/);
+    expect(css).toMatch(/\.Gc/);
     expect(css).toMatch(/display:\s*none/);
   });
 });
