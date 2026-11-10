@@ -77,4 +77,14 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     // Inline `.rsc-indicator-chip` (ten ngan + gia tri, demo-parity) KHONG bi an.
     expect(css).not.toMatch(/\.rsc-indicator-chip/);
   });
+
+  it("S8 — tier gating tu Subscription.plan (P3.4, khong tenantPat/registerProExtension)", () => {
+    // Quyet dinh §1 PLAN_P34: app-side tier duy nhat co tac dung (envelope
+    // mismatch + thieu client lam widget-internal tier vo dung; LicenseKey
+    // table chua ton tai nen khong goi registerProExtension).
+    expect(src).toMatch(/useTenantTier/);
+    expect(src).not.toMatch(/tenantPat\s*:/);
+    expect(src).not.toMatch(/registerProExtension/);
+    expect(src).not.toMatch(/licenseKey\s*:/);
+  });
 });

@@ -6,6 +6,7 @@ import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInv
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
+import { useTenantTier } from '../adapters/useTenantTier.js';
 import './VNStockChartPanel.css';
 
 const e = createElement;
@@ -34,7 +35,7 @@ export default function VNStockChartPanel({
   enableCVD = false,
   enableInstitutionalStrength = false,
   workspaceId,
-  tier = 'free',
+  tier: tierProp = 'free',
   enablePaperTrade = false,
   enableSettings = false,
   enableDrawingDock = false,
@@ -51,7 +52,11 @@ export default function VNStockChartPanel({
     ? "light"
     : "dark";
 
-  // Tier gating (free / pro / enterprise). Pro+ features: drawing dock, paper trade, settings.
+  // Tier gating (free / pro / enterprise). P3.4: uu tien `tier` prop neu
+  // caller truyen; khong thi doc Subscription.plan (fail-closed free).
+  // Pro+ features: drawing dock, paper trade, settings. Enterprise: + multi.
+  const { tier: serverTier } = useTenantTier();
+  const tier = tierProp && tierProp !== 'free' ? tierProp : serverTier;
   const isPro = tier === 'pro' || tier === 'enterprise';
   const isEnterprise = tier === 'enterprise';
   const showPaperTrade = enablePaperTrade || isEnterprise;
