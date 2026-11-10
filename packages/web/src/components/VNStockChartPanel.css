@@ -1,5 +1,5 @@
 /* VNStockChartPanel — an HAN 3 dong stacked `.Gc` (VN labels + gear).
- * Giu lai inline `.rsc-indicator-chip` (ten ngan + gia tri live) nhu demo.
+ * Giu lai inline row (ten ngan + gia tri live) nhu demo.
  * Ly do: 2 lop legend trung nhau; user chon giu inline, bo stacked.
  * `.Gc` = indicatorRow hash cua build widget 0.4.1 (style map trong
  * dist/index.js; package.json pin exact) — bump widget phai verify lai.

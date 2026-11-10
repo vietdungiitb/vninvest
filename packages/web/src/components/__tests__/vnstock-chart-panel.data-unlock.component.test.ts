@@ -74,5 +74,7 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
     expect(css).toMatch(/\.rsc-engine-surface\s+\.Gc\s*\{[^}]*display:\s*none/);
     expect(css).not.toMatch(/:hover/);
+    // Inline `.rsc-indicator-chip` (ten ngan + gia tri, demo-parity) KHONG bi an.
+    expect(css).not.toMatch(/\.rsc-indicator-chip/);
   });
 });
