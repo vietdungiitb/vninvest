@@ -108,7 +108,6 @@ export default function VNStockChartPanel({
   const PaperTradePanel = widgetModule?.PaperTradePanel;
   const SettingsModal = widgetModule?.SettingsModal;
   const DrawingDock = widgetModule?.DrawingDock;
-  const injectVNInvestChartsCSS = widgetModule?.injectVNInvestChartsCSS;
 
   const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
 
