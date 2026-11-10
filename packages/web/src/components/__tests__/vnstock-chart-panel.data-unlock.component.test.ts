@@ -79,12 +79,23 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
   });
 
   it("S8 — tier gating tu Subscription.plan (P3.4, khong tenantPat/registerProExtension)", () => {
-    // Quyet dinh §1 PLAN_P34: app-side tier duy nhat co tac dung (envelope
-    // mismatch + thieu client lam widget-internal tier vo dung; LicenseKey
-    // table chua ton tai nen khong goi registerProExtension).
+    // P34-license mo rong S8 cu: cho phep `licenseKey` (offline channel),
+    // van cam tenantPat/client/registerProExtension/debugTier.
     expect(src).toMatch(/useTenantTier/);
+    expect(src).toMatch(/licenseKey\s*:/);
     expect(src).not.toMatch(/tenantPat\s*:/);
     expect(src).not.toMatch(/registerProExtension/);
-    expect(src).not.toMatch(/licenseKey\s*:/);
+    expect(src).not.toMatch(/debugTier/);
+  });
+
+  it("S9 — licenseKey forward + secret-guard (khong blob that trong code)", () => {
+    // Forward prop licenseKey (optional, default undefined) + observer
+    // onLicenseDiagnostic; KHONG hardcode blob that (blob = `vni1.` + base64
+    // dai; comment nhac dang format thi khong tinh).
+    expect(src).toMatch(/licenseKey/);
+    expect(src).toMatch(/onLicenseDiagnostic/);
+    const panel = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panel).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
+    expect(src).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
   });
 });

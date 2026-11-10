@@ -39,6 +39,12 @@ export default function VNStockChartPanel({
   enablePaperTrade = false,
   enableSettings = false,
   enableDrawingDock = false,
+  // P3.4-license: offline license blob (vni1.*) do Owner cap theo tenant.
+  // Widget tu verify ECDSA + unlock tier/caps (fail-closed khi thieu/sai).
+  // KHONG hardcode blob o day — truyen tu caller khi co.
+  licenseKey,
+  // Observer co san cua widget (silent, goi sau moi lan validate) — optional.
+  onLicenseDiagnostic,
 }) {
   const { t: globalT, locale } = useI18n();
   const t = useCallback((key, options) => {
@@ -281,6 +287,10 @@ export default function VNStockChartPanel({
           // KHONG truyen darkFlowStrength/SignalType — widget chi render badge
           // "Dark Flow" khi strength la finite number; bo han de UI gon
           // (quyet dinh san pham: mat badge ngay ca khi BE co dark-flow that).
+          // P3.4-license: truyen licenseKey khi caller co (Owner cap theo tenant).
+          // Widget tu verify offline + unlock tier/caps; undefined = giu slot cu.
+          licenseKey: licenseKey ?? undefined,
+          onLicenseDiagnostic,
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
           onBarsChange: handleBarsChange,
