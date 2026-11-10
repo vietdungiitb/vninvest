@@ -1,3 +1,12 @@
+## Entry 442: Legend hover-reveal — ẩn mặc định, hiện khi hover header (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE CSS hover-reveal (css + test). Evidence: docs/PLAN_WIDGET_CLEANUP_20261110.md + docs/evidence/widget-cleanup/EVIDENCE_20261110.md (B7b) + PR #332.
+- **Bối cảnh**: Entry 441 ẩn hẳn legend; user xem demo (inline legend có giá trị) và chọn **"chỉ hiện khi hover"** thay vì ẩn hẳn.
+- **Kỹ thuật**: `.rsc-engine-surface .Gc {display:none}` + `.fr:hover ~ div ... .Gc, .Cc:hover .Gc {display:inline-flex}`. `.fr` = header symbol/OHLC, `.Cc` = legend overlay (verify từ dist index.css + DOM thật). Pin widget 0.4.1; bump phải verify lại class hash.
+- **Ban giao**: test S7 mở rộng (hover rules) 7/7 GREEN; tsc 0; build OK; check-multi-agent PASS; deploy staging verify PASS. Visual verify (admin/admin123): default visible 0/3, hover header 3/3, screenshot như demo. B3 PASS + B8 PASS (round cuối NEED_REVISION nhẹ vì thiếu claim row — đã bổ sung single row done, không duplicate). L-V02 mới: đo hover phải di chuột ra góc xa trước (chuột đậu giữa chart làm `.Cc:hover` khớp giả).
+- **Next**: bump widget → verify lại `.fr`/`.Cc`/`.Gc`; P3.4 `registerProExtension` (cần backend tier source-of-truth); E2E full.
+
 ## Entry 441: Widget cleanup — bỏ Dark Flow badge + ẩn dock rail + ẩn legend chips (B9, claim done + handoff)
 
 - **Date**: 2026-11-10
