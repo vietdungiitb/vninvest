@@ -74,8 +74,8 @@ export default function VNStockChartPanel({
     if (!inView) return;
     let active = true;
     Promise.all([
-      import('vninvestcharts-widget'),
-      import('vninvestcharts-widget/dist/index.css'),
+      import('@vninvestcharts/widget'),
+      import('@vninvestcharts/widget/dist/index.css'),
     ])
       .then(([mod]) => {
         if (active) setWidgetModule(mod);
