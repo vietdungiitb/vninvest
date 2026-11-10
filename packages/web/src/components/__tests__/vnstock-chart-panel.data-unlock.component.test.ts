@@ -57,4 +57,21 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     // "co comment giai thich", khong khop mot cum tieng Anh cu the.
     expect(src).toMatch(/corporate (events|actions)/i);
   });
+
+  it("S6 — UI gon (2026-11-10): khong Dark Flow badge, an right-dock rail", () => {
+    // Badge chi render khi strength la finite number (dist gate) — app khong
+    // truyen prop thi badge mat han. Rail dock an khi showDock === false.
+    expect(src).toMatch(/showDock:\s*false/);
+    expect(src).not.toMatch(/darkFlowStrength:/);
+    expect(src).not.toMatch(/darkFlowSignalType/);
+  });
+
+  it("S7 — an legend chips (hover crosshair da co gia tri, khong hien trung)", () => {
+    // Widget 0.4.1 khong co prop tat legend (grep 0 hit legend trong
+    // VNInvestChartsProps.d.ts) → an bang CSS override class stable rsc-/vnsc-.
+    expect(src).toMatch(/VNStockChartPanel\.css/);
+    const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
+    expect(css).toMatch(/\.rsc-indicator-legend/);
+    expect(css).toMatch(/display:\s*none/);
+  });
 });
