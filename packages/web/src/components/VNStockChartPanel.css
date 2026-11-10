@@ -1,16 +1,9 @@
-/* VNStockChartPanel — legend chips an mac dinh, chi hien khi hover header.
- * Ly do: gia tri da co o hover crosshair (tranh trung lap); user chon
- * "chi hien khi hover" thay vi an han hay chips xep chong.
- * Co che: widget 0.4.1 khong co prop tat legend (grep 0 hit `legend` trong
- * VNInvestChartsProps.d.ts) nen dung CSS. `.fr` = header hang symbol/OHLC,
- * `.Cc` = legend overlay, `.Gc` = indicatorRow (style map trong dist/index.js
- * build 0.4.1; package.json pin exact) — bump widget phai verify lai 3 class.
- * Scope hep trong .vnstock-chart-panel. Luu y mobile (khong co hover):
- * legend khong hien, nhung crosshair drag van co gia tri. */
+/* VNStockChartPanel — an HAN 3 dong stacked `.Gc` (VN labels + gear).
+ * Giu lai inline `.rsc-indicator-chip` (ten ngan + gia tri live) nhu demo.
+ * Ly do: 2 lop legend trung nhau; user chon giu inline, bo stacked.
+ * `.Gc` = indicatorRow hash cua build widget 0.4.1 (style map trong
+ * dist/index.js; package.json pin exact) — bump widget phai verify lai.
+ * Scope hep trong .vnstock-chart-panel. */
 .vnstock-chart-panel .rsc-engine-surface .Gc {
   display: none !important;
-}
-.vnstock-chart-panel .fr:hover ~ div .rsc-engine-surface .Gc,
-.vnstock-chart-panel .rsc-engine-surface .Cc:hover .Gc {
-  display: inline-flex !important;
 }
