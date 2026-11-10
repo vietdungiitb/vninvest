@@ -1,3 +1,11 @@
+## Entry 444: P3.4 app-side tier gating via Subscription.plan (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE feature (1 hook mới + panel wiring + tests). Evidence: docs/PLAN_P34_TIER_20261110.md (rev2 sau B3) + PR #336.
+- **Quyết định** (Owner ủy quyền): source-of-truth = `Subscription.plan`; mapping enterprise/internal/custom→enterprise, pro→pro, còn lại→free (status gate active|trialing). KHÔNG `registerProExtension` (chưa có key vni1.*). KHÔNG `tenantPat`/`client` (envelope mismatch `{data:{...}}` vs raw `M.plan` + thiếu client → widget-internal tier không bao giờ chạy; sửa cần phá contract hoặc bump widget — ngoài scope).
+- **Ban giao**: `useTenantTier.js` (mapPlanToTier/resolveTierFromSubscription pure + hook fail-closed, cache 1 lần); panel dùng `tier` prop else serverTier; P3b flags giờ ăn tier thật. Test RED fail-before → GREEN 12/12. Gates: tsc 0, build OK, check-multi-agent PASS, deploy staging verify PASS (workers 0 restart). Live verify (admin/admin123): `/billing/subscription` 404 (tenant chưa có subscription row) → free đúng fail-closed; chart 4 canvas, stacked ẩn 3/3, 0 console error mới. CHƯA CHẠY: pro-path live (chưa có tenant subscription pro trên staging — cần BE tạo dữ liệu test). B3 NEED_REVISION→sửa→B8 PASS (độc lập).
+- **Next**: tenant subscription pro test → verify panels hiện; `registerProExtension` khi Owner phát hành key; envelope BE/widget thống nhất nếu muốn widget-internal gating; E2E.
+
 ## Entry 443: Bỏ hẳn 3 dòng stacked `.Gc`, giữ inline `.rsc-indicator-chip` (B9, claim done + handoff)
 
 - **Date**: 2026-11-10
