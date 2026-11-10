@@ -66,19 +66,13 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(src).not.toMatch(/darkFlowSignalType/);
   });
 
-  it("S7 — an legend chips (hover crosshair da co gia tri, khong hien trung)", () => {
-    // Widget 0.4.1 khong co prop tat legend (grep 0 hit legend trong
-    // VNInvestChartsProps.d.ts) → an bang CSS override. `.Gc` la indicatorRow
-    // hash cua build 0.4.1 (package.json pin exact) — bump widget phai verify lai.
+  it("S7 — an HAN 3 dong stacked `.Gc`, giu inline `.rsc-indicator-chip` nhu demo", () => {
+    // DOM that: stacked VN labels+gear = `.Gc` (trong `.Cc` overlay);
+    // inline ten ngan+gia tri = `.rsc-indicator-chip` (luon hien, demo-parity).
+    // Chi an `.Gc`, KHONG hover-reveal (hover lam stacked hien lai).
     expect(src).toMatch(/VNStockChartPanel\.css/);
     const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
-    expect(css).toMatch(/\.rsc-engine-surface\s+\.Gc/);
-    expect(css).toMatch(/\.Gc/);
-    expect(css).toMatch(/display:\s*none/);
-    // Hover-reveal (user chon "chi hien khi hover"): hover header `.fr`
-    // hoac hover chinh cum chips `.Cc` thi hien lai inline-flex.
-    expect(css).toMatch(/\.fr:hover/);
-    expect(css).toMatch(/\.Cc:hover/);
-    expect(css).toMatch(/display:\s*inline-flex/);
+    expect(css).toMatch(/\.rsc-engine-surface\s+\.Gc\s*\{[^}]*display:\s*none/);
+    expect(css).not.toMatch(/:hover/);
   });
 });
