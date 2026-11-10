@@ -1,10 +1,10 @@
-import "vninvestcharts-widget/dist/index.css";
+import "@vninvestcharts/widget/dist/index.css";
 import { createElement, useEffect, useCallback, useState, lazy, Suspense } from "react";
 import { useWatchlist } from "./WatchlistContext";
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../../context/LangContext.js";
 
-const Chart = lazy(() => import("vninvestcharts-widget").then((m: unknown) => ({ default: (m as Record<string, unknown>).VNInvestCharts as unknown as React.ComponentType<Record<string, unknown>> }))) as unknown as React.ComponentType<Record<string, unknown>>;
+const Chart = lazy(() => import("@vninvestcharts/widget").then((m: unknown) => ({ default: (m as Record<string, unknown>).VNInvestCharts as unknown as React.ComponentType<Record<string, unknown>> }))) as unknown as React.ComponentType<Record<string, unknown>>;
 const api = coreApiAdapter as unknown as {
   getWhaleAnalyticsSnapshot: (symbol: string, opts?: Record<string, unknown>) => Promise<unknown>;
   getStockNews: (symbol: string, params?: Record<string, unknown>) => Promise<unknown>;
