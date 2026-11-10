@@ -1,3 +1,10 @@
+## Entry 438: Widget registry integration — Phase 1+2+3a + Docker build auth + VPS deploy
+
+- **Date**: 2026-11-10
+- **Type**: FE dependency switch (vendored tarball → GitHub Packages) + Docker build auth + VPS deploy. Evidence: tsc 0, npm run build OK (20.76s), vitest vnstock-chart-panel 5/5 PASS, deploy-staging.sh --verify PASS (all ok, 0 restart, 0 crash-loop).
+- **Ban giao**: PR #321 (feat/widget-registry-integration) — package.json deps @vninvestcharts/widget@0.4.1, widget-pro@0.4.1, engine-*@0.5.5; .npmrc (registry + env token); import path vninvestcharts-widget → @vninvestcharts/widget (VNStockChartPanel.js, WatchlistDetailPanel.tsx); xoa manual type decl (types resolve from package). PR #322 (feat/widget-docker-build-auth) — Dockerfile COPY .npmrc + GITHUB_TOKEN ARG/ENV; compose frontend build arg GITHUB_TOKEN. VPS: compose.staging.env appended GITHUB_TOKEN; deploy-staging.sh --verify PASS; core-api healthy, workers 0 restart, redis 6.4.0 baked. Pre-existing lint errors (2) unchanged and unrelated. CHUA CHAY: P3b (PaperTradePanel/SettingsModal/DrawingDock), P3.4 (tier pro/enterprise via widget-pro), VPS chart render manual, E2E.
+- **Next (phien sau)**: P3b/P3.4 feature enablement (opt-in), VPS chart render verify, E2E. widget-pro pro tier requires GITHUB_TOKEN (already in VPS env). Claim: khong khai claim cho slice nay (single agent, docs-only claim closeout cho a5-handoff da xong o Entry 437).
+
 ## Entry 437: Closeout a5-handoff doc-only claim (a5-openclaw follow-up)
 
 - **Date**: 2026-11-10
