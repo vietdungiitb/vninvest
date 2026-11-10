@@ -1,3 +1,11 @@
+## Entry 440: Widget UI fix — chart "kinh dị" về demo-parity (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE fix (1 file + test). Evidence: docs/PLAN_WIDGET_UI_FIX_20261110.md + docs/evidence/widget-ui-fix/EVIDENCE_20261110.md + PR #326.
+- **Root cause** (đọc source lib, B3 AGREE, B8 PASS 2 vòng): (1) mất CSS — bỏ `index.css` import, `injectVNInvestChartsCSS()` không arg trong khi API yêu cầu `target` (`injectStyles.d.ts:9`); (2) custom 4 pane heightRatio tổng 1.23 > 1 + 13 series nhồi 2 pane nhỏ → legend đè nhau; (3) dead props `showWorkspaceToolbar`/`showSymbolBadges` (0 hit trong `VNInvestChartsProps.d.ts`) + `showTapePanel:true` mở side panel đè Bán/Mua.
+- **Ban giao**: PR #326 MERGED. CSS import khôi phục + `inject(document)`; bỏ `panes` → DEFAULT_PANES; xoá dead props; `showTapePanel:false`, `showNonTradingDays:false`; `WidgetI18nProvider(locale+messages)`. Test rev theo hợp đồng mới (L-V04, widget đổi API) RED 3/5 → GREEN 5/5. Gates: tsc 0, build 18.02s, vitest 5/5, check-multi-agent PASS, deploy staging verify PASS (core-api healthy, workers 0 restart). Visual verify (admin/admin123): 5 canvas, screenshot đã mở xem — header/toolbar styled, legend gọn, candles+EMA+BB sạch. Pre-existing (không do slice): 2× WS handshake fail + 1× 404 `/core/v1/advisory/latest/VNM/`.
+- **Next**: P3.4 `registerProExtension` wiring (cần backend tier source-of-truth); E2E full; 2 lint errors pre-existing (ShellMailConfigPage, VipLocalControlPage).
+
 ## Entry 439: Widget P3b feature enablement (WidgetI18nProvider + injectCSS + tier-gated panels) + VPS deploy
 
 - **Date**: 2026-11-10
