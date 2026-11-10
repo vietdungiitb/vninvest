@@ -6,6 +6,7 @@ import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInv
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
+import './VNStockChartPanel.css';
 
 const e = createElement;
 
@@ -252,6 +253,9 @@ export default function VNStockChartPanel({
           showToolbar: true,
           showHeader: true,
           showFooter: true,
+          // An right-dock rail (tier free hien upsell khoa "Nang cap Pro" —
+          // thua, gay roi; widget gate: showDock === false thi khong render).
+          showDock: false,
           showNonTradingDays: false,
           workspaceId: workspaceId ?? `stock-${symbol}`,
           // Demo-parity: tape side panel TAT (an chieu rong + de Ban/Mua).
@@ -269,8 +273,9 @@ export default function VNStockChartPanel({
           whaleOrders: mappedWhaleOrders,
           enableCVD,
           externalCvdSeries: mappedCvdSeries?.length ? mappedCvdSeries : undefined,
-          darkFlowStrength: orderFlowData?.dark_flow?.strength ?? orderFlowData?.darkFlow?.strength ?? orderFlowData?.darkFlowStrength ?? orderFlowData?.dark_flow_strength ?? null,
-          darkFlowSignalType: undefined,
+          // KHONG truyen darkFlowStrength/SignalType — widget chi render badge
+          // "Dark Flow" khi strength la finite number; bo han de UI gon
+          // (quyet dinh san pham: mat badge ngay ca khi BE co dark-flow that).
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
           onBarsChange: handleBarsChange,
@@ -302,7 +307,7 @@ onSymbolChange: (sym) => {
 
   return e(
     'div',
-    { ref: chartContainerRef, className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
+    { ref: chartContainerRef, className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
     e('div', { className: 'flex-1 h-full relative' }, chartTree),
     ...panels,
   );

@@ -1,0 +1,10 @@
+/* VNStockChartPanel — an legend chips cua widget (gia tri da co o hover crosshair).
+ * Giu lai indicator lines (EMA/BB tren chart). Classes rsc-/vnsc- la stable
+ * (khong minify) trong @vninvestcharts/widget dist CSS. Scope hep trong
+ * .vnstock-chart-panel de khong anh huong cho khac. */
+.vnstock-chart-panel .rsc-indicator-legend,
+.vnstock-chart-panel .rsc-pane-header__legend,
+.vnstock-chart-panel .vnsc-indicator-legend,
+.vnstock-chart-panel .vnsc-pane-header__legend {
+  display: none !important;
+}
