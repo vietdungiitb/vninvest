@@ -11,13 +11,13 @@
 
 ## 3. Fix (scope 1 file + test + 1 css)
 - `VNStockChartPanel.js`: **không truyền** `darkFlowStrength`/`darkFlowSignalType` (comment lý do); thêm `showDock: false` (comment: ẩn rail upsell tier free).
-- Legend chips: widget 0.4.1 **không có prop tắt legend** (grep 0 hit `legend` trong `VNInvestChartsProps.d.ts`) → CSS override `VNStockChartPanel.css`. User chọn **"chỉ hiện khi hover"** (thay vì ẩn hẳn): mặc định `display:none`, hover header `.fr` (hoặc hover cụm chips `.Cc`) thì `display:inline-flex`. Giữ lines, hover vẫn có giá trị.
+- Legend chips: widget 0.4.1 **không có prop tắt legend** (grep 0 hit `legend` trong `VNInvestChartsProps.d.ts`) → CSS override `VNStockChartPanel.css`. Quyết định cuối (user 2026-11-10, supersede hover-reveal): **ẩn hẳn 3 dòng stacked `.Gc`, giữ inline `.rsc-indicator-chip`** (tên ngắn + giá trị live) như demo.
 - Giữ: whaleOrders/enableWhale/enableCVD, tape off, DEFAULT_PANES, i18n provider, tier-gating P3b.
 - Test: thêm S6 — assert `showDock:\s*false` + vắng `darkFlowStrength:` (fail-before đỏ → xanh sau fix).
 - Non-goals: không đụng widget package, adapter, BE, CSS.
 
 ## 4. Nghiệm thu (Given/When/Then)
-- Given login admin, When mở `/stocks/VNM`, Then: không badge Dark Flow góc phải; không rail dock phải; legend chips **ẩn mặc định, hiện khi hover header**; 0 console error mới; tsc 0, build OK, vitest 7/7, deploy verify PASS.
+- Given login admin, When mở `/stocks/VNM` (hoặc `/stocks/CAR`), Then: không badge Dark Flow; không rail dock; **3 dòng stacked `.Gc` ẩn hẳn (kể cả khi hover)**, inline `.rsc-indicator-chip` hiện như demo; 0 console error mới; tsc 0, build OK, vitest 7/7, deploy verify PASS.
 
 ## 5. Lessons áp dụng
 - Lessons áp dụng: [L-F12, L-V02, L-V04, L-V05]

@@ -1,3 +1,11 @@
+## Entry 443: Bỏ hẳn 3 dòng stacked `.Gc`, giữ inline `.rsc-indicator-chip` (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE CSS (css + test). Evidence: docs/PLAN_WIDGET_CLEANUP_20261110.md + docs/evidence/widget-cleanup/EVIDENCE_20261110.md (B7b mới) + PR #334/#335.
+- **Bối cảnh**: Entry 442 (hover-reveal) hiện THỪA 3 dòng stacked VN labels bên dưới inline row khi hover — user yêu cầu bỏ hẳn 3 dòng stacked. DOM thật: stacked = `.Gc` (trong `.Cc` overlay), inline = `.rsc-indicator-chip` (trong `.rsc-pane-header__legend`, luôn hiện, demo-parity).
+- **Ban giao**: CSS 1 rule (`.Gc{display:none}`, không hover-reveal); S7 assert ẩn hẳn + KHÔNG `:hover` + KHÔNG target inline chips. 7/7 GREEN; tsc 0; build OK; check-multi-agent PASS; deploy staging verify PASS. Visual verify (admin/admin123, /stocks/CAR): stacked 0/3 cả khi hover, inline 4/4 hiện, screenshot như demo. B8 PASS (1 ghi chú đã xử lý: negative-assert inline). Supersede Entry 442 (hover-reveal) — quyết định mới của user, ghi rõ.
+- **Next**: bump widget → verify lại `.Gc`; P3.4 `registerProExtension` (cần backend tier source-of-truth); E2E full.
+
 ## Entry 442: Legend hover-reveal — ẩn mặc định, hiện khi hover header (B9, claim done + handoff)
 
 - **Date**: 2026-11-10
