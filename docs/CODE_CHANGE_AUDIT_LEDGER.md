@@ -1,3 +1,10 @@
+## Entry 437: Closeout a5-handoff doc-only claim (a5-openclaw follow-up)
+
+- **Date**: 2026-11-10
+- **Type**: Doc-only claim closeout - Evidence: docs/SESSION_HANDOFF_20261109_A5.md (complete)
+- **Ban giao**: Claim `a5-handoff` in-progress -> done (docs/CLAIMS.md). No code change. Remaining pending items coordinator-gated or explicitly skipped per user instruction: P0-1 redis bump (deny-list, coordinator), P0-3 pull staging -> dev + migrate + --verify (coordinator ops), B1-FE (FE/i18n/disclaimer skipped per section 3 stale claims), B2 FE follow-up (blocked on claims :1826/:1886), A4 (blocked on claim :1754), A5 follow-up (FE/locale + models.py:250 migration, coordinator). tsc/E2E/BE suite = CHUA CHAY (no node_modules on host; VPS only).
+- **Next (phien sau)**: coordinator executes P0-1 + P0-3; closes stale i18n claims :1237/:1239/:1625/:1695/:1726/:1831 and :1754/:1826/:1886 to unblock A4/B1-FE/B2-FE.
+
 ## Entry 436: Dong vong b1-ai-contract B1 AI contract BE core (B9, claim done + handoff)
 
 - **Date**: 2026-11-09
