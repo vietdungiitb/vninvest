@@ -66,3 +66,16 @@
   - [ ] Test có **timeout** không, để treo nhìn ra là treo chứ không phải chậm?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 264` §3 - lần chạy đầu
   timeout 600s; sau khi đưa `keyMap` lên cấp module còn **15s**.
+
+## L-F12: Upgrade widget version KHONG dong nghia tuong thich — verify CSS + props + panes
+
+- **Nguyên nhân:** Đổi `vninvestcharts-widget@1.2.5` → `@vninvestcharts/widget@0.4.1` mà giữ nguyên cách dùng cũ: bỏ CSS import (tin `injectCSS()` không arg sẽ lo), giữ custom panes tổng ratio 1.23, giữ 2 prop đã bị xoá khỏi API mới.
+- **Hậu quả thật (Entry 440, 2026-11-10):** Chart staging "kinh dị" — legend 13 series đè nhau, toolbar mất style, side tape panel đè Bán/Mua. Không exception nào, build vẫn xanh.
+- **Khi nào gặp:** `tags: [fe, frontend, widget, upgrade, css, props, pane, inject]`
+- **QUY TẮC:** Mỗi lần đổi major version widget ngoài: (1) grep CSS entry (`dist/index.css` còn không) + đọc chữ ký `inject*(...)` trong `dist/dts`; (2) grep từng prop đang truyền trong `VNInvestChartsProps.d.ts` — 0 hit = dead prop, xoá; (3) cộng tổng `heightRatio` các pane — > 1 là tràn.
+- **CHECKLIST:**
+  - [ ] CSS đã về đủ 2 đường (static import + `inject(document)`) chưa?
+  - [ ] Mọi prop đang truyền có hit trong `*Props.d.ts` mới không?
+  - [ ] Tổng `heightRatio` các pane ≤ 1 chưa?
+  - [ ] Đã mở screenshot staging xem trực tiếp (L-V05), không tin build xanh?
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` `## Entry 440` + `docs/evidence/widget-ui-fix/EVIDENCE_20261110.md` (B3 AGREE, B8 PASS 2 vòng).
