@@ -1,3 +1,11 @@
+## Entry 441: Widget cleanup — bỏ Dark Flow badge + ẩn dock rail + ẩn legend chips (B9, claim done + handoff)
+
+- **Date**: 2026-11-10
+- **Type**: FE cleanup (panel js + css mới + test). Evidence: docs/PLAN_WIDGET_CLEANUP_20261110.md + docs/evidence/widget-cleanup/EVIDENCE_20261110.md + PR #329/#330.
+- **Root cause** (đọc dist thật, B3 PASS, B8 PASS): badge chỉ render khi strength finite number (`index.js` 3 hits); rail render khi `showDock !== false`; legend không có prop tắt (0 hit `legend` trong Props.d.ts).
+- **Ban giao**: bỏ darkFlow props; `showDock: false`; `VNStockChartPanel.css` mới (5 selectors scope `.vnstock-chart-panel`, gồm `.Gc` indicatorRow hash của build 0.4.1 — pin exact, bump widget phải verify lại). Test S6+S7: RED fail-before → GREEN 7/7. Gates: tsc 0, build OK, check-multi-agent PASS, deploy staging verify PASS. Visual verify (admin/admin123): 5 canvas, chips `display:none` (visibleChips 0), screenshot gọn như demo (header OHLC, toolbar, nến+EMA+BB, volume, Bán/Mua). Pre-existing: WS handshake fail + 404 advisory (không do slice).
+- **Next**: bump widget khỏi 0.4.1 → verify lại CSS `.Gc`; P3.4 `registerProExtension` (cần backend tier source-of-truth); E2E full.
+
 ## Entry 440: Widget UI fix — chart "kinh dị" về demo-parity (B9, claim done + handoff)
 
 - **Date**: 2026-11-10

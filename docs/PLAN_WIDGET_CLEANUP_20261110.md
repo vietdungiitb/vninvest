@@ -17,7 +17,7 @@
 - Non-goals: không đụng widget package, adapter, BE, CSS.
 
 ## 4. Nghiệm thu (Given/When/Then)
-- Given login admin, When mở `/stocks/VNM`, Then: không badge Dark Flow góc phải; không rail dock phải; 0 console error mới; tsc 0, build OK, vitest 6/6, deploy verify PASS.
+- Given login admin, When mở `/stocks/VNM`, Then: không badge Dark Flow góc phải; không rail dock phải; không legend chips; 0 console error mới; tsc 0, build OK, vitest 7/7, deploy verify PASS.
 
 ## 5. Lessons áp dụng
 - Lessons áp dụng: [L-F12, L-V02, L-V04, L-V05]
