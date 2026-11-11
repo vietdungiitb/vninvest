@@ -63,11 +63,16 @@ export default function VNStockChartPanel({
     ? "light"
     : "dark";
 
-  // Tier gating (free / pro / enterprise). P3.4: uu tien `tier` prop neu
-  // caller truyen; khong thi doc Subscription.plan (fail-closed free).
+  // Tier gating (free / pro / enterprise). P3.4 + staging-pro: uu tien tier da
+  // xac minh tu license offline (manh nhat), roi den `tier` prop neu caller truyen,
+  // cuoi cung la Subscription.plan (fail-closed free).
   // Pro+ features: drawing dock, paper trade, settings. Enterprise: + multi.
+  // (state verifiedTier KHAI O DAY, truoc moi cho doc — tranh TDZ ReferenceError.)
+  const [verifiedTier, setVerifiedTier] = useState(null);
   const { tier: serverTier } = useTenantTier();
-  const tier = tierProp && tierProp !== 'free' ? tierProp : serverTier;
+  const tier = verifiedTier
+    ?? (tierProp && tierProp !== 'free' ? tierProp : null)
+    ?? serverTier;
   const isPro = tier === 'pro' || tier === 'enterprise';
   const isEnterprise = tier === 'enterprise';
   const showPaperTrade = enablePaperTrade || isEnterprise;
@@ -76,6 +81,22 @@ export default function VNStockChartPanel({
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
+  // P34.4-license (staging Pro): tier xac minh tu license offline (ECDSA verify
+  // qua engine-core + trust anchor da nap o module scope). Reset ve null khi
+  // mat key / verify khong ra pro (khong giu tier cu — tranh keo dai quyen).
+  useEffect(() => {
+    if (!licenseKey) { setVerifiedTier(null); return; }
+    let cancelled = false;
+    ensureLicenseTrustAnchor();
+    import('@vninvestcharts/engine-core')
+      .then(({ verifyLicenseKey }) => verifyLicenseKey(licenseKey))
+      .then((v) => {
+        if (cancelled) return;
+        setVerifiedTier(v && (v.tier === 'pro' || v.tier === 'enterprise') ? v.tier : null);
+      })
+      .catch(() => { if (!cancelled) setVerifiedTier(null); });
+    return () => { cancelled = true; };
+  }, [licenseKey]);
   const chartContainerRef = useRef(null);
   // C2: defer widget chunk (2.1MB) cho tới khi panel gần viewport.
   // shortcut: khung giữ spinner khi chưa vào viewport; nâng cấp sau nếu cần placeholder "cuộn để tải".

@@ -131,4 +131,15 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     // app phai ep hien qua attribute on dinh data-rsc-chart-status-line.
     expect(css).toMatch(/data-rsc-chart-status-line/);
   });
+  it("S12 — tier app uu tien license da verify (mo dock/panel pro theo khoa that)", () => {
+    // Panel tu verify licenseKey bang engine-core (offline, sau trust anchor)
+    // va dat verifiedTier; tier app = verifiedTier ?? tierProp ?? serverTier.
+    // Khong dung tenantPat/client (van cam nhu S8).
+    const panelS12 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS12).toMatch(/verifyLicenseKey/);
+    expect(panelS12).toMatch(/verifiedTier/);
+    expect(panelS12).toMatch(/setVerifiedTier/);
+    expect(panelS12).toMatch(/setVerifiedTier\(null\)/);
+    expect(panelS12).not.toMatch(/tenantPat\s*:/);
+  });
 });
