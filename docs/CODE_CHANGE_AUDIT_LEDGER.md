@@ -1,3 +1,10 @@
+## Entry 449: Proof duong tinh key pro — inject JWK primary → verify PASS tier pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §5.
+- **Ket qua**: `verifyLicenseKey` truoc inject = NULL; sau `addLicensePublicKey` (JWK public kid=primary do vnsaas cap) = `{tier: pro, product: vninvestcharts_widget}`. Chu ky hop le — chot duy nhat la trust anchor. Khong rebuild/redeploy.
+- **Con lai**: boot-inject JWK vao demo/app (code change nho, tach slice khi Owner chot) + do runtime tier observables tren link `?pat=`. Secret hygiene nhu Entry 448 (key qua file tam, da xoa; JWK la public).
+
 ## Entry 448: Verify key pro that — offline ECDSA NULL voi widget stock (kid primary), link ?pat= can host/server leg (B9, claim done)
 
 - **Date**: 2026-11-11
