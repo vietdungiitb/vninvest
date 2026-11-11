@@ -1,3 +1,10 @@
+## Entry 451: Key moi (3428f9a9) verify NULL — issuance key khac JWK da publish (quyet dinh, B9)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §7.
+- **Ket qua**: key moi byte-exact tren bundle (sha256 khop fp luc cap `765a1af3…`, da tru newline khi hash) parse OK (`k=primary`, serial 3428f9a9, pro, 40 caps) NHUNG verify NULL voi JWK primary da publish (do 2 lan doc lap). Doi chung: key cu (227a…, cung kid) verify PRO voi dung JWK do. Ket luan: JWK publish khop khoa ky CU; key moi do private key KHAC ky nhung van dan nhan primary (rotation khong publish hoac nhieu khoa ky song song). Staging/app khong the Pro voi byte nay bang moi duong offline.
+- **Next (vnsaas, chon 1)**: (a) publish JWK public cua DUNG khoa dang ky; (b) re-issue key bang khoa ky cu. Sau do toi verify mat ma lai tren byte bundle (phai PRO) moi tuyen bo. Secret hygiene nhu Entry 448-450 (key tam da xoa het; bao cao chi hash/serial, khong key).
+
 ## Entry 450: Key staging verify NULL — paste chain corrupt, can machine-channel re-issue (B9, claim done)
 
 - **Date**: 2026-11-11
