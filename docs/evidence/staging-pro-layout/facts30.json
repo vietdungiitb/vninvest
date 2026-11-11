@@ -1,0 +1,11 @@
+{
+ "inline": "(none)",
+ "clsAttr": "u",
+ "rules": [
+  {
+   "sel": ".u",
+   "css": "position: absolute; top: 0px; bottom: 0px; right: 0px; display: flex; transform: translate(100%); visibility: hidden; transition: transform 0.2s, visibility lin",
+   "href": "index-3y87XtiP.css"
+  }
+ ]
+}

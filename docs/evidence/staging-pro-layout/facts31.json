@@ -1,0 +1,21 @@
+{
+ "strip": {
+  "x": 1413,
+  "y": 865.515625
+ },
+ "afterHover": {
+  "foundU": true,
+  "vis": "visible",
+  "transform": "matrix(1, 0, 0, 1, 0, 0)",
+  "tabs": [
+   "dock-strip-pin-toggle",
+   "dock-tab-watchlist",
+   "dock-tab-alerts",
+   "dock-tab-dataWindow",
+   "dock-tab-objects",
+   "dock-tab-tape",
+   "dock-tab-advisory",
+   "dock-tab-orderTicket"
+  ]
+ }
+}

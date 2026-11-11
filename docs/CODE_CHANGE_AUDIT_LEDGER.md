@@ -1,3 +1,11 @@
+## Entry 455: Staging pro layout — dock theo tier + statusline hien + xac nhan E2E (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: FE (panel + CSS + test). Evidence: docs/PLAN_STAGING_PRO_LAYOUT_20261111.md + docs/evidence/staging-pro-layout/ (15+ facts JSON + screenshot truoc/sau + demo doi chung) + B3 plan-audit + B3 plan-audit-tier (O1 TDZ/O2 stale da fix) + B8 re-audit (PASS).
+- **Do that bang Playwright tren staging that**: dock rail an (showDock:false cung) → mo theo isPro; `.Gc` 0 match tren widget 0.4.4 (hack chet, xoa); statusline opacity:0 do `backgroundOpacity` default 0 cua widget → override `!important` qua `[data-rsc-chart-status-line]` (da verify opacity 1 tren staging); app tier tu `verifyLicenseKey` + trust anchor JWK primary (data-tier=pro do that). Demo charts.edusuccess.vn lam doi chung (legend 8, OHLC thay doi khi hover).
+- **Gates chay that**: vitest 12/12, tsc 0, local build 0, staging rebuild --no-cache + up + E2E verify (dock tabs hien, flyout mo duoc, HLOC update khi hover). PR merge-commit (cho Owner merge).
+- **Con lai (ngoai scope / can Owner)**: dải trai la app-shell center (khong phai loi widget — khong dung); data-tier attr giu lai lam moc E2E; V7 revoke key lo trong chat.
+
 ## Entry 454: GOT GOC that — JWK phan phoi sai 1 ky tu (QW), live derive la QL (B9, claim done)
 
 - **Date**: 2026-11-11

@@ -1,0 +1,89 @@
+{
+ "chain": [
+  {
+   "tag": "BUTTON",
+   "cls": "F",
+   "vis": "hidden",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "Da",
+   "vis": "hidden",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "Hl",
+   "vis": "hidden",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "de ar",
+   "vis": "hidden",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "u",
+   "vis": "hidden",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "g",
+   "vis": "visible",
+   "op": "1",
+   "disp": "block"
+  },
+  {
+   "tag": "DIV",
+   "cls": "",
+   "vis": "visible",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "vnsc-root ",
+   "vis": "visible",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "flex-1 h-full relative",
+   "vis": "visible",
+   "op": "1",
+   "disp": "block"
+  },
+  {
+   "tag": "DIV",
+   "cls": "vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-",
+   "vis": "visible",
+   "op": "1",
+   "disp": "flex"
+  },
+  {
+   "tag": "DIV",
+   "cls": "sdp-chart-wrapper",
+   "vis": "visible",
+   "op": "1",
+   "disp": "block"
+  },
+  {
+   "tag": "DIV",
+   "cls": "sdp-left-workspace",
+   "vis": "visible",
+   "op": "1",
+   "disp": "block"
+  }
+ ],
+ "matchedRule": null
+}

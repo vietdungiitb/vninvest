@@ -1,0 +1,86 @@
+[
+ {
+  "tid": "dock-tab-watchlist",
+  "x": 1424,
+  "y": 629,
+  "w": 32,
+  "h": 32,
+  "op": "1",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Danh mục"
+ },
+ {
+  "tid": "dock-tab-alerts",
+  "x": 1424,
+  "y": 663,
+  "w": 32,
+  "h": 32,
+  "op": "1",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Cảnh báo"
+ },
+ {
+  "tid": "dock-tab-dataWindow",
+  "x": 1424,
+  "y": 697,
+  "w": 32,
+  "h": 32,
+  "op": "1",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Cửa sổ dữ liệu"
+ },
+ {
+  "tid": "dock-tab-objects",
+  "x": 1424,
+  "y": 731,
+  "w": 32,
+  "h": 32,
+  "op": "0.38",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Cây đối tượng — Mở bảng vẽ để quản lý objects"
+ },
+ {
+  "tid": "dock-tab-tape",
+  "x": 1424,
+  "y": 765,
+  "w": 32,
+  "h": 32,
+  "op": "0.38",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Tape — Cần dữ liệu tape"
+ },
+ {
+  "tid": "dock-tab-advisory",
+  "x": 1424,
+  "y": 799,
+  "w": 32,
+  "h": 32,
+  "op": "0.38",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Tư vấn — Chưa có kết quả phân tích"
+ },
+ {
+  "tid": "dock-tab-orderTicket",
+  "x": 1424,
+  "y": 833,
+  "w": 32,
+  "h": 32,
+  "op": "1",
+  "vis": "hidden",
+  "disp": "flex",
+  "pe": "auto",
+  "title": "Đặt lệnh"
+ }
+]
