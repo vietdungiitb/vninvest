@@ -1,3 +1,10 @@
+## Entry 454: GOT GOC that — JWK phan phoi sai 1 ky tu (QW), live derive la QL (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause that + fix 1 char. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §8 (dinh chinh).
+- **Ket qua (do may, khong doan)**: live-derive tu private key tren VPS = x `gRQL…` (QL); moi ban phan phoi (chat/E2/repo/bundle) = `gRQW…` (QW) — lech 1 ky tu. Key cu (byte-may .bak) + key moi (byte-may bundle, sha 765a1af3) DEU PRO duoi JWK-QL, NULL duoi JWK-QW. Gia thiet xoay khoa/2 signer CHET: 1 khoa duy nhat, chi sai JWK. Thu hoi dien dat Entry 447 (lan probe dau khong tai hien duoc).
+- **Fix**: 1 char QW→QL trong `packages/web/src/lib/licenseTrustAnchor.js` (S10 xanh, tsc 0); tiep: apply len VPS + rebuild --no-cache + redeploy + verify bundle (JWK QL 1 hit, key fp khop) roi nhin screenshot Pro. De nghi vnsaas: sua E2/E3 + them gate so may (khong so mat) khi phan phoi JWK.
+
 ## Entry 453: T4 NULL tren byte chuan — forensics server (B9, giu nguyen hien truong)
 
 - **Date**: 2026-11-11

@@ -15,7 +15,7 @@ import { addLicensePublicKey } from "@vninvestcharts/engine-core";
 const PRIMARY_JWK = {
 	kty: "EC",
 	crv: "P-256",
-	x: "gRQWjWfaOo3tqix3WV0-MI6hEUCOre-86ClPbaXYgvw",
+	x: "gRQLjWfaOo3tqix3WV0-MI6hEUCOre-86ClPbaXYgvw",
 	y: "kxgXaOlVtBUbDkAFVfDGg5TYxMt1eGmXHko81ABJCBY",
 	kid: "primary",
 };
