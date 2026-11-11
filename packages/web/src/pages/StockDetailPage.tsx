@@ -290,6 +290,10 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
         orderFlowData,
         whaleSignals: whaleFeed,
         workspaceId: `stock-${symbol}`,
+        // P34.4-staging: license offline (vni1.*) do Owner cap theo tenant qua
+        // build-arg VITE_VNINVEST_LICENSE_KEY (secret nam tren VPS, khong vao repo).
+        // Trong thi widget fail-closed free nhu cu.
+        licenseKey: (import.meta.env.VITE_VNINVEST_LICENSE_KEY || undefined),
       }))
     ),
     e(

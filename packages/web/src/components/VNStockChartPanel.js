@@ -7,6 +7,11 @@ import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewp
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
 import { useTenantTier } from '../adapters/useTenantTier.js';
+import { ensureLicenseTrustAnchor } from '../lib/licenseTrustAnchor.js';
+
+// Trust anchor cho key license offline (JWK public kid=primary, nhung vao bundle
+// la chu y — khong phai secret). Nap 1 lan luc module load, truoc khi widget verify.
+ensureLicenseTrustAnchor();
 import './VNStockChartPanel.css';
 
 const e = createElement;

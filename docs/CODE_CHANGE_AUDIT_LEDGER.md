@@ -1,3 +1,11 @@
+## Entry 450: Boot-inject JWK primary + licenseKey tu env — staging mo Pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: FE (module moi + wiring + Dockerfile/compose/example). Evidence: docs/PLAN_STAGING_PRO_JWK_20261111.md + docs/evidence/staging-pro-jwk/plan-audit.md (B3 5/6 PASS + O1 da sua) + re-audit se bo sung.
+- **Ban giao**: `src/lib/licenseTrustAnchor.js` (JWK public kid=primary, idempotent `ensureLicenseTrustAnchor` → `addLicensePublicKey`); `VNStockChartPanel.js` goi 1 lan luc module load; `StockDetailPage.tsx` truyen `licenseKey: import.meta.env.VITE_VNINVEST_LICENSE_KEY ?? undefined`; Dockerfile ARG+ENV; compose.staging.yml build.arg; compose.staging.env.example dong rong (B3 O1). Test S10 GREEN, tsc 0, build 0.
+- **Next**: Owner merge PR bump (feat/widget-bump-044) TRUOC (staging can engine 0.5.6 W1), sau do merge PR nay, dat key vao compose.staging.env tren VPS (Owner tu lam hoac uy quyen SSH), `deploy-staging.sh`, verify Pro bang Playwright tren docker.edusuccess.vn (khong doan).
+- **Secret hygiene**: key KHONG vao repo/compose.example/Dockerfile (chi env staging tren VPS); JWK public nhung vao bundle la chu y (khong phai secret).
+
 ## Entry 449: Proof duong tinh key pro — inject JWK primary → verify PASS tier pro (B9, claim done)
 
 - **Date**: 2026-11-11

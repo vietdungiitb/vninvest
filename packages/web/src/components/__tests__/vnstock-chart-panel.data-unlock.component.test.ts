@@ -96,6 +96,22 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(src).toMatch(/onLicenseDiagnostic/);
     const panel = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
     expect(panel).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
-    expect(src).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
+  });
+  it("S10 — trust anchor JWK + licenseKey tu env (staging Pro, khong blob trong code)", () => {
+    // Panel phai goi ensureLicenseTrustAnchor() 1 lan (module trust anchor
+    // nhung JWK public kid=primary, KHONG blob mat).
+    const panelS10 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS10).toMatch(/ensureLicenseTrustAnchor/);
+    // StockDetailPage truyen licenseKey tu VITE_* env (build-arg staging),
+    // KHONG hardcode blob.
+    const sdp = readFileSync(resolve(HERE, "..", "..", "pages", "StockDetailPage.tsx"), "utf8");
+    expect(sdp).toMatch(/VITE_VNINVEST_LICENSE_KEY/);
+    expect(sdp).toMatch(/licenseKey/);
+    expect(sdp).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
+    // Module trust anchor ton tai, chua JWK kid=primary + goi addLicensePublicKey.
+    const anchor = readFileSync(resolve(HERE, "..", "..", "lib", "licenseTrustAnchor.js"), "utf8");
+    expect(anchor).toMatch(/addLicensePublicKey/);
+    expect(anchor).toMatch(/primary/);
+    expect(anchor).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
   });
 });
