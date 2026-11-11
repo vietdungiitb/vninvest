@@ -1,3 +1,10 @@
+## Entry 453: T4 NULL tren byte chuan — forensics server (B9, giu nguyen hien truong)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §9.
+- **Ket qua**: key moi byte bundle (sha 765a1af3 khop fp luc cap): anchor du 4 kid; payload pro/exp/k=primary/p=widget/serial 3428f9a9/d=[]/40 caps; 4 gate TRUE; verify NULL (noopt + docker host). Da tra 1 dong NULL nhu hen. Forensics read-only VPS: 1 API container (mount /opt/vnsaas/secrets→/run/secrets, 1 file duy nhat 0400 tu 13-10), khong e2e container nao chay — dong moi con duong "file/container khac" tu phia toi.
+- **Next (vnsaas/Owner)**: forensics mount/worker/audit-POST + V7 (can PAT Owner). GIU NGUYEN hien truong: khong xoay/re-issue/redeploy. Staging khong the Pro toi khi xong. Secret hygiene nhu cac Entry truoc (key tam xoa het; bao cao chi hash/payload).
+
 ## Entry 452: Tra T1+T2+T3 + so scheme ky/verify — green-light T4 (B9, claim done)
 
 - **Date**: 2026-11-11
