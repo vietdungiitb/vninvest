@@ -1,3 +1,12 @@
+## Entry 448: Verify key pro that — offline ECDSA NULL voi widget stock (kid primary), link ?pat= can host/server leg (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only (khong sua code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md.
+- **Ket qua**: `parseLicenseKey` OK (`t=pro`, `p=vninvestcharts_widget`, `k=primary`, `e=2026-11-18`, 40 caps, serial `227a605a…`); `verifyLicenseKey` (engine-core 0.5.6 stock) = NULL. Root cause tai `dist/index.js` vung verify: `k=primary` loc `activePublicKeys` (3 kid nhung, 0 hit `primary`) → `candidates` rong → `return null` truoc khi thu chu ky. Rao product (W1) xong; rao kid nguyen (F-VFY-02 dung).
+- **Ket luan**: widget stock KHONG mo Pro offline voi key nay. Link `?pat=` chi co nghia neu host tiem JWK primary (a), leg server-side chap nhan key (b), hoac roi demo bypass (c = fail-open, phai dong). Next: mo link tren browser doi chieu tier observables + hoi vnsaas/host la duong nao; key het han 2026-11-18, can nhac revoke/re-issue (V7) sau verify.
+- **Secret hygiene**: key chi qua file tam ngoai repo (`C:\Temp\vni_key.tmp`, da xoa) + khong paste vao shell (tranh PSReadLine history); doc/ledger/claim KHONG chua key (grep `vni1.` = 0 hit).
+- **Gates**: khong chay (verify-only, khong doi code); `check-multi-agent` van PASS tu slice truoc; KHONG bao PASS gia.
+
 ## Entry 447: widget-pro 0.4.3 -> 0.4.4 (upstream fix pine.worker) — build xanh, unblock tier pro (B9, claim done)
 
 - **Date**: 2026-11-11
