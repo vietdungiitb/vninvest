@@ -1,3 +1,11 @@
+## Entry 447: widget-pro 0.4.3 -> 0.4.4 (upstream fix pine.worker) — build xanh, unblock tier pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Deps bump 1 pin (widget-pro). Evidence: docs/PLAN_WIDGET_BUMP_044_20261111.md §7 + docs/evidence/widget-bump-044p/plan-audit.md (B3 PASS) + re-audit.md (B8 ĐẠT).
+- **Root cause da fix**: `widget-pro@0.4.4` ship `dist/pinescript/pine.worker.js` (745,571 bytes) + `register.js` chi con reference `.js` (B3 verify tarball doc lap). Het loi UNRESOLVED_ENTRY.
+- **Gates**: `npm install` exit 0 (token project Owner cap lai, da tra `.npmrc` ve placeholder — KHONG commit secret); `npm run build` exit 0 (`tsc && vite build`, built 35.07s, 0 error TS); `npx tsc --noEmit` exit 0 (bao trong build); `check-multi-agent` exit 0. E2E/staging = CHUA CHAY (ticket tiep theo).
+- **Next**: E2E pro ca 2 leg + duong deny tren staging; mo PR sau khi Owner duyet (hien chi push branch).
+
 ## Entry 446: Bump @vninvestcharts/* (engine 0.5.6, widget 0.4.4, widget-pro 0.4.3) — install+tsc xanh, build BLOCKED upstream (B9, claim done, cho widget team fix)
 
 - **Date**: 2026-11-11
