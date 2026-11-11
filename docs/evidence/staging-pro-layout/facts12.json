@@ -1,0 +1,14 @@
+{
+ "before": {
+  "opacity": "0",
+  "transition": "all"
+ },
+ "during": {
+  "opacity": "0",
+  "transition": "all"
+ },
+ "after": {
+  "opacity": "0",
+  "transition": "all"
+ }
+}

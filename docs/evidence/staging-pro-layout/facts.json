@@ -1,0 +1,26 @@
+{
+ "loginUrl": "https://docker.edusuccess.vn/login",
+ "fields": {
+  "users": 1,
+  "passes": 1
+ },
+ "afterLoginUrl": "https://docker.edusuccess.vn/dashboard",
+ "facts": {
+  "badgePRO": true,
+  "badgeFREE": false,
+  "badgeText": null,
+  "badgeClass": null,
+  "dockCount": 0,
+  "leftStrip": [],
+  "ohlcHits": [],
+  "legendNodes": 2,
+  "hasGcHidden": 0,
+  "hasGcTotal": 0
+ },
+ "hoverFacts": {
+  "ohlcHits": []
+ },
+ "console": [
+  "log: [VNI-LICENSE] trust anchor injecting JWK primary"
+ ]
+}

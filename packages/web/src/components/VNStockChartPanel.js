@@ -269,9 +269,10 @@ export default function VNStockChartPanel({
           showToolbar: true,
           showHeader: true,
           showFooter: true,
-          // An right-dock rail (tier free hien upsell khoa "Nang cap Pro" —
-          // thua, gay roi; widget gate: showDock === false thi khong render).
-          showDock: false,
+          // Right dock mo theo tier: pro thay duoc DataWindow (HLOC hover inspector)
+          // + Watchlist + tinh nang dock; free giu an de tranh upsell lock "Nang cap Pro".
+          // (Widget gate: showDock === false thi khong render.)
+          showDock: isPro,
           showNonTradingDays: false,
           workspaceId: workspaceId ?? `stock-${symbol}`,
           // Demo-parity: tape side panel TAT (an chieu rong + de Ban/Mua).

@@ -1,0 +1,29 @@
+{
+ "gripLike": [
+  "SPAN.vnsc-drawing-toolbar-handle  x=182 y=844 w=10 h=44",
+  "SPAN.or floating-bar-grip x=797 y=1068 w=16 h=14",
+  "DIV.rsc-splitter  x=192 y=1007 w=1178 h=18"
+ ],
+ "dense": [
+  {
+   "y": 660,
+   "top3": "MAIN.flex-1.p-[var(--sp-6,1.5rem)] < DIV.flex-1.flex < DIV.min-h-screen.bg-[var(--color-bg-primary)]"
+  },
+  {
+   "y": 680,
+   "top3": "MAIN.flex-1.p-[var(--sp-6,1.5rem)] < DIV.flex-1.flex < DIV.min-h-screen.bg-[var(--color-bg-primary)]"
+  },
+  {
+   "y": 700,
+   "top3": "MAIN.flex-1.p-[var(--sp-6,1.5rem)] < DIV.flex-1.flex < DIV.min-h-screen.bg-[var(--color-bg-primary)]"
+  },
+  {
+   "y": 720,
+   "top3": "MAIN.flex-1.p-[var(--sp-6,1.5rem)] < DIV.flex-1.flex < DIV.min-h-screen.bg-[var(--color-bg-primary)]"
+  },
+  {
+   "y": 740,
+   "top3": "MAIN.flex-1.p-[var(--sp-6,1.5rem)] < DIV.flex-1.flex < DIV.min-h-screen.bg-[var(--color-bg-primary)]"
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "ls": [
+  "vninvestcharts:vnsc_overlayStyle",
+  "vninvestcharts:vnsc_settings_overlayStyle",
+  "vninvestcharts-widget-comparison-overlays",
+  "tenant_id",
+  "vnsc_settings_overlayStyle",
+  "vnsc-drawing-dock-state",
+  "rsc-pane-layout-v2",
+  "vnsc_favToolsBarPos",
+  "rsc-drawings-v1-CAR-1d",
+  "vninvestcharts:vninvest:chart-state:CAR",
+  "access_token",
+  "refresh_token",
+  "vnsc_overlayStyle"
+ ],
+ "ss": [
+  "vninvest_saas_features_jefzo2"
+ ],
+ "chartState": "{\"range\":\"6M\",\"xExtents\":[1778432400000,1794330000000]}"
+}

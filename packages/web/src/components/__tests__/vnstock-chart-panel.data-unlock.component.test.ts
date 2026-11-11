@@ -58,21 +58,24 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(src).toMatch(/corporate (events|actions)/i);
   });
 
-  it("S6 — UI gon (2026-11-10): khong Dark Flow badge, an right-dock rail", () => {
+  it("S6 — UI gon (2026-11-10, sua 2026-11-11): khong Dark Flow badge; dock mo theo tier", () => {
     // Badge chi render khi strength la finite number (dist gate) — app khong
-    // truyen prop thi badge mat han. Rail dock an khi showDock === false.
-    expect(src).toMatch(/showDock:\s*false/);
+    // truyen prop thi badge mat han. Dock: tu 2026-11-11 mo theo tier
+    // (showDock: isPro) de pro thay DataWindow/Watchlist; free giu an.
+    expect(src).toMatch(/showDock:\s*isPro/);
+    expect(src).not.toMatch(/showDock:\s*false/);
     expect(src).not.toMatch(/darkFlowStrength:/);
     expect(src).not.toMatch(/darkFlowSignalType/);
   });
 
-  it("S7 — an HAN 3 dong stacked `.Gc`, giu inline `.rsc-indicator-chip` nhu demo", () => {
-    // DOM that: stacked VN labels+gear = `.Gc` (trong `.Cc` overlay);
-    // inline ten ngan+gia tri = `.rsc-indicator-chip` (luon hien, demo-parity).
-    // Chi an `.Gc`, KHONG hover-reveal (hover lam stacked hien lai).
+  it("S7 — KHONG hide bat cu legend nao bang class hash (dot 0.4.4 khong con .Gc)", () => {
+    // Da xac minh: grep 0 `.Gc` trong dist 0.4.4 (class hash doi theo ban) —
+    // hack cu vo hieu va nguy hiem (trung ten voi order-ticket hint).
+    // Quy tac moi: CSS panel khong duoc co rule display:none nao (khong giau
+    // legend/indicator), khong hover-reveal, khong dung class hash.
     expect(src).toMatch(/VNStockChartPanel\.css/);
     const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
-    expect(css).toMatch(/\.rsc-engine-surface\s+\.Gc\s*\{[^}]*display:\s*none/);
+    expect(css).not.toMatch(/display:\s*none/);
     expect(css).not.toMatch(/:hover/);
     // Inline `.rsc-indicator-chip` (ten ngan + gia tri, demo-parity) KHONG bi an.
     expect(css).not.toMatch(/\.rsc-indicator-chip/);
@@ -113,5 +116,19 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(anchor).toMatch(/addLicensePublicKey/);
     expect(anchor).toMatch(/primary/);
     expect(anchor).not.toMatch(/vni1\.[A-Za-z0-9_-]{20,}/);
+  });
+  it("S11 — dock theo tier + statusline luon thay duoc (pro phô dien day du)", () => {
+    // showDock phai mo khi pro (isPro) thay vi hardcode false — right dock
+    // (DataWindow/Watchlist) la noi HLOC hover + tinh nang pro hien ro nhat.
+    const panelS11 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS11).toMatch(/showDock:\s*isPro/);
+    expect(panelS11).not.toMatch(/showDock:\s*false/);
+    // CSS hack .Gc (hash 0.4.1) khong con ton tai tren 0.4.4 (0 match) — phai xoa,
+    // hien tai no vo tinh trung ten voi order-ticket hint.
+    const css = readFileSync(resolve(HERE, "..", "VNStockChartPanel.css"), "utf8");
+    expect(css).not.toMatch(/\.Gc\b/);
+    // Statusline bi widget dat inline opacity:0 (backgroundOpacity default 0) —
+    // app phai ep hien qua attribute on dinh data-rsc-chart-status-line.
+    expect(css).toMatch(/data-rsc-chart-status-line/);
   });
 });
