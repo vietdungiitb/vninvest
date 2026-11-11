@@ -1,3 +1,10 @@
+## Entry 450: Key staging verify NULL — paste chain corrupt, can machine-channel re-issue (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §6.
+- **Ket qua**: key byte-exact tu bundle staging (sha256 `e4e38a90…`, khop env VPS) verify offline voi JWK `primary` = NULL; parse OK nen payload dung, chi chu ky khong khop. Ban copy dau (verify PRO) vs 2 ban sau (NULL, hash khac nhau) chung minh chuoi 1091 ky tu qua chat/paste tay la kenh loi. App/widget/engine/trust-anchor/JWK/wiring deu da xac minh co mat — khong phai bug code.
+- **Next (Owner/vnsaas)**: re-issue key + ghi TRUC TIEP vao compose.staging.env tren VPS bang lenh (khong paste qua chat); bao toi rebuild --no-cache + verify mat ma tren byte bundle (phai PRO) moi tuyen bo xong. Secret hygiene nhu Entry 448/449 (file tam da xoa het).
+
 ## Entry 450: Boot-inject JWK primary + licenseKey tu env — staging mo Pro (B9, claim done)
 
 - **Date**: 2026-11-11
