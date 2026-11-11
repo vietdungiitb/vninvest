@@ -349,7 +349,13 @@ onSymbolChange: (sym) => {
 
   return e(
     'div',
-    { ref: chartContainerRef, className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
+    {
+      ref: chartContainerRef,
+      // Quan sat runtime: expose tier len DOM (chi chuoi tier, khong secret)
+      // de E2E/Playwright doc duoc ma khong can React DevTools.
+      'data-tier': tier,
+      className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative',
+    },
     e('div', { className: 'flex-1 h-full relative' }, chartTree),
     ...panels,
   );
