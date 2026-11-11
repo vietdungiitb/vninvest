@@ -1,3 +1,11 @@
+## Entry 452: Tra T1+T2+T3 + so scheme ky/verify — green-light T4 (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §8. Tra loi docs/AUDIT_LICENSE_KEY_MISMATCH_20261111.md (vnsaas).
+- **T1**: x/y/kid trong harness byte-identical E2 (doc file that). **T2**: payload key moi (khong sig): pro/e=2026-11-18/k=primary/p=widget/40 caps/serial 3428f9a9/d=[]; byte test = byte bundle (sha fp khop). **T3**: anchor co tac dung (kids before/after); gates e/t/p/k deu TRUE; verify van NULL (3 opts). **Scheme**: server ky raw JSON sort_keys + P1363; engine verify truc tiep payloadBytes + thu raw-as-is truoc — TUONG THICH, khong canonicalization gap (key cu tung PRO tren dung code nay).
+- **Nhan loi L-V02**: rut lai ket luan "private khac ky" (suy khi chua loai tru 5 nhanh). Con lai duy nhat: chu ky khong khop voi JWK nay tren byte nay — diem mu o LAN CAP. **Green-light T4** cua vnsaas (key moi tren staging + test ngay trong harness T3): PRO ⇒ key 12:49 bad instance, revoke ca 2, dong; NULL ⇒ loi server-side that.
+- **Secret hygiene**: key tam xoa het sau moi lan dung; bao cao chi hash/payload (khong sig), JWK public; file .tmp khong con ton tai (da doi chieu dir).
+
 ## Entry 451: Key moi (3428f9a9) verify NULL — issuance key khac JWK da publish (quyet dinh, B9)
 
 - **Date**: 2026-11-11
