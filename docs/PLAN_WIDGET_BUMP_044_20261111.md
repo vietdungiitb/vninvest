@@ -44,3 +44,33 @@
 `check-multi-agent` (đã PASS exit 0 trước sửa — cảnh báo stale pre-existing) ·
 `git diff --numstat` sau edit (kỳ vọng 5 insertions/5 deletions đúng 1 file) ·
 `npx tsc --noEmit` · `pre-push-gate` trước push. Claim → `done`, ledger Entry, PR merge-commit.
+
+## 5. Blocker 2026-11-11 (dừng chờ Owner)
+
+- `npm install` CHƯA CHẠY: 401 từ `packages/web/.npmrc` (token project chết);
+  đối chứng `npm view` trong `packages/web` → 401, ngoài `packages/web` (token
+  `~/.npmrc`) → 200. Owner chọn tự refresh token rồi báo chạy tiếp.
+- Đã chạy được: `npx tsc --noEmit` exit 0 (lưu ý: against node_modules cũ
+  0.4.1/0.5.5 — chỉ chứng minh edit không vỡ types hiện tại, KHÔNG phải verify
+  bản mới); `check-multi-agent` exit 0 (203 claim, cảnh báo stale pre-existing).
+- Khi có token mới: `npm install` (packages/web) → `git diff --numstat`
+  (package-lock.json sẽ đổi) → `npx tsc --noEmit` → `npm run build` →
+  commit riêng → B8 re-audit → claim done → ledger → PR.
+
+## 6. Root cause build fail + quyết định Owner (2026-11-11)
+
+- `npm install` exit 0 (node_modules: widget 0.4.4, engine-core 0.5.6, widget-pro 0.4.3).
+  `npx tsc --noEmit` exit 0. `check-multi-agent` exit 0.
+- `npm run build` FAIL (exit 1): `widget@0.4.4/dist/chunk-KAHILD6F.js` import động
+  `@vninvestcharts/widget-pro/register`; `widget-pro` (`0.4.1` và `0.4.3` đều vậy)
+  `dist/register.js` tạo worker từ `./pinescript/pine.worker.ts` nhưng package
+  KHÔNG ship `dist/pinescript/` (forensics tarball `C:\Temp\wforen`, đã xóa).
+  `widget@0.4.1` KHÔNG có import này ⇒ build cũ xanh; `0.4.3` đã có ⇒ lỗi từ phía
+  widget/pro, không phải do app.
+- Quyết định Owner: CHỜ widget team fix (không stub alias, không revert).
+  Trạng thái: bump giữ nguyên (package.json + lock + node_modules mới);
+  `npm run build`/E2E ghi CHƯA CHẠY tới khi có bản vá; PR chờ sau fix.
+
+`check-multi-agent` (đã PASS exit 0 trước sửa — cảnh báo stale pre-existing) ·
+`git diff --numstat` sau edit (kỳ vọng 5 insertions/5 deletions đúng 1 file) ·
+`npx tsc --noEmit` · `pre-push-gate` trước push. Claim → `done`, ledger Entry, PR merge-commit.

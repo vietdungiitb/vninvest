@@ -1,3 +1,11 @@
+## Entry 446: Bump @vninvestcharts/* (engine 0.5.6, widget 0.4.4, widget-pro 0.4.3) — install+tsc xanh, build BLOCKED upstream (B9, claim done, cho widget team fix)
+
+- **Date**: 2026-11-11
+- **Type**: Deps bump (package.json 5 pins + lock). Evidence: docs/PLAN_WIDGET_BUMP_044_20261111.md (§5+§6) + docs/evidence/widget-bump-044/plan-audit.md (B3 PASS) + re-audit.md (B8 ĐẠT).
+- **Verify that**: registry GH 0.4.4 (`2026-11-11T00:16:58Z`)/0.5.6/0.4.3; tarball 0.4.4 co d.ts `fetchSubscriptionTier`/`fetchSaasBillingTier`/`ensureMachineActivationOnce`/`showLegend` + JS runtime `billing/subscription` 3, `/api/v1/activations` 3, `saas-billing` 3, `showLegend` 18; node_modules cai dung 0.4.4/0.5.6/0.4.3.
+- **Gates**: `npm install` exit 0 (Owner duyet; token project `.npmrc` chet → Owner refresh, token that tuyet doi KHONG commit — `.npmrc` da tra ve placeholder `${GITHUB_TOKEN}`); `npx tsc --noEmit` exit 0; `check-multi-agent` exit 0; `npm run build` FAIL exit 1 — root cause upstream: `widget@0.4.4` chunk-KAHILD6F import dong `@vninvestcharts/widget-pro/register`, `widget-pro` (0.4.1+0.4.3) `register.js` tao worker tu `./pinescript/pine.worker.ts` nhung KHONG ship `dist/pinescript/`; `widget@0.4.1` khong co import nay nen build cu xanh. Owner chot CHO widget team fix (khong stub, khong revert). Build/E2E = CHUA CHAY.
+- **Next**: widget team release ban va → bump tiep → build + E2E pro ca 2 leg + duong deny → PR.
+
 ## Entry 445: P3.4 license passthrough (licenseKey prop + secret-guard) — app-side readiness, pro-path BLOCKED (B9, claim done + handoff)
 
 - **Date**: 2026-11-10
