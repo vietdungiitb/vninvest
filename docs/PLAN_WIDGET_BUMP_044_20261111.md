@@ -71,6 +71,12 @@
   Trạng thái: bump giữ nguyên (package.json + lock + node_modules mới);
   `npm run build`/E2E ghi CHƯA CHẠY tới khi có bản vá; PR chờ sau fix.
 
-`check-multi-agent` (đã PASS exit 0 trước sửa — cảnh báo stale pre-existing) ·
-`git diff --numstat` sau edit (kỳ vọng 5 insertions/5 deletions đúng 1 file) ·
-`npx tsc --noEmit` · `pre-push-gate` trước push. Claim → `done`, ledger Entry, PR merge-commit.
+## 7. Follow-up 2026-11-11 — widget-pro@0.4.4 (fix tận gốc từ widget team)
+
+- Fix: `register.ts` `pine.worker.ts` → `pine.worker.js`; `tsup.config.ts` thêm entry
+  build worker ra `dist/pinescript/pine.worker.js` (745KB, 0 bare import — B3 verify
+  độc lập PASS: `register.js` hết chuỗi `.ts`, tgz có worker 745,571 bytes).
+  Giữ `createWorker()` (live ở PineEditorPanel + StrategyTester).
+- Việc vninvest (slice `widget-bump-044p`, cùng nhánh): bump 1 pin `widget-pro`
+  0.4.3→0.4.4 → `npm install` (cần token project, Owner cấp lại) → `npm run build`
+  phải exit 0 → tsc → gates → claim done + ledger.
