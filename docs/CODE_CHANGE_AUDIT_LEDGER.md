@@ -1,3 +1,11 @@
+## Entry 460: W-D measurement overlay enable (Wave 0, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (1 prop + 1 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md §2.8 + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-D) + B3 tu-verify nhe (prop ton tai dts :76, pattern lap lan 4).
+- **Thay doi**: `packages/web/src/components/VNStockChartPanel.js` (+`measurementEnabled: isPro`, giu nguyen comment W0.9 corporate) + S16 source-level (isPro, cam hardcode true/false).
+- **Gates chay that**: vitest panel 16/16 · `npx tsc --noEmit` exit 0 · `npm run build` PASS 21.9s (lan 1 bao loi la nhieu shell/reporter, chay lai xanh) · eslint 0 errors (4 warnings co san). **CHUA CHAY**: full vitest 181 file · E2E staging + BE pytest. `check-multi-agent`/`check-ledger-entry` chay truoc PR.
+- **Con lai (ngoai scope)**: free khong co thuoc do (pro-only, nhu dock/tape/advisory).
+
 ## Entry 459: W-C error boundary + empty state (Wave 0, claim done)
 
 - **Date**: 2026-11-12

@@ -410,6 +410,9 @@ export default function VNStockChartPanel({
           advisoryResult,
           isAdvisoryLoading,
           onAdvisoryRefresh: handleAdvisoryRefresh,
+          // W-D: measurement overlay (thuoc do khoang gia/thoi gian, pro-only).
+          // Thuan client, khong can data/adapter/i18n moi.
+          measurementEnabled: isPro,
           // W0.9: KHONG bat `showCorporateEvents` — BE chua co nguon du lieu
           // corporate actions (ex-date / split / rights) nen overlay se rong;
           // bat rong = nhieu tinh, giong "noi doi" (xem roadmap §5 W5.3).
