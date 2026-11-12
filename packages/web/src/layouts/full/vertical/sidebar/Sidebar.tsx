@@ -172,8 +172,19 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
                 ),
                 role: 'menuitem',
                 'aria-current': isActive ? 'page' : undefined,
-                onClick: () => {
+                // SPA navigation (sidebar-spa-nav): chan reload mac dinh cua the <a>.
+                // Truoc day click menu = full page reload = toan bo app remount =
+                // bootstrap chay lai = full-screen "Dang xac thuc tai khoan..."
+                // (ProtectedRoute) tren MOI lan chuyen trang + mat het state client.
+                // Giu `href` de van copy-link / mo tab moi duoc.
+                // Giu hanh vi trinh duyet cho mo-tab-moi: middle-click /
+                // Ctrl+click / Cmd+click / Shift+click / Alt+click di duong
+                // mac dinh cua <a> (khong preventDefault, khong SPA navigate).
+                onClick: (ev: React.MouseEvent) => {
+                  if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
+                  ev.preventDefault();
                   onMobileClose();
+                  if (item.path !== location.pathname) navigate(item.path);
                 },
                 title: (!newLayout && collapsed && !mobileOpen) ? t(item.labelKey, { defaultValue: item.labelKey }) : undefined
               },

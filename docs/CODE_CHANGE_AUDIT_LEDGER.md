@@ -35,6 +35,17 @@
 - **Gates chay that**: tsc 0 · vitest src/i18n 72/72 · i18n:scan:strict exit 0 (warn cu) · `npm run build` PASS 32s (i18n chunk 537KB, tuong duong cu 563KB). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
 - **Luu y**: split nay chi de giam merge-conflict + bao tri; bundle KHONG doi (import tinh). Lazy-load that theo route van la C3 (can async loader + Suspense, ngoai scope D3).
 
+## Entry 470: Sidebar SPA navigation — bo reload ca trang (het full-screen "Dang xac thuc tai khoan..." moi lan chuyen trang) (claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (1 handler + 1 test). Evidence: `docs/handoffs/HANDOFF_2026-11-12_SIDEBAR-SPA-NAV.md` + B8 tu-audit (PASS; subagent `ses_e2fb67af5ffekm1JqarYZ7qCLu` NEED_REVISION — 1 BLOCKER that + 1 MAJOR + 2 MINOR, da sua het).
+- **Root cause (doc source that)**: menu sidebar render `e('a', { href: item.path, onClick: () => onMobileClose() })` (`Sidebar.tsx:160-182`) — click = full page reload = toan bo app remount = bootstrap chay lai (`PortfolioContext.js:599-654`, `setAuthStateReady(false)` `:609`) = full-screen `shellFallback.verifyingAccount` (`main.tsx:88-96`, `vi/shellFallback.js:7`) tren MOI lan chuyen trang + mat het state client. Provider nam NGOAI Routes (`main.tsx:279-293`) nen SPA nav khong remount — chi co reload moi gay ra.
+- **Thay doi**: `packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx` (onClick menu: early-return khi modifier-click/middle-click de giu mo-tab-moi cua trinh duyet; `preventDefault` + `navigate(item.path)` + guard cung-path; giu `href` de copy-link/SEO/a11y) · test moi `packages/web/src/layouts/full/vertical/sidebar/__tests__/sidebar-spa-nav.component.test.tsx` (T1 preventDefault, T2 navigate, T3 giu href, T4 modifier-guard neo dau-dong).
+- **B8 (da sua)**: BLOCKER — `preventDefault` vo dieu kien pha middle-click/Ctrl+click ⇒ them early-return `metaKey|ctrlKey|shiftKey|altKey|button!==0` · MAJOR — T1/T2 xanh gia (regex khop comment) ⇒ siet neo + **mutation check chay that** (xoa guard ⇒ T4 DO; comment-out guard trong comment ⇒ van xanh ⇒ doi sang xoa-that ⇒ DO) · MINOR — m1 guard bo qua search/hash (menu khong co query, chap nhan) · m2 `onMobileClose` truoc day chay ca khi modifier-click (nay early-return truoc).
+- **Verify that**: `useLocation`/`useNavigate` cung scope (`Sidebar.tsx:30-31`); moi `item.path` deu internal (`sidebaritems.ts:8-64`, khong link ngoai); shell khong con `<a href>` noi bo khac (grep `layouts/` chi con `Sidebar.tsx:163`); Header dung `navigate()` qua button; sau fix fallback verifying chi con hien khi boot that/F5/login.
+- **Gates chay that**: vitest 4/4 (TDD fail-before T1+T2 DO truoc code) + subset layouts/shell 18/18 · `npx tsc --noEmit` exit 0 · eslint 0 loi · `npm run build` PASS 27s · check-multi-agent 0 loi · check-ledger-entry **FAIL do 1 trung PRE-EXISTING tren `origin/dev`** (Entry 386 ×2 tu PR #353; Entry 470 cua slice xuat hien 1 lan). **CHUA CHAY**: full vitest 181 file · E2E tren trinh duyet that (can click menu + xac nhan khong reload).
+- **Con lai (ngoai scope)**: restyle fallback boot thanh clock-only (de xuat cua user — tach slice rieng neu muon, hien tai fallback chu van can cho boot that).
+
 ## Entry 469: Ticket 2+3 — auth-forms-rhf-extra het treo + new-agent.ps1 parse OK tren PS 5.1
 
 - **Date**: 2026-11-13
