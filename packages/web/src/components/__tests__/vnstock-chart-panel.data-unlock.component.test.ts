@@ -184,4 +184,12 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS15).toMatch(/importKey/);
     expect(panelS15).toMatch(/onRetry/);
   });
+  it("S16 — W-D measurement overlay enable (pro-only, 1 prop)", () => {
+    // Overlay do khoang gia/thoi gian thuan client, khong can data/adapter.
+    // Mo theo tier nhu dock/tape/advisory.
+    const panelS16 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS16).toMatch(/measurementEnabled:\s*isPro/);
+    expect(panelS16).not.toMatch(/measurementEnabled:\s*false/);
+    expect(panelS16).not.toMatch(/measurementEnabled:\s*true/);
+  });
 });
