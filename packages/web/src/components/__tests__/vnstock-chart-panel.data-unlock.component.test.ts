@@ -171,4 +171,17 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS14).toMatch(/tapeFilterBillions/);
     expect(panelS14).toMatch(/onTapeFilterChange/);
   });
+  it("S15 — W-C error boundary + empty state (graceful degradation)", () => {
+    // Boc chart trong WidgetErrorBoundary (retry remount qua key) + dung
+    // WidgetEmptyState cho 3 nhanh (dang import / loading / bars rong).
+    // Chi assert source-level wiring, khong assert render widget.
+    const panelS15 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS15).toMatch(/WidgetErrorBoundary/);
+    expect(panelS15).toMatch(/WidgetEmptyState/);
+    expect(panelS15).toMatch(/widgetModule\?\.WidgetErrorBoundary/);
+    expect(panelS15).toMatch(/widgetModule\?\.WidgetEmptyState/);
+    expect(panelS15).toMatch(/retryKey/);
+    expect(panelS15).toMatch(/importKey/);
+    expect(panelS15).toMatch(/onRetry/);
+  });
 });
