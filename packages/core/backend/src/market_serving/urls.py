@@ -10,6 +10,8 @@ from .native_views import (
     RealtimeSymbolInvestigationView,
     RealtimeTickerListView,
     RealtimeTickerView,
+    RealtimeUnifiedAlertsView,
+    RealtimeWhaleCampaignsView,
     RealtimeWhaleFeedAggregateView,
     RealtimeWhaleFeedView,
 )
@@ -32,4 +34,10 @@ urlpatterns = [
     path('realtime/symbol-investigation/<str:symbol>/', RealtimeSymbolInvestigationView.as_view(), name='realtime-symbol-investigation'),
     path('realtime/rvol/<str:symbol>/', RealtimeRvolView.as_view(), name='realtime-rvol'),
     path('realtime/depth-chart/<str:symbol>/', RealtimeDepthChartView.as_view(), name='realtime-depth-chart'),
+    # B-1 (Enterprise demo): 2 view đã có sẵn (~600L) nhưng trước đây KHÔNG
+    # route nào gọi tới ⇒ capability `whale_campaign` của widget không mở được.
+    # - unified-alerts: scope theo query (scope/symbols/watchlist_group_ids).
+    # - whale-campaigns: symbol trong PATH được view dùng để scope truy vấn.
+    path('realtime/unified-alerts/', RealtimeUnifiedAlertsView.as_view(), name='realtime-unified-alerts'),
+    path('realtime/whale-campaigns/<str:symbol>/', RealtimeWhaleCampaignsView.as_view(), name='realtime-whale-campaigns'),
 ]

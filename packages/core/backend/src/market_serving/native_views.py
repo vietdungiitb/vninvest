@@ -1403,7 +1403,18 @@ class RealtimeWhaleCampaignsView(RealtimeWhaleFeedAggregateView):
                 )
 
         now = timezone.now()
-        symbols, scope, watchlist_group_ids, scope_source = self._resolve_scope(request)
+        # B-1: symbol trong PATH phải CÓ TÁC DỤNG — mirror class cha
+        # (RealtimeWhaleFeedAggregateView.get, :944-950). Không có bước này thì
+        # URL /whale-campaigns/<symbol>/ bị bỏ qua và widget nhận campaigns của
+        # scope khác (tracked/watchlist) ⇒ sai dữ liệu.
+        symbol_kwarg = kwargs.get('symbol')
+        if symbol_kwarg:
+            symbols = [symbol_kwarg.upper()]
+            scope = 'custom'
+            watchlist_group_ids = []
+            scope_source = 'kwarg'
+        else:
+            symbols, scope, watchlist_group_ids, scope_source = self._resolve_scope(request)
         explicit_scope = self._has_explicit_scope(request)
         entitlements = self._build_entitlements(request)
 

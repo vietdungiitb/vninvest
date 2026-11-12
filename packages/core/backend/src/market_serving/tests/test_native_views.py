@@ -220,3 +220,100 @@ class RealtimeWhaleFeedAggregateCompatTest(TestCase):
         payload = response.json()
         self.assertEqual(payload['results'], [])
         self.assertFalse(payload['has_more'])
+
+
+class RealtimeCampaignRoutesTest(TestCase):
+    """B-1 (Enterprise demo): mount 2 route realtime — unified-alerts + whale-campaigns.
+
+    View đã có sẵn ~600L (`native_views.py:540` + `:1371`) nhưng chưa route nào
+    gọi tới ⇒ capability `whale_campaign` của widget không mở được cho demo.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='b1-campaign-reader',
+            email='b1-campaign-reader@test.local',
+            password='pass123',
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _create_whale_event(self, symbol='VCI'):
+        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+
+        alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol=symbol,
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title=f'Whale buy {symbol}',
+            value='1480000000.00',
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=timezone.now(),
+            source_ref=f'B1-TEST-{symbol}',
+        )
+        return WhaleAlertCanonical.objects.create(
+            alert=alert,
+            symbol=symbol,
+            session_date=timezone.localdate(),
+            side=WhaleAlertCanonical.SideChoices.BUY,
+            price='18100.00',
+            volume=82000,
+            matched_value=1480000000,
+            executed_at=timezone.now(),
+        )
+
+    def test_unified_alerts_route_resolves_via_native_name(self):
+        url = reverse('market_serving:realtime-unified-alerts')
+        self.assertEqual(url, '/core/v1/realtime/unified-alerts/')
+
+    def test_whale_campaigns_route_resolves_with_symbol(self):
+        url = reverse('market_serving:realtime-whale-campaigns', kwargs={'symbol': 'VCI'})
+        self.assertEqual(url, '/core/v1/realtime/whale-campaigns/VCI/')
+
+    def test_whale_campaigns_route_scopes_to_symbol_in_path(self):
+        # Symbol trong PATH phải có tác dụng (không bị view bỏ qua) — nếu không
+        # widget gọi /whale-campaigns/VNM/ sẽ nhận campaigns của scope khác.
+        self._create_whale_event('VCI')
+
+        response = self.client.get('/core/v1/realtime/whale-campaigns/VCI/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['filters']['symbols'], ['VCI'])
+        self.assertEqual(payload['filters']['scope_source'], 'kwarg')
+        self.assertEqual(payload['filters']['scope'], 'custom')
+        self.assertGreaterEqual(payload['meta']['campaign_count'], 1)
+        self.assertTrue(payload['results'])
+        self.assertIn('campaign_id', payload['results'][0])
+        self.assertFalse(payload['has_more'])
+        self.assertIn('next_cursor', payload)
+        self.assertEqual(payload['source'], 'canonical_event_store')
+
+    def test_whale_campaigns_route_returns_empty_for_symbol_without_events(self):
+        self._create_whale_event('VCI')
+
+        response = self.client.get('/core/v1/realtime/whale-campaigns/AAA/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['filters']['symbols'], ['AAA'])
+        self.assertEqual(payload['meta']['campaign_count'], 0)
+        self.assertEqual(payload['results'], [])
+
+    def test_unified_alerts_route_serves_native_contract(self):
+        self._create_whale_event('VCI')
+
+        response = self.client.get('/core/v1/realtime/unified-alerts/?scope=custom&symbols=VCI')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIn('results', payload)
+        self.assertIn('has_more', payload)
+        self.assertIn('next_cursor', payload)
+        self.assertIn('meta', payload)
+        self.assertEqual(payload['filters']['symbols'], ['VCI'])
+        self.assertEqual(payload['filters']['scope'], 'custom')
