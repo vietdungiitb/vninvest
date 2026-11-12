@@ -221,9 +221,15 @@ File `packages/web/src/components/VNStockChartPanel.js` (362 dòng) + `Watchlist
 - Wave 2 (3 slice L): 3-5 ngày
 - Tổng: 6-10 ngày nếu full scope; có thể chia theo tier priority.
 
-## 8. Câu hỏi cần Owner quyết định (Wave 0 xong 2026-11-12 — Wave 1/2 chờ trả lời)
+## 8. Câu hỏi cần Owner quyết định (Wave 0 xong 2026-11-12 — Owner chốt DỪNG Ở WAVE 0)
 
-> Wave 0 (W-A..W-F) đã merge 6/6 (PR #342..#347, Entry 457..462). Các câu hỏi dưới giữ nguyên cho Wave 1/2.
+> Wave 0 (W-A..W-F) đã merge 6/6 (PR #342..#347, Entry 457..462). Owner trả lời 2026-11-12: **dừng ở Wave 0, Wave 1/2 để sau**. Các quyết định dưới được ghi để mở Wave 1 không cần hỏi lại.
+
+1. Wave 0 quick wins có làm ngay không (không cần BE, không cần Owner input ngoài tier)? → **ĐÃ XONG.**
+2. Custom indicator "Whale Flow/Dark Flow/CVD VN" có đăng ký thành indicator trong catalog widget, hay giữ như prop (hiện tại)? Đề xuất: đăng ký (user tự bật/tắt). → **Owner chốt: ĐĂNG KÝ CATALOG (làm W-G khi mở Wave 1).**
+3. Workspace serializer: lưu layout ở BE (cần endpoint) hay localStorage only (đơn giản hơn, không cần BE)? Đề xuất: localStorage first, BE sau. → **Owner chốt: LOCALSTORAGE FIRST (W-H không đụng BE/migration).**
+4. Multi-chart workspace: enterprise tier only, hay pro tier? Đề xuất: enterprise. → **Owner chốt: ENTERPRISE ONLY (W-L dynamic import + gate enterprise).**
+5. Advisory panel trong chart: thay thế section riêng, hay thêm vào (cả hai)? Đề xuất: thay thế (tránh duplicate). → **Owner chốt: GIỮ CẢ HAI LÚC NÀY (gỡ tab riêng sau khi staging-pro-layout2 xong).**
 
 1. Wave 0 quick wins có làm ngay không (không cần BE, không cần Owner input ngoài tier)? → **ĐÃ XONG.**
 2. Custom indicator "Whale Flow/Dark Flow/CVD VN" có đăng ký thành indicator trong catalog widget, hay giữ như prop (hiện tại)? Đề xuất: đăng ký (user tự bật/tắt). → **CHỜ (quyết định W-G).**
