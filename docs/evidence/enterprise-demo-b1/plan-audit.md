@@ -45,7 +45,7 @@
 - **TDD fail-before (VPS, DB tạm `b1_demo`)**: `manage.py test market_serving.tests.test_native_views` ⇒ 12 test, **5 mới ĐỎ** (`NoReverseMatch: 'realtime-whale-campaigns'` + 404) ⇒ đúng dự đoán (route chưa mount).
 - **Sau code**: 12/12 OK · suite app `market_serving` 31/31 OK · `manage.py check` no issues · `makemigrations --check --dry-run` còn `commercial/0008_licensekey` (**pre-existing**, branch không đụng file commercial nào ⇒ **không** tạo migration).
 - **B8 (tự audit, PASS)**: prefix `/core/v1/` đúng (`vninvest_core/urls.py:61`); gating `IsAuthenticated` kế thừa (`native_views.py:543`); diff urls.py chỉ thêm; không client cũ gọi 2 route mới; test assert giá trị thật + case âm; AC `code=invalid_query` **chưa đạt** (400 chỉ có `detail`) ⇒ để B-5.
-- **Dọn VPS (bắt buộc)**: DROP DATABASE `b1_demo` + `git worktree remove --force /tmp/wt-b1` + `prune` (ghi lệnh + output vào đây khi chạy).
+- **Dọn VPS (bắt buộc)**: DROP DATABASE `b1_demo` + `git worktree remove --force /tmp/wt-b1` + `prune` — **đã chạy**: `DROP DATABASE` OK · worktree list chỉ còn `/opt/vninvest`.
 
 ## 5. Rủi ro
 
