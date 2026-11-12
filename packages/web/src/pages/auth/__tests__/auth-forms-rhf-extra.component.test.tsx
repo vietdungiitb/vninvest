@@ -9,13 +9,17 @@ vi.mock("../../../adapters/coreApiAdapter.js", () => ({
   coreApiAdapter: { registerUser: mocks.registerUser },
 }));
 
+// Giong widget that (test-key branch): KHONG tu ban onVerify trong effect
+// (mock cu lam vay + parent truyen inline arrow => loop vo han => treo test).
+// Thay vao do render nut; test phai click de xac minh — dung contract that.
 vi.mock("../../../components/auth/TurnstileWidget.js", () => ({
   TurnstileWidget: ({ onVerify }: { onVerify?: (t: string) => void }) => {
-    const { useEffect } = require("react");
-    useEffect(() => {
-      onVerify?.("test-token");
-    }, [onVerify]);
-    return null;
+    const { createElement } = require("react");
+    return createElement(
+      "button",
+      { type: "button", "data-testid": "turnstile-test-trigger", onClick: () => onVerify?.("cf-test-token") },
+      "Turnstile test token",
+    );
   },
 }));
 
@@ -44,7 +48,9 @@ describe("AuthRegisterPage RHF+zod (B6)", () => {
     fireEvent.change(screen.getByLabelText(/auth\.registerEmailLabel/), { target: { value: "u@example.com" } });
     fireEvent.change(screen.getByLabelText(/auth\.registerPasswordLabel/), { target: { value: "secret-12345" } });
     fireEvent.change(screen.getByLabelText(/auth\.registerPasswordConfirmLabel/), { target: { value: "different-123" } });
-    // click submit (turnstile not verified yet — mismatch must be checked first)
+    // Nut submit disabled khi chua co turnstile token — phai verify truoc.
+    // Mismatch van duoc kiem tra truoc API (onSubmit branch 1).
+    fireEvent.click(screen.getByTestId("turnstile-test-trigger"));
     fireEvent.click(screen.getByRole("button", { name: /auth\.registerSubmit/ }));
     await waitFor(() => {
       expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
@@ -63,9 +69,14 @@ describe("AuthRegisterPage RHF+zod (B6)", () => {
     fireEvent.change(screen.getByLabelText(/auth\.registerEmailLabel/), { target: { value: "  u@example.com  " } });
     fireEvent.change(screen.getByLabelText(/auth\.registerPasswordLabel/), { target: { value: "secret-12345" } });
     fireEvent.change(screen.getByLabelText(/auth\.registerPasswordConfirmLabel/), { target: { value: "secret-12345" } });
-    // Turnstile widget simulates verify by calling onVerify; trigger via hidden token input fallback:
-    // Our migrated form wires Turnstile onVerify to set value; simulate by typing token through widget mock.
-    // Instead assert mismatch path blocks API; mismatch already covered. Full submit requires Turnstile token state.
-    expect(mocks.registerUser).not.toHaveBeenCalled();
+    // Mock giong widget that: phai click nut test-trigger de co token (khong tu ban).
+    fireEvent.click(screen.getByTestId("turnstile-test-trigger"));
+    fireEvent.click(screen.getByRole("button", { name: /auth\.registerSubmit/ }));
+    await waitFor(() => {
+      expect(mocks.registerUser).toHaveBeenCalled();
+    });
+    const payload = mocks.registerUser.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.username).toBe("user_1");
+    expect(payload.email).toBe("u@example.com");
   });
 });

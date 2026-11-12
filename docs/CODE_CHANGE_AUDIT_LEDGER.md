@@ -9,16 +9,6 @@
 - **B8 (tu-audit, PASS)**: route dung prefix `/core/v1/` (`vninvest_core/urls.py:61`); gating `IsAuthenticated` giong route cu (`native_views.py:543`, ke thua); diff urls.py chi them, khong sua/xoa; khong client cu goi 2 route moi; test assert gia tri that + case am; AC `code=invalid_query` **chua dat** (400 chi co `detail`) ⇒ de B-5, khong danh dau sai.
 - **Con lai (ngoai scope)**: B-5 envelope `code` (ca 2 view moi) · B-2/B-3/B-4/B-6 theo timeline spec §7 · probe staging §2 Q-B2 + do phu tick Q-B4 · `secret-scan` do pre-existing · full vitest 181 file CHUA CHAY (treo, ngoai scope BE).
 - **Next**: backend cat ticket B-1+B-5 (tuan 1) → B-2+B-4 (tuan 2) → B-3+B-6 (tuan 3); widget E0–E5 song song.
-## Entry 467: D2 go recharts — RechartsCompat shim tren echarts (Owner uy quyen)
-## Entry 468: D3 split i18n monolith — locales/vi|en/<ns>.js + barrel (Owner uy quyen)
-
-- **Date**: 2026-11-13
-- **Type**: FE (split file, khong doi runtime). Claim `uiux-d3-i18n-split` = done (bo sung sau code, Owner uy quyen solo).
-- **Quy mo**: vi.js 358KB + en.js 314KB → 101 namespaces moi ben → `src/i18n/locales/vi/*.js` + `locales/en/*.js` (202 file). vi.js/en.js viet lai thanh barrel (import + `export default`, GIU NGUYEN shape).
-- **Phuong phap**: script split structural (tokenizer hieu string/comment/template) — cat verbatim nen comment trong duoc giu. Loi da sua trong luc lam: ban dau ca vi+en ghi chung 1 thu muc `locales/` → en ghi de vi (phat hien bang deep-compare JSON: vi===en). Sua: `locales/vi/` + `locales/en/` rieng → deep-equal TRUE ca 2 ben (101 keys, JSON stringify khop byte).
-- **Test gate thich ung**: `tenantreg-dup-i18n-keys` quet SOURCE TEXT nen sau split barrel luon [] (vacuous). Mo rong: quet ca locale files + prefix `<ns>.` (do locale file mat tien to namespace). Pin van hieu luc: 10/10 PASS (van bat du 6 known dups).
-- **Gates chay that**: tsc 0 · vitest src/i18n 72/72 · i18n:scan:strict exit 0 (warn cu) · `npm run build` PASS 32s (i18n chunk 537KB, tuong duong cu 563KB). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
-- **Luu y**: split nay chi de giam merge-conflict + bao tri; bundle KHONG doi (import tinh). Lazy-load that theo route van la C3 (can async loader + Suspense, ngoai scope D3).
 
 ## Entry 467: D2 go recharts — RechartsCompat shim tren echarts (Owner uy quyen)
 
@@ -34,6 +24,29 @@
 - **Bai hoc moi (ghi ngay)**: PowerShell 5.1 `Get-Content` doc UTF-8 khong BOM thanh ANSI + `WriteAllText` ghi lai = mojibake vinh vien (10 file diff 1:1 insertions=deletions). Quy tac: sua file co dau TIENG VIET chi bang `edit`, kiem `git diff --stat` sau moi lan ghi. Test OrderFlowRadarPanel do chinh loi nay (DOM hien mojibake) — khong phai do shim.
 - **Gates chay that**: tsc 0 · eslint 0 err (349 warn co san, khong moi) · check:tokens PASS · check:dom-landmarks PASS · i18n:scan:strict exit 0 (warn cu) · vitest subset 14 file/60 test PASS · `npm run build` PASS 59s (khong con chunk recharts; shim 6.9KB; echarts 728KB giu nguyen). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
 - **Con lai**: go `Brush`? (giua, dataZoom slider da map) · visual regression staging (echarts render khac recharts o tooltip/legend) · C3 (D3) · C1 doc · axe/visual baseline VPS.
+
+## Entry 468: D3 split i18n monolith — locales/vi|en/<ns>.js + barrel (Owner uy quyen)
+
+- **Date**: 2026-11-13
+- **Type**: FE (split file, khong doi runtime). Claim `uiux-d3-i18n-split` = done (bo sung sau code, Owner uy quyen solo).
+- **Quy mo**: vi.js 358KB + en.js 314KB → 101 namespaces moi ben → `src/i18n/locales/vi/*.js` + `locales/en/*.js` (202 file). vi.js/en.js viet lai thanh barrel (import + `export default`, GIU NGUYEN shape).
+- **Phuong phap**: script split structural (tokenizer hieu string/comment/template) — cat verbatim nen comment trong duoc giu. Loi da sua trong luc lam: ban dau ca vi+en ghi chung 1 thu muc `locales/` → en ghi de vi (phat hien bang deep-compare JSON: vi===en). Sua: `locales/vi/` + `locales/en/` rieng → deep-equal TRUE ca 2 ben (101 keys, JSON stringify khop byte).
+- **Test gate thich ung**: `tenantreg-dup-i18n-keys` quet SOURCE TEXT nen sau split barrel luon [] (vacuous). Mo rong: quet ca locale files + prefix `<ns>.` (do locale file mat tien to namespace). Pin van hieu luc: 10/10 PASS (van bat du 6 known dups).
+- **Gates chay that**: tsc 0 · vitest src/i18n 72/72 · i18n:scan:strict exit 0 (warn cu) · `npm run build` PASS 32s (i18n chunk 537KB, tuong duong cu 563KB). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
+- **Luu y**: split nay chi de giam merge-conflict + bao tri; bundle KHONG doi (import tinh). Lazy-load that theo route van la C3 (can async loader + Suspense, ngoai scope D3).
+
+## Entry 469: Ticket 2+3 — auth-forms-rhf-extra het treo + new-agent.ps1 parse OK tren PS 5.1
+
+- **Date**: 2026-11-13
+- **Ticket 2 (`auth-forms-rhf-extra` treo >180s, pre-existing): ROOT CAUSE la mock test, khong phai production.**
+  Mock `TurnstileWidget` tu fire `onVerify("test-token")` trong `useEffect [onVerify]`, trong khi page truyen inline arrow moi moi render → setState → rerender → effect chay lai → loop vo han. Test treo den muc `testTimeout` cung khong kill duoc.
+  Fix: mock giong widget that (nut `turnstile-test-trigger`, click moi verify) + test 3 di het flow (click trigger → submit → assert payload normalized: username lowercase, email trim). Test 2 (mismatch) phai click trigger truoc vi nut submit `disabled` khi chua co token. Ket qua: 3/3 PASS trong 4.75s.
+- **Ticket 3 (`new-agent.ps1` parse FAIL tren PS 5.1, pre-existing): ROOT CAUSE la thieu BOM.**
+  File UTF-8 khong BOM + tieng Viet → parser 5.1 decode thanh Windows-1252 → mojibake pha vo can bang string (loi tai L92). Chung minh: ParseInput(UTF-8)=0 loi vs ParseInput(w1252)=1 loi giong het; them BOM → ParseFile sach.
+  Fix: (1) them UTF-8 BOM; (2) viet lai dong `$row` bang chuoi don + noi chuoi (tranh backtick+unicode trong 1 string kep); (3) `if (git ...)` → gan bien truoc roi moi if (robust). Verify: 4/4 scripts (`agent-sync/pr/cleanup/new-agent`) parse OK tren PS 5.1.26100.
+- **Ticket 1 (`ai-cc-i18n-clean`)**: chay lai thay 7/7 PASS — khong can sua, dong ticket.
+- **Gates chay that**: vitest auth-forms 3/3 · tsc 0 (sau sua test) · PS 5.1 parse 4/4 OK. **CHUA CHAY**: full suite, VPS.
+
 ## Entry 465: W-K chip quan sat overlay so sanh (onComparisonChange + removeCompareSymbol) (claim done)
 
 - **Date**: 2026-11-12
@@ -988,3 +1001,4 @@ e074038e5 (docs(ledger): Entry 425 T1 AC5 CRLF fix (B8 PASS) + re-audit evidence
 - **Files**: `docs/BACKEND_VNINVEST_ENTERPRISE_DEMO_SPEC_2026-11-12.md` (mới, 228 dòng) · `docs/CLAIMS.md` (1 dòng claim).
 - **Gates**: docs-only ⇒ **không** có thay đổi source ⇒ BE test / `manage.py check` / `makemigrations --check` **KHÔNG CHẠY** (không đổi migration). `node packages/web/scripts/check-multi-agent.mjs` chạy sau khi commit (xem kết quả trong PR).
 - **Next**: đội backend xác nhận Q-B1..Q-B4 → cắt ticket theo tuần (B-1+B-5 tuần 1 · B-2+B-4 tuần 2 · B-3+B-6 tuần 3) → widget team build E0-E5 song song (contract generic + adapter packages + conformance kit).
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
   Cấp phát agent mới: worktree + branch + junction + hook + DB + claim — 1 lệnh.
@@ -85,9 +85,11 @@ if ($exists -match '1') {
   Ok "da tao DB $dbName"
 }
 
-# ── 3. branch ───────────────────────────────────────────────────────────────
+# -- 3. branch --
 Step "3/7 Tao branch $branch"
-if (git branch --list $branch) {
+# NOTE: assign truoc roi moi if (tranh parser 5.1 loi voi if (git ...) truc tiep).
+$branchExists = git branch --list $branch
+if ($branchExists) {
   Write-Host "    ! Branch $branch da ton tai — dung lai branch cu" -ForegroundColor Yellow
 } else {
   git branch $branch $originBase 2>&1 | Out-Null
@@ -135,8 +137,11 @@ Step "7/7 Ghi claim vao docs/CLAIMS.md"
 $claim = "$root\docs\CLAIMS.md"
 if (Test-Path $claim) {
   $rel = $wtPath.Replace($parent + "\", "")
-  $row = "| ``$Agent`` | ``$branch`` | $Slice | (chua khai file cu the) | proposed | $(Get-Date -Format 'yyyy-MM-dd') | Worktree ``$rel``. DB ``$dbName``. Env: ``CORE_DATABASE_URL=postgresql://vninvest:devpassword@127.0.0.1:5433/$dbName`` + ``DJANGO_DEBUG=1``. Hoan tat: ``pwsh -File scripts/agent-sync.ps1`` rồi ``pwsh -File scripts/agent-pr.ps1`` |"
-  Add-Content -LiteralPath $claim -Value "`n$row"
+  # PS 5.1 parse loi khi backtick + unicode trong 1 string kep — dung chuoi don + noi chuoi.
+  $q = [string][char]96
+  $today = Get-Date -Format 'yyyy-MM-dd'
+  $row = '| ' + $q + $Agent + $q + ' | ' + $q + $branch + $q + ' | ' + $Slice + ' | (chua khai file cu the) | proposed | ' + $today + ' | Worktree ' + $q + $rel + $q + '. DB ' + $q + $dbName + $q + '. Env: ' + $q + 'CORE_DATABASE_URL=postgresql://vninvest:devpassword@127.0.0.1:5433/' + $dbName + $q + ' + ' + $q + 'DJANGO_DEBUG=1' + $q + '. Hoan tat: ' + $q + 'pwsh -File scripts/agent-sync.ps1' + $q + ' roi ' + $q + 'pwsh -File scripts/agent-pr.ps1' + $q + ' |'
+  Add-Content -LiteralPath $claim -Value ([string][char]10 + $row)
   Ok "da them claim (status proposed). Agent PHAI khai file cu the truoc khi sua dong dau tien."
 } else {
   Write-Host "    ! khong tim thay docs/CLAIMS.md" -ForegroundColor Yellow
