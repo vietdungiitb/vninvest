@@ -2,7 +2,7 @@ import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Area, AreaChart, Brush, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Brush, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "../../components/charts/RechartsCompat";
 import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";

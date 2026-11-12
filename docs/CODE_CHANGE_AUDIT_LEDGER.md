@@ -9,7 +9,20 @@
 - **B8 (tu-audit, PASS)**: route dung prefix `/core/v1/` (`vninvest_core/urls.py:61`); gating `IsAuthenticated` giong route cu (`native_views.py:543`, ke thua); diff urls.py chi them, khong sua/xoa; khong client cu goi 2 route moi; test assert gia tri that + case am; AC `code=invalid_query` **chua dat** (400 chi co `detail`) ⇒ de B-5, khong danh dau sai.
 - **Con lai (ngoai scope)**: B-5 envelope `code` (ca 2 view moi) · B-2/B-3/B-4/B-6 theo timeline spec §7 · probe staging §2 Q-B2 + do phu tick Q-B4 · `secret-scan` do pre-existing · full vitest 181 file CHUA CHAY (treo, ngoai scope BE).
 - **Next**: backend cat ticket B-1+B-5 (tuan 1) → B-2+B-4 (tuan 2) → B-3+B-6 (tuan 3); widget E0–E5 song song.
+## Entry 467: D2 go recharts — RechartsCompat shim tren echarts (Owner uy quyen)
 
+- **Date**: 2026-11-13
+- **Type**: FE (shim moi + 10 file doi import + go dep). Claim `uiux-d2-recharts-removal` = done (bo sung sau code, Owner uy quyen solo).
+- **Quy mo that**: 10 file production dung recharts (AIUsageDashboard, OrderFlowRadarPanel, AdminAnalyticsPage, TenantAdminAuditLogs/Billing/Home/Security/UsageHistory/UsagePage, AISloDashboardPage) + 4 test file. Khong viet lai chart: giu nguyen JSX recharts, dich sang option echarts trong 1 lop tuong thich.
+- **Thay doi**:
+  - `packages/web/src/components/charts/RechartsCompat.tsx` (moi): import `echarts/core` + tung component (treeshake, cung pattern `PortfolioChart.tsx:36-56`); dich Bar/Area/Line/Pie/Cell/XAxis/YAxis/Tooltip/CartesianGrid/Legend/Brush/ResponsiveContainer/`defs`+`linearGradient` sang option echarts; `Tooltip.formatter` dich chieu recharts→echarts; `fill="url(#id)"` → LinearGradient.
+  - 10 file production: doi 1 dong import `from "recharts"` → `from ".../charts/RechartsCompat"`.
+  - `package.json`: xoa `"recharts": "^2.12.7"` (deny-list, Owner duyet truc tiep); `package-lock.json` regen bang `npm install --package-lock-only` (196 dong xoa, khong cham node_modules).
+  - Test: `recharts-compat-d2` 5/5 (bat that: `child.type` la function reference, khong phai string); 4 test file mock RechartsCompat thay cho recharts (OrderFlowRadarPanel 7/7, AdminAnalytics 2/2, TenantAdminHome 6/6, ai-slo 13/13 — tong 60/60 voi subset 14 file).
+  - `__mocks__/RechartsCompat.tsx` (moi): mock tu dong cho Vitest.
+- **Bai hoc moi (ghi ngay)**: PowerShell 5.1 `Get-Content` doc UTF-8 khong BOM thanh ANSI + `WriteAllText` ghi lai = mojibake vinh vien (10 file diff 1:1 insertions=deletions). Quy tac: sua file co dau TIENG VIET chi bang `edit`, kiem `git diff --stat` sau moi lan ghi. Test OrderFlowRadarPanel do chinh loi nay (DOM hien mojibake) — khong phai do shim.
+- **Gates chay that**: tsc 0 · eslint 0 err (349 warn co san, khong moi) · check:tokens PASS · check:dom-landmarks PASS · i18n:scan:strict exit 0 (warn cu) · vitest subset 14 file/60 test PASS · `npm run build` PASS 59s (khong con chunk recharts; shim 6.9KB; echarts 728KB giu nguyen). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
+- **Con lai**: go `Brush`? (giua, dataZoom slider da map) · visual regression staging (echarts render khac recharts o tooltip/legend) · C3 (D3) · C1 doc · axe/visual baseline VPS.
 ## Entry 465: W-K chip quan sat overlay so sanh (onComparisonChange + removeCompareSymbol) (claim done)
 
 - **Date**: 2026-11-12

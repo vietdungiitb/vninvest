@@ -7,7 +7,7 @@ import * as LangContext from "../../context/LangContext.js";
 import * as PortfolioContext from "../../context/PortfolioContext.js";
 import * as AbilityContext from "../../context/AbilityContext.js";
 
-// Polyfill ResizeObserver for recharts ResponsiveContainer in jsdom
+// Polyfill ResizeObserver for echarts-for-react in jsdom
 if (typeof (globalThis as any).ResizeObserver === "undefined") {
   (globalThis as any).ResizeObserver = class {
     observe() {}
@@ -27,6 +27,8 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
     getUsageTrend: vi.fn(),
   },
 }));
+// D2: mock RechartsCompat (echarts) để tránh render ZRender trong jsdom.
+vi.mock("../../components/charts/RechartsCompat");
 
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { TenantAdminHomePage } from "./TenantAdminHomePage.js";

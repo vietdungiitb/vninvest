@@ -1,7 +1,7 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useMemo, useState } from "react";
-import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "../../components/charts/RechartsCompat";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";

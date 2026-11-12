@@ -1,5 +1,5 @@
 import React, { createElement, useState, useMemo } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from './charts/RechartsCompat';
 import { useUrlValue } from '../hooks/useUrlState';
 
 const e = createElement;

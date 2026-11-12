@@ -13,10 +13,12 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
     getSocAnalyticsAlerts: vi.fn(),
   },
 }));
+// D2: mock RechartsCompat (echarts) để tránh render ZRender trong jsdom.
+vi.mock("../../components/charts/RechartsCompat");
 
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
-// jsdom lacks ResizeObserver (recharts ResponsiveContainer needs it).
+// jsdom lacks ResizeObserver (echarts-for-react needs it).
 if (typeof (globalThis as any).ResizeObserver === "undefined") {
   (globalThis as any).ResizeObserver = class {
     observe() {}

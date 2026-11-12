@@ -18,7 +18,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter, useSearchParams } from "react-router-dom";
 
-vi.mock("recharts", () => ({
+// D2: mock RechartsCompat (thay cho mock `recharts` — dependency đã gỡ).
+vi.mock("../charts/RechartsCompat", () => ({
   AreaChart: ({ children }) => <div data-testid="area-chart">{children}</div>,
   Area: () => null,
   XAxis: () => null,

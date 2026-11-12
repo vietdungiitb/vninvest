@@ -3,18 +3,14 @@
  *
  * AC2 `null` ⇒ `—` (không `0%`) · AC3 `$` chỉ khi `pricing_complete` ·
  * AC5 range 7/30/90 · AC6 cache 60 s + **không** poll khi `document.hidden` ·
- * AC4 chart dùng token của R1.6 (giá trị rỗng trong jsdom ⇒ fallback, không vỡ).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-
 import { AISloDashboardPage } from "../AISloDashboardPage";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
-
 // R4.5: `AiHubNav` doc `usePortfolio()` de an tab staff-only; trang render nav
 // nen can PortfolioContext trong test. Thieu mock => "usePortfolio must be used
 // inside PortfolioProvider" va **moi** test trong file do chet, ke ca test da xanh truoc R4.5.
@@ -22,7 +18,6 @@ vi.mock("../../context/PortfolioContext.js", () => ({
   usePortfolio: () => ({ userIdentity: { isStaff: true, isSuperuser: false } }),
   PortfolioProvider: ({ children }: any) => children,
 }));
-
 vi.mock("../../context/LangContext.js", () => ({
   useI18n: () => ({
     t: (key: string, vars?: Record<string, unknown>) =>
@@ -30,10 +25,12 @@ vi.mock("../../context/LangContext.js", () => ({
     locale: "vi",
   }),
 }));
-
-// jsdom không có `ResizeObserver`; recharts `ResponsiveContainer` cần nó và thiếu
-// thì **sập cả cây render** (bảng cũng biến mất ⇒ test khác đỏ theo, dễ chẩn
-// đoán nhầm). Polyfill y hệt các file test recharts khác trong repo.
+// D2: mock RechartsCompat (echarts) để tránh render ZRender trong jsdom.
+vi.mock("../../components/charts/RechartsCompat");
+// khác đi theo, dễ chẩn đoán nhầm). Polyfill y hệt các file test chart khác.
+// jsdom không có `ResizeObserver`; `echarts-for-react` cần nó để thiết lập
+// kích thước container ⇒ **sẽ sập cốc render** (biến mất ở test khác đi theo,
+// dễ chẩn đoán nhầm). Polyfill y hệt các file test chart khác.
 if (typeof (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver === "undefined") {
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
     observe() {}
@@ -189,7 +186,6 @@ describe("R3.3 AISloDashboardPage", () => {
   });
 
   it("AC4: chart dùng token của R1.6, không khai báo màu thứ hai", async () => {
-    // jsdom đo container 0×0 ⇒ recharts không vẽ SVG, nên **không** assert DOM
     // cho chart. Cách repo đã dùng cho AC này (và cùng cách `check-ai-cc` gate
     // kiểm) là **quét mã nguồn**: trang không được tự khai báo hex/rgba.
     const src = readFileSync(PAGE_SRC, "utf8");

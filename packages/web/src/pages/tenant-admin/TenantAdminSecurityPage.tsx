@@ -2,7 +2,7 @@ import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useState } from "react";
 import { AlertCircle, UserCircle } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "../../components/charts/RechartsCompat";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
