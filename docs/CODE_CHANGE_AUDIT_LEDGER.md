@@ -1,3 +1,14 @@
+## Entry 465: W-K chip quan sat overlay so sanh (onComparisonChange + removeCompareSymbol) (claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (1 prop + chip row + pure mapper + 2 test). Evidence: docs/AUDIT_HANDOFF_WAVE1_20261112.md §4 W-K + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-K-PLAN) + B8 `ses_e30445e3dffeHjNCppOZa9xbCt`.
+- **B3 (bundle) — DINH CHINH AUDIT TRUOC:** `onComparisonChange` **CO TON TAI** (dts `VNInvestChartsProps.d.ts:291`; bundle goi that `oe.current?.(fe.overlays)`). Audit truoc ghi "prop khong ton tai" la SAI (grep hong) → da sua trong audit doc.
+- **B3 — widget DA CO UI compare san**: toolbar drawing co nut compare (`YA`: `title: g("header.compareTitle")`, **khong** tier-gate) → mo modal `Yh` (CompareModal) = symbol search + list overlay + them/xoa/chuyen % normalize; series overlay sinh o `visiblePanes` map (`type:"Comparison", overlaySymbolId, valueMode`). ⇒ Premise plan "app phai tu lam UI chon ma so sanh" la **THUA** ⇒ slice re-scope S: host CHI QUAN SAT.
+- **Thay doi**: `packages/web/src/utils/comparisonOverlayAdapter.js` (moi, pure `mapComparisonOverlaysToSymbols` — uppercase + trim + dedupe, bo overlay khong co `symbolId`) · `packages/web/src/components/VNStockChartPanel.js` (+state `comparedSymbols`, `handleComparisonChange` → prop `onComparisonChange`, `handleRemoveComparison` → `chartRef.current?.removeCompareSymbol?.()`, chip row "Dang so sanh:" + nut xoa co `aria-label` tieng Viet co dau, 2 key i18n `vninvest.compare_title` / `vninvest.compare_remove` trong `CHART_I18N_DEFAULTS`) · unit test mapper (4 test) · S21 source-scan panel.
+- **Khong tier-gate compare** (widget khong gate ⇒ host gate se lech hanh vi) · **khong** lam input thema (widget da co modal search) · khong doi prop/key khac.
+- **Gates chay that**: vitest 25/25 (panel 21 + mapper 4) · vitest subset hoi quy 14 file/118 test · `npx tsc --noEmit` exit 0 · tsc rieng cho 2 file test exit 0 (`tsconfig.json` exclude moi file `.test.` nen build KHONG cover file test — lesson tu B8 W-I) · `npm run build` PASS 58.2s · eslint 0 loi (4 warning co san) · check-ledger-entry PASS · check-multi-agent 0 loi. **CHUA CHAY**: full vitest 181 file (chay nen >50 phút, 0 byte output ⇒ treo, da kill — cung trang thai voi cac phien truoc), E2E staging Pro, BE pytest.
+- **Con lai (ngoai scope)**: overlay state scope theo chart id chu khong theo symbol ⇒ doi ma chinh thi chip so sanh van con (can Owner chot co reset hay khong) · so sanh voi ma khong ton tai phai staging verify · `chart_compare` capability co trong PAT map nhung **khong** duoc runtime-check trong duong compare 0.4.4.
+
 ## Entry 464: W-I drawing dock do widget render + bo mount DrawingDock chet (claim done)
 
 - **Date**: 2026-11-12

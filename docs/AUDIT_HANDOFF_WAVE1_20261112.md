@@ -74,7 +74,7 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 | Thứ tự | Slice | Effort | Phụ thuộc | File chạm (dự kiến) | Ghi chú |
 |---|---|---|---|---|---|
 | 1 | **W-I** Drawing persistence (verify default + guard) | S | không | panel + 2 test | ✅ **DONE** — PR #351 (`05aa8271a`), Entry 464. Premise SAI: persistence đã bật mặc định. Thay đổi thật: `showDrawingDock: isPro` (pro có drawing dock; trước đó nút toggle bấm vô hiệu) + bỏ mount `<DrawingDock>` chết + S19/S20 + characterization test. |
-| 2 | **W-K** Comparison overlays | M | không | panel + test | Prop `onComparisonChange` TỒN TẠI (`VNInvestChartsProps.d.ts:291`); thêm mã qua ref `addCompareSymbol`. |
+| 2 | **W-K** Comparison overlays | S | không | panel + utils mới + test | ✅ **Re-scope S**: widget ĐÃ có UI compare (nút compare → CompareModal có symbol search) ⇒ host chỉ **quan sát**: wire `onComparisonChange` + chip "đang so sánh" + nút xoá (`removeCompareSymbol`). Không tier-gate (widget không gate). |
 | 3 | **W-J** Drawing alerts → alert center | — | — | — | **DEFER**: prop `onDrawingAlert` chết trong bundle 0.4.4; alert center không có create endpoint. |
 | 4 | **W-H** Workspace serializer (layout save/share) | L | cần thiết kế | host UI + internal key | **DEFER**: `workspaceId` dead prop; serializer chỉ dùng SettingsModal; không có `getPanes()` trên ref. |
 | — | **W-G** Custom indicator registration | — | — | — | **BỎ** (doc-only, Owner chọn Option A 2026-11-12): registry math-only, chart không đọc registry. |
@@ -221,15 +221,16 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 - Thêm/bớt mã: ref methods `addCompareSymbol` / `removeCompareSymbol` / `getCompareOverlaySymbols` / `getCompareOverlayEntries` (`widgetHelpers.d.ts:118-130`; multi-chart delegate cùng tên). `SettingsModal`/`IndicatorsSettingsTab` chỉ có remove/update, **không có add** → host phải gọi ref để thêm.
 - `VNStockChartPanel` đã có `chartRef` (`:358`, truyền `ref: chartRef` `:460`) → dùng được ngay, không cần prop mới từ widget.
 
-**Thiết kế**:
-- State `comparisonSymbols` (init rỗng) + input thêm mã (chuẩn hoá uppercase, validate regex `^[A-Z0-9._-]{1,16}$`) + chip list có nút xoá.
-- `handleAddComparison` → `chartRef.current?.addCompareSymbol(sym)`; `handleRemoveComparison` → `removeCompareSymbol(sym)`; `onComparisonChange` → set state từ overlays (`overlays.map(o => o.symbolId)`).
-- UI chỉ hiện khi `isPro` (widget overlay là pro feature; tránh free thấy nút không tác dụng). Không hiện trên mobile? Panel hiện tại không có breakpoint riêng — giữ đơn giản, CSS wrap.
-- Test: source-scan S21 (prop + ref method + handler) + unit test pure normalizer nếu tách hàm.
+**Thiết kế (SAU B3 sâu hơn — re-scope S: host CHỈ QUAN SÁT, không làm UI thêm mã).**
+- **Widget ĐÃ có UI compare sẵn**: toolbar drawing có nút compare (`YA`: `title: g("header.compareTitle")`, **không** tier-gate) → mở modal `Yh` (CompareModal) = **symbol search** + list overlay + thêm/xoá/chuyển % normalize. Series overlay tạo khi map `visiblePanes`: `type:"Comparison", overlaySymbolId, valueMode: percent|absolute`.
+- ⇒ Premise plan "app phải tự làm UI chọn mã so sánh" là **THỪA** (tránh UI trùng). Thiếu thật: host **không quan sát** được overlays (prop `onComparisonChange` chưa truyền) ⇒ user không thấy mình đang so sánh mã nào ngoài modal widget.
+- **Đã làm**: state `comparedSymbols` + `handleComparisonChange` (→ prop `onComparisonChange`) + `handleRemoveComparison` (→ `chartRef.current?.removeCompareSymbol?.(sym)`) + **chip row** "Đang so sánh:" (chỉ render khi có overlay) có nút xoá `aria-label` tiếng Việt có dấu + pure mapper `mapComparisonOverlaysToSymbols` (file mới `src/utils/comparisonOverlayAdapter.js`).
+- **KHÔNG tier-gate**: widget không gate compare (`chart_compare` chỉ nằm trong PAT map, không có runtime check trong đường compare) ⇒ free cũng thấy nút compare của widget; host tự gate sẽ lệch hành vi (chip biến mất trong khi widget vẫn cho thêm).
+- **KHÔNG làm input thêm mã** (widget đã có modal search).
 
-**Rủi ro**: thêm symbol khi widget chưa ready (`chartRef.current` null) → guard optional chaining + disable input khi `!chartModuleLoaded`; `addCompareSymbol` cần data adapter fetch symbol mới — widget tự fetch qua adapter (panel truyền adapter). Staging verify sau.
+**Rủi ro**: overlay series cần **data của mã so sánh** — adapter của panel (`createChartStockDataAdapter`) fetch theo symbol nên mã VN khác vẫn chạy; mã không tồn tại ⇒ widget tự xử lý (chưa verify bằng browser — staging E2E **chưa chạy**). Overlay state scope theo **chart id** chứ không theo symbol ⇒ đổi mã chính thì chip so sánh **vẫn còn** (cần Owner chốt có reset hay không).
 
-**AC đo được**: thêm mã → overlay xuất hiện trên chart + chip list cập nhật; xoá chip → overlay mất; reload không persistence (overlay không thuộc scope lưu — chấp nhận, ghi rõ).
+**AC đo được**: widget gửi overlays → chip hiện đúng mã; bấm xoá chip → `removeCompareSymbol` được gọi → overlay mất; không có overlay ⇒ không render chip row (không chen layout).
 
 ## 5. Kế hoạch thực thi (thứ tự & thời gian)
 
