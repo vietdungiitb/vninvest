@@ -26,6 +26,10 @@ const CHART_I18N_DEFAULTS = {
   'vninvest.loading': 'Đang tải dữ liệu biểu đồ...',
   'vninvest.load_error': 'Không thể tải biểu đồ',
   // W-K: chip "đang so sánh" + nút bỏ mã so sánh.
+  // ⚠ Các chuỗi của panel-chart đang VI-only (pattern sẵn có: `vninvest.loading`,
+  // `vninvest.load_error`, `stockDetail.chart*` cũng không có trong vi.js/en.js) —
+  // vì `t` short-circuit CHART_I18N_DEFAULTS trước globalT. Tách slice "EN
+  // parity chuỗi chart" sau (không mở rộng W-K).
   'vninvest.compare_title': 'Đang so sánh:',
   'vninvest.compare_remove': 'Bỏ so sánh',
 };
@@ -370,12 +374,14 @@ export default function VNStockChartPanel({
   // Widget DA co UI them/remove overlay (nut compare trong toolbar -> CompareModal
   // co symbol search) — phan app lam la chi CHI QUAN SAT: hien chip "dang so sanh"
   // + nut bo. KHONG tier-gate: widget khong gate compare nen free cung thay nut.
+  // ⚠ `symbolId` phai giu NGUYEN (widget so khop chinh xac) — chi `label` moi
+  // uppercase; xoá overlay phai goi `removeCompareSymbol(symbolId)` nguyen ban.
   const [comparedSymbols, setComparedSymbols] = useState([]);
   const handleComparisonChange = useCallback((overlays) => {
     setComparedSymbols(mapComparisonOverlaysToSymbols(overlays));
   }, []);
-  const handleRemoveComparison = useCallback((comparedSymbol) => {
-    chartRef.current?.removeCompareSymbol?.(comparedSymbol);
+  const handleRemoveComparison = useCallback((comparedSymbolId) => {
+    chartRef.current?.removeCompareSymbol?.(comparedSymbolId);
   }, []);
 
   const chartComponent = VNInvestCharts;
@@ -535,7 +541,8 @@ onSymbolChange: (sym) => {
       'data-tier': tier,
       className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative',
     },
-    // W-K: chip "đang so sánh" (chỉ hiện khi có overlay) + nút bỏ mã.
+    // W-K: chip "đang so sánh" (chỉ hiện khi có overlay ĐANG ĐƯỢC VẼ — widget
+    // không vẽ series khi `visible === false`) + nút bỏ mã.
     // Đặt TRÊN chart (flex-col => DOM order = thứ tự hiển thị) để user thấy
     // ngay mình đang so sánh mã nào; không có overlay => không render, không
     // chen layout.
@@ -545,27 +552,31 @@ onSymbolChange: (sym) => {
           {
             className: 'flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/40 px-3 py-2 shrink-0',
             'data-testid': 'vnsc-compare-chips',
+            role: 'group',
+            'aria-label': t('vninvest.compare_title'),
           },
           e('span', { className: 'text-xs text-slate-400' }, t('vninvest.compare_title')),
-          ...comparedSymbols.map((comparedSymbol) => e(
-            'span',
-            {
-              key: comparedSymbol,
-              className: 'inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-200',
-            },
-            comparedSymbol,
-            e(
-              'button',
+          ...comparedSymbols
+            .filter((comparedSymbol) => comparedSymbol.visible)
+            .map((comparedSymbol) => e(
+              'span',
               {
-                type: 'button',
-                className: 'ml-1 text-slate-400 hover:text-rose-400',
-                'aria-label': `${t('vninvest.compare_remove')} ${comparedSymbol}`,
-                title: t('vninvest.compare_remove'),
-                onClick: () => handleRemoveComparison(comparedSymbol),
+                key: comparedSymbol.symbolId,
+                className: 'inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-200',
               },
-              e('span', { 'aria-hidden': 'true' }, '×'),
-            ),
-          )),
+              comparedSymbol.label,
+              e(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ml-1 text-slate-400 hover:text-rose-400',
+                  'aria-label': `${t('vninvest.compare_remove')} ${comparedSymbol.label}`,
+                  title: `${t('vninvest.compare_remove')} ${comparedSymbol.label}`,
+                  onClick: () => handleRemoveComparison(comparedSymbol.symbolId),
+                },
+                e('span', { 'aria-hidden': 'true' }, '×'),
+              ),
+            )),
         )
       : null,
     e('div', { className: 'flex-1 h-full relative' }, chartTree),
