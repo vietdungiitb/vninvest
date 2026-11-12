@@ -1,3 +1,12 @@
+## Entry 462: W-F upgrade URL + telemetry hook (Wave 0 DONE, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (hook + panel wiring + 1 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md Wave 0 W-F + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-F) + B8 `ses_e30c6df4cffeSPq1J27AOrdysv` (PASS).
+- **Thay doi**: `packages/web/src/hooks/useTrustTelemetry.js` (+`trackWidgetEvent`, pattern emit san co, additive) + `packages/web/src/components/VNStockChartPanel.js` (+`upgradeUrl: '/upgrade'` + `handleWidgetTelemetry` enrich symbol) + S18 (panel 4 regex + hook 1 regex).
+- **Verify**: upgradeUrl dts :294; onTelemetry/event shape dts :299 + telemetry.d.ts:6-14 (doc truc tiep, khong phai suy doan); route /upgrade ton tai (routeCatalog.js:401-402, khong capability); 4 consumer cu cua hook khong anh huong (return additive).
+- **Gates chay that**: vitest 123/123 (17 file: panel + hooks) · tsc exit 0 · build PASS 19.7s · eslint 0 errors (4 warnings co san). **CHUA CHAY**: full vitest 181 file · E2E + BE pytest. `check-multi-agent`/`check-ledger-entry` chay truoc PR.
+- **Wave 0 HOAN THANH**: 6/6 slice (W-A..W-F) merged — advisory, tape, boundary/empty, measurement, CVD/timezone, upsell/telemetry.
+
 ## Entry 461: W-E CVD histogram + defaultTimezone (Wave 0, claim done)
 
 - **Date**: 2026-11-12
