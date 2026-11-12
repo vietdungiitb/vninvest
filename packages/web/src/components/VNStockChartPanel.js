@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries, mapTapeTradesToEntries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
+import { mapComparisonOverlaysToSymbols } from '../utils/comparisonOverlayAdapter.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
@@ -24,6 +25,9 @@ const CHART_I18N_DEFAULTS = {
   'stockDetail.chartRsiMacd': 'RSI + MACD',
   'vninvest.loading': 'Đang tải dữ liệu biểu đồ...',
   'vninvest.load_error': 'Không thể tải biểu đồ',
+  // W-K: chip "đang so sánh" + nút bỏ mã so sánh.
+  'vninvest.compare_title': 'Đang so sánh:',
+  'vninvest.compare_remove': 'Bỏ so sánh',
 };
 
 export default function VNStockChartPanel({
@@ -362,6 +366,18 @@ export default function VNStockChartPanel({
 
   const chartRef = useRef(null);
 
+  // W-K: overlay so sanh (widget gui qua prop `onComparisonChange`).
+  // Widget DA co UI them/remove overlay (nut compare trong toolbar -> CompareModal
+  // co symbol search) — phan app lam la chi CHI QUAN SAT: hien chip "dang so sanh"
+  // + nut bo. KHONG tier-gate: widget khong gate compare nen free cung thay nut.
+  const [comparedSymbols, setComparedSymbols] = useState([]);
+  const handleComparisonChange = useCallback((overlays) => {
+    setComparedSymbols(mapComparisonOverlaysToSymbols(overlays));
+  }, []);
+  const handleRemoveComparison = useCallback((comparedSymbol) => {
+    chartRef.current?.removeCompareSymbol?.(comparedSymbol);
+  }, []);
+
   const chartComponent = VNInvestCharts;
 
   // W-C: fallback cu (div tu viet) giu cho nhap module-null + truong hop
@@ -410,6 +426,8 @@ export default function VNStockChartPanel({
           // toolbar toggle; free giu false. (Nut toggle van hien cho free la
           // pre-existing, xem docs/AUDIT_HANDOFF_WAVE1_20261112.md §4 W-I.)
           showDrawingDock: isPro,
+          // W-K: widget gui overlay so sanh khi thay doi -> host hien chip.
+          onComparisonChange: handleComparisonChange,
           showToolbar: true,
           showHeader: true,
           showFooter: true,
@@ -518,6 +536,36 @@ onSymbolChange: (sym) => {
       className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative',
     },
     e('div', { className: 'flex-1 h-full relative' }, chartTree),
+    // W-K: chip "đang so sánh" (chỉ hiện khi có overlay) + nút bỏ mã.
+    comparedSymbols.length > 0
+      ? e(
+          'div',
+          {
+            className: 'flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/40 px-3 py-2',
+            'data-testid': 'vnsc-compare-chips',
+          },
+          e('span', { className: 'text-xs text-slate-400' }, t('vninvest.compare_title')),
+          ...comparedSymbols.map((comparedSymbol) => e(
+            'span',
+            {
+              key: comparedSymbol,
+              className: 'inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-200',
+            },
+            comparedSymbol,
+            e(
+              'button',
+              {
+                type: 'button',
+                className: 'ml-1 text-slate-400 hover:text-rose-400',
+                'aria-label': `${t('vninvest.compare_remove')} ${comparedSymbol}`,
+                title: t('vninvest.compare_remove'),
+                onClick: () => handleRemoveComparison(comparedSymbol),
+              },
+              '×',
+            ),
+          )),
+        )
+      : null,
     ...panels,
   );
 }
