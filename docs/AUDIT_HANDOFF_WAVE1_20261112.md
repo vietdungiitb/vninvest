@@ -15,7 +15,7 @@
   - **W-K: prop TỒN TẠI** — correction: `onComparisonChange` ở `VNInvestChartsProps.d.ts:291`, widget gọi thật khi overlays đổi. Thêm mã qua ref `addCompareSymbol`; khả thi.
   - **W-H: NEED_REVISION** — `workspaceId` không thuộc props; single chart tự lưu pane layout vào key nội bộ `rsc-pane-layout-v2`; serializer chỉ dùng trong SettingsModal export/import; không có `getPanes()` trên ref. Cần host UI + quyết định shape → hoãn.
 - **Thứ tự thực thi mới**: W-I (nhỏ) → W-K (khả thi) → W-J (defer) → W-H (defer, cần thiết kế). Tất cả FE-only, không BE/migration → không chạm deny-list.
-- **Tiến độ (cập nhật sau W-I)**: **W-I DONE** — PR #351 merged (`05aa8271a`), ledger Entry 464, claim `widget-wi-drawing-persist` → done. **Tiếp theo: W-K.**
+- **Tiến độ (cập nhật sau W-K)**: **W-I DONE** — PR #351 merged (`05aa8271a`), ledger Entry 464 · **W-K DONE** — PR #354 merged (`334e7ee86`) + PR #355 sửa B8 merged (`66b3e7056`), ledger Entry 465 · W-J/W-H **defer** chờ Owner. Wave 1 còn lại: **không có slice code nào** — 2 slice defer đã ghi lý do + câu hỏi ở §6.
 
 ## 1. Audit handoff — verify sự thật
 
@@ -74,7 +74,7 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 | Thứ tự | Slice | Effort | Phụ thuộc | File chạm (dự kiến) | Ghi chú |
 |---|---|---|---|---|---|
 | 1 | **W-I** Drawing persistence (verify default + guard) | S | không | panel + 2 test | ✅ **DONE** — PR #351 (`05aa8271a`), Entry 464. Premise SAI: persistence đã bật mặc định. Thay đổi thật: `showDrawingDock: isPro` (pro có drawing dock; trước đó nút toggle bấm vô hiệu) + bỏ mount `<DrawingDock>` chết + S19/S20 + characterization test. |
-| 2 | **W-K** Comparison overlays | S | không | panel + utils mới + test | ✅ **Re-scope S**: widget ĐÃ có UI compare (nút compare → CompareModal có symbol search) ⇒ host chỉ **quan sát**: wire `onComparisonChange` + chip "đang so sánh" + nút xoá (`removeCompareSymbol`). Không tier-gate (widget không gate). |
+| 2 | **W-K** Comparison overlays | S | không | panel + utils mới + test | ✅ **DONE** — PR #354 + PR #355 (sửa B8), Entry 465. Widget ĐÃ có UI compare (nút compare → CompareModal có symbol search) ⇒ host chỉ **quan sát**: wire `onComparisonChange` + chip "đang so sánh" + nút xoá (`removeCompareSymbol`). Không tier-gate (widget không gate). |
 | 3 | **W-J** Drawing alerts → alert center | — | — | — | **DEFER**: prop `onDrawingAlert` chết trong bundle 0.4.4; alert center không có create endpoint. |
 | 4 | **W-H** Workspace serializer (layout save/share) | L | cần thiết kế | host UI + internal key | **DEFER**: `workspaceId` dead prop; serializer chỉ dùng SettingsModal; không có `getPanes()` trên ref. |
 | — | **W-G** Custom indicator registration | — | — | — | **BỎ** (doc-only, Owner chọn Option A 2026-11-12): registry math-only, chart không đọc registry. |
@@ -274,10 +274,9 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 
 ## 9. Next steps (phiên tiếp theo)
 
-1. **W-K (comparison overlays)** — slice đang chạy trên branch `feat/widget-wk-comparison` (claim `widget-wk-comparison`): đã re-scope thành **host chỉ quan sát** — wire `onComparisonChange` + chip "đang so sánh" + nút xoá (`chartRef.removeCompareSymbol`) + pure mapper `mapComparisonOverlaysToSymbols`; **không** làm input thêm mã (widget đã có CompareModal search+add), **không** tier-gate (widget không gate compare). Còn: B8 → ledger Entry 465 → claim done → PR → merge → verify parent → journal MERGE.
-2. W-J/W-H: chỉ doc/defer cho tới khi Owner chốt (W-J: widget phải export callback thật + BE create-alert endpoint; W-H: chọn shape save/share layout).
-3. Ghi nhận follow-up (chưa xử lý): nút toggle drawing dock cho free tier vô hiệu (ticket widget) · `onStorageError` không được widget forward · scope user/tenant cho key drawing (Owner chốt + migration) · `secret-scan` đỏ do `docs/evidence/staging-pro-layout/facts20.json` (pre-existing trên dev — ticket cho session `staging-pro-layout`).
-4. Sau đó: smoke E2E staging Pro (I-1) gộp 1 phiên.
+1. **W-K (comparison overlays)** — **DONE**: PR #354 + #355 (sửa B8), ledger Entry 465, claim `widget-wk-comparison` → done. Chi tiết kỹ thuật ở §4 W-K + JOURNAL Entry W-K-PLAN / W-K-B8 / W-K-MERGE / W-K-CLOSEOUT.
+2. **Còn lại sau Wave 1**: W-J/W-H **defer** (chỉ doc) chờ Owner chốt (§6) · smoke E2E staging Pro (I-1) · EN parity chuỗi chart (panel) · scope user/tenant cho key drawing · overlay scope theo symbol · nút toggle drawing dock cho free tier (ticket widget) · `secret-scan` đỏ pre-existing (ticket session `staging-pro-layout`) · full vitest 181 file **CHƯA CHẠY** (treo >50 phút).
+3. **Bài học vòng kín mới (quan trọng cho session sau):** worktree này **dùng chung** với session khác ⇒ trước **mỗi** commit phải kiểm `git rev-parse --abbrev-ref HEAD` + `git reflog -5` + `git branch -vv`; trước khi tạo PR phải `git diff --name-only origin/dev...HEAD` (commit lạ có thể nằm trên nhánh mình — đã xảy ra: PR #354 kéo theo commit theme của session khác).
 
 ---
 
