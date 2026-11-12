@@ -535,13 +535,15 @@ onSymbolChange: (sym) => {
       'data-tier': tier,
       className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative',
     },
-    e('div', { className: 'flex-1 h-full relative' }, chartTree),
     // W-K: chip "đang so sánh" (chỉ hiện khi có overlay) + nút bỏ mã.
+    // Đặt TRÊN chart (flex-col => DOM order = thứ tự hiển thị) để user thấy
+    // ngay mình đang so sánh mã nào; không có overlay => không render, không
+    // chen layout.
     comparedSymbols.length > 0
       ? e(
           'div',
           {
-            className: 'flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/40 px-3 py-2',
+            className: 'flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/40 px-3 py-2 shrink-0',
             'data-testid': 'vnsc-compare-chips',
           },
           e('span', { className: 'text-xs text-slate-400' }, t('vninvest.compare_title')),
@@ -561,11 +563,12 @@ onSymbolChange: (sym) => {
                 title: t('vninvest.compare_remove'),
                 onClick: () => handleRemoveComparison(comparedSymbol),
               },
-              '×',
+              e('span', { 'aria-hidden': 'true' }, '×'),
             ),
           )),
         )
       : null,
+    e('div', { className: 'flex-1 h-full relative' }, chartTree),
     ...panels,
   );
 }
