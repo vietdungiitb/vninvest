@@ -123,7 +123,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             {
               type: 'button',
               onClick: () => retryAuthBootstrap(),
-              className: 'px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium',
+              // Axe 2026-11-13: white tren cyan-600 = 3.61:1 (< 4.5). cyan-700 = 5.36:1.
+              className: 'px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-sm font-medium',
             },
             t('shellFallback.bootstrapRetry')
           )

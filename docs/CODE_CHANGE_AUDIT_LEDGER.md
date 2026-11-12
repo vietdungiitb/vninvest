@@ -46,7 +46,24 @@
 - **Gates chay that**: vitest 4/4 (TDD fail-before T1+T2 DO truoc code) + subset layouts/shell 18/18 · `npx tsc --noEmit` exit 0 · eslint 0 loi · `npm run build` PASS 27s · check-multi-agent 0 loi · check-ledger-entry **FAIL do 1 trung PRE-EXISTING tren `origin/dev`** (Entry 386 ×2 tu PR #353; Entry 470 cua slice xuat hien 1 lan). **CHUA CHAY**: full vitest 181 file · E2E tren trinh duyet that (can click menu + xac nhan khong reload).
 - **Con lai (ngoai scope)**: restyle fallback boot thanh clock-only (de xuat cua user — tach slice rieng neu muon, hien tai fallback chu van can cho boot that).
 
-## Entry 469: Ticket 2+3 — auth-forms-rhf-extra het treo + new-agent.ps1 parse OK tren PS 5.1
+## Entry 470: VPS verify — BE check+smoke, axe 5 route xanh, D2 render that, sidebar+bootstrap contrast fix
+
+- **Date**: 2026-11-13 (VPS `14.225.255.47`, scratch clone `/root/vninvest-verify` tai commit `2ceffecf0`, xoa sau khi xong; GITHUB_TOKEN Owner cap qua chat, dung 1 lan cho npm registry, khong commit).
+- **BE**: `manage.py check` trong container staging → 0 issues · `test market_serving` → 26/26 OK (baseline staging, khong gom 5 test B-1 vi container chay code staging cu — van xanh, khong hoi quy).
+- **FE build tren VPS (Linux)**: `npm ci` that bai 2 lan (1: thieu GITHUB_TOKEN; 2: npm 9 strict voi lockfile cua npm 11 — `Missing: esbuild@0.28.2`) → dung `npm install` + token env → OK 1081 packages; `recharts` KHONG con trong node_modules (D2 unload sach); `npm run build` PASS 34.5s.
+- **Axe 5 route @390x851 (lan 1, chua doi bootstrap)**: 5/5 PASS nhung VACUOUS (page ket o "verifying", chua render content).
+- **Axe lan 2 (doi bootstrap 45s)**: 3 FAIL that — `aria-required-children` (critical) tren /dashboard /settings /operations-center: `<h3>` group label la con truc tiep cua `nav[role=menubar]` (div wrapper generic bi axe xuyen qua).
+  Fix lan 1 (SAI): them `role="group"` — axe van fail vi group co requiredOwned=[] nen h3 van unallowed.
+  Fix lan 2 (DUNG): giu `role="group"` + `aria-label` + `aria-hidden="true"` tren h3 (trung 100% ten group; AT doc ten group 1 lan; nguoi nhin van thay chu). Verify bang cach doc source axe-core (`aria-required-children-evaluate` + requiredOwned).
+- **Axe lan 3**: van 3 FAIL — `color-contrast` (serious) tren nut "Thu lai" cua BOOTSTRAP ERROR UI (`main.tsx:126` `bg-cyan-600` #0092b8 vs white = 3.61:1). Day KHONG phai nut cua B1 (B1 dung slate-700 = 10.35:1, dat). Fix: `bg-cyan-700 hover:bg-cyan-800` (5.36/7.27:1, do bang script).
+- **Axe lan 4**: 6/6 PASS (5 route + setup), 0 critical/serious, 0 minor/moderate.
+- **Visual chart (D2)**: tenant-admin visual spec fail hang loat — NGUYEN NHAN: (1) snapshot chi co ban win32, Linux khong co baseline (`-linux.png` missing → auto-write actual); (2) bootstrap cham 5-10s qua proxy (spec doi 1s) → chup man hinh loading. Khong phai loi render.
+  Chung minh D2 render that: probe doi canvas toi da 100s → `canvas=1` tren /tenant-admin/home (echarts ve duoc qua RechartsCompat shim); screenshot xac nhan shell+KPI+i18n render day du, khong loi import. Full visual parity vs recharts cu la design QA (can baseline win32, ngoai scope VPS Linux).
+- **Phat hien them (ngoai scope, da ghi nhan, chua sua)**: 4 nut `bg-cyan-600 text-white` tuong tu trong advisory (WhaleAdvisoryBentoHeader:74, AdvisoryOrderTicket:106, AdvisoryAlertDialog:107, OrderFlowRadarPanel:207) — cung loi contrast 3.6x, can 1 slice sua rieng.
+- **Con lai**: full vitest tren VPS (can npm ci xong — da xong, chay duoc nhung dai; ghi CHUA CHAY) · visual baseline win32 tren may dev · deploy staging (can Owner chot, anh huong shared staging).
+- **Bai hoc**: (1) axe PASS ma khong doi content = vacuous — luon assert/wait content truoc khi scan; (2) visual baseline theo OS (`-win32`): khong update baseline tu OS khac; (3) staging API co throttle `auth_bootstrap` — test lien tuc bi 429 dan den bootstrap fail (fail-open dung nhu thiet ke).
+
+## Entry 469: Ticket 2+3 — auth-forms-rhf-extra het treo + new-agent.ps1 parse OK tren PS 5.1 (+GITHUB_TOKEN Owner cap cho VPS verify, chi luu tam o /root/vninvest-verify/.npmrc, xoa sau khi xong)
 
 - **Date**: 2026-11-13
 - **Ticket 2 (`auth-forms-rhf-extra` treo >180s, pre-existing): ROOT CAUSE la mock test, khong phai production.**

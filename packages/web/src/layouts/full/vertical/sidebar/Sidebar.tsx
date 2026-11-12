@@ -143,13 +143,22 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
           (!(item as any).staffOnly || isStaff)
           && (!(item as any).requiresTenant || hasTenant));
         if (visibleItems.length === 0) return null;
+        // B5-axe (2026-11-13): group wrapper PHẢI có role="group" + aria-label.
+        // Không có role, div là generic → axe xuyên qua, thấy <h3> là con
+        // trực tiếp của nav[role=menubar] → aria-required-children (critical).
+        // NHƯNG axe-core cũng không cho h3 nằm trong group (requiredOwned=[]
+        // nên mọi role con không-context đều unallowed). h3 ở đây trùng 100%
+        // với tên group (aria-label) nên ẩn khỏi AT bằng aria-hidden: người
+        // nhìn vẫn thấy chữ, screen reader đọc tên group 1 lần duy nhất.
+        // menubar > group[aria-label] > (menu > menuitem) là cấu trúc sạch.
+        const groupLabel = t(group.group, { defaultValue: group.group });
         return e(
         'div',
-        { key: group.group },
+        { key: group.group, role: 'group', 'aria-label': groupLabel },
         (newLayout || !collapsed || mobileOpen) && e(
           'h3',
-          { className: 'px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider' },
-          t(group.group, { defaultValue: group.group })
+          { className: 'px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider', 'aria-hidden': 'true' },
+          groupLabel
         ),
         e(
           'div',
