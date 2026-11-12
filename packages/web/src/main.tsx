@@ -260,12 +260,9 @@ function App() {
 // Áp theme đã lưu trước first paint để không nháy dark khi user chọn light.
 try {
   if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-    const storedTheme = window.localStorage.getItem('vninvest-theme');
-    if (storedTheme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    // Light theme disabled (D1=b, 2026-11-12): always dark until token migration (A2b) lands.
+    document.documentElement.removeAttribute('data-theme');
+    try { window.localStorage.setItem('vninvest-theme', 'dark'); } catch { /* ignore */ }
   }
 } catch {
   // private mode — bỏ qua

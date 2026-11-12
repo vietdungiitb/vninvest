@@ -16,20 +16,11 @@ const e = createElement;
 export const USER_THEME_STORAGE_KEY = "vninvest-theme";
 
 /** Áp theme light/dark thật lên document (trước đây select theme chỉ ghi DB, không đổi pixel nào). */
-export function applyUserTheme(theme: string | null | undefined) {
+export function applyUserTheme(_theme: string | null | undefined) {
   if (typeof document === "undefined") return;
-  if (theme === "light") {
-    document.documentElement.setAttribute("data-theme", "light");
-  } else {
-    document.documentElement.removeAttribute("data-theme");
-  }
-  try {
-    if (theme === "light" || theme === "dark") {
-      window.localStorage.setItem(USER_THEME_STORAGE_KEY, theme);
-    }
-  } catch {
-    // private mode — bỏ qua persist
-  }
+  // Light theme disabled (D1=b, 2026-11-12): always dark.
+  document.documentElement.removeAttribute("data-theme");
+  try { window.localStorage.setItem(USER_THEME_STORAGE_KEY, "dark"); } catch { /* ignore */ }
 }
 
 interface UserProfile {
@@ -116,7 +107,7 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
         display_name: String(profile.display_name ?? ""),
         avatar_url: String(profile.avatar_url ?? ""),
         language: String(profile.language ?? "vi"),
-        theme: String(profile.theme ?? "light"),
+        theme: String(profile.theme ?? "dark"),
         whale_alert_threshold: String(profile.whale_alert_threshold ?? "500"),
       };
       setForm(nextForm);
@@ -208,7 +199,6 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       ),
       e("label", null, t("userSettings.theme", { defaultValue: "Giao diện:" }),
         e("select", { name: "theme", value: form.theme, onChange: handleChange },
-          e("option", { value: "light" }, t("userSettings.themeLight", { defaultValue: "Sáng" })),
           e("option", { value: "dark" }, t("userSettings.themeDark", { defaultValue: "Tối" }))
         )
       ),

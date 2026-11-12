@@ -243,4 +243,18 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS20).not.toMatch(/instanceId\s*:/);
     expect(panelS20).toMatch(/drawingUiEnabled:\s*true/);
   });
+  it("S21 — W-K: quan sat overlay so sanh (onComparisonChange) + chip row goi removeCompareSymbol", () => {
+    // Widget gui `onComparisonChange(overlays)` khi overlays doi (dts:291;
+    // bundle: `oe.current?.(fe.overlays)`). Host can render chip de user thay
+    // dang so sanh ma nao; nut xoa goi ref `removeCompareSymbol` (widget
+    // expose qua useImperativeHandle -> Rp forward ref).
+    const panelS21 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    // Regex "co chu" (prop -> handler, call -> ref) de KHONG match comment.
+    expect(panelS21).toMatch(/onComparisonChange:\s*handleComparisonChange/);
+    expect(panelS21).toMatch(/chartRef\.current\?\.removeCompareSymbol\?\.\(/);
+    expect(panelS21).toMatch(/mapComparisonOverlaysToSymbols/);
+    expect(panelS21).toMatch(/handleComparisonChange/);
+    expect(panelS21).toMatch(/comparedSymbols\.length\s*>\s*0/);
+    expect(panelS21).toMatch(/aria-label/);
+  });
 });
