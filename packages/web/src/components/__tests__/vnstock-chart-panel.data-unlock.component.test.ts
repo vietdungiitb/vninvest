@@ -256,5 +256,10 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS21).toMatch(/handleComparisonChange/);
     expect(panelS21).toMatch(/comparedSymbols\.length\s*>\s*0/);
     expect(panelS21).toMatch(/aria-label/);
+    // B8 W-K: overlay chi HIEN khi `visible` (widget khong ve series khi an).
+    expect(panelS21).toMatch(/filter\(\(comparedSymbol\)\s*=>\s*comparedSymbol\.visible\)/);
+    // B8 W-K (blocker): xoa overlay phai goi voi `symbolId` GOC (widget so khop
+    // chinh xac) — khong duoc truyen `label` da uppercase.
+    expect(panelS21).toMatch(/handleRemoveComparison\(comparedSymbol\.symbolId\)/);
   });
 });
