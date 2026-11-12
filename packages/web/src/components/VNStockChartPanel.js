@@ -423,6 +423,10 @@ export default function VNStockChartPanel({
           enableWhale: true,
           whaleOrders: mappedWhaleOrders,
           enableCVD,
+          // W-E: CVD render histogram (chuan CVD bars; oscillator la line) +
+          // timezone mac dinh VN (uncontrolled — user van doi duoc trong widget).
+          cvdMode: 'histogram',
+          defaultTimezone: 'Asia/Ho_Chi_Minh',
           externalCvdSeries: mappedCvdSeries?.length ? mappedCvdSeries : undefined,
           // KHONG truyen darkFlowStrength/SignalType — widget chi render badge
           // "Dark Flow" khi strength la finite number; bo han de UI gon
