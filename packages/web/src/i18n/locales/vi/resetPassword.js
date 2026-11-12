@@ -1,0 +1,17 @@
+export const resetPassword = {
+    requestTitle: 'Đặt lại mật khẩu',
+    confirmTitle: 'Tạo mật khẩu mới',
+    identifier: 'Tên đăng nhập hoặc email',
+    identifierPlaceholder: 'nhap username hoặc email',
+    newPassword: 'Mật khẩu mới',
+    newPasswordConfirm: 'Xác nhận mật khẩu mới',
+    requestSubmit: 'Gửi email đặt lại mật khẩu',
+    requestLoading: 'Đang gửi email...',
+    confirmSubmit: 'Cập nhật mật khẩu mới',
+    confirmLoading: 'Đang cập nhật...',
+    requestSuccess: 'Nếu tài khoản tồn tại, hệ thống đã gửi email hướng dẫn đặt lại mật khẩu.',
+    requestError: 'Không gửi được yêu cầu đặt lại mật khẩu. Vui lòng thử lại.',
+    confirmSuccess: 'Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay bây giờ.',
+    confirmError: 'Đặt lại mật khẩu thất bại. Vui lòng kiểm tra lại link hoặc thử lại.',
+    backToLogin: 'Quay lại đăng nhập',
+  };

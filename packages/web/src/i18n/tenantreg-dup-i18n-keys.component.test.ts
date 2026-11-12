@@ -152,10 +152,29 @@ const KNOWN_NESTED_DUPLICATES: Record<string, string[]> = {
 
 describe("tenantreg D2 — nested duplicate keys are pinned, not silently growing", () => {
   test.each(DICTIONARIES)("%s introduces no new nested duplicate", (file) => {
-    const nested = findDuplicateKeys(file)
+    // D3: namespace da tach ra `locales/<locale>/*.js`; barrel chi con
+    // shorthand (`common,`) nen quet barrel luon []. Quet ca locale files de
+    // pin van hieu luc. Locale file la `export const <ns> = {...}` nen path
+    // trong file thieu tien to namespace → prefix `<ns>.` khi tong hop.
+    // (Dup o root cua 1 namespace, vd 2x `loading` trong common.js, se hien
+    // thanh `common.loading` — van bi bat, chi khac nhom voi truoc D3.)
+    const { readdirSync, existsSync } = require("node:fs");
+    const locale = file === "vi.js" ? "vi" : "en";
+    const localeDir = join(HERE, "locales", locale);
+    const nested: string[] = findDuplicateKeys(file)
       .filter((hit) => hit.path.includes("."))
-      .map((hit) => hit.path)
-      .sort();
+      .map((hit) => hit.path);
+    if (existsSync(localeDir)) {
+      for (const f of readdirSync(localeDir)
+        .filter((x: string) => x.endsWith(".js"))
+        .sort()) {
+        const ns = f.replace(/\.js$/, "");
+        for (const hit of findDuplicateKeys(`locales/${locale}/${f}`)) {
+          nested.push(`${ns}.${hit.path}`);
+        }
+      }
+    }
+    nested.sort();
     const known = [...(KNOWN_NESTED_DUPLICATES[file] ?? [])].sort();
     expect(nested, `new nested duplicate(s) in ${file}; see KNOWN_NESTED_DUPLICATES`).toEqual(known);
   });

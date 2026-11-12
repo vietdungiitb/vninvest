@@ -1,0 +1,15 @@
+export const usage = {
+    title: 'Usage AI Analytics',
+    description: 'Theo dõi mức sử dụng, chi phí và hiệu năng của các dịch vụ AI.',
+    requests: 'Tổng yêu cầu',
+    tokens: 'Tổng token',
+    cost: 'Tổng chi phí',
+    latency: 'Độ trễ TB',
+    records: 'Bản ghi usage',
+    empty: 'Chưa có bản ghi usage nào.',
+    loading: 'Đang tải usage data...',
+    refresh: 'Làm mới',
+    exporting: 'Đang xuất...',
+    exportCsv: 'Xuất CSV',
+    showing: 'Hiển thị {shown} / {total} bản ghi.',
+  };

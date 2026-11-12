@@ -1,0 +1,15 @@
+export const usage = {
+    title: 'Usage AI Analytics',
+    description: 'Track usage, cost and performance of AI services.',
+    requests: 'Total Requests',
+    tokens: 'Total Tokens',
+    cost: 'Total Cost',
+    latency: 'Avg Latency',
+    records: 'Usage Records',
+    empty: 'No usage records yet.',
+    loading: 'Loading usage data...',
+    refresh: 'Refresh',
+    exporting: 'Exporting...',
+    exportCsv: 'Export CSV',
+    showing: 'Showing {shown} / {total} records.',
+  };

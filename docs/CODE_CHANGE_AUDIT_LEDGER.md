@@ -10,6 +10,17 @@
 - **Con lai (ngoai scope)**: B-5 envelope `code` (ca 2 view moi) · B-2/B-3/B-4/B-6 theo timeline spec §7 · probe staging §2 Q-B2 + do phu tick Q-B4 · `secret-scan` do pre-existing · full vitest 181 file CHUA CHAY (treo, ngoai scope BE).
 - **Next**: backend cat ticket B-1+B-5 (tuan 1) → B-2+B-4 (tuan 2) → B-3+B-6 (tuan 3); widget E0–E5 song song.
 ## Entry 467: D2 go recharts — RechartsCompat shim tren echarts (Owner uy quyen)
+## Entry 468: D3 split i18n monolith — locales/vi|en/<ns>.js + barrel (Owner uy quyen)
+
+- **Date**: 2026-11-13
+- **Type**: FE (split file, khong doi runtime). Claim `uiux-d3-i18n-split` = done (bo sung sau code, Owner uy quyen solo).
+- **Quy mo**: vi.js 358KB + en.js 314KB → 101 namespaces moi ben → `src/i18n/locales/vi/*.js` + `locales/en/*.js` (202 file). vi.js/en.js viet lai thanh barrel (import + `export default`, GIU NGUYEN shape).
+- **Phuong phap**: script split structural (tokenizer hieu string/comment/template) — cat verbatim nen comment trong duoc giu. Loi da sua trong luc lam: ban dau ca vi+en ghi chung 1 thu muc `locales/` → en ghi de vi (phat hien bang deep-compare JSON: vi===en). Sua: `locales/vi/` + `locales/en/` rieng → deep-equal TRUE ca 2 ben (101 keys, JSON stringify khop byte).
+- **Test gate thich ung**: `tenantreg-dup-i18n-keys` quet SOURCE TEXT nen sau split barrel luon [] (vacuous). Mo rong: quet ca locale files + prefix `<ns>.` (do locale file mat tien to namespace). Pin van hieu luc: 10/10 PASS (van bat du 6 known dups).
+- **Gates chay that**: tsc 0 · vitest src/i18n 72/72 · i18n:scan:strict exit 0 (warn cu) · `npm run build` PASS 32s (i18n chunk 537KB, tuong duong cu 563KB). **CHUA CHAY**: full vitest, E2E staging, BE pytest.
+- **Luu y**: split nay chi de giam merge-conflict + bao tri; bundle KHONG doi (import tinh). Lazy-load that theo route van la C3 (can async loader + Suspense, ngoai scope D3).
+
+## Entry 467: D2 go recharts — RechartsCompat shim tren echarts (Owner uy quyen)
 
 - **Date**: 2026-11-13
 - **Type**: FE (shim moi + 10 file doi import + go dep). Claim `uiux-d2-recharts-removal` = done (bo sung sau code, Owner uy quyen solo).

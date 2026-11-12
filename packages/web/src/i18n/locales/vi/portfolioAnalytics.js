@@ -1,0 +1,30 @@
+export const portfolioAnalytics = {
+    title: 'Phân tích rủi ro & hiệu suất',
+    computing: 'Đang tính toán…',
+    loadError: 'Không tải được dữ liệu phân tích.',
+    insufficientData: 'Chưa đủ dữ liệu để tính toán (cần ít nhất 5 ngày giao dịch).',
+    tradingDaysHint: 'Trong {days} ngày qua',
+    periods: {
+      p3m: '3T',
+      p6m: '6T',
+      p1y: '1N',
+      p3y: '3N',
+    },
+    metrics: {
+      sharpeRatio: 'Sharpe Ratio',
+      sortinoRatio: 'Sortino Ratio',
+      maxDrawdown: 'Max Drawdown',
+      twr: 'TWR',
+      volatility: 'Volatility/N',
+      bestDay: 'Ngày tốt nhất',
+      worstDay: 'Ngày tệ nhất',
+      tradingDays: 'Ngày giao dịch',
+    },
+    hints: {
+      sharpeRatio: '≥1 tốt, ≥2 xuất sắc',
+      sortinoRatio: 'Chỉ tính downside risk',
+      maxDrawdown: 'Mức giảm lớn nhất từ đỉnh',
+      twr: 'Time-Weighted Return',
+      volatilityAnnual: 'Biến động hàng năm',
+    },
+  };

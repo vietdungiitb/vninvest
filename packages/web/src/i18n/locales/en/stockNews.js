@@ -1,0 +1,18 @@
+export const stockNews = {
+    sectionLabel: 'News',
+    noData: 'No recent news available.',
+    fetchFailed: 'Failed to load news.',
+    refreshNow: 'Refresh now',
+    refreshing: 'Refreshing...',
+    aiNews: 'AI News',
+    aiGenerating: 'AI is summarizing...',
+    aiSummaryTitle: 'AI summary from news',
+    aiSummaryFailed: 'Unable to generate AI News at the moment.',
+    aiModel: 'AI model',
+    itemCount: 'Items used for summary',
+    readMore: 'Read more',
+    cachedLabel: 'Cached',
+    updatedAt: 'Updated',
+    source: 'Source',
+    unavailable: 'News source temporarily unavailable.',
+  };

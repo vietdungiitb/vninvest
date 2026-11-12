@@ -1,0 +1,18 @@
+export const stockNews = {
+    sectionLabel: 'Tin tức',
+    noData: 'Không có tin tức gần đây.',
+    fetchFailed: 'Không tải được tin tức.',
+    refreshNow: 'Lấy tin mới',
+    refreshing: 'Đang lấy...',
+    aiNews: 'AI News',
+    aiGenerating: 'AI đang tổng hợp...',
+    aiSummaryTitle: 'Tóm tắt AI từ tin tức',
+    aiSummaryFailed: 'Không thể tạo AI News lúc này.',
+    aiModel: 'Mô hình AI',
+    itemCount: 'Số tin dùng để tổng hợp',
+    readMore: 'Đọc thêm',
+    cachedLabel: 'Dữ liệu cache',
+    updatedAt: 'Cập nhật',
+    source: 'Nguồn',
+    unavailable: 'Nguồn tin tức tạm thời không khả dụng.',
+  };

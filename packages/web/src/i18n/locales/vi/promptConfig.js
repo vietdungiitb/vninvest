@@ -1,0 +1,25 @@
+export const promptConfig = {
+    title: 'Cài đặt Cố vấn AI (Prompt Config)',
+    subtitle: 'Đang bật {sources} nguồn dữ liệu & {indicators} chỉ báo kỹ thuật',
+    presetLabel: 'Mẫu cấu hình nhanh:',
+    presets: {
+      balanced: 'Cân bằng',
+      flowFirst: 'Ưu tiên dòng tiền',
+      deepDive: 'Chuyên sâu',
+      costControl: 'Tiết kiệm token',
+    },
+    sources: {
+      whale: 'Dòng tiền Cá mập (Whale Alerts)',
+      darkFlow: 'Dòng tiền ẩn danh (Dark Flow)',
+      technical: 'Phân tích kỹ thuật (Technical)',
+      news: 'Tin tức & Sự kiện (News Context)',
+      market: 'Bối cảnh thị trường (Market)',
+      fundamental: 'Phân tích cơ bản (Fundamental)',
+      ownership: 'Cơ cấu sở hữu (Ownership)',
+      sector: 'So sánh ngành (Sector)',
+    },
+    lookbackUnit: 'phiên',
+    close: 'Đóng',
+    enableAll: 'Bật toàn bộ',
+    leanSet: 'Bộ gọn',
+  };

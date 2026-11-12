@@ -1,0 +1,20 @@
+export const holdings = {
+    emptyTitle: 'No holdings yet',
+    emptyDescription: 'Add your first BUY transaction and click "Sync prices" to see the portfolio.',
+    notSynced: 'Not synced yet',
+    priceUnitHint: 'Price unit: thousand VND',
+    headers: {
+      symbol: 'Symbol',
+      quantity: 'Qty',
+      avgCost: 'Avg cost',
+      currentPrice: 'Current price',
+      marketValue: 'Market value',
+      unrealizedPL: 'Unrealized P/L',
+      realizedPL: 'Realized P/L',
+      dividends: 'Dividends',
+      trend: 'Trend',
+      costVsCurrent: 'Cost / Current',
+      performance: 'Performance',
+    },
+    unitThousand: 'K VND',
+  };

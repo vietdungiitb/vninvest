@@ -1,0 +1,20 @@
+export const holdings = {
+    emptyTitle: 'Chưa có vị thế nào',
+    emptyDescription: 'Thêm giao dịch MUA đầu tiên và nhấn "Đồng bộ giá" để xem danh mục.',
+    notSynced: 'Chưa sync',
+    priceUnitHint: 'Đơn vị giá: nghìn VNĐ',
+    headers: {
+      symbol: 'Mã CK',
+      quantity: 'KL',
+      avgCost: 'Giá vốn TB',
+      currentPrice: 'Giá hiện tại',
+      marketValue: 'Giá trị TT',
+      unrealizedPL: 'Lãi/Lỗ chưa chốt',
+      realizedPL: 'Lãi/Lỗ đã chốt',
+      dividends: 'Cổ tức',
+      trend: 'Xu hướng',
+      costVsCurrent: 'Giá vốn/Hiện tại',
+      performance: 'Hiệu suất',
+    },
+    unitThousand: 'NGHÌN VND',
+  };

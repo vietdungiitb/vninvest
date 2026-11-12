@@ -1,0 +1,25 @@
+export const promptConfig = {
+    title: 'AI Advisory Settings (Prompt Config)',
+    subtitle: 'Enabled {sources} data sources & {indicators} technical indicators',
+    presetLabel: 'Quick preset:',
+    presets: {
+      balanced: 'Balanced',
+      flowFirst: 'Flow First',
+      deepDive: 'Deep Dive',
+      costControl: 'Cost Control',
+    },
+    sources: {
+      whale: 'Whale Flow Alerts',
+      darkFlow: 'Dark Flow',
+      technical: 'Technical Analysis',
+      news: 'News & Events',
+      market: 'Market Context',
+      fundamental: 'Fundamental Analysis',
+      ownership: 'Ownership Structure',
+      sector: 'Sector Comparison',
+    },
+    lookbackUnit: 'sessions',
+    close: 'Close',
+    enableAll: 'Enable All',
+    leanSet: 'Lean Set',
+  };

@@ -1,0 +1,17 @@
+export const resetPassword = {
+    requestTitle: 'Reset your password',
+    confirmTitle: 'Set a new password',
+    identifier: 'Username or email',
+    identifierPlaceholder: 'enter username or email',
+    newPassword: 'New password',
+    newPasswordConfirm: 'Confirm new password',
+    requestSubmit: 'Send reset password email',
+    requestLoading: 'Sending email...',
+    confirmSubmit: 'Update new password',
+    confirmLoading: 'Updating password...',
+    requestSuccess: 'If the account exists, the reset password email has been sent.',
+    requestError: 'Unable to send reset password request. Please try again.',
+    confirmSuccess: 'Password reset successful. You can now log in.',
+    confirmError: 'Password reset failed. Please verify the link and try again.',
+    backToLogin: 'Back to login',
+  };

@@ -1,0 +1,30 @@
+export const portfolioAnalytics = {
+    title: 'Risk & performance analytics',
+    computing: 'Computing…',
+    loadError: 'Unable to load analytics data.',
+    insufficientData: 'Not enough data to compute metrics (at least 5 trading days required).',
+    tradingDaysHint: 'In the last {days} days',
+    periods: {
+      p3m: '3M',
+      p6m: '6M',
+      p1y: '1Y',
+      p3y: '3Y',
+    },
+    metrics: {
+      sharpeRatio: 'Sharpe Ratio',
+      sortinoRatio: 'Sortino Ratio',
+      maxDrawdown: 'Max Drawdown',
+      twr: 'TWR',
+      volatility: 'Volatility/N',
+      bestDay: 'Best day',
+      worstDay: 'Worst day',
+      tradingDays: 'Trading days',
+    },
+    hints: {
+      sharpeRatio: '≥1 is good, ≥2 is excellent',
+      sortinoRatio: 'Downside risk only',
+      maxDrawdown: 'Largest drop from peak',
+      twr: 'Time-Weighted Return',
+      volatilityAnnual: 'Annualized volatility',
+    },
+  };

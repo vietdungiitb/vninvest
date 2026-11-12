@@ -1,0 +1,20 @@
+export const dashboard = {
+    // FU-02c/M-6: `<h1>` của `DashboardPage` — xem ghi chú ở `vi.js`.
+    title: 'Overview',
+    emptyTitle: 'No portfolios yet',
+    noPortfolio: 'Create your first portfolio to start tracking assets, transactions, and performance directly in the app.',
+    createPortfolioCta: '+ Create your first portfolio',
+    lastUpdated: 'Last price sync: {value}',
+    syncPrices: 'Sync prices',
+    syncPricesLive: 'Sync prices live',
+    syncPricesIdle: 'Sync prices',
+    syncingPrices: 'Syncing...',
+    syncSuccess: 'Synced {total} symbols.',
+    syncError: 'Sync failed. Please check the server.',
+    marketValue: 'Total market value',
+    unrealizedPL: 'Unrealized P/L',
+    realizedPL: 'Realized P/L',
+    dividends: 'Dividends received',
+    thousandVndUnitShort: 'thousand VND',
+    holdings: 'Current holdings',
+  };
