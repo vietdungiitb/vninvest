@@ -1,3 +1,11 @@
+## Entry 461: W-E CVD histogram + defaultTimezone (Wave 0, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (2 props + 1 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md §2.19 + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-E) + B3 tu-verify (dts :137/:55 + timezone enum :1-2).
+- **Thay doi**: `packages/web/src/components/VNStockChartPanel.js` (+`cvdMode: 'histogram'` + `defaultTimezone: 'Asia/Ho_Chi_Minh'`) + S17 (2 assert wired + 4 assert no-guess guard).
+- **Scope cat co ly do**: whaleThreshold (unit chua ro, dist default 5e4 khong khop VND) + zoomSpeed/maxVisibleBars/historyMinResidentBars (knob perf chua do) KHONG truyen.
+- **Gates chay that**: vitest panel 17/17 · tsc exit 0 · build PASS 20.9s · eslint 0 errors (4 warnings co san). **CHUA CHAY**: full vitest · E2E + BE pytest. `check-multi-agent`/`check-ledger-entry` chay truoc PR.
+
 ## Entry 460: W-D measurement overlay enable (Wave 0, claim done)
 
 - **Date**: 2026-11-12

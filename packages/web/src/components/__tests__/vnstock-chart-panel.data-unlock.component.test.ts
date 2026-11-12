@@ -192,4 +192,16 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS16).not.toMatch(/measurementEnabled:\s*false/);
     expect(panelS16).not.toMatch(/measurementEnabled:\s*true/);
   });
+  it("S17 — W-E CVD histogram + defaultTimezone (2 props, no-guess guard)", () => {
+    // Chi wire prop co du bang chung (cvdMode union + WidgetTimezone enum).
+    // whaleThreshold (unit chua ro) + zoomSpeed/maxVisibleBars/
+    // historyMinResidentBars (perf knob chua do) KHONG truyen.
+    const panelS17 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS17).toMatch(/cvdMode:\s*['"]histogram['"]/);
+    expect(panelS17).toMatch(/defaultTimezone:\s*['"]Asia\/Ho_Chi_Minh['"]/);
+    expect(panelS17).not.toMatch(/whaleThreshold\s*:/);
+    expect(panelS17).not.toMatch(/zoomSpeed\s*:/);
+    expect(panelS17).not.toMatch(/maxVisibleBars\s*:/);
+    expect(panelS17).not.toMatch(/historyMinResidentBars\s*:/);
+  });
 });
