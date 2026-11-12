@@ -37,8 +37,15 @@
 
 - **BE test (VPS, runbook §12.3)**: `manage.py test market_serving.tests.test_native_views` trong container `vninvest-core-api:staging` + DB tạm riêng, volume mount code nhánh; **DROP DB tạm sau khi chạy** (bắt buộc).
 - `manage.py check` + `makemigrations --check --dry-run` (được chạy local — runbook §12.2) ⇒ không migration mới.
-- `node packages/web/scripts/check-multi-agent.mjs` ⇒ 0 lỗi; `node docs/audit-uiux/scripts/check-ledger-entry.mjs` ⇒ PASS.
+- `node packages/web/scripts/check-multi-agent.mjs` ⇒ 0 lỗi; `node docs/audit-uiux/scripts/check-ledger-entry.mjs` ⇒ **FAIL do 1 trùng PRE-EXISTING trên `origin/dev`** (Entry 386 ×2: VNBroker + PR #353; Entry 466 của slice xuất hiện 1 lần) — ghi trung thực, không sửa baseline của gate khi chưa có quyết định coordinator.
 - **CHƯA CHẠY**: E2E staging (đo ngoài theo Rule 17 — phía widget team), `spectacular` (không đổi serializer ⇒ không cần), full BE suite.
+
+## 6. Kết quả thực hiện (ghi sau khi chạy)
+
+- **TDD fail-before (VPS, DB tạm `b1_demo`)**: `manage.py test market_serving.tests.test_native_views` ⇒ 12 test, **5 mới ĐỎ** (`NoReverseMatch: 'realtime-whale-campaigns'` + 404) ⇒ đúng dự đoán (route chưa mount).
+- **Sau code**: 12/12 OK · suite app `market_serving` 31/31 OK · `manage.py check` no issues · `makemigrations --check --dry-run` còn `commercial/0008_licensekey` (**pre-existing**, branch không đụng file commercial nào ⇒ **không** tạo migration).
+- **B8 (tự audit, PASS)**: prefix `/core/v1/` đúng (`vninvest_core/urls.py:61`); gating `IsAuthenticated` kế thừa (`native_views.py:543`); diff urls.py chỉ thêm; không client cũ gọi 2 route mới; test assert giá trị thật + case âm; AC `code=invalid_query` **chưa đạt** (400 chỉ có `detail`) ⇒ để B-5.
+- **Dọn VPS (bắt buộc)**: DROP DATABASE `b1_demo` + `git worktree remove --force /tmp/wt-b1` + `prune` (ghi lệnh + output vào đây khi chạy).
 
 ## 5. Rủi ro
 
