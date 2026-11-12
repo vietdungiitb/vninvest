@@ -15,6 +15,7 @@
   - **W-K: prop TỒN TẠI** — correction: `onComparisonChange` ở `VNInvestChartsProps.d.ts:291`, widget gọi thật khi overlays đổi. Thêm mã qua ref `addCompareSymbol`; khả thi.
   - **W-H: NEED_REVISION** — `workspaceId` không thuộc props; single chart tự lưu pane layout vào key nội bộ `rsc-pane-layout-v2`; serializer chỉ dùng trong SettingsModal export/import; không có `getPanes()` trên ref. Cần host UI + quyết định shape → hoãn.
 - **Thứ tự thực thi mới**: W-I (nhỏ) → W-K (khả thi) → W-J (defer) → W-H (defer, cần thiết kế). Tất cả FE-only, không BE/migration → không chạm deny-list.
+- **Tiến độ (cập nhật sau W-I)**: **W-I DONE** — PR #351 merged (`05aa8271a`), ledger Entry 464, claim `widget-wi-drawing-persist` → done. **Tiếp theo: W-K.**
 
 ## 1. Audit handoff — verify sự thật
 
@@ -72,7 +73,7 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 
 | Thứ tự | Slice | Effort | Phụ thuộc | File chạm (dự kiến) | Ghi chú |
 |---|---|---|---|---|---|
-| 1 | **W-I** Drawing persistence (verify default + guard) | S | không | panel + 2 test | Premise SAI: persistence đã bật mặc định. Re-scope: bỏ dock chết + guard test + characterization test. |
+| 1 | **W-I** Drawing persistence (verify default + guard) | S | không | panel + 2 test | ✅ **DONE** — PR #351 (`05aa8271a`), Entry 464. Premise SAI: persistence đã bật mặc định. Thay đổi thật: `showDrawingDock: isPro` (pro có drawing dock; trước đó nút toggle bấm vô hiệu) + bỏ mount `<DrawingDock>` chết + S19/S20 + characterization test. |
 | 2 | **W-K** Comparison overlays | M | không | panel + test | Prop `onComparisonChange` TỒN TẠI (`VNInvestChartsProps.d.ts:291`); thêm mã qua ref `addCompareSymbol`. |
 | 3 | **W-J** Drawing alerts → alert center | — | — | — | **DEFER**: prop `onDrawingAlert` chết trong bundle 0.4.4; alert center không có create endpoint. |
 | 4 | **W-H** Workspace serializer (layout save/share) | L | cần thiết kế | host UI + internal key | **DEFER**: `workspaceId` dead prop; serializer chỉ dùng SettingsModal; không có `getPanes()` trên ref. |
@@ -272,12 +273,11 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 
 ## 9. Next steps (phiên tiếp theo)
 
-1. Nạp skill `project-lessons` với taskDescription="Wave 1 W-I drawing persistence + remove dead DrawingDock mount" + filePaths=["packages/web/src/components/VNStockChartPanel.js","packages/web/src/components/__tests__/"] + actions=["claim","edit","test","build","gate"].
-2. Viết journal Entry W-I plan (Lessons áp dụng) + khai claim `widget-wi-drawing-persist` → commit riêng.
-3. TDD fail-before S19 (dock chết) → xoá mount + comment → characterization test persistence → gates → B8 → PR → merge → verify parent → journal MERGE.
-4. Tiếp W-K theo §4 (prop `onComparisonChange` + ref methods).
-5. W-J/W-H chỉ doc/defer cho tới khi Owner chốt.
+1. **W-K (comparison overlays)** — slice kế tiếp, khả thi: prop `onComparisonChange` tồn tại (`VNInvestChartsProps.d.ts:291`, widget gọi thật khi overlays đổi), thêm/bớt mã qua ref `addCompareSymbol`/`removeCompareSymbol` (`widgetHelpers.d.ts:118-130`), panel đã có `chartRef`. Cần: branch mới `feat/widget-wk-comparison` từ `origin/dev` → nạp project-lessons → journal plan (Lessons áp dụng) → khai claim `widget-wk-comparison` → TDD fail-before (S21) → code → gates → B8 → ledger → PR → merge.
+2. W-J/W-H: chỉ doc/defer cho tới khi Owner chốt (W-J: widget phải export callback thật + BE create-alert endpoint; W-H: chọn shape save/share layout).
+3. Ghi nhận follow-up (chưa xử lý): nút toggle drawing dock cho free tier vô hiệu (ticket widget) · `onStorageError` không được widget forward · scope user/tenant cho key drawing (Owner chốt + migration) · `secret-scan` đỏ do `docs/evidence/staging-pro-layout/facts20.json` (pre-existing trên dev — ticket cho session `staging-pro-layout`).
+4. Sau đó: smoke E2E staging Pro (I-1) gộp 1 phiên.
 
 ---
 
-**Kết luận audit**: Handoff Wave 1 chính xác về trạng thái Wave 0 và scope đã chốt. Baseline tsc/vitest subset đã verify lại. **B3 re-audit phát hiện 3 premise sai trong plan**: W-G không implementable (đã bỏ), W-I persistence đã bật mặc định (re-scope nhỏ), W-J prop chết (defer); W-K prop tồn tại (khả thi); W-H cần thiết kế. Không có blocker mới ngoài những đã ghi (staging-pro-layout2 unverified, orphan files, smoke E2E chưa chạy).
+**Kết luận audit (cập nhật sau W-I)**: Handoff Wave 1 chính xác về trạng thái Wave 0 và scope đã chốt. Baseline tsc/vitest subset đã verify lại. **B3 re-audit phát hiện 3 premise sai trong plan**: W-G không implementable (đã bỏ), W-I persistence đã bật mặc định (đã re-scope + merge PR #351), W-J prop chết (defer); W-K prop tồn tại (khả thi, tiếp theo); W-H cần thiết kế. Không có blocker mới ngoài những đã ghi (staging-pro-layout2 unverified, orphan files, smoke E2E chưa chạy, secret-scan đỏ pre-existing).
