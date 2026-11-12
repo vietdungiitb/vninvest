@@ -2,7 +2,8 @@
 import React, { createElement, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
-import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
+import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
@@ -186,6 +187,44 @@ export default function VNStockChartPanel({
 
   const [internalBars, setInternalBars] = useState([]);
   const [visibleRange, setVisibleRange] = useState(null);
+  // W-A: advisory session V2 (BE native) + loading; chi fetch khi pro
+  // (dock tab advisory cua widget bi tier-gate dock_pro — free fetch la thua).
+  const [advisorySession, setAdvisorySession] = useState(null);
+  const [isAdvisoryLoading, setIsAdvisoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isPro || !symbol) {
+      setAdvisorySession(null);
+      setIsAdvisoryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    // E4 (B8): xoa session ma cu truoc fetch — tranh flash advisory ma cu
+    // trong luc cho payload moi khi doi symbol pro->pro.
+    setAdvisorySession(null);
+    setIsAdvisoryLoading(true);
+    coreApiAdapter.getStockAIAdvisorySession(symbol, { contract: 'v2' })
+      .then((payload) => { if (!cancelled) setAdvisorySession(payload ?? null); })
+      .catch(() => { if (!cancelled) setAdvisorySession(null); })
+      .finally(() => { if (!cancelled) setIsAdvisoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, isPro]);
+
+  const advisoryResult = useMemo(() => mapAdvisorySessionToResult(advisorySession), [advisorySession]);
+
+  const handleAdvisoryRefresh = useCallback(async () => {
+    if (!symbol) return;
+    setIsAdvisoryLoading(true);
+    try {
+      await coreApiAdapter.refreshStockAIAdvisorySession(symbol);
+      const fresh = await coreApiAdapter.getStockAIAdvisorySession(symbol, { contract: 'v2' });
+      setAdvisorySession(fresh ?? null);
+    } catch {
+      // Giu session cu (fail-closed) — khong xoa du lieu dang hien.
+    } finally {
+      setIsAdvisoryLoading(false);
+    }
+  }, [symbol]);
 
   useEffect(() => {
     setVisibleRange(null);
@@ -299,7 +338,14 @@ export default function VNStockChartPanel({
           // Demo-parity: tape side panel TAT (an chieu rong + de Ban/Mua).
           // Ban/Mua badges nam o footer nhu demo.
           showTapePanel: false,
-          showAdvisoryPanel: false,
+          // W-A: advisory dock tab (pro-only). Widget 0.4.4 khong forward
+          // advisorySession V2 -> bottom panel nen app map V2 sang legacy
+          // AdvisoryResult truoc khi truyen (xem VNInvestSignalAdapter).
+          // Empty/queued -> advisoryResult null -> panel hien empty state.
+          showAdvisoryPanel: isPro,
+          advisoryResult,
+          isAdvisoryLoading,
+          onAdvisoryRefresh: handleAdvisoryRefresh,
           // W0.9: KHONG bat `showCorporateEvents` — BE chua co nguon du lieu
           // corporate actions (ex-date / split / rights) nen overlay se rong;
           // bat rong = nhieu tinh, giong "noi doi" (xem roadmap §5 W5.3).

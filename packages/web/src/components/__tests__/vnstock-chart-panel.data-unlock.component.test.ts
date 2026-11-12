@@ -142,4 +142,17 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS12).toMatch(/setVerifiedTier\(null\)/);
     expect(panelS12).not.toMatch(/tenantPat\s*:/);
   });
+  it("S13 — W-A advisory panel trong chart dock (pro-only, map V2 -> legacy result)", () => {
+    // Widget 0.4.4 khong forward advisorySession xuong bottom panel nen app
+    // map V2 -> AdvisoryResult truoc khi truyen prop (xem JOURNAL Entry W-A).
+    const panelS13 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS13).toMatch(/mapAdvisorySessionToResult/);
+    expect(panelS13).toMatch(/getStockAIAdvisorySession/);
+    expect(panelS13).toMatch(/refreshStockAIAdvisorySession/);
+    expect(panelS13).toMatch(/showAdvisoryPanel:\s*isPro/);
+    expect(panelS13).toMatch(/advisoryResult/);
+    expect(panelS13).toMatch(/isAdvisoryLoading/);
+    expect(panelS13).toMatch(/onAdvisoryRefresh/);
+    expect(panelS13).not.toMatch(/showAdvisoryPanel:\s*false/);
+  });
 });
