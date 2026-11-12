@@ -29,8 +29,12 @@ const vi = readFileSync(VI_I18N, "utf8");
 const en = readFileSync(EN_I18N, "utf8");
 
 describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
-  it("S1 — TAT showTapePanel side panel (demo-parity; Ban/Mua nam o footer)", () => {
-    expect(src).toMatch(/showTapePanel:\s*false/);
+  it("S1 — W-B tape panel mo theo tier (doi quyet dinh demo-parity TAT -> pro feature)", () => {
+    // W-B (2026-11-12): tape side panel mo theo tier (showTapePanel: isPro)
+    // thay vi hardcode false — data THAT tu BE IntradayTapeView, free giu tat.
+    // Tien le: S6/S11 showDock false->isPro; S13 showAdvisoryPanel false->isPro.
+    expect(src).toMatch(/showTapePanel:\s*isPro/);
+    expect(src).not.toMatch(/showTapePanel:\s*false/);
     expect(src).not.toMatch(/showTapePanel:\s*true/);
   });
 
@@ -154,5 +158,17 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS13).toMatch(/isAdvisoryLoading/);
     expect(panelS13).toMatch(/onAdvisoryRefresh/);
     expect(panelS13).not.toMatch(/showAdvisoryPanel:\s*false/);
+  });
+  it("S14 — W-B tape panel wiring (pro-only, map BE trades -> TapeEntry)", () => {
+    // Wire tapeEntries tu BE IntradayTapeView (qua getIntradayTape) + filter
+    // ty VND + loading; show theo isPro (S1). Chi assert source-level, khong
+    // assert hanh vi widget (slider/filter la viec cua widget).
+    const panelS14 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS14).toMatch(/mapTapeTradesToEntries/);
+    expect(panelS14).toMatch(/getIntradayTape/);
+    expect(panelS14).toMatch(/tapeEntries/);
+    expect(panelS14).toMatch(/isTapeLoading/);
+    expect(panelS14).toMatch(/tapeFilterBillions/);
+    expect(panelS14).toMatch(/onTapeFilterChange/);
   });
 });

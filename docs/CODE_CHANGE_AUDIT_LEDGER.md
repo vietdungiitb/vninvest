@@ -1,3 +1,11 @@
+## Entry 458: W-B tape panel trong chart dock (Wave 0, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (adapter method + mapper + panel wiring + 2 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md §2.4 + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-B) + B3 audit `ses_e30e975e6ffer8EICeIbT3UQ07` (NEED_REVISION ve ref -> da sua) + B8 re-audit `ses_e30e33fa0ffe077jeBMjqkBwTb` (PASS).
+- **Thay doi**: `packages/web/src/adapters/core/market.js` (+`getIntradayTape`, pattern getRealtimeIntraday, path khong prefix /core/v1) + `packages/web/src/utils/VNInvestSignalAdapter.js` (+`TAPE_WHALE_THRESHOLD_VND=5e9` + `mapTapeTradesToEntries`, mirror widget mapNativeTape, is_whale la app enrichment) + `packages/web/src/components/VNStockChartPanel.js` (fetch tape khi symbol/isPro doi + clear tape cu (E4) + filter local state; `showTapePanel:isPro` + 4 props) + test mapper moi 6/6 + S1 cap nhat (false->isPro, tien le S6/S11/S13) + S14 source-level.
+- **Gates chay that**: vitest 28/28 (3 file slice) · `npx tsc --noEmit` exit 0 · `npm run build` PASS 20.8s · eslint 0 errors (4 warnings co san) · `check-multi-agent`/`check-ledger-entry` (chay truoc PR) · B3 + B8 PASS. **CHUA CHAY**: full vitest 181 file (timeout infra) · E2E staging Pro + BE pytest (can key/VPS).
+- **Con lai (ngoai scope)**: tape stale khi mo chart lau (khong polling — YAGNI; BE co stale/age_seconds de slice sau hien thi); smoke render tape tren staging Pro sau merge.
+
 ## Entry 457: W-A advisory panel trong chart dock (Wave 0, claim done)
 
 - **Date**: 2026-11-12

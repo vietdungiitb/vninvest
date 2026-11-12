@@ -372,6 +372,22 @@ export function createMarketClient({ coreGet, corePost }) {
     },
 
     /**
+     * W-B: intraday tape (time & sales) tu IntradayTick model.
+     * GET /core/v1/market-data/intraday-tape/{symbol}/ (envelope
+     * {symbol, trades: [{time, ts, price, volume, side, match_type}], total}).
+     * @param {string} symbol
+     * @param {object} [params] - page_size (1-200, default 50)
+     * @returns {Promise<object>}
+     */
+    getIntradayTape(symbol, params = {}) {
+      if (!symbol) throw new Error("symbol is required for getIntradayTape");
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/market-data/intraday-tape/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
+    },
+
+    /**
      * Get whale feed aggregate for a symbol.
      * Calls the native core route /core/v1/realtime/whale-feed-aggregate/{symbol}/.
      * @param {string} symbol

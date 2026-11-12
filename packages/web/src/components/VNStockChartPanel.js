@@ -3,7 +3,7 @@ import React, { createElement, useState, useCallback, useMemo, useRef, useEffect
 import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
-import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
+import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries, mapTapeTradesToEntries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
@@ -212,6 +212,38 @@ export default function VNStockChartPanel({
 
   const advisoryResult = useMemo(() => mapAdvisorySessionToResult(advisorySession), [advisorySession]);
 
+  // W-B: tape (time & sales) tu BE IntradayTapeView; chi fetch khi pro
+  // (dock tab tape tier-gate dock_pro — free fetch la thua). Filter ty VND
+  // la local state (widget loc client-side theo value).
+  const [tapeEntries, setTapeEntries] = useState([]);
+  const [isTapeLoading, setIsTapeLoading] = useState(false);
+  const [tapeFilterBillions, setTapeFilterBillions] = useState(0);
+
+  useEffect(() => {
+    if (!isPro || !symbol) {
+      setTapeEntries([]);
+      setIsTapeLoading(false);
+      return;
+    }
+    let cancelled = false;
+    // E4 (B8 W-A): xoa du lieu ma cu truoc fetch — tranh flash tape ma cu.
+    setTapeEntries([]);
+    setIsTapeLoading(true);
+    coreApiAdapter.getIntradayTape(symbol, { page_size: 100 })
+      .then((payload) => {
+        if (cancelled) return;
+        const trades = Array.isArray(payload?.trades) ? payload.trades : [];
+        setTapeEntries(mapTapeTradesToEntries(trades));
+      })
+      .catch(() => { if (!cancelled) setTapeEntries([]); })
+      .finally(() => { if (!cancelled) setIsTapeLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol, isPro]);
+
+  const handleTapeFilterChange = useCallback((value) => {
+    setTapeFilterBillions(Number(value) || 0);
+  }, []);
+
   const handleAdvisoryRefresh = useCallback(async () => {
     if (!symbol) return;
     setIsAdvisoryLoading(true);
@@ -335,9 +367,14 @@ export default function VNStockChartPanel({
           showDock: isPro,
           showNonTradingDays: false,
           workspaceId: workspaceId ?? `stock-${symbol}`,
-          // Demo-parity: tape side panel TAT (an chieu rong + de Ban/Mua).
-          // Ban/Mua badges nam o footer nhu demo.
-          showTapePanel: false,
+          // W-B: tape dock tab (pro-only). Data THAT tu BE IntradayTapeView
+          // (map sang TapeEntry truoc khi truyen); empty -> panel hien
+          // empty state. Free giu tat (dock tier-gate + tiet kiem fetch).
+          showTapePanel: isPro,
+          tapeEntries,
+          isTapeLoading,
+          tapeFilterBillions,
+          onTapeFilterChange: handleTapeFilterChange,
           // W-A: advisory dock tab (pro-only). Widget 0.4.4 khong forward
           // advisorySession V2 -> bottom panel nen app map V2 sang legacy
           // AdvisoryResult truoc khi truyen (xem VNInvestSignalAdapter).
