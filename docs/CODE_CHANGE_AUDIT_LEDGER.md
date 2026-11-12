@@ -1,3 +1,23 @@
+## Entry 464: W-I drawing dock do widget render + bo mount DrawingDock chet (claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (1 prop + xoa dead wiring + 2 test). Evidence: docs/AUDIT_HANDOFF_WAVE1_20261112.md §4 W-I + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-I-PLAN) + B8 `ses_e305d84f0ffeKRDuqjkRq2jvLH` (NEED_REVISION, 0 blocker; MAJOR 2 + MINOR 3/4/5/7 da sua).
+- **PREMISE SAI (B3)**: drawing persistence DA BAT MAC DINH cua widget, khong can prop host nao — `useDrawingWorkspaceController` bat storage khi instance UNCONTROLLED (`isControlled = drawings !== void 0`; storage `enabled && !isControlled`), adapter mac dinh `DRAWINGS_KEY_PREFIX='rsc-drawings-v1'`, key `rsc-drawings-v1-<symbol>-<timeframe>`. Panel khong truyen `drawings` nen drawing da persist qua reload. Plan §2.10 "drawings reset khi reload" SAI.
+- **Thay doi**: `packages/web/src/components/VNStockChartPanel.js` (+`showDrawingDock: isPro` cho chart — widget chi render drawing dock khi host truyen prop nay; bo destructure + mount `<DrawingDock>` standalone: DrawingDockProps yeu cau isOpen/activeTab/labels/onClose/onTabChange nen thieu `isOpen` => component luon `return null` => pro user KHONG co drawing dock; bo prop `enableDrawingDock` (0 call site toan repo); comment khoa "khong truyen `drawings`" vi controlled-mode se TAT persistence) + S19/S20 source-scan + test moi `packages/web/src/components/__tests__/drawing-persistence.engine.component.test.tsx` (characterization: luu -> remount -> nap lai qua key that).
+- **Verify that**: `showDrawingDock?: boolean` dts `widget/dist/dts/widget/VNInvestChartsProps.d.ts:256`; bundle `jg()` tra null khi `!showDrawingDock && !forceOpen` va chi render khi `dock.isOpen` (`widget/dist/index.js`); `enabled && !isControlled` (`engine-react/dist/index.js`); `DRAWINGS_KEY_PREFIX` + `drawingsKey` (`engine-drawing/dist/index.js:26,34`); `enableDrawingDock` khong co consumer (grep toan repo; `StockDetailPage.tsx:279` khong truyen).
+- **Gates chay that**: vitest 21/21 (panel 20 + characterization 1) · vitest subset 13 file/113 test · `npx tsc --noEmit` exit 0 · tsc rieng cho file test (tsconfig.json exclude moi file `.test.` nen build KHONG type-check file test) exit 0 · `npm run build` PASS 32.4s · eslint 0 loi (4 warning co san) · check-ledger-entry PASS · check-multi-agent 0 loi. **CHUA CHAY**: full vitest 181 file (timeout infra truoc do), E2E staging Pro, BE pytest.
+- **Con lai (ngoai scope, ghi de biet)**: (1) nut toggle "drawing dock" van hien cho free tier nhung bam vo hieu — pre-existing, gate that la `showDock` + `dock.isOpen`; (2) widget khong forward public prop `onStorageError` => loi quota chi `console.warn`; (3) key drawing khong scope user/tenant => doi account tren cung browser van thay drawings cu (can Owner chot scope + migration truoc khi doi prefix); (4) `workspaceId` van la dead prop (de rieng W-L/W-M).
+- **CI `secret-scan` FAIL — PRE-EXISTING tren `origin/dev`, KHONG do slice nay**: run `43216316110` bao 4 hit `vni_***(len=77)` tai `docs/evidence/staging-pro-layout/facts20.json:7-10`. File **da co san trong `origin/dev`** (commit cua session `staging-pro-layout`) va **khong duoc sua** trong branch nay (`git diff --name-only origin/dev...HEAD` khong co file do). Chay local `node packages/web/scripts/scan-secrets.mjs` => cung 4 hit, cung 1 file, 0 hit tu file cua slice nay. => moi PR sau deu do CI do neu khong xu ly file do; can Owner/agent `staging-pro-layout` quyet dinh: rut blob khoi evidence + rotate key `vni_*` + purge history (khong tu sua trong slice nay — file thuoc claim khac).
+
+## Entry 463: Audit handoff Wave 1 + ke hoach thuc hien tiep (doc-only)
+
+- **Date**: 2026-11-12
+- **Type**: Doc-only audit + plan. Evidence: docs/AUDIT_HANDOFF_WAVE1_20261112.md (audit handoff + plan Wave 1 W-G..W-K) + docs/evidence/widget-feat-leverage/HANDOFF_WAVE1_20261112.md + JOURNAL_20261112.md.
+- **Thay doi**: tao docs/AUDIT_HANDOFF_WAVE1_20261112.md (audit 12 claim verify + 5 stale + 10 inventory dở + ke hoach 5 slice Wave 1 + guardrails + open questions). KHONG sua code production.
+- **Verify that**: tsc exit 0 · vitest panel 18/18 + utils 14/14 · check-ledger-entry 74/74 max=462 · check-multi-agent 0 loi. Wave 0 6/6 merged (PR #342-#347). Baseline "123/123 (17 file)" CHUA CHAY lai (timeout infra) — ghi CHUA CHAY trung thuc.
+- **Con lai (ngoai scope)**: W-G..W-K chua bat dau; smoke E2E staging Pro; pro-path live verify; registerProExtension; W-L/W-M/W-N Wave 2; pre-existing 2 lint errors.
+- **Next**: nhan skill project-lessons (tags widget) → B3 audit W-G → khai claim → TDD → code → gates → B8 → PR → merge.
+
 ## Entry 462: W-F upgrade URL + telemetry hook (Wave 0 DONE, claim done)
 
 - **Date**: 2026-11-12

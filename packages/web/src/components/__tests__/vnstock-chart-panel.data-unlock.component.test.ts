@@ -216,4 +216,31 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     const hook = readFileSync(resolve(HERE, "..", "..", "hooks", "useTrustTelemetry.js"), "utf8");
     expect(hook).toMatch(/trackWidgetEvent/);
   });
+  it("S19 — W-I: drawing dock phai do WIDGET render (showDrawingDock:isPro), KHONG mount DrawingDock standalone", () => {
+    // B3 2026-11-12: widget chi render drawing dock khi host truyen
+    // `showDrawingDock` (dts VNInvestChartsProps.d.ts:256; bundle: jg() tra
+    // null khi `!showDrawingDock && !forceOpen`). Panel truoc day mount
+    // <DrawingDock workspaceId=...> truc tiep — DrawingDockProps yeu cau
+    // isOpen/activeTab/labels/onClose/onTabChange nen thieu isOpen => render
+    // null => dock KHONG bao gio hien, pro user khong co drawing dock.
+    const panelS19 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS19).toMatch(/showDrawingDock:\s*isPro/);
+    expect(panelS19).not.toMatch(/widgetModule\?\.DrawingDock/);
+    expect(panelS19).not.toMatch(/panels\.push\(e\(DrawingDock/);
+  });
+  it("S20 — W-I: KHONG truyen drawings/defaultDrawings (controlled-mode se TAT persistence)", () => {
+    // Persistence mac dinh cua widget bat khi instance UNCONTROLLED
+    // (engine-react: isControlled = drawings !== void 0; storage bat khi
+    // `enabled && !isControlled`). Truyen `drawings` => tat luu drawing.
+    // KHONG truyen `drawingStorageKey`/`drawingStorageAdapter`/`instanceId`:
+    // doi prefix se ORPHAN drawings da luu duoi `rsc-drawings-v1-*` (can
+    // migration + Owner chot scope user/tenant truoc).
+    const panelS20 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS20).not.toMatch(/(^|[\s,{])drawings\s*:/m);
+    expect(panelS20).not.toMatch(/defaultDrawings\s*:/);
+    expect(panelS20).not.toMatch(/drawingStorageKey\s*:/);
+    expect(panelS20).not.toMatch(/drawingStorageAdapter\s*:/);
+    expect(panelS20).not.toMatch(/instanceId\s*:/);
+    expect(panelS20).toMatch(/drawingUiEnabled:\s*true/);
+  });
 });

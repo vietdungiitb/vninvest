@@ -45,7 +45,6 @@ export default function VNStockChartPanel({
   tier: tierProp = 'free',
   enablePaperTrade = false,
   enableSettings = false,
-  enableDrawingDock = false,
   // P3.4-license: offline license blob (vni1.*) do Owner cap theo tenant.
   // Widget tu verify ECDSA + unlock tier/caps (fail-closed khi thieu/sai).
   // KHONG hardcode blob o day — truyen tu caller khi co.
@@ -68,7 +67,8 @@ export default function VNStockChartPanel({
   // Tier gating (free / pro / enterprise). P3.4 + staging-pro: uu tien tier da
   // xac minh tu license offline (manh nhat), roi den `tier` prop neu caller truyen,
   // cuoi cung la Subscription.plan (fail-closed free).
-  // Pro+ features: drawing dock, paper trade, settings. Enterprise: + multi.
+  // Pro+ features: paper trade, settings, drawing dock (W-I: dock do WIDGET
+  // render qua prop `showDrawingDock` — xem comment ben prop). Enterprise: + multi.
   // (state verifiedTier KHAI O DAY, truoc moi cho doc — tranh TDZ ReferenceError.)
   const [verifiedTier, setVerifiedTier] = useState(null);
   const { tier: serverTier } = useTenantTier();
@@ -79,7 +79,6 @@ export default function VNStockChartPanel({
   const isEnterprise = tier === 'enterprise';
   const showPaperTrade = enablePaperTrade || isEnterprise;
   const showSettings = enableSettings || isPro;
-  const showDrawingDock = enableDrawingDock || isPro;
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
@@ -164,7 +163,13 @@ export default function VNStockChartPanel({
   const WidgetI18nProvider = widgetModule?.WidgetI18nProvider;
   const PaperTradePanel = widgetModule?.PaperTradePanel;
   const SettingsModal = widgetModule?.SettingsModal;
-  const DrawingDock = widgetModule?.DrawingDock;
+  // W-I: KHONG destructure `DrawingDock` standalone nua. Widget 0.4.4 render
+  // drawing dock qua prop `showDrawingDock` (dts VNInvestChartsProps.d.ts:256);
+  // bundle `jg()` tra null khi `!showDrawingDock && !forceOpen` VA chi render
+  // khi `dock.isOpen` = true. Ban dau panel mount <DrawingDock workspaceId=...>
+  // truc tiep nhung DrawingDockProps yeu cau isOpen/activeTab/labels/onClose/
+  // onTabChange -> thieu isOpen => component render null => pro user KHONG
+  // co drawing dock.
   // W-C: graceful degradation (dts widget 0.4.4). Lay qua optional-chain —
   // module null (import fail) thi undefined, re nhanh显式 ben duoi
   // (KHONG render bien co the-undefined — element chi tao o nhanh cuoi).
@@ -394,6 +399,17 @@ export default function VNStockChartPanel({
           range: activePeriod,
           onRangeChange: onPeriodChange,
           drawingUiEnabled: true,
+          // W-I: KHONG truyen `drawings`/`defaultDrawings` — widget chi bat storage
+          // khi instance UNCONTROLLED (controlled-mode se TAT persistence). Mac dinh
+          // luu drawing o localStorage key `rsc-drawings-v1-<symbol>-<timeframe>`
+          // nen drawings con nguyen sau khi reload trang.
+          // W-I: drawing dock (properties/objects/templates cua drawing) do WIDGET
+          // render. `showDrawingDock` chi mo QUYEN mo dock (noi dung dock nam
+          // trong RIGHT dock — widget render no o `showDock !== false`) nen gate
+          // that la `showDock: isPro` ben duoi. Prop nay de pro mo duoc dock khi
+          // toolbar toggle; free giu false. (Nut toggle van hien cho free la
+          // pre-existing, xem docs/AUDIT_HANDOFF_WAVE1_20261112.md §4 W-I.)
+          showDrawingDock: isPro,
           showToolbar: true,
           showHeader: true,
           showFooter: true,
@@ -479,9 +495,8 @@ onSymbolChange: (sym) => {
         : chartWithBoundary;
 
   const panels = [];
-  if (showDrawingDock && DrawingDock) {
-    panels.push(e(DrawingDock, { key: 'drawing-dock', workspaceId: workspaceId ?? `stock-${symbol}` }));
-  }
+  // W-I: bo mount `<DrawingDock>` standalone (luon render null — thieu `isOpen`).
+  // Drawing dock that render THAT do widget qua prop `showDrawingDock` ben tren.
   if (showPaperTrade && PaperTradePanel) {
     panels.push(e(PaperTradePanel, { key: 'paper-trade', symbol }));
   }
