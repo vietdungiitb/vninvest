@@ -7,6 +7,11 @@ import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewp
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
 import { useTenantTier } from '../adapters/useTenantTier.js';
+import { ensureLicenseTrustAnchor } from '../lib/licenseTrustAnchor.js';
+
+// Trust anchor cho key license offline (JWK public kid=primary, nhung vao bundle
+// la chu y — khong phai secret). Nap 1 lan luc module load, truoc khi widget verify.
+ensureLicenseTrustAnchor();
 import './VNStockChartPanel.css';
 
 const e = createElement;
@@ -58,11 +63,16 @@ export default function VNStockChartPanel({
     ? "light"
     : "dark";
 
-  // Tier gating (free / pro / enterprise). P3.4: uu tien `tier` prop neu
-  // caller truyen; khong thi doc Subscription.plan (fail-closed free).
+  // Tier gating (free / pro / enterprise). P3.4 + staging-pro: uu tien tier da
+  // xac minh tu license offline (manh nhat), roi den `tier` prop neu caller truyen,
+  // cuoi cung la Subscription.plan (fail-closed free).
   // Pro+ features: drawing dock, paper trade, settings. Enterprise: + multi.
+  // (state verifiedTier KHAI O DAY, truoc moi cho doc — tranh TDZ ReferenceError.)
+  const [verifiedTier, setVerifiedTier] = useState(null);
   const { tier: serverTier } = useTenantTier();
-  const tier = tierProp && tierProp !== 'free' ? tierProp : serverTier;
+  const tier = verifiedTier
+    ?? (tierProp && tierProp !== 'free' ? tierProp : null)
+    ?? serverTier;
   const isPro = tier === 'pro' || tier === 'enterprise';
   const isEnterprise = tier === 'enterprise';
   const showPaperTrade = enablePaperTrade || isEnterprise;
@@ -71,6 +81,22 @@ export default function VNStockChartPanel({
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
+  // P34.4-license (staging Pro): tier xac minh tu license offline (ECDSA verify
+  // qua engine-core + trust anchor da nap o module scope). Reset ve null khi
+  // mat key / verify khong ra pro (khong giu tier cu — tranh keo dai quyen).
+  useEffect(() => {
+    if (!licenseKey) { setVerifiedTier(null); return; }
+    let cancelled = false;
+    ensureLicenseTrustAnchor();
+    import('@vninvestcharts/engine-core')
+      .then(({ verifyLicenseKey }) => verifyLicenseKey(licenseKey))
+      .then((v) => {
+        if (cancelled) return;
+        setVerifiedTier(v && (v.tier === 'pro' || v.tier === 'enterprise') ? v.tier : null);
+      })
+      .catch(() => { if (!cancelled) setVerifiedTier(null); });
+    return () => { cancelled = true; };
+  }, [licenseKey]);
   const chartContainerRef = useRef(null);
   // C2: defer widget chunk (2.1MB) cho tới khi panel gần viewport.
   // shortcut: khung giữ spinner khi chưa vào viewport; nâng cấp sau nếu cần placeholder "cuộn để tải".
@@ -264,9 +290,10 @@ export default function VNStockChartPanel({
           showToolbar: true,
           showHeader: true,
           showFooter: true,
-          // An right-dock rail (tier free hien upsell khoa "Nang cap Pro" —
-          // thua, gay roi; widget gate: showDock === false thi khong render).
-          showDock: false,
+          // Right dock mo theo tier: pro thay duoc DataWindow (HLOC hover inspector)
+          // + Watchlist + tinh nang dock; free giu an de tranh upsell lock "Nang cap Pro".
+          // (Widget gate: showDock === false thi khong render.)
+          showDock: isPro,
           showNonTradingDays: false,
           workspaceId: workspaceId ?? `stock-${symbol}`,
           // Demo-parity: tape side panel TAT (an chieu rong + de Ban/Mua).
@@ -322,7 +349,13 @@ onSymbolChange: (sym) => {
 
   return e(
     'div',
-    { ref: chartContainerRef, className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
+    {
+      ref: chartContainerRef,
+      // Quan sat runtime: expose tier len DOM (chi chuoi tier, khong secret)
+      // de E2E/Playwright doc duoc ma khong can React DevTools.
+      'data-tier': tier,
+      className: 'vnstock-chart-panel flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative',
+    },
     e('div', { className: 'flex-1 h-full relative' }, chartTree),
     ...panels,
   );

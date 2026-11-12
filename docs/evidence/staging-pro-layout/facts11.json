@@ -1,0 +1,109 @@
+{
+ "chain": [
+  {
+   "tag": "SPAN",
+   "cls": "xd",
+   "disp": "inline",
+   "over": "visible",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 345,
+   "y": 598,
+   "w": 58,
+   "h": 13
+  },
+  {
+   "tag": "SPAN",
+   "cls": "",
+   "disp": "block",
+   "over": "visible",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 338,
+   "y": 597,
+   "w": 66,
+   "h": 16
+  },
+  {
+   "tag": "DIV",
+   "cls": "pd",
+   "disp": "flex",
+   "over": "visible",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 338,
+   "y": 597,
+   "w": 427,
+   "h": 16
+  },
+  {
+   "tag": "DIV",
+   "cls": "Or td",
+   "disp": "flex",
+   "over": "visible",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 200,
+   "y": 593,
+   "w": 571,
+   "h": 24
+  },
+  {
+   "tag": "DIV",
+   "cls": "nd",
+   "disp": "flex",
+   "over": "visible",
+   "op": "0",
+   "vis": "visible",
+   "z": "25",
+   "x": 200,
+   "y": 593,
+   "w": 571,
+   "h": 90
+  },
+  {
+   "tag": "DIV",
+   "cls": "rsc-engine-surface",
+   "disp": "flex",
+   "over": "visible",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 192,
+   "y": 585,
+   "w": 1226,
+   "h": 536
+  },
+  {
+   "tag": "DIV",
+   "cls": "",
+   "disp": "flex",
+   "over": "hidden",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 192,
+   "y": 585,
+   "w": 1226,
+   "h": 562
+  },
+  {
+   "tag": "DIV",
+   "cls": "",
+   "disp": "flex",
+   "over": "hidden",
+   "op": "1",
+   "vis": "visible",
+   "z": "auto",
+   "x": 182,
+   "y": 585,
+   "w": 1236,
+   "h": 562
+  }
+ ],
+ "targetHTML": "<span class=\"xd\">141,000.00</span>"
+}

@@ -1,9 +1,10 @@
-/* VNStockChartPanel — an HAN 3 dong stacked `.Gc` (VN labels + gear).
- * Giu lai inline row (ten ngan + gia tri live) nhu demo.
- * Ly do: 2 lop legend trung nhau; user chon giu inline, bo stacked.
- * `.Gc` = indicatorRow hash cua build widget 0.4.1 (style map trong
- * dist/index.js; package.json pin exact) — bump widget phai verify lai.
- * Scope hep trong .vnstock-chart-panel. */
-.vnstock-chart-panel .rsc-engine-surface .Gc {
-  display: none !important;
+/* VNStockChartPanel — ep statusline widget LUON thay duoc.
+ * Ly do: widget 0.4.4 dat inline `opacity: 0` cho container statusline
+ * (`[data-rsc-chart-status-line]`) khi `statusLine.backgroundOpacity` resolve ve 0
+ * (default trong dist). Khong co cach truyen prop de doi — chi co the override CSS.
+ * Dung attribute on dinh `data-rsc-chart-status-line` (khong phai class hash ngan
+ * de vo khi bump nhu hack cu truoc day — da xoa vi 0 match tren 0.4.4).
+ * `!important` la bat buoc de thang inline style cua widget. */
+.vnstock-chart-panel [data-rsc-chart-status-line="true"] {
+  opacity: 1 !important;
 }

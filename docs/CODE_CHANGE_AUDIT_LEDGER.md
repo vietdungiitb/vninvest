@@ -1,3 +1,87 @@
+## Entry 455: Staging pro layout — dock theo tier + statusline hien + xac nhan E2E (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: FE (panel + CSS + test). Evidence: docs/PLAN_STAGING_PRO_LAYOUT_20261111.md + docs/evidence/staging-pro-layout/ (15+ facts JSON + screenshot truoc/sau + demo doi chung) + B3 plan-audit + B3 plan-audit-tier (O1 TDZ/O2 stale da fix) + B8 re-audit (PASS).
+- **Do that bang Playwright tren staging that**: dock rail an (showDock:false cung) → mo theo isPro; `.Gc` 0 match tren widget 0.4.4 (hack chet, xoa); statusline opacity:0 do `backgroundOpacity` default 0 cua widget → override `!important` qua `[data-rsc-chart-status-line]` (da verify opacity 1 tren staging); app tier tu `verifyLicenseKey` + trust anchor JWK primary (data-tier=pro do that). Demo charts.edusuccess.vn lam doi chung (legend 8, OHLC thay doi khi hover).
+- **Gates chay that**: vitest 12/12, tsc 0, local build 0, staging rebuild --no-cache + up + E2E verify (dock tabs hien, flyout mo duoc, HLOC update khi hover). PR merge-commit (cho Owner merge).
+- **Con lai (ngoai scope / can Owner)**: dải trai la app-shell center (khong phai loi widget — khong dung); data-tier attr giu lai lam moc E2E; V7 revoke key lo trong chat.
+
+## Entry 454: GOT GOC that — JWK phan phoi sai 1 ky tu (QW), live derive la QL (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause that + fix 1 char. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §8 (dinh chinh).
+- **Ket qua (do may, khong doan)**: live-derive tu private key tren VPS = x `gRQL…` (QL); moi ban phan phoi (chat/E2/repo/bundle) = `gRQW…` (QW) — lech 1 ky tu. Key cu (byte-may .bak) + key moi (byte-may bundle, sha 765a1af3) DEU PRO duoi JWK-QL, NULL duoi JWK-QW. Gia thiet xoay khoa/2 signer CHET: 1 khoa duy nhat, chi sai JWK. Thu hoi dien dat Entry 447 (lan probe dau khong tai hien duoc).
+- **Fix**: 1 char QW→QL trong `packages/web/src/lib/licenseTrustAnchor.js` (S10 xanh, tsc 0); tiep: apply len VPS + rebuild --no-cache + redeploy + verify bundle (JWK QL 1 hit, key fp khop) roi nhin screenshot Pro. De nghi vnsaas: sua E2/E3 + them gate so may (khong so mat) khi phan phoi JWK.
+
+## Entry 453: T4 NULL tren byte chuan — forensics server (B9, giu nguyen hien truong)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §9.
+- **Ket qua**: key moi byte bundle (sha 765a1af3 khop fp luc cap): anchor du 4 kid; payload pro/exp/k=primary/p=widget/serial 3428f9a9/d=[]/40 caps; 4 gate TRUE; verify NULL (noopt + docker host). Da tra 1 dong NULL nhu hen. Forensics read-only VPS: 1 API container (mount /opt/vnsaas/secrets→/run/secrets, 1 file duy nhat 0400 tu 13-10), khong e2e container nao chay — dong moi con duong "file/container khac" tu phia toi.
+- **Next (vnsaas/Owner)**: forensics mount/worker/audit-POST + V7 (can PAT Owner). GIU NGUYEN hien truong: khong xoay/re-issue/redeploy. Staging khong the Pro toi khi xong. Secret hygiene nhu cac Entry truoc (key tam xoa het; bao cao chi hash/payload).
+
+## Entry 452: Tra T1+T2+T3 + so scheme ky/verify — green-light T4 (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §8. Tra loi docs/AUDIT_LICENSE_KEY_MISMATCH_20261111.md (vnsaas).
+- **T1**: x/y/kid trong harness byte-identical E2 (doc file that). **T2**: payload key moi (khong sig): pro/e=2026-11-18/k=primary/p=widget/40 caps/serial 3428f9a9/d=[]; byte test = byte bundle (sha fp khop). **T3**: anchor co tac dung (kids before/after); gates e/t/p/k deu TRUE; verify van NULL (3 opts). **Scheme**: server ky raw JSON sort_keys + P1363; engine verify truc tiep payloadBytes + thu raw-as-is truoc — TUONG THICH, khong canonicalization gap (key cu tung PRO tren dung code nay).
+- **Nhan loi L-V02**: rut lai ket luan "private khac ky" (suy khi chua loai tru 5 nhanh). Con lai duy nhat: chu ky khong khop voi JWK nay tren byte nay — diem mu o LAN CAP. **Green-light T4** cua vnsaas (key moi tren staging + test ngay trong harness T3): PRO ⇒ key 12:49 bad instance, revoke ca 2, dong; NULL ⇒ loi server-side that.
+- **Secret hygiene**: key tam xoa het sau moi lan dung; bao cao chi hash/payload (khong sig), JWK public; file .tmp khong con ton tai (da doi chieu dir).
+
+## Entry 451: Key moi (3428f9a9) verify NULL — issuance key khac JWK da publish (quyet dinh, B9)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §7.
+- **Ket qua**: key moi byte-exact tren bundle (sha256 khop fp luc cap `765a1af3…`, da tru newline khi hash) parse OK (`k=primary`, serial 3428f9a9, pro, 40 caps) NHUNG verify NULL voi JWK primary da publish (do 2 lan doc lap). Doi chung: key cu (227a…, cung kid) verify PRO voi dung JWK do. Ket luan: JWK publish khop khoa ky CU; key moi do private key KHAC ky nhung van dan nhan primary (rotation khong publish hoac nhieu khoa ky song song). Staging/app khong the Pro voi byte nay bang moi duong offline.
+- **Next (vnsaas, chon 1)**: (a) publish JWK public cua DUNG khoa dang ky; (b) re-issue key bang khoa ky cu. Sau do toi verify mat ma lai tren byte bundle (phai PRO) moi tuyen bo. Secret hygiene nhu Entry 448-450 (key tam da xoa het; bao cao chi hash/serial, khong key).
+
+## Entry 450: Key staging verify NULL — paste chain corrupt, can machine-channel re-issue (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Root-cause (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §6.
+- **Ket qua**: key byte-exact tu bundle staging (sha256 `e4e38a90…`, khop env VPS) verify offline voi JWK `primary` = NULL; parse OK nen payload dung, chi chu ky khong khop. Ban copy dau (verify PRO) vs 2 ban sau (NULL, hash khac nhau) chung minh chuoi 1091 ky tu qua chat/paste tay la kenh loi. App/widget/engine/trust-anchor/JWK/wiring deu da xac minh co mat — khong phai bug code.
+- **Next (Owner/vnsaas)**: re-issue key + ghi TRUC TIEP vao compose.staging.env tren VPS bang lenh (khong paste qua chat); bao toi rebuild --no-cache + verify mat ma tren byte bundle (phai PRO) moi tuyen bo xong. Secret hygiene nhu Entry 448/449 (file tam da xoa het).
+
+## Entry 450: Boot-inject JWK primary + licenseKey tu env — staging mo Pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: FE (module moi + wiring + Dockerfile/compose/example). Evidence: docs/PLAN_STAGING_PRO_JWK_20261111.md + docs/evidence/staging-pro-jwk/plan-audit.md (B3 5/6 PASS + O1 da sua) + re-audit se bo sung.
+- **Ban giao**: `src/lib/licenseTrustAnchor.js` (JWK public kid=primary, idempotent `ensureLicenseTrustAnchor` → `addLicensePublicKey`); `VNStockChartPanel.js` goi 1 lan luc module load; `StockDetailPage.tsx` truyen `licenseKey: import.meta.env.VITE_VNINVEST_LICENSE_KEY ?? undefined`; Dockerfile ARG+ENV; compose.staging.yml build.arg; compose.staging.env.example dong rong (B3 O1). Test S10 GREEN, tsc 0, build 0.
+- **Next**: Owner merge PR bump (feat/widget-bump-044) TRUOC (staging can engine 0.5.6 W1), sau do merge PR nay, dat key vao compose.staging.env tren VPS (Owner tu lam hoac uy quyen SSH), `deploy-staging.sh`, verify Pro bang Playwright tren docker.edusuccess.vn (khong doan).
+- **Secret hygiene**: key KHONG vao repo/compose.example/Dockerfile (chi env staging tren VPS); JWK public nhung vao bundle la chu y (khong phai secret).
+
+## Entry 449: Proof duong tinh key pro — inject JWK primary → verify PASS tier pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only. Evidence: docs/evidence/widget-license-verify/verify-20261111.md §5.
+- **Ket qua**: `verifyLicenseKey` truoc inject = NULL; sau `addLicensePublicKey` (JWK public kid=primary do vnsaas cap) = `{tier: pro, product: vninvestcharts_widget}`. Chu ky hop le — chot duy nhat la trust anchor. Khong rebuild/redeploy.
+- **Con lai**: boot-inject JWK vao demo/app (code change nho, tach slice khi Owner chot) + do runtime tier observables tren link `?pat=`. Secret hygiene nhu Entry 448 (key qua file tam, da xoa; JWK la public).
+
+## Entry 448: Verify key pro that — offline ECDSA NULL voi widget stock (kid primary), link ?pat= can host/server leg (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Verify-only (khong sua code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md.
+- **Ket qua**: `parseLicenseKey` OK (`t=pro`, `p=vninvestcharts_widget`, `k=primary`, `e=2026-11-18`, 40 caps, serial `227a605a…`); `verifyLicenseKey` (engine-core 0.5.6 stock) = NULL. Root cause tai `dist/index.js` vung verify: `k=primary` loc `activePublicKeys` (3 kid nhung, 0 hit `primary`) → `candidates` rong → `return null` truoc khi thu chu ky. Rao product (W1) xong; rao kid nguyen (F-VFY-02 dung).
+- **Ket luan**: widget stock KHONG mo Pro offline voi key nay. Link `?pat=` chi co nghia neu host tiem JWK primary (a), leg server-side chap nhan key (b), hoac roi demo bypass (c = fail-open, phai dong). Next: mo link tren browser doi chieu tier observables + hoi vnsaas/host la duong nao; key het han 2026-11-18, can nhac revoke/re-issue (V7) sau verify.
+- **Secret hygiene**: key chi qua file tam ngoai repo (`C:\Temp\vni_key.tmp`, da xoa) + khong paste vao shell (tranh PSReadLine history); doc/ledger/claim KHONG chua key (grep `vni1.` = 0 hit).
+- **Gates**: khong chay (verify-only, khong doi code); `check-multi-agent` van PASS tu slice truoc; KHONG bao PASS gia.
+
+## Entry 447: widget-pro 0.4.3 -> 0.4.4 (upstream fix pine.worker) — build xanh, unblock tier pro (B9, claim done)
+
+- **Date**: 2026-11-11
+- **Type**: Deps bump 1 pin (widget-pro). Evidence: docs/PLAN_WIDGET_BUMP_044_20261111.md §7 + docs/evidence/widget-bump-044p/plan-audit.md (B3 PASS) + re-audit.md (B8 ĐẠT).
+- **Root cause da fix**: `widget-pro@0.4.4` ship `dist/pinescript/pine.worker.js` (745,571 bytes) + `register.js` chi con reference `.js` (B3 verify tarball doc lap). Het loi UNRESOLVED_ENTRY.
+- **Gates**: `npm install` exit 0 (token project Owner cap lai, da tra `.npmrc` ve placeholder — KHONG commit secret); `npm run build` exit 0 (`tsc && vite build`, built 35.07s, 0 error TS); `npx tsc --noEmit` exit 0 (bao trong build); `check-multi-agent` exit 0. E2E/staging = CHUA CHAY (ticket tiep theo).
+- **Next**: E2E pro ca 2 leg + duong deny tren staging; mo PR sau khi Owner duyet (hien chi push branch).
+
+## Entry 446: Bump @vninvestcharts/* (engine 0.5.6, widget 0.4.4, widget-pro 0.4.3) — install+tsc xanh, build BLOCKED upstream (B9, claim done, cho widget team fix)
+
+- **Date**: 2026-11-11
+- **Type**: Deps bump (package.json 5 pins + lock). Evidence: docs/PLAN_WIDGET_BUMP_044_20261111.md (§5+§6) + docs/evidence/widget-bump-044/plan-audit.md (B3 PASS) + re-audit.md (B8 ĐẠT).
+- **Verify that**: registry GH 0.4.4 (`2026-11-11T00:16:58Z`)/0.5.6/0.4.3; tarball 0.4.4 co d.ts `fetchSubscriptionTier`/`fetchSaasBillingTier`/`ensureMachineActivationOnce`/`showLegend` + JS runtime `billing/subscription` 3, `/api/v1/activations` 3, `saas-billing` 3, `showLegend` 18; node_modules cai dung 0.4.4/0.5.6/0.4.3.
+- **Gates**: `npm install` exit 0 (Owner duyet; token project `.npmrc` chet → Owner refresh, token that tuyet doi KHONG commit — `.npmrc` da tra ve placeholder `${GITHUB_TOKEN}`); `npx tsc --noEmit` exit 0; `check-multi-agent` exit 0; `npm run build` FAIL exit 1 — root cause upstream: `widget@0.4.4` chunk-KAHILD6F import dong `@vninvestcharts/widget-pro/register`, `widget-pro` (0.4.1+0.4.3) `register.js` tao worker tu `./pinescript/pine.worker.ts` nhung KHONG ship `dist/pinescript/`; `widget@0.4.1` khong co import nay nen build cu xanh. Owner chot CHO widget team fix (khong stub, khong revert). Build/E2E = CHUA CHAY.
+- **Next**: widget team release ban va → bump tiep → build + E2E pro ca 2 leg + duong deny → PR.
+
 ## Entry 445: P3.4 license passthrough (licenseKey prop + secret-guard) — app-side readiness, pro-path BLOCKED (B9, claim done + handoff)
 
 - **Date**: 2026-11-10

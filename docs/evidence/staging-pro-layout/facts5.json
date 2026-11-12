@@ -1,0 +1,16 @@
+{
+ "gripChain": [
+  "MAIN.flex-1.p-[var(--sp-6,1.5rem)].overflow-auto {\"w\":1600,\"h\":2926,\"x\":0}",
+  "DIV.flex-1.flex.flex-col {\"w\":1600,\"h\":2998,\"x\":0}",
+  "DIV.min-h-screen.bg-[var(--color-bg-primary)].text-slate-100 {\"w\":1600,\"h\":2998,\"x\":0}",
+  "DIV. {\"w\":1600,\"h\":2998,\"x\":0}",
+  "BODY.bg-gray-950.text-gray-100 {\"w\":1600,\"h\":2998,\"x\":0}",
+  "HTML. {\"w\":1600,\"h\":2998,\"x\":0}"
+ ],
+ "asides": [
+  "ASIDE.fixed top-0 bottom-0 left-0 z-50 flex flex-col h-screen bg-slate-900 border-r border-slate-800 trans w=288",
+  "NAV.flex-1 overflow-y-auto p-4 space-y-1 w=287",
+  "NAV.hidden md:flex items-center gap-2 text-sm text-slate-400 w=112",
+  "ASIDE.border-t border-slate-800 bg-slate-950/70 p-3 lg:w-[300px] lg:border-l lg:border-t-0 w=300"
+ ]
+}

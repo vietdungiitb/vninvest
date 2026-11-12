@@ -1,0 +1,40 @@
+{
+ "facts": {
+  "ohlcHeaderCount": 0,
+  "statusLineCount": 0,
+  "statusLineText": [],
+  "leftEdge": [
+   {
+    "y": 300,
+    "chain": "MAIN.flex-1.p-[var(--sp-6,1.5rem)].overflow-auto < DIV.flex-1.flex.flex-col < DIV.min-h-screen.bg-[var(--color-bg-primary)].text-slate-100 < DIV. < BODY.bg-gray-950.text-gray-100"
+   },
+   {
+    "y": 450,
+    "chain": "MAIN.flex-1.p-[var(--sp-6,1.5rem)].overflow-auto < DIV.flex-1.flex.flex-col < DIV.min-h-screen.bg-[var(--color-bg-primary)].text-slate-100 < DIV. < BODY.bg-gray-950.text-gray-100"
+   },
+   {
+    "y": 600,
+    "chain": "MAIN.flex-1.p-[var(--sp-6,1.5rem)].overflow-auto < DIV.flex-1.flex.flex-col < DIV.min-h-screen.bg-[var(--color-bg-primary)].text-slate-100 < DIV. < BODY.bg-gray-950.text-gray-100"
+   },
+   {
+    "y": 700,
+    "chain": "MAIN.flex-1.p-[var(--sp-6,1.5rem)].overflow-auto < DIV.flex-1.flex.flex-col < DIV.min-h-screen.bg-[var(--color-bg-primary)].text-slate-100 < DIV. < BODY.bg-gray-950.text-gray-100"
+   }
+  ],
+  "lsKeys": [
+   "vninvestcharts:vnsc_overlayStyle",
+   "vninvestcharts:vnsc_settings_overlayStyle",
+   "vninvestcharts-widget-comparison-overlays",
+   "vnsc_settings_overlayStyle",
+   "vninvestcharts:vninvest:chart-state:CAR"
+  ],
+  "lsVals": {
+   "vninvestcharts:vnsc_overlayStyle": "candle",
+   "vninvestcharts:vnsc_settings_overlayStyle": "candle",
+   "vninvestcharts-widget-comparison-overlays": "[]",
+   "vnsc_settings_overlayStyle": "candle",
+   "vninvestcharts:vninvest:chart-state:CAR": "{\"range\":\"6M\",\"xExtents\":[1778432400000,1794330000000]}"
+  }
+ },
+ "hoverStatus": []
+}

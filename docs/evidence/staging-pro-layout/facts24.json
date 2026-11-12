@@ -1,0 +1,15 @@
+{
+ "testids": [
+  "toolbar-dock-toggle @x=145 w=32 h=23 vis=true",
+  "drawing-dock-toggle @x=145 w=32 h=23 vis=true",
+  "dock-strip-pin-toggle @x=1424 w=32 h=32 vis=true",
+  "dock-tab-watchlist @x=1424 w=32 h=32 vis=true",
+  "dock-tab-alerts @x=1424 w=32 h=32 vis=true",
+  "dock-tab-dataWindow @x=1424 w=32 h=32 vis=true",
+  "dock-tab-objects @x=1424 w=32 h=32 vis=true",
+  "dock-tab-tape @x=1424 w=32 h=32 vis=true",
+  "dock-tab-advisory @x=1424 w=32 h=32 vis=true",
+  "dock-tab-orderTicket @x=1424 w=32 h=32 vis=true"
+ ],
+ "dockDivs": []
+}

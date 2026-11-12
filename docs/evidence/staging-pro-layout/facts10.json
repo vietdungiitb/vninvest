@@ -1,0 +1,84 @@
+{
+ "row": [
+  {
+   "x": 0,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 4,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 8,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 12,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 16,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 20,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 24,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 28,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 32,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 36,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 40,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 44,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 48,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 52,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 56,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  },
+  {
+   "x": 60,
+   "top": "MAIN",
+   "extra": "bg=rgba(0, 0, 0, 0) bl=0px/rgb(30, 41, 59)"
+  }
+ ]
+}
