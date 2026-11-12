@@ -106,6 +106,48 @@ function advisorySign(decision) {
 }
 
 /**
+ * W-B: nguong value (VND) de danh dau 1 tape row la whale.
+ * App-side enrichment co chu y — widget native `mapNativeTape` luon set
+ * `is_whale: false` (KHONG nham voi prop `whaleThreshold` cua whale overlay).
+ */
+export const TAPE_WHALE_THRESHOLD_VND = 5e9;
+
+function asFiniteNumber(value) {
+  const n = typeof value === 'string' || typeof value === 'number' ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * W-B: map BE intraday-tape trades -> widget TapeEntry.
+ * Mirror widget `mapNativeTape` (side lower->buy/sell else unknown;
+ * value=price*volume; id=ts|price|volume|index) + app enrichment is_whale.
+ *
+ * @param {Array} trades - BE `trades` ({time, ts, price, volume, side, ...}).
+ * @returns {Array} TapeEntry[] {id, ts, price, volume, value, side, is_whale}.
+ */
+export function mapTapeTradesToEntries(trades) {
+  if (!Array.isArray(trades)) return [];
+  return trades.map((t, index) => {
+    const trade = t && typeof t === 'object' ? t : {};
+    const price = asFiniteNumber(trade.price);
+    const volume = asFiniteNumber(trade.volume);
+    const sideRaw = typeof trade.side === 'string' ? trade.side.toLowerCase() : '';
+    const side = sideRaw === 'buy' || sideRaw === 'sell' ? sideRaw : 'unknown';
+    const ts = typeof trade.ts === 'string' ? trade.ts : typeof trade.time === 'string' ? trade.time : '';
+    const value = price * volume;
+    return {
+      id: `${ts}|${price}|${volume}|${index}`,
+      ts,
+      price,
+      volume,
+      value,
+      side,
+      is_whale: value >= TAPE_WHALE_THRESHOLD_VND,
+    };
+  });
+}
+
+/**
  * W-A: map native V2 advisory session -> legacy widget AdvisoryResult.
  * Widget 0.4.4 khong forward `advisorySession` xuong bottom panel
  * (chi truyen legacy `result`), nen app map truoc khi truyen prop.
