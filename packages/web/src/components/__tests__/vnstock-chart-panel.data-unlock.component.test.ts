@@ -232,9 +232,15 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     // Persistence mac dinh cua widget bat khi instance UNCONTROLLED
     // (engine-react: isControlled = drawings !== void 0; storage bat khi
     // `enabled && !isControlled`). Truyen `drawings` => tat luu drawing.
+    // KHONG truyen `drawingStorageKey`/`drawingStorageAdapter`/`instanceId`:
+    // doi prefix se ORPHAN drawings da luu duoi `rsc-drawings-v1-*` (can
+    // migration + Owner chot scope user/tenant truoc).
     const panelS20 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
     expect(panelS20).not.toMatch(/(^|[\s,{])drawings\s*:/m);
     expect(panelS20).not.toMatch(/defaultDrawings\s*:/);
+    expect(panelS20).not.toMatch(/drawingStorageKey\s*:/);
+    expect(panelS20).not.toMatch(/drawingStorageAdapter\s*:/);
+    expect(panelS20).not.toMatch(/instanceId\s*:/);
     expect(panelS20).toMatch(/drawingUiEnabled:\s*true/);
   });
 });

@@ -10,6 +10,9 @@
  * (`useDrawingWorkspaceController`), lưu 1 drawing, remount (mô phỏng reload)
  * và kiểm tra drawing được nạp lại. KHÔNG sửa package widget (repo khác) —
  * chỉ verify hành vi từ phía app + khoá key để phát hiện đổi prefix ngoài ý muốn.
+ *
+ * ⚠ `packages/web/tsconfig.json` exclude mọi file `src` có đuôi `.test.` ⇒ file
+ * này KHÔNG được `npm run build` type-check. Phải tsc riêng (xem JOURNAL W-I).
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
@@ -54,17 +57,22 @@ describe("W-I — drawing persistence (adapter mặc định của widget)", () 
   });
 
   it("P1 — lưu theo symbol|timeframe rồi nạp lại sau khi remount", async () => {
-    let controller: DrawingWorkspaceController | null = null;
-    const first = render(<Harness capture={(c) => { controller = c; }} />);
+    // Holder object (không phải `let` + narrow): TS không narrow biến được gán
+    // trong callback nên `x?.state` bị suy ra thành `never`.
+    const first: { current: DrawingWorkspaceController | null } = { current: null };
+    const view = render(<Harness capture={(c) => { first.current = c; }} />);
 
     await act(async () => {
-      controller?.interaction.replaceDrawings([makeDrawing("d-wi-1")]);
+      first.current?.interaction.replaceDrawings([makeDrawing("d-wi-1")]);
     });
-    // useDrawingStorage debounce 300ms roi moi ghi ra storage.
+    // useDrawingStorage debounce 300ms rồi mới ghi ra storage — poll thay vì
+    // sleep cố định để không phụ thuộc timing máy (margin 100ms dễ flaky).
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      for (let i = 0; i < 40 && !localStorage.getItem(STORAGE_KEY); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
     });
-    first.unmount();
+    view.unmount();
 
     const raw = localStorage.getItem(STORAGE_KEY);
     expect(raw).toBeTruthy();
@@ -74,11 +82,12 @@ describe("W-I — drawing persistence (adapter mặc định của widget)", () 
     expect(parsed.drawings[0].id).toBe("d-wi-1");
 
     // Remount = mô phỏng reload trang: drawing phải được nạp lại từ storage.
-    let reloaded: DrawingWorkspaceController | null = null;
-    render(<Harness capture={(c) => { reloaded = c; }} />);
+    const reloaded: { current: DrawingWorkspaceController | null } = { current: null };
+    render(<Harness capture={(c) => { reloaded.current = c; }} />);
     await act(async () => {});
 
-    expect(reloaded?.state.drawings).toHaveLength(1);
-    expect(reloaded?.state.drawings[0].id).toBe("d-wi-1");
+    expect(reloaded.current).not.toBeNull();
+    expect(reloaded.current?.state.drawings).toHaveLength(1);
+    expect(reloaded.current?.state.drawings[0].id).toBe("d-wi-1");
   });
 });

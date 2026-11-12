@@ -163,12 +163,13 @@ export default function VNStockChartPanel({
   const WidgetI18nProvider = widgetModule?.WidgetI18nProvider;
   const PaperTradePanel = widgetModule?.PaperTradePanel;
   const SettingsModal = widgetModule?.SettingsModal;
-  // W-I: KHONG destructure `DrawingDock` standalone nua — widget 0.4.4 chi render
-  // drawing dock khi host truyen prop `showDrawingDock` (dts
-  // VNInvestChartsProps.d.ts:256; bundle: jg() tra null khi `!showDrawingDock`).
-  // Ban dau panel mount <DrawingDock workspaceId=...> truc tiep nhung
-  // DrawingDockProps yeu cau isOpen/activeTab/labels/onClose/onTabChange ->
-  // thieu isOpen => component render null => pro user KHONG co drawing dock.
+  // W-I: KHONG destructure `DrawingDock` standalone nua. Widget 0.4.4 render
+  // drawing dock qua prop `showDrawingDock` (dts VNInvestChartsProps.d.ts:256);
+  // bundle `jg()` tra null khi `!showDrawingDock && !forceOpen` VA chi render
+  // khi `dock.isOpen` = true. Ban dau panel mount <DrawingDock workspaceId=...>
+  // truc tiep nhung DrawingDockProps yeu cau isOpen/activeTab/labels/onClose/
+  // onTabChange -> thieu isOpen => component render null => pro user KHONG
+  // co drawing dock.
   // W-C: graceful degradation (dts widget 0.4.4). Lay qua optional-chain —
   // module null (import fail) thi undefined, re nhanh显式 ben duoi
   // (KHONG render bien co the-undefined — element chi tao o nhanh cuoi).
@@ -403,8 +404,11 @@ export default function VNStockChartPanel({
           // luu drawing o localStorage key `rsc-drawings-v1-<symbol>-<timeframe>`
           // nen drawings con nguyen sau khi reload trang.
           // W-I: drawing dock (properties/objects/templates cua drawing) do WIDGET
-          // render — chi mo khi host truyen `showDrawingDock`. Gate theo tier
-          // giong dock/tape/advisory/measurement: pro+ moi co, free giu an.
+          // render. `showDrawingDock` chi mo QUYEN mo dock (noi dung dock nam
+          // trong RIGHT dock — widget render no o `showDock !== false`) nen gate
+          // that la `showDock: isPro` ben duoi. Prop nay de pro mo duoc dock khi
+          // toolbar toggle; free giu false. (Nut toggle van hien cho free la
+          // pre-existing, xem docs/AUDIT_HANDOFF_WAVE1_20261112.md §4 W-I.)
           showDrawingDock: isPro,
           showToolbar: true,
           showHeader: true,

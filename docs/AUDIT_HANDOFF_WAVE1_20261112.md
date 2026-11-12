@@ -191,6 +191,12 @@ Owner đã chốt scope (không hỏi lại). Chạy theo vòng kín `workflow-d
 
 **Rủi ro**: thấp. Không đổi hành vi người dùng (dock chết vốn render null). Không đụng key lưu trữ.
 
+**B8 verdict (subagent read-only `ses_e305d84f0ffeKRDuqjkRq2jvLH`, 2026-11-12): NEED_REVISION — 0 blocker, core code ĐÚNG.**
+- Đúng prop: `showDrawingDock?: boolean` (`VNInvestChartsProps.d.ts:256`), phân biệt `showDock` (right dock, `:236`) vs `showDrawingDock` (drawing dock). `enableDrawingDock` không có consumer nào (grep toàn repo; `StockDetailPage.tsx:279` không truyền).
+- **Sửa theo verdict**: (1) comment mô tả đúng `jg()` null khi `!showDrawingDock && !forceOpen` **và** chỉ render khi `dock.isOpen`, nội dung dock nằm trong right dock ⇒ gate thật là `showDock: isPro`; (2) P1 poll storage thay vì sleep 400ms (debounce 300ms ⇒ margin 100ms dễ flaky); (3) S20 chặn thêm `drawingStorageKey:`/`drawingStorageAdapter:`/`instanceId:`; (4) ledger Entry 464.
+- **Lỗ phát hiện nhờ B8 (MINOR 7):** `packages/web/tsconfig.json` exclude `src/**/*.test.*` ⇒ `npm run build` **không** type-check file test mới. Chạy `tsc` riêng ⇒ bắt lỗi TS thật (`Property 'state' does not exist on type 'never'`) ⇒ sửa bằng holder object. **Mọi slice sau có file test mới phải tsc riêng.**
+- **Follow-up (không làm trong W-I):** nút toggle drawing dock cho free tier bấm vô hiệu (pre-existing, cần ticket widget) · widget không forward `onStorageError` (quota chỉ `console.warn`) · key drawing chưa scope user/tenant (cần Owner chốt scope + migration) · `workspaceId` dead prop (để riêng W-L/W-M).
+
 ### W-J — Drawing alerts → alert center (M) → **DEFER**
 
 **Mục tiêu**: `onDrawingAlert(drawing, condition, currentPrice)` wire vào alert center.
