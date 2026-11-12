@@ -8,6 +8,7 @@ import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewp
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
 import { useTenantTier } from '../adapters/useTenantTier.js';
+import { useTrustTelemetry } from '../hooks/useTrustTelemetry.js';
 import { ensureLicenseTrustAnchor } from '../lib/licenseTrustAnchor.js';
 
 // Trust anchor cho key license offline (JWK public kid=primary, nhung vao bundle
@@ -266,6 +267,14 @@ export default function VNStockChartPanel({
     setTapeFilterBillions(Number(value) || 0);
   }, []);
 
+  // W-F: sink cho widget onTelemetry (BL-18, no-op khi absent phia widget).
+  // Enrich symbol + timestamp qua hook nha (localStorage cap 200 entries).
+  const { trackWidgetEvent } = useTrustTelemetry();
+  const handleWidgetTelemetry = useCallback((event) => {
+    if (!event || typeof event !== 'object') return;
+    trackWidgetEvent({ symbol, kind: event.kind, code: event.code, message: event.message, context: event.context });
+  }, [trackWidgetEvent, symbol]);
+
   const handleAdvisoryRefresh = useCallback(async () => {
     if (!symbol) return;
     setIsAdvisoryLoading(true);
@@ -413,6 +422,9 @@ export default function VNStockChartPanel({
           // W-D: measurement overlay (thuoc do khoang gia/thoi gian, pro-only).
           // Thuan client, khong can data/adapter/i18n moi.
           measurementEnabled: isPro,
+          // W-F: upsell CTA (free thay nudge -> ve /upgrade) + telemetry sink.
+          upgradeUrl: '/upgrade',
+          onTelemetry: handleWidgetTelemetry,
           // W0.9: KHONG bat `showCorporateEvents` — BE chua co nguon du lieu
           // corporate actions (ex-date / split / rights) nen overlay se rong;
           // bat rong = nhieu tinh, giong "noi doi" (xem roadmap §5 W5.3).

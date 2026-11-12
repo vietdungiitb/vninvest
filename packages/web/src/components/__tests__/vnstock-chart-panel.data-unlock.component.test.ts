@@ -204,4 +204,16 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(panelS17).not.toMatch(/maxVisibleBars\s*:/);
     expect(panelS17).not.toMatch(/historyMinResidentBars\s*:/);
   });
+  it("S18 — W-F upgrade URL + telemetry hook (upsell CTA + observability sink)", () => {
+    // upgradeUrl tro ve route /upgrade (system, khong capability — dung
+    // doi tuong free thay nudge). onTelemetry forward qua hook nha
+    // (trackWidgetEvent, pattern emit san co). Chi assert source-level.
+    const panelS18 = readFileSync(resolve(HERE, "..", "VNStockChartPanel.js"), "utf8");
+    expect(panelS18).toMatch(/upgradeUrl:\s*['"]\/upgrade['"]/);
+    expect(panelS18).toMatch(/onTelemetry/);
+    expect(panelS18).toMatch(/useTrustTelemetry/);
+    expect(panelS18).toMatch(/trackWidgetEvent/);
+    const hook = readFileSync(resolve(HERE, "..", "..", "hooks", "useTrustTelemetry.js"), "utf8");
+    expect(hook).toMatch(/trackWidgetEvent/);
+  });
 });

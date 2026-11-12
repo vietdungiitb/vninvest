@@ -60,6 +60,13 @@ export function useTrustTelemetry() {
     [emit],
   );
 
+  // W-F: sink generic cho widget onTelemetry ({kind, code, message, context}).
+  // Cung pattern emit nhu tracker tren (event + localStorage cap 200).
+  const trackWidgetEvent = useCallback(
+    (payload = {}) => emit('widget_telemetry', { ...payload }),
+    [emit],
+  );
+
   return {
     trackExplainabilityOpened,
     trackExplainabilityInsufficient,
@@ -67,6 +74,7 @@ export function useTrustTelemetry() {
     trackActionChecklistCompleted,
     trackActionAttemptBlocked,
     trackHistoryOpened,
+    trackWidgetEvent,
   };
 }
 export default useTrustTelemetry;
