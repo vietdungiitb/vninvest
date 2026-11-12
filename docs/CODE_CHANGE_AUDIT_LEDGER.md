@@ -1,3 +1,12 @@
+## Entry 457: W-A advisory panel trong chart dock (Wave 0, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (pure mapper + panel wiring + 2 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md §2.3 + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-A + Entry 0) + B3 audit `ses_e3116bcecffeHVWludtoVeviNm` (6/6 PASS, M-1 bat buoc) + B8 re-audit `ses_e30f60ce4ffeYoGGcqFQj6UKcE` (PASS, E4 fixed).
+- **Thay doi**: `packages/web/src/utils/VNInvestSignalAdapter.js` (+91: `mapAdvisorySessionToResult` + helpers; null khi queued/empty/het component; vocab buy/hold/reduce + watch/follow/hold; confidence 0-1/weighted +-100; triggered_at neo +07:00) + `packages/web/src/components/VNStockChartPanel.js` (fetch V2 qua coreApiAdapter chi khi isPro + refresh fail-closed + E4 clear session cu khi doi symbol; truyen showAdvisoryPanel:isPro + advisoryResult/isAdvisoryLoading/onAdvisoryRefresh) + test mapper moi 8/8 + S13 trong test panel (13/13).
+- **Gates chay that**: vitest 21/21 (2 file slice) + subset hoi quy 64/64 (8 file: utils + panel + stock-detail) · `npx tsc --noEmit` exit 0 · `npm run build` PASS 23.2s · eslint 0 errors (4 warnings co san) · `check-multi-agent` PASS (0 loi) · `check-ledger-entry` PASS (sau renumber 450->456). **CHUA CHAY**: full vitest 181 file (timeout infra >15p, ghi nhan trung thuc) · E2E staging Pro + BE pytest (can key/VPS, ngoai scope phien).
+- **Ghi nhan quy trinh**: PR #341 merge thieu 2 commit local chua push (renumber 450->456 + claim staging-pro-layout2) — merge parent ^2=1c5cfa0f8, renumber ap lai o slice nay; commit staging-pro-layout2 van nam local branch cu, KHONG dung StockDetailPage.* o slice nay.
+- **Con lai (ngoai scope)**: tab advisory rieng tren StockDetailTabs van con (pro thay 2 noi) — go o slice sau khi staging-pro-layout2 xong; hop dong prop widget phia JS chi verify qua dist grep + d.ts (can smoke staging Pro sau merge).
+
 ## Entry 455: Staging pro layout — dock theo tier + statusline hien + xac nhan E2E (B9, claim done)
 
 - **Date**: 2026-11-11
@@ -35,7 +44,7 @@
 - **Ket qua**: key moi byte-exact tren bundle (sha256 khop fp luc cap `765a1af3…`, da tru newline khi hash) parse OK (`k=primary`, serial 3428f9a9, pro, 40 caps) NHUNG verify NULL voi JWK primary da publish (do 2 lan doc lap). Doi chung: key cu (227a…, cung kid) verify PRO voi dung JWK do. Ket luan: JWK publish khop khoa ky CU; key moi do private key KHAC ky nhung van dan nhan primary (rotation khong publish hoac nhieu khoa ky song song). Staging/app khong the Pro voi byte nay bang moi duong offline.
 - **Next (vnsaas, chon 1)**: (a) publish JWK public cua DUNG khoa dang ky; (b) re-issue key bang khoa ky cu. Sau do toi verify mat ma lai tren byte bundle (phai PRO) moi tuyen bo. Secret hygiene nhu Entry 448-450 (key tam da xoa het; bao cao chi hash/serial, khong key).
 
-## Entry 450: Key staging verify NULL — paste chain corrupt, can machine-channel re-issue (B9, claim done)
+## Entry 456: Key staging verify NULL — paste chain corrupt, can machine-channel re-issue (B9, claim done)
 
 - **Date**: 2026-11-11
 - **Type**: Root-cause (khong doi code). Evidence: docs/evidence/widget-license-verify/verify-20261111.md §6.
