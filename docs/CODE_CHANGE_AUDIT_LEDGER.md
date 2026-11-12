@@ -1,3 +1,12 @@
+## Entry 459: W-C error boundary + empty state (Wave 0, claim done)
+
+- **Date**: 2026-11-12
+- **Type**: FE (panel wiring + 1 test). Evidence: docs/PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md §2.15 + docs/evidence/widget-feat-leverage/JOURNAL_20261112.md (Entry W-C) + B3 audit `ses_e30ded819ffeA72QlqUbmZjwGY` (NEED_REVISION M-1/M-2/M-3 -> da ap dung) + B8 round 1 `ses_e30d81115ffelOvsRcCQDjEHrI` (NEED_REVISION: blocker TDZ importKey + minor chartElement) + B8 round 2 `ses_e30d556c6ffeSL5LEwpiE8l2pr` (FIX-OK).
+- **Thay doi**: `packages/web/src/components/VNStockChartPanel.js` (destructure Boundary/EmptyState qua optional-chain; retryKey/importKey khai truoc moi effect; import effect deps [inView, importKey]; M-2 clear internalBars khi doi symbol/timeframe/period; helpers legacyFallback/emptyStateNode; chartElement guard ternary; 4 nhanh !module->loading->bars-rong->boundary(chart); Provider > Boundary > content) + S15 source-level (7 regex).
+- **Gates chay that**: vitest panel 15/15 + subset hoi quy 72/72 (9 file) · `npx tsc --noEmit` exit 0 · `npm run build` PASS 33s · eslint 0 errors (4 warnings co san) · B3 + B8x2. **CHUA CHAY**: full vitest 181 file (timeout infra) · E2E staging Pro + BE pytest.
+- **Bai hoc**: test source-scan KHONG bat duoc TDZ runtime (vitest 15/15 + tsc xanh trong khi code crash moi render) — B8 doc doc lap la tuyen phong thu duy nhat cho loi nay; da tung mac (db2bdf7d5) van lap lai.
+- **Con lai (ngoai scope)**: smoke render that tren staging Pro sau merge (boundary/empty copy chi thay khi loi/empty that).
+
 ## Entry 458: W-B tape panel trong chart dock (Wave 0, claim done)
 
 - **Date**: 2026-11-12

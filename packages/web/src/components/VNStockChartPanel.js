@@ -82,6 +82,11 @@ export default function VNStockChartPanel({
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
+  // W-C: retryKey remount boundary sau retry (key tren Boundary, M-1);
+  // importKey chay lai dynamic import khi retry import fail.
+  // (Khai O DAY, truoc moi effect — TDZ ReferenceError neu khai sau.)
+  const [retryKey, setRetryKey] = useState(0);
+  const [importKey, setImportKey] = useState(0);
   // P34.4-license (staging Pro): tier xac minh tu license offline (ECDSA verify
   // qua engine-core + trust anchor da nap o module scope). Reset ve null khi
   // mat key / verify khong ra pro (khong giu tier cu — tranh keo dai quyen).
@@ -138,7 +143,19 @@ export default function VNStockChartPanel({
     return () => {
       active = false;
     };
-  }, [inView]);
+  }, [inView, importKey]);
+
+  const handleBoundaryRetry = useCallback(() => {
+    // Boundary tu reset hasError roi goi onRetry — bump key de remount
+    // sach content (du phong khi loi con dinh).
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  const handleImportRetry = useCallback(() => {
+    setWidgetError(null);
+    setWidgetModule(null);
+    setImportKey((k) => k + 1);
+  }, []);
 
   const VNInvestCharts = widgetModule?.VNInvestCharts;
   const VNInvestMultiCharts = widgetModule?.VNInvestMultiCharts;
@@ -147,6 +164,11 @@ export default function VNStockChartPanel({
   const PaperTradePanel = widgetModule?.PaperTradePanel;
   const SettingsModal = widgetModule?.SettingsModal;
   const DrawingDock = widgetModule?.DrawingDock;
+  // W-C: graceful degradation (dts widget 0.4.4). Lay qua optional-chain —
+  // module null (import fail) thi undefined, re nhanh显式 ben duoi
+  // (KHONG render bien co the-undefined — element chi tao o nhanh cuoi).
+  const WidgetErrorBoundary = widgetModule?.WidgetErrorBoundary;
+  const WidgetEmptyState = widgetModule?.WidgetEmptyState;
 
   const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
 
@@ -259,6 +281,9 @@ export default function VNStockChartPanel({
   }, [symbol]);
 
   useEffect(() => {
+    // M-2 (B3 W-C): xoa bars ma cu khi doi symbol/timeframe/period (E4) —
+    // tranh flash bars cu + nhanh empty co co hoi kich dung.
+    setInternalBars([]);
     setVisibleRange(null);
   }, [symbol, activeTimeframe, activePeriod]);
 
@@ -325,34 +350,36 @@ export default function VNStockChartPanel({
 
   const chartComponent = VNInvestCharts;
 
-  const chartBody = !chartComponent
-    ? e(
-        'div',
-        { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
-        e(
-          'div',
-          { className: 'flex flex-col items-center gap-2' },
-          widgetError
-            ? e('span', { className: 'text-rose-400' }, t('vninvest.load_error', { defaultValue: 'Không thể tải biểu đồ' }))
-            : e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
-          e('span', null, widgetError ? widgetError : t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
-        ),
-      )
-    : loading
-      ? e(
-          'div',
-          { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
-          e(
-            'div',
-            { className: 'flex flex-col items-center gap-2' },
-            e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
-            e('span', null, t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
-          ),
-        )
-      : e(
-        chartComponent,
-        {
-          adapter,
+  // W-C: fallback cu (div tu viet) giu cho nhap module-null + truong hop
+  // widget chua load xong component EmptyState. Nam trong chartTree nen
+  // co i18n context khi dung WidgetEmptyState.
+  const legacyFallback = (isLoadingState, errorMessage) => e(
+    'div',
+    { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
+    e(
+      'div',
+      { className: 'flex flex-col items-center gap-2' },
+      errorMessage
+        ? e('span', { className: 'text-rose-400' }, t('vninvest.load_error', { defaultValue: 'Không thể tải biểu đồ' }))
+        : e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
+      e('span', null, errorMessage || t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
+    ),
+  );
+
+  const emptyStateNode = (isLoadingState, errorMessage, onRetryAction) => WidgetEmptyState
+    ? e(WidgetEmptyState, {
+      loading: isLoadingState,
+      error: errorMessage ? new Error(errorMessage) : null,
+      onRetry: onRetryAction,
+    })
+    : legacyFallback(isLoadingState, errorMessage);
+
+  // Element chi tao khi module da load (chartComponent truthy) — nhanh
+  // !module/loading/bars-rong o duoi khong bao gio cham vao bien nay.
+  const chartElement = chartComponent ? e(
+    chartComponent,
+    {
+      adapter,
           symbol,
           timeframe: activeTimeframe?.toLowerCase() === 'd' ? '1d' : activeTimeframe?.toLowerCase() === '1h' ? '1h' : activeTimeframe?.toLowerCase(),
           range: activePeriod,
@@ -411,9 +438,26 @@ export default function VNStockChartPanel({
 onSymbolChange: (sym) => {
               navigate('/stocks/' + sym);
             },
-            ref: chartRef,
-          },
-      );
+          ref: chartRef,
+        },
+      ) : null;
+
+  // W-C: thu tu nhanh bat buoc (M-3) — Provider > Boundary > content:
+  // !module -> loading prop -> bars rong -> boundary(chart). Chart chi
+  // render o nhanh cuoi nen throw luc loading la impossible.
+  const chartWithBoundary = WidgetErrorBoundary
+    ? e(WidgetErrorBoundary, { key: retryKey, onRetry: handleBoundaryRetry }, chartElement)
+    : chartElement;
+
+  const chartBody = !chartComponent
+    ? (widgetError
+      ? emptyStateNode(false, widgetError, handleImportRetry)
+      : emptyStateNode(true, null, null))
+    : loading
+      ? emptyStateNode(true, null, null)
+      : internalBars.length === 0
+        ? emptyStateNode(false, null, null)
+        : chartWithBoundary;
 
   const panels = [];
   if (showDrawingDock && DrawingDock) {
