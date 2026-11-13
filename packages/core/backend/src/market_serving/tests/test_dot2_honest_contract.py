@@ -91,14 +91,14 @@ class Dot2HonestContractTestCase(TestCase):
         self.assertTrue(p['note'])
 
     def test_bars_adjusted_false_with_note(self):
-        for i, (o, h, l, c) in enumerate([
+        for i, (o, h, lo, c) in enumerate([
             (Decimal('71.00'), Decimal('71.90'), Decimal('70.80'), Decimal('71.30')),
             (Decimal('71.30'), Decimal('72.90'), Decimal('71.10'), Decimal('72.50')),
         ]):
             DailyPrice.objects.create(
                 symbol='VNM',
                 date=date.today() - timedelta(days=2 - i),
-                open=o, high=h, low=l, close=c,
+                open=o, high=h, low=lo, close=c,
                 volume=1000000 + i,
                 source='test',
             )
