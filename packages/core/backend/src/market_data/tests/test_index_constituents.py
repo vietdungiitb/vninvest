@@ -1,7 +1,7 @@
 """S2 index constituents EP-6 — fail-before: endpoint chua ton tai."""
 from unittest.mock import patch
 
-from django.contrib.auth.models.User
+from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
