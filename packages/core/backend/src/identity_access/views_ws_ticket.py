@@ -4,6 +4,7 @@ Shape response CO TINH PHANG (flat {"ticket", "expiresIn"}), KHONG envelope,
 vi widget fetchWsTicket doc raw r.json().ticket o top-level
 (vninvestcharts-widget/src/widget/adapters/VNInvestClient.ts:813-826).
 """
+from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
@@ -25,7 +26,8 @@ class WsTicketView(APIView):
     @extend_schema(
         summary='Cap WS handshake ticket (G0.2/C02)',
         description='Tra flat {"ticket", "expiresIn"} — widget doc raw, khong envelope.',
-        responses={200: WsTicketResponseSerializer, 401: {}, 403: {}},
+        request=OpenApiTypes.OBJECT,
+        responses={200: WsTicketResponseSerializer, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
     )
     def post(self, request):
         tenant = getattr(request, "tenant", None)
