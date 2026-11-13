@@ -21,8 +21,11 @@ import { dirname, resolve } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PANEL_SRC = resolve(HERE, "..", "VNStockChartPanel.js");
-const VI_I18N = resolve(HERE, "..", "..", "i18n", "vi.js");
-const EN_I18N = resolve(HERE, "..", "..", "i18n", "en.js");
+// S0.4 (gate-p0-20261113): D3 (2026-11-13) tach i18n monolith vi.js/en.js thanh
+// locales/vi|en/*.js; key 'chartIndicators' dori sang locales/vi|en/stockDetail.js.
+// vi.js/en.js chi con barrel import, khong chua key nua -> doc o vi tri moi.
+const VI_I18N = resolve(HERE, "..", "..", "i18n", "locales", "vi", "stockDetail.js");
+const EN_I18N = resolve(HERE, "..", "..", "i18n", "locales", "en", "stockDetail.js");
 
 const src = readFileSync(PANEL_SRC, "utf8");
 const vi = readFileSync(VI_I18N, "utf8");
