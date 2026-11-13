@@ -63,7 +63,7 @@
 ## 5. DoD checklist
 
 - [ ] Claim in-progress trước dòng code đầu tiên (có: `252358b36`)
-- [ ] P1: merge + BE w0-6 xanh VPS + gates local xanh
+- [ ] P1: verify-equivalence + delete stale w0-6 branch (done, thay cho merge — dev đã có substance) + Gates + BE w0-6 xanh VPS (kế thừa, 26/26) + gates local xanh
 - [ ] P2–P4: fail-before đỏ → pass-after xanh (VPS), số test không giảm
 - [ ] `makemigrations --check` không đổi · `spectacular` 0 warning mới
 - [ ] FE widget test xanh VPS · tsc/eslint 0 error
