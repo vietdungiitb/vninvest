@@ -1,3 +1,13 @@
+## Entry 481: S1 WS ticket G0.2/C02 — POST auth/ws-ticket + consumers ?ticket= (cache, 0 migration)
+
+- **Date**: 2026-11-13. Claim `ws-ticket-s1` = proposed -> in-progress -> done (branch `feat/ws-ticket-s1`). Solo, DB VPS rieng.
+- **Type**: security handshake + WS auth. **0** migration (cache-backed) · **0** deny-list · 4 runtime + 1 test + evidence.
+- **Thiet ke**: `issue_ws_ticket` (token_urlsafe 32, cache 60s) + `redeem_ws_ticket` single-use (get+delete) + `resolve_user_from_ws_query` (?ticket= truoc, ?token= compat) trong `identity_access/ws_ticket.py` (new). View `WsTicketView` POST tra FLAT `{"ticket","expiresIn"}` (widget fetchWsTicket doc raw top-level, khong envelope — ngoai le co document). Mount `auth/ws-ticket` + slash variant. Consumers 2 cho dung resolver chung, xoa `_authenticate_token` cu; khong log secret.
+- **TDD**: fail-before ModuleNotFoundError (feature missing) -> pass-after 8/8 VPS. Hoi quy identity_access+signal 504 OK. `makemigrations --check` sach. spectacular 56/14 = baseline (2 vong fix serializer + request).
+- **Audit doc lap B8**: PASS (b8-reaudit.md). Nhan xet redeem get+delete khong atomic — chap nhan voi ticket 60s.
+- **Con lai / CHUA CHAY**: full BE/FE suite · E2E WS that tu widget (widget team bat `wsTicketEnabled`) · deploy.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-B01 L-V01 L-V02].
+
 ## Entry 480: Roadmap backend vninvest cho widget Enterprise — review + plan S1-S9 + claims
 
 - **Date**: 2026-11-13. Claim `wbacklog-20261113` = in-progress -> done (branch `feat/wbacklog-20261113`). Owner chon "Full multi-slice roadmap": phien nay chi plan + claim, code o slice sau.
