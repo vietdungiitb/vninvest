@@ -2,6 +2,7 @@ from django.urls import include, path
 
 from . import onboarding_views, tenant_member_views, views_auth, views_operator
 from . import views_tenant as views
+from . import views_ws_ticket
 from .dnse_credential_views import DNSECredentialView
 from .views.sso import SSOCallbackView, SSOLoginInitiateView, SSOMetadataView
 
@@ -17,6 +18,9 @@ urlpatterns = [
     path('auth/me/', views_auth.profile_view, name='auth-me-slash'),
     path('auth/logout', views_auth.logout_view, name='auth-logout'),
     path('auth/logout/', views_auth.logout_view, name='auth-logout-slash'),
+    # G0.2/C02: WS handshake ticket (widget raw fetch, khong envelope o view)
+    path('auth/ws-ticket', views_ws_ticket.WsTicketView.as_view(), name='auth-ws-ticket'),
+    path('auth/ws-ticket/', views_ws_ticket.WsTicketView.as_view(), name='auth-ws-ticket-slash'),
     # Capability bootstrap (used by packages/web coreAdapter at /core/v1/access/capabilities)
     path('access/capabilities', views_auth.capabilities_view, name='access-capabilities'),
     path('access/capabilities/', views_auth.capabilities_view, name='access-capabilities-slash'),
