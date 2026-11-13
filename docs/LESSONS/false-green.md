@@ -87,3 +87,29 @@
   - [ ] Do lai tap vi pham **gia tri** (khong phai **ten**) khi tai-key baseline?
   - [ ] Da thu: doi gia tri cua mot phan tu da co trong baseline ⇒ gate co bat?
 - **Proof:** `docs/AUDIT_UI_STANDARDIZATION_W0.md` §D (M-1, M-2, N-1) + `docs/SUMMARY_uistd-w0-gates.md` §10.2, §10.3, §10.5.
+
+## L-V10: `scan-secrets` exit 0 KHONG chung minh repo sach secret (rule contextual bo lot secret trong prose)
+
+- **Nguyen nhan:** Scanner dung **rule contextual**: gia tri phai dung **ngay sau mot key name** (`token=...`, `api_key=...`).
+  Secret nam trong backtick/prose cua file `.md` (khong co key name lien ke) ⇒ rule khong kich hoat ⇒ **PASS gia**.
+  File `.md` tracked **van duoc quet** — sai vi *rule*, khong phai vi *skip file*.
+- **Hau qua that (slice `gate-p0-20261113`, 2026-11-13):** vong redact dau tien sua `facts20.json`, nhung chinh file
+  "redaction note" tao ra lai ghi **nguyen gia tri token that** (`vni_internal_<77 ky tu>`) ⇒ `scan-secrets` **exit 0**
+  trong khi secret van nam trong repo, san sang bi day len GitHub khi push.
+- **Khi nao gap:** `tags: [secret, scan-secrets, redact, evidence, false-green, xanh-gia, prose, markdown, git-grep]`
+- **QUY TAC:** "Sau khi redact, AC la **`git grep -c "<gia tri token day du>"` = 0 hit tren toan repo**, KHONG phai exit code cua scanner.
+  Va **khong bao gio ghi lai gia tri secret day du** vao file note/evidence/commit message — chi ghi tien to + hau to + hash."
+- **CHECKLIST:**
+  - [ ] Da chay `git grep -c "<token day du>"` (chuoi token that) sau khi redact ⇒ 0 hit?
+  - [ ] File note/evidence/commit body co chua gia tri secret day du khong? (chi duoc giu prefix + suffix + hash)
+  - [ ] Da hieu `scan-secrets` exit 0 = *"khong co mau hinh secret bi quet"*, **KHONG** = *"repo khong con secret"*?
+- **Proof:** `docs/evidence/staging-pro-layout/REDACTION_20261113.md` §3b · `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 476 ·
+  `packages/web/scripts/scan-secrets.mjs` (rule contextual + self-test *"tracked .md IS scanned"*).
+
+## Ghi chú (2026-11-13): 4 lesson ID đang TRÙNG giữa 2 file
+
+- `L-V06` — `verification.md` (parser màu CSS trả `null`) ↔ `false-green.md` (suite xanh khi số test giảm)
+- `L-V09` — `multi-agent-2.md` ↔ `false-green.md` · `L-F12` — `css-soc.md` ↔ `frontend.md` · `L-M02` — `multi-agent.md` ↔ `migrations.md`
+- **KHÔNG renumber** (sẽ hỏng mọi citation `L-XXX` đang tồn tại — cùng lý do Owner chốt cho ledger Entry).
+  ⇒ Khi trích dẫn 4 ID này, **ghi kèm tên file**: `L-V06 (false-green.md)`.
+- Nguồn: đo lại 2026-11-13 (slice `gate-p0-20261113`) khi cập nhật §1.5 của `INDEX.md`.

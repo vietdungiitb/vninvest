@@ -124,19 +124,19 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | File | Số lesson | ID |
 |---|---|---|
 | [multi-agent.md](./multi-agent.md) | 8 | `L-001`, `L-002`, `L-003`, `L-005`, `L-007`, `L-008`, `L-A01`, **`L-M02`** |
-| [`multi-agent-2.md`](./multi-agent-2.md) | 4 | **`L-M05`**, **`L-M06`**, **`L-M07`**, **`L-V09`** |
+| [`multi-agent-2.md`](./multi-agent-2.md) | 5 | **`L-M05`**, **`L-M06`**, **`L-M07`**, **`L-M08`**, **`L-V09`** |
 | [`build-gates.md`](./build-gates.md) | 8 | `L-G01`…`L-G08` |
-| [`css-soc.md`](./css-soc.md) | 5 | `L-F03`, `L-F05`, `L-F06`, `L-F08`, **`L-F11`** |
+| [`css-soc.md`](./css-soc.md) | 6 | `L-F03`, `L-F05`, `L-F06`, `L-F08`, **`L-F11`**, `L-F12` |
 | [`frontend.md`](./frontend.md) | 5 | `L-F01`, `L-F02`, `L-F09`, `L-F10`, `L-F12` |
 | [`migrations.md`](./migrations.md) | 3 | `L-M01`, `L-M02`, `L-M04` |
 | [`backend.md`](./backend.md) | 4 | `L-B01`…`L-B03`, `L-B04` |
 | [`security.md`](./security.md) | 2 | `L-S01`, `L-S02` |
 | [`tooling-traps.md`](./tooling-traps.md) | 4 | `L-F04`, `L-F07`, `L-T01`, `L-T02` |
 | [`tooling-traps-2.md`](./tooling-traps-2.md) | 2 | **`L-T03`**, **`L-T04`** |
-| [`verification.md`](./verification.md) | 5 | `L-V01`…`L-V05` |
-| [`false-green.md`](./false-green.md) | 2 | `L-V06`, `L-V07` |
+| [`verification.md`](./verification.md) | 6 | `L-V01`…`L-V05`, `L-V06` ⚠ |
+| [`false-green.md`](./false-green.md) | 5 | `L-V06` ⚠, `L-V07`, `L-V08`, `L-V09` ⚠, **`L-V10`** |
 
-**Tổng: 58 lesson / 14 file**
+**Tổng: 59 lesson / 14 file** — ⚠ 4 lesson ID đang **trùng giữa 2 file** (`L-V06` · `L-V09` · `L-F12` · `L-M02`): khi trích dẫn phải ghi kèm tên file, chi tiết ở [false-green.md](./false-green.md).
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

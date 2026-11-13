@@ -8,6 +8,14 @@ import { AIUsageDashboard } from "./AIUsageDashboard";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
 
+// S0.3 (gate-p0-20261113): D2 (b3920f980) doi import trong AIUsageDashboard.tsx
+// tu "recharts" sang "./charts/RechartsCompat" (shim dung CanvasRenderer echarts).
+// recharts render SVG (jsdom OK); echarts CanvasRenderer can canvas (jsdom khong co)
+// -> TypeError "Cannot set properties of null (setting 'dpr')" tai zrender/Layer.js:82.
+// Mock shim bang mock san co (render div rong) de 7 test AIUsageDashboard + 1 test
+// ai-usage-chart-r16 chay duoc tren jsdom; AC3 (aria-hidden + .srOnly) van assert that.
+vi.mock("./charts/RechartsCompat");
+
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class {
     observe() {}
