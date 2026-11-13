@@ -19,8 +19,10 @@ Da thay ca 4 gia tri bang `vni_internal_REDACTED` (scanner bo qua marker `REDACT
 
 ## 3. Gate ket qua (chay that, sau redact)
 
-- `node packages/web/scripts/scan-secrets.mjs` ⇒ exit 0, 0 hit `facts20.json`.
-- `git grep -l "vni_internal_"` co the tra ≥1 file (chinh plan/evidence prose) — KHONG dung lam AC; AC la `scan-secrets` exit 0 + 0 file runtime/evidence chua token that.
+- scan-secrets exit 0 (can thiet nhung chua du; L-V10: false negative cho secret trong prose .md).
+- AC that (L-V10): git grep -c full-token = 0 hit tren toan repo (da do) - KHONG phai exit code cua scan-secrets.
+- git grep -l vni_internal_ co the tra >=1 file (plan/evidence prose) - KHONG dung lam AC.
+- Full token van con trong history origin/dev -> Owner revoke/rotate (xem muc 2).
 
 ### 3b. BAI HOC: `scan-secrets` exit 0 **KHONG** chung minh repo sach secret
 

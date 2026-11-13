@@ -72,13 +72,58 @@ full-suite chạy 186 file còn 3-file chạy 32 test ⇒ thứ tự/isolation k
 
 ## 3. PASS-AFTER (VPS, commit có fix)
 
-_(điền sau khi chạy)_
+**Lệnh:** worktree `/tmp/wt-gatep0-fix` tại `origin/feat/gate-p0-20261113` (`a972fd040`) ·
+`node_modules` Linux **tái dùng** từ worktree fail-before (`mv`, lock file giống nhau — `git diff origin/dev
+origin/feat/gate-p0-20261113 -- packages/web/package-lock.json` ⇒ rỗng) · `npm 11.18.0`.
+
+```
+/usr/bin/corepack npm run test:components -- <3 file>
+→ Test Files  3 passed (3)
+→ Tests  32 passed (32)
+→ Duration 4.81s          PASSAFTER_EXIT=0
+```
+
+**Đối chiếu fail-before → pass-after (cùng 3 file, cùng máy VPS):**
+
+| | Fail-before (`origin/dev` e59298e1c) | Pass-after (`a972fd040`) |
+|---|---|---|
+| Test Files | 3 failed (3) | **3 passed (3)** |
+| Tests | 7 failed \| 25 passed (32) | **32 passed (32)** |
+
+**Assert không bị rỗng hoá (L-V04 — đã tự mở file kiểm, auditor B3 xác nhận lần 2):**
+`data-testid="usage-chart"` nằm ở `AIUsageDashboard.tsx:380` (div bọc **ngoài** shim) ·
+bảng `.srOnly` ở `:405` là **anh em** với `ResponsiveContainer` (`:383`) ⇒ `vi.mock` không xoá chúng.
+Số "100" trong bảng đến từ API thật (`getAIUsageSummary` → `buildChartData`) ⇒ assert có ý nghĩa, không rỗng.
 
 ---
 
-## 4. FULL SUITE (S0.5) — VPS
+## 4. FULL SUITE (S0.5) — VPS staging
 
-_(điền sau khi chạy)_
+```
+cd /tmp/wt-gatep0-fix/packages/web
+/usr/bin/corepack npm run test:components > /tmp/gatep0-full.log 2>&1     → FULL_EXIT=0
+```
+
+| | Baseline (`origin/dev`, `docs/evidence/full-vitest-vps-20261113/gates.md`) | Sau fix (`a972fd040`) |
+|---|---|---|
+| Test Files | **3 failed** \| 183 passed (186) | **186 passed (186)** |
+| Tests | **8 failed** \| 1243 passed (1251) | **1251 passed (1251)** ✅ |
+| Duration | 75s | 73.25s |
+
+⚠ **Số test KHÔNG giảm** (1251 → 1251) ⇒ không có test nào bị xoá ngầm (L-V06).
+⚠ **Số test đỏ ở 3-file scope = 7, ở full suite = 8** ⇒ khác nhau do isolation/thứ tự file
+(`renders the table with no rows when there are no records (Slice 3)` đỏ khi chạy full suite, xanh khi chạy riêng).
+**Con số đối chiếu chuẩn là full suite.**
+
+### 4.1 Các gate khác trên VPS
+
+| Lệnh | Exit | Kết quả |
+|---|---|---|
+| `npm run i18n:scan:strict` | **0** | `I18N_EXIT=0` (không đổi so với baseline) |
+| `npm run lint` | _(xem bảng dưới)_ | ESLint toàn `src` |
+| `npm run build` | _(xem bảng dưới)_ | `tsc && vite build` |
+| `npx tsc --noEmit` (local, §12.2) | **0** | `pre-push-gate`: `PASS tsc --noEmit — 0 loi` |
+| `eslint` 3 file test đổi (local, §12.2) | **0** | không output |
 
 ---
 
