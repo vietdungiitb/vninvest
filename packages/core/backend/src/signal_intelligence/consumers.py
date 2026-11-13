@@ -6,7 +6,7 @@ Consumers:
   - RealtimeConsumer: multiplexed consumer at /ws/realtime/ with subscribe/unsubscribe
 
 Security:
-- Token authentication required (unauthenticated connections rejected)
+- Token/ticket authentication required (unauthenticated connections rejected)
 - Symbol is sanitized to uppercase alphanumeric only
 - Disconnect handler always cleans up group membership
 """
@@ -30,31 +30,12 @@ def _sanitize_symbol(raw: str) -> str | None:
     return None
 
 
-async def _authenticate_token(token: str):
-    """
-    Validate PAT token and return user or None.
-    Uses sync_to_async wrapper to call sync Django ORM.
-    """
-    from asgiref.sync import sync_to_async
-
-    from identity_access.models import CorePATCredential
-
-    @sync_to_async
-    def _resolve():
-        cred = CorePATCredential.resolve_from_raw_secret(token)
-        if cred and cred.effective_status == CorePATCredential.StatusChoices.ACTIVE:
-            return cred.service_account.tenant.owner_user
-        return None
-
-    return await _resolve()
-
-
 class MarketTickerConsumer(AsyncWebsocketConsumer):
     """
     SFI-B7: WebSocket consumer for real-time market ticker data.
 
     URL pattern: ws://<host>/ws/market/<symbol>/
-    Query string: ?token=<raw_pat>
+    Query string: ?ticket=<single-use> (G0.2) or ?token=<raw_pat> (compat).
 
     Deprecated: Will be removed in B8 decommission. Use RealtimeConsumer instead.
     """
@@ -68,15 +49,13 @@ class MarketTickerConsumer(AsyncWebsocketConsumer):
             await self.close(code=4400)
             return
 
-        # Authenticate via query string token
-        query_string = self.scope.get('query_string', b'').decode()
-        token = ''
-        for part in query_string.split('&'):
-            if part.startswith('token='):
-                token = part[6:]
-                break
+        # Authenticate via query string: ?ticket= (single-use, G0.2) or ?token= (compat)
+        from asgiref.sync import sync_to_async
 
-        user = await _authenticate_token(token)
+        from identity_access.ws_ticket import resolve_user_from_ws_query
+
+        query_string = self.scope.get('query_string', b'').decode()
+        user = await sync_to_async(resolve_user_from_ws_query)(query_string)
         if user is None:
             logger.warning('[WS] Unauthenticated WS for %s', self.symbol)
             await self.close(code=4401)
@@ -127,7 +106,7 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
     """
     SFI-B7: Multiplexed WebSocket consumer supporting subscribe/unsubscribe.
 
-    URL pattern: ws://<host>/ws/realtime/?token=<raw_pat>
+    URL pattern: ws://<host>/ws/realtime/?ticket=<single-use> (or ?token=<raw_pat> compat)
 
     Protocol:
       subscribe:   { "action": "subscribe",   "symbols": ["FPT", "SSI", "market_discovery"] }
@@ -141,14 +120,12 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        query_string = self.scope.get('query_string', b'').decode()
-        token = ''
-        for part in query_string.split('&'):
-            if part.startswith('token='):
-                token = part[6:]
-                break
+        from asgiref.sync import sync_to_async
 
-        user = await _authenticate_token(token)
+        from identity_access.ws_ticket import resolve_user_from_ws_query
+
+        query_string = self.scope.get('query_string', b'').decode()
+        user = await sync_to_async(resolve_user_from_ws_query)(query_string)
         if user is None:
             logger.warning('[WS:Realtime] Unauthenticated connection attempt')
             await self.close(code=4401)
