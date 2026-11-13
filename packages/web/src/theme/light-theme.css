@@ -398,6 +398,9 @@
 :root[data-theme="light"] .bg-emerald-600\/30 {
   background-color: color-mix(in oklab, #059669 30%, transparent);
 }
+:root[data-theme="light"] .bg-emerald-700 {
+  background-color: #047857;
+}
 :root[data-theme="light"] .bg-emerald-900 {
   background-color: #047857;
 }
