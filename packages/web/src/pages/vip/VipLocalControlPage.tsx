@@ -366,7 +366,7 @@ export function VipLocalControlPage({
     return () => {
       active = false;
     };
-  }, [auditLimit, autoLoad, controlPlaneClient]);
+  }, [auditLimit, autoLoad, controlPlaneClient, t]);
 
   async function runAction(action: () => Promise<unknown>, noticeBuilder: string | ((payload: unknown) => string)) {
     setViewState((previous) => ({
