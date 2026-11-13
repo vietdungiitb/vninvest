@@ -2,7 +2,7 @@
 Workstation-specific endpoint tests for Stock Detail Workstation v2.
 
 Tests cover:
-- RealtimeDepthChartView (mock market depth)
+- RealtimeDepthChartView (honest empty book — S2.1, khong sinh so gia)
 - RealtimeWhaleFeedAggregateView (symbol from URL path)
 - StockManagementOverviewView (SessionFacts integration)
 """
@@ -89,52 +89,25 @@ class WorkstationEndpointTests(TestCase):
         resolver = resolve('/core/v1/realtime/depth-chart/FPT/')
         self.assertIs(resolver.func.view_class, RealtimeDepthChartView)
 
-    def test_realtime_depth_chart_returns_mock_depth(self):
-        """Test that depth chart returns 3 bids and 3 asks with proper structure."""
+    def test_realtime_depth_chart_returns_honest_empty(self):
+        """S2.1 (D1b): depth chart tra rong trung thuc — khong sinh so gia."""
         response = self.client.get('/core/v1/realtime/depth-chart/FPT/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.data
         self.assertEqual(data['symbol'], 'FPT')
-        self.assertIn('bids', data)
-        self.assertIn('asks', data)
-        self.assertIn('spread', data)
-        self.assertIn('reference_price', data)
-        self.assertIn('last_price', data)
-        self.assertIn('tick_size', data)
+        self.assertEqual(data['bids'], [])
+        self.assertEqual(data['asks'], [])
+        self.assertIsNone(data['spread'])
+        self.assertEqual(data['data_quality'], 'unavailable')
+        self.assertTrue(data['note'])
+        self.assertNotIn('is_mock', data)
+        self.assertNotIn('source', data)
+        self.assertNotIn('reference_price', data)
+        self.assertNotIn('tick_size', data)
 
-        # Verify 3 bid levels
-        self.assertEqual(len(data['bids']), 3)
-        for i, bid in enumerate(data['bids']):
-            self.assertIn('price', bid)
-            self.assertIn('volume', bid)
-            self.assertIn('orders', bid)
-            # Bids should be below last price
-            self.assertLess(bid['price'], data['last_price'])
-            # Prices should be descending (highest bid first)
-            if i > 0:
-                self.assertLess(bid['price'], data['bids'][i-1]['price'])
-
-        # Verify 3 ask levels
-        self.assertEqual(len(data['asks']), 3)
-        for i, ask in enumerate(data['asks']):
-            self.assertIn('price', ask)
-            self.assertIn('volume', ask)
-            self.assertIn('orders', ask)
-            # Asks should be at/above last price
-            self.assertGreaterEqual(ask['price'], data['last_price'])
-            # Prices should be ascending (lowest ask first)
-            if i > 0:
-                self.assertGreater(ask['price'], data['asks'][i-1]['price'])
-
-        # Verify spread is positive
-        self.assertGreater(data['spread'], 0)
-
-        # Verify tick_size is correct
-        self.assertEqual(data['tick_size'], 0.05)
-
-    def test_realtime_depth_chart_deterministic(self):
-        """Test that depth chart is deterministic for same symbol/date."""
+    def test_realtime_depth_chart_empty_is_stable(self):
+        """Hai lan goi lien tiep tra cung payload rong."""
         response1 = self.client.get('/core/v1/realtime/depth-chart/FPT/')
         response2 = self.client.get('/core/v1/realtime/depth-chart/FPT/')
 
@@ -150,10 +123,10 @@ class WorkstationEndpointTests(TestCase):
         self.assertEqual(data['symbol'], 'NONEXISTENT')
         self.assertEqual(data['bids'], [])
         self.assertEqual(data['asks'], [])
-        # W0.6: note dang tie Viet + phai noi ro du lieu la UOC TINH.
+        self.assertIsNone(data['spread'])
+        self.assertEqual(data['data_quality'], 'unavailable')
         self.assertTrue(data['note'])
-        self.assertTrue(data['is_mock'])
-        self.assertEqual(data['data_quality'], 'estimated')
+        self.assertNotIn('is_mock', data)
 
     def test_realtime_whale_feed_aggregate_view_resolves(self):
         """Test that whale feed aggregate route resolves with symbol."""
@@ -313,72 +286,35 @@ class WorkstationEndpointTests(TestCase):
             self.assertIn(trade['side'], ['BUY', 'SELL', 'NO'])
 
 
-class RealtimeDepthChartAlgorithmTests(TestCase):
-    """Unit tests for the mock market depth algorithm."""
+class RealtimeDepthChartHonestEmptyTests(TestCase):
+    """S2.1 (D1b): depth chart khong con thuat toan sinh so gia — giu lai
+    test cau truc nay de khong ai vo tinh dua mock tro lai."""
 
     def setUp(self):
         self.view = RealtimeDepthChartView()
 
-    def test_get_tick_size_default(self):
-        """Test default tick size when profile not found or no tick_size field."""
-        tick_size = self.view._get_tick_size('NONEXISTENT')
-        self.assertEqual(tick_size, 0.05)
+    def test_view_has_no_synthetic_helpers(self):
+        """Khong con _get_tick_size / pseudo-random / seed logic."""
+        self.assertFalse(hasattr(self.view, '_get_tick_size'))
+        import inspect
+        src = inspect.getsource(RealtimeDepthChartView.get)
+        for token in ('pseudo_random', 'seed_hash', 'hashlib', 'tick_size',
+                      'synthetic_from_snapshot', 'is_mock', 'last_price'):
+            self.assertNotIn(token, src)
 
-    def test_get_tick_size_from_profile_no_field(self):
-        """Test tick size defaults when StockProfile has no tick_size field."""
-        StockProfile.objects.create(
-            symbol='VCB',
-            company_name='Vietcombank',
-            exchange=StockProfile.ExchangeChoices.HOSE,
-            industry='Banking',
-            status=StockProfile.StatusChoices.ACTIVE,
-        )
-        tick_size = self.view._get_tick_size('VCB')
-        self.assertEqual(tick_size, 0.05)  # Default since model has no tick_size field
-
-    def test_get_tick_size_default(self):
-        """Test default tick size when profile not found."""
-        tick_size = self.view._get_tick_size('NONEXISTENT')
-        self.assertEqual(tick_size, 0.05)
-
-    def test_spread_calculation(self):
-        """Test spread is max of 0.15% of price or tick_size."""
-        # For price 100000, 0.15% = 150, tick_size = 0.05
-        # spread should be 150 (rounded to tick_size)
-        last_price = 100000.0
-        tick_size = 0.05
-        spread_pct = 0.0015
-        min_spread = max(last_price * spread_pct, tick_size)
-        spread = round(min_spread / tick_size) * tick_size
-        self.assertEqual(spread, 150.0)
-
-    def test_bid_ask_generation(self):
-        """Test bid/ask level generation logic."""
-        last_price = 100000.0
-        tick_size = 0.05
-        total_volume = 1_500_000
-        base_volume = max(total_volume // 100, 1000)  # 15000
-        volume_distribution = [0.40, 0.30, 0.20]
-
-        # Bids: last_price - 1*tick, -2*tick, -3*tick
-        expected_bid_prices = [
-            round(last_price - 1 * tick_size, 2),
-            round(last_price - 2 * tick_size, 2),
-            round(last_price - 3 * tick_size, 2),
-        ]
-        self.assertEqual(expected_bid_prices, [99999.95, 99999.90, 99999.85])
-
-        # Asks: last_price + 0*tick, +1*tick, +2*tick
-        expected_ask_prices = [
-            round(last_price + 0 * tick_size, 2),
-            round(last_price + 1 * tick_size, 2),
-            round(last_price + 2 * tick_size, 2),
-        ]
-        self.assertEqual(expected_ask_prices, [100000.00, 100000.05, 100000.10])
-
-        # Volume distribution
-        expected_volumes = [int(base_volume * p) for p in volume_distribution]
-        self.assertEqual(expected_volumes, [6000, 4500, 3000])
+    def test_get_returns_honest_empty_without_db(self):
+        """get() khong cham DB, khong can snapshot."""
+        from django.test import RequestFactory
+        from django.contrib.auth.models import AnonymousUser
+        rf = RequestFactory()
+        req = rf.get('/core/v1/realtime/depth-chart/VNM/')
+        req.user = AnonymousUser()
+        resp = RealtimeDepthChartView().get(req, symbol='VNM')
+        data = resp.data
+        self.assertEqual(data['bids'], [])
+        self.assertEqual(data['asks'], [])
+        self.assertIsNone(data['spread'])
+        self.assertEqual(data['data_quality'], 'unavailable')
 
 
 if __name__ == '__main__':

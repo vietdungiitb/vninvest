@@ -4265,6 +4265,10 @@ class StockManagementOHLCVBarsView(APIView):
             'next_before': next_before,
             'next_after': next_after,
             'snapshot_id': snapshot_id,
+            # S3.1 nhanh B (2026-11-13): khong co nguon corporate action
+            # (probe QB2: Company.events() rong) => bars CHUA dieu chinh.
+            'adjusted': False,
+            'note': 'Bars chua dieu chinh co tuc (corporate actions).',
         })
 
 

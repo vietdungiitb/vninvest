@@ -30,6 +30,13 @@ from .models import SymbolSnapshot
 logger = logging.getLogger(__name__)
 
 
+def _num(value):
+    """Decimal -> JSON number; None stays None (never "")."""
+    if value is None:
+        return None
+    return float(value)
+
+
 class RealtimeDataThrottle(UserRateThrottle):
     """Independent bucket for realtime ticker polling — does not share the global 'user' quota."""
     scope = 'realtime_data'
@@ -66,12 +73,12 @@ class RealtimeTickerView(APIView):
             })
         return Response({
             'symbol': snap.symbol,
-            'price': str(snap.price),
-            'current_price': str(snap.price),
-            'prev_price': str(snap.reference_price) if snap.reference_price else None,
-            'price_change': str(snap.price_change),
-            'change_value': str(snap.price_change),
-            'price_change_pct': str(snap.price_change_pct),
+            'price': _num(snap.price),
+            'current_price': _num(snap.price),
+            'prev_price': _num(snap.reference_price),
+            'price_change': _num(snap.price_change),
+            'change_value': _num(snap.price_change),
+            'price_change_pct': _num(snap.price_change_pct),
             'change_pct': float(snap.price_change_pct),
             'volume': snap.volume,
             'market_status': snap.market_status,
@@ -125,20 +132,20 @@ class RealtimeTickerListView(APIView):
         for s in qs:
             result[s.symbol] = {
                 'symbol': s.symbol,
-                'price': str(s.price),
-                'current_price': str(s.price),
-                'prev_price': str(s.reference_price) if s.reference_price else None,
-                'price_change': str(s.price_change),
-                'change_value': str(s.price_change),
-                'price_change_pct': str(s.price_change_pct),
+                'price': _num(s.price),
+                'current_price': _num(s.price),
+                'prev_price': _num(s.reference_price),
+                'price_change': _num(s.price_change),
+                'change_value': _num(s.price_change),
+                'price_change_pct': _num(s.price_change_pct),
                 'change_pct': float(s.price_change_pct),
                 'volume': s.volume,
-                'reference_price': str(s.reference_price) if s.reference_price else None,
-                'ceiling': str(s.ceiling) if s.ceiling else None,
-                'floor': str(s.floor) if s.floor else None,
-                'high_price': str(s.high) if s.high else None,
-                'low_price': str(s.low) if s.low else None,
-                'open_price': str(s.open) if s.open else None,
+                'reference_price': _num(s.reference_price),
+                'ceiling': _num(s.ceiling) if s.ceiling else None,
+                'floor': _num(s.floor) if s.floor else None,
+                'high_price': _num(s.high) if s.high else None,
+                'low_price': _num(s.low) if s.low else None,
+                'open_price': _num(s.open) if s.open else None,
                 'market_status': s.market_status,
                 'stale': s.stale,
             }
@@ -264,11 +271,11 @@ class RealtimePriceBoardView(APIView):
             return Response({'symbol': symbol, 'data': None, 'stale': True})
         return Response({
             'symbol': snap.symbol,
-            'price': str(snap.price),
-            'current_price': str(snap.price),
-            'prev_price': str(snap.reference_price) if snap.reference_price else None,
-            'price_change': str(snap.price_change),
-            'price_change_pct': str(snap.price_change_pct),
+            'price': _num(snap.price),
+            'current_price': _num(snap.price),
+            'prev_price': _num(snap.reference_price),
+            'price_change': _num(snap.price_change),
+            'price_change_pct': _num(snap.price_change_pct),
             'volume': snap.volume,
             'market_status': snap.market_status,
             'stale': snap.stale,
@@ -373,7 +380,7 @@ class RealtimeSymbolInvestigationView(APIView):
             'exchange': profile.exchange,
             'industry': profile.industry,
             'outstanding_shares': profile.outstanding_shares,
-            'price': str(snap.price) if snap else None,
+            'price': _num(snap.price) if snap else None,
             'volume': snap.volume if snap else None,
             'stale': snap.stale if snap else True,
         })
@@ -427,116 +434,24 @@ class RealtimeRvolView(APIView):
     },
 )
 class RealtimeDepthChartView(APIView):
-    """GET /api/realtime/depth-chart/<symbol>/ — order book depth (mock implementation)."""
+    """GET /api/realtime/depth-chart/<symbol>/ — order book depth.
+
+    D1(b) + S2.1 (2026-11-13): backend KHONG co nguon so lenh that (vnbroker
+    khong cung cap order book) => tra rong TRUNG THUC, khong sinh so gia.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        
-        # Fetch latest snapshot for reference price and volume
-        today = date.today()
-        snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
-        if not snap:
-            snap = SymbolSnapshot.objects.filter(symbol=symbol).order_by('-session_date', '-fetched_at').first()
-        
-        if not snap or not snap.price:
-            return Response({
-                'symbol': symbol,
-                'bids': [],
-                'asks': [],
-                'spread': 0,
-                'timestamp': timezone.now().isoformat(),
-                'note': 'Khong co du lieu snapshot cho phien nay — khong co so lich '
-                        'de uoc tinh.',
-                'is_mock': True,
-                'data_quality': 'estimated',
-                'source': 'synthetic_from_snapshot',
-            })
-        
-        # Get tick size from security master or default to 0.05
-        tick_size = self._get_tick_size(symbol)
-        
-        # Reference price (last traded price)
-        last_price = float(snap.price)
-        ref_price = float(snap.reference_price) if snap.reference_price else last_price
-        total_volume = snap.volume or 0
-        
-        # Calculate spread (max of 0.15% of price or tick_size)
-        spread_pct = 0.0015  # 0.15%
-        min_spread = max(last_price * spread_pct, tick_size)
-        spread = round(min_spread / tick_size) * tick_size  # Round to tick size
-        
-        # Generate 3 bid levels (below last price) and 3 ask levels (at/above last price)
-        bids = []
-        asks = []
-        
-        # Volume distribution: 40%, 30%, 20% of (total_volume / 100) per level
-        base_volume = max(total_volume // 100, 1000)  # Minimum 1000 shares per level base
-        
-        volume_distribution = [0.40, 0.30, 0.20]
-        
-        # Deterministic seed based on symbol + date for consistency
-        import hashlib
-        seed_str = f"{symbol}{today.isoformat()}"
-        seed_hash = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
-        
-        def pseudo_random(base_min, base_max, level):
-            """Generate pseudo-random number based on seed."""
-            nonlocal seed_hash
-            seed_hash = (seed_hash * 1103515245 + 12345) & 0x7fffffff
-            return base_min + (seed_hash % (base_max - base_min + 1))
-        
-        # Bids: last_price - 1*tick, -2*tick, -3*tick
-        for i in range(3):
-            price = round(last_price - (i + 1) * tick_size, 2)
-            vol_pct = volume_distribution[i]
-            volume = int(base_volume * vol_pct)
-            orders = pseudo_random(15, 80, i)
-            bids.append({
-                'price': price,
-                'volume': volume,
-                'orders': orders,
-            })
-        
-        # Asks: last_price + 0*tick, +1*tick, +2*tick
-        for i in range(3):
-            price = round(last_price + i * tick_size, 2)
-            vol_pct = volume_distribution[i]
-            volume = int(base_volume * vol_pct)
-            orders = pseudo_random(15, 80, i + 3)
-            asks.append({
-                'price': price,
-                'volume': volume,
-                'orders': orders,
-            })
-        
         return Response({
             'symbol': symbol,
-            'bids': bids,
-            'asks': asks,
-            'spread': spread,
+            'bids': [],
+            'asks': [],
+            'spread': None,
             'timestamp': timezone.now().isoformat(),
-            'reference_price': ref_price,
-            'last_price': last_price,
-            'tick_size': tick_size,
-            'is_mock': True,
-            'data_quality': 'estimated',
-            'source': 'synthetic_from_snapshot',
-            'note': 'UOC TINH — so lich duoc sinh tu snapshot gia moi nhat, '
-                    'KHONG phai so lich that cua san.',
+            'data_quality': 'unavailable',
+            'note': 'orderbook_not_available',
         })
-    
-    def _get_tick_size(self, symbol):
-        """Get tick size for symbol from security master or use default."""
-        try:
-            from market_data.models import StockProfile
-            profile = StockProfile.objects.filter(symbol=symbol).first()
-            if profile and profile.tick_size:
-                return float(profile.tick_size)
-        except Exception:
-            pass
-        # Default tick size for VN market
-        return 0.05
 class RealtimeUnifiedAlertsView(APIView):
     """Serve legacy unified-alerts contract from native core signal tables."""
 
