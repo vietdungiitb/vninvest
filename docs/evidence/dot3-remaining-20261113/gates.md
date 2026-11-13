@@ -22,7 +22,7 @@ ok: test_b6_market_pat_with_scope_200, test_b6_human_session_unaffected (2 xanh 
 ## 2. PASS-AFTER (code đã sửa) — 8/8 OK, rồi 9/9 sau bổ sung M1
 
 - `@24587c0c3`: `Ran 8 tests — OK` (0.3s). Lỗi giữa chừng `NameError serializers` → fix import (`b5cd690cf`) → re-run **8/8 OK**.
-- Sau guard `market_data/views.py` + test thứ 9 (M1): chạy lại ở bước B8 (xem §3).
+- Sau guard `market_data/views.py` + test thứ 9 (B8-M1, commit `e6701a6f9`): `Ran 176 tests — OK` (9 dot3 + 167 market_data, 7.9s).
 
 ## 3. Hồi quy scope ảnh hưởng (DB `dot3_fix`)
 

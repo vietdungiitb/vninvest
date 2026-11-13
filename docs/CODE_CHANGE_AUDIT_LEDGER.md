@@ -1,3 +1,17 @@
+## Entry 479: Dot3 remaining BE — S2.2 B-4 fundamentals typed + S3.2 B-6 PAT scope + license 0008
+
+- **Date**: 2026-11-13. Claim `dot3-remaining-20261113` = in-progress -> done (branch `feat/dot3-remaining-20261113`). Base `origin/dev` @ `02a8891ce` (PR #375 dot2 da merge).
+- **Type**: BE contract + security + migration. **0** file FE, **0** deny-list. 8 file runtime + 1 test + 1 migration + plan/evidence/handoff.
+- **P1 — S2.2 B-4**: `fetch_company_financials(..., period)` chuyen period xuong 3 finance call; record 5 key co dinh (`period,year,quarter,report_date,items`); so la number/thieu la null (ke ca numeric-string, "" -> None); `cash_flow: None`; `?period=quarter|year`, sai -> 400 `INVALID_PERIOD`, year rong -> 400 `FINANCIALS_YEAR_UNAVAILABLE` (khong bia so); serializer `$ref` (`FinancialRecordSerializer`, `StockFinancialsResponseSerializer`); cache key theo period. FE an toan: chi doc `financials.revenue` (fallback "—"), khong map record.
+- **P2 — S3.2 B-6**: guard `require_pat_scopes_or_human_session` — 12 market_serving (`market:read`), 16 market_data = 8 stock_mgmt + 8 `views.py` (`market:read`, Phat hien B8-M1: 7 endpoint live qua `shared_urlpatterns` ma grep dau bo sot), 8 signal (`signals:read`), 2 advisory (`ai:invoke`); schema mount chi khi `DEBUG` (khong DEBUG -> 404). Human session bypass nen test session cu khong hoi quy. Boundary: ack/mute/detail POST + StockManagement* quan tri giu nguyen (follow-up).
+- **P3 — license 0008**: `commercial/migrations/0008_licensekey.py` do `makemigrations` sinh TREN VPS tai HEAD dev (L-M04), deps `0007` + `identity_access 9000` + AUTH_USER, 1 CreateModel khop `models.py:168-200`. Khong tu dat so. Sua luon loi pre-existing `test_delete_cleans_up` (`commercial_licensekey` missing, chung minh tren dev).
+- **TDD**: fail-before VPS 6 do/2 xanh dung ly do (B-4 shape, period ignore, unscoped PAT 200/201) -> pass-after 8/8 -> 9/9 sau M1. Hoi quy: market_serving+market_data 203 OK; signal+advisory 77 voi 1 error pre-existing (dev giong het); sau 0008: 11/11 OK. `makemigrations --check` sach. spectacular = baseline dev (124 warn/56 err, 0 financial). Local: multi-agent 0, ledger PASS, lessons PASS, eol OK, secrets OK.
+- **Audit doc lap**: B3 NEED_REVISION (0 B/1 M/3 m) -> sua het o plan rev 2 -> B4 PASS. B8 NEED_REVISION (2 M/1 m: views.py 0 diff + evidence chat-only + claim thua file) -> sua het: 8 guard + test 9 + gates.md + handoff/ledger (commit `e6701a6f9` + closeout) -> san sang merge.
+- **Con lai / CHUA CHAY** (trung thuc): S4.x (C2/C3/E2E/visual) · timeframe chart unification (defer, can widget sign-off) · merge mu branch stale -> verify-equivalence (xong o dot2) · deploy staging D6 · verify token 401 (khong co token) · full BE/FE suite · ruff (thay bang `manage.py check` sach).
+- **Rui ro duy nhat**: D2-final raw API `price` number thay vi string — consumer ngoai doc truc tiep (neu co) thay doi; trong repo FE/adapter da Number-safe.
+- **Don VPS da verify**: DB `dot3_fail`/`dot3_fix` DROP, worktree `/tmp/wt-dot3-fail` + `/tmp/wt-dot3-fix` remove + prune, file tam xoa het.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M01 L-M02 L-M04 L-G01 L-V02 L-T01 L-F07].
+
 ## Entry 478: Dot 2 backend — S1.1 price number + S2.1 depth rong trung thuc + S3.1 nhanh B (0 migration, Owner toan quyen)
 
 - **Date**: 2026-11-13. Claim `dot2-backend-20261113` = in-progress -> done (branch `feat/dot2-backend-20261113`). Owner trao toan quyen (solo, khong con agent nao).
