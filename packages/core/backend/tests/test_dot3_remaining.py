@@ -111,6 +111,11 @@ class Dot3RemainingTests(TestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+    def test_b6_marketdata_pat_without_scope_403(self):
+        resp = self._pat(self.token_no_scope).get('/core/v1/market-data/symbols/')
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn('scope', str(resp.json()).lower())
+
     def test_b6_human_session_unaffected(self):
         self.client.force_authenticate(user=self.owner)
         resp = self.client.get('/core/v1/realtime/ticker/VNM/')
