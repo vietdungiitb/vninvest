@@ -214,18 +214,22 @@ class QuotaWarningEmailTests(TestCase):
         self.assertEqual(out["reason"], "duplicate_warning")
 
 
-# ── E) Depth chart: phai noi ro "uoc tinh" ────────────────────────────────
+# ── E) Depth chart: phai noi ro "khong co so lieu that" (S2.1 thay
+# "uoc tinh" bang rong trung thuc — Entry 398 duoc dinh chinh boi Entry 478)
 class DepthChartQualityTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="depthuser", password="pw")
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_response_declares_estimated_data_quality(self):
+    def test_response_declares_unavailable_data_quality(self):
         response = self.client.get(DEPTH_CHART_URL.format(symbol="VNM"))
 
         self.assertEqual(response.status_code, 200)
         data = _payload(response)
-        self.assertTrue(data["is_mock"])
-        self.assertEqual(data["data_quality"], "estimated")
+        self.assertNotIn("is_mock", data)
+        self.assertEqual(data["data_quality"], "unavailable")
+        self.assertEqual(data["bids"], [])
+        self.assertEqual(data["asks"], [])
+        self.assertIsNone(data["spread"])
         self.assertTrue(data["note"])

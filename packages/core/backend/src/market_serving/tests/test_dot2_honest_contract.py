@@ -3,7 +3,7 @@
 Fail-before: price la string, depth-chart bia so, bars thieu adjusted.
 Pass-after: price la number, depth rong trung thuc, bars co adjusted+note.
 """
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -11,6 +11,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
 
 User = get_user_model()
@@ -90,15 +91,24 @@ class Dot2HonestContractTestCase(TestCase):
         self.assertTrue(p['note'])
 
     def test_bars_adjusted_false_with_note(self):
+        for i, (o, h, l, c) in enumerate([
+            (Decimal('71.00'), Decimal('71.90'), Decimal('70.80'), Decimal('71.30')),
+            (Decimal('71.30'), Decimal('72.90'), Decimal('71.10'), Decimal('72.50')),
+        ]):
+            DailyPrice.objects.create(
+                symbol='VNM',
+                date=date.today() - timedelta(days=2 - i),
+                open=o, high=h, low=l, close=c,
+                volume=1000000 + i,
+                source='test',
+            )
         resp = self.client.get(
             '/core/v1/stock-management/stocks/VNM/bars/', {'timeframe': 'D'}
         )
-        # Symbol VNM khong co OHLCV trong DB test (chi co snapshot) hoac co —
-        # ca hai truong hop deu phai co adjusted + note, khong bia adj_close.
-        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_404_NOT_FOUND))
-        if resp.status_code == status.HTTP_200_OK:
-            body = resp.json()
-            payload = body.get('data', body)
-            self.assertFalse(payload['adjusted'])
-            self.assertTrue(payload['note'])
-            self.assertNotIn('adj_close', payload)
+        # Sau S3.1-nhanh-B: 200 + adjusted False + note, khong bia adj_close.
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        body = resp.json()
+        payload = body.get('data', body)
+        self.assertFalse(payload['adjusted'])
+        self.assertTrue(payload['note'])
+        self.assertNotIn('adj_close', payload)

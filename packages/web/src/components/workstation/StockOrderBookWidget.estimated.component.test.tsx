@@ -1,4 +1,5 @@
-// W0-2 (D6): order book is synthetic — badge must show estimated when is_mock.
+// S2.1 (D1b): order book that khong co nguon that — badge hien khi
+// data_quality === 'unavailable' (uu tien), giu is_mock lam fallback.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { StockOrderBookWidget } from "./StockOrderBookWidget.jsx";
@@ -37,7 +38,14 @@ afterEach(() => {
 });
 
 describe("StockOrderBookWidget estimated badge (D6)", () => {
-  it("shows badge when is_mock:true", () => {
+  it("shows unavailable badge when data_quality is unavailable", () => {
+    render(
+      <StockOrderBookWidget orderBook={{ ...mockBook, bids: [], asks: [], spread: null, data_quality: "unavailable" }} loading={false} error={null} onRefresh={() => {}} />
+    );
+    expect(screen.getByText(/Chưa có sổ lệnh|workstation\.orderBook\.unavailableBadge/)).toBeTruthy();
+  });
+
+  it("shows badge when is_mock:true (fallback)", () => {
     render(
       <StockOrderBookWidget orderBook={{ ...mockBook, is_mock: true }} loading={false} error={null} onRefresh={() => {}} />
     );
