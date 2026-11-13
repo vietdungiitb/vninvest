@@ -9,5 +9,7 @@ urlpatterns = [
     path('market-data/daily-prices/<str:symbol>/', views.DailyPriceListView.as_view(), name='daily-price-list'),
     path('market-data/intraday-prices/<str:symbol>/', views.IntradayPricesView.as_view(), name='intraday-prices'),
     path('market-data/intraday-tape/<str:symbol>/', views.IntradayTapeView.as_view(), name='intraday-tape'),
+    # EP-6: index constituents cho widget (S2)
+    path('market-data/index/<str:code>/constituents/', views.IndexConstituentsView.as_view(), name='index-constituents'),
     path('market-data/technicals/bulk/', StockManagementTechnicalsView.as_view(), name='market-data-technicals-bulk'),
 ]

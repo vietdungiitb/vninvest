@@ -8,10 +8,12 @@ Endpoints:
 """
 from datetime import timedelta
 
+import re
+
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, status
+from rest_framework import permissions, serializers, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -492,4 +494,64 @@ class IntradayTapeView(APIView):
             'source_event_at': latest_tick.timestamp.isoformat(),
             'served_at': served_at.isoformat(),
             'age_seconds': age_seconds,
+        })
+
+
+_INDEX_CODE_RE = re.compile(r'^[a-z0-9][a-z0-9_\-]{0,31}$')
+
+
+class IndexConstituentsResponseSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    count = serializers.IntegerField()
+    symbols = serializers.ListField(child=serializers.CharField())
+    note = serializers.CharField()
+
+
+class IndexConstituentsView(APIView):
+    """GET /core/v1/market-data/index/<code>/constituents/ — EP-6.
+
+    Tra danh sach ma that tu vnbroker listing (reuse fetch_symbol_group_members).
+    Khong nguon -> [] + note (Rule 15, khong bia).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary='Index constituents EP-6',
+        description='Danh sach ma thuoc nhom chi so (vn30/vn100/hnx30/custom_/exchange).',
+        responses={
+            200: IndexConstituentsResponseSerializer,
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
+    def get(self, request, code):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
+        from market_data.vnbroker_adapter import (
+            _ALL_MARKET_GROUP_IDS,
+            _EXCHANGE_BASED_GROUPS,
+            _LISTING_GROUP_ALIASES,
+            fetch_symbol_group_members,
+        )
+
+        normalized = str(code or '').strip().lower()
+        known = (
+            normalized in _LISTING_GROUP_ALIASES
+            or normalized in _EXCHANGE_BASED_GROUPS
+            or normalized in _ALL_MARKET_GROUP_IDS
+            or normalized in ('hnx30', 'vn50')
+            or normalized.startswith('custom_')
+        )
+        if not _INDEX_CODE_RE.match(normalized) or not known:
+            return Response(
+                {'code': 'INVALID_INDEX', 'detail': f'index "{code}" khong ho tro.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        symbols = [str(s).upper() for s in (fetch_symbol_group_members(normalized) or []) if str(s or '').strip()]
+        return Response({
+            'code': normalized,
+            'count': len(symbols),
+            'symbols': symbols,
+            'note': 'index_constituents_loaded' if symbols else 'index group empty (no real members resolved)',
         })
