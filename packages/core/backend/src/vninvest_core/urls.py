@@ -53,9 +53,6 @@ urlpatterns = [
     path('core/v1/health', views_health.health, name='core_health'),
     path('core/v1/health/', views_health.health, name='core_health_slash'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='core_capability_bootstrap'),
-    # OpenAPI schema + Swagger UI (chỉ DEBUG hoặc internal)
-    path('core/v1/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('core/v1/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('core/v1/', include(('identity_access.urls', 'identity_access'), namespace='identity_access')),
     path('core/v1/', include(('identity_access.partner_urls', 'identity_access_partner'), namespace='identity_access_partner')),
     path('core/v1/', include(('market_serving.urls', 'market_serving'), namespace='market_serving')),
@@ -86,6 +83,11 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # B-6: OpenAPI schema + Swagger UI chỉ mount khi DEBUG (đóng với bên ngoài ở production → 404).
+    urlpatterns += [
+        path('core/v1/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('core/v1/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]
 
 # API-01 R1 / PB1: lỗi ở tầng Django trả `application/problem+json`, không HTML.
 #

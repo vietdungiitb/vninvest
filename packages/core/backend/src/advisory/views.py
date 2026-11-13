@@ -354,6 +354,8 @@ class AdvisoryRefreshView(APIView):
     throttle_scope = 'advisory_refresh'
 
     def post(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'ai:invoke')
         symbol = _validate_symbol(symbol)
         prompt_config = request.data.get('prompt_config') if isinstance(request.data, dict) else None
         session_date = str(_date.today())
@@ -931,6 +933,8 @@ class AdvisoryBacktestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'ai:invoke')
         symbol = _validate_symbol(symbol)
         try:
             window_days = int(request.query_params.get('window', 30))

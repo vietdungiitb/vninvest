@@ -312,11 +312,36 @@ _STOCK_FINANCIALS_SCHEMA = {
     'type': 'object',
     'properties': {
         'symbol': {'type': 'string'},
-        'financials': {'type': 'object', 'nullable': True},
+        'period': {'type': 'string'},
+        'financials': {
+            'type': 'object',
+            'properties': {
+                'ratio': {'type': 'array', 'items': {'type': 'object'}},
+                'income_statement': {'type': 'array', 'items': {'type': 'object'}},
+                'balance_sheet': {'type': 'array', 'items': {'type': 'object'}},
+            },
+        },
+        'cash_flow': {'type': 'object', 'nullable': True},
         'note': {'type': 'string'},
     },
-    'required': ['symbol', 'financials', 'note'],
+    'required': ['symbol', 'period', 'financials', 'note'],
 }
+
+
+class FinancialRecordSerializer(serializers.Serializer):
+    period = serializers.CharField()
+    year = serializers.IntegerField(allow_null=True)
+    quarter = serializers.CharField(allow_null=True)
+    report_date = serializers.CharField(allow_null=True)
+    items = serializers.DictField(child=serializers.JSONField())
+
+
+class StockFinancialsResponseSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    period = serializers.CharField()
+    financials = serializers.DictField(child=serializers.ListField(child=FinancialRecordSerializer()))
+    cash_flow = serializers.JSONField(allow_null=True)
+    note = serializers.CharField()
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
@@ -1295,6 +1320,8 @@ class StockManagementStockListView(APIView):
     pagination_class = StockManagementStockListCursorPagination
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         search = str(request.query_params.get('search') or request.query_params.get('q') or '').strip()
         if search and len(search) == 3 and search.isalpha():
             search_upper = search.upper()
@@ -1587,10 +1614,14 @@ class StockManagementTechnicalsView(APIView):
         ],
     )
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbols = self._parse_symbols(request)
         return self._build_response(symbols)
 
     def post(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbols = self._parse_symbols(request)
         return self._build_response(symbols)
 
@@ -1611,6 +1642,8 @@ class StockManagementDetailView(APIView):
     )
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         try:
             profile = StockProfile.objects.get(symbol=symbol)
@@ -1689,6 +1722,8 @@ class StockManagementOverviewView(APIView):
     )
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         snap = _fetch_symbol_snapshot_payload(symbol)
 
@@ -1816,6 +1851,8 @@ class StockManagementChartView(APIView):
     )
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         if not _symbol_exists_for_stock_chart(symbol):
             raise NotFound(f'Stock not found: {symbol}')
@@ -2204,6 +2241,8 @@ class StockManagementNewsView(APIView):
     )
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         import pandas as pd
         from django.core.cache import cache
         
@@ -3297,20 +3336,43 @@ class StockManagementFinancialsView(APIView):
                 description='Bỏ qua cache và fetch mới dữ liệu.',
                 required=False,
             ),
+            OpenApiParameter(
+                name='period',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Kỳ báo cáo: quarter (mặc định) hoặc year. Sai → 400 INVALID_PERIOD.',
+                required=False,
+            ),
         ],
         responses={
-            200: _STOCK_FINANCIALS_SCHEMA,
+            200: StockFinancialsResponseSerializer,
+            400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
     )
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from market_data.vnbroker_adapter import get_company_financials_response
 
         symbol = symbol.upper()
+        period = str(request.query_params.get('period', 'quarter') or 'quarter').strip().lower()
+        if period not in ('quarter', 'year'):
+            return Response(
+                {'code': 'INVALID_PERIOD', 'detail': f'period "{period}" không hợp lệ. Hợp lệ: quarter year'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         force = str(request.query_params.get('force', '')).lower() == 'true'
-        return Response(get_company_financials_response(symbol, force=force))
+        payload = get_company_financials_response(symbol, force=force, period=period)
+        fin = payload.get('financials') or {}
+        if period == 'year' and not (fin.get('ratio') or fin.get('income_statement') or fin.get('balance_sheet')):
+            return Response(
+                {'code': 'FINANCIALS_YEAR_UNAVAILABLE', 'detail': 'Upstream chưa hỗ trợ kỳ year cho mã này (không bịa số).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -4142,6 +4204,8 @@ class StockManagementOHLCVBarsView(APIView):
         },
     )
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
 
         # --- validate timeframe ---

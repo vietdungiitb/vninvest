@@ -1212,18 +1212,19 @@ def fetch_company_info(symbol: str, source: str = 'KBS') -> dict:
         }
 
 
-def fetch_company_financials(symbol: str, source: str = 'KBS') -> dict:
+def fetch_company_financials(symbol: str, source: str = 'KBS', period: str = 'quarter') -> dict:
     """
     Fetch company ratios, income statement, and balance sheet from vnbroker.
     """
     symbol_upper = symbol.upper()
+    period_token = str(period or 'quarter').strip().lower() or 'quarter'
     try:
         from vnbroker.api.financial import Finance
         finance = Finance(symbol=symbol_upper, source=source)
-        
+
         # 1. ratios
         try:
-            ratios_df = finance.ratio(period='quarter')
+            ratios_df = finance.ratio(period=period_token)
             if ratios_df is not None and not ratios_df.empty:
                 ratios_df = ratios_df.loc[:, ~ratios_df.columns.duplicated()]
                 ratios_df = ratios_df.where(pd.notnull(ratios_df), None)
@@ -1236,7 +1237,7 @@ def fetch_company_financials(symbol: str, source: str = 'KBS') -> dict:
 
         # 2. income statement
         try:
-            income_df = finance.income_statement(period='quarter')
+            income_df = finance.income_statement(period=period_token)
             if income_df is not None and not income_df.empty:
                 income_df = income_df.loc[:, ~income_df.columns.duplicated()]
                 income_df = income_df.where(pd.notnull(income_df), None)
@@ -1249,7 +1250,7 @@ def fetch_company_financials(symbol: str, source: str = 'KBS') -> dict:
 
         # 3. balance sheet
         try:
-            balance_df = finance.balance_sheet(period='quarter')
+            balance_df = finance.balance_sheet(period=period_token)
             if balance_df is not None and not balance_df.empty:
                 balance_df = balance_df.loc[:, ~balance_df.columns.duplicated()]
                 balance_df = balance_df.where(pd.notnull(balance_df), None)
@@ -1320,21 +1321,72 @@ def _clean_financials_nan(obj):
     return obj
 
 
-def get_company_financials_response(symbol: str, force: bool = False) -> dict:
+def _coerce_financial_number(value):
+    """Số là number, thiếu là None (không ""). Non-numeric giữ nguyên."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        try:
+            import math
+            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                return None
+        except Exception:
+            return None
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text == '':
+            return None
+        try:
+            num = float(text)
+            import math
+            if math.isnan(num) or math.isinf(num):
+                return None
+            return int(num) if num.is_integer() else num
+        except (TypeError, ValueError):
+            return value
+    return value
+
+
+def _typed_financial_record(raw, period):
+    """Chuẩn hoá 1 record: 5 key cố định (period/year/quarter/report_date/items)."""
+    raw = raw if isinstance(raw, dict) else {}
+    try:
+        year = raw.get('year')
+        year = int(year) if year is not None and str(year).strip() != '' else None
+    except (TypeError, ValueError):
+        year = None
+    quarter = raw.get('quarter')
+    quarter = str(quarter).strip() if quarter is not None and str(quarter).strip() != '' else None
+    report_date = raw.get('report_date')
+    report_date = str(report_date).strip() if report_date is not None and str(report_date).strip() != '' else None
+    return {
+        'period': period,
+        'year': year,
+        'quarter': quarter,
+        'report_date': report_date,
+        'items': {k: _coerce_financial_number(v) for k, v in raw.items()},
+    }
+
+
+def get_company_financials_response(symbol: str, force: bool = False, period: str = 'quarter') -> dict:
     """
     SSOT: canonical cached fetch of company financials from vnbroker.
 
     Single gateway for all vnbroker financials data (ratio / income_statement /
-    balance_sheet). Caches 12h in Django cache under ``stock_financials:{symbol}``
+    balance_sheet). Caches 12h in Django cache under ``stock_financials:{symbol}:{period}``
     — the same key consumed by StockManagementFinancialsView — so every consumer
     shares one source of truth and one cache. Returns the cached response payload
-    ``{symbol, financials, note}``. On failure returns an empty-but-valid payload
+    ``{symbol, period, financials, cash_flow, note}``. On failure returns an empty-but-valid payload
     (graceful, no crash) and does NOT cache the failure (allows retry on next call).
     """
     from django.core.cache import cache
 
     symbol = symbol.upper()
-    cache_key = f"stock_financials:{symbol}"
+    period_token = str(period or 'quarter').strip().lower() or 'quarter'
+    cache_key = f"stock_financials:{symbol}:{period_token}"
 
     if not force:
         cached = cache.get(cache_key)
@@ -1342,18 +1394,20 @@ def get_company_financials_response(symbol: str, force: bool = False) -> dict:
             return cached
 
     try:
-        fin = fetch_company_financials(symbol, source='KBS')
+        fin = fetch_company_financials(symbol, source='KBS', period=period_token)
     except Exception as e:
         logger.error('get_company_financials_response: fetch failed for %s: %s', symbol, e)
         fin = {'ratio': [], 'income_statement': [], 'balance_sheet': []}
 
     response_data = _clean_financials_nan({
         'symbol': symbol,
+        'period': period_token,
         'financials': {
-            'ratio': fin.get('ratio', []),
-            'income_statement': fin.get('income_statement', []),
-            'balance_sheet': fin.get('balance_sheet', []),
+            'ratio': [_typed_financial_record(r, period_token) for r in (fin.get('ratio') or [])],
+            'income_statement': [_typed_financial_record(r, period_token) for r in (fin.get('income_statement') or [])],
+            'balance_sheet': [_typed_financial_record(r, period_token) for r in (fin.get('balance_sheet') or [])],
         },
+        'cash_flow': None,
         'note': 'financials_loaded_successfully',
     })
 

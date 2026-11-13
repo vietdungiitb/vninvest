@@ -378,6 +378,11 @@ class AlertFeedBaseListView(generics.ListAPIView):
 class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
     throttle_classes = [SignalRateThrottle]
 
+    def get(self, request, *args, **kwargs):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         qs = super().get_queryset()
         return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
@@ -478,6 +483,8 @@ class _BaseAlertSummaryView(APIView):
         return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         start = time.monotonic()
         cache_key = _alert_scope_cache_key('summary', request.user, request.query_params, self.lane)
         payload = cache.get(cache_key)
@@ -540,6 +547,8 @@ class _BaseAlertSymbolStatsView(APIView):
         return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         start = time.monotonic()
         try:
             page = int(request.query_params.get('page') or 1)
@@ -627,6 +636,8 @@ class AlertCenterEventDetailView(APIView):
     throttle_classes = [SignalRateThrottle]
 
     def get(self, request, alert_id):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         lane = str(request.query_params.get('lane') or 'main').strip().lower()
         if lane not in ('main', 'ai'):
@@ -655,6 +666,8 @@ class AlertCenterSymbolContextView(APIView):
     throttle_classes = [SignalRateThrottle]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         symbol = (symbol or '').upper()
         qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         lane = str(request.query_params.get('lane') or 'main').strip().lower()
@@ -804,6 +817,8 @@ class AlertCenterStreamView(APIView):
         return super().initial(request, *args, **kwargs)
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         import sys
 
         testing = 'test' in sys.argv
@@ -944,6 +959,11 @@ class OrderFlowEventListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = OrderFlowCursorPagination
 
+    def get(self, request, *args, **kwargs):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         symbol = self.kwargs.get('symbol', '').upper()
         qs = OrderFlowEvent.objects.filter(symbol=symbol).order_by('-triggered_at')
@@ -970,6 +990,8 @@ class WhaleFeedAggregateView(APIView):
         responses={200: envelope_response(WhaleFeedAggregateResponseSerializer), 401: OpenApiTypes.OBJECT},
     )
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         symbol = request.query_params.get('symbol', '').upper()
         session_date = request.query_params.get('session_date')
 
