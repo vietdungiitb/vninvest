@@ -1,3 +1,14 @@
+## Entry 480: Roadmap backend vninvest cho widget Enterprise — review + plan S1-S9 + claims
+
+- **Date**: 2026-11-13. Claim `wbacklog-20261113` = in-progress -> done (branch `feat/wbacklog-20261113`). Owner chon "Full multi-slice roadmap": phien nay chi plan + claim, code o slice sau.
+- **Type**: Doc-only (review + plan + claims). **0** runtime, **0** migration, **0** deny-list.
+- **Nguon**: widget `ROADMAP_ENTERPRISE_VNINVEST_BACKEND_CONSOLIDATED_2026-11-12.md` (§3 inventory 12 capability, §6 G0/E0-E5) + `VNInvestClient.ts` expectations (subagent explore 30 dong) vs code vninvest (subagent verify 8 gap CÓ/KHÔNG + file:line).
+- **Ket luan**: B-1..B-6 DA XONG (Entry 466/478/479). Con mo: R1 WS ticket (S1) · R5 constituents (S2) · R9 refresh (DA CO, B3 dong) · R4 year probe (S3) · R8 contract verify (S8) · R2/R3/R6/R7 cho Owner D1-D4 (S4/S5/S6-blocked, S7 defer) · R10 thuoc vnsaas (redirect).
+- **Plan**: `docs/PLAN_WIDGET_BACKEND_ROADMAP_20261113.md` rev 2 (slices, AC Given/When/Then, constraints spec §5, DoD). Audit doc lap B3 NEED_REVISION (O1 stale w0-2/w0-10, O2 R9 thua, O3 vien dan stale, O4 line) -> sua het §7 -> B4 PASS.
+- **Claims**: 1 plan row done + 7 slice `proposed` (S1,S2,S3,S4,S5,S6,S8). S1-S3/S8 khong conflict in-progress (w0-2/w0-10 da done; pm-audit-fix-plan doc-only).
+- **Con lai / CHUA CHAY**: code S1-S9 (slice sau) · Owner D1-D6 · BE/FE/VPS gates (0 runtime nen khong ap dung).
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-V01 L-V02].
+
 ## Entry 479: Dot3 remaining BE — S2.2 B-4 fundamentals typed + S3.2 B-6 PAT scope + license 0008
 
 - **Date**: 2026-11-13. Claim `dot3-remaining-20261113` = in-progress -> done (branch `feat/dot3-remaining-20261113`). Base `origin/dev` @ `02a8891ce` (PR #375 dot2 da merge).
