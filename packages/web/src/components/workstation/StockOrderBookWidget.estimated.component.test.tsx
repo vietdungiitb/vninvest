@@ -38,11 +38,16 @@ afterEach(() => {
 });
 
 describe("StockOrderBookWidget estimated badge (D6)", () => {
-  it("shows unavailable badge when data_quality is unavailable", () => {
-    render(
+  it("shows unavailable badge and no spread for empty honest book", () => {
+    const { container } = render(
       <StockOrderBookWidget orderBook={{ ...mockBook, bids: [], asks: [], spread: null, data_quality: "unavailable" }} loading={false} error={null} onRefresh={() => {}} />
     );
-    expect(screen.getByText(/Chưa có sổ lệnh|workstation\.orderBook\.unavailableBadge/)).toBeTruthy();
+    // Badge hien (khong assert chuoi VI cung de khoi tang baseline i18n).
+    expect(container.querySelector(".ob-estimated-badge")).toBeTruthy();
+    // Spread null => khong render dong spread (khong bia "0.00").
+    expect(container.querySelector(".ob-spread")).toBeNull();
+    // Khong con nhan hieu mock cu.
+    expect(container.textContent).not.toMatch(/is_mock|synthetic/);
   });
 
   it("shows badge when is_mock:true (fallback)", () => {
