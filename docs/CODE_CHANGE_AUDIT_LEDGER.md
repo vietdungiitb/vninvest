@@ -1,3 +1,13 @@
+## Entry 482: S2 index constituents EP-6 — GET market-data/index/<code>/constituents/ (reuse helper, 0 migration)
+
+- **Date**: 2026-11-13. Claim `constituents-s2` = proposed -> in-progress -> done (branch `feat/constituents-s2`). Solo, DB VPS rieng.
+- **Type**: read endpoint + guard. **0** migration (reuse `fetch_symbol_group_members`), **0** deny-list. Views/urls + 1 test + evidence.
+- **Thiet ke**: `IndexConstituentsView` trong `market_data/views.py` (co-located route table) + mount `market_data/urls.py`; validate code (alias/exchange/all/custom_/hnx30) else 400 `INVALID_INDEX`; response `{code,count,symbols[],note}` (symbols string, Rule 3); guard `market:read`; `$ref` serializer. Mount o `urls.py` (B8 xac nhan `core_urls.py:44` import shared tu day).
+- **TDD**: fail-before 5x404 (route missing; +1 loi syntax test do tool viet thieu `import` — da sua test) -> pass-after 5/5 VPS. Hoi quy market_data 172 OK. `makemigrations --check` sach. spectacular diff vs baseline dev RONG.
+- **Audit doc lap B8**: PASS (b8-reaudit.md). Ghi nhan: diff PR chi 4 file S2 (khong stack S1).
+- **Con lai / CHUA CHAY**: full BE/FE suite · widget team mo capability · deploy.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-B01 L-V01 L-V02].
+
 ## Entry 481: S1 WS ticket G0.2/C02 — POST auth/ws-ticket + consumers ?ticket= (cache, 0 migration)
 
 - **Date**: 2026-11-13. Claim `ws-ticket-s1` = proposed -> in-progress -> done (branch `feat/ws-ticket-s1`). Solo, DB VPS rieng.
