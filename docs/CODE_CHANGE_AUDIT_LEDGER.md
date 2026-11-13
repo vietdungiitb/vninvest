@@ -1,3 +1,12 @@
+## Entry 484: PROGRAM DONE — backend vninvest cho widget Enterprise (S1+S2 shipped, S3-S8 decided)
+
+- **Date**: 2026-11-13. PM-proxy toan quyen chay toan bo master plan. 4 PR merge-commit: #377 (plan+claims) · #378 (S1) · #379 (S2) · #380 (S3 probes+decisions). Tat ca da push GitHub.
+- **Shipped**: S1 WS ticket G0.2 (8/8 + 504 OK) · S2 constituents EP-6 (5/5 + 172 OK) · B-1..B-6 co san (Entry 466/478/479).
+- **Decided (D1-D8 FINAL, co probe)**: D1 giu adjusted:false (events=0) · D2 giu depth rong · D3 giu WS+poll · D4 defer Pine · D5 vnsaas redirect · D6 refresh serve · D7 year OK · D8 khong build /alerts+/workspace/v1.
+- **Con lai / CHUA CHAY**: E2E WS ngoai (widget team bat flag) · full suite · deploy · EP-1/EP-3 that (can vendor) · S9 kit (widget team).
+- **Don dep**: VPS worktree/DB tam da xoa het; local branch slice da xoa; dev ff sach.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-B01 L-V01 L-V02]. GHI LESSON MOI: khong — phien nay khong mac loi ton thoi gian/chan build (3 loi nho: mount nham checkout cu, thieu import, NUL pre-existing — xu ly trong phut, chua du nguong lesson).
+
 ## Entry 483: S3 probes + S4/S5/S6/S8 verify & PM decisions D1-D8 (read-only, 0 code)
 
 - **Date**: 2026-11-13. Claim `probes-s3` = proposed -> in-progress -> done (branch `feat/probes-s3`). Solo.
