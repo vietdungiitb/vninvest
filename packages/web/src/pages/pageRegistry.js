@@ -174,25 +174,13 @@ function makePageEntry(routeId, status, loadComponent) {
 }
 
 export const pageRegistry = Object.freeze([
-  makePageEntry("operations-center", "baseline", () =>
-    import("./admin/ShellOperationsCenterPage.tsx").then((module) => module.ShellOperationsCenterPage)),
-  makePageEntry("operations-center-mail-config", "baseline", () =>
-    import("./admin/ShellMailConfigPage.tsx").then((module) => module.ShellMailConfigPage)),
-  makePageEntry("advertising-admin", "baseline", () =>
-    import("../features/advertising/pages/AdvertisingAdminPage.jsx").then((module) => module.default)),
   makePageEntry("ai-command-center", "baseline", () =>
     import("./AICommandCenterPage.tsx").then((module) => module.AICommandCenterPage)),
   makePageEntry("ai-usage-analytics", "baseline", () =>
     import("./AIUsageAnalyticsPage.tsx").then((module) => module.AIUsageAnalyticsPage)),
     // R3.2: trang "Traces" — 4 bước AI của mỗi lần tư vấn.
-    makePageEntry("ai-traces", "baseline", () =>
-    import("./AICommandTracesPage.tsx").then((module) => module.AICommandTracesPage)),
     // R3.3: dashboard SLO LLM (p50/p95/p99 + success rate + token/$ theo model).
-makePageEntry("ai-slo", "baseline", () =>
-        import("./AISloDashboardPage.tsx").then((module) => module.AISloDashboardPage)),
       // R4.5: trang Nhat ky kiem toan (tab thu 6, chi staff — route boc StaffRoute).
-      makePageEntry("ai-audit", "baseline", () =>
-        import("./AIAuditPage.tsx").then((module) => module.AIAuditPage)),
   makePageEntry("support", "baseline", () =>
     import("./SupportPage.tsx").then((module) => module.SupportPage)),
   // GỠ 2026-10-22 (W0.4): 6 entry duoi day da bi SHADOW — `main.tsx` resolve
@@ -224,11 +212,7 @@ makePageEntry("ai-slo", "baseline", () =>
   // thuộc wave UI/UX này. Xoá file là việc không khả đảo ngược cho review.
   //
   // Nếu sau này cần route lại: thêm entry + <Route> CÙNG một PR.
-  makePageEntry("vip-local-control", "baseline", () =>
-    import("./vip/VipLocalControlPage.tsx").then((module) => module.VipLocalControlPage)),
   // SM-P4 core user-facing pages
-  makePageEntry("alert-center", "core", () =>
-    import("./AlertCenterPage.tsx").then((module) => module.AlertCenterPage)),
   makePageEntry("core-dashboard", "core", () =>
     import("./DashboardPage.tsx").then((module) => module.default)),
   makePageEntry("core-portfolios", "core", () =>
@@ -261,12 +245,6 @@ makePageEntry("ai-slo", "baseline", () =>
     import("./auth/AuthVerifyEmailPage.tsx").then((module) => module.AuthVerifyEmailPage)),
   makePageEntry("auth-reset-password", "core", () =>
     import("./auth/AuthResetPasswordPage.tsx").then((module) => module.AuthResetPasswordPage)),
-  makePageEntry("commercial-billing-center", "core", () =>
-    import("./commercial/BillingCenterPage.tsx").then((module) => module.BillingCenterPage)),
-  makePageEntry("commercial-payment-return", "core", () =>
-    import("./commercial/PaymentReturnPage.tsx").then((module) => module.PaymentReturnPage)),
-  makePageEntry("core-stock-detail", "core", () =>
-    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
   makePageEntry("screener", "core", () =>
     import("./ScreenerPage.tsx").then((module) => module.ScreenerPage)),
   // Tenant Admin Pages
@@ -275,67 +253,9 @@ makePageEntry("ai-slo", "baseline", () =>
   makePageEntry("admin-crawl-control", "core", () =>
     import("./AdminCrawlControlPage.tsx").then((module) => module.default)),
   // AdminCore Pages (SaaS Operator Console)
-  makePageEntry("admin-core-overview", "core", () =>
-    import("./admin/AdminCoreOverviewPage.tsx").then((module) => module.AdminCoreOverviewPage)),
-  makePageEntry("admin-core-tenants", "core", () =>
-    import("./admin/AdminCoreTenantsPage.tsx").then((module) => module.AdminCoreTenantsPage)),
-  makePageEntry("admin-core-service-accounts", "core", () =>
-    import("./admin/AdminCoreServiceAccountsPage.tsx").then((module) => module.AdminCoreServiceAccountsPage)),
-  makePageEntry("admin-core-pats", "core", () =>
-    import("./admin/AdminCorePATsPage.tsx").then((module) => module.AdminCorePATsPage)),
-  makePageEntry("admin-core-usage", "core", () =>
-    import("./admin/AdminCoreUsagePage.tsx").then((module) => module.AdminCoreUsagePage)),
-  makePageEntry("admin-core-billing", "core", () =>
-    import("./admin/AdminCoreBillingPage.tsx").then((module) => module.AdminCoreBillingPage)),
-  makePageEntry("admin-core-jobs", "core", () =>
-    import("./admin/AdminCoreJobsPage.tsx").then((module) => module.AdminCoreJobsPage)),
-  makePageEntry("admin-core-audit-trace", "core", () =>
-    import("./admin/AdminCoreAuditTracePage.tsx").then((module) => module.AdminCoreAuditTracePage)),
   makePageEntry("whale-advisory", "core", () =>
     import("./signals/WhaleAdvisoryPage.tsx").then((module) => module.WhaleAdvisoryPage)),
-  makePageEntry("tenant-admin-home", "core", () =>
-    import("./tenant-admin/TenantAdminHomePage.tsx").then((module) => module.TenantAdminHomePage)),
-  makePageEntry("tenant-admin-members", "core", () =>
-    import("./tenant-admin/TenantAdminMembersPage.tsx").then((module) => module.TenantAdminMembersPage)),
-  makePageEntry("tenant-admin-service-accounts", "core", () =>
-    import("./tenant-admin/TenantAdminServiceAccountsPage.tsx").then((module) => module.TenantAdminServiceAccountsPage)),
-  makePageEntry("tenant-admin-pats", "core", () =>
-    import("./tenant-admin/TenantAdminPATsPage.tsx").then((module) => module.TenantAdminPATsPage)),
-  makePageEntry("tenant-admin-usage", "core", () =>
-    import("./tenant-admin/TenantAdminUsagePage.tsx").then((module) => module.TenantAdminUsagePage)),
-  makePageEntry("tenant-admin-billing", "core", () =>
-    import("./tenant-admin/TenantAdminBillingPage.tsx").then((module) => module.TenantAdminBillingPage)),
-  makePageEntry("tenant-admin-capabilities", "core", () =>
-    import("./tenant-admin/TenantAdminCapabilitiesPage.tsx").then((module) => module.TenantAdminCapabilitiesPage)),
   // R4.1 AC1: trang Tenant Admin đặt policy AI cấp tenant.
-  makePageEntry("tenant-admin-ai-policy", "core", () =>
-    import("./tenant-admin/TenantAdminAIPolicyPage.tsx").then((module) => module.TenantAdminAIPolicyPage)),
-  makePageEntry("tenant-admin-audit-logs", "core", () =>
-    import("./tenant-admin/TenantAdminAuditLogsPage.tsx").then((module) => module.TenantAdminAuditLogsPage)),
-  makePageEntry("tenant-admin-sso", "core", () =>
-    import("./tenant-admin/TenantAdminSSOPage.tsx").then((module) => module.TenantAdminSSOPage)),
-  makePageEntry("tenant-admin-usage-history", "core", () =>
-    import("./tenant-admin/TenantAdminUsageHistoryPage.tsx").then((module) => module.TenantAdminUsageHistoryPage)),
-  makePageEntry("tenant-admin-reports", "core", () =>
-    import("./tenant-admin/TenantAdminReportsPage.tsx").then((module) => module.TenantAdminReportsPage)),
-  makePageEntry("tenant-admin-security", "core", () =>
-    import("./tenant-admin/TenantAdminSecurityPage.tsx").then((module) => module.TenantAdminSecurityPage)),
-  makePageEntry("tenant-admin-webhooks", "core", () =>
-    import("./tenant-admin/TenantAdminWebhooksPage.tsx").then((module) => module.TenantAdminWebhooksPage)),
-  makePageEntry("tenant-admin-settings", "core", () =>
-    import("./tenant-admin/TenantAdminSettingsPage.tsx").then((module) => module.TenantAdminSettingsPage)),
-  makePageEntry("tenant-admin-roles", "core", () =>
-    import("./tenant-admin/TenantAdminRolesPage.tsx").then((module) => module.TenantAdminRolesPage)),
-  makePageEntry("admin-users", "core", () =>
-    import("./admin/AdminUsersPage.tsx").then((module) => module.AdminUsersPage)),
-  makePageEntry("admin-billing", "core", () =>
-    import("./admin/AdminBillingFleetPage.tsx").then((module) => module.AdminBillingFleetPage)),
-  makePageEntry("admin-usage", "core", () =>
-    import("./admin/AdminUsageFleetPage.tsx").then((module) => module.AdminUsageFleetPage)),
-  makePageEntry("admin-audit", "core", () =>
-    import("./admin/AdminAuditPage.tsx").then((module) => module.AdminAuditPage)),
-  makePageEntry("admin-analytics", "core", () =>
-    import("./admin/AdminAnalyticsPage.tsx").then((module) => module.AdminAnalyticsPage)),
   makePageEntry("tenant-keys", "core", () =>
     import("./tenant/TenantKeysPage.tsx").then((module) => module.TenantKeysPage)),
   makePageEntry("tenant-usage", "core", () =>
