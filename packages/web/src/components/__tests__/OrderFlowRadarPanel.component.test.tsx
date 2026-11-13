@@ -59,8 +59,8 @@ describe("OrderFlowRadarPanel — NAV-1 cua so CVD dong bo URL", () => {
   it("A. URL rong → cua so mac dinh `Cả phiên` va URL VAN RONG", () => {
     renderPanel("");
 
-    // Nút được chọn có class `bg-cyan-600` (trang thai active cua panel).
-    const active = document.querySelector(".bg-cyan-600");
+    // Nút được chọn có class `bg-cyan-700` (trạng thái active của panel; D2-no-regression: đổi từ cyan-600 vì contrast).
+    const active = document.querySelector(".bg-cyan-700");
     expect(active?.textContent?.trim()).toBe(LABEL.all);
     // Điều kiện quan trọng nhất: mặc định KHÔNG được ghi ra URL.
     expect(currentSearch()).toBe("");
@@ -69,7 +69,7 @@ describe("OrderFlowRadarPanel — NAV-1 cua so CVD dong bo URL", () => {
   it("C. deep-link ?cvd_window=1h → cua so khoi tao = `1h`", () => {
     renderPanel("?cvd_window=1h");
 
-    const active = document.querySelector(".bg-cyan-600");
+    const active = document.querySelector(".bg-cyan-700");
     expect(active?.textContent?.trim()).toBe(LABEL["1h"]);
     expect(currentSearch()).toBe("cvd_window=1h");
   });
@@ -77,7 +77,7 @@ describe("OrderFlowRadarPanel — NAV-1 cua so CVD dong bo URL", () => {
   it("C2. deep-link ?cvd_window=chi%E1%BB%81u → gia tri co dau duoc giai ma dung", () => {
     renderPanel("?cvd_window=chi%E1%BB%81u");
 
-    const active = document.querySelector(".bg-cyan-600");
+    const active = document.querySelector(".bg-cyan-700");
     expect(active?.textContent?.trim()).toBe(LABEL.chieu);
     expect(currentSearch()).toBe("cvd_window=chi%E1%BB%81u");
   });
@@ -85,7 +85,7 @@ describe("OrderFlowRadarPanel — NAV-1 cua so CVD dong bo URL", () => {
   it("C3. ?cvd_window=bogus → rơi ve mac dinh (khong rơi vao trang thai vo nghia)", () => {
     renderPanel("?cvd_window=bogus");
 
-    const active = document.querySelector(".bg-cyan-600");
+    const active = document.querySelector(".bg-cyan-700");
     expect(active?.textContent?.trim()).toBe(LABEL.all);
   });
 

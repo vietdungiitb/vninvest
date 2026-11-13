@@ -104,7 +104,7 @@ export function AdvisoryAlertDialog({ advisory, symbol, onClose, createAlert = n
         'div',
         { className: 'flex gap-2 justify-end' },
         e('button', { type: 'button', onClick: onClose, className: 'px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200' }, t('aiAdvisory.alert.cancel', { defaultValue: 'Đóng' })),
-        !created && e('button', { type: 'submit', disabled: submitting, className: 'px-4 py-2 rounded-xl text-xs font-black bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50' }, submitting ? t('aiAdvisory.alert.submitting', { defaultValue: 'Đang tạo…' }) : t('aiAdvisory.alert.submit', { defaultValue: 'Tạo cảnh báo' }))
+        !created && e('button', { type: 'submit', disabled: submitting, className: 'px-4 py-2 rounded-xl text-xs font-black bg-cyan-700 text-white hover:bg-cyan-800 disabled:opacity-50' }, submitting ? t('aiAdvisory.alert.submitting', { defaultValue: 'Đang tạo…' }) : t('aiAdvisory.alert.submit', { defaultValue: 'Tạo cảnh báo' }))
       )
     )
   );

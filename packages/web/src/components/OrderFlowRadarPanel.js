@@ -204,7 +204,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
       onClick: () => setTimeFilter(filter.id),
       className: `px-3 py-1 font-semibold rounded transition-all uppercase ${
         timeFilter === filter.id
-          ? 'bg-cyan-600 text-white shadow-sm'
+          ? 'bg-cyan-700 text-white shadow-sm'
           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
       }`,
     },

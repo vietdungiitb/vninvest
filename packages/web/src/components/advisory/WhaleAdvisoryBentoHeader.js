@@ -71,7 +71,7 @@ export function WhaleAdvisoryBentoHeader({
               disabled: statsLoading,
               'aria-label': t('aiAdvisory.refresh', { defaultValue: 'Làm mới dữ liệu' }),
               className: `p-3 rounded-2xl transition-all active:scale-90 shadow-lg ${
-                statsLoading ? 'bg-slate-800 text-slate-600' : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/20'
+                statsLoading ? 'bg-slate-800 text-slate-600' : 'bg-cyan-700 hover:bg-cyan-800 text-white shadow-cyan-900/20'
               }`,
               title: t('aiAdvisory.refresh', { defaultValue: 'Làm mới dữ liệu' })
             },

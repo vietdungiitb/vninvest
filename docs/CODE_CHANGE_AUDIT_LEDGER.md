@@ -1,3 +1,11 @@
+## Entry 473: B5 follow-up — sua 4 nut advisory bg-cyan-600 (~3.6:1) sang cyan-700/800 (Owner uy quyen)
+
+- **Date**: 2026-11-13. Claim `uiux-advisory-contrast` = done (khai truoc, commit rieng).
+- **Scope**: 4 file advisory + 1 nut emerald cung pattern (phat hien khi do): WhaleAdvisoryBentoHeader.js:74 (icon refresh) · AdvisoryOrderTicket.js:106 (review, cyan) + :107 (confirm, emerald-600 3.77:1 — cung fail) · AdvisoryAlertDialog.js:107 · OrderFlowRadarPanel.js:207 (filter pill active).
+- **Doi**: `bg-cyan-600→700` + `hover:bg-cyan-500→800` (3.68→5.36, hover 7.27); `bg-emerald-600→700` + `hover:bg-emerald-500→800` (3.77→5.48). Do bang script (contrast.cjs tam, khong commit).
+- **Test kem**: OrderFlowRadarPanel test tim nut qua class CSS cu → update 4 selector + comment sang cyan-700 (khong phai regression product).
+- **Gates**: tsc 0 · lint 0 err · vitest 41/41 (orderflow 7 + ai-slo + page-error-boundary 2 + auth-forms 3 + admin/tenant-home).
+
 ## Entry 472: Axe follow-up — sidebar group role + bootstrap retry contrast (Owner uy quyen)
 
 - **Date**: 2026-11-13. Claim `uiux-vps-verify` (mo rong).
