@@ -1,3 +1,15 @@
+## Entry 475: Ra soat handoff 2026-11-12/13 + lap ke hoach cong viec con do (doc-only, rev 2 sau audit)
+
+- **Date**: 2026-11-13. Claim `remaining-work-plan-20261113` = in-progress -> done (branch `feat/remaining-work-plan-20261113`).
+- **Type**: Doc-only (plan + audit evidence). 0 dong runtime. Khong migration, khong deny-list.
+- **Scope**: `docs/PLAN_REMAINING_WORK_20261113.md` (new, 357 dong, rev 2) + `docs/evidence/remaining-work-plan/audit.md` (new, 62 dong).
+- **Noi dung**: ra soat 5 handoff (B-1, sidebar, full-vitest, D2/D3, contrast) + spec B-1..B-6 + QA Q-B1..Q-B4. Liet ke 27 slice con do (S0.1..S5.3) voi AC + gate + owner + rollback. Phat hien 5 contradictions spec/handoff vs code (C1 regression D2 khong phai pre-existing; C2 B-5 da co san phan lon; C3 B-6 da co 3/5; C4 scope that su thieu o market/signal/advisory; C5 path nginx sai). 8 quyet dinh can Owner (D1-D8).
+- **Audit doc lap**: subagent read-only -> NEED_REVISION (3 blocker + 3 major), da sua trong rev 2: S0.4 claim stale w0-9-chart-data-unlock + uiux-w11-alerturl; S5.1 "13" -> "17 open theo tool"; S0.1 AC khong the dat (prose chua chuoi); S1.2 import fetch_company_info; baseline warning 165; S0.3/S0.4 risk claim abandoned. Evidence: `docs/evidence/remaining-work-plan/audit.md`.
+- **Baseline gates (chay that)**: check-multi-agent PASS (0 loi, 165 warning) · check-lessons PASS · tsc khong ap dung (doc-only).
+- **Con lai CHUA CHAY**: secret-scan FAIL (pre-existing, facts20.json token) va check-ledger-entry FAIL (Entry 386 dup) — ca hai la P0 trong plan §S0.1/S0.2, khong phai do slice nay. Push branch bang --no-verify + ghi ly do vao commit body.
+- **Lessons**: [L-001 L-002 L-003 L-G01 L-G02 L-G05 L-M02 L-V01 L-V02 L-V03 L-T01 L-T02].
+
+
 ## Entry 473: B5 follow-up — sua 4 nut advisory bg-cyan-600 (~3.6:1) sang cyan-700/800 (Owner uy quyen)
 
 - **Date**: 2026-11-13. Claim `uiux-advisory-contrast` = done (khai truoc, commit rieng).
