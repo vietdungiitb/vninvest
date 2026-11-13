@@ -53,7 +53,9 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(src).not.toMatch(/panes:\s*customPanes/);
   });
 
-  it("S4 — label i18n 'chartIndicators' co o CA vi.js va en.js", () => {
+  it("S4 — label i18n 'chartIndicators' co o CA file locale vi va en", () => {
+    // S0.4 (gate-p0-20261113): D3 tach i18n monolith -> key nay o
+    // locales/vi|en/stockDetail.js (vi.js/en.js chi con la barrel).
     expect(vi).toMatch(/chartIndicators:/);
     expect(en).toMatch(/chartIndicators:/);
   });
