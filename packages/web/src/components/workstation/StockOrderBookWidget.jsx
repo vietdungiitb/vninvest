@@ -165,7 +165,7 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
               : t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" })
           )
       ),
-      orderBook && typeof spread === "number" && e(
+      orderBook && typeof orderBook.spread === "number" && e(
         "div",
         { className: "ob-spread" },
         "Spread: ",
