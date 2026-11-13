@@ -4,10 +4,10 @@
   "feed?timeframe=session&page_size=40 :: net::ERR_ABORTED"
  ],
  "errors": [
-  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_rTrNzmHzgsh8o2nM6DMOw0JTzY1XjtvC-iiVKkW154zQQG6A2-xHlJsMiN_11y6_' failed: Error during WebSocket handshake: Unexpect",
-  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_rTrNzmHzgsh8o2nM6DMOw0JTzY1XjtvC-iiVKkW154zQQG6A2-xHlJsMiN_11y6_' failed: Error during WebSocket handshake: Unexpect",
-  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_rTrNzmHzgsh8o2nM6DMOw0JTzY1XjtvC-iiVKkW154zQQG6A2-xHlJsMiN_11y6_' failed: Error during WebSocket handshake: Unexpect",
-  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_rTrNzmHzgsh8o2nM6DMOw0JTzY1XjtvC-iiVKkW154zQQG6A2-xHlJsMiN_11y6_' failed: Error during WebSocket handshake: Unexpect",
+  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_REDACTED' failed: Error during WebSocket handshake: Unexpect",
+  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_REDACTED' failed: Error during WebSocket handshake: Unexpect",
+  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_REDACTED' failed: Error during WebSocket handshake: Unexpect",
+  "error: WebSocket connection to 'wss://docker.edusuccess.vn/ws/realtime/?token=vni_internal_REDACTED' failed: Error during WebSocket handshake: Unexpect",
   "error: Failed to load resource: the server responded with a status of 404 ()",
   "error: Failed to load resource: the server responded with a status of 404 ()"
  ]
