@@ -1,3 +1,14 @@
+## Entry 483: S3 probes + S4/S5/S6/S8 verify & PM decisions D1-D8 (read-only, 0 code)
+
+- **Date**: 2026-11-13. Claim `probes-s3` = proposed -> in-progress -> done (branch `feat/probes-s3`). Solo.
+- **Type**: probes + decisions. **0** runtime, **0** migration, **0** deny-list. Evidence + decisions + plan note.
+- **Probes VPS (read-only, DB tam `s3_probe`, da DROP)**: (a) `Finance(period='year')` DUOC ho tro — VNM tra du lieu nam that (`2025/2024/...`, khac quarter, `YEAR_SAME_AS_QUARTER False`) => dong V1 dot3 con no; giu nhanh 400-fallback. (b) `events` VNM = 0 (lan 2, khop Entry 477) => D1 giu branch B. (c) URL resolve `/core/v1/auth/token/refresh/` OK (R9 dong han).
+- **PM decisions FINAL (toan quyen, thay Owner)**: D1 giu B · D2 giu rong trung thuc · D3 giu WS+poll · D4 defer EP-9 · D5 vnsaas redirect · D6 verified · D7 year OK · D8 khong build /alerts + /workspace/v1 (surface hien co du demo).
+- **Claims**: S3 done; S4/S5/S6/S8 proposed -> done (0 code, dong bang probe/decision — ghi ro trong row).
+- **Audit**: B8 nhanh (subagent) PASS cho goi probe — evidence `probes/s3-probes.md` + `decisions/d1-d8-final.md`.
+- **Con lai / CHUA CHAY**: E2E WS tu ngoai (khong co PAT that — widget team bat `wsTicketEnabled` de verify) · full suite · deploy.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-B01 L-V01 L-V02].
+
 ## Entry 482: S2 index constituents EP-6 — GET market-data/index/<code>/constituents/ (reuse helper, 0 migration)
 
 - **Date**: 2026-11-13. Claim `constituents-s2` = proposed -> in-progress -> done (branch `feat/constituents-s2`). Solo, DB VPS rieng.
