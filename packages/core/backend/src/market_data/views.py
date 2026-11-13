@@ -44,6 +44,8 @@ class StockProfileListView(APIView):
     pagination_class = StockProfileCursorPagination
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         qs = StockProfile.objects.filter(status='active').order_by('symbol')
         search = request.query_params.get('search') or request.query_params.get('q')
         if search:
@@ -115,6 +117,8 @@ class StockProfileDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         try:
             profile = StockProfile.objects.get(symbol=symbol)
@@ -143,6 +147,8 @@ class DailyPriceListView(APIView):
     pagination_class = DailyPriceCursorPagination
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         qs = DailyPrice.objects.filter(symbol=symbol).order_by('-date', '-id')
         date_from = request.query_params.get('date_from')
@@ -185,6 +191,8 @@ class StockChartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from datetime import datetime, time, timedelta
         
         symbol = symbol.upper()
@@ -276,6 +284,8 @@ class TrackedSymbolsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from user_workspace.models import WatchlistItem
 
         items = (
@@ -300,6 +310,8 @@ class TrackedSymbolsView(APIView):
         return envelope(payload)
 
     def post(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from user_workspace.models import Watchlist, WatchlistItem
 
         raw_symbol = request.data.get('symbol') or request.data.get('ticker') or request.data.get('code')
@@ -362,6 +374,8 @@ class IntradayPricesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         timeframe = request.query_params.get('timeframe', '1H')
         try:
@@ -419,6 +433,8 @@ class IntradayTapeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         try:
             page_size = max(1, min(int(request.query_params.get('page_size', 50)), 200))

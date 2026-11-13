@@ -59,6 +59,8 @@ class RealtimeTickerView(APIView):
     throttle_classes = [RealtimeDataThrottle]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         today = date.today()
         snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
@@ -107,6 +109,8 @@ class RealtimeTickerListView(APIView):
     _MAX_SYMBOLS = 100
 
     def get(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         today = date.today()
         max_date = SymbolSnapshot.objects.aggregate(max_date=Max('session_date'))['max_date']
         target_date = max_date or today
@@ -189,6 +193,8 @@ class RealtimeIntradayView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         try:
             page_size = max(1, min(int(request.query_params.get('page_size', 50)), 200))
@@ -262,6 +268,8 @@ class RealtimePriceBoardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         today = date.today()
         snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
@@ -299,6 +307,8 @@ class RealtimeBreadthView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         # symbol param is accepted but breadth is market-wide aggregate
         today = date.today()
         max_date = SymbolSnapshot.objects.aggregate(max_date=Max('session_date'))['max_date']
@@ -332,6 +342,8 @@ class RealtimeWhaleFeedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from signal_intelligence.models import UnifiedAlert
         symbol = symbol.upper()
         limit = min(int(request.query_params.get('limit', 50)), 200)
@@ -366,6 +378,8 @@ class RealtimeSymbolInvestigationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from market_data.models import StockProfile
         symbol = symbol.upper()
         try:
@@ -402,6 +416,8 @@ class RealtimeRvolView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from market_data.models import DailyPrice
         symbol = symbol.upper()
         today = date.today()
@@ -442,6 +458,8 @@ class RealtimeDepthChartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         symbol = symbol.upper()
         return Response({
             'symbol': symbol,
@@ -471,6 +489,8 @@ class RealtimeUnifiedAlertsView(APIView):
     }
 
     def get(self, request, **kwargs):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from signal_intelligence.models import UnifiedAlert
 
         try:
@@ -826,6 +846,8 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
     """Serve legacy whale-feed aggregate contract from core signal tables."""
 
     def get(self, request, **kwargs):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from signal_intelligence.models import WhaleAlertCanonical
 
         try:
@@ -1287,6 +1309,8 @@ class RealtimeWhaleCampaignsView(RealtimeWhaleFeedAggregateView):
     """Serve legacy whale-campaigns contract from core canonical whale events."""
 
     def get(self, request, **kwargs):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'market:read')
         from signal_intelligence.models import WhaleAlertCanonical
 
         try:
