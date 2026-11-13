@@ -6,6 +6,16 @@
 - **Test kem**: OrderFlowRadarPanel test tim nut qua class CSS cu → update 4 selector + comment sang cyan-700 (khong phai regression product).
 - **Gates**: tsc 0 · lint 0 err · vitest 41/41 (orderflow 7 + ai-slo + page-error-boundary 2 + auth-forms 3 + admin/tenant-home).
 
+## Entry 474: Full vitest suite tren VPS staging — 8 do / 1243 xanh (gate chay that, khong PASS gia)
+
+- **Date**: 2026-11-13 · **Danh so**: ban dau la Entry 473, doi thanh 474 vi `origin/dev` da co Entry 473 cua session uiux-contrast (merge truoc) — lich su cua ho giu nguyen, khong danh so lai.
+- **Type**: Gate chay (khong sua runtime). Evidence: `docs/evidence/full-vitest-vps-20261113/gates.md` · log VPS `/tmp/wt-fullvitest.log` (256KB, da thu excerpt, da xoa cung worktree).
+- **Ly do**: full suite local OOM (`FATAL ERROR: JavaScript heap out of memory`, 182/183 file, output cut khong quy ket duoc) + runbook §12 **CAM** chay suite local ⇒ chay lai dung quy dinh: worktree `/tmp/wt-fullvitest` o `origin/dev` (`edc314445`), `npm ci` Linux exit 0, `npm run test:components` (nohup, `NODE_OPTIONS=--max-old-space-size=12288`).
+- **Ket qua (chay that)**: Test Files **3 failed | 183 passed (186)** · Tests **8 failed | 1243 passed (1251)** · Duration 75s · exit 1. 8 do gom 2 nhom: (a) 7 test echarts-canvas (`AIUsageDashboard` ×6 + `ai-usage-chart-r16` AC3 — `TypeError: Cannot set properties of null (setting 'dpr')`, zrender tren jsdom; file cua slice ai-r15/ai-r16, khong lien quan slice nao cua phien nay); (b) 1 test S4 `chartIndicators` — slice D3 (2026-11-13) doi key sang `locales/vi|en/stockDetail.js:2`, `vi.js`/`en.js` chi con barrel ⇒ assert vi tri cu do; **key van ton tai, user khong anh huong**.
+- **Quy ket**: test cua sidebar-spa-nav (4/4), W-I, W-K **xanh** trong run nay · B-1 BE-only khong nam trong FE suite · khong slice nao cua phien nay gay do.
+- **Con lai**: ticket cho session D3 (cap nhat S4 theo vi tri key moi; file test nhieu slice cung sua ⇒ khai claim truoc) + ticket echarts-canvas tren jsdom (mock/skip + do browser that) · muon gate full-suite xanh hoan toan: chay lai tren VPS sau khi 2 ticket xong.
+- **Don dep**: `/tmp/wt-fullvitest` (worktree + node_modules Linux) da xoa sau khi lay log.
+
 ## Entry 472: Axe follow-up — sidebar group role + bootstrap retry contrast (Owner uy quyen)
 
 - **Date**: 2026-11-13. Claim `uiux-vps-verify` (mo rong).
