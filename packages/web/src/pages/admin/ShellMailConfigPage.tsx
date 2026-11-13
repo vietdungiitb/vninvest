@@ -1,5 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
-import { Fragment, useState, useEffect, createElement } from "react";
+import { Fragment, useState, useEffect, useCallback, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
@@ -90,11 +90,7 @@ export function ShellMailConfigPage() {
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<TestMessage | null>(null);
 
-  useEffect(() => {
-    fetchConfigs();
-  }, []);
-
-  const fetchConfigs = async () => {
+  const fetchConfigs = useCallback(async () => {
     try {
       setLoading(true);
       const res = await mailApi.getOperatorMailConfigs();
@@ -104,7 +100,11 @@ export function ShellMailConfigPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchConfigs();
+  }, [fetchConfigs]);
 
   const handleActivate = async (id: number) => {
     try {
