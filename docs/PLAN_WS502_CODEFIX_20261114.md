@@ -10,7 +10,7 @@
     cần coordinator + Owner infra — KHÔNG làm ở slice này.
   - O2 Celery hóa indicators: đúng nhưng lớn (task + cache + invalidation + contract) — để sau.
   - ✅ **O3 (slice này, BE-only, 2 thay đổi nhỏ)**:
-    - S1: cache kết quả `_build_response` 60s trên Django cache (staging = Redis,
+    - S1: cache kết quả `_build_response` 300s trên Django cache (staging = Redis,
       test = LocMem): key `bulk_technicals:v1:<date>:<sha1(sorted symbols)>`.
       Dashboard refresh/revisit/tab-switch hết bão lặp lại; first-load vẫn nặng 1 lần.
     - S2: `RealtimeConsumer.connect` + `MarketTickerConsumer.connect`: auth
@@ -20,8 +20,8 @@
   first-load vẫn 502 mới làm), không đổi contract/envelope, không migration,
   không settings, không package.json, không compose.
 - **AC (Given/When/Then)**:
-  - AC1: Gọi POST bulk 2 lần giống hệt nhau → lần 2 ≈ 0 DB query (cache hit), payload
-    tương đương lần 1 (trừ `updated_at` ≤ 60s cũ — chấp nhận, ghi rõ).
+  - AC1: Gọi POST bulk 2 lần giống hệt nhau → lần 2 ≈ 0 DB query (cache hit, TTL 300s),
+    payload tương đương lần 1 (trừ `updated_at` ≤ TTL cũ — chấp nhận, ghi rõ).
   - AC2: Symbols khác nhau → cache miss, query bình thường, không lẫn key.
   - AC3 (live staging, WARM): pre-warm 1 bulk (chờ 200) rồi bão 10 bulk song song +
     WS handshake cùng lúc → 0 connection reset/`502` mới trong cửa sổ đo (baseline
@@ -29,7 +29,7 @@
   - AC4 (live staging, COLD — ghi nhận, KHÔNG gate): bão 10 bulk trên cache lạnh sau
     `cache.clear` của key đó → đo số 502/10 handshake, chỉ để biết mức cải thiện của S2
     đơn độc, không chặn merge.
-- **Giới hạn đã biết (O2)**: TTL 60s ngắn + không singleflight → revisit sau >60s hoặc
+- **Giới hạn đã biết (O2)**: TTL ngắn + không singleflight → revisit sau khi hết hạn hoặc
   N caller song song đúng lúc hết hạn vẫn miss đồng thời (thundering herd). Slice
   ws-502-codefix chấp nhận (giảm tần suất bão, không triệt tiêu); S3 dưới đây xử lý
   nốt duplicate concurrent.
@@ -48,6 +48,41 @@
     truyền cho cả 2 caller + map không leak (O-S3-3).
   - Ghi nhận: assertion cũ `coreApiAdapter.test.js:293` sai sẵn PRE-EXISTING (assert URL
     `?symbols=` thời GET, code đã POST) — `:290` vẫn đúng; không đổ cho S3.
+- **S4 (infra nhẹ, KHÔNG chạm deny-list — slice ws-502-isolate, audit vòng 5→6)**: cô lập
+  WS + thêm CPU staging (env VPS, không sửa file repo).
+  - (a) `entrypoint.sh` nhánh `api)`: 2 daphne — `:8100` HTTP + `:8101` WS (cùng ASGI
+    app, channel layer Redis share nên groups跨process OK; migrate/collectstatic vẫn
+    chạy 1 lần trước khi fork). Supervise POSIX-sh (dash không có `wait -n`):
+    ```sh
+    daphne --bind 0.0.0.0 --port "${CORE_WS_PORT:-8101}" vninvest_core.asgi:application &
+    WS_PID=$!
+    daphne --bind 0.0.0.0 --port "${CORE_API_PORT:-8100}" vninvest_core.asgi:application &
+    API_PID=$!
+    _term() { kill -TERM "$WS_PID" "$API_PID" 2>/dev/null; wait 2>/dev/null; exit 0; }
+    trap _term TERM INT
+    while kill -0 "$WS_PID" 2>/dev/null && kill -0 "$API_PID" 2>/dev/null; do sleep 5; done
+    kill -TERM "$WS_PID" "$API_PID" 2>/dev/null
+    wait 2>/dev/null
+    exit 1
+    ```
+    (`kill -0` nằm trong điều kiện `while/&&` nên `set -eu` không kill script; trap
+    gọi `exit` nên không rò exit 143 — O-S4-1.)
+  - (b) `nginx.conf`: thêm `set $core_ws_upstream core-api:8101;`, `location /ws/`
+    proxy sang đó; mọi location khác giữ nguyên. Port 8101 nội bộ container network,
+    không cần compose (`expose` chỉ là tài liệu).
+  - (c) Tài nguyên (O-S4-2): `prod.yml:129-130` trần container `mem 256m / cpus 0.5`,
+    staging không override → 16GB host VÔ NGHĨA trong container; S4(a) chỉ cô lập
+    event loop chứ KHÔNG tăng throughput. Kèm theo: nâng `CORE_API_CPUS` (vd 2.0) +
+    `CORE_API_MEM_LIMIT` trực tiếp trong `/opt/vninvest/compose.staging.env` TRÊN VPS
+    (env file, không phải deny-list repo) rồi recreate core-api. Ghi `docker stats`
+    trước/sau vào verify. Nâng thêm nữa cần Owner — escalate path, ngoài slice.
+  - (d) TTL cache bulk 60→300s (1 hằng số + comment, cập nhật cả S1/AC1 — O-S4-3):
+    tần suất bão lạnh giảm 5×. Staleness ≤5 phút cho technicals (giá live vẫn qua
+    tickers riêng; R-b vòng 2 đã xác minh không consumer nào đọc freshness từ bulk).
+  - Test: `bash -n entrypoint.sh` (runbook §12.2 cho phép local) + `nginx -t` qua
+    deploy `--verify` + verify live: user reload → bulk POST ít + WS 502 ≈ 0 trong
+    cửa sổ + `docker stats` ghi nhận.
+  - Rollback: revert 1 commit (entrypoint + nginx + hằng số) + trả env VPS về cũ.
 - **Fail-before**: test mới `test_bulk_technicals_cache.py` chạy trên code chưa sửa →
   lần 2 vẫn query DB (đỏ đúng lý do); S2 wiring không có unit test ý nghĩa →
   verify live AC3 (ghi rõ trong ledger, không báo PASS giả — L-007/L-G02).
