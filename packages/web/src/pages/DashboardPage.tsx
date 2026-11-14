@@ -150,6 +150,7 @@ export function DashboardPage({
     summary,
     analytics,
     technicals,
+    technicalsStatus,
     trackedSymbols,
     watchlistGroups,
     watchlists,
@@ -430,6 +431,7 @@ export function DashboardPage({
                 trackedSymbols={trackedSymbols}
                 watchlistGroups={watchlists}
                 technicals={technicals}
+                technicalsStatus={technicalsStatus}
                 analytics={analytics}
                 quotesBySymbol={mergedQuotes}
                 alerts={mergedAlerts as any}
