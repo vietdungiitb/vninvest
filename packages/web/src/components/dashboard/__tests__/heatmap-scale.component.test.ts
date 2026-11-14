@@ -13,11 +13,11 @@ describe("heatmap continuous scale (S3 — kẹp ±7%)", () => {
     expect(heatColorContinuous(20)).toBe(heatColorContinuous(7));
   });
   it("kẹp ±7 chính xác biên", () => {
-    expect(heatColorContinuous(-7)).toBe("#7f1d1d");
-    expect(heatColorContinuous(7)).toBe("#166534");
+    expect(heatColorContinuous(-7)).toBe("#991b1b");
+    expect(heatColorContinuous(7)).toBe("#15803d");
   });
-  it("0% nền trầm #2f3747 (L6/S3.1 — vàng chỉ viền, không fill)", () => {
-    expect(heatColorContinuous(0)).toBe("#2f3747");
+  it("0% nền trầm #334155 (L6/S3.1 — vàng chỉ viền, không fill)", () => {
+    expect(heatColorContinuous(0)).toBe("#334155");
   });
   it("đối xứng nội suy: ±3 khác nhau, cùng độ bão hòa họ", () => {
     expect(heatColorContinuous(3)).not.toBe(heatColorContinuous(-3));

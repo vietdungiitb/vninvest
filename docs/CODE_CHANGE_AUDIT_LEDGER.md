@@ -1,3 +1,12 @@
+## Entry 498: Slice S2 Dashboard — palette keep dark clearer (Owner Q1)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .js + 1 test .ts, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-palette`. **Claim**: `dashboard-heatmap-palette` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` — HEAT_STOPS tinh chinh separation: -7 #991b1b, -3 #7f1d1d, 0 #334155, +3 #166534, +7 #15803d (giu dark aesthetic, ro net hon). Cap nhat `heatmap-scale.component.test.ts` (assert mau moi). textOnHeat threshold giu nguyen (0.35, tat ca stop dark -> chu trang, contrast >=6:1).
+- **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat small. git status chi co 1 JS + 1 test + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Owner decision**: Q1 = giu tram ro net hon, neu khong dat thi doi sau (iterative).
+- **Files**: 1 JS + 1 test + CLAIMS.md + ledger nay. PR #393.
+
 ## Entry 497: Slice S5 Dashboard — "Khác" toggle + ngưỡng 8→15 (MJ-07)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .js + 1 test .ts, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-other-toggle`. **Claim**: `dashboard-heatmap-other-toggle` (khai truoc dong dau tien — L-002).
