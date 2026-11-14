@@ -20,7 +20,10 @@
 2. Review `stash@{0}` + branch `staging-local-backup-20261113`: nếu không còn gì dùng thì `git stash drop` + `git branch -D` (ghi nhận trước khi xóa).
 3. Widget team: bật `wsTicketEnabled` + E2E WS từ ngoài; verify constituents/financials trên staging (ghi CHƯA CHẠY tới lúc có kết quả).
 
-## 4. Rủi ro đã biết
+## 4. Rủi ro đã biết — CẬP NHẬT 2026-11-14: ĐÃ XONG full deploy (Entry 486)
+
+- Owner đã cấp PAT mới → `npm view widget-pro` = 0.4.5 → full deploy PASS, staging chạy dev mới nhất.
+- Còn lại: widget team E2E (CHƯA CHẠY); review `stash@{0}` + branch backup trên VPS rồi drop.
 
 - Staging DB đã migrate lên `0008_licensekey` (additive, entrypoint tự chạy). Không backup DB trước migrate (đúng script chuẩn) — lần deploy full sau nên `pg_dump` trước nếu DB đã có dữ liệu quan trọng.
 - Frontend staging vẫn image 2 ngày tuổi (có widget 0.4.4) — đủ dùng cho demo BE mới; UI mới nhất (S1/S2 không đổi FE) không ảnh hưởng.
