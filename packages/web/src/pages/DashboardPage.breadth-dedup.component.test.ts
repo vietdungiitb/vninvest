@@ -6,6 +6,8 @@ import { dedupAlerts } from "../utils/alertDedup.js";
 function calcBreadth(quotes: Record<string, any>) {
   let up = 0, down = 0, flat = 0;
   Object.values(quotes).forEach((q: any) => {
+    const hasData = q?.current_price != null || q?.change_pct != null || q?.change_value != null || q?.change != null;
+    if (!hasData) return;
     const rawPct = q?.change_pct;
     const change = Number(rawPct ?? q?.change_value ?? q?.change ?? 0);
     if (change > 0.0001) up++;
