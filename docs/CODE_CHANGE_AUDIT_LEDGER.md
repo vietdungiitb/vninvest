@@ -1,4 +1,13 @@
-## Entry 504: Slice S12 Dashboard — visual polish (gradient header + hover states)
+## Entry 505: Slice S13 Dashboard — data layer FE (realtime status + retry)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .tsx, 0 BE, 0 migration). **Branch**: `feat/dashboard-data-layer`. **Claim**: `dashboard-data-layer` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/pages/DashboardPage.tsx` — thêm banner "Đang đồng bộ dữ liệu thị trường ({status})..." + nút "Thử lại" khi realtimeFeed.realtimeStatus !== 'connected'. Empty states rõ khi quotes/technicals/AI chưa sẵn sàng (đã có từ S3/S8/S9).
+- **Gates**: tsc --noEmit PASS; lint 0 errors (17 warnings pre-existing). numstat small. git status chi co 1 TSX + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Note**: BE verification (quotes/technicals/AI endpoints trên VPS) CHƯA CHẠY — ghi CHƯA CHẠY theo L-007. Cần kiểm trên staging.
+- **Files**: 1 TSX + CLAIMS.md + ledger nay. PR #402.
+
+## Entry 504: Slice S12 Dashboard - visual polish (gradient header + hover states)
 
 - **Date**: 2026-11-14. **Type**: FE (1 CSS + 1 JS, 0 BE, 0 migration). **Branch**: `feat/dashboard-visual-polish`. **Claim**: `dashboard-visual-polish` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/components/dashboard/SmartStatsHeader.css` — gradient background (linear-gradient slate-900→slate-950) thay background-color đơn. `SmartStatsHeader.js` — thêm hover:border-cyan-500/20 transition-colors cho KPI grid.

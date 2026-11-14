@@ -346,6 +346,15 @@ export function DashboardPage({
     <div className={"core-dashboard-page " + className}>
       <DashboardHeading />
 
+      {realtimeFeed?.realtimeStatus && realtimeFeed.realtimeStatus !== "connected" && (
+        <div className="core-dashboard-slot core-dashboard-slot--stats">
+          <div className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-4 py-2 text-xs text-amber-200 flex items-center gap-2">
+            <span>Đang đồng bộ dữ liệu thị trường ({realtimeFeed.realtimeStatus})...</span>
+            <button type="button" onClick={() => refresh()} className="text-amber-300 hover:text-amber-100 underline">Thử lại</button>
+          </div>
+        </div>
+      )}
+
       <div className="core-dashboard-slot core-dashboard-slot--stats">
         <PageErrorBoundary>
           {showSkeleton
