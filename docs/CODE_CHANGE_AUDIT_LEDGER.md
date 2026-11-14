@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/pages/DashboardPage.tsx` — `calculatedBreadth` skip placeholders chua co gia/bien dong (useRealtimeFeedCore khoi tao {symbol}); cap nhat breadth-dedup test helper tuong ung.
 - **Gates**: breadth-dedup 5/5 PASS; tsc --noEmit PASS; lint 0 errors (10 warnings pre-existing). numstat small. git status chi co 1 TSX + 1 test + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 1 TSX + 1 test + CLAIMS.md + ledger nay.
+- **Files**: 1 TSX + 1 test + CLAIMS.md + ledger nay. PR #396.
 
 ## Entry 500: Slice S8 Dashboard — technical tab wiring (MJ-08, V2-06)
 
