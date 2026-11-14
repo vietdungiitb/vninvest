@@ -20,4 +20,5 @@ export const dashboard = {
     thousandVndUnitShort: 'nghìn đồng',
     holdings: 'Vị thế đang nắm giữ',
     breadthLabel: 'Độ rộng danh mục',
+    chartsComingSoon: 'Biểu đồ đa mã (VNInvestMultiCharts) — áp dụng trong tương lai.',
   };

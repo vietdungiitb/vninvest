@@ -724,7 +724,7 @@ const [subAgentPromptsVersion, setSubAgentPromptsVersion] = useState(0);
                     "aiCommandCenter.nextRotationLabel",
                   )}: ${
                     settings.ai_key_rotation.next_rotation_at
-                      ? new Date(settings.ai_key_rotation.next_rotation_at).toLocaleDateString()
+                      ? new Date(settings.ai_key_rotation.next_rotation_at).toLocaleDateString(localeTag)
                       : t("aiCommandCenter.neverRotated")
                   }`,
                 )
