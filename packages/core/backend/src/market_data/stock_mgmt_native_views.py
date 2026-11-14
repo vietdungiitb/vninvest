@@ -1426,6 +1426,20 @@ class StockManagementTechnicalsView(APIView):
 
     _MAX_SYMBOLS = 200
 
+    def dispatch(self, request, *args, **kwargs):
+        # BE-fix 2026-11-15 (Entry 508): view nang (180 ngay x 200 symbols +
+        # tinh toan Python) KHONG duoc chay tren single shared thread cua daphne.
+        # Django ASGI chay sync view voi thread_sensitive=True => MOI request
+        # dong bo xep hang tren 1 thread: 10 bulk song song => 9 treo vinh vien
+        # (daphne kill "took too long to shut down"), WS handshake 502 theo.
+        # Chay toan bo dispatch tren threadpool rieng (thread_sensitive=False).
+        # DB connections: CONN_MAX_AGE=0 (compose) => moi thread lay connection
+        # rieng, khong leak. Khong doi signature get/post (DRF dispatch sync).
+        from asgiref.sync import async_to_sync, sync_to_async
+        return async_to_sync(sync_to_async(super().dispatch, thread_sensitive=False))(
+            request, *args, **kwargs
+        )
+
     def _parse_symbols(self, request):
         query_symbols = str(request.query_params.get('symbols', '') or '').strip()
         body_symbols = request.data.get('symbols') if hasattr(request, 'data') else None
