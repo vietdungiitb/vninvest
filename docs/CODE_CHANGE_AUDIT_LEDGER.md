@@ -1,3 +1,18 @@
+## Entry 489: Thuc nghiem skill soc-uiux — iteration 1 (PortfolioWorkspace.css token convergence)
+
+- **Date**: 2026-11-14. **Type**: FE CSS refactor (0 source .tsx, 0 BE, 0 migration). **Branch**: `feat/soc-uiux-trial`. **Claim**: `soc-uiux-trial` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/pages/portfolio/PortfolioWorkspace.css` (83 conversion) + `packages/web/src/pages/portfolio/manage/portfolioManage.css` (2 conversion). Kinh nghiem: convert hardcoded drift hex/rgb (`#f1f5f9`, `#94a3b8`, `#0f172a`, `rgba(15,23,42,a)`, `rgba(0,0,0,a)`, `rgba(30,41,59,a)`, `rgba(239,68,68,a)`, `rgba(245,158,11,a)`, fallback hex trong `var(--x,#hex)`) sang token soc/pf dang co (value-preserving — cung mau, chi doi cach bieu dien). Khong tao token moi, khong doi SSOT.
+- **Skill sections used**: §1 SSOT (6 luat), §2 ban do gate (8 gate chay), §3 cham 2 (UX tra cuu — khong ap dung cham 1 vi day la refactor, khong greenfield), §4 checklist pre-delivery, §6 anti-patterns (L-F12 sticky da dung token san, L-F11 doc CSS build truoc khi ket luan, L-F05 transition shorthand, L-F06 heuristic).
+- **Gates (iteration 1)**:
+  - PASS: check:tokens (0 moi, 79 allowlisted), check-token-conflict (khong moi, 13 baseline), check:portfolio-contrast (12 cap x 2 theme), check:light-theme, check:dom-landmarks, check-heading-contract (khong moi, 25 baseline), check:i18n-hardcoded, tsc --noEmit, lint (0 errors).
+  - CHUA CHAY (L-007): check-theme-contrast (timeout/canvas runtime), check-uiux-budget (timeout 2x), test:visual (Playwright thieu @axe-core/playwright — loi moi truong, khong phai code).
+- **numstat**: 83/83 + 2/2 — khong blowup line (L-T01). git status chi co 2 CSS modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Visuals**: value-preserving by construction (cung mau, chi doi cach bieu dien) — khong can update baseline; Playwright CHUA CHAY nen khong claim PASS.
+- **Lessons ap dung**: [L-002 L-003 L-007 L-G02 L-G04 L-V01 L-V03 L-F03 L-F05 L-F06 L-F11 L-F12 L-T01 L-T02].
+- **Next iteration (queued)**: PortfolioWorkspace.tsx heading-contract (h1 -> h2 + cap nhat test portfolio-heading.component.test.tsx), i18n hardcoded trong portfolio (neu co), a11y-runtime. Chua lam trong iteration 1 de tranh nua voi test contract.
+- **Files**: 2 CSS + CLAIMS.md + ledger nay.
+- **GHI LESSON MOI**: khong (khong mac loi ton thoi gian; conversion mecanical value-preserving, gates xanh). PR #385 (iteration 1).
+
 ## Entry 488: Tao skill repo soc-uiux — ban do UI/UX rieng cua vninvest (doc/skill-only, 0 source)
 
 - **Date**: 2026-11-14. **Type**: DOCS + SKILL (0 source line, 0 migration, 0 deny-list). **Branch**: `feat/soc-uiux-skill` (chua tao — files de working tree, cho Owner review). **Claim**: `soc-uiux-skill` (khai TRUOC khi viet dong dau tien — L-002).
