@@ -21,6 +21,7 @@
 - **Next**: Owner tra loi §F bao cao (cho phep cai? ai dung? routing rule? persist?) → neu yes, 1 agent thuc hien buoc 3 theo workflow-dev-loop.
 - **Lessons**: [L-001 L-002 L-003 L-007 L-008]. GHI LESSON MOI: khong (nghien cuu doc-only, chua mac loi ton thoi gian).
 - **Cap nhat cung ngay (§H bao cao)**: chay thu that trong thu muc tam `Temp\opencode\uupm-trial` (ngoai repo, khong dung node_modules): `npx ui-ux-pro-max-cli init --ai opencode` OK → installer ghi **7 skill** (172 file, 4.2 MB — khong phai 1) + `search.py` chay OK voi `python` 3.13.14; 4 query verify: design-system "fintech stock trading dashboard" tra palette TRUNG heT allowlist repo (#0F172A/#020617/#22C55E — check-tokens.mjs:18,28, vi ca 2 root tu Tailwind slate); `--domain chart` khuyen **Lightweight Charts** = dung thu vien repo da dung (package.json:94); `--domain ux` tra Do/Don't + severity sat thuc te; `--stack react` version-aware (react 19.2.x, active). Playbook dung hieu qua nhat ghi o §H: 3 cham (pattern greenfield / UX tra cuu / chart), luon `--stack react`, bo color/typography output, xoa 6 skill thua chi giu ui-ux-pro-max.
+- **ĐÃ GỘP PR #384** (2026-11-14): claim + ledger + skill + bao cao + kich ban thu nghiem. Push dung SKIP_PRE_PUSH_GATE=1 (kill-switch co san) do 2 FAIL pre-existing khong lien quan (system-design C-003, envelope-contract 2 unwrapped views) — da ghi ly do trong claim note + PR body. check-multi-agent PASS.
 
 ## Entry 486: Deploy staging FULL OK sau khi Owner cap PAT moi (dev 505a9293f)
 
