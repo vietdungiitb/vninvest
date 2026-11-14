@@ -152,7 +152,7 @@ export default function AIAdvisorDeckPanel({
                   {t('modernDeck.aiAlphaLabel', 'Alpha (năm)')}
                 </span>
                 <span className={`text-sm font-bold ${(metrics?.benchmark?.alpha_annualized ?? analytics?.alpha_annual_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {metrics?.benchmark?.alpha_annualized != null ? (metrics.benchmark.alpha_annualized * 100).toFixed(2) + '%' : (analytics?.alpha_annual_pct != null ? analytics.alpha_annual_pct.toFixed(2) + '%' : 'N/A')}
+                  {metrics?.benchmark?.alpha_annualized != null ? `${(metrics.benchmark.alpha_annualized * 100).toFixed(2)}%` : (analytics?.alpha_annual_pct != null ? `${analytics.alpha_annual_pct.toFixed(2)}%` : 'N/A')}
                 </span>
               </div>
               <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
@@ -160,7 +160,7 @@ export default function AIAdvisorDeckPanel({
                   {t('modernDeck.aiDrawdownLabel', 'Sụt giảm tối đa')}
                 </span>
                 <span className="text-sm font-bold text-rose-400">
-                  {metrics?.risk?.max_drawdown != null ? (metrics.risk.max_drawdown * 100).toFixed(2) + '%' : (analytics?.max_drawdown_pct ?? 'N/A') + (analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : '')}
+                  {metrics?.risk?.max_drawdown != null ? `${(metrics.risk.max_drawdown * 100).toFixed(2)}%` : (analytics?.max_drawdown_pct ?? 'N/A') + (analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : '')}
                 </span>
               </div>
             </div>

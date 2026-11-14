@@ -17,4 +17,5 @@ export const dashboard = {
     dividends: 'Dividends received',
     thousandVndUnitShort: 'thousand VND',
     holdings: 'Current holdings',
+    chartsComingSoon: 'Multi-symbol charts (VNInvestMultiCharts) — coming in a future update.',
   };

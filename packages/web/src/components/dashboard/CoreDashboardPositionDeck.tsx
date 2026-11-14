@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useI18n } from '../../context/LangContext.js';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
 import { ClipboardList, BarChart3, Bot } from 'lucide-react';
@@ -82,6 +83,7 @@ export function CoreDashboardPositionDeck({
     DECK_URL_SPEC,
     DECK_URL_DEFAULTS,
   );
+  const { t } = useI18n();
   // W3-4 (AC-4.3): wrapper phai de `useCallback` — `setState` cua React co identity
   // on dinh, nhung arrow inline TAO ham moi MOI LAN RENDER. Neu them no vao deps
   // cua `useEffect` thi effect chay lai lien tuc (loop). Fix = useCallback.
@@ -516,7 +518,7 @@ export function CoreDashboardPositionDeck({
         {isChartsTab && (
           <div className="h-full flex flex-col overflow-hidden min-h-[300px]">
             <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-              Biểu đồ đa mã (VNInvestMultiCharts) — áp dụng trong tương lai (Owner Q3).
+              {t('dashboard.chartsComingSoon', { defaultValue: 'Biểu đồ đa mã (VNInvestMultiCharts) — áp dụng trong tương lai (Owner Q3).' })}
             </div>
           </div>
         )}
