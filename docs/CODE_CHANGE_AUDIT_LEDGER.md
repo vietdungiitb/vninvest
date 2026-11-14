@@ -1,3 +1,44 @@
+## Entry 493: Slice S1 Dashboard — fix bug ECharts callback label.color (BL-03)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-label-fix`. **Claim**: `dashboard-heatmap-label-fix` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` (4 insertions, 2 deletions): gán `label: { color: textOnHeat(bg) }` vào từng item trong `chartData` (L219) và `groupTinyTiles` (L129); đổi `series.label.color` từ callback function thành chuỗi tĩnh `"#ffffff"` (L319 treemap, L359 sunburst). ECharts 6 không gọi callback cho `label.color` mà gán thẳng Function vào `textStyle.fill` → Canvas bỏ qua → chữ bị tô trùng màu nền #2f3747 (contrast 1.0:1).
+- **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat 4/2 (no blowup, L-T01). git status chi co 1 file modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-F04 L-T02]. GHI LESSON MOI: khong.
+- **Next**: S2 (vibrant palette) → S6 (AI alert timeout) → S7 (AI deck fix) → S8 (technical tab) → S9 (KPI data) → S13 (data layer) → S4/S5/S10/S11/S12.
+- **Files**: 1 JS + CLAIMS.md + ledger nay. PR #387 (merged).
+
+## Entry 492: Plan Dashboard Refactor v2 — audit độc lập NEED_REVISION + master plan 13 slices
+
+- **Date**: 2026-11-14. **Type**: DOCS (plan revision, 0 source line, 0 migration). **Branch**: none (doc-only, de Owner review).
+- **Audit độc lập**: `docs/AUDIT_PLAN_DASHBOARD_REFACTOR_20261114.md` (verdict NEED_REVISION) — 5 Blocker (BL-01..BL-05), 4 Major (MJ-06..MJ-09), 1 Minor (MN-10). Đã verify từng finding bằng code FE/BE/ECharts 6/Widget `.d.ts` + phép tính WCAG thật (L-V01, L-V02, L-T02).
+- **Sửa plan v1 → v2** (`docs/PLAN_DASHBOARD_REFACTOR_20261114.md`):
+  - BL-01: sửa đúng component `AIAdvisorAlertPanel` (lane phải Triad) + bug thật `AIAdvisorDeckPanel` (symbolScope mặc định + hasAnalytics field sai).
+  - BL-02: palette rực phải verify WCAG AA toàn dải; palette cũ đạt AAA 7.13-12.32:1 (không phải ~3:1); ràng buộc toán học `textOnHeat` threshold 0.1791 với `#000000`.
+  - BL-03: sửa bug ECharts callback `label.color` (gán vào item-level + chuỗi tĩnh series); chữ bị tô trùng nền #2f3747 (contrast 1.0:1).
+  - BL-04: props `VNInvestMultiCharts` đúng (`charts/defaultLayout/defaultChartProps/licenseKey/maxCharts/onTierLimitExceeded`); file `src/types/vninvestcharts-widget.d.ts` không tồn tại; tier gating Enterprise.
+  - BL-05: KPI `—` do `/analytics/` không trả alpha/beta/sharpe/drawdown; endpoint thật `/metrics/`; D7 cấm sharpe/sortino/correlation; `GIÁ TRỊ DANH MỤC` = "—" cuối tuần vì `session_date=date.today()` fail-closed, BE đã trả `market_value_reason`, FE bỏ rơi field; CTA "Thêm danh mục" sai ngữ nghĩa.
+  - MJ-06: `index.css:490-492` dùng CSS Grid `1fr 1.5fr 1fr` — không dùng `flex-[2]`.
+  - MJ-07: "Khác" bucket đã có click + toggle; nâng ngưỡng phải cập nhật `heatmap-scale.component.test.ts`.
+  - MJ-08: BE có endpoint technicals bulk 180 ngày; `technicalsStatus` đã có trong `useCoreDashboardData` nhưng DashboardPage không truyền xuống deck.
+  - MJ-09: "Cá mập" không có bằng chứng chết; thay bằng multicharts là yêu cầu Owner, không báo sai.
+  - MN-10: thêm `Lessons áp dụng`, `MANDATORY CHECKLIST`, `SCOPE`, `Given/When/Then`, rollback; sửa tên script gate (`node scripts/...`).
+- **Master plan 13 slices** (S1-S13): mỗi slice có claim key + branch, scope (file list), AC Given/When/Then, gates (tên script đúng), audit B3/B8, effort, STOP conditions, Owner questions. S1 fix heatmap label (BL-03) → S2 palette → S3 empty state → S6/S7/S8 AI/technical → S9 KPI → S13 data → S4/S5/S10/S11/S12.
+- **Files**: `docs/PLAN_DASHBOARD_REFACTOR_20261114.md` (v2, rewrite), `docs/AUDIT_PLAN_DASHBOARD_REFACTOR_20261114.md` (audit doc), ledger nay.
+- **Gates**: doc-only → không chạy build/tsc. check-theme-contrast, check-uiux-budget, test:visual vẫn CHƯA CHẠY (lỗi môi trường) — ghi CHƯA CHẠY theo L-007.
+- **Next**: Owner trả lời §12 (6 câu hỏi) → khai claim `dashboard-heatmap-label-fix` (S1) → thực thi Phase A.
+- **Lessons**: [L-002 L-003 L-007 L-G01 L-G02 L-G03 L-G04 L-V01 L-V02 L-V03 L-V04 L-V05 L-V06 L-F03 L-F04 L-F05 L-F06 L-F11 L-F12 L-T01 L-T02]. GHI LESSON MOI: khong.
+
+## Entry 491: Plan refactor triệt để Dashboard (home) — audit Playwright + 4 phase
+
+- **Date**: 2026-11-14. **Type**: DOCS (plan, 0 source line, 0 migration). **Branch**: none (doc-only, de Owner review).
+- **Audit live**: Playwright capture `https://docker.edusuccess.vn/dashboard` bang tai khoan staging `testuser@vninvest.vn` (auth.setup.ts:18-19). Screenshot `Temp/opencode/dashboard-full2.png`. Body text + headings + canvas count da ghi lai. Phat hien: KPI all "—" (Alpha/Beta/Sharpe/Drawdown), market breadth "▲0 ■5 ▼0", alerts 0, heatmap tile all neutral dark (no quote data), AI tab treo loading "Đang phân tích...", 5 ma AAA/FPT/GAS/GEX/VRE.
+- **Findings**: F1 heatmap mau tram (HEAT_STOPS #7f1d1d...#166534, PortfolioHeatmap.js:27-33); F2 "Khác" bucket vo nghia (groupTinyTiles L115-139, nguong 8); F3 tab Ky thuat "--" im lang (CoreDashboardPositionDeck.tsx:203-231, technicals rong); F4 tab Ca map khong hoat dong (WhaleAnalyticsTab); F5 AI Bot treo loading (AIAdvisorDeckPanel); F6 KPI rong im lang; F7-F8 heatmap khong focal point; F9 tooltip toi; F10 chua dung vninvestcharts-widget.
+- **Plan**: docs/PLAN_DASHBOARD_REFACTOR_20261114.md — 4 phase (A heatmap vibrant + per-stock, B sua tab Ky thuat/Ca map->multicharts/AI, C visual hierarchy + rich info, D data layer BE), palette spec (contrast ≥4.5:1), "Khác" strategy (nguong 15 + toggle), multicharts integration (tham chieu VNStockChartPanel.js:140-185), 22 AC mapped gate, effort 2-3 tuan, 6 Owner questions.
+- **Files**: docs/PLAN_DASHBOARD_REFACTOR_20261114.md (moi) · ledger nay.
+- **Gates**: doc-only nen khong chay build/tsc. check-theme-contrast, check-uiux-budget, test:visual van CHUA CHAY (loi moi truong) — ghi CHUA CHAY theo L-007.
+- **Next**: Owner tra loi §11 (6 cau hoi) → khai claim `dashboard-refactor-phase-a` → thuc thi Phase A (effort S) truoc.
+- **Lessons**: [L-007 L-G02 L-G04 L-V03 L-V05]. GHI LESSON MOI: khong.
+
 ## Entry 490: Thuc nghiem skill soc-uiux — iteration 2 (heading-contract fix)
 
 - **Date**: 2026-11-14. **Type**: FE TSX refactor (0 BE, 0 migration). **Branch**: `feat/soc-uiux-trial-2`. **Claim**: `soc-uiux-trial-2` (khai truoc dong dau tien — L-002).
