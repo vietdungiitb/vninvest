@@ -127,6 +127,7 @@ export function groupTinyTiles(annotated, total) {
     changePct: wavg,
     itemStyle: { color: bg, borderColor: "#0f172a", borderWidth: 0.5 },
     labelColor: textOnHeat(bg),
+      label: { color: textOnHeat(bg) },
     isOther: true,
     otherCount: tiny.length,
     otherSymbols: tiny.slice(0, 3).map((d) => d.name),
@@ -217,6 +218,7 @@ export function PortfolioHeatmap({
           borderWidth: isZero ? 1.5 : 0.5,
         },
         labelColor: textOnHeat(bg),
+      label: { color: textOnHeat(bg) },
         currentPrice,
         quantity,
         marketValue,
@@ -316,7 +318,7 @@ export function PortfolioHeatmap({
               fontSize: 11,
               fontWeight: 800,
               // S3.2 — textOn via precomputed labelColor (callback nếu ECharts hỗ trợ, fallback vẫn đúng contrast)
-              color: (params) => params.data?.labelColor || textOnHeat(heatColorContinuous(params.data?.changePct || 0)),
+              color: "#ffffff", // item-level label.color (chartData/groupTinyTiles) overrides per tile
               textBorderColor: "rgba(0,0,0,0.45)",
               textBorderWidth: 2,
               overflow: "truncate",
@@ -356,7 +358,7 @@ export function PortfolioHeatmap({
               formatter: (params) => formatHeatmapLabel(params),
               fontSize: 10,
               fontWeight: 800,
-              color: (params) => params.data?.labelColor || textOnHeat(heatColorContinuous(params.data?.changePct || 0)),
+              color: "#ffffff", // item-level label.color (chartData/groupTinyTiles) overrides per tile
               textBorderColor: "rgba(0,0,0,0.45)",
               textBorderWidth: 2,
               overflow: "truncate",
