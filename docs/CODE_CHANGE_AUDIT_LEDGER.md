@@ -1,3 +1,12 @@
+## Entry 510: Deploy staging #407/#408 + verify live dashboard (xanh)
+
+- **Date**: 2026-11-14. **Type**: ops verify (0 file code, docs-only) + evidence. **Branch**: `feat/dashboard-verify-live`. **Claim**: `dashboard-verify-live` (khai truoc, commit rieng — L-002).
+- **Deploy**: VPS `14.225.255.47` `/opt/vninvest` tu `8c276933c` (#405) FF len `36be8f30e` (#408). `deploy-staging.sh`: build FE 37s OK, core-api image moi, tat ca container healthy. `--verify`: **ALL PASS** (config hop le, `/api/health/` 2xx, 0 container chet, 0 crash-loop).
+- **Verify live (do that)**: BE threadpool fix co mat trong image (`grep -c thread_sensitive` = 3); FE bundle moi co `chartsComingSoon` (i18n + dashboard chunk); live `GET /` = 200, `/api/health/` = 200; bulk song song 10 thread x 5 symbols qua view that + force_auth: **10/10 status 200, wall 3.52s** (probe lan 1 do fail-before do loi unpack cua chinh probe — da sua); Playwright chromium vs staging 3 dashboard specs: **9/9 PASS** (ky truoc 8/9 + UI-04 flaky); WS mock token handshake 403 = dung ky vong (auth enforce, endpoint reachable), data qua polling fallback.
+- **Gates**: check-multi-agent PASS (0 loi; canh bao file claim cu khong ton tai — pre-existing); check-lessons 60/60 PASS; test side effect 2 file (L-V03) da revert, cay sach.
+- **Lessons ap dung**: [L-002 L-003 L-007 L-V01 L-V02 L-V03 L-V04 L-G02]. GHI LESSON MOI: khong.
+- **Files**: evidence moi + ledger nay (+ claim). **Next**: flip claim done -> PR -> merge -> bao Owner 4 muc con no (daphne workers, universe cap, budget drift CSS-2/A11Y-9, npm install axe tests).
+
 ## Entry 509: BE bulk technicals chay tren threadpool rieng + gates con lai + xoa 5 file la
 
 - **Date**: 2026-11-14. **Type**: BE (1 file views, 0 migration) + docs. **Branch**: `feat/dashboard-be-followup`. **Claim**: `dashboard-be-followup` (khai truoc dong dau tien — L-002).
