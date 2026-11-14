@@ -25,11 +25,11 @@ const e = createElement;
 // Quyết định: giữ nền trầm #2f3747 cho 0% để contrast ≥4.5:1 với chữ trắng; vàng #eab308 chỉ dùng làm viền tile 0% (không fill)
 // để tile 0% không nổi bật hơn cả tăng trần/giảm sàn. ECharts-only, không thêm d3.
 const HEAT_STOPS = [
-  { at: -7, color: "#7f1d1d" },
-  { at: -3, color: "#5b2228" },
-  { at: 0, color: "#2f3747" },
-  { at: 3, color: "#14532d" },
-  { at: 7, color: "#166534" },
+  { at: -7, color: "#991b1b" },
+  { at: -3, color: "#7f1d1d" },
+  { at: 0, color: "#334155" },
+  { at: 3, color: "#166534" },
+  { at: 7, color: "#15803d" },
 ];
 const HEAT_ZERO_BORDER = "#eab308";
 
