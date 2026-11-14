@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` — nâng ngưỡng `groupTinyTiles` từ `<= 8` → `<= 15`; thêm state `groupTiny` (localStorage-backed, default true) + toggle button rõ ràng (giữ/bỏ grouping); `displayData` tôn trọng `groupTiny`. Cập nhật `heatmap-scale.component.test.ts` (16 tiny → grouped, 15 tiny → not grouped).
 - **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat small. git status chi co 1 JS + 1 test + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 1 JS + 1 test + CLAIMS.md + ledger nay.
+- **Files**: 1 JS + 1 test + CLAIMS.md + ledger nay. PR #392.
 
 ## Entry 496: Slice S4 Dashboard — focal point heatmap (MJ-06)
 
