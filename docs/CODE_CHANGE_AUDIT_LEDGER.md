@@ -1,4 +1,12 @@
-## Entry 499: Slice S3 Dashboard — empty state tile (A3, V2-04)
+## Entry 500: Slice S8 Dashboard — technical tab wiring (MJ-08, V2-06)
+
+- **Date**: 2026-11-14. **Type**: FE (2 file .tsx, 0 BE, 0 migration). **Branch**: `feat/dashboard-technical-tab-wiring`. **Claim**: `dashboard-technical-tab-wiring` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/pages/DashboardPage.tsx` — destructure `technicalsStatus` tu `useCoreDashboardData` va truyen xuong `CoreDashboardPositionDeck`. `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` — them prop `technicalsStatus`, fix V2-06 (khong sinh 5 dong null khi technicals rong → tra ve [] de hien empty state), them error row voi retry button khi `technicalsStatus.status === 'failed'`.
+- **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 2 TSX + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 2 TSX + CLAIMS.md + ledger nay.
+
+## Entry 499: Slice S3 Dashboard - empty state tile (A3, V2-04)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-empty-state`. **Claim**: `dashboard-heatmap-empty-state` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` — detect `hasQuote` (current_price/change_pct != null); set `changePct = null` + `noData = true` khi không có quote; formatHeatmapLabel trả "chưa có giá" thay vì "0.00%"; tooltip trả "Chưa có dữ liệu giá"; border dashed + neutral gray cho noData tiles.

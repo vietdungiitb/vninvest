@@ -42,6 +42,7 @@ interface CoreDashboardPositionDeckProps {
   loading?: boolean;
   quotesBySymbol?: Record<string, { change_pct?: number; current_price?: number; [key: string]: unknown }>;
   technicals?: unknown[];
+  technicalsStatus?: { status?: string; errorCode?: string | null };
   alerts?: unknown[];
   analytics?: unknown;
   digest?: unknown;
@@ -60,6 +61,7 @@ export function CoreDashboardPositionDeck({
   loading = false,
   quotesBySymbol = {},
   technicals = [],
+  technicalsStatus = { status: 'idle', errorCode: null },
   alerts = [],
   analytics = undefined,
   digest = undefined,
@@ -213,6 +215,11 @@ export function CoreDashboardPositionDeck({
     const symbolsToShow = selectedSymbol !== 'all' && selectedSymbol
       ? [selectedSymbol]
       : scopedUniverse.map((item: any) => item.symbol).filter(Boolean);
+
+    // V2-06: neu technicals rong hoac toan null -> tra ve [] de hien empty state,
+    // khong sinh 5 dong null (pagedTechnicals.length > 0 vo ly).
+    const allNull = (technicals || []).length === 0;
+    if (allNull) return [];
 
     return symbolsToShow.map((symbol) => {
       const upperSym = String(symbol).trim().toUpperCase();
@@ -443,7 +450,14 @@ export function CoreDashboardPositionDeck({
                   </tr>
                 </thead>
                 <tbody className="text-xs">
-                  {loading ? (
+                  {technicalsStatus?.status === 'failed' ? (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center">
+                        <div className="text-rose-400 text-sm mb-2">Không tải được dữ liệu kỹ thuật{technicalsStatus?.errorCode ? ` (${technicalsStatus.errorCode})` : ''}.</div>
+                        <button type="button" onClick={() => { /* retry handled by parent refresh */ }} className="text-xs text-cyan-400 hover:text-cyan-300 underline">Thử lại</button>
+                      </td>
+                    </tr>
+                  ) : loading ? (
                     <tr><td colSpan={5} className="text-center py-4 animate-pulse">Đang tải...</td></tr>
                   ) : pagedTechnicals.length === 0 ? (
                     <tr><td colSpan={5} className="text-center py-4 text-slate-400 italic">Không có dữ liệu kỹ thuật.</td></tr>
