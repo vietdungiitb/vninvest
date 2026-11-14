@@ -30,8 +30,24 @@
     `cache.clear` của key đó → đo số 502/10 handshake, chỉ để biết mức cải thiện của S2
     đơn độc, không chặn merge.
 - **Giới hạn đã biết (O2)**: TTL 60s ngắn + không singleflight → revisit sau >60s hoặc
-  N caller song song đúng lúc hết hạn vẫn miss đồng thời (thundering herd). Slice này
-  chấp nhận (giảm tần suất bão, không triệt tiêu); singleflight/lock/TTL dài hơn để slice sau.
+  N caller song song đúng lúc hết hạn vẫn miss đồng thời (thundering herd). Slice
+  ws-502-codefix chấp nhận (giảm tần suất bão, không triệt tiêu); S3 dưới đây xử lý
+  nốt duplicate concurrent.
+- **S3 (FE, slice ws-502-dedupe, audit vòng 3 → sửa theo O-S3-1..3)**: live 16:00:55Z ghi
+  nhận 50 symbols (= 1 chunk) mà **6 POST bulk song song cùng giây** (đều 200 ~216KB)
+  → gọi trùng lặp (retry/remount/multi-component), không dedupe. Thêm in-flight
+  promise map trong `market.js#getBulkTechnicalsBySymbols`:
+  - Key = `normalized.join(',')` GIỮ NGUYÊN thứ tự, tính SAU normalize (`:322-324`)
+    (O-S3-1, O-S3-2 — sorted key phá thứ tự response; BE cache đã sorted nên 2 thứ tự
+    khác nhau vẫn share BE key khi warm).
+  - Cleanup mirror pattern sẵn có `coreGet` (`transport.js:468-473`): cleanup là
+    side-effect trong `.then`, LUÔN return promise gốc cho caller (O-S3-3).
+  - Không đổi contract/shape/merge logic; dedupe mức request (live case 1 chunk).
+  - Test: 2 calls đồng thời cùng symbols → `fetch` bulk đúng 1 lần, cả 2 resolve bằng
+    nhau; symbols khác nhau → 2 lần; settle xong gọi lại → fetch tiếp; reject lan
+    truyền cho cả 2 caller + map không leak (O-S3-3).
+  - Ghi nhận: assertion cũ `coreApiAdapter.test.js:293` sai sẵn PRE-EXISTING (assert URL
+    `?symbols=` thời GET, code đã POST) — `:290` vẫn đúng; không đổ cho S3.
 - **Fail-before**: test mới `test_bulk_technicals_cache.py` chạy trên code chưa sửa →
   lần 2 vẫn query DB (đỏ đúng lý do); S2 wiring không có unit test ý nghĩa →
   verify live AC3 (ghi rõ trong ledger, không báo PASS giả — L-007/L-G02).

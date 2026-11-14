@@ -1,3 +1,13 @@
+## Entry 513: FE dedupe concurrent bulk technicals (S3) + sua test POST stale
+
+- **Date**: 2026-11-14. **Type**: FE (1 file) + test. **Branch**: `feat/ws-502-dedupe`. **Claim**: `ws-502-dedupe` (khai truoc — L-002). **Plan**: S3 trong `docs/PLAN_WS502_CODEFIX_20261114.md`, audit doc lap 2 vong: NEED_REVISION (O-S3-1/2/3) → sua → **PASS** (`docs/evidence/dashboard-verify-live/AUDIT_PLAN_WS502_20261114.md` vong 3+4).
+- **Scope**: `market.js#getBulkTechnicalsBySymbols` them in-flight promise map theo key `normalized.join(',')` (giu thu tu, tinh SAU normalize). Concurrent calls giong het share 1 promise; cleanup mirror `coreGet` (`transport.js:468-473`), return promise goc. Khong doi contract/shape/merge.
+- **TDD (jest, mocked fetch, chay local — ghi ro)**: RED 3 fail dung ly do (2 fetch; crash `status` tren fetch thu 2); GREEN full file `coreApiAdapter.test.js` **56/56** (4 test moi: dedupe, khac symbols, refetch sau settle, reject share + cleanup).
+- **Phat hien them (PRE-EXISTING, da sua 1 dong)**: assertion cu `:293` assert URL GET `?symbols=` trong khi code POST tu PR #406 (body `{symbols}`) — audit vong 3 ghi nhan sai, ban dau tuong con xanh (do hieu nham ket qua RED). Sua assertion sang POST shape; khong doi production code o cho nay.
+- **Gates**: tsc 0 errors; eslint clean (lint-staged --fix khong doi logic); check-multi-agent PASS; check-lessons 60/60 (vong truoc); jest full file 56/56 local (mocked, khong network/DB — runbook §12 nham suite nang, ghi ro vi tri chay); BE test/tsc-full KHONG chay (khong cham BE).
+- **Don dep**: test side effect khong co (mocked fetch). **Next**: merge PR -> deploy staging -> user hard-reload /dashboard -> dem bulk POST (ky vong 1-2 thay vi 6) + 502 moi (AC3-warm) -> Entry 514.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V04 L-G02 L-T01 L-T02]. GHI LESSON MOI: khong.
+
 ## Entry 512: Fix WS 502 bang code (BE-only): bulk technicals cache 60s + WS auth off shared thread
 
 - **Date**: 2026-11-14. **Type**: BE (2 file, 0 migration) + test + docs. **Branch**: `feat/ws-502-codefix`. **Claim**: `ws-502-codefix` (khai truoc — L-002). **Plan**: `docs/PLAN_WS502_CODEFIX_20261114.md`, audit doc lap 2 vong: NEED_REVISION (O1/O2) → sua → **PASS** (`docs/evidence/dashboard-verify-live/AUDIT_PLAN_WS502_20261114.md`).

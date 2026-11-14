@@ -5,6 +5,11 @@
  */
 
 export function createMarketClient({ coreGet, corePost }) {
+  // S3 (Entry 513): dedupe concurrent identical bulk calls. Live 16:00:55Z ghi nhan
+  // 50 symbols (= 1 chunk) ma 6 POST song song cung giay. Key giu thu tu, tinh SAU
+  // normalize (audit O-S3-1/O-S3-2). Cleanup mirror `coreGet` (transport.js:468-473).
+  const bulkTechnicalsInflight = new Map();
+
   return {
     getRealtimeTickers(symbols) {
       if (!symbols || symbols.length === 0) return Promise.resolve({ data: {} });
@@ -327,20 +332,28 @@ export function createMarketClient({ coreGet, corePost }) {
       for (let i = 0; i < normalized.length; i += 200) {
         chunks.push(normalized.slice(i, i + 200));
       }
-      if (chunks.length === 1) {
-        return corePost('/market-data/technicals/bulk/', { symbols: chunks[0] });
-      }
-      return Promise.all(chunks.map((c) => corePost('/market-data/technicals/bulk/', { symbols: c })))
-        .then((results) => {
-          const merged = { technicals: [], results: [], requested_count: 0, resolved_count: 0 };
-          results.forEach((r) => {
-            if (r?.technicals) merged.technicals.push(...r.technicals);
-            if (r?.results) merged.results.push(...r.results);
-            merged.requested_count += r?.requested_count ?? 0;
-            merged.resolved_count += r?.resolved_count ?? 0;
+      const dedupeKey = normalized.join(",");
+      const inflight = bulkTechnicalsInflight.get(dedupeKey);
+      if (inflight) return inflight;
+      const task = chunks.length === 1
+        ? corePost('/market-data/technicals/bulk/', { symbols: chunks[0] })
+        : Promise.all(chunks.map((c) => corePost('/market-data/technicals/bulk/', { symbols: c })))
+          .then((results) => {
+            const merged = { technicals: [], results: [], requested_count: 0, resolved_count: 0 };
+            results.forEach((r) => {
+              if (r?.technicals) merged.technicals.push(...r.technicals);
+              if (r?.results) merged.results.push(...r.results);
+              merged.requested_count += r?.requested_count ?? 0;
+              merged.resolved_count += r?.resolved_count ?? 0;
+            });
+            return merged;
           });
-          return merged;
-        });
+      bulkTechnicalsInflight.set(dedupeKey, task);
+      task.then(
+        () => { if (bulkTechnicalsInflight.get(dedupeKey) === task) bulkTechnicalsInflight.delete(dedupeKey); },
+        () => { if (bulkTechnicalsInflight.get(dedupeKey) === task) bulkTechnicalsInflight.delete(dedupeKey); },
+      );
+      return task;
     },
 
     /**
