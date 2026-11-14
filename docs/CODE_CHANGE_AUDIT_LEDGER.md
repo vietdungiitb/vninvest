@@ -11,7 +11,7 @@
 - **Lessons ap dung**: [L-002 L-003 L-007 L-G02 L-G04 L-V01 L-V03 L-F03 L-F05 L-F06 L-F11 L-F12 L-T01 L-T02].
 - **Next iteration (queued)**: PortfolioWorkspace.tsx heading-contract (h1 -> h2 + cap nhat test portfolio-heading.component.test.tsx), i18n hardcoded trong portfolio (neu co), a11y-runtime. Chua lam trong iteration 1 de tranh nua voi test contract.
 - **Files**: 2 CSS + CLAIMS.md + ledger nay.
-- **GHI LESSON MOI**: khong (khong mac loi ton thoi gian; conversion mecanical value-preserving, gates xanh).
+- **GHI LESSON MOI**: khong (khong mac loi ton thoi gian; conversion mecanical value-preserving, gates xanh). PR #385 (iteration 1).
 
 ## Entry 488: Tao skill repo soc-uiux — ban do UI/UX rieng cua vninvest (doc/skill-only, 0 source)
 
