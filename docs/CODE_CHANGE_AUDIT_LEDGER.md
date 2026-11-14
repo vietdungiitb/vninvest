@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/index.css:490-492` — đổi `grid-template-columns: 1fr 1.5fr 1fr` → `1fr 2fr 1fr` (heatmap lane rộng 2x so với alert/AI lane). MJ-06: `flex-[2]` vô tác dụng trên grid item, phải sửa `grid-template-columns`.
 - **Gates**: tsc --noEmit PASS; lint 0 errors. numstat 1/1 (no blowup, L-T01). git status chi co 1 CSS modified + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 1 CSS + CLAIMS.md + ledger nay.
+- **Files**: 1 CSS + CLAIMS.md + ledger nay. PR #390.
 
 ## Entry 495: Runbook multi-agent thực thi Master Plan Dashboard Refactor (S1–S13)
 
