@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/components/dashboard/SmartStatsHeader.css` — gradient background (linear-gradient slate-900→slate-950) thay background-color đơn. `SmartStatsHeader.js` — thêm hover:border-cyan-500/20 transition-colors cho KPI grid.
 - **Gates**: tsc --noEmit PASS; lint 0 errors (2 warnings pre-existing). numstat small. git status chi co 1 CSS + 1 JS + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 1 CSS + 1 JS + CLAIMS.md + ledger nay.
+- **Files**: 1 CSS + 1 JS + CLAIMS.md + ledger nay. PR #401.
 
 ## Entry 503: Slice S10 Dashboard - multicharts replace whale (BL-04, V2-02)
 
