@@ -86,41 +86,67 @@ class BulkTechnicalsCacheTestCase(TestCase):
     def _post(self, symbols):
         return self.client.post(BULK_URL, {'symbols': symbols}, format='json')
 
+    def _build(self, symbols):
+        from market_data.stock_mgmt_native_views import StockManagementTechnicalsView
+
+        return StockManagementTechnicalsView()._build_response(symbols)
+
+    def _technicals_by_symbol(self, response):
+        return {
+            item['symbol']: {k: v for k, v in item.items() if k != 'updated_at'}
+            for item in unwrapped_json(response)['technicals']
+        }
+
     def test_second_identical_post_skips_db(self):
-        first = self._post(['TPB', 'ZZC'])
-        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        # Ghi nhan: HTTP-level luon co INSERT audit (middleware/audit chay tren
+        # connection chinh) + view chay tren threadpool rieng (Entry 509) nen
+        # CaptureQueriesContext khong thay query cua view. Do cache o muc
+        # _build_response goi truc tiep (cung thread) moi la tin hieu that.
+        cache.clear()
+        with CaptureQueriesContext(connection) as first_ctx:
+            self._build(['TPB', 'ZZC'])
         with CaptureQueriesContext(connection) as second_ctx:
-            second = self._post(['TPB', 'ZZC'])
-        self.assertEqual(second.status_code, status.HTTP_200_OK)
+            self._build(['TPB', 'ZZC'])
+        self.assertGreater(len(first_ctx), 0)
         self.assertEqual(len(second_ctx), 0)
 
-        first_items = {
-            item['symbol']: {k: v for k, v in item.items() if k != 'updated_at'}
-            for item in unwrapped_json(first)['technicals']
-        }
-        second_items = {
-            item['symbol']: {k: v for k, v in item.items() if k != 'updated_at'}
-            for item in unwrapped_json(second)['technicals']
-        }
-        self.assertEqual(second_items, first_items)
+        http_first = self._post(['TPB', 'ZZC'])
+        http_second = self._post(['TPB', 'ZZC'])
+        self.assertEqual(http_first.status_code, status.HTTP_200_OK)
+        self.assertEqual(http_second.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self._technicals_by_symbol(http_second),
+            self._technicals_by_symbol(http_first),
+        )
 
     def test_different_symbols_miss_cache(self):
-        self._post(['TPB'])
+        cache.clear()
         with CaptureQueriesContext(connection) as ctx:
-            response = self._post(['ZZC'])
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self._build(['TPB'])
         self.assertGreater(len(ctx), 0)
+        with CaptureQueriesContext(connection) as ctx:
+            self._build(['ZZC'])
+        self.assertGreater(len(ctx), 0)
+
+        response = self._post(['ZZC'])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = unwrapped_json(response)
         self.assertEqual([item['symbol'] for item in payload['technicals']], ['ZZC'])
 
     def test_hit_preserves_request_order(self):
-        first = self._post(['TPB', 'ZZC'])
-        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        cache.clear()
+        self._build(['TPB', 'ZZC'])
         with CaptureQueriesContext(connection) as ctx:
-            second = self._post(['ZZC', 'TPB'])
-        self.assertEqual(second.status_code, status.HTTP_200_OK)
+            ordered = self._build(['ZZC', 'TPB'])
         self.assertEqual(len(ctx), 0)
-        payload = unwrapped_json(second)
+        self.assertEqual(
+            [item['symbol'] for item in ordered.data['technicals']],
+            ['ZZC', 'TPB'],
+        )
+
+        response = self._post(['ZZC', 'TPB'])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = unwrapped_json(response)
         self.assertEqual(
             [item['symbol'] for item in payload['technicals']],
             ['ZZC', 'TPB'],
