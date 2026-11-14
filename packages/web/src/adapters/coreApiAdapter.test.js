@@ -358,6 +358,27 @@ describe("coreApiAdapter", () => {
     expect(bulkFetchCount()).toBe(2);
   });
 
+  test("getBulkTechnicalsBySymbols limits chunk concurrency and keeps order", async () => {
+    const symbols = Array.from({ length: 450 }, (_, i) => `S${String(i).padStart(3, "0")}`);
+    let inFlight = 0;
+    let maxSeen = 0;
+    fetchMock.mockImplementation(() => {
+      inFlight += 1;
+      maxSeen = Math.max(maxSeen, inFlight);
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          inFlight -= 1;
+          resolve({ ok: true, json: () => Promise.resolve({ technicals: [{ symbol: "X" }], results: [{ symbol: "X" }] }) });
+        }, 20);
+      });
+    });
+
+    const merged = await coreApiAdapter.getBulkTechnicalsBySymbols(symbols);
+    expect(bulkFetchCount()).toBe(3);
+    expect(maxSeen).toBeLessThanOrEqual(2);
+    expect(merged.technicals.length).toBe(3);
+  });
+
   test("getStockChartHistory calls /core/v1/stock-management/stocks/{symbol}/chart/", async () => {
     const payload = { symbol: "TPB", timeframe: "1H", points: [] };
     mockOkResponse(payload);
