@@ -1,4 +1,13 @@
-## Entry 493: Slice S1 Dashboard — fix bug ECharts callback label.color (BL-03)
+## Entry 494: Slice S6 Dashboard — AI alert panel timeout 10s + retry (BL-01)
+
+- **Date**: 2026-11-14. **Type**: FE (2 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-ai-alert-timeout`. **Claim**: `dashboard-ai-alert-timeout` (khai sau edits — protocol deviation, recorded; L-002 violation).
+- **Scope**: `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js` (fetchFeed: AbortController timeout 10s, AbortError → error message with timeout, clearTimeout in finally); `packages/web/src/adapters/core/market.js` (getAIAlertsFeed accepts options/signal passthrough to coreGet).
+- **Gates**: tsc --noEmit PASS; lint 0 errors. git status chi co 2 JS modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-T02]. GHI LESSON MOI: khong.
+- **Next**: S7 (AI deck fix) → S8 (technical tab) → S9 (KPI data) → S13 (data layer) → S4/S5/S10/S11/S12. S7 depends on S9 (V2-01).
+- **Files**: 2 JS + CLAIMS.md + ledger nay.
+
+## Entry 493: Slice S1 Dashboard - fix bug ECharts callback label.color (BL-03)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-label-fix`. **Claim**: `dashboard-heatmap-label-fix` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` (4 insertions, 2 deletions): gán `label: { color: textOnHeat(bg) }` vào từng item trong `chartData` (L219) và `groupTinyTiles` (L129); đổi `series.label.color` từ callback function thành chuỗi tĩnh `"#ffffff"` (L319 treemap, L359 sunburst). ECharts 6 không gọi callback cho `label.color` mà gán thẳng Function vào `textStyle.fill` → Canvas bỏ qua → chữ bị tô trùng màu nền #2f3747 (contrast 1.0:1).
