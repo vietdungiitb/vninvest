@@ -4,7 +4,7 @@
  * VI SAO: `routeCatalog.js` + 5 route `portfolio-*` ton tai nhung sidebar tro
  * `/portfolios` lai map vao `core-portfolios` (trang CRUD cu) => 5 man hinh
  * moi khong co loi vao nao tu menu. Test nay khoa lai:
- *   1. `/portfolios` render DUNG khung workspace (1 `<h1>` + nav 5 tab);
+ *   1. `/portfolios` render DUNG khung workspace (1 `<h2>` title + nav 5 tab);
  *   2. co link "Quan ly danh muc" tro `/portfolios/manage` (loi vao trang CRUD);
  *   3. `/portfolios/7/holdings` (deep-link) van render workspace.
  *
@@ -46,7 +46,7 @@ function renderAt(path: string) {
 }
 
 describe("/portfolios la entry workspace", () => {
-  test("khong id van render khung + dung MOT h1", async () => {
+  test("khong id van render khung + dung MOT h2 title", async () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     renderAt("/portfolios");
     await waitFor(() => {
@@ -55,7 +55,7 @@ describe("/portfolios la entry workspace", () => {
         expect(alert.textContent ?? "").not.toMatch(/Cannot read properties of undefined/);
       }
     });
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2, name: /Không gian danh mục/ })).toHaveLength(1);
     expect(screen.getByRole("navigation", { name: /Các màn hình danh mục|portfolio/i })).toBeTruthy();
     err.mockRestore();
   });
@@ -68,7 +68,7 @@ describe("/portfolios la entry workspace", () => {
 
   test("deep-link /portfolios/7/holdings van render workspace", () => {
     renderAt("/portfolios/7/holdings");
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2, name: /Không gian danh mục/ })).toHaveLength(1);
     expect(screen.getByTestId("loc").textContent).toBe("/portfolios/7/holdings");
   });
 

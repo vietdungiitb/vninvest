@@ -1,14 +1,16 @@
 /**
- * FU-01 - moi trang phai co DUNG MOT `<h1>`.
+ * FU-01 - moi trang phai co DUNG MOT `<h1>` o SHELL, khong phai o page.
  *
  * 5 route portfolio (`/portfolios/:id/{overview,holdings,allocation,analytics,
  * activity}`) deu map ve MOT entry `portfolio-workspace`
  * (`pageRegistry.js:210-211`) => khung `PortfolioWorkspace` la noi dung de
- * dat `<h1>`, KHONG phai 5 file tab con.
+ * dat tieu de muc (h2), KHONG phai h1, vi `ShellPageTemplate.js:119` da
+ * render `<h1>` theo route title. Dat them h1 o page se tao 2 h1 (sai a11y).
  *
- * Test nay khoa 2 dieu:
- *   1. `<h1>` ton tai (truoc khi sua: 0);
- *   2. **chi 1** `<h1>` (them o 5 tab con se thanh 2 => test bat).
+ * Test nay khoa 3 dieu:
+ *   1. `<h2>` tieu de ton tai (truoc khi sua: 0 - vi dung h1);
+ *   2. chi 1 `<h2>` title (them o 5 tab con se thanh 2 => test bat);
+ *   3. page KHONG tu render `<h1>` (shell cung cap).
  *
  * Do kiem chung hien viet: `ShellPageTemplate.js:119` da render `<h1>`, nen 32
  * component di qua shell khong duoc sua. Phan nay chi lo 5 route portfolio.
@@ -40,20 +42,20 @@ function renderTab(tail: string) {
 const TABS = ["overview", "holdings", "allocation", "analytics", "activity"];
 
 describe("PortfolioWorkspace - heading", () => {
-  test.each(TABS)("tab %s co h1", (tab) => {
+  test.each(TABS)("tab %s co h2 title", (tab) => {
     renderTab(tab);
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2, name: /Không gian danh mục/ })).toHaveLength(1);
   });
 
-  test.each(TABS)("tab %s chi co DUNG MOT h1", (tab) => {
+  test.each(TABS)("tab %s khong tu render h1 (shell cung cap)", (tab) => {
     renderTab(tab);
-    // 2 hoac nhieu hon = da them h1 o tab con (sai)
-    expect(screen.getAllByRole("heading", { level: 1 }).length).toBeLessThanOrEqual(1);
+    // page khong tu render h1 — shell (ShellPageTemplate) cung cap h1 theo route title
+    expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
   });
 
-  test("h1 khong rong", () => {
+  test("h2 title khong rong", () => {
     renderTab("overview");
-    const [h1] = screen.getAllByRole("heading", { level: 1 });
-    expect((h1.textContent ?? "").trim().length).toBeGreaterThan(0);
+    const [h2] = screen.getAllByRole("heading", { level: 2, name: /Không gian danh mục/ });
+    expect((h2.textContent ?? "").trim().length).toBeGreaterThan(0);
   });
 });

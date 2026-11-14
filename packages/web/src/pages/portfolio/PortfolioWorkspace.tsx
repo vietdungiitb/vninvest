@@ -51,9 +51,9 @@ export function PortfolioWorkspace({
       defaultValue: "Không gian danh mục",
     })}>
       <header className="pf-workspace__header">
-        <h1 className="pf-workspace__title">
+        <h2 className="pf-workspace__title">
           {t("portfolioWorkspace.title", { defaultValue: "Không gian danh mục" })}
-        </h1>
+        </h2>
         <label className="pf-workspace__picker" htmlFor="pf-portfolio-select">
           <span className="pf-visually-hidden">
             {t("portfolioWorkspace.pickerLabel", { defaultValue: "Chọn danh mục" })}
