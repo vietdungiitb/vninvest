@@ -5,7 +5,7 @@
 - **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat 4/2 (no blowup, L-T01). git status chi co 1 file modified + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-F04 L-T02]. GHI LESSON MOI: khong.
 - **Next**: S2 (vibrant palette) → S6 (AI alert timeout) → S7 (AI deck fix) → S8 (technical tab) → S9 (KPI data) → S13 (data layer) → S4/S5/S10/S11/S12.
-- **Files**: 1 JS + CLAIMS.md + ledger nay.
+- **Files**: 1 JS + CLAIMS.md + ledger nay. PR #387 (merged).
 
 ## Entry 492: Plan Dashboard Refactor v2 — audit độc lập NEED_REVISION + master plan 13 slices
 
