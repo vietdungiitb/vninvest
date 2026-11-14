@@ -155,6 +155,7 @@ Kết quả đối thoại sau §H: Owner thấy cách cài catalog ngoài còn 
 - **Hạ cấp vai trò `ui-ux-pro-max`**: từ "phương án cài" xuống **catalog tuỳ chọn §5** của skill soc-uiux — chỉ dùng khi Owner cài; không cài vẫn đủ làm việc UI/UX.
 - **Các risk F1–F4 được giải quyết bằng cấu trúc**: routing rule + SSOT duy nhất (`soc.tokens.css`) + không persist + không phụ thuộc Python/npm ngoài + không chạm hạ tầng third-party. Chi phí context: ~5 KB SKILL.md (so 27.4 KB của ui-ux-pro-max), chỉ activate cho task UI/UX.
 - **Còn lại**: Owner review skill → commit trên branch `feat/soc-uiux-skill` + PR (claim `soc-uiux-skill` đã khai trước khi viết dòng đầu tiên — L-002). Nếu vẫn muốn catalog ngoài, quyết định §F.1–F.4 vẫn cần trả lời; nếu không, 4 câu hỏi đó tự động hết nghĩa vụ.
+- **Kịch bản thử nghiệm**: `docs/PLAN_SOC_UIUX_SKILL_TRIAL_20261114.md` (portfolio workspace, ~2.5k dòng, 11 AC ánh xạ gate) — slice refactor đủ lớn để đo hiệu quả skill theo §5 của plan; claim gợi ý `soc-uiux-trial`, branch `feat/soc-uiux-trial`.
 
 **Hạn chế của báo cáo (trung thực)**: (a) search.py **đã chạy thật** 4 query trong thư mục tạm (§H) — quality output đã verify ở 4 điểm; (b) mức độ phủ Tailwind 4 của stack guidance vẫn **CHƯA XÁC MINH** (chưa probe riêng); (c) đã quét cấu trúc SKILL.md (headers) nhưng chưa đọc từng dòng nội dung 27.4 KB; (d) khuyến nghị xoá 6 skill thừa dựa trên cấu trúc thư mục đã xem, chưa thử xoá thật; (e) skill soc-uiux chưa qua review độc lập (B8/subagent) — Owner nên cho 1 agent khác đọc lại trước khi merge.
 
