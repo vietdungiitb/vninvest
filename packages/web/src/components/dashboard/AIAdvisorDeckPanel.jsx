@@ -6,6 +6,7 @@ export default function AIAdvisorDeckPanel({
   technicals,
   alerts,
   analytics,
+  metrics = null,
   digest,
   onRequestDigest,
   symbolScope = 'holdings',
@@ -27,23 +28,28 @@ export default function AIAdvisorDeckPanel({
       return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
     }
 
-    const hasAnalytics = analytics && [
-      analytics.sharpe_ratio,
+    // BL-05 / D7: sharpe/sortino/correlation KHÔNG có ở backend.
+    const metricsData = metrics;
+    const hasAnalytics = (metricsData && (
+      metricsData?.benchmark?.alpha_annualized != null ||
+      metricsData?.benchmark?.beta != null ||
+      metricsData?.risk?.max_drawdown != null
+    )) || (analytics && [
       analytics.alpha_annual_pct,
+      analytics.beta,
       analytics.max_drawdown_pct,
-    ].some((value) => value !== null && value !== undefined);
+    ].some((value) => value !== null && value !== undefined));
 
     if (!hasAnalytics) return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
 
-    const sharpe = analytics.sharpe_ratio || 0;
-    const alpha = analytics.alpha_annual_pct || 0;
-    const maxDD = Math.abs(analytics.max_drawdown_pct || 0);
+    const alpha = (metricsData?.benchmark?.alpha_annualized != null ? metricsData.benchmark.alpha_annualized * 100 : analytics?.alpha_annual_pct) || 0;
+    const maxDD = Math.abs((metricsData?.risk?.max_drawdown != null ? metricsData.risk.max_drawdown * 100 : analytics?.max_drawdown_pct) || 0);
 
-    const sharpeScore = Math.min(Math.max(sharpe / 2.5, 0), 1) * 40;
-    const alphaScore = Math.min(Math.max(alpha / 20, 0), 1) * 30;
-    const ddScore = (1 - Math.min(maxDD / 30, 1)) * 30;
+    // D7: bỏ Sharpe (40đ) — phân bổ lại: alpha 50đ + drawdown 50đ = 100đ.
+    const alphaScore = Math.min(Math.max(alpha / 20, 0), 1) * 50;
+    const ddScore = (1 - Math.min(maxDD / 30, 1)) * 50;
 
-    const total = Math.round(sharpeScore + alphaScore + ddScore);
+    const total = Math.round(alphaScore + ddScore);
 
     let grade = 'F';
     let color = 'text-rose-500';
@@ -54,7 +60,7 @@ export default function AIAdvisorDeckPanel({
     else if (total >= 40) { grade = 'D'; color = 'text-orange-400'; }
 
     return { hasData: true, score: total, grade, color };
-  }, [analytics, isHoldingsScope]);
+  }, [analytics, metrics, isHoldingsScope]);
 
   const aiScopeTitle = useMemo(() => {
     if (symbolScope === 'holdings') return t('modernDeck.scopeHoldings', 'Đang nắm giữ');
@@ -120,7 +126,7 @@ export default function AIAdvisorDeckPanel({
                   {t('modernDeck.aiNoAnalyticsTitle', 'Chưa có dữ liệu phân tích')}
                 </p>
                 <p className="mt-1 max-w-xs text-xs text-slate-500">
-                  {t('modernDeck.aiNoAnalyticsHelp', 'Health Score sẽ xuất hiện khi danh mục có đủ dữ liệu analytics để tính Sharpe, Alpha và drawdown.')}
+                  {t('modernDeck.aiNoAnalyticsHelp', 'Health Score sẽ xuất hiện khi danh mục có đủ dữ liệu analytics để tính Alpha và drawdown.')}
                 </p>
               </div>
             )}
@@ -140,10 +146,10 @@ export default function AIAdvisorDeckPanel({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                 <span className="text-[9px] text-slate-500 uppercase block mb-1">
-                  {t('modernDeck.aiSharpeLabel', 'Rủi ro (Sharpe)')}
+                  {t('modernDeck.aiAlphaLabel', 'Alpha (năm)')}
                 </span>
-                <span className={`text-sm font-bold ${analytics?.sharpe_ratio >= 1.5 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                  {analytics?.sharpe_ratio ?? 'N/A'}
+                <span className={`text-sm font-bold ${(metrics?.benchmark?.alpha_annualized ?? analytics?.alpha_annual_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {metrics?.benchmark?.alpha_annualized != null ? (metrics.benchmark.alpha_annualized * 100).toFixed(2) + '%' : (analytics?.alpha_annual_pct != null ? analytics.alpha_annual_pct.toFixed(2) + '%' : 'N/A')}
                 </span>
               </div>
               <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
@@ -151,7 +157,7 @@ export default function AIAdvisorDeckPanel({
                   {t('modernDeck.aiDrawdownLabel', 'Sụt giảm tối đa')}
                 </span>
                 <span className="text-sm font-bold text-rose-400">
-                  {analytics?.max_drawdown_pct ?? 'N/A'}{analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : ''}
+                  {metrics?.risk?.max_drawdown != null ? (metrics.risk.max_drawdown * 100).toFixed(2) + '%' : (analytics?.max_drawdown_pct ?? 'N/A') + (analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : '')}
                 </span>
               </div>
             </div>

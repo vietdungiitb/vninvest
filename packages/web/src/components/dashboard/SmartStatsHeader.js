@@ -12,6 +12,7 @@ const STALE_AFTER_MS = 15 * 60 * 1000;
 export function SmartStatsHeader({
   summary,
   analytics,
+  metrics = null,
   holdings,
   loading,
   realtimeBreadth,
@@ -54,15 +55,23 @@ export function SmartStatsHeader({
   const dayPLPct = dayPLPctKnown ? Number(summary.total_unrealized_pnl_pct) : 0;
   const plSign = signOf(dayPL);
 
-  const hasAnalytics = analyticsData && [
+  // BL-05 / D7: `sharpe`/`sortino`/`correlation` KHÔNG có ở backend ⇒ không vẽ card.
+  // Ưu tiên `metrics` (endpoint /metrics/, cấu trúc lồng {performance, risk, benchmark});
+  // fallback `analytics` (legacy) để tương thích.
+  const metricsData = metrics;
+  const hasAnalytics = (metricsData && (
+    metricsData?.benchmark?.alpha_annualized != null ||
+    metricsData?.benchmark?.beta != null ||
+    metricsData?.risk?.max_drawdown != null
+  )) || (analyticsData && [
     analyticsData.alpha_annual_pct,
     analyticsData.beta,
-    analyticsData.sharpe_ratio,
     analyticsData.max_drawdown_pct,
-  ].some((v) => v !== null && v !== undefined);
+  ].some((v) => v !== null && v !== undefined));
   // Chỉ coi là TRỐNG khi backend thực sự trả 0. `null` là "chưa biết", không
   // phải "không có gì".
   const isEmptyPortfolio = !loading && marketValueKnown && marketValue === 0 && !hasAnalytics;
+  const isNoData = !loading && !marketValueKnown;
 
   // Honesty rule: the API exposes no `updated_at`; the only real freshness
   // signal is `as_of`, and that is a DATE, not an instant. Rendering a date as
@@ -94,10 +103,9 @@ export function SmartStatsHeader({
   const breadthTotal = (realtimeBreadth?.up || 0) + (realtimeBreadth?.down || 0) + (realtimeBreadth?.flat || 0);
 
   const compactMetrics = [
-    { key: "alpha", label: t("smartStats.alpha"), value: analyticsData?.alpha_annual_pct, format: (v) => `${Number(v).toFixed(2)}%`, color: Number(analyticsData?.alpha_annual_pct) >= 0 ? "text-emerald-400" : "text-rose-400" },
-    { key: "beta", label: t("smartStats.beta"), value: analyticsData?.beta, format: (v) => Number(v).toFixed(2), color: "text-slate-200" },
-    { key: "sharpe", label: t("smartStats.sharpe"), value: analyticsData?.sharpe_ratio, format: (v) => Number(v).toFixed(2), color: Number(analyticsData?.sharpe_ratio) >= 0 ? "text-emerald-400" : "text-rose-400" },
-    { key: "maxDrawdown", label: t("smartStats.maxDrawdown"), value: analyticsData?.max_drawdown_pct, format: (v) => `${Number(v).toFixed(2)}%`, color: "text-rose-400" },
+    { key: "alpha", label: t("smartStats.alpha"), value: metricsData?.benchmark?.alpha_annualized != null ? metricsData.benchmark.alpha_annualized * 100 : analyticsData?.alpha_annual_pct, format: (v) => `${Number(v).toFixed(2)}%`, color: Number(metricsData?.benchmark?.alpha_annualized ?? analyticsData?.alpha_annual_pct) >= 0 ? "text-emerald-400" : "text-rose-400" },
+    { key: "beta", label: t("smartStats.beta"), value: metricsData?.benchmark?.beta ?? analyticsData?.beta, format: (v) => Number(v).toFixed(2), color: "text-slate-200" },
+    { key: "maxDrawdown", label: t("smartStats.maxDrawdown"), value: metricsData?.risk?.max_drawdown != null ? metricsData.risk.max_drawdown * 100 : analyticsData?.max_drawdown_pct, format: (v) => `${Number(v).toFixed(2)}%`, color: "text-rose-400" },
   ];
 
   return e(
@@ -155,7 +163,7 @@ export function SmartStatsHeader({
             ? e(
               "div",
               { className: "flex items-center justify-center gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-4 py-2 text-xs text-slate-300" },
-              e("span", null, t("smartStats.emptyCta")),
+              e("span", null, isNoData ? (summary?.market_value_reason || t("smartStats.noData", { defaultValue: "Đang đồng bộ dữ liệu danh mục" })) : t("smartStats.emptyCta")),
               e(
                 "button",
                 {

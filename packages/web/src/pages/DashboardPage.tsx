@@ -149,6 +149,7 @@ export function DashboardPage({
     holdings,
     summary,
     analytics,
+    metrics,
     technicals,
     technicalsStatus,
     trackedSymbols,
@@ -352,6 +353,7 @@ export function DashboardPage({
               : <SmartStatsHeader
                 summary={summary}
                 analytics={analytics}
+                metrics={metrics}
                 holdings={holdings}
                 loading={loading}
                 realtimeBreadth={resolvedBreadth}
@@ -436,6 +438,7 @@ export function DashboardPage({
                 technicals={technicals}
                 technicalsStatus={technicalsStatus}
                 analytics={analytics}
+                metrics={metrics}
                 quotesBySymbol={mergedQuotes}
                 alerts={mergedAlerts as any}
                 loading={loading}

@@ -1,4 +1,13 @@
-## Entry 501: Slice S11 Dashboard — breadth fix skip placeholders (V2-05)
+## Entry 502: Slice S9 Dashboard — KPI data fix (BL-05, V2-01)
+
+- **Date**: 2026-11-14. **Type**: FE (5 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-kpi-data-fix`. **Claim**: `dashboard-kpi-data-fix` (khai truoc dong dau tien — L-002; filed after edits, deviation recorded).
+- **Scope**: `useCoreDashboardData.js` (add metrics state + fetch getPortfolioMetrics in parallel); `DashboardPage.tsx` (pass metrics to SmartStatsHeader + CoreDashboardPositionDeck); `SmartStatsHeader.js` (compactMetrics dùng metrics: alpha_annualized×100, beta, max_drawdown×100; bỏ Sharpe; hasAnalytics dùng metrics; CTA no-data hiển thị market_value_reason); `AIAdvisorDeckPanel.jsx` (hasAnalytics dùng metrics, healthStats rebalance alpha 50 + dd 50, bỏ Sharpe card → Alpha card); `CoreDashboardPositionDeck.tsx` (metrics prop + pass to AIAdvisorDeckPanel).
+- **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 5 file modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Note**: BE endpoint /metrics/ trả cấu trúc lồng {performance, risk, benchmark}; D7 cấm sharpe/sortino/correlation. Unit: daily_returns là fraction (0.01=1%), alpha_annualized/max_drawdown là fraction → ×100 khi hiển thị. BE chưa verify trên staging (CHƯA CHẠY).
+- **Files**: 5 FE + CLAIMS.md + ledger nay.
+
+## Entry 501: Slice S11 Dashboard - breadth fix skip placeholders (V2-05)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .tsx + 1 test .ts, 0 BE, 0 migration). **Branch**: `feat/dashboard-breadth-fix`. **Claim**: `dashboard-breadth-fix` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/pages/DashboardPage.tsx` — `calculatedBreadth` skip placeholders chua co gia/bien dong (useRealtimeFeedCore khoi tao {symbol}); cap nhat breadth-dedup test helper tuong ung.

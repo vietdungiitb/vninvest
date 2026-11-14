@@ -45,6 +45,7 @@ interface CoreDashboardPositionDeckProps {
   technicalsStatus?: { status?: string; errorCode?: string | null };
   alerts?: unknown[];
   analytics?: unknown;
+  metrics?: any;
   digest?: unknown;
   onRequestDigest?: () => void;
   selectedSession?: unknown;
@@ -64,6 +65,7 @@ export function CoreDashboardPositionDeck({
   technicalsStatus = { status: 'idle', errorCode: null },
   alerts = [],
   analytics = undefined,
+  metrics = undefined,
   digest = undefined,
   onRequestDigest = undefined,
   selectedSession = undefined,
@@ -531,6 +533,7 @@ export function CoreDashboardPositionDeck({
             technicals={technicals as any}
             alerts={alerts as any}
             analytics={analytics}
+            metrics={metrics as any}
             digest={digest}
             onRequestDigest={onRequestDigest as any}
             symbolScope={symbolScope}
