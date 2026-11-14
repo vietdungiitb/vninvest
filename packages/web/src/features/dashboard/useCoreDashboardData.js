@@ -157,34 +157,17 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         // so the heatmap can include symbols from all sectors/groups the user follows
         const watchlistGroups = rawWatchlistGroups;
 
-        // Phase 2 — bulk technicals once the monitored symbol universe is known
+        // Phase 2 — bulk technicals CHAY ASYNC SAU first paint, KHONG await o critical path.
+        // A-fix 2026-11-15: 10 chunk POST song song treo daphne event loop (BE kill task
+        // "took too long to shut down") => Promise.all treo vinh vien => loading mai true
+        // => skeleton ket + tabs khong render. Set state ngay sau Phase 1, fetch bulk sau.
+        // Timeout 60s => technicalsStatus 'failed' + nut retry (S8) thay vi treo.
         const symbols = collectDashboardSymbols({
           holdings,
           trackedSymbols,
           watchlists,
           watchlistGroups,
         });
-
-        let technicals = EMPTY_ARRAY;
-        let technicalsStatus = { status: 'idle', errorCode: null };
-
-        if (symbols.length > 0) {
-          try {
-            const techRes = await coreApiAdapter.getBulkTechnicalsBySymbols(symbols);
-            if (!cancelled) {
-              technicals = extractTechnicalsResponse(techRes);
-              technicalsStatus = { status: 'success', errorCode: null };
-            }
-          } catch (techErr) {
-            if (!cancelled) {
-              technicals = EMPTY_ARRAY;
-              technicalsStatus = {
-                status: 'failed',
-                errorCode: '[ERR_CORE_BULK_TECHNICAL_03]',
-              };
-            }
-          }
-        }
 
         if (cancelled) return;
 
@@ -196,13 +179,51 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           summary: summaryRes ?? null,
           analytics: analyticsRes ?? null,
           metrics: metricsRes ?? null,
-          technicals,
-          technicalsStatus,
+          technicals: EMPTY_ARRAY,
+          technicalsStatus: symbols.length > 0
+            ? { status: 'loading', errorCode: null }
+            : { status: 'idle', errorCode: null },
           watchlists,
           trackedSymbols,
           watchlistGroups,
         });
         setHasHydrated(true);
+
+        if (symbols.length > 0) {
+          let settled = false;
+          const timeoutId = setTimeout(() => {
+            if (!settled && !cancelled) {
+              settled = true;
+              setState((s) => ({
+                ...s,
+                technicals: EMPTY_ARRAY,
+                technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
+              }));
+            }
+          }, 60000);
+          coreApiAdapter.getBulkTechnicalsBySymbols(symbols).then(
+            (techRes) => {
+              if (settled || cancelled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              setState((s) => ({
+                ...s,
+                technicals: extractTechnicalsResponse(techRes),
+                technicalsStatus: { status: 'success', errorCode: null },
+              }));
+            },
+            () => {
+              if (settled || cancelled) return;
+              settled = true;
+              clearTimeout(timeoutId);
+              setState((s) => ({
+                ...s,
+                technicals: EMPTY_ARRAY,
+                technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
+              }));
+            },
+          );
+        }
       } catch (err) {
         if (cancelled) return;
         if (err?.name === "AbortError") return;

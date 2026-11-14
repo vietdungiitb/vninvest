@@ -136,7 +136,7 @@ regex, phải sửa cả 5 tài liệu lịch sử, không chỉ `INDEX.md`.**
 | [`verification.md`](./verification.md) | 6 | `L-V01`…`L-V05`, `L-V06` ⚠ |
 | [`false-green.md`](./false-green.md) | 5 | `L-V06` ⚠, `L-V07`, `L-V08`, `L-V09` ⚠, **`L-V10`** |
 
-**Tổng: 59 lesson / 14 file** — ⚠ 4 lesson ID đang **trùng giữa 2 file** (`L-V06` · `L-V09` · `L-F12` · `L-M02`): khi trích dẫn phải ghi kèm tên file, chi tiết ở [false-green.md](./false-green.md).
+**Tổng: 60 lesson / 14 file** — ⚠ 4 lesson ID đang **trùng giữa 2 file** (`L-V06` · `L-V09` · `L-F12` · `L-M02`): khi trích dẫn phải ghi kèm tên file, chi tiết ở [false-green.md](./false-green.md).
 
 - **Nguồn:** trích từ bảng "Cạm bẫy đã gặp thật 2026-09-26" + các mục Progress trong `AGENTS.md`
   + `docs/audit-uiux/SESSION_LOG_WAVE{7,10,11}_*.md` + Entry 272/274 (2026-10-12)

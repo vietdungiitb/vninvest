@@ -260,6 +260,98 @@ export const pageRegistry = Object.freeze([
     import("./tenant/TenantKeysPage.tsx").then((module) => module.TenantKeysPage)),
   makePageEntry("tenant-usage", "core", () =>
     import("./tenant/TenantUsageSummaryPage.tsx").then((module) => module.TenantUsageSummaryPage)),
+  // B-fix 2026-11-15: 40 route trong main.tsx resolve tới registry id không
+  // tồn tại => runtime in "Could not resolve page component for registryId: X"
+  // (main.tsx:55) và render trang "Không tìm thấy". Gate check-page-registry
+  // PASS giả vì stripComments nuốt chuỗi 'whale-alerts/*' (xem Entry 508).
+  // AI Center pages
+  makePageEntry("ai-traces", "core", () =>
+    import("./AICommandTracesPage.tsx").then((module) => module.AICommandTracesPage)),
+  makePageEntry("ai-slo", "core", () =>
+    import("./AISloDashboardPage.tsx").then((module) => module.AISloDashboardPage)),
+  makePageEntry("ai-audit", "core", () =>
+    import("./AIAuditPage.tsx").then((module) => module.AIAuditPage)),
+  // Operations Center (staff)
+  makePageEntry("operations-center", "core", () =>
+    import("./admin/ShellOperationsCenterPage.tsx").then((module) => module.ShellOperationsCenterPage)),
+  makePageEntry("operations-center-mail-config", "core", () =>
+    import("./admin/ShellMailConfigPage.tsx").then((module) => module.ShellMailConfigPage)),
+  // Advertising admin (staff)
+  makePageEntry("advertising-admin", "core", () =>
+    import("../features/advertising/pages/AdvertisingAdminPage.jsx").then((module) => module.AdvertisingAdminPage)),
+  // Admin fleet pages (staff)
+  makePageEntry("admin-users", "core", () =>
+    import("./admin/AdminUsersPage.tsx").then((module) => module.AdminUsersPage)),
+  makePageEntry("admin-billing", "core", () =>
+    import("./admin/AdminBillingFleetPage.tsx").then((module) => module.AdminBillingFleetPage)),
+  makePageEntry("admin-usage", "core", () =>
+    import("./admin/AdminUsageFleetPage.tsx").then((module) => module.AdminUsageFleetPage)),
+  makePageEntry("admin-audit", "core", () =>
+    import("./admin/AdminAuditPage.tsx").then((module) => module.AdminAuditPage)),
+  makePageEntry("admin-analytics", "core", () =>
+    import("./admin/AdminAnalyticsPage.tsx").then((module) => module.AdminAnalyticsPage)),
+  // AdminCore SaaS operator pages (staff)
+  makePageEntry("admin-core-tenants", "core", () =>
+    import("./admin/AdminCoreTenantsPage.tsx").then((module) => module.AdminCoreTenantsPage)),
+  makePageEntry("admin-core-service-accounts", "core", () =>
+    import("./admin/AdminCoreServiceAccountsPage.tsx").then((module) => module.AdminCoreServiceAccountsPage)),
+  makePageEntry("admin-core-pats", "core", () =>
+    import("./admin/AdminCorePATsPage.tsx").then((module) => module.AdminCorePATsPage)),
+  makePageEntry("admin-core-usage", "core", () =>
+    import("./admin/AdminCoreUsagePage.tsx").then((module) => module.AdminCoreUsagePage)),
+  makePageEntry("admin-core-billing", "core", () =>
+    import("./admin/AdminCoreBillingPage.tsx").then((module) => module.AdminCoreBillingPage)),
+  makePageEntry("admin-core-overview", "core", () =>
+    import("./admin/AdminCoreOverviewPage.tsx").then((module) => module.AdminCoreOverviewPage)),
+  makePageEntry("admin-core-jobs", "core", () =>
+    import("./admin/AdminCoreJobsPage.tsx").then((module) => module.AdminCoreJobsPage)),
+  makePageEntry("admin-core-audit-trace", "core", () =>
+    import("./admin/AdminCoreAuditTracePage.tsx").then((module) => module.AdminCoreAuditTracePage)),
+  // Stock detail (workstation shell tu doc symbol tu path)
+  makePageEntry("core-stock-detail", "core", () =>
+    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
+  // Tenant admin pages
+  makePageEntry("tenant-admin-home", "core", () =>
+    import("./tenant-admin/TenantAdminHomePage.tsx").then((module) => module.TenantAdminHomePage)),
+  makePageEntry("tenant-admin-members", "core", () =>
+    import("./tenant-admin/TenantAdminMembersPage.tsx").then((module) => module.TenantAdminMembersPage)),
+  makePageEntry("tenant-admin-service-accounts", "core", () =>
+    import("./tenant-admin/TenantAdminServiceAccountsPage.tsx").then((module) => module.TenantAdminServiceAccountsPage)),
+  makePageEntry("tenant-admin-pats", "core", () =>
+    import("./tenant-admin/TenantAdminPATsPage.tsx").then((module) => module.TenantAdminPATsPage)),
+  makePageEntry("tenant-admin-usage", "core", () =>
+    import("./tenant-admin/TenantAdminUsagePage.tsx").then((module) => module.TenantAdminUsagePage)),
+  makePageEntry("tenant-admin-usage-history", "core", () =>
+    import("./tenant-admin/TenantAdminUsageHistoryPage.tsx").then((module) => module.TenantAdminUsageHistoryPage)),
+  makePageEntry("tenant-admin-billing", "core", () =>
+    import("./tenant-admin/TenantAdminBillingPage.tsx").then((module) => module.TenantAdminBillingPage)),
+  makePageEntry("tenant-admin-capabilities", "core", () =>
+    import("./tenant-admin/TenantAdminCapabilitiesPage.tsx").then((module) => module.TenantAdminCapabilitiesPage)),
+  makePageEntry("tenant-admin-ai-policy", "core", () =>
+    import("./tenant-admin/TenantAdminAIPolicyPage.tsx").then((module) => module.TenantAdminAIPolicyPage)),
+  makePageEntry("tenant-admin-audit-logs", "core", () =>
+    import("./tenant-admin/TenantAdminAuditLogsPage.tsx").then((module) => module.TenantAdminAuditLogsPage)),
+  makePageEntry("tenant-admin-reports", "core", () =>
+    import("./tenant-admin/TenantAdminReportsPage.tsx").then((module) => module.TenantAdminReportsPage)),
+  makePageEntry("tenant-admin-sso", "core", () =>
+    import("./tenant-admin/TenantAdminSSOPage.tsx").then((module) => module.TenantAdminSSOPage)),
+  makePageEntry("tenant-admin-security", "core", () =>
+    import("./tenant-admin/TenantAdminSecurityPage.tsx").then((module) => module.TenantAdminSecurityPage)),
+  makePageEntry("tenant-admin-webhooks", "core", () =>
+    import("./tenant-admin/TenantAdminWebhooksPage.tsx").then((module) => module.TenantAdminWebhooksPage)),
+  makePageEntry("tenant-admin-settings", "core", () =>
+    import("./tenant-admin/TenantAdminSettingsPage.tsx").then((module) => module.TenantAdminSettingsPage)),
+  makePageEntry("tenant-admin-roles", "core", () =>
+    import("./tenant-admin/TenantAdminRolesPage.tsx").then((module) => module.TenantAdminRolesPage)),
+  // Alert center + VIP local control + commercial
+  makePageEntry("alert-center", "core", () =>
+    import("./AlertCenterPage.tsx").then((module) => module.AlertCenterPage)),
+  makePageEntry("vip-local-control", "core", () =>
+    import("./vip/VipLocalControlPage.tsx").then((module) => module.VipLocalControlPage)),
+  makePageEntry("commercial-billing-center", "core", () =>
+    import("./commercial/BillingCenterPage.tsx").then((module) => module.BillingCenterPage)),
+  makePageEntry("commercial-payment-return", "core", () =>
+    import("./commercial/PaymentReturnPage.tsx").then((module) => module.PaymentReturnPage)),
 ]);
 
 export function getPageRegistryRouteIds() {
