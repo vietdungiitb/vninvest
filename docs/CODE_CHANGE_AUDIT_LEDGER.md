@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/pages/DashboardPage.tsx` — destructure `technicalsStatus` tu `useCoreDashboardData` va truyen xuong `CoreDashboardPositionDeck`. `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` — them prop `technicalsStatus`, fix V2-06 (khong sinh 5 dong null khi technicals rong → tra ve [] de hien empty state), them error row voi retry button khi `technicalsStatus.status === 'failed'`.
 - **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 2 TSX + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 2 TSX + CLAIMS.md + ledger nay.
+- **Files**: 2 TSX + CLAIMS.md + ledger nay. PR #395.
 
 ## Entry 499: Slice S3 Dashboard - empty state tile (A3, V2-04)
 
