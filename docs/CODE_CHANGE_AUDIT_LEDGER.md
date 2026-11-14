@@ -7,8 +7,9 @@
   - C: WS 502 — BE daphne ASGI dung; WSCONNECT/WSDISCONNECT flap + bulk POST bi kill khi event loop nghen (sync ORM). FE: polling fallback co san; banner chi hien khi that su mat ket noi. BE can BE coordination (daphne workers / sync_to_async cho bulk view) — ghi CHUA CHAY, khong sua BE trong slice FE nay.
 - **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing); check-page-registry PASS (61 entry, 67 route, 0 che, 0 tro sai) + --self-test 9/9; route-catalog-contract + whale-advisory + lifecycle + breadth-dedup + heatmap-scale PASS; check-multi-agent PASS (0 loi). test:visual + check-theme-contrast + check-uiux-budget CHUA CHAY (loi moi truong). numstat sach (L-T01). git status chi co file claim scope (L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-007 L-G02 L-V01 L-V02 L-V03 L-T01 L-T02]. GHI LESSON MOI: co — L-G10 (gate parser string-aware, build-gates-2.md). Lesson BE daphne KHONG ghi file (vuot C2 60/60) — noi dung giu trong Entry nay + code comment.
-- **Files**: 6 FE + test + CLAIMS.md + ledger nay. PR pending (tao sau khi commit).
-- **Next**: merge PR #405 → deploy staging → verify live (console het warnings, skeleton het, banner dung) → BE follow-up (bulk view async).
+- **Files**: 6 FE + test + CLAIMS.md + ledger nay. PR #405 (merged 8c276933c).
+- **Verify live staging (2026-11-14, post-deploy)**: Playwright testuser@ — console "Could not resolve page component": **0** (truoc 40); /stocks/AAA + /admin/users resolve OK (khong con "Khong tim thay trang"); skeleton: 0 (Phase-1 render sau setState, truoc bulk); tabs Ky thuat/Bieu do/AI Bot chuyen active + URL dong bo (?activeTab=); banner chi hien khi connecting/idle; WS van 502 dot bien (daphne) nhung polling fallback chay (tickers 200) => data van ve.
+- **Next**: BE follow-up (bulk view async/workers, daphne scaling) — can BE coordination, ngoai scope slice FE nay.
 
 ## Entry 507: Fix L-F09 — handleTabChange/handlePageSizeChange 2 setter trong 1 tick (dashboard deck)
 
