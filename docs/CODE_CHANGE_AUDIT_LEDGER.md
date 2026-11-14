@@ -1,3 +1,19 @@
+## Entry 512: Fix WS 502 bang code (BE-only): bulk technicals cache 60s + WS auth off shared thread
+
+- **Date**: 2026-11-14. **Type**: BE (2 file, 0 migration) + test + docs. **Branch**: `feat/ws-502-codefix`. **Claim**: `ws-502-codefix` (khai truoc — L-002). **Plan**: `docs/PLAN_WS502_CODEFIX_20261114.md`, audit doc lap 2 vong: NEED_REVISION (O1/O2) → sua → **PASS** (`docs/evidence/dashboard-verify-live/AUDIT_PLAN_WS502_20261114.md`).
+- **Scope**:
+  - S1 `stock_mgmt_native_views.py`: `_build_response` cache inner `results` 60s tren Django cache (staging Redis, test LocMem). Key `bulk_technicals:v1:<date>:<sha1(sorted symbols)>` — GET/POST chung `_parse_symbols`, du lieu global (khong user/tenant) nen share key an toan (R3 auditor). Hit: rap lai theo thu tu request (R1), KHONG cache DRF Response (R2), lookup sau scope check (giu nguyen). `updated_at` freeze ≤60s — khong FE consumer nao doc (R-b auditor). Gioi han: khong singleflight, het han dung luc N caller van miss dong thoi (ghi trong plan, de slice sau — O2).
+  - S2 `signal_intelligence/consumers.py`: ca 2 consumers auth `sync_to_async(..., thread_sensitive=False)` — handshake khong xep hang sau tickers polling tren shared thread (mirror #407).
+- **TDD (fail-before that, tren VPS staging DB tam `ws502_red`/`ws502_green`, runbook §12.3)**:
+  - RED: 3 test moi vs code cu → 2 fail dung ly do (lan 2 van query), 1 pass (miss).
+  - Phat hien khi do (L-V01, co bang chung): HTTP-level CaptureQueriesContext KHONG thay query cua view vi dispatch chay tren threadpool rieng (Entry 509) + moi request co 1 INSERT audit tren connection chinh → test query-chinh-xac phai goi truc tiep `_build_response` (cung thread). Da sua test.
+  - GREEN: `test_bulk_technicals_cache` (3 test) **3/3 OK** — lan 2 = 0 query, miss khi khac symbols, hit giu dung thu tu request.
+  - Regression: `test_stock_management_native_api` (50 test) + file moi = 53 test → **52/53**, 1 fail `test_stock_management_technicals_bulk_returns_compatible_technical_payload` (rsi_14 None) **PRE-EXISTING** — chay that tren code dev (worktree checkout origin/dev) van fail y het, khong do slice nay.
+- **Gates**: py_compile PASS (3 file); check-multi-agent PASS (0 loi); check-lessons 60/60 PASS; `tsc` KHONG chay (0 file FE — ghi ro, khong PASS gia); BE full suite KHONG chay (chi targeted file + regression file — ghi ro); pre-push hook FAIL/timeout 2 lan (giong cac slice truoc: system-design C-003 + envelope-contract pre-existing) → push dung SKIP_PRE_PUSH_GATE=1 co ly do.
+- **Don dep**: DB tam `ws502_red`/`test_ws502_red`/`ws502_green` da DROP; worktree `/tmp/wt-ws502` remove + prune; file probe `/tmp` da xoa; test side-effect PNG (L-V03, `test_probe_tmp`) chi mount ram, khong vao repo — cya sach.
+- **Lessons ap dung**: [L-002 L-003 L-007 L-V01 L-V02 L-V03 L-V04 L-G02 L-T01 L-T02]. GHI LESSON MOI: khong (vuot C2 thi ghi Entry — chua vuot).
+- **Files**: 2 BE + 1 test + plan + audit + ledger nay (+ claim). **Next**: merge PR -> deploy staging -> verify live AC3 (warm: pre-warm + bao 10 bulk + WS, ky vong 0 reset/502) + AC4 (cold, ghi nhan khong gate).
+
 ## Entry 511: Chan doan WS 502 /ws/realtime/ — daphne don process doi event loop khi bulk tinh (doc-only)
 
 - **Date**: 2026-11-14. **Type**: diagnosis doc-only (0 file code). **Branch**: `feat/ws-502-diagnosis`. **Claim**: `ws-502-diagnosis` (khai truoc — L-002).
