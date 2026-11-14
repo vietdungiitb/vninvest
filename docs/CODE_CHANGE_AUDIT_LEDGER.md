@@ -5,7 +5,7 @@
 - **Gates**: tsc --noEmit PASS; lint 0 errors. git status chi co 2 JS modified + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-T02]. GHI LESSON MOI: khong.
 - **Next**: S7 (AI deck fix) → S8 (technical tab) → S9 (KPI data) → S13 (data layer) → S4/S5/S10/S11/S12. S7 depends on S9 (V2-01).
-- **Files**: 2 JS + CLAIMS.md + ledger nay.
+- **Files**: 2 JS + CLAIMS.md + ledger nay. PR #389.
 
 ## Entry 493: Slice S1 Dashboard - fix bug ECharts callback label.color (BL-03)
 
