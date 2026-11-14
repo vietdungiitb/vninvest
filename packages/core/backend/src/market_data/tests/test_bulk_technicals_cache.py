@@ -140,7 +140,7 @@ class BulkTechnicalsCacheTestCase(TestCase):
             ordered = self._build(['ZZC', 'TPB'])
         self.assertEqual(len(ctx), 0)
         self.assertEqual(
-            [item['symbol'] for item in ordered.data['technicals']],
+            [item['symbol'] for item in ordered.data['data']['technicals']],
             ['ZZC', 'TPB'],
         )
 
