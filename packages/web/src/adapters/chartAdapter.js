@@ -112,18 +112,42 @@ export function createChartStockDataAdapter({ env = {} }) {
     },
 
     subscribeToBar(symbol, timeframe, onBar) {
+      if (!symbol || typeof onBar !== 'function') return () => {};
+      if (!this._barCallbacks) this._barCallbacks = new Map();
+      this._barCallbacks.set(symbol, onBar);
+      // backward compat: keep single callback for code that reads _onBarCallback
       this._onBarCallback = onBar;
       return () => {
-        this._onBarCallback = null;
+        this._barCallbacks.delete(symbol);
+        if (this._barCallbacks.size === 0) this._onBarCallback = null;
+        else this._onBarCallback = [...this._barCallbacks.values()].pop();
       };
     },
 
-    pushRealtimeBar(bar) {
-      if (this._onBarCallback) {
-        this._onBarCallback(bar);
-        return true;
+    pushRealtimeBar(arg1, arg2) {
+      let symbol = null;
+      let bar = arg1;
+      if (typeof arg1 === 'string') {
+        symbol = arg1;
+        bar = arg2;
       }
-      return false;
+      if (!this._barCallbacks || this._barCallbacks.size === 0) {
+        // backward compat: single callback
+        if (this._onBarCallback) {
+          this._onBarCallback(bar);
+          return true;
+        }
+        return false;
+      }
+      if (symbol) {
+        const cb = this._barCallbacks.get(symbol);
+        if (cb) { cb(bar); return true; }
+        return false;
+      }
+      // broadcast (single chart or no symbol specified)
+      let called = false;
+      for (const cb of this._barCallbacks.values()) { cb(bar); called = true; }
+      return called;
     },
 
     subscribeToTrades(symbol, onTrades) {
