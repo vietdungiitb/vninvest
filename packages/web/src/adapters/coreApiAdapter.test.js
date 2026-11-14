@@ -358,6 +358,31 @@ describe("coreApiAdapter", () => {
     expect(bulkFetchCount()).toBe(2);
   });
 
+  test("getBulkTechnicalsBySymbols limits chunk concurrency and keeps order", async () => {
+    const symbols = Array.from({ length: 450 }, (_, i) => `S${String(i).padStart(3, "0")}`);
+    let inFlight = 0;
+    let maxSeen = 0;
+    fetchMock.mockImplementation((url, options) => {
+      const first = JSON.parse(options.body).symbols[0];
+      const chunkIndex = Math.floor(Number(first.slice(1)) / 200);
+      inFlight += 1;
+      maxSeen = Math.max(maxSeen, inFlight);
+      return new Promise((resolve) => {
+        // Chunk sau xong TRUOC chunk truoc → neu merge theo completion order thi sai.
+        setTimeout(() => {
+          inFlight -= 1;
+          const item = { symbol: first };
+          resolve({ ok: true, json: () => Promise.resolve({ technicals: [item], results: [item] }) });
+        }, (3 - chunkIndex) * 30);
+      });
+    });
+
+    const merged = await coreApiAdapter.getBulkTechnicalsBySymbols(symbols);
+    expect(bulkFetchCount()).toBe(3);
+    expect(maxSeen).toBeLessThanOrEqual(2);
+    expect(merged.technicals.map((t) => t.symbol)).toEqual(["S000", "S200", "S400"]);
+  });
+
   test("getStockChartHistory calls /core/v1/stock-management/stocks/{symbol}/chart/", async () => {
     const payload = { symbol: "TPB", timeframe: "1H", points: [] };
     mockOkResponse(payload);

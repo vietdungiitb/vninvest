@@ -335,19 +335,36 @@ export function createMarketClient({ coreGet, corePost }) {
       const dedupeKey = normalized.join(",");
       const inflight = bulkTechnicalsInflight.get(dedupeKey);
       if (inflight) return inflight;
-      const task = chunks.length === 1
-        ? corePost('/market-data/technicals/bulk/', { symbols: chunks[0] })
-        : Promise.all(chunks.map((c) => corePost('/market-data/technicals/bulk/', { symbols: c })))
-          .then((results) => {
-            const merged = { technicals: [], results: [], requested_count: 0, resolved_count: 0 };
-            results.forEach((r) => {
-              if (r?.technicals) merged.technicals.push(...r.technicals);
-              if (r?.results) merged.results.push(...r.results);
-              merged.requested_count += r?.requested_count ?? 0;
-              merged.resolved_count += r?.resolved_count ?? 0;
-            });
-            return merged;
-          });
+      // S5: stagger — toi da 2 chunk song song (thay vi Promise.all toan bo).
+      // 10 chunk cung luc bao GIL lam daphne reset WS handshake (Entry 511).
+      // Giu nguyen thu tu chunk khi merge (results theo index).
+      const BULK_CHUNK_CONCURRENCY = 2;
+      const task = (async () => {
+        if (chunks.length === 1) {
+          return corePost('/market-data/technicals/bulk/', { symbols: chunks[0] });
+        }
+        const chunkResults = new Array(chunks.length);
+        let next = 0;
+        const workers = Array.from(
+          { length: Math.min(BULK_CHUNK_CONCURRENCY, chunks.length) },
+          async () => {
+            while (next < chunks.length) {
+              const i = next;
+              next += 1;
+              chunkResults[i] = await corePost('/market-data/technicals/bulk/', { symbols: chunks[i] });
+            }
+          },
+        );
+        await Promise.all(workers);
+        const merged = { technicals: [], results: [], requested_count: 0, resolved_count: 0 };
+        chunkResults.forEach((r) => {
+          if (r?.technicals) merged.technicals.push(...r.technicals);
+          if (r?.results) merged.results.push(...r.results);
+          merged.requested_count += r?.requested_count ?? 0;
+          merged.resolved_count += r?.resolved_count ?? 0;
+        });
+        return merged;
+      })();
       bulkTechnicalsInflight.set(dedupeKey, task);
       task.then(
         () => { if (bulkTechnicalsInflight.get(dedupeKey) === task) bulkTechnicalsInflight.delete(dedupeKey); },

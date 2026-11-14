@@ -83,6 +83,11 @@
     deploy `--verify` + verify live: user reload → bulk POST ít + WS 502 ≈ 0 trong
     cửa sổ + `docker stats` ghi nhận.
   - Rollback: revert 1 commit (entrypoint + nginx + hằng số) + trả env VPS về cũ.
+- **S5 (FE, slice ws-502-stagger)**: bulk chunk concurrency 2. Live sau S3: van 9-10 POST
+  cung 2 giay + WS 502 ca khi bulk chua chay het (AC4 mo rong). Siet dinh muc toi da
+  2 chunk song song trong `market.js` (worker pool, merge theo index giu thu tu);
+  single-chunk giu duong truc tiep. Test: 450 symbols (3 chunk) voi fetch deferred →
+  max in-flight ≤ 2, merge du 3 chunk. Khong doi contract/shape/dedupe.
 - **Fail-before**: test mới `test_bulk_technicals_cache.py` chạy trên code chưa sửa →
   lần 2 vẫn query DB (đỏ đúng lý do); S2 wiring không có unit test ý nghĩa →
   verify live AC3 (ghi rõ trong ledger, không báo PASS giả — L-007/L-G02).
