@@ -8,7 +8,11 @@
 }
 
 .smart-stats-header {
-  background-color: rgba(var(--dsh-slate-900-rgb) / 0.6);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--dsh-slate-900-rgb) / 0.75) 0%,
+    rgba(var(--dsh-slate-950-rgb) / 0.85) 100%
+  );
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(var(--dsh-slate-400-rgb) / 0.15);
 }

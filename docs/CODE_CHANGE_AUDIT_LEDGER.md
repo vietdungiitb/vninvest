@@ -1,4 +1,12 @@
-## Entry 503: Slice S10 Dashboard — multicharts replace whale (BL-04, V2-02)
+## Entry 504: Slice S12 Dashboard — visual polish (gradient header + hover states)
+
+- **Date**: 2026-11-14. **Type**: FE (1 CSS + 1 JS, 0 BE, 0 migration). **Branch**: `feat/dashboard-visual-polish`. **Claim**: `dashboard-visual-polish` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/SmartStatsHeader.css` — gradient background (linear-gradient slate-900→slate-950) thay background-color đơn. `SmartStatsHeader.js` — thêm hover:border-cyan-500/20 transition-colors cho KPI grid.
+- **Gates**: tsc --noEmit PASS; lint 0 errors (2 warnings pre-existing). numstat small. git status chi co 1 CSS + 1 JS + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 1 CSS + 1 JS + CLAIMS.md + ledger nay. PR #401.
+
+## Entry 503: Slice S10 Dashboard - multicharts replace whale (BL-04, V2-02)
 
 - **Date**: 2026-11-14. **Type**: FE (2 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-multicharts-replace-whale`. **Claim**: `dashboard-multicharts-replace-whale` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/adapters/chartAdapter.js` — fix V2-02: `_onBarCallback` đơn → `Map` theo symbol, `pushRealtimeBar(symbol, bar)` + backward compat broadcast. `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` — tab 'whale' → 'charts' (label 'Biểu đồ'), render placeholder multicharts (Owner Q3: áp dụng tương lai), remove WhaleAnalyticsTab import + Fish icon.
