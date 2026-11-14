@@ -1,3 +1,10 @@
+## Entry 486: Deploy staging FULL OK sau khi Owner cap PAT moi (dev 505a9293f)
+
+- **Date**: 2026-11-14. Owner cap GITHUB_TOKEN moi (read:packages + SSO) -> verify `npm view @vninvestcharts/widget-pro version` = 0.4.5 -> chay lai full `bash scripts/deploy-staging.sh` -> PASS.
+- **Ket qua**: frontend build OK (het E401); stack xanh het (--verify PASS: config hop le, API healthy, 0 container chet, workers 0 restart). Smoke that: /api/health 200 · frontend 200 · ws-ticket 401 (mounted+guard) · constituents 401 (mounted+guard) · /core/v1/schema/ 404 (DEBUG=False, dung thiet ke dot3).
+- **Dong Entry 485**: frontend BLOCKED da duoc go. Staging hien chay full dev moi nhat (S1/S2 + Entry 485).
+- **Con lai**: widget team E2E (CHUA CHAY) · review stash/branch backup tren VPS (ghi trong handoff Entry 485).
+
 ## Entry 485: Deploy staging — backend-only OK (dev 787bc9b5d), frontend BLOCKED token E401
 
 - **Date**: 2026-11-13. PM-proxy toan quyen chay `bash scripts/deploy-staging.sh` tren VPS `14.225.255.47`.
