@@ -64,8 +64,10 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
   const fetchFeed = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-      const res = await coreApiAdapter.getAIAlertsFeed();
+      const res = await coreApiAdapter.getAIAlertsFeed({}, { signal: controller.signal });
       if (res && Array.isArray(res.results)) {
         setAlerts(res.results);
       } else if (Array.isArray(res)) {
@@ -85,9 +87,14 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
         setLastScanAt(null);
       }
     } catch (err) {
-      setError(err?.message || t("aiAdvisor.panel.loadError"));
+      if (err?.name === "AbortError") {
+        setError(`${t("aiAdvisor.panel.loadError")} (timeout 10s)`);
+      } else {
+        setError(err?.message || t("aiAdvisor.panel.loadError"));
+      }
       // giữ lastScanAt hiện tại (null → "Chưa có lượt quét") để empty desc hiển thị noScan
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [t]);

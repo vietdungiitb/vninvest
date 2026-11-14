@@ -133,11 +133,11 @@ export function createMarketClient({ coreGet, corePost }) {
      * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, cursor, page_size
      * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
      */
-    getAIAlertsFeed(params = {}) {
+    getAIAlertsFeed(params = {}, options = {}) {
       const query = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
       ).toString();
-      return coreGet(`/signals/ai-alerts/feed${query ? `?${query}` : ""}`);
+      return coreGet(`/signals/ai-alerts/feed${query ? `?${query}` : ""}`, options);
     },
 
     /**
