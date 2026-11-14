@@ -289,9 +289,73 @@ describe("coreApiAdapter", () => {
     const result = await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb", "fpt"]);
     expect(result).toEqual(payload);
 
-    const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/market-data/technicals/bulk/?symbols=TPB,FPT");
-    expect(url).toContain("/core/v1/");
+    // POST (tu PR #406, thay GET de tranh 414): symbols nam trong body, khong query.
+    // (Sua 2026-11-14: assertion cu giu URL GET `?symbols=` da sai san tu khi doi POST.)
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/core/v1/market-data/technicals/bulk/");
+    expect(JSON.parse(options.body)).toEqual({ symbols: ["TPB", "FPT"] });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getBulkTechnicalsBySymbols — dedupe concurrent identical calls (S3, Entry 513)
+  // ---------------------------------------------------------------------------
+  function mockPersistentOkResponse(data) {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(data),
+    });
+  }
+
+  function bulkFetchCount() {
+    return fetchMock.mock.calls.filter(([url]) => String(url).includes("/market-data/technicals/bulk/")).length;
+  }
+
+  test("getBulkTechnicalsBySymbols dedupes concurrent identical calls", async () => {
+    const payload = { technicals: [{ symbol: "TPB" }], results: [{ symbol: "TPB" }] };
+    mockPersistentOkResponse(payload);
+
+    const [a, b] = await Promise.all([
+      coreApiAdapter.getBulkTechnicalsBySymbols(["tpb", "fpt"]),
+      coreApiAdapter.getBulkTechnicalsBySymbols([" TPB ", "FPT"]),
+    ]);
+    expect(a).toEqual(payload);
+    expect(b).toEqual(payload);
+    expect(bulkFetchCount()).toBe(1);
+  });
+
+  test("getBulkTechnicalsBySymbols fetches again for different symbols", async () => {
+    const payload = { technicals: [], results: [] };
+    mockPersistentOkResponse(payload);
+
+    await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]);
+    await coreApiAdapter.getBulkTechnicalsBySymbols(["fpt"]);
+    expect(bulkFetchCount()).toBe(2);
+  });
+
+  test("getBulkTechnicalsBySymbols refetches after settle", async () => {
+    const payload = { technicals: [], results: [] };
+    mockPersistentOkResponse(payload);
+
+    await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]);
+    await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]);
+    expect(bulkFetchCount()).toBe(2);
+  });
+
+  test("getBulkTechnicalsBySymbols shares rejection and cleans up", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("boom"));
+    const payload = { technicals: [], results: [] };
+
+    const [p1, p2] = [
+      coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]),
+      coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]),
+    ];
+    await expect(p1).rejects.toThrow("boom");
+    await expect(p2).rejects.toThrow("boom");
+    expect(bulkFetchCount()).toBe(1);
+
+    mockPersistentOkResponse(payload);
+    await coreApiAdapter.getBulkTechnicalsBySymbols(["tpb"]);
+    expect(bulkFetchCount()).toBe(2);
   });
 
   test("getStockChartHistory calls /core/v1/stock-management/stocks/{symbol}/chart/", async () => {
