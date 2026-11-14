@@ -5,7 +5,7 @@
 - **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 2 file modified + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
 - **Note**: VNInvestMultiCharts full integration deferred (Owner Q3: "áp dụng trong tương lai"). Tier gating (Enterprise) chưa implement.
-- **Files**: 2 FE + CLAIMS.md + ledger nay.
+- **Files**: 2 FE + CLAIMS.md + ledger nay. PR #400.
 
 ## Entry 502: Slice S9 Dashboard - KPI data fix (BL-05, V2-01)
 
