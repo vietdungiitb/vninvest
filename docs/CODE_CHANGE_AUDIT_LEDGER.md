@@ -5,7 +5,7 @@
 - **Gates**: tsc --noEmit PASS; lint 0 errors (17 warnings pre-existing). numstat small. git status chi co 1 TSX + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
 - **Note**: BE verification (quotes/technicals/AI endpoints trên VPS) CHƯA CHẠY — ghi CHƯA CHẠY theo L-007. Cần kiểm trên staging.
-- **Files**: 1 TSX + CLAIMS.md + ledger nay.
+- **Files**: 1 TSX + CLAIMS.md + ledger nay. PR #402.
 
 ## Entry 504: Slice S12 Dashboard - visual polish (gradient header + hover states)
 
