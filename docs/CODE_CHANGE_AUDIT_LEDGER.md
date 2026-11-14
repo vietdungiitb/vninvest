@@ -4,7 +4,7 @@
 - **Scope**: `packages/web/src/adapters/core/market.js` — `getBulkTechnicalsBySymbols` chuyển từ GET (`?symbols=...`) sang POST (body `{symbols}`) để tránh 414 (Request-URI Too Long) khi danh sách mã dài. Chunk theo `_MAX_SYMBOLS=200` của BE. Backward compat: vẫn trả cùng shape `{technicals, results, requested_count, resolved_count}`.
 - **Gates**: tsc --noEmit PASS; lint 0 errors. numstat small. git status chi co 1 JS + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
-- **Files**: 1 JS + CLAIMS.md + ledger nay.
+- **Files**: 1 JS + CLAIMS.md + ledger nay. PR #403.
 
 ## Entry 505: Slice S13 Dashboard - data layer FE (realtime status + retry)
 
