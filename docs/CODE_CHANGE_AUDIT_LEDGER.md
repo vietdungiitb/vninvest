@@ -1,3 +1,11 @@
+## Entry 499: Slice S3 Dashboard — empty state tile (A3, V2-04)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-empty-state`. **Claim**: `dashboard-heatmap-empty-state` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` — detect `hasQuote` (current_price/change_pct != null); set `changePct = null` + `noData = true` khi không có quote; formatHeatmapLabel trả "chưa có giá" thay vì "0.00%"; tooltip trả "Chưa có dữ liệu giá"; border dashed + neutral gray cho noData tiles.
+- **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat small. git status chi co 1 JS + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 1 JS + CLAIMS.md + ledger nay.
+
 ## Entry 498: Slice S2 Dashboard — palette keep dark clearer (Owner Q1)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .js + 1 test .ts, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-palette`. **Claim**: `dashboard-heatmap-palette` (khai truoc dong dau tien — L-002).
