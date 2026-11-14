@@ -21,26 +21,28 @@ export default function AIAdvisorDeckPanel({
     }
   }, [symbolScope, onRequestDigest]);
 
-  const isHoldingsScope = symbolScope === 'holdings';
+  // BL-05 / D7: sharpe/sortino/correlation KHÔNG có ở backend ⇒ không dùng.
+  // Ưu tiên metrics (endpoint /metrics/, cấu trúc lồng {performance, risk, benchmark}).
+  const metricsData = metrics;
+  const hasAnalytics = (metricsData && (
+    metricsData?.benchmark?.alpha_annualized != null ||
+    metricsData?.benchmark?.beta != null ||
+    metricsData?.risk?.max_drawdown != null
+  )) || (analytics && [
+    analytics.alpha_annual_pct,
+    analytics.beta,
+    analytics.max_drawdown_pct,
+  ].some((value) => value !== null && value !== undefined));
+
+  // S7: khi có dữ liệu analytics/metrics thì hiển thị health score ngay cả khi scope 'all'
+  // (trước đây scope 'all' luôn rơi vào monitor banner vàng).
+  const isHoldingsScope = symbolScope === 'holdings' || hasAnalytics;
 
   const healthStats = useMemo(() => {
     if (!isHoldingsScope) {
       return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
     }
 
-    // BL-05 / D7: sharpe/sortino/correlation KHÔNG có ở backend.
-    const metricsData = metrics;
-    const hasAnalytics = (metricsData && (
-      metricsData?.benchmark?.alpha_annualized != null ||
-      metricsData?.benchmark?.beta != null ||
-      metricsData?.risk?.max_drawdown != null
-    )) || (analytics && [
-      analytics.alpha_annual_pct,
-      analytics.beta,
-      analytics.max_drawdown_pct,
-    ].some((value) => value !== null && value !== undefined));
-
-    if (!hasAnalytics) return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
 
     const alpha = (metricsData?.benchmark?.alpha_annualized != null ? metricsData.benchmark.alpha_annualized * 100 : analytics?.alpha_annual_pct) || 0;
     const maxDD = Math.abs((metricsData?.risk?.max_drawdown != null ? metricsData.risk.max_drawdown * 100 : analytics?.max_drawdown_pct) || 0);
@@ -60,6 +62,7 @@ export default function AIAdvisorDeckPanel({
     else if (total >= 40) { grade = 'D'; color = 'text-orange-400'; }
 
     return { hasData: true, score: total, grade, color };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytics, metrics, isHoldingsScope]);
 
   const aiScopeTitle = useMemo(() => {
