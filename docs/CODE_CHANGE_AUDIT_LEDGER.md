@@ -1,3 +1,12 @@
+## Entry 507: Fix L-F09 — handleTabChange/handlePageSizeChange 2 setter trong 1 tick (dashboard deck)
+
+- **Date**: 2026-11-14. **Type**: FE (2 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-deck-tab-switch-fix`. **Claim**: `dashboard-deck-tab-switch-fix` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` + `FactsFirstModularPositionDeck.jsx` — gop 2 setter (`setActiveTab`+`setCurrentPage`, `setPageSize`+`setCurrentPage`) thanh 1 `setUrlState` call (L-F09: 2 setSearchParams trong 1 tick KHONG compose). Xoa setter khong con dung.
+- **Root cause**: user bao "tab Kỹ thuật/Biểu đồ/AI Bot không hoạt động khi bấm chuột" — tabs không chuyển active vì setter thứ 2 ghi đè setter thứ 1 (activeTab mất). Fix: single setUrlState call với cả 2 keys.
+- **Gates**: tsc --noEmit PASS; lint 0 errors. numstat small. git status chi co 2 TSX/JSX + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-F09 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 2 FE + CLAIMS.md + ledger nay. PR #404.
+
 ## Entry 506: Fix 414 on bulk technicals (POST thay vì GET)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-bulk-technicals-post`. **Claim**: `dashboard-bulk-technicals-post` (khai truoc dong dau tien — L-002).

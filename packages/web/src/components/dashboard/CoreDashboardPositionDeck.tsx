@@ -83,20 +83,16 @@ export function CoreDashboardPositionDeck({
   // W3-4 (AC-4.3): wrapper phai de `useCallback` — `setState` cua React co identity
   // on dinh, nhung arrow inline TAO ham moi MOI LAN RENDER. Neu them no vao deps
   // cua `useEffect` thi effect chay lai lien tuc (loop). Fix = useCallback.
-  const setActiveTab = useCallback((v: DeckTab) => setUrlState({ activeTab: v }), [setUrlState]);
-  const setPageSize = useCallback((v: number) => setUrlState({ pageSize: v }), [setUrlState]);
   const setCurrentPage = useCallback((v: number) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
   const handleTabChange = (tabId: DeckTab) => {
-    setActiveTab(tabId);
-    setCurrentPage(1);
+    setUrlState({ activeTab: tabId, currentPage: 1 });
   };
 
   const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
+    setUrlState({ pageSize: size, currentPage: 1 });
   };
 
   const isOverviewTab = activeTab === 'overview';
