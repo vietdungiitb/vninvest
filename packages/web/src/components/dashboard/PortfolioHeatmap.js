@@ -96,6 +96,9 @@ export function formatHeatmapLabel(params) {
   const w = rect.width ?? rect.w ?? 0;
   const h = rect.height ?? rect.h ?? 0;
   const gating = heatLabelGating(w, h);
+  if (d.noData) {
+    return w && h && gating.showText ? `${params.name}\n—` : (d.showName ? `${params.name}` : "");
+  }
   if (w && h) {
     if (!gating.showText) return "";
     const sign = d.changePct > 0 ? "+" : "";
@@ -176,7 +179,8 @@ export function PortfolioHeatmap({
     return holdings.map((h) => {
       const symbol = h?.symbol || "";
       const quote = quotesBySymbol?.[symbol] || {};
-      const changePct = Number(quote?.change_pct || 0);
+      const hasQuote = quote?.current_price != null || quote?.change_pct != null;
+      const changePct = hasQuote ? Number(quote?.change_pct || 0) : null;
       const currentPrice = Number(quote?.current_price || h?.current_price || 0);
       const quantity = Number(h?.quantity || 0);
       const marketValue = currentPrice * quantity;
@@ -210,16 +214,18 @@ export function PortfolioHeatmap({
       }
 
       const bg = heatColorContinuous(changePct);
-      const isZero = Number(changePct) === 0;
+      const isZero = hasQuote && Number(changePct) === 0;
+      const noData = !hasQuote;
       return {
         name: symbol,
         value: Math.max(sizeValue, 1),
         changePct,
+        noData,
         itemStyle: {
           color: bg,
           // 0% dùng nền trầm #2f3747 + viền vàng #eab308 (không fill vàng) — S3.1/L6
-          borderColor: isZero ? HEAT_ZERO_BORDER : "#0f172a",
-          borderWidth: isZero ? 1.5 : 0.5,
+          borderColor: noData ? "rgba(148,163,184,0.4)" : (isZero ? HEAT_ZERO_BORDER : "#0f172a"),
+          borderWidth: noData ? 1 : (isZero ? 1.5 : 0.5),
         },
         labelColor: textOnHeat(bg),
       label: { color: textOnHeat(bg) },
@@ -284,6 +290,9 @@ export function PortfolioHeatmap({
           ...darkTooltip,
           formatter: (info) => {
             const { name, value, data } = info;
+            if (data?.noData) {
+              return `<strong style="color: #06b6d4;">${name}</strong><br/>Chưa có dữ liệu giá`;
+            }
             const signColor = data?.changePct > 0 ? '#4ade80' : data?.changePct < 0 ? '#f87171' : '#94a3b8';
             if (data?.isOther) {
               const syms = (data?.otherSymbols || []).join(", ");
@@ -339,6 +348,9 @@ export function PortfolioHeatmap({
         ...darkTooltip,
           formatter: (info) => {
             const { name, value, data } = info;
+            if (data?.noData) {
+              return `<strong style="color: #06b6d4;">${name}</strong><br/>Chưa có dữ liệu giá`;
+            }
             const signColor = data?.changePct > 0 ? '#4ade80' : data?.changePct < 0 ? '#f87171' : '#94a3b8';
             if (isMarketCap) {
               return `<strong style="color: #06b6d4;">${name}</strong><br/>Vốn hóa: ${Number(value).toLocaleString("vi-VN")} tỷ VND<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
