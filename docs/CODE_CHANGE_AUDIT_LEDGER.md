@@ -1,3 +1,14 @@
+## Entry 490: Thuc nghiem skill soc-uiux — iteration 2 (heading-contract fix)
+
+- **Date**: 2026-11-14. **Type**: FE TSX refactor (0 BE, 0 migration). **Branch**: `feat/soc-uiux-trial-2`. **Claim**: `soc-uiux-trial-2` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/pages/portfolio/PortfolioWorkspace.tsx` (h1 -> h2, vi `ShellPageTemplate.js:119` da render h1 theo route title — tranh 2 h1) + cap nhat 2 test (`portfolio-heading.component.test.tsx`, `portfolio-entry.component.test.tsx`) de khoa contract moi (h2 title, 0 h1 tu page). Cap nhat baseline heading-contract 25 -> 24 (1 vi pham cu da het).
+- **Skill sections used**: §1 SSOT (khong doi token), §2 ban do gate (heading-contract), §4 checklist, §6 (L-F11 doc CSS build — khong ap dung o day vi khong sua CSS).
+- **Gates (iteration 2)**: heading-contract PASS (25 -> 24, khong moi); portfolio tests 27/27 PASS (heading 11/11, entry 4/4); tsc --noEmit PASS; lint PASS (0 errors, 20 warnings pre-existing). CSS gates khong chay lai (khong doi CSS) — van xanh theo iteration 1.
+- **CHUA CHAY**: check-theme-contrast (timeout/canvas), check-uiux-budget (timeout), test:visual (thieu @axe-core/playwright — loi moi truong).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V04]. Cap nhat test de phan anh contract moi (khong phai lam test yeu di — test cu khoa contract cu, da sai so voi gate).
+- **Files**: 1 TSX + 2 test + CLAIMS.md + ledger nay.
+- **GHI LESSON MOI**: khong.
+
 ## Entry 489: Thuc nghiem skill soc-uiux — iteration 1 (PortfolioWorkspace.css token convergence)
 
 - **Date**: 2026-11-14. **Type**: FE CSS refactor (0 source .tsx, 0 BE, 0 migration). **Branch**: `feat/soc-uiux-trial`. **Claim**: `soc-uiux-trial` (khai truoc dong dau tien — L-002).
