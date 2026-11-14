@@ -1,3 +1,21 @@
+## Entry 496: Slice S4 Dashboard — focal point heatmap (MJ-06)
+
+- **Date**: 2026-11-14. **Type**: FE CSS (1 file .css, 0 BE, 0 migration). **Branch**: `feat/dashboard-triad-grid-focal`. **Claim**: `dashboard-triad-grid-focal` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/index.css:490-492` — đổi `grid-template-columns: 1fr 1.5fr 1fr` → `1fr 2fr 1fr` (heatmap lane rộng 2x so với alert/AI lane). MJ-06: `flex-[2]` vô tác dụng trên grid item, phải sửa `grid-template-columns`.
+- **Gates**: tsc --noEmit PASS; lint 0 errors. numstat 1/1 (no blowup, L-T01). git status chi co 1 CSS modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 1 CSS + CLAIMS.md + ledger nay. PR #390.
+
+## Entry 495: Runbook multi-agent thực thi Master Plan Dashboard Refactor (S1–S13)
+
+- **Date**: 2026-11-14. **Type**: DOCS (runbook, 0 source line, 0 migration). **Branch**: none (doc-only, de Owner review).
+- **Scope**: `docs/RUNBOOK_DASHBOARD_REFACTOR_MULTIAGENT_20261114.md` (moi) — hướng dẫn Owner/coordinator yêu cầu multi-agent thực thi 13 slices theo vòng khép kín: preflight, 9 bước workflow-dev-loop per slice, phối hợp multi-agent (vai trò, deny list, claim, conflict avoidance), checklist per-slice, verification/close session, trạng thái slices, mẫu yêu cầu copy-paste, cạm bẫy đã gặp thật, tài liệu tham chiếu.
+- **Trạng thái slices**: S1 ✅ (#387), S6 ✅ (#389). Wave 1 READY: S4, S5. Wave 2 CONDITIONAL: S2, S3, S8, S9, S11, S13 (với V2 fixes). Wave 3 BLOCKED: S7 (sau S9 + V2-01), S10 (sau V2-02 + Q3). Wave 4 last: S12.
+- **Owner decisions đã chốt** (§12 plan): Q1 giữ trầm rõ nét hơn; Q2 "Khác" toggle settings; Q3 bỏ Cá mập, thay multicharts; Q4/Q5 làm theo khuyến nghị; Q6 từng slice nhỏ, lưu audit + nhật ký.
+- **Files**: `docs/RUNBOOK_DASHBOARD_REFACTOR_MULTIAGENT_20261114.md` (moi) · ledger nay.
+- **Gates**: doc-only → không chạy build/tsc. check-multi-agent PASS (0 lỗi) trên HEAD.
+- **Lessons**: [L-002 L-003 L-007 L-G01 L-G02 L-G03 L-G04 L-V01 L-V02 L-V03 L-V04 L-V05 L-V06 L-F03 L-F04 L-F05 L-F06 L-F11 L-F12 L-T01 L-T02]. GHI LESSON MOI: khong.
+
 ## Entry 494: Slice S6 Dashboard — AI alert panel timeout 10s + retry (BL-01)
 
 - **Date**: 2026-11-14. **Type**: FE (2 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-ai-alert-timeout`. **Claim**: `dashboard-ai-alert-timeout` (khai sau edits — protocol deviation, recorded; L-002 violation).

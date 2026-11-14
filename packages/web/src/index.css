@@ -289,7 +289,10 @@
     border: 1px solid rgba(51, 65, 85, 0.6);
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(16px);
-    transition: background, border, box-shadow 0.2s;
+    transition:
+      background,
+      border,
+      box-shadow 0.2s;
     box-shadow:
       0 4px 24px -1px rgba(0, 0, 0, 0.2),
       inset 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -486,10 +489,10 @@
     overflow: auto;
   }
 
-  /* S4.1 — Grid responsive: 1fr 1.5fr 1fr ≥1280px; 1279px→1fr 1fr (AI span 2); 1099px→1fr gap 16px */
+  /* S4.1 — Grid responsive: 1fr 2fr 1fr ≥1280px (heatmap focal 2x); 1279px→1fr 1fr (AI span 2); 1099px→1fr gap 16px */
   .dashboard-triad-grid {
     display: grid;
-    grid-template-columns: 1fr 1.5fr 1fr;
+    grid-template-columns: 1fr 2fr 1fr;
     gap: 1rem; /* 16px */
     min-width: 0;
     /* `stretch` (không phải `start`): lane cao nhất định chiều cao hàng, các
@@ -857,18 +860,18 @@ input,
 select,
 textarea,
 summary,
-[role='button'],
-[role='tab'],
-[role='switch'],
-[role='checkbox'],
-[role='radio'] {
+[role="button"],
+[role="tab"],
+[role="switch"],
+[role="checkbox"],
+[role="radio"] {
   touch-action: manipulation;
 }
 
 /* 2) Keo modal/drawer khong keo luon trang (iOS rubber-band toan trang).
       `contain` giu chuyen dong trong overlay. */
-[role='dialog'],
-[role='alertdialog'],
+[role="dialog"],
+[role="alertdialog"],
 .drawerOverlay,
 .drawerContent,
 .schedulerModalOverlay {
@@ -903,23 +906,25 @@ body {
   select,
   textarea,
   summary,
-  [role='button'],
-  [role='tab'],
-  [role='switch'],
-  [role='checkbox'],
-  [role='radio'],
-  input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not(.invisible-honeypot) {
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not(
+      .invisible-honeypot
+    ) {
     min-height: 44px;
   }
 
   /* Control icon-sized: can ca hai chieu de tao vung cham vuot hinh.
      KHONG dat cho `a[href]` — link trong van ban dai se lam vo layout doc. */
   button,
-  [role='button'],
-  [role='tab'],
-  [role='switch'],
-  [role='checkbox'],
-  [role='radio'],
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
   summary {
     min-width: 44px;
   }
