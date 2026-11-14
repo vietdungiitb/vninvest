@@ -1,3 +1,12 @@
+## Entry 485: Deploy staging — backend-only OK (dev 787bc9b5d), frontend BLOCKED token E401
+
+- **Date**: 2026-11-13. PM-proxy toan quyen chay `bash scripts/deploy-staging.sh` tren VPS `14.225.255.47`.
+- **Ket qua**: `frontend builder: npm ci E401` — GITHUB_TOKEN trong compose.staging.env bi GitHub Packages tu choi (tai @vninvestcharts/widget-pro@0.4.4). Khong phai loi code.
+- **Xu ly truoc deploy**: /opt/vninvest ban + detached cu + dev diverge (5 commit local) -> stash -u (stash@{0}) + backup branch `staging-local-backup-20261113` + reset --hard origin/dev (787bc9b5d, sach).
+- **Deploy backend-only** (S1/S2 BE-only, additive): build 5/5 + up -d OK. Verify xanh het: config hop le, API healthy qua nginx, 0 container chet, workers 0 restart. Kiem chung that: /api/health 200; ws-ticket 401; constituents 401; `0008_licensekey [X]`.
+- **Con lai / BLOCKED (Owner)**: (1) cap PAT moi read:packages + SSO -> update GITHUB_TOKEN -> chay lai full deploy; (2) review stash/branch backup roi drop; (3) widget team E2E (CHUA CHAY).
+- **Lessons**: [L-001 L-002 L-003 L-007 L-008 L-M02 L-B01 L-V01 L-V02]. GHI LESSON MOI: khong (loi token thuoc ha tang secret, da co L-S01 bao quat; khong ton thoi gian code).
+
 ## Entry 484: PROGRAM DONE — backend vninvest cho widget Enterprise (S1+S2 shipped, S3-S8 decided)
 
 - **Date**: 2026-11-13. PM-proxy toan quyen chay toan bo master plan. 4 PR merge-commit: #377 (plan+claims) · #378 (S1) · #379 (S2) · #380 (S3 probes+decisions). Tat ca da push GitHub.
