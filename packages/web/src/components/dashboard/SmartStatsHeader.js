@@ -183,7 +183,7 @@ export function SmartStatsHeader({
             )
             : e(
               "div",
-              { className: "grid grid-cols-4 gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-4 py-2" },
+              { className: "grid grid-cols-4 gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-4 py-2 transition-colors hover:border-cyan-500/20" },
               compactMetrics.map((metric) =>
                 e(
                   "div",
