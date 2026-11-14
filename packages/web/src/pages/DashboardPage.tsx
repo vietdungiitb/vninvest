@@ -215,6 +215,9 @@ export function DashboardPage({
     let down = 0;
     let flat = 0;
     Object.values(mergedQuotes).forEach((q) => {
+      // V2-05: bo qua placeholder chua co gia/bien dong (useRealtimeFeedCore khoi tao {symbol})
+      const hasData = q?.current_price != null || q?.change_pct != null || q?.change_value != null || q?.change != null;
+      if (!hasData) return;
       const change = Number(q?.change_value ?? q?.change_pct ?? q?.change ?? 0);
       if (change > 0) {
         up++;
