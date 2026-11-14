@@ -40,20 +40,16 @@ export default function FactsFirstModularPositionDeck({
     DECK_URL_DEFAULTS,
   );
   // W3-4 (AC-4.3): xem ghi chu o ban TSX — wrapper phai `useCallback`.
-  const setActiveTab = useCallback((v) => setUrlState({ activeTab: v }), [setUrlState]);
-  const setPageSize = useCallback((v) => setUrlState({ pageSize: v }), [setUrlState]);
   const setCurrentPage = useCallback((v) => setUrlState({ currentPage: v }), [setUrlState]);
   const [symbolScope, setSymbolScope] = useState('holdings');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
   const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setCurrentPage(1);
+    setUrlState({ activeTab: tabId, currentPage: 1 });
   };
 
   const handlePageSizeChange = (size) => {
-    setPageSize(size);
-    setCurrentPage(1);
+    setUrlState({ pageSize: size, currentPage: 1 });
   };
 
   const isOverviewTab = activeTab === 'overview';
