@@ -5,7 +5,7 @@
 - **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 5 file modified + CLAIMS.md (khong sinh file rac — L-V03).
 - **Lessons ap dung**: [L-002 L-003 L-G02 L-V01 L-V02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
 - **Note**: BE endpoint /metrics/ trả cấu trúc lồng {performance, risk, benchmark}; D7 cấm sharpe/sortino/correlation. Unit: daily_returns là fraction (0.01=1%), alpha_annualized/max_drawdown là fraction → ×100 khi hiển thị. BE chưa verify trên staging (CHƯA CHẠY).
-- **Files**: 5 FE + CLAIMS.md + ledger nay.
+- **Files**: 5 FE + CLAIMS.md + ledger nay. PR #398.
 
 ## Entry 501: Slice S11 Dashboard - breadth fix skip placeholders (V2-05)
 
