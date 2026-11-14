@@ -1,3 +1,13 @@
+## Entry 511: Chan doan WS 502 /ws/realtime/ — daphne don process doi event loop khi bulk tinh (doc-only)
+
+- **Date**: 2026-11-14. **Type**: diagnosis doc-only (0 file code). **Branch**: `feat/ws-502-diagnosis`. **Claim**: `ws-502-diagnosis` (khai truoc — L-002).
+- **Trieu chung**: browser `wss://docker.edusuccess.vn/ws/realtime/?token=…` 502 lap lai voi token that; polling fallback van 200.
+- **Bang chung**: frontend nginx `recv() failed (104: Connection reset by peer) ... upstream 172.19.0.3:8100/ws/realtime/` (daphne reset giua handshake); cung token co luc 101 xen ke 502 (ngat quang theo tai, khong phai auth — auth sai tra 403/4401 da kiem chung Entry 510); 22:08:18 co 6 bulk POST 200 ~217KB cung giay WS bi reset; `entrypoint.sh:32-38` chi 1 process daphne; log `WSCONNECT` xen ke `WSCONNECTING → 5s → WSDISCONNECT`.
+- **Goc re**: fix #407 cuu bulk khoi treo nhung tinh indicators nang van trong 1 process daphne (GIL + 1 event loop) → bulk chay WS handshake khong kip → reset → 502. Khong phai token/auth/proxy config.
+- **Huong xu ly (can Owner/coordinator, khong tu lam)**: O1 multi-process daphne / tach HTTP-WS (cham deny-list compose); O2 dua indicators ra Celery + cache hoac FE stagger bulk; O3 FE chuyen `?token=` raw PAT sang `?ticket=` single-use (da co san `ws-ticket-s1`), vi raw PAT dang nam plaintext trong access log — **revoke/rotate PAT vua lo**.
+- **Files**: evidence moi + ledger nay (+ claim). **Gates**: check-multi-agent PASS; check-lessons 60/60 PASS.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V03]. GHI LESSON MOI: khong.
+
 ## Entry 510: Deploy staging #407/#408 + verify live dashboard (xanh)
 
 - **Date**: 2026-11-14. **Type**: ops verify (0 file code, docs-only) + evidence. **Branch**: `feat/dashboard-verify-live`. **Claim**: `dashboard-verify-live` (khai truoc, commit rieng — L-002).
