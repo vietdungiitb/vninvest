@@ -383,6 +383,23 @@ def _to_float(value):
         return None
 
 
+# WS-502 codefix (Entry 512): cache ngan han cho bulk technicals. 10 chunk song song
+# (200 symbols x 180 ngay) bao GIL lam daphne don process khong kip hoan tat WS
+# handshake -> reset -> nginx 502 (Entry 511). TTL 60s: dashboard refresh/revisit het
+# bao lap lai; first-load van tinh 1 lan. Key share duoc vi du lieu global
+# (khong user/tenant). Khong singleflight: het han dung luc N caller song song van
+# miss dong thoi (gioi han da ghi trong plan, de slice sau).
+_BULK_TECHNICALS_CACHE_TTL_S = 60
+_BULK_TECHNICALS_CACHE_VERSION = 'v1'
+
+
+def _bulk_technicals_cache_key(symbols, day):
+    import hashlib
+
+    digest = hashlib.sha1(','.join(sorted(symbols)).encode('utf-8')).hexdigest()
+    return f'bulk_technicals:{_BULK_TECHNICALS_CACHE_VERSION}:{day}:{digest}'
+
+
 def _to_int(value):
     try:
         if value is None:
@@ -1474,6 +1491,22 @@ class StockManagementTechnicalsView(APIView):
                 'resolved_count': 0,
             })
 
+        from django.core.cache import cache
+
+        # Hit: rap lai theo thu tu request (key dung sorted symbols). Luu inner
+        # `results`, KHONG luu DRF Response (da render khong duoc tai su dung).
+        cache_key = _bulk_technicals_cache_key(symbols, timezone.localdate())
+        cached_results = cache.get(cache_key)
+        if cached_results is not None:
+            by_symbol = {item.get('symbol'): item for item in cached_results}
+            ordered = [by_symbol[sym] for sym in symbols if sym in by_symbol]
+            return envelope({
+                'technicals': ordered,
+                'results': ordered,
+                'requested_count': len(symbols),
+                'resolved_count': len(ordered),
+            })
+
         from market_serving.models import SymbolSnapshot
 
         today = timezone.localdate()
@@ -1566,6 +1599,7 @@ class StockManagementTechnicalsView(APIView):
                 'range_position_pct': technical_payload.get('range_position_pct'),
                 'latest_close': technical_payload.get('latest_close') if technical_payload.get('latest_close') is not None else _round_or_none(latest_close),
             })
+        cache.set(cache_key, results, _BULK_TECHNICALS_CACHE_TTL_S)
         return envelope({
             'technicals': results,
             'results': results,

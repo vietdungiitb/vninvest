@@ -50,12 +50,15 @@ class MarketTickerConsumer(AsyncWebsocketConsumer):
             return
 
         # Authenticate via query string: ?ticket= (single-use, G0.2) or ?token= (compat)
+        # WS-502 codefix (Entry 512): auth off shared thread (mirror #407 dispatch fix).
+        # Shared thread (thread_sensitive=True) serialize voi tickers polling lien tuc
+        # => handshake auth xep hang => timeout/reset. DB query thread-safe qua worker thread.
         from asgiref.sync import sync_to_async
 
         from identity_access.ws_ticket import resolve_user_from_ws_query
 
         query_string = self.scope.get('query_string', b'').decode()
-        user = await sync_to_async(resolve_user_from_ws_query)(query_string)
+        user = await sync_to_async(resolve_user_from_ws_query, thread_sensitive=False)(query_string)
         if user is None:
             logger.warning('[WS] Unauthenticated WS for %s', self.symbol)
             await self.close(code=4401)
@@ -120,12 +123,13 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        # WS-502 codefix (Entry 512): giong MarketTickerConsumer — auth off shared thread.
         from asgiref.sync import sync_to_async
 
         from identity_access.ws_ticket import resolve_user_from_ws_query
 
         query_string = self.scope.get('query_string', b'').decode()
-        user = await sync_to_async(resolve_user_from_ws_query)(query_string)
+        user = await sync_to_async(resolve_user_from_ws_query, thread_sensitive=False)(query_string)
         if user is None:
             logger.warning('[WS:Realtime] Unauthenticated connection attempt')
             await self.close(code=4401)
