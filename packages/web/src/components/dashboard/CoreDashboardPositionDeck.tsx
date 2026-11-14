@@ -1,15 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import PaginationBar from '../shared/PaginationBar.jsx';
-import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
-import { ClipboardList, BarChart3, Fish, Bot } from 'lucide-react';
+import { ClipboardList, BarChart3, Bot } from 'lucide-react';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
 import { useUrlState, intCodec, type UrlStateCodec } from '../../hooks/useUrlState';
 
-type DeckTab = 'overview' | 'technical' | 'whale' | 'ai';
+type DeckTab = 'overview' | 'technical' | 'charts' | 'ai';
 type DeckUrlState = { activeTab: DeckTab; pageSize: number; currentPage: number };
 
-const DECK_TABS: readonly DeckTab[] = ['overview', 'technical', 'whale', 'ai'];
+const DECK_TABS: readonly DeckTab[] = ['overview', 'technical', 'charts', 'ai'];
 const DECK_TAB_CODEC: UrlStateCodec<DeckTab> = {
   parse: (raw) =>
     raw != null && (DECK_TABS as readonly string[]).includes(raw) ? (raw as DeckTab) : undefined,
@@ -102,14 +101,14 @@ export function CoreDashboardPositionDeck({
 
   const isOverviewTab = activeTab === 'overview';
   const isTechnicalTab = activeTab === 'technical';
-  const isWhaleTab = activeTab === 'whale';
+  const isChartsTab = activeTab === 'charts';
   const isAITab = activeTab === 'ai';
   const needsTechnicalsView = isTechnicalTab || isAITab;
 
   const tabs = [
     { id: 'overview' as const, label: 'Tổng quan', icon: ClipboardList },
     { id: 'technical' as const, label: 'Kỹ thuật', icon: BarChart3 },
-    { id: 'whale' as const, label: 'Cá mập', icon: Fish },
+    { id: 'charts' as const, label: 'Biểu đồ', icon: BarChart3 },
     { id: 'ai' as const, label: 'AI Bot', icon: Bot },
   ];
 
@@ -516,14 +515,11 @@ export function CoreDashboardPositionDeck({
           </div>
         )}
 
-        {isWhaleTab && (
+        {isChartsTab && (
           <div className="h-full flex flex-col overflow-hidden min-h-[300px]">
-            <WhaleAnalyticsTab
-              holdings={holdings as any}
-              quotesBySymbol={quotesBySymbol as any}
-              selectedSymbol={selectedSymbol !== 'all' ? selectedSymbol : undefined}
-              symbolOptions={symbolOptions as any}
-            />
+            <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+              Biểu đồ đa mã (VNInvestMultiCharts) — áp dụng trong tương lai (Owner Q3).
+            </div>
           </div>
         )}
 

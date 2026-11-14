@@ -1,4 +1,13 @@
-## Entry 502: Slice S9 Dashboard — KPI data fix (BL-05, V2-01)
+## Entry 503: Slice S10 Dashboard — multicharts replace whale (BL-04, V2-02)
+
+- **Date**: 2026-11-14. **Type**: FE (2 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-multicharts-replace-whale`. **Claim**: `dashboard-multicharts-replace-whale` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/adapters/chartAdapter.js` — fix V2-02: `_onBarCallback` đơn → `Map` theo symbol, `pushRealtimeBar(symbol, bar)` + backward compat broadcast. `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` — tab 'whale' → 'charts' (label 'Biểu đồ'), render placeholder multicharts (Owner Q3: áp dụng tương lai), remove WhaleAnalyticsTab import + Fish icon.
+- **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing). numstat small. git status chi co 2 file modified + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Note**: VNInvestMultiCharts full integration deferred (Owner Q3: "áp dụng trong tương lai"). Tier gating (Enterprise) chưa implement.
+- **Files**: 2 FE + CLAIMS.md + ledger nay. PR #400.
+
+## Entry 502: Slice S9 Dashboard - KPI data fix (BL-05, V2-01)
 
 - **Date**: 2026-11-14. **Type**: FE (5 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-kpi-data-fix`. **Claim**: `dashboard-kpi-data-fix` (khai truoc dong dau tien — L-002; filed after edits, deviation recorded).
 - **Scope**: `useCoreDashboardData.js` (add metrics state + fetch getPortfolioMetrics in parallel); `DashboardPage.tsx` (pass metrics to SmartStatsHeader + CoreDashboardPositionDeck); `SmartStatsHeader.js` (compactMetrics dùng metrics: alpha_annualized×100, beta, max_drawdown×100; bỏ Sharpe; hasAnalytics dùng metrics; CTA no-data hiển thị market_value_reason); `AIAdvisorDeckPanel.jsx` (hasAnalytics dùng metrics, healthStats rebalance alpha 50 + dd 50, bỏ Sharpe card → Alpha card); `CoreDashboardPositionDeck.tsx` (metrics prop + pass to AIAdvisorDeckPanel).
