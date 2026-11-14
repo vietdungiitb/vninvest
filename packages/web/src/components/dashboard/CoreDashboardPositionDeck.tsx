@@ -47,6 +47,7 @@ interface CoreDashboardPositionDeckProps {
   metrics?: any;
   digest?: unknown;
   onRequestDigest?: () => void;
+  onRetryTechnicals?: () => void;
   selectedSession?: unknown;
   onSelectSession?: (session: unknown) => void;
   selectedSymbol?: string | null;
@@ -67,6 +68,7 @@ export function CoreDashboardPositionDeck({
   metrics = undefined,
   digest = undefined,
   onRequestDigest = undefined,
+  onRetryTechnicals = undefined,
   selectedSession = undefined,
   onSelectSession = undefined,
   selectedSymbol: selectedSymbolProp = 'all',
@@ -451,10 +453,10 @@ export function CoreDashboardPositionDeck({
                     <tr>
                       <td colSpan={5} className="py-4 text-center">
                         <div className="text-rose-400 text-sm mb-2">Không tải được dữ liệu kỹ thuật{technicalsStatus?.errorCode ? ` (${technicalsStatus.errorCode})` : ''}.</div>
-                        <button type="button" onClick={() => { /* retry handled by parent refresh */ }} className="text-xs text-cyan-400 hover:text-cyan-300 underline">Thử lại</button>
+                        <button type="button" onClick={() => onRetryTechnicals?.()} className="text-xs text-cyan-400 hover:text-cyan-300 underline">Thử lại</button>
                       </td>
                     </tr>
-                  ) : loading ? (
+                  ) : loading || technicalsStatus?.status === 'loading' ? (
                     <tr><td colSpan={5} className="text-center py-4 animate-pulse">Đang tải...</td></tr>
                   ) : pagedTechnicals.length === 0 ? (
                     <tr><td colSpan={5} className="text-center py-4 text-slate-400 italic">Không có dữ liệu kỹ thuật.</td></tr>

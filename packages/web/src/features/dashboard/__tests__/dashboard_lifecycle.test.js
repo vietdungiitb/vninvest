@@ -130,5 +130,64 @@ describe("SaaS Native Dashboard Lifecycle Tests", () => {
       // After load, hasHydrated is set to true  → useState(false) key is "false"
       expect(m._getMockState()["false"]).toBe(true);
     });
+
+    test("Phase 1 renders even when bulk hangs forever; 60s timeout flips technicals to failed", async () => {
+      // A-fix 2026-11-15 (Entry 508): 10 chunk POST treo daphne event loop =>
+      // Promise.all treo vinh vien => loading mai true => skeleton ket.
+      // Kiem chung: bulk KHONG BAO GIO resolve nhung Phase 1 van hien thi,
+      // va timeout 60s chuyen technicals sang 'failed' (nut retry S8).
+      jest.useFakeTimers();
+      try {
+        jest.spyOn(coreApiAdapter, "getPortfolioHoldings").mockResolvedValue({
+          results: [{ symbol: "VCB", quantity: 100 }],
+        });
+        jest.spyOn(coreApiAdapter, "getPortfolioSummary").mockResolvedValue({
+          portfolio_id: 1,
+          net_value: 50000000,
+        });
+        jest.spyOn(coreApiAdapter, "getPortfolioAnalytics").mockResolvedValue({});
+        jest.spyOn(coreApiAdapter, "getPortfolioMetrics").mockResolvedValue(null);
+        jest.spyOn(coreApiAdapter, "getWatchlists").mockResolvedValue({ results: [] });
+        jest.spyOn(coreApiAdapter, "getTrackedSymbols").mockResolvedValue({ results: [] });
+        jest.spyOn(coreApiAdapter, "getLegacyWatchlistGroups").mockResolvedValue({ results: [] });
+
+        // Phase 2 treo vinh vien (daphne bi wedged, khong bao gio tra loi)
+        jest.spyOn(coreApiAdapter, "getBulkTechnicalsBySymbols").mockImplementation(
+          () => new Promise(() => {})
+        );
+
+        useCoreDashboardData({ portfolioId: 1, enabled: true });
+
+        const m = mockReact;
+        const effectObj = m._getMockEffects().find(e => e.deps && e.deps.some(d => d === 0));
+        expect(effectObj).toBeDefined();
+
+        const cleanup = effectObj.effect();
+        await jest.advanceTimersByTimeAsync(500);
+
+        const stateKey = Object.keys(m._getMockState()).find(k => k.startsWith('{"loading":'));
+        const s1 = m._getMockState()[stateKey];
+        // Phase 1 hien thi du bulk treo: het skeleton, co holdings, technicals loading
+        expect(s1.loading).toBe(false);
+        expect(s1.holdings).toEqual([{ symbol: "VCB", quantity: 100 }]);
+        expect(s1.technicals).toEqual([]);
+        expect(s1.technicalsStatus.status).toBe("loading");
+        expect(m._getMockState()["false"]).toBe(true);
+
+        // Timeout 60s => technicals 'failed' + errorCode de hien nut retry (S8)
+        await jest.advanceTimersByTimeAsync(60000);
+        const s2 = m._getMockState()[stateKey];
+        expect(s2.loading).toBe(false);
+        expect(s2.holdings).toEqual([{ symbol: "VCB", quantity: 100 }]);
+        expect(s2.technicalsStatus).toEqual({
+          status: "failed",
+          errorCode: "[ERR_CORE_BULK_TECHNICAL_03]",
+        });
+
+        if (cleanup) cleanup();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 });

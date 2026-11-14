@@ -66,11 +66,52 @@ export function findDangling(registryIds, resolvedIds) {
  * BROKEN" tren nguon that. Comment KHONG phai code — phai loai truoc.
  * - block comment: /* ... *\/
  * - line comment: `//` NHUNG khong phai `://` (trong URL).
+ *
+ * FALSE-GREEN 2026-11-15 (Entry 508): regex block comment `/\/\*[\s\S]*?\*\//`
+ * an luon chuoi `'whale-alerts/*'` trong code (main.tsx) => nuot ~40 route
+ * dinh nghia => gate PASS gia trong khi runtime in 40 dong "Could not resolve
+ * page component". Vi vay phai bo qua noi dung NAM TRONG string literal
+ * ('...', "...", `...`) khi quet comment.
  */
 export function stripComments(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  let out = "";
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const ch = source[i];
+    // String literal: giu nguyen toan bo (ke ca `/*`, `//` ben trong).
+    if (ch === "'" || ch === '"' || ch === "`") {
+      const q = ch;
+      out += ch;
+      i++;
+      while (i < n) {
+        out += source[i];
+        if (source[i] === "\\") {
+          i++;
+          if (i < n) out += source[i];
+        } else if (source[i] === q) {
+          break;
+        }
+        i++;
+      }
+      i++;
+      continue;
+    }
+    // Block comment ngoai string.
+    if (ch === "/" && source[i + 1] === "*") {
+      const end = source.indexOf("*/", i + 2);
+      i = end === -1 ? n : end + 2;
+      continue;
+    }
+    // Line comment ngoai string (`://` trong URL duoc giu).
+    if (ch === "/" && source[i + 1] === "/" && source[i - 1] !== ":") {
+      while (i < n && source[i] !== "\n") i++;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
 }
 
 /**
