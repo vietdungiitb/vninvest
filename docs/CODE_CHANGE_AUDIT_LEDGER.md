@@ -1,4 +1,12 @@
-## Entry 505: Slice S13 Dashboard — data layer FE (realtime status + retry)
+## Entry 506: Fix 414 on bulk technicals (POST thay vì GET)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .js, 0 BE, 0 migration). **Branch**: `feat/dashboard-bulk-technicals-post`. **Claim**: `dashboard-bulk-technicals-post` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/adapters/core/market.js` — `getBulkTechnicalsBySymbols` chuyển từ GET (`?symbols=...`) sang POST (body `{symbols}`) để tránh 414 (Request-URI Too Long) khi danh sách mã dài. Chunk theo `_MAX_SYMBOLS=200` của BE. Backward compat: vẫn trả cùng shape `{technicals, results, requested_count, resolved_count}`.
+- **Gates**: tsc --noEmit PASS; lint 0 errors. numstat small. git status chi co 1 JS + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 1 JS + CLAIMS.md + ledger nay. PR #403.
+
+## Entry 505: Slice S13 Dashboard - data layer FE (realtime status + retry)
 
 - **Date**: 2026-11-14. **Type**: FE (1 file .tsx, 0 BE, 0 migration). **Branch**: `feat/dashboard-data-layer`. **Claim**: `dashboard-data-layer` (khai truoc dong dau tien — L-002).
 - **Scope**: `packages/web/src/pages/DashboardPage.tsx` — thêm banner "Đang đồng bộ dữ liệu thị trường ({status})..." + nút "Thử lại" khi realtimeFeed.realtimeStatus !== 'connected'. Empty states rõ khi quotes/technicals/AI chưa sẵn sàng (đã có từ S3/S8/S9).

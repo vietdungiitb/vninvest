@@ -317,8 +317,30 @@ export function createMarketClient({ coreGet, corePost }) {
      */
     getBulkTechnicalsBySymbols(symbols) {
       if (!symbols || symbols.length === 0) return Promise.resolve([]);
-      const q = symbols.map((s) => encodeURIComponent(String(s).toUpperCase())).join(",");
-      return coreGet(`/market-data/technicals/bulk/?symbols=${q}`);
+      // POST thay vì GET để tránh 414 (Request-URI Too Long) khi danh sách mã dài.
+      // BE _parse_symbols hỗ trợ body.symbols (list hoặc string) — xem stock_mgmt_native_views.py:1429-1452.
+      const list = Array.isArray(symbols) ? symbols : String(symbols).split(/[|,]/).filter(Boolean);
+      const normalized = list.map((s) => String(s).trim().toUpperCase()).filter(Boolean);
+      if (normalized.length === 0) return Promise.resolve([]);
+      // Chunk theo _MAX_SYMBOLS=200 của BE để an toàn.
+      const chunks = [];
+      for (let i = 0; i < normalized.length; i += 200) {
+        chunks.push(normalized.slice(i, i + 200));
+      }
+      if (chunks.length === 1) {
+        return corePost('/market-data/technicals/bulk/', { symbols: chunks[0] });
+      }
+      return Promise.all(chunks.map((c) => corePost('/market-data/technicals/bulk/', { symbols: c })))
+        .then((results) => {
+          const merged = { technicals: [], results: [], requested_count: 0, resolved_count: 0 };
+          results.forEach((r) => {
+            if (r?.technicals) merged.technicals.push(...r.technicals);
+            if (r?.results) merged.results.push(...r.results);
+            merged.requested_count += r?.requested_count ?? 0;
+            merged.resolved_count += r?.resolved_count ?? 0;
+          });
+          return merged;
+        });
     },
 
     /**
