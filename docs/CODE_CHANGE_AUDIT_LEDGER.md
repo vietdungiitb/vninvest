@@ -1,3 +1,11 @@
+## Entry 497: Slice S5 Dashboard — "Khác" toggle + ngưỡng 8→15 (MJ-07)
+
+- **Date**: 2026-11-14. **Type**: FE (1 file .js + 1 test .ts, 0 BE, 0 migration). **Branch**: `feat/dashboard-heatmap-other-toggle`. **Claim**: `dashboard-heatmap-other-toggle` (khai truoc dong dau tien — L-002).
+- **Scope**: `packages/web/src/components/dashboard/PortfolioHeatmap.js` — nâng ngưỡng `groupTinyTiles` từ `<= 8` → `<= 15`; thêm state `groupTiny` (localStorage-backed, default true) + toggle button rõ ràng (giữ/bỏ grouping); `displayData` tôn trọng `groupTiny`. Cập nhật `heatmap-scale.component.test.ts` (16 tiny → grouped, 15 tiny → not grouped).
+- **Gates**: heatmap-scale 14/14 PASS; tsc --noEmit PASS; lint 0 errors (8 warnings pre-existing). numstat small. git status chi co 1 JS + 1 test + CLAIMS.md (khong sinh file rac — L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-G02 L-V03 L-T01 L-T02]. GHI LESSON MOI: khong.
+- **Files**: 1 JS + 1 test + CLAIMS.md + ledger nay. PR #392.
+
 ## Entry 496: Slice S4 Dashboard — focal point heatmap (MJ-06)
 
 - **Date**: 2026-11-14. **Type**: FE CSS (1 file .css, 0 BE, 0 migration). **Branch**: `feat/dashboard-triad-grid-focal`. **Claim**: `dashboard-triad-grid-focal` (khai truoc dong dau tien — L-002).
