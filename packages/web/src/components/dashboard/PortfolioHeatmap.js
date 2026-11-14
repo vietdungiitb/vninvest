@@ -116,7 +116,7 @@ export function groupTinyTiles(annotated, total) {
   const list = Array.isArray(annotated) ? annotated : [];
   const sum = Number(total) > 0 ? Number(total) : (list.reduce((s, d) => s + Number(d.value || 0), 0) || 1);
   const tiny = list.filter((d) => d.share < 0.02);
-  if (tiny.length <= 8) return { tiles: list, groupedCount: 0 };
+  if (tiny.length <= 15) return { tiles: list, groupedCount: 0 };
   const tiles = list.filter((d) => d.share >= 0.02);
   const tinyValue = tiny.reduce((s, d) => s + Number(d.value || 0), 0);
   const wavg = tiny.reduce((s, d) => s + Number(d.changePct || 0) * Number(d.value || 0), 0) / (tinyValue || 1);
@@ -160,6 +160,10 @@ export function PortfolioHeatmap({
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [trendPoints, setTrendPoints] = useState([]);
   const [loadingTrend, setLoadingTrend] = useState(false);
+  // S5 — setting heatmap.groupTinyTiles (boolean, default true): user co the giu/bo grouping.
+  const [groupTiny, setGroupTiny] = useState(() => {
+    try { return localStorage.getItem("heatmap.groupTinyTiles") !== "false"; } catch { return true; }
+  });
   const chartRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -246,9 +250,9 @@ export function PortfolioHeatmap({
       const fontSize = share >= 0.1 ? 16 : share >= 0.03 ? 12 : 10;
       return { ...d, share, showName, showPct, fontSize };
     });
-    if (showAllTiles) return { tiles: annotated, groupedCount: 0 };
+    if (showAllTiles || !groupTiny) return { tiles: annotated, groupedCount: 0 };
     return groupTinyTiles(annotated, total);
-  }, [chartData, showAllTiles]);
+  }, [chartData, showAllTiles, groupTiny]);
 
   const option = useMemo(() => {
     if (displayData.tiles.length === 0) return {};
@@ -546,7 +550,26 @@ export function PortfolioHeatmap({
               "aria-pressed": showAllTiles,
             },
             e("span", { className: "hidden sm:inline" }, t(showAllTiles ? "heatmap.collapse" : "heatmap.expand"))
-          )
+          ),
+        // S5 — toggle grouping setting (giữ/bỏ "Khác" trong settings)
+        e(
+          "button",
+          {
+            onClick: () => {
+              setGroupTiny((v) => {
+                const next = !v;
+                try { localStorage.setItem("heatmap.groupTinyTiles", String(next)); } catch { /* ignore */ }
+                return next;
+              });
+            },
+            className: `flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-bold transition-all border whitespace-nowrap shrink-0 ${
+              groupTiny ? "text-slate-400 hover:text-slate-200 border-slate-800" : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+            }`,
+            title: groupTiny ? "Đang gom tile nhỏ thành 'Khác'" : "Đang hiện tất cả tile (không gom)",
+            "aria-pressed": groupTiny,
+          },
+          e("span", { className: "hidden sm:inline" }, groupTiny ? "Gom 'Khác'" : "Hiện tất cả")
+        )
       )
     ),
     e(

@@ -71,20 +71,20 @@ describe("heatmap label-gating thresholds (S3.3 — 44x28 / 56x40)", () => {
 
 describe("groupTinyTiles (fix heatmap 50 mã chỉ hiện 12)", () => {
   const tile = (name: string, value: number) => ({ name, value, share: value / 100, changePct: 1 });
-  it("gom tile <2% khi qua 8 mã, trả groupedCount", () => {
+  it("gom tile <2% khi qua 15 mã, trả groupedCount", () => {
     const big = [tile("A", 30), tile("B", 30)];
-    const small = Array.from({ length: 10 }, (_, i) => tile(`S${i}`, 1));
+    const small = Array.from({ length: 16 }, (_, i) => tile(`S${i}`, 1));
     const { tiles, groupedCount } = groupTinyTiles([...big, ...small], 100);
-    expect(groupedCount).toBe(10);
+    expect(groupedCount).toBe(16);
     expect(tiles).toHaveLength(3);
     const other = tiles.find((d: any) => d.isOther);
-    expect(other?.otherCount).toBe(10);
+    expect(other?.otherCount).toBe(16);
   });
-  it("không gom khi <= 8 mã nhỏ", () => {
-    const big = [tile("A", 92)];
-    const small = Array.from({ length: 8 }, (_, i) => tile(`S${i}`, 1));
+  it("không gom khi <= 15 mã nhỏ", () => {
+    const big = [tile("A", 85)];
+    const small = Array.from({ length: 15 }, (_, i) => tile(`S${i}`, 1));
     const { tiles, groupedCount } = groupTinyTiles([...big, ...small], 100);
     expect(groupedCount).toBe(0);
-    expect(tiles).toHaveLength(9);
+    expect(tiles).toHaveLength(16);
   });
 });
