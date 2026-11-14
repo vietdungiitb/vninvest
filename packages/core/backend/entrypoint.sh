@@ -30,11 +30,20 @@ fi
 
 case "${ROLE}" in
   api)
-    echo "[entrypoint] Starting daphne (port ${CORE_API_PORT:-8100})..."
-    exec daphne \
-      --bind 0.0.0.0 \
-      --port "${CORE_API_PORT:-8100}" \
-      vninvest_core.asgi:application
+    # S4 (Entry 514): 2 daphne - HTTP :8100 + WS :8101. Daphne don process doi event
+    # loop khi bulk tinh lam WS handshake reset -> nginx 502 (Entry 511). Cung ASGI app,
+    # channel layer Redis share nen groups van cross-process. dash khong co `wait -n`.
+    echo "[entrypoint] Starting daphne HTTP (port ${CORE_API_PORT:-8100}) + WS (port ${CORE_WS_PORT:-8101})..."
+    daphne --bind 0.0.0.0 --port "${CORE_WS_PORT:-8101}" vninvest_core.asgi:application &
+    WS_PID=$!
+    daphne --bind 0.0.0.0 --port "${CORE_API_PORT:-8100}" vninvest_core.asgi:application &
+    API_PID=$!
+    _term() { kill -TERM "$WS_PID" "$API_PID" 2>/dev/null; wait 2>/dev/null; exit 0; }
+    trap _term TERM INT
+    while kill -0 "$WS_PID" 2>/dev/null && kill -0 "$API_PID" 2>/dev/null; do sleep 5; done
+    kill -TERM "$WS_PID" "$API_PID" 2>/dev/null
+    wait 2>/dev/null
+    exit 1
     ;;
   worker)
     WORKER_QUEUES="${CELERY_QUEUES:-celery}"

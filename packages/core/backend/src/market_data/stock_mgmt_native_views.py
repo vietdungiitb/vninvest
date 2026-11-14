@@ -383,13 +383,13 @@ def _to_float(value):
         return None
 
 
-# WS-502 codefix (Entry 512): cache ngan han cho bulk technicals. 10 chunk song song
+# WS-502 codefix (Entry 512, S4 tang 300s): cache ngan han cho bulk technicals. 10 chunk
 # (200 symbols x 180 ngay) bao GIL lam daphne don process khong kip hoan tat WS
-# handshake -> reset -> nginx 502 (Entry 511). TTL 60s: dashboard refresh/revisit het
+# handshake -> reset -> nginx 502 (Entry 511). TTL 300s: dashboard refresh/revisit het
 # bao lap lai; first-load van tinh 1 lan. Key share duoc vi du lieu global
 # (khong user/tenant). Khong singleflight: het han dung luc N caller song song van
 # miss dong thoi (gioi han da ghi trong plan, de slice sau).
-_BULK_TECHNICALS_CACHE_TTL_S = 60
+_BULK_TECHNICALS_CACHE_TTL_S = 300
 _BULK_TECHNICALS_CACHE_VERSION = 'v1'
 
 
