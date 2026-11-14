@@ -1,3 +1,14 @@
+## Entry 514: S4 live (dual daphne + CPU 2.0) + S5 stagger code — WS 502 van con, thu hep pham vi
+
+- **Date**: 2026-11-14. **Type**: infra nhẹ + FE. **Branch**: `feat/ws-502-isolate` (S4, PR #413 merged) + `feat/ws-502-stagger` (S5). **Claim**: `ws-502-isolate` done, `ws-502-stagger` in-progress→done. Plan S4/S5 audit PASS (vong 6 + vong 8; vong 7 NEED_REVISION test order-blind → sua → PASS).
+- **S4 live (that)**: 2 daphne chay (`docker top`: :8101 + :8100, supervise `sleep 5`); CPU limit 0.5→2.0 (`docker inspect` NanoCpus 2e9, env VPS co backup `.bak-20261114`); MEM 512m (257MB dung). `--verify` ALL PASS. WS smoke qua nginx (dummy token) → **403 dung** (handshake duoc xu ly, khong reset) — duong /ws/ → :8101 thong.
+- **Su that quan trong (trung thuc)**: sau S4, user reload van 4×502 (console) + P502 cong don 506→509. 3 cai 502 moi upstream la **:8101** (WS daphne rieng, gan nhu khong tai) — loai tru ly thuyet "bulk chen event loop :8101". Cung cua so: 30 bulk POST/13 phut (10/phut × 3 phut lien tuc, deu 200 ~216KB). Khong co auto-refresh trong code (grep DashboardPage/useCoreDashboardData: chi manual refresh + nut Thu lai) → 30 POST la user reload/thu lai nhieu lan. Khong traceback/app error nao trong log core-api (2 vong kiem tra) → khong phai crash/exception.
+- **Do that de loai tru**: chunk 200 symbols lanh = **1.13s** trong container (DB 4.5M rows) → khong phai death-spiral 60s; audit hook xac nhan reconnect backoff mu (1s→30s), khong tight-loop; single process test khong tai duoc.
+- **Huong xu ly da chot (S5)**: bulk chunk concurrency 2 (worker pool, merge theo index) trong `market.js` — giam dinh tai GIL du con storm lanh. Test order-aware (delay dao nguoc theo chunk) deterministic, 57/57 xanh on dinh 3 lan; tsc 0; eslint 0 errors; multi-agent PASS.
+- **Con lai sau slice nay (Owner)**: neu S5 + S4 van 502 luc idle, can cap goi cao hon (tcpdump/daphne -v) vuot pham vi hieu biet tu xa — hoac chap nhan polling fallback (data day du, banner tat).
+- **Files**: entrypoint.sh + nginx.conf + TTL 300 + market.js + test + plan/audit/ledger. **Next**: merge stagger -> deploy -> user reload -> dem POST/502 -> Entry 515 dong slice.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V03 L-V04 L-G02 L-T01 L-T02]. GHI LESSON MOI: khong.
+
 ## Entry 513: FE dedupe concurrent bulk technicals (S3) + sua test POST stale
 
 - **Date**: 2026-11-14. **Type**: FE (1 file) + test. **Branch**: `feat/ws-502-dedupe`. **Claim**: `ws-502-dedupe` (khai truoc — L-002). **Plan**: S3 trong `docs/PLAN_WS502_CODEFIX_20261114.md`, audit doc lap 2 vong: NEED_REVISION (O-S3-1/2/3) → sua → **PASS** (`docs/evidence/dashboard-verify-live/AUDIT_PLAN_WS502_20261114.md` vong 3+4).
