@@ -1,3 +1,15 @@
+## Entry 508: Fix dashboard console 40 warnings + skeleton ket + WS resilience (A+B+C)
+
+- **Date**: 2026-11-14. **Type**: FE (6 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-console-ws-data-fix`. **Claim**: `dashboard-console-ws-data-fix` (khai truoc dong dau tien — L-002; claim rieng, khong commit thang dev — L-008).
+- **Scope**:
+  - B: `packages/web/src/pages/pageRegistry.js` — them 40 makePageEntry con thieu (ai-traces/slo/audit, operations-center x2, advertising-admin, admin x5, admin-core x8, core-stock-detail, tenant-admin x16, alert-center, vip-local-control, commercial x2) => het 40 console warnings + "Khong tim thay trang core-stock-detail". `packages/web/scripts/check-page-registry.mjs` — stripComments string-aware (gate PASS gia vi nuot 'whale-alerts/*'; control: parser moi bat duoc 40 dangling tren code cu).
+  - A: `useCoreDashboardData.js` — Phase 2 bulk chay async sau setState Phase 1 + timeout 60s => failed (het skeleton ket); `CoreDashboardPositionDeck.tsx` — technicals loading branch + nut Thu lai noi refresh; `DashboardPage.tsx` — banner chi hien khi connecting/idle (status machine khong co 'connected').
+  - C: WS 502 — BE daphne ASGI dung; WSCONNECT/WSDISCONNECT flap + bulk POST bi kill khi event loop nghen (sync ORM). FE: polling fallback co san; banner chi hien khi that su mat ket noi. BE can BE coordination (daphne workers / sync_to_async cho bulk view) — ghi CHUA CHAY, khong sua BE trong slice FE nay.
+- **Gates**: tsc --noEmit PASS; lint 0 errors (warnings pre-existing); check-page-registry PASS (61 entry, 67 route, 0 che, 0 tro sai) + --self-test 9/9; route-catalog-contract + whale-advisory + lifecycle + breadth-dedup + heatmap-scale PASS; check-multi-agent PASS (0 loi). test:visual + check-theme-contrast + check-uiux-budget CHUA CHAY (loi moi truong). numstat sach (L-T01). git status chi co file claim scope (L-V03).
+- **Lessons ap dung**: [L-002 L-003 L-007 L-G02 L-V01 L-V02 L-V03 L-T01 L-T02]. GHI LESSON MOI: co — L-G10 (gate parser string-aware, build-gates-2.md). Lesson BE daphne KHONG ghi file (vuot C2 60/60) — noi dung giu trong Entry nay + code comment.
+- **Files**: 6 FE + test + CLAIMS.md + ledger nay. PR pending (tao sau khi commit).
+- **Next**: merge PR #405 → deploy staging → verify live (console het warnings, skeleton het, banner dung) → BE follow-up (bulk view async).
+
 ## Entry 507: Fix L-F09 — handleTabChange/handlePageSizeChange 2 setter trong 1 tick (dashboard deck)
 
 - **Date**: 2026-11-14. **Type**: FE (2 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-deck-tab-switch-fix`. **Claim**: `dashboard-deck-tab-switch-fix` (khai truoc dong dau tien — L-002).

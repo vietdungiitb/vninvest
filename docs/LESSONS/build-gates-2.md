@@ -14,3 +14,16 @@
   - [ ] `git diff` coi **duoi file** co duong rac (`"..."`, `,` lon loi) khong?
   - [ ] Gate da **chay lai** va in day so gate PASS (khong phai chi "push OK")?
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 391 §"SU CO NGHIEM TRONG"; fix `b45b9c8ed`.
+
+## L-G10: Parser gate tu viet phai string-aware — `/*` trong string literal gay PASS gia che ca chuc loi that
+
+- **Nguyen nhan:** Gate `check-page-registry.mjs` loai comment bang regex `/\/\*[\s\S]*?\*\//` — no khop `/*` NAM TRONG string literal (`'whale-alerts/*'` o main.tsx). Regex nuot tu `/*` do den `*/` tiep theo => **nua file bien mat** (20294 → 10084 ky tu) => chi dem 26/67 route => **PASS gia trong khi runtime in 40 dong "Could not resolve page component"**.
+- **Hau qua that (Entry 508, 2026-11-15):** 40 route (`ai-traces`, `admin-users`, `tenant-admin-*`, `core-stock-detail`...) khong co registry entry — crash trang "Khong tim thay trang" — nhung gate bao PASS xanh. Phat hien bang Playwright + dem tay, khong phai bang gate.
+- **Khi nao gap:** `tags: [gate, parser, regex, string, false-green, comment, self-test]`
+- **QUY TAC:** "Parser tu viet (strip comment, dem control, tach log) phai **string-aware**: bao ve `'...'`, `"..."`, `` `...` `` truoc khi ap regex comment. Va phai co **control tren code cu**: chay parser moi tren HEAD cu — neu khong bat duoc loi da biet thi parser vo dung."
+- **CHECKLIST:**
+- [ ] Regex comment co the cham vao string literal khong? (tim `/*`, `//` trong codebase xem co nam trong quote khong)
+- [ ] Da chay **control**: parser moi tren code cu (co loi that) => co bat duoc loi khong?
+- [ ] Self-test co case string-chua-comment khong? (neu khong => them)
+- [ ] So luong dem duoc co khop voi `grep` doc lap khong? (26 vs 67 la do ngay)
+- **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 508 (control: parser moi bat du 40 dangling tren HEAD cu; self-test 9/9 van xanh).
