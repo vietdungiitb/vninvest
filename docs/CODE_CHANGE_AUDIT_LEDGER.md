@@ -1,3 +1,14 @@
+## Entry 509: BE bulk technicals chay tren threadpool rieng + gates con lai + xoa 5 file la
+
+- **Date**: 2026-11-14. **Type**: BE (1 file views, 0 migration) + docs. **Branch**: `feat/dashboard-be-followup`. **Claim**: `dashboard-be-followup` (khai truoc dong dau tien — L-002).
+- **Scope (BE)**: `packages/core/backend/src/market_data/stock_mgmt_native_views.py` — `StockManagementTechnicalsView.dispatch` override: `async_to_sync(sync_to_async(super().dispatch, thread_sensitive=False))`. Ly do (co bang chung): daphne chay sync view tren 1 shared thread (thread_sensitive=True) => 10 bulk POST song song (moi chunk 200 symbols x 180 ngay + tinh Python) xep hang nhau => 9/10 treo vinh vien (daphne kill "took too long to shut down"), WS handshake 502 theo (event loop nghen). Fix dua ca view sang threadpool rieng; CONN_MAX_AGE=0 nen moi thread lay connection rieng; khong doi signature get/post (DRF dispatch sync — da verify source Django/DRF tren VPS).
+- **Scope (gates)**: `node scripts/check-theme-contrast.mjs` => **PASS** (khong co vi pham moi). `node scripts/check-uiux-budget.mjs` => **FAIL 2 rule moi vs baseline 2026-10-09: CSS-1 (4 hit `transition: all` — PortfolioWorkspace.css x4 + comment StockDetailPage.css) + I18N-1 (1 hit `toLocaleDateString()` tran — AICommandCenterForm.tsx:727)**. Ca 2 deu PRE-EXISTING, khong phai do slice nay (khong sua file do) => KHONG --write-baseline, KHONG sua lan (scope discipline), ghi CHUA DAT ro rang. visual: build OK (34s); dashboard-ui-fixes + css-probe + alert-probe tren chromium vs staging: **8/9 pass, 1 flaky (UI-04) pass khi chay rieng** — pre-existing timing, khong lien quan diff.
+- **Scope (cleanup)**: xoa 5 file/thu muc untracked (3 plan docs + evidence/a4-roadmap + 2 file staging-pro-layout) sau khi xac minh: khong claim in-progress nao giu (staging-pro-layout claim done; staging-pro-layout2 row chua tung push, khong con worktree/branch); backup tai `Temp/opencode/stray-backup-20261114/` truoc khi xoa.
+- **Gates**: py_compile PASS; `manage.py check` + BE tests **CHUA CHAY** (khong co Django env local: thieu dj_database_url, khong Postgres — L-B01/L-007); tsc PASS (FE khong doi boi BE); check-multi-agent PASS; check-lessons 60/60 PASS.
+- **Lessons ap dung**: [L-002 L-003 L-007 L-G02 L-V01 L-V02 L-V03 L-T01 L-T02 L-B01]. GHI LESSON MOI: khong (L-B05 da danh gia: vuot C2 nen giu trong Entry nay).
+- **Files**: 1 BE + CLAIMS.md + ledger nay (+ xoa 5 untracked, co backup).
+- **Next**: merge PR -> deploy staging -> verify live (10 bulk POST song song deu 200, technicals tab co data, WS on dinh hon).
+
 ## Entry 508: Fix dashboard console 40 warnings + skeleton ket + WS resilience (A+B+C)
 
 - **Date**: 2026-11-14. **Type**: FE (6 file, 0 BE, 0 migration). **Branch**: `feat/dashboard-console-ws-data-fix`. **Claim**: `dashboard-console-ws-data-fix` (khai truoc dong dau tien — L-002; claim rieng, khong commit thang dev — L-008).
