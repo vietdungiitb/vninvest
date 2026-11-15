@@ -100,6 +100,9 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
   const [hasHydrated, setHasHydrated] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const abortRef = useRef(null);
+  // S5 (Entry 516): debounce bulk technicals 30s — tránh gọi lại ngay khi
+  // component remount/switch tab trong khoang 30s.
+  const bulkDebounceRef = useRef({ lastCall: 0 });
 
   const refresh = useCallback(() => setRefreshToken((n) => n + 1), []);
 
@@ -190,39 +193,46 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         setHasHydrated(true);
 
         if (symbols.length > 0) {
-          let settled = false;
-          const timeoutId = setTimeout(() => {
-            if (!settled && !cancelled) {
-              settled = true;
-              setState((s) => ({
-                ...s,
-                technicals: EMPTY_ARRAY,
-                technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
-              }));
-            }
-          }, 60000);
-          coreApiAdapter.getBulkTechnicalsBySymbols(symbols).then(
-            (techRes) => {
-              if (settled || cancelled) return;
-              settled = true;
-              clearTimeout(timeoutId);
-              setState((s) => ({
-                ...s,
-                technicals: extractTechnicalsResponse(techRes),
-                technicalsStatus: { status: 'success', errorCode: null },
-              }));
-            },
-            () => {
-              if (settled || cancelled) return;
-              settled = true;
-              clearTimeout(timeoutId);
-              setState((s) => ({
-                ...s,
-                technicals: EMPTY_ARRAY,
-                technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
-              }));
-            },
-          );
+          const now = Date.now();
+          if (now - bulkDebounceRef.current.lastCall < 30000) {
+            // Da goi bulk gan day (<30s) - bo qua de giam bo event loop (S5, Entry 516)
+            setState((s) => ({ ...s, technicalsStatus: { status: 'idle', errorCode: null } }));
+          } else {
+            bulkDebounceRef.current.lastCall = now;
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+              if (!settled && !cancelled) {
+                settled = true;
+                setState((s) => ({
+                  ...s,
+                  technicals: EMPTY_ARRAY,
+                  technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
+                }));
+              }
+            }, 60000);
+            coreApiAdapter.getBulkTechnicalsBySymbols(symbols).then(
+              (techRes) => {
+                if (settled || cancelled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                setState((s) => ({
+                  ...s,
+                  technicals: extractTechnicalsResponse(techRes),
+                  technicalsStatus: { status: 'success', errorCode: null },
+                }));
+              },
+              () => {
+                if (settled || cancelled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                setState((s) => ({
+                  ...s,
+                  technicals: EMPTY_ARRAY,
+                  technicalsStatus: { status: 'failed', errorCode: '[ERR_CORE_BULK_TECHNICAL_03]' },
+                }));
+              },
+            );
+          }
         }
       } catch (err) {
         if (cancelled) return;
