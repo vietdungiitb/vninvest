@@ -1,3 +1,16 @@
+## Entry 523: C-01 bo PAT khoi URL SSE — ticket single-use human-only (P0)
+
+- **Date**: 2026-11-15. **Type**: code (FE + BE + test). **Branch**: `feat/sse-ticket-c01`. **Claim**: `sse-ticket-c01` done.
+- **Van de**: 4 hook SSE gan PAT dai han vao query string (`useSignalStream`, `useAlertCenterStream`, `useDataOpsStream`, `useOverviewStream`); 4 BE `initial()` nhan `?token=`; test ghim hanh vi sai; log nginx hit `?token=` sau rebuild. Dong P0 vua sua cho WS, chi khac duong.
+- **Fix FE**: `fetchStreamTicket.ts` (moi) mint ticket qua `POST /auth/ws-ticket/`; 4 hook `connect()` async — fetch ticket truoc, fail-closed khi khong co ticket, khong fallback PAT; helper URL nhan `ticket?`, khong doc localStorage; `getRealtimeWebSocketUrl` tra `null` khi thieu token (khoa bay M-02).
+- **Fix BE**: 4 `initial()` (alert-center + signals/dataops/overview) uu tien `?ticket=` (redeem + set user, auth=None human), giu `?token=` tuong thich co `logger.warning` ASCII; `WsTicketView.post` them `require_human_session` → machine PAT mint nhan 403 (khoa escalation scope/staff/tenant theo audit B3-O2). Docstring prefix `/operator/` stale → `/api/` (route that `vninvest_core/urls.py:77`).
+- **Test**: fail-before 6/6 DO tren code cu; pass-after local 19/19; mo rong 8 file/66 PASS. BE moi `test_soc_sse_ticket_c01.py` (9 test: mint-shape, machine-403, reuse-denied, bad-ticket, plain-403, token-compat-200, 3 stream-200). VPS: BE **51/51 OK** (DB tam `sse_c01`, da DROP) + FE Linux **66/66 PASS** — chi tiet `docs/evidence/sse-ticket-c01/gates.md`. Vong 1 BE 47/51 do test dung sai prefix (da sua `6144667ca`).
+- **Audit**: B3 plan NEED_REVISION (O1 thieu 2 hook, O2 escalation) → sua plan → AGREE vong 2. B8 code: **AGREE** (doc lap doc lai toan bo file:line; run-counts lay tu bao cao). 0 blocker/0 major.
+- **Gates**: vitest VPS 66/66 · BE VPS 51/51 · tsc 0 · check-multi-agent PASS · scan-secrets OK · check-lessons sach · pre-push-gate 5 FAIL/31 PASS Y HET baseline (3 thieu Python + system-design + global-config-drift). CHUA CHAY: full FE/BE suite (C-07/C-08).
+- **Files**: 4 hook + 1 fetcher + 1 WS helper + 5 BE (4 view + ws_ticket) + 4 test FE/BE + plan + evidence. Khong cham deny-list.
+- **Next**: C-02 Owner revoke 23 PAT (mo) · C-03 soak 24h (tu dong sau deploy) · C-04/C-05/C-06 gate tin cay · C-07/C-08 full suite · C-09 don rac VPS cu (wt-gatep0*, 5 DB ai_r*, env.bak — KHONG phai cua slice nay, khong dung toi).
+- **Lessons ap dung**: [L-001 L-002 L-M02 L-S01 L-V02 L-V04 L-G02 L-G08 L-B01 L-B03 L-T01 L-T02 L-F10]. GHI LESSON MOI: hoan — de xuat L-T05 (SSH nested-quote nuot output; mat ~15 phut; fix: bare-args/scp-script), cho Owner quet dinh nang C2 (hien 60/60 day) hoac tach file.
+
 ## Entry 522: Ra soat handoff WS502 + plan tiep tuc (do luong that, khong code)
 
 - **Date**: 2026-11-15. **Type**: doc-only (plan + evidence + audit). **Branch**: `feat/continuation-plan-20261115`. **Claim**: `continuation-plan-20261115`.

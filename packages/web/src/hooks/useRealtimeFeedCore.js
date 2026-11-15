@@ -7,7 +7,13 @@ const getRealtimeTickers = (symbols) => coreApiAdapter.getRealtimeTickers(symbol
 const getRealtimeTicker = (symbol) => coreApiAdapter.getRealtimeTicker(symbol);
 
 export const getRealtimeWebSocketUrl = (token) => {
-  const normalizedToken = token || localStorage.getItem('access_token') || '';
+  // C-01: chi chap nhan ticket (hoac token duoc truyen tuong minh).
+  // KHONG fallback ve localStorage — caller tuong lai goi khong tham so
+  // se day PAT vao URL thay vi ticket (bay M-02).
+  if (!token || typeof token !== "string") {
+    return null;
+  }
+  const normalizedToken = token;
   const disableWs = import.meta.env?.VITE_DISABLE_REALTIME_WEBSOCKET === 'true' || (typeof process !== 'undefined' && process.env?.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true');
   if (disableWs) {
     return null;

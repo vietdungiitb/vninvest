@@ -789,7 +789,8 @@ class AlertCenterStreamView(APIView):
     """GET /core/v1/signals/alert-center/stream/ — SSE user-scoped (S7).
 
     Copy contract signals_stream (retry 3000, :ping 15s, Last-Event-ID/since,
-    ?token= fallback, poll DB 3s, idle 1h, max_loops cho test) nhưng:
+    ?ticket= single-use (human-only), ?token= tuong thich, poll DB 3s, idle 1h,
+    max_loops cho test) nhưng:
     - scope theo delivery policy của user hiện tại (watchlist/tracked/holdings),
     - filter lane/symbol/severity/alert_family phía server,
     - event name `alert-center`, payload full UnifiedAlertSerializer shape
@@ -801,9 +802,26 @@ class AlertCenterStreamView(APIView):
     renderer_classes = [AlertCenterStreamEventRenderer]
 
     def initial(self, request, *args, **kwargs):
-        # EventSource không gửi được Authorization header → hỗ trợ ?token=
+        # C-01: EventSource không gửi được Authorization header → ưu tiên
+        # ?ticket= single-use (human-only). request.auth giữ None = human semantics.
+        ticket_ok = False
+        ticket = request.query_params.get('ticket') or request.GET.get('ticket')
+        if ticket and not request.META.get('HTTP_AUTHORIZATION'):
+            try:
+                from django.contrib.auth import get_user_model
+
+                from identity_access.ws_ticket import redeem_ws_ticket
+
+                payload = redeem_ws_ticket(ticket)
+                if payload:
+                    request.user = get_user_model().objects.get(pk=payload['user_id'])
+                    ticket_ok = True
+            except Exception:
+                pass
+        # Tương thích: ?token= cho client cũ — log cảnh báo, sẽ bỏ sau 1 tuần.
         token = request.query_params.get('token') or request.GET.get('token')
-        if token and not request.META.get('HTTP_AUTHORIZATION'):
+        if not ticket_ok and token and not request.META.get('HTTP_AUTHORIZATION'):
+            logger.warning('sse_token_query_deprecated: AlertCenterStreamView van nhan ?token=')
             request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
             try:
                 from identity_access.authentication import CorePATAuthentication

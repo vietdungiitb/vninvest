@@ -1,10 +1,10 @@
 """
 SOC DataOps SSE stream — P1-1 realtime (F-REAL-05).
 
-GET /operator/soc/dataops/stream/?token=
+GET /api/soc/dataops/stream/?ticket=
 
-Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Token via ?token= fallback
-cho EventSource không gửi được Authorization header (pattern signals/overview_stream).
+Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Ticket single-use (?ticket=)
+cho EventSource không gửi được Authorization header; ?token= chi de tuong thich.
 
 SSE wire:
   retry: 3000
@@ -18,6 +18,7 @@ Chỉ emit khi signature đổi (backlog/fail_rates/parity/coverage hash).
 """
 
 import json
+import logging
 import time
 
 from django.db import close_old_connections, connection
@@ -33,6 +34,8 @@ from ..dataops_market_data import (
 )
 from .base import SOCBaseView
 from .signals_stream import SOCStreamThrottle, _sse_format
+
+logger = logging.getLogger(__name__)
 
 
 def _build_dataops_snapshot():
@@ -72,13 +75,31 @@ def _dataops_signature(snap: dict) -> str:
 
 
 class DataOpsStreamView(SOCBaseView):
-    """GET /operator/soc/dataops/stream/ — SSE realtime for Monitor tab."""
+    """GET /api/soc/dataops/stream/ — SSE realtime for Monitor tab."""
 
     throttle_classes = [SOCStreamThrottle]
 
     def initial(self, request, *args, **kwargs):
+        # C-01: EventSource không gửi được Authorization header → ưu tiên
+        # ?ticket= single-use (human-only). request.auth giữ None = human semantics.
+        ticket_ok = False
+        ticket = request.query_params.get("ticket") or request.GET.get("ticket")
+        if ticket and not request.META.get("HTTP_AUTHORIZATION"):
+            try:
+                from django.contrib.auth import get_user_model
+
+                from identity_access.ws_ticket import redeem_ws_ticket
+
+                payload = redeem_ws_ticket(ticket)
+                if payload:
+                    request.user = get_user_model().objects.get(pk=payload["user_id"])
+                    ticket_ok = True
+            except Exception:
+                pass
+        # Tương thích: ?token= cho client cũ — log cảnh báo, sẽ bỏ sau 1 tuần.
         token = request.query_params.get("token") or request.GET.get("token")
-        if token and not request.META.get("HTTP_AUTHORIZATION"):
+        if not ticket_ok and token and not request.META.get("HTTP_AUTHORIZATION"):
+            logger.warning("sse_token_query_deprecated: DataOpsStreamView van nhan ?token=")
             request.META["HTTP_AUTHORIZATION"] = f"Bearer {token}"
             try:
                 from identity_access.authentication import CorePATAuthentication
