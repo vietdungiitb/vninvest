@@ -23,9 +23,9 @@ from identity_access.ws_ticket import issue_ws_ticket
 User = get_user_model()
 
 ALERT_STREAM = '/core/v1/signals/alert-center/stream/?max_loops=1'
-SOC_SIGNALS = '/operator/soc/signals/stream/?max_loops=1'
-SOC_DATAOPS = '/operator/soc/dataops/stream/?max_loops=1'
-SOC_OVERVIEW = '/operator/soc/overview/stream/?max_loops=1'
+SOC_SIGNALS = '/api/soc/signals/stream/?max_loops=1'
+SOC_DATAOPS = '/api/soc/dataops/stream/?max_loops=1'
+SOC_OVERVIEW = '/api/soc/overview/stream/?max_loops=1'
 MINT_URL = '/core/v1/auth/ws-ticket/'
 
 

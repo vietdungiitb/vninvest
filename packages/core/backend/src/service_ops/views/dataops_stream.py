@@ -1,7 +1,7 @@
 """
 SOC DataOps SSE stream — P1-1 realtime (F-REAL-05).
 
-GET /operator/soc/dataops/stream/?ticket=
+GET /api/soc/dataops/stream/?ticket=
 
 Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Ticket single-use (?ticket=)
 cho EventSource không gửi được Authorization header; ?token= chi de tuong thich.
@@ -75,7 +75,7 @@ def _dataops_signature(snap: dict) -> str:
 
 
 class DataOpsStreamView(SOCBaseView):
-    """GET /operator/soc/dataops/stream/ — SSE realtime for Monitor tab."""
+    """GET /api/soc/dataops/stream/ — SSE realtime for Monitor tab."""
 
     throttle_classes = [SOCStreamThrottle]
 

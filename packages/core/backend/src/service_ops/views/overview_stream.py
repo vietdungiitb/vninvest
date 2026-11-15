@@ -1,7 +1,7 @@
 """
 SOC Overview SSE stream — Overview P3 (F-OV-14/15).
 
-GET /operator/soc/overview/stream/
+GET /api/soc/overview/stream/
 
 Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Ticket single-use (?ticket=)
 cho EventSource không gửi được Authorization header; ?token= chi de tuong thich.
@@ -109,7 +109,7 @@ def _snapshot_signature(snapshot) -> str:
 
 class OverviewStreamView(SOCBaseView):
     """
-    GET /operator/soc/overview/stream/ — SSE realtime snapshot.
+    GET /api/soc/overview/stream/ — SSE realtime snapshot.
     Gửi toàn bộ overview payload mỗi khi health thay đổi (status/last_check/active).
     """
 

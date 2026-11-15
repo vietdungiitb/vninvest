@@ -1,7 +1,7 @@
 """
 SOC Signals SSE stream — P2c W2.1-long (Phase P2c).
 
-GET /operator/soc/signals/stream/?type=&severity=&direction=&symbol=&ticket=
+GET /api/soc/signals/stream/?type=&severity=&direction=&symbol=&ticket=
 
 Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Ticket single-use (?ticket=)
 cho EventSource không gửi được Authorization header; ?token= chi de tuong thich.
@@ -115,7 +115,7 @@ def _apply_stream_filters(qs, params: dict):
 
 class SignalsStreamView(SOCBaseView):
     """
-    GET /operator/soc/signals/stream/ — SSE realtime.
+    GET /api/soc/signals/stream/ — SSE realtime.
     Long-lived connection, heartbeat : ping 15s, retry 3000.
     Poll DB 3s cho UnifiedAlert mới (id > last_id).
     """
