@@ -1,3 +1,10 @@
+## Entry 524: Handoff chot phien C-01 cho doi code khac (doc-only)
+
+- **Date**: 2026-11-15. **Type**: doc-only. **Branch**: `feat/handoff-sse-c01-closeout`. **Claim**: `handoff-sse-c01-closeout` done.
+- **Noi dung**: `docs/handoffs/HANDOFF_2026-11-15_SSE-TICKET-C01.md` — trang thai C-01 (PR #424 merged), thu tu C-02..C-15 ke tiep, baseline gate, rac VPS, de xuat lesson treo (L-T05 SSH quoting, C2 day 60/60).
+- **Gates**: check-multi-agent PASS sau flip; khong code nen khong chay lai suite.
+- **Lessons ap dung**: [L-002 L-M02 L-T01]. GHI LESSON MOI: khong (de xuat L-T05 dang treo o Entry 523).
+
 ## Entry 523: C-01 bo PAT khoi URL SSE — ticket single-use human-only (P0)
 
 - **Date**: 2026-11-15. **Type**: code (FE + BE + test). **Branch**: `feat/sse-ticket-c01`. **Claim**: `sse-ticket-c01` done.
