@@ -1,3 +1,12 @@
+## Entry 520: Don disk VPS trong pham vi vninvest (khong dung repo khac)
+
+- **Date**: 2026-11-15. **Type**: ops (khong doi code). **Branch**: `feat/disk-cleanup-note`.
+- **Do that**: disk `/` 67% (40G free) — chua nguy cap nhung can don. Phan bo: `/var/lib/docker/rootfs` 57G (images 23G + build cache 26.7G, dung chung) · `/opt` 4.9G (vnsite-opencore 1.7G + backups 1.5G + vnsaas-* la repo khac — KHONG dung) · `/opt/vninvest` 733M · `/tmp` 1.1G.
+- **Da lam (chi pham vi vninvest)**: `git gc` tren `/opt/vninvest` → `.git` 605M → 467M (giai phong 138M dangling commits). Giua lai `compose.staging.env.bak-20261114` (untracked, rollback path cho CPU 2.0). Xoa file probe/log/script cua phien minh trong `/tmp` (giu file session khac). Khong xoa: images dang dung (chi co 2, deu current), volumes (DB!), container khac, log nginx-proxy 294M (infra chung — can Owner duyet logrotate), build cache (dung chung, chi reclaim duoc 35MB).
+- **Phat hien quan trong**: blob 294M `ff8e6b...` trong `.git` la file TRACKED `backups/staging_pre_redeploy_20261015_204856.dump` (DB dump commit vao history) — `git gc` khong xoa duoc. Muon giam phai rewrite history (anh huong moi clone) → can Owner quyet rieng, KHONG tu lam.
+- **Verify**: `deploy-staging.sh --verify` 11/11 PASS sau don dep.
+- **Files**: ledger nay. **Lessons ap dung**: [L-002 L-V01 L-V02]. GHI LESSON MOI: khong.
+
 ## Entry 519: Quy dinh cung dong phien §10.8 + ap dung ngay cho phien WS502
 
 - **Date**: 2026-11-15. **Type**: process doc-only. **Branch**: `feat/session-close-rule` (PR #419 merged) + closeout nay. **Claim**: `session-close-rule` done.
