@@ -15,19 +15,29 @@ export const getRealtimeWebSocketUrl = (token) => {
   const customBase = import.meta.env?.VITE_WS_BASE_URL || (typeof process !== 'undefined' && process.env?.REACT_APP_WS_BASE_URL);
 
   if (customBase) {
-    return `${customBase.replace(/\/$/, '')}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+    return `${customBase.replace(/\/$/, '')}/ws/realtime/?ticket=${encodeURIComponent(normalizedToken)}`;
   }
 
   // In dev mode, use proxy through React dev server/Vite server
   const isDevFrontendPort = ['3000', '3001', '5173'].includes(window.location.port);
   if (isDevFrontendPort) {
     const devPort = window.location.port === '5173' ? '5173' : '3000';
-    return `ws://localhost:${devPort}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+    return `ws://localhost:${devPort}/ws/realtime/?ticket=${encodeURIComponent(normalizedToken)}`;
   }
 
   // In production, use same host
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${protocol}://${window.location.host}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+  return `${protocol}://${window.location.host}/ws/realtime/?ticket=${encodeURIComponent(normalizedToken)}`;
+};
+
+/** Lấy ticket WS single-use 60s (BE: POST /core/v1/auth/ws-ticket/). Tra ticket string hoac null neu that bai. */
+export const fetchWsTicket = async (token) => {
+  try {
+    const data = await coreApiAdapter.corePost('/auth/ws-ticket/', {}, { headers: { Authorization: `Bearer ${token}` } });
+    return data?.ticket || null;
+  } catch {
+    return null;
+  }
 };
 
 export const refreshAccessToken = async () => {
@@ -997,7 +1007,8 @@ export default function useRealtimeFeedCore({
 
       setRealtimeStatus('connecting');
       setConnectionState((prev) => ({ ...prev, transport: 'connecting' }));
-      const wsUrl = getRealtimeWebSocketUrl(freshToken);
+      const wsTicket = await fetchWsTicket(freshToken);
+      const wsUrl = wsTicket ? getRealtimeWebSocketUrl(wsTicket) : null;
       if (!wsUrl) {
         wsHealthyRef.current = false;
         setRealtimeStatus('polling');

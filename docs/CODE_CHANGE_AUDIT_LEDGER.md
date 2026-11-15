@@ -1,3 +1,13 @@
+## Entry 517: FE WS handshake chuyen sang ticket ngan han (bot loc PAT trong URL)
+
+- **Date**: 2026-11-15. **Type**: FE (1 file + test). **Branch**: `feat/ws-502-ticket`. **Claim**: `ws-502-ticket` done. BE endpoint `POST /core/v1/auth/ws-ticket/` da co san (claim `ws-ticket-s1` done, `views_ws_ticket.py`, flat `{"ticket","expiresIn"}`).
+- **Root cause**: `getRealtimeWebSocketUrl()` xay URL `?token=<raw_pat>` — PAT duoc gui thang len URL WS va luu vao access log VPS (nginx-proxy + core-api) + chat transcript. Token `vni_internal_BqJaKW_...` da lo -> can rotate ngay.
+- **Fix**: `fetchWsTicket()` goi `corePost('/auth/ws-ticket/', {}, {Authorization: Bearer <pat>})` tra `ticket` string; `getRealtimeWebSocketUrl(ticket)` xay `?ticket=<ticket>`. Ticket single-use 60s (WS_TICKET_TTL_S) — het han sau 1 lan dung, khong con PAT trong URL/access log. Fallback: neu that bai lay ticket -> `wsUrl = null` -> khong connect WS (fail-closed, khong loc PAT).
+- **Test**: `fetch-ws-ticket.component.test.ts` — 3 test pass (tra ticket, null khi thieu ticket, null khi loi mang). `tsc` 0; `eslint` 0 warnings.
+- **Gates**: check-multi-agent PASS; check-lessons 60/60 PASS. **Chua deploy** — se deploy sau PR merge, user reload verify.
+- **Files**: 1 FE + 1 test + claim + ledger. **Next**: merge PR -> deploy staging -> user reload -> verify khong PAT trong URL WS -> Entry 518 dong slice.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V03 L-V04 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 516: FE debounce bulk technicals 30s — stop event-loop bão (WS 502 root cause)
 
 - **Date**: 2026-11-15. **Type**: FE (2 file + test). **Branch**: `feat/ws-502-fe-tightloop`. **Claim**: `ws-502-fe-tightloop` done. **Plan**: `docs/PLAN_WS502_FE_TIGHTLOOP_20261115.md`.
