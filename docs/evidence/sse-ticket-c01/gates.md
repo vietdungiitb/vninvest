@@ -31,13 +31,23 @@ Labels: `service_ops.tests.test_soc_sse_ticket_c01` (moi, 9 test) +
 `tests.test_ws_ticket` + `signal_intelligence.tests.test_alert_center_stream` +
 `service_ops.tests.test_soc_signals_stream` + `service_ops.tests.test_soc_overview_stream`
 
-| Ket qua | (dien khi job xong) |
-|---|---|
+- **Vong 1** (`133baacbc`): **51 tests, 47 PASS / 4 FAIL** — ca 4 fail la test moi dung
+  sai prefix `/operator/soc/*` (404). Route that la `/api/soc/*`
+  (`vninvest_core/urls.py:77`; `/operator/` da decommission). Tinh co nay chung minh
+  `?token=` tuong thich van chay (warning `sse_token_query_deprecated` da fire dung
+  cho Signals/Overview). Tat ca test cu (ws-ticket, alert-center, signals, overview) PASS —
+  khoa mint machine PAT khong vo regression.
+- **Vong 2** (`6144667ca`, sua prefix + docstring): **51/51 OK** (`Ran 51 tests ... OK`,
+  `TESTS_EXIT=0`, DB `sse_c01` da DROP). Log xac nhan: `403 /auth/ws-ticket/` cho machine PAT;
+  `sse_token_query_deprecated` fire cho Signals + Overview; ticket sai/tai-dung/non-staff
+  ve 401/403 dung. Worktree `/tmp/wt-sse-c01` giu lai cho FE step4.
 
-### 3b. FE targeted (§12.4) — (chay sau 3a; nap npm ci Linux neu can)
+### 3b. FE targeted (§12.4) — worktree `/tmp/wt-sse-c01`, node_modules Linux tai dung
+(`LOCK_MATCH` voi `/tmp/wt-gatep0-fix`)
 
-| Ket qua | (dien khi job xong) |
-|---|---|
+**8 file / 66 test PASS** (`FE_TESTS_EXIT=0`, 8.89s, Linux): sseTicket 6 + useSignalStream 9 +
+useAlertCenterStream 4 + fetch-ws-ticket 3 + AlertCenterPage 18 + soc-queue-depth 2 +
+soc-p2 8 + soc-overview-tab 16. Stderr chi co React Router Future Flag warning co san.
 
 ## 4. CHUA CHAY (ghi ro, khong PASS khong)
 
@@ -52,4 +62,8 @@ Labels: `service_ops.tests.test_soc_sse_ticket_c01` (moi, 9 test) +
 
 ## 6. Re-audit B8 (sau khi co ket qua VPS)
 
-(dien verdict + link sau khi job VPS xong)
+**Verdict: AGREE** (+1 reservation: auditor doc lap doc lai toan bo code/file:line,
+khong chay lai test — so lieu run lay tu bao cao; arithmetic 6+9+4+3+18+2+8+16=66
+va 9 BE methods da doi chieu khop). 0 blocker, 0 major. Ghi chu: WS helper van doc
+`localStorage access_token` o 4 cho cho header/mint (khong phai URL) — ngoai scope SSE,
+khong chan slice.
