@@ -1,3 +1,12 @@
+## Entry 518: Dong slice WS ticket — deploy xong, bundle moi live, cho user reload
+
+- **Date**: 2026-11-15. **Type**: closeout. **Branch**: `feat/ws-502-ticket` (PR #417 merged), dev @ `7a0bd7aa7`.
+- **Deploy staging**: `deploy-staging.sh` + `--verify` **11/11 PASS**. Bundle moi live: `hooks-BCiCY1L_.js` (hash moi, truoc la `hooks-C8HQ8SFM.js`) chua `auth/ws-ticket`.
+- **Verify**: 6 hit `?token=vni_internal_BqJaKW_...` trong log la tu session cu (bundle cu con cache o browser) — khong phai loi moi. Sau khi user hard-reload, WS phai chuyen sang `?ticket=<single-use>`, khong con raw PAT trong URL/log.
+- **Con no**: (1) user **hard-reload dashboard** de lay bundle moi + xac nhan log chi con `?ticket=`; (2) **revoke/rotate PAT `vni_internal_BqJaKW_...`** (da lo trong chat + access log) — viec cua Owner, khong tu lam.
+- **Files**: ledger nay. **Gates closeout**: check-multi-agent PASS; check-lessons 60/60 PASS (chay truoc PR).
+- **Lessons ap dung**: [L-002 L-V01 L-V03 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 517: FE WS handshake chuyen sang ticket ngan han (bot loc PAT trong URL)
 
 - **Date**: 2026-11-15. **Type**: FE (1 file + test). **Branch**: `feat/ws-502-ticket`. **Claim**: `ws-502-ticket` done. BE endpoint `POST /core/v1/auth/ws-ticket/` da co san (claim `ws-ticket-s1` done, `views_ws_ticket.py`, flat `{"ticket","expiresIn"}`).
