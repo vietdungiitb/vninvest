@@ -1,3 +1,16 @@
+## Entry 525: C-02 revoke 133 PAT lot log staging (Owner uy quyen, ops-only)
+
+- **Date**: 2026-11-15. **Type**: ops (DB staging, 0 code). **Branch**: `feat/revoke-pat-c02`. **Claim**: `revoke-pat-c02` done.
+- **Uy quyen**: Owner chat 2026-11-15. Cua so 7d trich **140 raw distinct** (23 la cua so 24h) tu nginx-proxy log; tat ca prefix `vni_internal` + 1 `vni_starter_`. Raw o yen tren VPS (0600), khong dua ve local.
+- **Phan loai pass 2**: A=133 effective EXPIRED (human login:*, co expires_at ngan, auth da tu choi) → REVOKE; B=5 effective ACTIVE (tao <24h) → GIU; C=1 machine `widget-ws-e2e-2026-11-14` (qa-qa_bank) → GIU; 1 da vo hieu. Owner chot chi nhom A (hoi qua question tool).
+- **Hoa giai mau thuan**: log = BI RO RI (bundle pre-C-01 gan token vao URL), khong phai bang chung client can PAT. `last_used_at` = never toan bo (record_usage chet) → dung log_last_seen + created/label thay the.
+- **Pass 3**: `revoke_pat('C-02 owner-approved ...')` 133 cai; verify re-resolve 134 None + 6 active; probe revoked → 401; probe active (control, voi Redis that core-redis:6379/3) → 200 + ticket. `C02_PROBE_OK`. VPS da don sach secret + script.
+- **Audit**: B3 NEED_REVISION (O1 guard chet, O2 mau thuan, O3 mobile/machine) → sua plan → AGREE vong 2. B8: **AGREE** (doc lap doc lai file:line; xac nhan 0 raw secret trong repo; diff ops-only). 0 blocker/0 major.
+- **Gates**: check-multi-agent PASS · scan-secrets OK (4718 file, 0 secret) · check-ledger-entry PASS · pre-push-gate 5 FAIL/31 PASS Y HET baseline (khong chay lai suite vi 0 code). BE/FE VPS full suite van C-07/C-08.
+- **Files**: plan + evidence + claim + ledger. Khong cham deny-list, khong code, khong DB tam (DB that staging, co guard fail-closed).
+- **Con lai**: nhom B (5 login con song) + C (E2E widget) xu ly sau khi xac minh client — ngoai slice nay, khong tu y cham.
+- **Lessons ap dung**: [L-S01 L-S02 L-002 L-M02 L-V01 L-V02 L-G02 L-B01 L-T01 L-T02] + SSH bare-args/scp-script. GHI LESSON MOI: hoan (C2 day 60/60; de xuat L-T05 treo tu Entry 523).
+
 ## Entry 524: Handoff chot phien C-01 cho doi code khac (doc-only)
 
 - **Date**: 2026-11-15. **Type**: doc-only. **Branch**: `feat/handoff-sse-c01-closeout`. **Claim**: `handoff-sse-c01-closeout` done.
