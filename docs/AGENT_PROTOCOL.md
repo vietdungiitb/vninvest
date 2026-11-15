@@ -371,7 +371,7 @@ cmd /c mklink /J ..\core-team\packages\web\node_modules packages\web\node_module
 | # | Việc bắt buộc | Artifact (đường dẫn cố định) | Xong khi |
 |---|---|---|---|
 | 1 | **Nhật ký**: ghi lại đã làm gì, đo được gì, quyết định gì | Append `## Entry N` vào `docs/CODE_CHANGE_AUDIT_LEDGER.md` (prepend đầu file) | Entry có Date/Type/Branch/Claim/Gates/Next |
-| 2 | **Handoff**: con trỏ cho phiên sau (trạng thái, cái dở dang, next step, ai giữ) | File `docs/evidence/<slice>/HANDOFF_<YYYYMMDD>.md` HOẶC mục Next trong Entry N (slice nhỏ) | Phiên sau đọc 1 file là biết làm tiếp ở đâu |
+| 2 | **Handoff**: con trỏ cho phiên sau (trạng thái, cái dở dang, next step, ai giữ) | File `docs/handoffs/HANDOFF_<YYYY-MM-DD>_<SLUG>.md` (quy ước cứng — agent sau chỉ tìm ở đây). Slice nhỏ được phép ghi mục Next trong Entry N thay file riêng | Phiên sau đọc 1 file là biết làm tiếp ở đâu |
 | 3 | **Claim close**: `in-progress` → `done` (commit riêng), PR merge xong | `docs/CLAIMS.md` + PR merged + branch đã xóa | `git branch -a` không còn branch của slice |
 | 4 | **Dọn worktree**: xóa worktree tạm + junction + DB tạm VPS | `git worktree list` sạch (chỉ còn main tree + worktree người khác) · `git worktree prune` · junction `node_modules` đã xóa TRƯỚC khi xóa cây · DB tạm VPS đã DROP | Không còn `/tmp/wt-*` của mình, không còn DB `*_verify`/`*_tmp` của mình |
 
