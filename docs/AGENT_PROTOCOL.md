@@ -362,6 +362,29 @@ cmd /c mklink /J ..\core-team\packages\web\node_modules packages\web\node_module
 | Claim | Mỗi agent tự khai |
 | Merge + góp deny list | **Coordinator** — một người, một thời điểm |
 
+### 10.8 Đóng phiên (bắt buộc — journal + handoff + dọn worktree)
+
+> Thêm 2026-11-15 (Owner chốt). Mục đích: phiên sau tiếp nối được **mà không phải
+> rà soát lại từ đầu**. Mọi phiên (solo hay song song, code hay doc-only) khi kết thúc
+> PHẢI để lại đủ 4 thứ dưới đây. Thiếu 1 = phiên chưa đóng xong.
+
+| # | Việc bắt buộc | Artifact (đường dẫn cố định) | Xong khi |
+|---|---|---|---|
+| 1 | **Nhật ký**: ghi lại đã làm gì, đo được gì, quyết định gì | Append `## Entry N` vào `docs/CODE_CHANGE_AUDIT_LEDGER.md` (prepend đầu file) | Entry có Date/Type/Branch/Claim/Gates/Next |
+| 2 | **Handoff**: con trỏ cho phiên sau (trạng thái, cái dở dang, next step, ai giữ) | File `docs/evidence/<slice>/HANDOFF_<YYYYMMDD>.md` HOẶC mục Next trong Entry N (slice nhỏ) | Phiên sau đọc 1 file là biết làm tiếp ở đâu |
+| 3 | **Claim close**: `in-progress` → `done` (commit riêng), PR merge xong | `docs/CLAIMS.md` + PR merged + branch đã xóa | `git branch -a` không còn branch của slice |
+| 4 | **Dọn worktree**: xóa worktree tạm + junction + DB tạm VPS | `git worktree list` sạch (chỉ còn main tree + worktree người khác) · `git worktree prune` · junction `node_modules` đã xóa TRƯỚC khi xóa cây · DB tạm VPS đã DROP | Không còn `/tmp/wt-*` của mình, không còn DB `*_verify`/`*_tmp` của mình |
+
+Chi tiết dọn (theo thứ tự, thiếu bước nào dừng lại hỏi — không đoán):
+1. `git worktree list` — xác định worktree của mình (tên `wt-<slice>`).
+2. Xóa junction `node_modules` trong worktree TRƯỚC (Windows: `rmdir` junction, không `rm -rf` — xóa nhầm là mất `node_modules` dùng chung).
+3. `git worktree remove --force /tmp/wt-<slice>` + `git worktree prune`.
+4. Trên VPS: DROP DB tạm (`psql -c "DROP DATABASE <db_tam>;"`) + xóa file probe `/tmp/probe_*.py` + `/tmp/*.log` của mình.
+5. Chạy `pwsh -File scripts/agent-cleanup.ps1 -Branch <b> -Execute` nếu còn branch/worktree sót (script tự từ chối khi chưa đủ điều kiện — tin nó, không `--force` thủ công).
+6. Verify cuối: `git status --short` sạch + `git worktree list` + `gh pr view <n> --json state` = MERGED.
+
+Ngoại lệ duy nhất: slice thuần điều tra (không đụng code/BE/VPS) được miễn mục 4 (ghi rõ `KHÔNG CÓ worktree/DB tạm` thay vì bỏ trống).
+
 ---
 
 ## 11. Planning Gate — đọc bài học trước khi lập kế hoạch
