@@ -1,3 +1,18 @@
+## Entry 522: Ra soat handoff WS502 + plan tiep tuc (do luong that, khong code)
+
+- **Date**: 2026-11-15. **Type**: doc-only (plan + evidence + audit). **Branch**: `feat/continuation-plan-20261115`. **Claim**: `continuation-plan-20261115`.
+- **Scope**: ra soat 4 viec do cua `docs/handoffs/HANDOFF_2026-11-15_WS502-DASHBOARD.md`, do lai staging/gates/VPS bang lenh that, lap `docs/PLAN_CONTINUATION_20261115.md` (P0-P3, 15 slice C-01..C-15).
+- **Phat hien moi P0**: SSE alert-center van gui PAT dai han trong query string — `packages/web/src/hooks/useAlertCenterStream.ts:43-44`; BE chap nhan `?token=` (`signal_intelligence/views.py:803-817`); test ghim hanh vi (`useSignalStream.component.test.tsx:141`); log nginx co hit `06:21:18Z` sau rebuild 02:42Z. WS `/ws/realtime/` da sach: hit cuoi `01:52:54Z`, bundle `hooks-BCiCY1L_.js` co 3x `realtime/?ticket=`, 0 `token=`.
+- **Gate baseline**: `pre-push-gate` 5 FAIL / 31 PASS / 0 SKIP. 3 FAIL do may khong co Python that (`admin-ux`, `envelope-contract`, `openapi-budget`) — `scripts/pre-push-gate.mjs:441-444` khong nhan dien interpreter thieu. 2 FAIL that: `system-design` (doc 137 / gate 138 / thuc te **139** vi regex `^0` bo sot `9000_auth_user_email_ci_unique.py:75`) va `global-config-drift` (4 file).
+- **VPS**: dev @ `7a0bd7aa7` (5 commit docs-only sau local) · 2 worktree `/tmp/wt-gatep0*` · 5 DB `ai_r42/43/51/52/53` · `compose.staging.env.bak-20261114` untracked · disk **79%** · 0 restart · health 200.
+- **Log**: token 283/24h (277 WS + 7 SSE), ticket 17/24h, 502 108/24h nhung **0 trong 1h** va tat ca truoc 01:39Z; phan 502 con lai thuoc vhost khac dung chung nginx-proxy (L-G04).
+- **Handoff verdicts**: (1) dat cho WS, ho o SSE; (2) revoke PAT **chua lam — Owner**, 23 PAT khac nhau trong log; (3) AI 10s timeout **da xong** (`AIAdvisorAlertPanel.js:67-68`); (4) 1-2 502 cold load **khop**.
+- **Audit**: B3 voi agent doc lap bi chan (free usage limit); thay bang verify read-only 16/16 citation MATCH (`docs/evidence/continuation-20261115/audit.md`) — **chi ap dung cho slice doc-only**, khong tai su dung cho slice code.
+- **Files**: `docs/PLAN_CONTINUATION_20261115.md`, `docs/evidence/continuation-20261115/MEASUREMENTS_20261115.md`, `docs/evidence/continuation-20261115/audit.md`, claim. Khong cham deny-list, khong sua code.
+- **Gates**: check-multi-agent PASS (0 loi) · scan-secrets OK (4714 file) · pre-push-gate 5 FAIL / 31 PASS (baseline y nguyen, khong te hon). **CHUA CHAY**: full BE/FE suite (C-07/C-08).
+- **Next**: C-01 (SSE ticket) la viec dau tien; C-02 Owner revoke PAT ngay.
+- **Lessons ap dung**: [L-001 L-002 L-003 L-008 L-V01 L-V02 L-V03 L-G02 L-G04 L-T01 L-T02 L-M02]. GHI LESSON MOI: khong.
+
 ## Entry 521: Chuyen HANDOFF WS502 ve docs/handoffs/ theo quy uoc + sua §10.8
 
 - **Date**: 2026-11-15. **Type**: process doc-only (fix sai quy uoc cua chinh minh). **Branch**: `feat/handoff-location-fix`. **Claim**: `handoff-location-fix` done.
