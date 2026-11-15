@@ -1,3 +1,11 @@
+## Entry 521: Chuyen HANDOFF WS502 ve docs/handoffs/ theo quy uoc + sua §10.8
+
+- **Date**: 2026-11-15. **Type**: process doc-only (fix sai quy uoc cua chinh minh). **Branch**: `feat/handoff-location-fix`. **Claim**: `handoff-location-fix` done.
+- **Sai sot**: Entry 519 de HANDOFF tai `docs/evidence/dashboard-verify-live/HANDOFF_WS502_20261115.md` — sai quy uoc cung `docs/handoffs/HANDOFF_<YYYY-MM-DD>_<SLUG>.md` (agent sau chi tim o do). §10.8 do chinh toi viet cung ghi sai duong dan evidence.
+- **Fix**: `git mv` sang `docs/handoffs/HANDOFF_2026-11-15_WS502-DASHBOARD.md` (giu lich su rename); sua §10.8 thanh duong dan `docs/handoffs/` chuan.
+- **Files**: move + AGENT_PROTOCOL.md + claim. **Gates**: check-multi-agent PASS.
+- **Lessons ap dung**: [L-002 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 520: Don disk VPS trong pham vi vninvest (khong dung repo khac)
 
 - **Date**: 2026-11-15. **Type**: ops (khong doi code). **Branch**: `feat/disk-cleanup-note`.
