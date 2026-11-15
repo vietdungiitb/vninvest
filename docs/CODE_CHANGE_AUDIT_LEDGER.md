@@ -1,3 +1,12 @@
+## Entry 519: Quy dinh cung dong phien §10.8 + ap dung ngay cho phien WS502
+
+- **Date**: 2026-11-15. **Type**: process doc-only. **Branch**: `feat/session-close-rule` (PR #419 merged) + closeout nay. **Claim**: `session-close-rule` done.
+- **Noi dung**: them `docs/AGENT_PROTOCOL.md` §10.8 — 4 viec bat buoc khi dong phien: (1) nhat ky = Entry ledger, (2) handoff file/Next, (3) claim done + PR merge + xoa branch, (4) don worktree/junction/DB tam VPS + verify. Co ngoai le doc-only. Bo sung dung cho cho trong (§9/§10.4/§10.6 da co, thieu journal + handoff + don worktree cu the).
+- **Ap dung ngay**: viet `docs/evidence/dashboard-verify-live/HANDOFF_WS502_20261115.md` (bang PR, ledger Entry, trang thai staging, viec do, claim); don file probe/log/DB tam cua phien WS502 tren VPS (chi xoa file cua minh, giu file session khac); xac minh `git worktree list` (chi con main + wt-gatep0* cua slice khac — khong dung toi); remote branch slice WS502 da prune sach; local branch `feat/staging-pro-layout` con lai LA CUA SESSION KHAC — khong dung toi.
+- **Gates**: check-multi-agent PASS; check-lessons 60/60 PASS (chay truoc PR #419).
+- **Files**: AGENT_PROTOCOL.md + HANDOFF + CLAIMS.md. **Next**: merge closeout -> phien sau doc HANDOFF + Entry 518 la du.
+- **Lessons ap dung**: [L-002 L-V01 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 518: Dong slice WS ticket — deploy xong, bundle moi live, cho user reload
 
 - **Date**: 2026-11-15. **Type**: closeout. **Branch**: `feat/ws-502-ticket` (PR #417 merged), dev @ `7a0bd7aa7`.
