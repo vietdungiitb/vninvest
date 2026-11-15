@@ -212,6 +212,10 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
   const priceHistoryRef = useRef<Record<string, number[]>>({});
   const prevPricesRef = useRef<Record<string, number>>({});
   const flashTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // S5 (Entry 516): debounce bulk technicals 30s de khong goi lien tuc khi
+  // activeItems doi (mount/unmount, switch tab watchlist). Giong nhom symbol
+  // goi lai trong 30s bi bo; symbol khac duoc phep. Gia giam bão event loop.
+  const bulkDebounceRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; lastArgs: string[] | null }>({ timer: null, lastArgs: null });
 
   // React Query — scoped by tenant_id (Sprint 6 pattern) for skeleton + error handling (W-04)
   // NOTE: RQ is used as cache + invalidation layer; manual loadAllLists still drives initial fetch
@@ -442,7 +446,9 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  const fetchTechnicals = async (symbolsList: string[]) => {
+  // S5 (Entry 516): debounce 30s — cung symbols goi lai trong khoang nay bi bo,
+  // khong cham DB/event loop. Symbol khac duoc phep chay luon.
+  const fetchTechnicals = useCallback(async (symbolsList: string[]) => {
     if (!symbolsList || symbolsList.length === 0) return;
     // Chunk 50 to avoid URL length (P2-1)
     const chunks: string[][] = [];
@@ -450,7 +456,6 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       const results = await Promise.all(chunks.map(c => api.getBulkTechnicalsBySymbols(c)));
       const data: TechnicalData[] = results.flatMap(res => Array.isArray(res) ? (res as TechnicalData[]) : ((res as Record<string, unknown>)?.results as TechnicalData[] ?? (res as Record<string, unknown>)?.technicals as TechnicalData[] ?? []));
-
       const newMap: Record<string, TechnicalData> = {};
       data.forEach((tData: TechnicalData) => {
         newMap[tData.symbol] = tData;
@@ -460,7 +465,20 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (err) {
       console.warn("Lỗi tải chỉ báo kỹ thuật gộp:", (err as Error).message);
     }
-  };
+  }, [setTechnicalsMap, setLastSyncTime]);
+
+  const debouncedFetchTechnicals = useCallback((symbolsList: string[]) => {
+    if (!symbolsList || symbolsList.length === 0) return;
+    if (bulkDebounceRef.current.timer) clearTimeout(bulkDebounceRef.current.timer);
+    bulkDebounceRef.current.lastArgs = symbolsList;
+    bulkDebounceRef.current.timer = setTimeout(() => {
+      const args = bulkDebounceRef.current.lastArgs;
+      if (!args) return;
+      bulkDebounceRef.current.timer = null;
+      bulkDebounceRef.current.lastArgs = null;
+      void fetchTechnicals(args);
+    }, 30000);
+  }, [fetchTechnicals]);
 
   useEffect(() => {
     if (selectedType === "watchlist" && selectedId) {
@@ -481,8 +499,8 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   useEffect(() => {
     const list = activeItems.map(item => (item as WatchlistItem).symbol).filter(Boolean) as string[];
-    if (list.length > 0) fetchTechnicals(list);
-  }, [activeItems]);
+    if (list.length > 0) debouncedFetchTechnicals(list);
+  }, [activeItems, debouncedFetchTechnicals]);
 
   const allSymbols = useMemo(() => {
     const symbolsSet = new Set<string>();

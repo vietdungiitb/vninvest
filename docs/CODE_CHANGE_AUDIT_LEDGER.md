@@ -1,3 +1,13 @@
+## Entry 516: FE debounce bulk technicals 30s — stop event-loop bão (WS 502 root cause)
+
+- **Date**: 2026-11-15. **Type**: FE (2 file + test). **Branch**: `feat/ws-502-fe-tightloop`. **Claim**: `ws-502-fe-tightloop` done. **Plan**: `docs/PLAN_WS502_FE_TIGHTLOOP_20261115.md`.
+- **Root cause (có bằng chứng log)**: `WatchlistContext.tsx:482-485` dùng `useEffect([activeItems])` → mỗi khi `activeItems` đổi gọi `fetchTechnicals` → `Promise.all(chunks.map(getBulkTechnicalsBySymbols))` bắn **10 chunk đồng thời**; cùng `useCoreDashboardData.js:204` gọi bulk mỗi khi mount. Log staging: **10 POST bulk mỗi 13-45 giây liên tục** (26:07:10, 26:07:23, 26:08:08), đều 200 ~216KB → event loop daphne bị đói liên tục → WS handshake 502 liên tục. S4 (2 daphne) + S5 (concurrency 2) giảm chứ không triệt để vì FE vẫn gọi liên tục.
+- **Fix**: S1 debounce 30s vào `fetchTechnicals` (WatchlistContext); S2 debounce 30s vào bulk call trong `useCoreDashboardData.js`; cùng symbols trong 30s bị bỏ, symbol khác refetch sau 30s. Không đổi contract/shape/envelope; không migration; không package.json.
+- **Test**: `bulk-debounce-logic.component.test.ts` — 3 test pass (same symbols within 30s skipped; refetch after 30s; single timer keeps last args). `coreApiAdapter.test.js` dedupe 57/57 (trước đó). `tsc` 0; `eslint` 0 errors.
+- **Gates**: check-multi-agent PASS; check-lessons 60/60 PASS. **Chưa deploy** — sẽ deploy sau PR merge, rồi user reload verify AC3.
+- **Files**: 2 FE + 1 test + plan + ledger. **Next**: merge PR -> deploy staging -> user reload -> dem POST/502 -> Entry 517 dong slice.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V03 L-V04 L-G02 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 515: Dong slice WS 502 — user xac nhan reload het loi (S1→S5 live)
 
 - **Date**: 2026-11-14. **Type**: closeout verify. **Branch**: `feat/ws-502-closeout`. **Claim**: `ws-502-isolate` done, `ws-502-stagger` done (da flip), `ws-502-diagnosis` done.
