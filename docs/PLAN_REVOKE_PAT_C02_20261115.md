@@ -1,8 +1,9 @@
-# PLAN — C-02: Revoke 23 PAT tung lot log staging (2026-11-15)
+# PLAN — C-02: Revoke PAT tung lot log staging (2026-11-15)
 
 > **Slice:** C-02 (P0 bao mat, ops-only: 0 dong code) · **Claim:** `revoke-pat-c02`
 > **Branch:** `feat/revoke-pat-c02` · **Base:** `dev@92a294d11`
 > **Uy quyen:** Owner xac nhan "23 PAT khong con ai dung, xoa di duoc" (2026-11-15)
+> **Ket qua that:** cua so 7d thay **140 raw** (23 la cua so 24h) → revoke **133** (nhom A EXPIRED), giu 6 ACTIVE (5 human login + 1 machine E2E) + 1 da vo hieu — Owner chot chi nhom A.
 > **Pham vi DB:** STAGING (`vninvest-core-db` / `vninvest_core`) — KHONG cham production
 > **Lessons ap dung:** [L-S01 L-S02 L-002 L-M02 L-V01 L-V02 L-G02 L-B01 L-T01 L-T02] + quy tac SSH (bare-args/scp-script, de xuat L-T05 treo vi C2 day)
 
