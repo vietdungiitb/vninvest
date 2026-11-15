@@ -1,3 +1,12 @@
+## Entry 526: Chot phien 15/11 — handoff tong C-01 + C-02, repo ve dev sach (luat 10.8)
+
+- **Date**: 2026-11-15. **Type**: doc-only (closeout). **Branch**: `feat/session-close-20261115`. **Claim**: `session-close-20261115`.
+- **Journal**: phien chay 2 slice B1-B9 day du. C-01 (bo PAT khoi URL SSE, ticket human-only; BE VPS 51/51, FE VPS 66/66; B3/B8 AGREE; PR #424) — Entry 523. C-02 (revoke 133/140 PAT lot log staging, giu 6 active theo Owner; probe 401/200; B3/B8 AGREE; PR #426) — Entry 525. Handoff C-01 rieng — Entry 524, PR #425.
+- **Don dep**: xoa branch thua da merge `feat/continuation-plan-20261115`; VPS sach (worktree slice + DB tam + raw secret + script tam da xoa, co verify); worktree local chi con main tree; branch con lai la cua agent khac (khong dung).
+- **Handoff**: `docs/handoffs/HANDOFF_2026-11-15_SESSION-CLOSE.md` (thay file C-01 bang tong: trang thai, viec tiep C-03..C-15 + nhom B/C, baseline gate, 5 bay rut ra). Phien sau doc 1 file.
+- **Gates**: check-multi-agent PASS · check-ledger-entry PASS · pre-push-gate 5 FAIL/31 PASS baseline (khong code).
+- **Lessons ap dung**: [L-002 L-M02 L-T01 L-G02]. GHI LESSON MOI: hoan (C2 day; de xuat L-T05 treo).
+
 ## Entry 525: C-02 revoke 133 PAT lot log staging (Owner uy quyen, ops-only)
 
 - **Date**: 2026-11-15. **Type**: ops (DB staging, 0 code). **Branch**: `feat/revoke-pat-c02`. **Claim**: `revoke-pat-c02` done.
