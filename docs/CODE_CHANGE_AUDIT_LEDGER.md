@@ -1,3 +1,15 @@
+## Entry 515: Dong slice WS 502 — user xac nhan reload het loi (S1→S5 live)
+
+- **Date**: 2026-11-14. **Type**: closeout verify. **Branch**: `feat/ws-502-closeout`. **Claim**: `ws-502-isolate` done, `ws-502-stagger` done (da flip), `ws-502-diagnosis` done.
+- **Verify live sau deploy day du (S1+S2+S3+S4+S5, staging @ dev #414)**:
+  - User hard-reload nhieu lan: **lan dau lanh con loi, cac lan reload sau KHONG thay loi** — khop du doan AC3/AC4 (cold storm vs warm hit).
+  - So staging 7h (bao gom cac reload): P502 +2 (509→511), P101 +8 (451→459). Truoc fix: 4×502 moi lan reload.
+  - Bulk: 40 POST deu 200, gom 4 dot × 10 chunk (~216KB/chunk) — user co ~2000 symbols scope (10 chunk × 200). Voi stagger (concurrency 2) + cache warm (TTL 300s), moi dot qua nhanh, khong de lai 502 theo sau (2 cai 502 le nam o dot lanh dau).
+  - WS smoke qua nginx (dummy token) van 403 dung; 101 handshake xen ke on dinh.
+- **Trang thai cuoi**: 502 con kha nang le te o dot lanh dau tien sau >5 phut idle (thundering herd khong singleflight — da ghi gioi han trong plan). Khong anh huong data (polling fallback) va tu het sau vai giay. AI panel timeout 10s la benh rieng (duong advisory/LLM) — ngoai scope, ticket rieng.
+- **Files**: ledger nay + claim flip. **Gates closeout**: check-multi-agent PASS; check-lessons 60/60 PASS.
+- **Lessons ap dung**: [L-002 L-V01 L-V02 L-V03 L-G02 L-T01]. GHI LESSON MOI: khong.
+
 ## Entry 514: S4 live (dual daphne + CPU 2.0) + S5 stagger code — WS 502 van con, thu hep pham vi
 
 - **Date**: 2026-11-14. **Type**: infra nhẹ + FE. **Branch**: `feat/ws-502-isolate` (S4, PR #413 merged) + `feat/ws-502-stagger` (S5). **Claim**: `ws-502-isolate` done, `ws-502-stagger` in-progress→done. Plan S4/S5 audit PASS (vong 6 + vong 8; vong 7 NEED_REVISION test order-blind → sua → PASS).
