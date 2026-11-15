@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getBrowserStorageToken, resolveCoreApiBase } from "../adapters/core/transport.js";
+import { resolveCoreApiBase } from "../adapters/core/transport.js";
+import { fetchStreamTicket } from "./fetchStreamTicket.js";
 
 export type SignalStreamStatus = "idle" | "connecting" | "open" | "error" | "closed";
 
@@ -37,7 +38,7 @@ export interface UseSignalStreamOptions {
   eventName?: string;
 }
 
-function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: number | null): string {
+function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: number | null, ticket?: string | null): string {
   const qs = new URLSearchParams();
   if (query?.type) qs.set("type", query.type);
   if (query?.symbol) qs.set("symbol", query.symbol);
@@ -47,17 +48,16 @@ function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: numbe
   if (query?.alert_family) qs.set("alert_family", query.alert_family);
   if (query?.lane) qs.set("lane", query.lane);
   if (lastId != null) qs.set("since", String(lastId));
-  // EventSource không gửi được Authorization header → fallback token qua query
-  // Lưu ý F2: token trong URL có thể lộ qua log/history — đã có withCredentials + khuyến nghị HTTPS + redact log
-  const token = typeof window !== "undefined" ? getBrowserStorageToken("access_token") : null;
-  if (token) qs.set("token", token);
+  // C-01: EventSource không gửi được Authorization header → xác thực bằng
+  // ticket single-use 60s (?ticket=). KHÔNG bao giờ gắn PAT vào URL.
+  if (ticket) qs.set("ticket", ticket);
   const s = qs.toString();
   return s ? `?${s}` : "";
 }
 
-export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}, lastId?: number | null, basePath?: string): string {
+export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}, lastId?: number | null, basePath?: string, ticket?: string | null): string {
   const base = resolveCoreApiBase();
-  return `${base}${basePath ?? "/operator/soc/signals/stream/"}${buildStreamQuery(query, lastId)}`;
+  return `${base}${basePath ?? "/operator/soc/signals/stream/"}${buildStreamQuery(query, lastId, ticket)}`;
 }
 
 export function useSignalStream(options: UseSignalStreamOptions): { status: SignalStreamStatus; reconnectAttempt: number } {
@@ -140,7 +140,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
       const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 30000);
       if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = window.setTimeout(() => {
-        if (!cancelled) connect();
+        if (!cancelled) void connect();
       }, delay);
     };
 
@@ -152,10 +152,18 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
       }, 35000);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
       updateStatus("connecting");
-      const url = getSignalStreamUrl(query, lastIdRef.current, basePath);
+      // C-01: mỗi kết nối (kể cả reconnect) lấy ticket mới — ticket single-use.
+      const ticket = await fetchStreamTicket();
+      if (cancelled) return;
+      if (!ticket) {
+        // Fail-closed: không ticket thì không mở EventSource (không fallback PAT).
+        scheduleReconnect();
+        return;
+      }
+      const url = getSignalStreamUrl(query, lastIdRef.current, basePath, ticket);
       let es: EventSource;
       try {
         // withCredentials để gửi cookie session nếu có
@@ -226,7 +234,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
       };
     };
 
-    connect();
+    void connect();
 
     return () => {
       cancelled = true;

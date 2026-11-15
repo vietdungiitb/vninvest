@@ -1,10 +1,10 @@
 """
 SOC Signals SSE stream — P2c W2.1-long (Phase P2c).
 
-GET /operator/soc/signals/stream/?type=&severity=&direction=&symbol=&token=
+GET /operator/soc/signals/stream/?type=&severity=&direction=&symbol=&ticket=
 
-Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Token via ?token= fallback
-cho EventSource không gửi được Authorization header.
+Auth: SOCBaseView (IsAuthenticated + IsAdminUser). Ticket single-use (?ticket=)
+cho EventSource không gửi được Authorization header; ?token= chi de tuong thich.
 
 SSE wire format:
   retry: 3000
@@ -17,6 +17,7 @@ Nguồn: UnifiedAlert mới theo session (poll DB 3s). Hỗ trợ Last-Event-ID 
 client reconnect không mất sự kiện.
 """
 import json
+import logging
 import time
 
 from django.db import close_old_connections, connection
@@ -28,6 +29,8 @@ from signal_intelligence.models import UnifiedAlert
 
 from .base import EventStreamRenderer, SOCBaseView, SSEStreamingHttpResponse
 from .signals import _latest_signal_session_date, _serialize_recent_alert
+
+logger = logging.getLogger(__name__)
 
 
 class SOCStreamThrottle(UserRateThrottle):
@@ -124,9 +127,26 @@ class SignalsStreamView(SOCBaseView):
     renderer_classes = [EventStreamRenderer]
 
     def initial(self, request, *args, **kwargs):
-        # EventSource không gửi được Authorization header → hỗ trợ ?token=
+        # C-01: EventSource không gửi được Authorization header → ưu tiên
+        # ?ticket= single-use (human-only). request.auth giữ None = human semantics.
+        ticket_ok = False
+        ticket = request.query_params.get("ticket") or request.GET.get("ticket")
+        if ticket and not request.META.get("HTTP_AUTHORIZATION"):
+            try:
+                from django.contrib.auth import get_user_model
+
+                from identity_access.ws_ticket import redeem_ws_ticket
+
+                payload = redeem_ws_ticket(ticket)
+                if payload:
+                    request.user = get_user_model().objects.get(pk=payload["user_id"])
+                    ticket_ok = True
+            except Exception:
+                pass
+        # Tương thích: ?token= cho client cũ — log cảnh báo, sẽ bỏ sau 1 tuần.
         token = request.query_params.get("token") or request.GET.get("token")
-        if token and not request.META.get("HTTP_AUTHORIZATION"):
+        if not ticket_ok and token and not request.META.get("HTTP_AUTHORIZATION"):
+            logger.warning("sse_token_query_deprecated: SignalsStreamView van nhan ?token=")
             request.META["HTTP_AUTHORIZATION"] = f"Bearer {token}"
             # Thử authenticate ngay để request.user được set trước khi permission check
             # Nếu thất bại, để DRF xử lý 401 như thường

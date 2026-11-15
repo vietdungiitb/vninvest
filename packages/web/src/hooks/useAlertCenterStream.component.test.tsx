@@ -7,6 +7,18 @@ import {
   ALERT_CENTER_STREAM_PATH,
 } from "./useAlertCenterStream.js";
 
+vi.mock("../adapters/coreApiAdapter.js", () => ({
+  coreApiAdapter: { corePost: vi.fn() },
+}));
+
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+
+const mockedPost = coreApiAdapter.corePost as unknown as ReturnType<typeof vi.fn>;
+
+async function flush() {
+  await act(async () => {});
+}
+
 let instances: any[] = [];
 
 class MockEventSource {
@@ -41,6 +53,8 @@ describe("useAlertCenterStream — S7", () => {
     instances = [];
     (globalThis as any).EventSource = MockEventSource;
     localStorage.clear();
+    mockedPost.mockReset();
+    mockedPost.mockResolvedValue({ ticket: "test-ticket-123", expiresIn: 60 });
   });
 
   afterEach(() => {
@@ -51,11 +65,19 @@ describe("useAlertCenterStream — S7", () => {
   });
 
   it("URL tro toi alert-center stream + lane", () => {
-    const url = getAlertCenterStreamUrl({ lane: "main", symbol: "VCI" }, 42);
+    const url = getAlertCenterStreamUrl({ lane: "main", symbol: "VCI" }, 42, "t-1");
     expect(url).toContain(ALERT_CENTER_STREAM_PATH);
     expect(url).toContain("lane=main");
     expect(url).toContain("symbol=VCI");
     expect(url).toContain("since=42");
+    expect(url).toContain("ticket=t-1");
+  });
+
+  it("C-01: helper không đọc PAT từ localStorage", () => {
+    localStorage.setItem("access_token", "pat-long-lived-xyz");
+    const url = getAlertCenterStreamUrl({ lane: "main", symbol: "VCI" }, 42);
+    expect(url).not.toContain("token=");
+    expect(url).not.toContain("pat-long-lived-xyz");
   });
 
   it("map full payload giu alert_id/body/confidence", () => {
@@ -75,8 +97,11 @@ describe("useAlertCenterStream — S7", () => {
   it("hook lang nghe event alert-center (khong phai signal)", async () => {
     const onItem = vi.fn();
     const { getByTestId } = render(<TestComponent enabled onItem={onItem} />);
+    await flush();
     const es = instances[0] as MockEventSource;
     expect(es.url).toContain(ALERT_CENTER_STREAM_PATH);
+    expect(es.url).toContain("ticket=test-ticket-123");
+    expect(es.url).not.toContain("token=");
     await act(async () => {
       if (es.onopen) es.onopen(new Event("open"));
     });

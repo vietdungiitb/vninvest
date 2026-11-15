@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getBrowserStorageToken, resolveCoreApiBase } from "../adapters/core/transport.js";
+import { resolveCoreApiBase } from "../adapters/core/transport.js";
+import { fetchStreamTicket } from "./fetchStreamTicket.js";
 
 export type OverviewStreamStatus = "idle" | "connecting" | "open" | "error" | "closed";
 
@@ -31,18 +32,17 @@ export interface UseOverviewStreamOptions {
   onStatusChange?: (s: OverviewStreamStatus) => void;
 }
 
-function buildOverviewStreamUrl(): string {
+function buildOverviewStreamUrl(ticket?: string | null): string {
   const base = resolveCoreApiBase();
   const qs = new URLSearchParams();
-  // F2 pattern: token fallback cho EventSource (không gửi Authorization header)
-  const token = typeof window !== "undefined" ? getBrowserStorageToken("access_token") : null;
-  if (token) qs.set("token", token);
+  // C-01: xác thực bằng ticket single-use (?ticket=). KHÔNG gắn PAT vào URL.
+  if (ticket) qs.set("ticket", ticket);
   const s = qs.toString();
   return `${base}/operator/soc/overview/stream/${s ? `?${s}` : ""}`;
 }
 
-export function getOverviewStreamUrl(): string {
-  return buildOverviewStreamUrl();
+export function getOverviewStreamUrl(ticket?: string | null): string {
+  return buildOverviewStreamUrl(ticket);
 }
 
 export function useOverviewStream(options: UseOverviewStreamOptions): {
@@ -117,7 +117,7 @@ export function useOverviewStream(options: UseOverviewStreamOptions): {
       const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 30000);
       if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = window.setTimeout(() => {
-        if (!cancelled) connect();
+        if (!cancelled) void connect();
       }, delay);
     };
 
@@ -128,10 +128,18 @@ export function useOverviewStream(options: UseOverviewStreamOptions): {
       }, 35000);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
       updateStatus("connecting");
-      const url = getOverviewStreamUrl();
+      // C-01: mỗi kết nối (kể cả reconnect) lấy ticket mới — ticket single-use.
+      const ticket = await fetchStreamTicket();
+      if (cancelled) return;
+      if (!ticket) {
+        // Fail-closed: không ticket thì không mở EventSource (không fallback PAT).
+        scheduleReconnect();
+        return;
+      }
+      const url = getOverviewStreamUrl(ticket);
       let es: EventSource;
       try {
         es = new window.EventSource(url, { withCredentials: true } as unknown as EventSourceInit);
@@ -177,7 +185,7 @@ export function useOverviewStream(options: UseOverviewStreamOptions): {
       };
     };
 
-    connect();
+    void connect();
 
     return () => {
       cancelled = true;

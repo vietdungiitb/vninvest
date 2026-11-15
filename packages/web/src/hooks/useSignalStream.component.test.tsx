@@ -2,6 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, act, cleanup } from "@testing-library/react";
 import { useSignalStream } from "./useSignalStream.js";
 
+vi.mock("../adapters/coreApiAdapter.js", () => ({
+  coreApiAdapter: { corePost: vi.fn() },
+}));
+
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+
+const mockedPost = coreApiAdapter.corePost as unknown as ReturnType<typeof vi.fn>;
+
+async function flush() {
+  await act(async () => {});
+}
+
 // Mock EventSource
 type MockESInstance = {
   url: string;
@@ -87,6 +99,8 @@ describe("useSignalStream — P2c SSE hook", () => {
     // @ts-ignore
     globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
     localStorage.clear();
+    mockedPost.mockReset();
+    mockedPost.mockResolvedValue({ ticket: "test-ticket-123", expiresIn: 60 });
   });
 
   afterEach(() => {
@@ -106,6 +120,7 @@ describe("useSignalStream — P2c SSE hook", () => {
   it("kết nối và chuyển connecting → open khi EventSource mở", async () => {
     const onSignal = vi.fn();
     const { getByTestId } = render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
     expect(getByTestId("status").textContent).toBe("connecting");
     const es = instances[0] as unknown as MockEventSource & { triggerOpen: () => void };
     await act(async () => {
@@ -117,6 +132,7 @@ describe("useSignalStream — P2c SSE hook", () => {
   it("nhận event signal và gọi onSignal với mapping", async () => {
     const onSignal = vi.fn();
     render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
     const es = instances[0] as unknown as MockEventSource & { triggerOpen: () => void; triggerSignal: (d: Record<string, unknown>) => void };
     await act(async () => { es.triggerOpen(); });
     await act(async () => {
@@ -128,22 +144,37 @@ describe("useSignalStream — P2c SSE hook", () => {
   it("query params được gắn vào URL", async () => {
     const onSignal = vi.fn();
     render(<TestComponent enabled query={{ type: "whale", symbol: "VCI" }} onSignal={onSignal} />);
+    await flush();
     const url = instances[0]?.url ?? "";
     expect(url).toContain("type=whale");
     expect(url).toContain("symbol=VCI");
   });
 
-  it("token trong localStorage được gắn vào URL cho EventSource fallback", async () => {
+  it("C-01: ticket single-use được gắn vào URL, không bao giờ gắn PAT", async () => {
     localStorage.setItem("access_token", "test-pat-token");
     const onSignal = vi.fn();
     render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
+    expect(mockedPost).toHaveBeenCalledWith("/auth/ws-ticket/", {});
     const url = instances[0]?.url ?? "";
-    expect(url).toContain("token=test-pat-token");
+    expect(url).toContain("ticket=test-ticket-123");
+    expect(url).not.toContain("token=");
+    expect(url).not.toContain("test-pat-token");
+  });
+
+  it("C-01 fail-closed: không lấy được ticket thì không tạo EventSource", async () => {
+    localStorage.setItem("access_token", "test-pat-token");
+    mockedPost.mockRejectedValueOnce(new Error("401"));
+    const onSignal = vi.fn();
+    render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
+    expect(instances.length).toBe(0);
   });
 
   it("khi lỗi, chuyển error và tự reconnect với backoff", async () => {
     const onSignal = vi.fn();
     const { getByTestId } = render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
     const es = instances[0] as unknown as MockEventSource & { triggerOpen: () => void; triggerError: () => void };
     await act(async () => { es.triggerOpen(); });
     expect(getByTestId("status").textContent).toBe("open");
@@ -152,6 +183,7 @@ describe("useSignalStream — P2c SSE hook", () => {
     expect(getByTestId("attempt").textContent).toBe("1");
     // Sau 1s (backoff đầu) sẽ reconnect → tạo instance thứ 2
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    await flush();
     expect(instances.length).toBe(2);
     expect(getByTestId("status").textContent).toBe("connecting");
   });
@@ -159,6 +191,7 @@ describe("useSignalStream — P2c SSE hook", () => {
   it("F1: watchdog 35s không ping → tự đóng và reconnect", async () => {
     const onSignal = vi.fn();
     const { getByTestId } = render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
     const es = instances[0] as unknown as MockEventSource & { triggerOpen: () => void };
     await act(async () => { es.triggerOpen(); });
     expect(getByTestId("status").textContent).toBe("open");
@@ -167,12 +200,14 @@ describe("useSignalStream — P2c SSE hook", () => {
     // Sau watchdog, status phải là error và đã schedule reconnect
     expect(getByTestId("status").textContent).toBe("error");
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    await flush();
     expect(instances.length).toBe(2);
   });
 
   it("F3: reconnect giữ lastId qua ?since=", async () => {
     const onSignal = vi.fn();
     render(<TestComponent enabled onSignal={onSignal} />);
+    await flush();
     const es1 = instances[0] as unknown as MockEventSource & { triggerOpen: () => void; triggerSignal: (d: Record<string, unknown>) => void; triggerError: () => void };
     await act(async () => { es1.triggerOpen(); });
     await act(async () => {
@@ -181,6 +216,7 @@ describe("useSignalStream — P2c SSE hook", () => {
     // Gây lỗi để reconnect
     await act(async () => { es1.triggerError(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    await flush();
     const secondUrl = instances[1]?.url ?? "";
     expect(secondUrl).toContain("since=99");
   });

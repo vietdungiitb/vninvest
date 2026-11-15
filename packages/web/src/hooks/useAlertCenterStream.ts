@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getBrowserStorageToken, resolveCoreApiBase } from "../adapters/core/transport.js";
+import { resolveCoreApiBase } from "../adapters/core/transport.js";
 import { useSignalStream, type SignalStreamSignal } from "./useSignalStream.js";
 
 export const ALERT_CENTER_STREAM_PATH = "/signals/alert-center/stream/";
@@ -33,22 +33,22 @@ export interface AlertCenterStreamItem {
   executed_at?: string | null;
 }
 
-function buildAlertCenterQuery(query: AlertCenterStreamQuery = {}, lastId?: number | null): string {
+function buildAlertCenterQuery(query: AlertCenterStreamQuery = {}, lastId?: number | null, ticket?: string | null): string {
   const qs = new URLSearchParams();
   if (query.lane) qs.set("lane", query.lane);
   if (query.symbol) qs.set("symbol", query.symbol);
   if (query.severity) qs.set("severity", query.severity);
   if (query.alert_family) qs.set("alert_family", query.alert_family);
   if (lastId != null) qs.set("since", String(lastId));
-  const token = typeof window !== "undefined" ? getBrowserStorageToken("access_token") : null;
-  if (token) qs.set("token", token);
+  // C-01: xác thực bằng ticket single-use (?ticket=). KHÔNG gắn PAT vào URL.
+  if (ticket) qs.set("ticket", ticket);
   const s = qs.toString();
   return s ? `?${s}` : "";
 }
 
-export function getAlertCenterStreamUrl(query: AlertCenterStreamQuery = {}, lastId?: number | null): string {
+export function getAlertCenterStreamUrl(query: AlertCenterStreamQuery = {}, lastId?: number | null, ticket?: string | null): string {
   const base = resolveCoreApiBase();
-  return `${base}${ALERT_CENTER_STREAM_PATH}${buildAlertCenterQuery(query, lastId)}`;
+  return `${base}${ALERT_CENTER_STREAM_PATH}${buildAlertCenterQuery(query, lastId, ticket)}`;
 }
 
 /** Map payload BE (full serializer shape) → AlertItem của AlertCenterPage (cùng key alert_id). */

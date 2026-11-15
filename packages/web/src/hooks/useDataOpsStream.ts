@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getBrowserStorageToken, resolveCoreApiBase } from "../adapters/core/transport.js";
+import { resolveCoreApiBase } from "../adapters/core/transport.js";
+import { fetchStreamTicket } from "./fetchStreamTicket.js";
 
 export type DataOpsStreamStatus = "idle" | "connecting" | "open" | "error" | "closed";
 
@@ -29,17 +30,17 @@ export interface UseDataOpsStreamOptions {
   onStatusChange?: (s: DataOpsStreamStatus) => void;
 }
 
-function buildDataOpsStreamUrl(): string {
+function buildDataOpsStreamUrl(ticket?: string | null): string {
   const base = resolveCoreApiBase();
   const qs = new URLSearchParams();
-  const token = typeof window !== "undefined" ? getBrowserStorageToken("access_token") : null;
-  if (token) qs.set("token", token);
+  // C-01: xác thực bằng ticket single-use (?ticket=). KHÔNG gắn PAT vào URL.
+  if (ticket) qs.set("ticket", ticket);
   const s = qs.toString();
   return `${base}/operator/soc/dataops/stream/${s ? `?${s}` : ""}`;
 }
 
-export function getDataOpsStreamUrl(): string {
-  return buildDataOpsStreamUrl();
+export function getDataOpsStreamUrl(ticket?: string | null): string {
+  return buildDataOpsStreamUrl(ticket);
 }
 
 export function useDataOpsStream(options: UseDataOpsStreamOptions): { status: DataOpsStreamStatus; reconnectAttempt: number } {
@@ -94,16 +95,24 @@ export function useDataOpsStream(options: UseDataOpsStreamOptions): { status: Da
       setReconnectAttempt(nextAttempt);
       const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 30000);
       if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = window.setTimeout(() => { if (!cancelled) connect(); }, delay);
+      reconnectTimerRef.current = window.setTimeout(() => { if (!cancelled) void connect(); }, delay);
     };
     const resetHeartbeat = () => {
       clearHeartbeat();
       heartbeatTimerRef.current = window.setTimeout(() => scheduleReconnect(), 35000);
     };
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
       updateStatus("connecting");
-      const url = getDataOpsStreamUrl();
+      // C-01: mỗi kết nối (kể cả reconnect) lấy ticket mới — ticket single-use.
+      const ticket = await fetchStreamTicket();
+      if (cancelled) return;
+      if (!ticket) {
+        // Fail-closed: không ticket thì không mở EventSource (không fallback PAT).
+        scheduleReconnect();
+        return;
+      }
+      const url = getDataOpsStreamUrl(ticket);
       let es: EventSource;
       try {
         es = new window.EventSource(url, { withCredentials: true } as unknown as EventSourceInit);
@@ -134,7 +143,7 @@ export function useDataOpsStream(options: UseDataOpsStreamOptions): { status: Da
       es.onmessage = (e: MessageEvent) => { resetHeartbeat(); handleSnap(e); };
       es.onerror = () => scheduleReconnect();
     };
-    connect();
+    void connect();
     return () => {
       cancelled = true;
       if (esRef.current) { try { esRef.current.close(); } catch {} esRef.current = null; }
