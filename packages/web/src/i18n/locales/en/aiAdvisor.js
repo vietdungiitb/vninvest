@@ -7,7 +7,6 @@ export const aiAdvisor = {
       initialLoading: 'Analyzing money flow and RSI signals...',
       empty: 'No AI alerts were detected in this trading session.',
       emptyTitle: 'No signals in this session yet',
-    viewPrevSession: 'View previous session',
     rescan: 'Rescan',
     lastScan: 'Last scan {time} · {count} signals',
       noScan: 'No scan yet',

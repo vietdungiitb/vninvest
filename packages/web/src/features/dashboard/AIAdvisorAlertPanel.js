@@ -56,10 +56,23 @@ function getTrendColor(direction) {
 export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, technicals: _technicals, analytics: _analytics, alerts: propAlerts, loading: propLoading, selectedSession: _selectedSession, selectedSymbol: _selectedSymbol, onSelectSession: _onSelectSession, onSelectSymbol: _onSelectSymbol }) {
   const { t, locale } = useI18n();
   const language = locale;
-  const [alerts, setAlerts] = useState(propAlerts ?? []);
+  // P2-2 — propAlerts chứa cả Whale/Sốc giá; mount với chúng làm nhấp nháy
+  // sai loại trước khi fetchFeed xong. Chỉ nhận alert family của AI.
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(propLoading ?? false);
   const [error, setError] = useState(null);
   const [lastScanAt, setLastScanAt] = useState(null);
+
+  useEffect(() => {
+    const list = Array.isArray(propAlerts)
+      ? propAlerts.filter((a) =>
+          ["ai_alert", "ai_suggest"].includes(
+            String(a?.alert_family || a?.alert_type || "").trim().toLowerCase()
+          )
+        )
+      : [];
+    if (list.length > 0) setAlerts(list);
+  }, [propAlerts]);
 
   const fetchFeed = useCallback(async () => {
     setLoading(true);
@@ -197,16 +210,6 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       e(
         "div",
         { className: "mt-3 flex items-center gap-2" },
-        // BE chưa xác minh param session cho getAIAlertsFeed → disabled + tooltip, không bịa behavior
-        e(
-          "button",
-          {
-            disabled: true,
-            title: t("aiAdvisor.panel.comingSoon"),
-            className: "rounded-lg border border-slate-700/60 px-3 py-1.5 text-xs font-bold text-slate-500 cursor-not-allowed",
-          },
-          t("aiAdvisor.panel.viewPrevSession")
-        ),
         e(
           "button",
           {

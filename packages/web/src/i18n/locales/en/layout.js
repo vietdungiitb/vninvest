@@ -17,6 +17,7 @@ export const layout = {
     logout: 'Log out',
     workspace: 'Workspace',
     notifications: 'Notifications',
+    noNotifications: 'No new notifications',
     searchPlaceholder: 'Search symbol...',
     nav: {
       group: {

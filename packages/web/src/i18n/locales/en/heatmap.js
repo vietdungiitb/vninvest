@@ -5,6 +5,7 @@ export const heatmap = {
     sizeCap: 'Market Cap',
     sizeWeight: 'Weight',
     sizeFallbackCap: 'No holdings yet · showing by market cap',
+    otherTooltip: '{count} symbols: {symbols} · avg change {pct}%',
     empty: 'No data available for heatmap.',
     scopeLine: '{count} symbols · Holdings + watchlist · updated {time}',
     scopeGrouped: '· {grouped} small symbols grouped',

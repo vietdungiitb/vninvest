@@ -14,6 +14,8 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
 import { dedupAndSortAlerts } from "../utils/alertDedup.js";
 import { collectUniqueSortedSymbols } from "../utils/dashboardSymbols.js";
+import { calculateBreadth, formatRealtimeStatus } from "../utils/dashboardBreadth.js";
+import { useAlertCenterActions } from "../hooks/useAlertCenterActions.ts";
 import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 
 const e = createElement;
@@ -204,32 +206,27 @@ export function DashboardPage({
     const parsed = symbolString ? symbolString.split("|") : [];
     return parsed.length > 0 ? parsed : ["market_discovery"];
   }, [symbolString]);
+  // P2-4 — 2 luồng realtime có mục đích KHÁC nhau, giữ cả hai:
+  //  · useRealtimeFeedFromManager → quote/breadth theo symbols của dashboard
+  //  · useAlertCenterRealtime → feed alert GLOBAL (market_discovery), dispatch
+  //    `alert-center-new` mà Header đǎng nghe. KHÔNG gộp (auditor B3 đã verify).
   const realtimeFeed = useRealtimeFeedFromManager({ symbols, pollInterval: 10000 });
   const { realtimeAlerts: globalRealtimeAlerts } = useAlertCenterRealtime({ enabled: true });
+
+  // P1-7 — handler read/mute có sẵn; component gọi scalar id/symbol nên phải bọc.
+  const alertActions = useAlertCenterActions(refresh);
+  const readAlertIds = new Set(
+    Object.keys(alertActions.seenAlerts || {}).filter((id) => alertActions.seenAlerts[id]),
+  );
 
   const mergedQuotes = React.useMemo(() => {
     return { ...quotesBySymbol, ...(realtimeFeed?.quotesBySymbol || {}) };
   }, [quotesBySymbol, realtimeFeed?.quotesBySymbol]);
 
-  const calculatedBreadth = React.useMemo(() => {
-    let up = 0;
-    let down = 0;
-    let flat = 0;
-    Object.values(mergedQuotes).forEach((q) => {
-      // V2-05: bo qua placeholder chua co gia/bien dong (useRealtimeFeedCore khoi tao {symbol})
-      const hasData = q?.current_price != null || q?.change_pct != null || q?.change_value != null || q?.change != null;
-      if (!hasData) return;
-      const change = Number(q?.change_value ?? q?.change_pct ?? q?.change ?? 0);
-      if (change > 0) {
-        up++;
-      } else if (change < 0) {
-        down++;
-      } else {
-        flat++;
-      }
-    });
-    return { up, down, flat };
-  }, [mergedQuotes]);
+  const calculatedBreadth = React.useMemo(
+    () => calculateBreadth(mergedQuotes),
+    [mergedQuotes],
+  );
 
   const hasRealtimeBreadth = realtimeBreadth && (realtimeBreadth.up > 0 || realtimeBreadth.down > 0 || realtimeBreadth.flat > 0);
   const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
@@ -243,8 +240,12 @@ export function DashboardPage({
     (watchlists || []).forEach((w: Watchlist) => {
       (w.items || []).forEach((i: WatchlistItem) => add(i.symbol));
     });
+    // P2-4 — nhóm watchlist cũng là nguồn mã hợp lệ.
+    (watchlistGroups || []).forEach((g: WatchlistGroup) => {
+      (g.items || []).forEach((i: WatchlistItem) => add(i.symbol));
+    });
     return Array.from(s);
-  }, [holdings, trackedSymbols, watchlists]);
+  }, [holdings, trackedSymbols, watchlists, watchlistGroups]);
 
   const heatmapData = React.useMemo(() => {
     const hMap = new Map((holdings || []).map((h: Holding) => [(h.symbol || '').toUpperCase().trim(), h]));
@@ -350,7 +351,7 @@ export function DashboardPage({
       {realtimeFeed?.realtimeStatus && (realtimeFeed.realtimeStatus === "connecting" || realtimeFeed.realtimeStatus === "idle") && (
         <div className="core-dashboard-slot core-dashboard-slot--stats">
           <div className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-4 py-2 text-xs text-amber-200 flex items-center gap-2">
-            <span>Đang đồng bộ dữ liệu thị trường ({realtimeFeed.realtimeStatus})...</span>
+            <span>Đang đồng bộ dữ liệu thị trường — {formatRealtimeStatus(realtimeFeed.realtimeStatus)}...</span>
             <button type="button" onClick={() => refresh()} className="text-amber-300 hover:text-amber-100 underline">Thử lại</button>
           </div>
         </div>
@@ -383,6 +384,15 @@ export function DashboardPage({
               ? <LoadingSkeleton rows={3} />
                 : <UnifiedAlertCenter {...{
                     alerts: mergedAlerts as any,
+                    // P1-7 — đủ 4 prop để component bật nút đọc/tắt 30p (hasReadState).
+                    readAlertIds,
+                    unreadCount: (mergedAlerts as any[]).filter(
+                      (a: any) => !readAlertIds.has(a.alert_id || a.id)
+                    ).length,
+                    markAlertAsRead: (id: string | number) =>
+                      alertActions.handleAcknowledge({ alert_id: id }),
+                    muteSymbolFor30m: (symbol: string) =>
+                      alertActions.handleMute({ symbol }),
                     loading: loading || snapshotLoading,
                     error: snapshotError,
                     selectedSession,
@@ -444,7 +454,7 @@ export function DashboardPage({
             : <CoreDashboardPositionDeck
                 holdings={holdings}
                 trackedSymbols={trackedSymbols}
-                watchlistGroups={watchlists}
+                watchlistGroups={watchlistGroups}
                 technicals={technicals}
                 technicalsStatus={technicalsStatus}
                 analytics={analytics}

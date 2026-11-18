@@ -3,7 +3,7 @@
  * Treemap/Sunburst visualization for portfolio holdings.
  * Uses createElement (no JSX) per packages/web convention.
  */
-import { createElement, useState, useMemo, useRef, useCallback } from "react";
+import { createElement, useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactEChartsCore from "echarts-for-react/lib/core";
 import * as echarts from "echarts/core";
@@ -93,6 +93,32 @@ export function getHeatColor(changePct) {
  * fallback theo vốn hóa (marketCap) thay vì currentPrice * 100 (sai bản chất,
  * làm thị giá đơn vị lấn át vốn hóa). `capFallback` để báo trên subtitle.
  */
+/**
+ * P2-1 — tooltip dùng chung cho Treemap & Sunburst. Nhánh `isOther` (sunburst
+ * trước đây thiếu) liệt kê các mã con + biến động bình quân.
+ */
+export function formatHeatmapTooltip(info, { isMarketCap = false, t = (k) => k } = {}) {
+  const { name, value, data } = info;
+  if (data?.noData) {
+    return `<strong style="color: #06b6d4;">${name}</strong><br/>Chưa có dữ liệu giá`;
+  }
+  const signColor = data?.changePct > 0 ? "#4ade80" : data?.changePct < 0 ? "#f87171" : "#94a3b8";
+  if (data?.isOther) {
+    return `<strong style="color: #06b6d4;">${name}</strong><br/>${t("heatmap.otherTooltip", {
+      count: data.otherCount || 0,
+      symbols: (data.otherSymbols || []).join(", "),
+      pct: Number(data.changePct || 0).toFixed(2),
+    })}`;
+  }
+  if (isMarketCap) {
+    return `<strong style="color: #06b6d4;">${name}</strong><br/>Vốn hóa: ${Number(value).toLocaleString("vi-VN")} tỷ VND<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
+  }
+  const displayVal = data?.quantity > 0
+    ? `${Number(data.marketValue).toLocaleString("vi-VN")} VND`
+    : "Lọc tỷ trọng (Mẫu thử)";
+  return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị vị thế: ${displayVal}<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
+}
+
 export function resolveTileSize({
   sizeMode,
   quantity,
@@ -320,22 +346,7 @@ export function PortfolioHeatmap({
       return {
         tooltip: {
           ...darkTooltip,
-          formatter: (info) => {
-            const { name, value, data } = info;
-            if (data?.noData) {
-              return `<strong style="color: #06b6d4;">${name}</strong><br/>Chưa có dữ liệu giá`;
-            }
-            const signColor = data?.changePct > 0 ? '#4ade80' : data?.changePct < 0 ? '#f87171' : '#94a3b8';
-            if (data?.isOther) {
-              const syms = (data?.otherSymbols || []).join(", ");
-              return `<strong style="color: #06b6d4;">${name}</strong><br/>${syms}${data?.otherCount > 3 ? ` +${data.otherCount - 3} mã khác` : ""}<br/>Biến động bq: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
-            }
-            if (isMarketCap) {
-              return `<strong style="color: #06b6d4;">${name}</strong><br/>Vốn hóa: ${Number(value).toLocaleString("vi-VN")} tỷ VND<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
-            }
-            const displayVal = data?.quantity > 0 ? `${Number(data.marketValue).toLocaleString("vi-VN")} VND` : `Lọc tỷ trọng (Mẫu thử)`;
-            return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị vị thế: ${displayVal}<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
-          },
+          formatter: (info) => formatHeatmapTooltip(info, { isMarketCap, t }),
         },
         series: [
           {
@@ -378,18 +389,7 @@ export function PortfolioHeatmap({
     return {
       tooltip: {
         ...darkTooltip,
-          formatter: (info) => {
-            const { name, value, data } = info;
-            if (data?.noData) {
-              return `<strong style="color: #06b6d4;">${name}</strong><br/>Chưa có dữ liệu giá`;
-            }
-            const signColor = data?.changePct > 0 ? '#4ade80' : data?.changePct < 0 ? '#f87171' : '#94a3b8';
-            if (isMarketCap) {
-              return `<strong style="color: #06b6d4;">${name}</strong><br/>Vốn hóa: ${Number(value).toLocaleString("vi-VN")} tỷ VND<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
-            }
-            const displayVal = data?.quantity > 0 ? `${Number(data.marketValue).toLocaleString("vi-VN")} VND` : `Lọc tỷ trọng (Mẫu thử)`;
-            return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị vị thế: ${displayVal}<br/>Biến động: <span style="color: ${signColor};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
-          },
+          formatter: (info) => formatHeatmapTooltip(info, { isMarketCap, t }),
         },
         series: [
           {
@@ -483,15 +483,25 @@ export function PortfolioHeatmap({
     return t("heatmap.dialog.volHigh");
   }
 
+  // Q4 — popover xem nhanh: click tile mở dialog thay vì điều hướng ngay.
+  useEffect(() => {
+    if (!selectedDetail) return;
+    const onKeyDown = (ev) => { if (ev.key === "Escape") setSelectedDetail(null); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedDetail]);
+
   const handleClick = (params) => {
-    // Click node "Khác" → mở rộng xem toàn bộ tile nhỏ (thay vì im lặng như trước).
+    // Click node "Khác" → mở rộng xem toàn bộ tile nhỏ (regression guard).
     if (params?.data?.isOther) {
       setShowAllTiles(true);
       return;
     }
     const symbol = params?.data?.name || params?.name;
     if (!symbol) return;
-    handleNavigateToStock(symbol);
+    setSelectedDetail(params.data || { name: symbol });
+    setTrendPoints([]);
+    fetchTrendData(symbol);
   };
 
   if (loading) {
@@ -511,12 +521,12 @@ export function PortfolioHeatmap({
       // tranh nhau chỗ và các nút bị bóp, "Tỷ trọng"/"Vốn hóa"/"Mở rộng" gãy
       // xuống 2 dòng. Nay tiêu đề truncate trước, cụm nút `shrink-0` giữ
       // nguyên 1 dòng.
-      { className: "panel-head core-heatmap-header flex items-center justify-between gap-3 mb-1" },
+      { className: "panel-head core-heatmap-header flex flex-wrap items-center justify-between gap-3 mb-1" },
       e(
         "div",
         { className: "min-w-0 flex-1" },
         e("h3", { className: "panel-title text-base font-semibold text-slate-100" }, t("heatmap.title")),
-        e("p", { className: "mt-0.5 truncate text-[12px] font-medium text-slate-500 tabular-nums" },
+        e("p", { className: "mt-0.5 break-words text-[12px] font-medium text-slate-500 tabular-nums" },
           t("heatmap.scopeLine", { count: scopeCount, time: scopeUpdatedAt ? formatUpdateTime(scopeUpdatedAt) : "—" }) +
           (displayData.groupedCount > 0 && !showAllTiles ? ` ${t("heatmap.scopeGrouped", { grouped: displayData.groupedCount })}` : "") +
           capFallbackNotice)
@@ -650,7 +660,12 @@ export function PortfolioHeatmap({
     // Dialog overlay
     selectedDetail && e(
       "div",
-      { className: "absolute top-12 right-4 w-72 glass-strong rounded-2xl border border-slate-800 p-5 shadow-2xl z-50 text-left animate-fade-in" },
+      {
+        className: "absolute top-12 right-4 w-72 glass-strong rounded-2xl border border-slate-800 p-5 shadow-2xl z-50 text-left animate-fade-in",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": t("heatmap.title"),
+      },
       // Header: Symbol + % Change + Close
       e("div", { className: "flex items-start justify-between mb-1" },
         e("div", { className: "flex items-center gap-2" },

@@ -11,6 +11,7 @@ import { Search, Bell, LogOut, User, Settings } from 'lucide-react';
 import { isNewLayoutEnabled } from '@/lib/runtimeConfig';
 import { useCoreQuery } from '@/hooks/useCoreQuery.ts';
 import { useUrlValue, stringCodec } from '@/hooks/useUrlState';
+import { useRealtimeContext } from '@/context/RealtimeContext.js';
 import { coreApiAdapter } from '@/adapters/coreApiAdapter.js';
 
 interface UserIdentity {
@@ -28,6 +29,19 @@ const e = createElement;
 // P0-1 — gợi ý mã trên Header. Khai ở cấp module để không đổi identity mỗi render (L-F10).
 const SUGGEST_DEBOUNCE_MS = 200;
 const SUGGEST_LIMIT = 20;
+
+/** P2-5 — breadcrumb có nhãn, không để "dashboard" chữ thường. */
+function DashboardBreadcrumbLabel({ pathname }: { pathname: string }) {
+  const last = pathname.split('/').filter(Boolean).pop() || 'dashboard';
+  const LABELS: Record<string, string> = {
+    dashboard: 'Tổng quan',
+    'alert-center': 'Trung tâm cảnh báo',
+    stocks: 'Chi tiết mã',
+    portfolio: 'Danh mục',
+    settings: 'Cài đặt',
+  };
+  return LABELS[last] ?? last.charAt(0).toUpperCase() + last.slice(1);
+}
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -73,7 +87,11 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   const location = useLocation();
   const newLayout = isNewLayoutEnabled();
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const realtimeCtx = useRealtimeContext();
+  const feedStatus = String(realtimeCtx?.feed?.realtimeStatus || '');
+  const wsStatus: 'connecting' | 'connected' | 'disconnected' =
+    feedStatus === 'live' || feedStatus === 'connected' ? 'connected'
+      : feedStatus === 'disconnected' ? 'disconnected' : 'connecting';
   // WAVE 6 / NAV-1 — o tim ma o header chua dong bo URL: F5 mat noi dung dung.
   // Mac dinh giong het `useState` cu (`''`) va KHONG ghi ra URL.
   // `replace: true` — o input gắn thẳng `onChange`; neu push, moi KY TU tao
@@ -82,10 +100,6 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string }>>([]);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  useEffect(() => {
-    setWsStatus('connected');
-  }, []);
 
   // P0-1 / Q3 — gợi ý mã/tên công ty. Dùng adapter có sẵn (mock test đã khai).
   useEffect(() => {
@@ -260,13 +274,13 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           'VNInvest'
         ),
         e('span', { className: 'mx-1' }, '/'),
-        e('span', { className: 'text-slate-200 font-medium' }, location.pathname.split('/').pop() || 'Dashboard')
+        e('span', { className: 'text-slate-200 font-medium' }, e(DashboardBreadcrumbLabel, { pathname: location.pathname }))
       )
     ),
     // Center: Search Input
     e(
       'div',
-      { className: 'flex-1 max-w-md mx-8 hidden md:block relative' },
+      { className: 'flex-1 max-w-md mx-4 sm:mx-8 block relative min-w-[7rem]' },
       e(Search, { className: 'absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500' }),
       e(
         Input,
@@ -328,8 +342,8 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           className: 'bg-slate-800 border border-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:border-cyan-400 focus:outline-none cursor-pointer',
           'aria-label': t('common.language', { defaultValue: 'Language' })
         },
-        e('option', { value: 'vi' }, '🇻🇳 VI'),
-        e('option', { value: 'en' }, '🇺🇸 EN')
+        e('option', { value: 'vi' }, 'VI'),
+        e('option', { value: 'en' }, 'EN')
       ),
       // Notifications
       e(
@@ -344,8 +358,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
               variant: 'ghost',
               size: 'icon',
               className: 'relative',
-              'aria-label': t('layout.notifications', { defaultValue: 'Notifications' }),
-              onClick: () => navigate('/alert-center')
+              'aria-label': t('layout.notifications', { defaultValue: 'Notifications' })
             },
             e(Bell, { className: 'h-5 w-5' }),
             unseenCount > 0 && e(
@@ -360,7 +373,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           { align: 'end', className: 'w-80' },
           e(DropdownMenuLabel, null, t('layout.notifications', { defaultValue: 'Notifications' })),
           e(DropdownMenuSeparator, null),
-          e(DropdownMenuItem, { className: 'py-2 text-slate-400 text-center' }, 'No new notifications'),
+          e(DropdownMenuItem, { className: 'py-2 text-slate-400 text-center' }, t('layout.noNotifications', { defaultValue: 'Chưa có thông báo mới' })),
           e(DropdownMenuSeparator, null),
           e(DropdownMenuItem, { asChild: true, className: 'text-center' },
             e(Button, { variant: 'link', className: 'w-full justify-center', onClick: () => navigate('/alert-center') }, t('alertCenter.viewAlert'))

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext.js';
 import PaginationBar from '../shared/PaginationBar.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
@@ -106,10 +107,10 @@ export function CoreDashboardPositionDeck({
   const needsTechnicalsView = isTechnicalTab || isAITab;
 
   const tabs = [
-    { id: 'overview' as const, label: 'Tổng quan', icon: ClipboardList },
-    { id: 'technical' as const, label: 'Kỹ thuật', icon: BarChart3 },
-    { id: 'charts' as const, label: 'Biểu đồ', icon: BarChart3 },
-    { id: 'ai' as const, label: 'AI Bot', icon: Bot },
+    { id: 'overview' as const, label: t('dashboard.tabOverview'), icon: ClipboardList },
+    { id: 'technical' as const, label: t('dashboard.tabTechnical'), icon: BarChart3 },
+    { id: 'charts' as const, label: t('dashboard.tabCharts'), icon: BarChart3 },
+    { id: 'ai' as const, label: t('dashboard.tabAI'), icon: Bot },
   ];
 
   const symbolUniverse = useMemo(() => {
@@ -272,9 +273,9 @@ export function CoreDashboardPositionDeck({
   };
 
   const sourceBadgeLabel: Record<string, string> = {
-    holdings: 'Holding',
-    tracked: 'Tracked',
-    watchlist: 'Watchlist',
+    holdings: t('dashboard.sourceHolding'),
+    tracked: t('dashboard.sourceTracked'),
+    watchlist: t('dashboard.sourceWatchlist'),
   };
 
   return (
@@ -384,7 +385,13 @@ export function CoreDashboardPositionDeck({
                         onSelectSymbol?.(row.symbol);
                       }}>
                         <td className="px-3 py-2">
-                          <div className="font-bold text-slate-200">{row.symbol}</div>
+                          <Link
+                            to={`/stocks/${encodeURIComponent(row.symbol)}`}
+                            onClick={(ev) => ev.stopPropagation()}
+                            className="font-bold text-slate-200 hover:text-cyan-400 hover:underline"
+                          >
+                            {row.symbol}
+                          </Link>
                           <div className="text-[var(--fs-2xs)] text-slate-500">{row.company_name || '--'}</div>
                         </td>
                         <td className="px-3 py-2">
@@ -534,6 +541,7 @@ export function CoreDashboardPositionDeck({
             onRequestDigest={onRequestDigest as any}
             symbolScope={symbolScope}
             symbolOptions={symbolOptions as any}
+            t={t}
           />
         )}
       </div>

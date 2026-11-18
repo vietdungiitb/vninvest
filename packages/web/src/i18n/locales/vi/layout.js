@@ -17,6 +17,7 @@ export const layout = {
     logout: 'Đăng xuất',
     workspace: 'Không gian làm việc',
     notifications: 'Thông báo',
+    noNotifications: 'Chưa có thông báo mới',
     searchPlaceholder: 'Tìm mã cổ phiếu...',
     nav: {
       group: {
