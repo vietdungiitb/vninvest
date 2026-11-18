@@ -27,3 +27,34 @@ export const SYSTEM_GROUP_IDS = [
   "ngan-hang", "bat-dong-san", "thep-vat-lieu",
   "dau-khi", "cong-nghe", "ban-le-tieu-dung",
 ];
+
+/**
+ * Các `group_type` của nhóm THỊ TRƯỜNG (CachedSymbolGroup) — KHÔNG phải
+ * danh mục do user tạo (BE `stock_mgmt_native_views.py:3821`).
+ * Nguồn: `vnbroker_adapter.py:1430-1459` + `default_groups.py:98,137`.
+ * Dùng tiêu chí này thay vì slug vì có 29 nhóm nhưng SYSTEM_GROUP_IDS chỉ 14.
+ */
+const SYSTEM_GROUP_TYPES = new Set([
+  "SECTOR", "INDEX", "EXCHANGE", "ETF", "CW", "BOND", "DERIVATIVE", "MARKET_CAP",
+]);
+
+function slugifyGroup(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** True = nhóm hệ thống/thị trường (cần loại khỏi universe của user). */
+export function isSystemMarketGroup(group: Record<string, unknown> | null | undefined): boolean {
+  if (!group) return false;
+  const type = String(group.group_type ?? "").trim().toUpperCase();
+  if (SYSTEM_GROUP_TYPES.has(type)) return true;
+  // Fallback khi API thiếu group_type: slug theo cả id/name (bỏ dấu, gom separator).
+  return [group.id, group.group_id, group.slug, group.name, group.group_name]
+    .map(slugifyGroup)
+    .some((slug) => slug !== "" && SYSTEM_GROUP_IDS.includes(slug));
+}

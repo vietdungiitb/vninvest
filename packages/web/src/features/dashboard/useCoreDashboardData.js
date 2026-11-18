@@ -10,7 +10,16 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { SYSTEM_GROUP_IDS } from "../../constants/marketGroups";
+import { SYSTEM_GROUP_IDS, isSystemMarketGroup } from "../../constants/marketGroups";
+
+/**
+ * P0-fix — các group từ `/stock-management/groups/` là nhóm THỊ TRƯỜNG
+ * (CachedSymbolGroup), không phải danh mục user. Loại toàn bộ trước khi đưa
+ * vào state để heatmap/Position Deck/bulk technicals không nhận ~1833 mã.
+ */
+export function filterUserWatchlistGroups(groups) {
+  return (Array.isArray(groups) ? groups : []).filter((g) => !isSystemMarketGroup(g));
+}
 
 const EMPTY_ARRAY = [];
 
@@ -156,9 +165,9 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           return !SYSTEM_GROUP_IDS.includes(slug);
         });
 
-        // Keep ALL watchlistGroups (market groups) unfiltered
-        // so the heatmap can include symbols from all sectors/groups the user follows
-        const watchlistGroups = rawWatchlistGroups;
+        // Heatmap/Deck chỉ dùng mã user theo dõi. NHÓM THỊ TRƯỜNG (INDEX/SECTOR/
+        // EXCHANGE/...) bị loại — trước đây giữ tất cả ⇒ 1833 mã không thể theo dõi.
+        const watchlistGroups = filterUserWatchlistGroups(rawWatchlistGroups);
 
         // Phase 2 — bulk technicals CHAY ASYNC SAU first paint, KHONG await o critical path.
         // A-fix 2026-11-15: 10 chunk POST song song treo daphne event loop (BE kill task

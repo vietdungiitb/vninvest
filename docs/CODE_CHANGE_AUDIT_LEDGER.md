@@ -1,3 +1,14 @@
+## Entry 530: Heatmap scope — loại nhóm thị trường (1833 mã) khỏi universe của user
+
+- **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-heatmap-scope` -> `dev`. **Claim**: `dash-heatmap-scope` done.
+- **Trigger**: Owner gửi ảnh staging sau deploy wave 2: heatmap/subtitle `"1833 mã"` — không thể theo dõi.
+- **Root cause**: `getLegacyWatchlistGroups()` (`adapters/core/market.js:462-464`) trả `CachedSymbolGroup` — BE `stock_mgmt_native_views.py:3821` ghi rõ **KHÔNG phải danh mục do user tạo**. `useCoreDashboardData.js:159-161` giữ tất cả group; wave 2 (`DashboardPage.tsx:243-246`) đưa vào `heatmapSymbols` ⇒ 1833 mã vào heatmap + deck + bulk technicals.
+- **Fix**: `constants/marketGroups.ts` thêm `isSystemMarketGroup` lọc theo `group_type` hệ thống (`SECTOR|INDEX|EXCHANGE|ETF|CW|BOND|DERIVATIVE|MARKET_CAP`) + fallback slug bỏ dấu/gom separator; `useCoreDashboardData.js` thêm `filterUserWatchlistGroups` lọc trước `setState`. B3 NEED_REVISION (slug 14/29 nhóm) → amend → B4 PASS → B8 AGREE.
+- **TDD/VPS**: 5 RED → 5 GREEN; VPS **197 file / 1304 test · 5 fail SSE baseline**, build exit 0.
+- **Visual QA thật**: deploy branch lên staging + Playwright 1280×900, `--dash-chrome=296px`, triad bottom 813 / legend bottom 802 < 900, 5 pill wrap, search mobile, popover mở/Escape đóng. Ảnh: `docs/evidence/dashboard-uiux/dashboard-{scope-1280x900,popover,mobile}.png` — **đã mở kiểm chứng**, heatmap giờ **5 mã**. Chi tiết `gates-heatmap-scope.md`.
+- **Reservation B8 còn lại**: kênh `watchlists` (`useCoreDashboardData.js:163-166`) vẫn slug không bỏ dấu — follow-up riêng; test source-scan whitebox chưa assert bulk-technical payload.
+- **Lessons**: [L-001 L-002 L-V02 L-V03 L-V04 L-F10]. Không backend/migration/package.json.
+
 ## Entry 529: Dashboard wave 2 — dong toan bo 7 P1 + 5 P2 + Q4 popover Heatmap
 
 - **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-p1p2-uiux` -> `dev`. **Claim**: `dash-p1p2-uiux` done.
