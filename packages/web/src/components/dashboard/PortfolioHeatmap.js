@@ -21,17 +21,23 @@ const e = createElement;
 
 
 
-// S3.1 — Thang màu liên tục đối xứng kẹp ±7% (biên HOSE), 5 stops trầm đủ tối cho chữ trắng.
-// Quyết định: giữ nền trầm #2f3747 cho 0% để contrast ≥4.5:1 với chữ trắng; vàng #eab308 chỉ dùng làm viền tile 0% (không fill)
-// để tile 0% không nổi bật hơn cả tăng trần/giảm sàn. ECharts-only, không thêm d3.
+// S3.1 / P0-2 — Thang màu liên tục đối xứng kẹp ±7% (biên HOSE).
+// Owner Q1 (2026-11-18): 0% = VÀNG #eab308 (tham chiếu), dải Đỏ→Vàng→Xanh đơn điệu,
+// noData có màu riêng. Không thêm Tím/Xanh lơ trần-sàn (khác chuẩn Bloomberg VN).
 const HEAT_STOPS = [
   { at: -7, color: "#991b1b" },
-  { at: -3, color: "#7f1d1d" },
-  { at: 0, color: "#334155" },
-  { at: 3, color: "#166534" },
-  { at: 7, color: "#15803d" },
+  { at: -3, color: "#b91c1c" },
+  { at: 0, color: "#eab308" },
+  { at: 3, color: "#15803d" },
+  { at: 7, color: "#166534" },
 ];
-const HEAT_ZERO_BORDER = "#eab308";
+const HEAT_ZERO_BORDER = "#ca8a04";
+export const NO_DATA_COLOR = "#1e293b";
+
+/** SSOT cho gradient legend — tile và legend cùng đọc HEAT_STOPS, không hardcode CSS. */
+export function heatmapLegendGradient() {
+  return `linear-gradient(to right, ${HEAT_STOPS.map((s) => s.color).join(", ")})`;
+}
 
 function hexToRgb(hex) {
   const h = String(hex).replace("#", "");
@@ -80,6 +86,32 @@ export function luminance(hex) {
 // Giữ tên cũ cho tương thích test/call-site ngoài (nếu có): map về thang liên tục.
 export function getHeatColor(changePct) {
   return heatColorContinuous(changePct);
+}
+
+/**
+ * P0-5 / Owner Q2 — chế độ "Tỷ trọng" khi CHƯA có danh mục:
+ * fallback theo vốn hóa (marketCap) thay vì currentPrice * 100 (sai bản chất,
+ * làm thị giá đơn vị lấn át vốn hóa). `capFallback` để báo trên subtitle.
+ */
+export function resolveTileSize({
+  sizeMode,
+  quantity,
+  marketValue,
+  marketCap,
+  currentPrice,
+  actualHoldingCount,
+  totalHoldingValue,
+}) {
+  if (sizeMode === "marketCap") {
+    return { sizeValue: marketCap > 0 ? marketCap : 1, capFallback: false };
+  }
+  if (quantity > 0) {
+    return { sizeValue: marketValue, capFallback: false };
+  }
+  if (actualHoldingCount > 0) {
+    return { sizeValue: (totalHoldingValue / actualHoldingCount) * 0.3, capFallback: false };
+  }
+  return { sizeValue: marketCap > 0 ? marketCap : 1, capFallback: true };
 }
 
 // S3.3 — Label gating thresholds: 44×28 show T, 56×40 show pct (pure helper for tests)
@@ -176,6 +208,13 @@ export function PortfolioHeatmap({
   const chartData = useMemo(() => {
     if (!holdings || holdings.length === 0) return [];
 
+    const actualHoldings = holdings.filter((item) => Number(item?.quantity) > 0);
+    const totalHoldingValue = actualHoldings.reduce((sum, item) => {
+      const itemPrice = Number(quotesBySymbol?.[item.symbol]?.current_price || item.current_price || 0);
+      const itemQty = Number(item.quantity || 0);
+      return sum + itemPrice * itemQty;
+    }, 0);
+
     return holdings.map((h) => {
       const symbol = h?.symbol || "";
       const quote = quotesBySymbol?.[symbol] || {};
@@ -190,32 +229,19 @@ export function PortfolioHeatmap({
       const industry = h?.industry || quote?.industry || null;
       const volume = Number(quote?.volume || h?.volume || 0);
 
-      let sizeValue = 1;
-      if (sizeMode === "marketCap") {
-        sizeValue = marketCap > 0 ? marketCap : 1; // Fallback to 1 (was 1000B, distorted treemap)
-      } else {
-        if (quantity > 0) {
-          sizeValue = marketValue;
-        } else {
-          // Fallback weight for non-holdings to prevent squishing
-          const actualHoldings = holdings.filter(item => Number(item?.quantity) > 0);
-          if (actualHoldings.length > 0) {
-            const totalValue = actualHoldings.reduce((sum, item) => {
-              const itemPrice = Number(quotesBySymbol?.[item.symbol]?.current_price || item.current_price || 0);
-              const itemQty = Number(item.quantity || 0);
-              return sum + (itemPrice * itemQty);
-            }, 0);
-            const avgValue = totalValue / actualHoldings.length;
-            sizeValue = avgValue * 0.3; // 30% of average holding size
-          } else {
-            sizeValue = currentPrice * 100;
-          }
-        }
-      }
+      const { sizeValue, capFallback } = resolveTileSize({
+        sizeMode,
+        quantity,
+        marketValue,
+        marketCap,
+        currentPrice,
+        actualHoldingCount: actualHoldings.length,
+        totalHoldingValue,
+      });
 
-      const bg = heatColorContinuous(changePct);
-      const isZero = hasQuote && Number(changePct) === 0;
       const noData = !hasQuote;
+      const isZero = hasQuote && Number(changePct) === 0;
+      const bg = noData ? NO_DATA_COLOR : heatColorContinuous(changePct);
       return {
         name: symbol,
         value: Math.max(sizeValue, 1),
@@ -223,12 +249,13 @@ export function PortfolioHeatmap({
         noData,
         itemStyle: {
           color: bg,
-          // 0% dùng nền trầm #2f3747 + viền vàng #eab308 (không fill vàng) — S3.1/L6
+          // P0-2 — 0% giờ là VÀNG (fill), không phải nền xám + viền vàng.
           borderColor: noData ? "rgba(148,163,184,0.4)" : (isZero ? HEAT_ZERO_BORDER : "#0f172a"),
-          borderWidth: noData ? 1 : (isZero ? 1.5 : 0.5),
+          borderWidth: noData ? 1 : (isZero ? 1 : 0.5),
         },
-        labelColor: textOnHeat(bg),
-      label: { color: textOnHeat(bg) },
+        labelColor: noData ? "#94a3b8" : textOnHeat(bg),
+        label: { color: noData ? "#94a3b8" : textOnHeat(bg) },
+        capFallback,
         currentPrice,
         quantity,
         marketValue,
@@ -239,6 +266,11 @@ export function PortfolioHeatmap({
       };
     });
   }, [holdings, quotesBySymbol, sizeMode]);
+
+  // P0-5 / Q2 — báo khi đang fallback vốn hóa do chưa có vị thế thật.
+  const capFallbackNotice = chartData.some((d) => d.capFallback)
+    ? ` ${t("heatmap.sizeFallbackCap")}`
+    : "";
 
   const [showAllTiles, setShowAllTiles] = useState(false);
 
@@ -486,7 +518,8 @@ export function PortfolioHeatmap({
         e("h3", { className: "panel-title text-base font-semibold text-slate-100" }, t("heatmap.title")),
         e("p", { className: "mt-0.5 truncate text-[12px] font-medium text-slate-500 tabular-nums" },
           t("heatmap.scopeLine", { count: scopeCount, time: scopeUpdatedAt ? formatUpdateTime(scopeUpdatedAt) : "—" }) +
-          (displayData.groupedCount > 0 && !showAllTiles ? ` ${t("heatmap.scopeGrouped", { grouped: displayData.groupedCount })}` : ""))
+          (displayData.groupedCount > 0 && !showAllTiles ? ` ${t("heatmap.scopeGrouped", { grouped: displayData.groupedCount })}` : "") +
+          capFallbackNotice)
       ),
       e(
         "div",
@@ -606,7 +639,7 @@ export function PortfolioHeatmap({
       e("span", { className: "tabular-nums" }, t("heatmap.legendMin") !== "heatmap.legendMin" ? t("heatmap.legendMin") : "-7%"),
       e("div", {
         className: "heatmap-legend-bar h-1.5 flex-1 rounded-full",
-        style: { background: "linear-gradient(to right, #7f1d1d, #5b2228, #2f3747, #14532d, #166534)" },
+        style: { background: heatmapLegendGradient() },
         role: "img",
         title: t("heatmap.legendLabel"),
         "aria-label": t("heatmap.legendLabel"),

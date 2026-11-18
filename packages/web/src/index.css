@@ -758,14 +758,8 @@
     height: 6px;
     flex: 1;
     border-radius: 9999px;
-    background: linear-gradient(
-      to right,
-      #7f1d1d,
-      #5b2228,
-      #2f3747,
-      #14532d,
-      #166534
-    );
+    /* P0-2 — gradient được sinh từ HEAT_STOPS qua heatmapLegendGradient()
+       (inline style trên component). Không hardcode màu ở đây nữa. */
   }
 }
 

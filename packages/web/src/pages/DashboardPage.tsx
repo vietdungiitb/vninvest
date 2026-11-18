@@ -316,7 +316,8 @@ export function DashboardPage({
       return;
     }
     const firstTracked = (trackedSymbols || [])[0]?.symbol;
-    const firstUniverse = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, [])[0];
+    // P0-6 — helper trả CHUỖI nối bằng '|'; phải split trước khi lấy mã đầu tiên.
+    const firstUniverse = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, []).split('|')[0];
     const target = firstTracked || firstUniverse;
     if (target) {
       setSelectedSymbol(String(target).toUpperCase().trim());

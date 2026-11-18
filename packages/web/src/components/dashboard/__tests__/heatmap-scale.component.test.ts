@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { heatColorContinuous, textOnHeat, getHeatColor, groupTinyTiles, heatLabelGating, formatHeatmapLabel } from "../PortfolioHeatmap.js";
+import { heatColorContinuous, textOnHeat, getHeatColor, luminance, groupTinyTiles, heatLabelGating, formatHeatmapLabel, heatmapLegendGradient, NO_DATA_COLOR } from "../PortfolioHeatmap.js";
 
 describe("heatmap continuous scale (S3 — kẹp ±7%)", () => {
   it("-9.73 và -3.33 khác màu rõ (audit #25)", () => {
@@ -12,12 +12,27 @@ describe("heatmap continuous scale (S3 — kẹp ±7%)", () => {
     expect(heatColorContinuous(-20)).toBe(heatColorContinuous(-7));
     expect(heatColorContinuous(20)).toBe(heatColorContinuous(7));
   });
-  it("kẹp ±7 chính xác biên", () => {
+  it("kẹp ±7 chính xác biên (P0-2 / Q1 — dải Đỏ→Vàng→Xanh)", () => {
     expect(heatColorContinuous(-7)).toBe("#991b1b");
-    expect(heatColorContinuous(7)).toBe("#15803d");
+    expect(heatColorContinuous(7)).toBe("#166534");
   });
-  it("0% nền trầm #334155 (L6/S3.1 — vàng chỉ viền, không fill)", () => {
-    expect(heatColorContinuous(0)).toBe("#334155");
+  it("0% = VÀNG #eab308, chữ tối #0b0f17 (Owner Q1 2026-11-18)", () => {
+    expect(heatColorContinuous(0)).toBe("#eab308");
+    expect(textOnHeat("#eab308")).toBe("#0b0f17");
+  });
+  it("độ sáng đơn điệu: -7 < -3 < 0 và 0 > +3 > +7 (P0-2)", () => {
+    const l = (v: number) => luminance(heatColorContinuous(v));
+    expect(l(-7)).toBeLessThan(l(-3));
+    expect(l(-3)).toBeLessThan(l(0));
+    expect(l(0)).toBeGreaterThan(l(3));
+    expect(l(3)).toBeGreaterThan(l(7));
+  });
+  it("noData có màu riêng, KHÔNG trùng 0% (P0-2)", () => {
+    expect(NO_DATA_COLOR).toBe("#1e293b");
+    expect(NO_DATA_COLOR).not.toBe(heatColorContinuous(0));
+  });
+  it("legend gradient là SSOT từ HEAT_STOPS (P0-2)", () => {
+    expect(heatmapLegendGradient()).toBe("linear-gradient(to right, #991b1b, #b91c1c, #eab308, #15803d, #166534)");
   });
   it("đối xứng nội suy: ±3 khác nhau, cùng độ bão hòa họ", () => {
     expect(heatColorContinuous(3)).not.toBe(heatColorContinuous(-3));

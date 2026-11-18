@@ -25,6 +25,10 @@ interface UserIdentity {
 
 const e = createElement;
 
+// P0-1 — gợi ý mã trên Header. Khai ở cấp module để không đổi identity mỗi render (L-F10).
+const SUGGEST_DEBOUNCE_MS = 200;
+const SUGGEST_LIMIT = 20;
+
 interface HeaderProps {
   onMenuClick: () => void;
   sidebarCollapsed?: boolean;
@@ -75,15 +79,83 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   // `replace: true` — o input gắn thẳng `onChange`; neu push, moi KY TU tao
   // 1 history entry ⇒ nguoi dung phai bam Back hang chuc lan (loi that wave 4).
   const [searchVal, setSearchVal] = useUrlValue('q', stringCodec, '', { replace: true });
+  const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string }>>([]);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     setWsStatus('connected');
   }, []);
 
+  // P0-1 / Q3 — gợi ý mã/tên công ty. Dùng adapter có sẵn (mock test đã khai).
+  useEffect(() => {
+    const q = searchVal.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setActiveIdx(-1);
+      setShowSuggestions(false);
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(() => {
+      const adapter = coreApiAdapter as unknown as {
+        getSymbolList: (p: { q: string; limit: number }) => Promise<{
+          results?: Array<{ symbol?: string; code?: string; name?: string; company_name?: string }>;
+        }>;
+      };
+      adapter.getSymbolList({ q, limit: SUGGEST_LIMIT })
+        .then((payload) => {
+          if (!active) return;
+          const rows = payload?.results ?? [];
+          const list = (Array.isArray(rows) ? rows : [])
+            .map((s) => ({
+              symbol: String(s?.symbol ?? s?.code ?? '').toUpperCase(),
+              name: String(s?.name ?? s?.company_name ?? ''),
+            }))
+            .filter((s) => s.symbol);
+          setSuggestions(list);
+          setActiveIdx(-1);
+          setShowSuggestions(list.length > 0);
+        })
+        .catch(() => {
+          if (!active) return;
+          setSuggestions([]);
+          setShowSuggestions(false);
+        });
+    }, SUGGEST_DEBOUNCE_MS);
+    return () => { active = false; clearTimeout(timer); };
+  }, [searchVal]);
+
+  const goToSymbol = (raw: string) => {
+    const sym = String(raw || '').trim().toUpperCase();
+    if (!sym) return;
+    // P0-1 — navigate DUY NHẤT trong tick này. KHÔNG gọi setSearchVal(''):
+    // setter dùng useSearchParams.navigate tương đối pathname cũ (/dashboard)
+    // nên sẽ ghi đè và nuốt điều hướng. `search: ''` tự xoá ?q= trên URL mới.
+    navigate({ pathname: `/stocks/${sym}`, search: '' });
+    setSuggestions([]);
+    setActiveIdx(-1);
+    setShowSuggestions(false);
+  };
+
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchVal.trim()) {
-      navigate(`/stocks/${searchVal.trim().toUpperCase()}`);
-      setSearchVal('');
+    if (e.key === 'ArrowDown' && showSuggestions && suggestions.length) {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % suggestions.length);
+      return;
+    }
+    if (e.key === 'ArrowUp' && showSuggestions && suggestions.length) {
+      e.preventDefault();
+      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+      return;
+    }
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      return;
+    }
+    if (e.key === 'Enter') {
+      const chosen = showSuggestions && activeIdx >= 0 ? suggestions[activeIdx]?.symbol : undefined;
+      goToSymbol(chosen || searchVal.trim());
     }
   };
 
@@ -207,7 +279,31 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSearchVal(e.target.value),
           onKeyDown: handleSearchKeyDown
         }
-      )
+      ),
+      showSuggestions && suggestions.length > 0 &&
+        e(
+          'ul',
+          {
+            className: 'absolute z-50 left-0 right-0 top-full mt-1 max-h-64 overflow-auto rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl',
+            role: 'listbox',
+          },
+          ...suggestions.map((s, i) =>
+            e(
+              'li',
+              { key: s.symbol, role: 'option', 'aria-selected': i === activeIdx },
+              e(
+                'button',
+                {
+                  type: 'button',
+                  className: `w-full px-3 py-2 text-left text-sm ${i === activeIdx ? 'bg-cyan-500/15 text-cyan-300' : 'text-slate-200 hover:bg-slate-800'}`,
+                  onMouseDown: (ev: React.MouseEvent) => ev.preventDefault(),
+                  onClick: () => goToSymbol(s.symbol),
+                },
+                `${s.symbol} — ${s.name}`
+              )
+            )
+          )
+        )
     ),
     // Right: Status indicators
     e(

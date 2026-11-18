@@ -6,6 +6,7 @@ import {
   formatSessionDate,
   formatVnd,
   isDuplicateSummary,
+  formatAlertMetric,
 } from "../../utils/alertCenterFormat.js";
 
 interface WhaleDetail {
@@ -220,7 +221,14 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div className={`${soc.signalVolume}`} style={{ fontSize: "0.82rem", fontWeight: 700 }}>
-            {formatAlertValue(alert.value ?? (alert as any).matched_value)} {t("alertCenter.currency")}
+            {(() => {
+              const family = String((alert as any).alert_family ?? (alert as any).alert_type ?? "").toLowerCase();
+              const hasPct = (alert as any)?.metadata?.price_change_pct != null;
+              if (family === "price_shock" || hasPct) {
+                return formatAlertMetric(alert as any, { compact: formatVnd, full: formatVnd }).text;
+              }
+              return `${formatAlertValue(alert.value ?? (alert as any).matched_value)} ${t("alertCenter.currency")}`;
+            })()}
           </div>
           <div className={`${soc.signalLabel} ${directionClass}`.trim()} style={{ display: "inline-block" }}>
             {directionArrow} {directionLabel(alert.direction, t)}

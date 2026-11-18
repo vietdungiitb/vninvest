@@ -18,7 +18,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter, useNavigationType, useSearchParams } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 
 /**
  * MOCKS REQUIRED (the other 5 imports are real):
@@ -32,13 +32,14 @@ const h = vi.hoisted(() => ({
   useI18n: vi.fn(),
   useCoreQuery: vi.fn(),
   getAlertCenterSummary: vi.fn(),
+  getSymbolList: vi.fn(),
 }));
 
 vi.mock("@/context/PortfolioContext.js", () => ({ usePortfolio: h.usePortfolio }));
 vi.mock("@/context/LangContext.js", () => ({ useI18n: h.useI18n }));
 vi.mock("@/hooks/useCoreQuery.ts", () => ({ useCoreQuery: h.useCoreQuery }));
 vi.mock("@/adapters/coreApiAdapter.js", () => ({
-  coreApiAdapter: { getAlertCenterSummary: h.getAlertCenterSummary },
+  coreApiAdapter: { getAlertCenterSummary: h.getAlertCenterSummary, getSymbolList: h.getSymbolList },
 }));
 
 import { Header } from "../Header";
@@ -64,6 +65,14 @@ function NavTypeProbe() {
   return <div data-testid="navType">{useNavigationType()}</div>;
 }
 
+function LocationProbe() {
+  return <div data-testid="pathname">{useLocation().pathname}</div>;
+}
+
+function currentPath(): string {
+  return screen.getByTestId("pathname").textContent || "";
+}
+
 function currentSearch(): string {
   return screen.getByTestId("search").textContent || "";
 }
@@ -79,6 +88,7 @@ function renderHeader(search: string) {
     <MemoryRouter initialEntries={[`/${search}`]}>
       <SearchProbe />
       <NavTypeProbe />
+      <LocationProbe />
       <Header onMenuClick={vi.fn()} />
     </MemoryRouter>,
   );
@@ -94,6 +104,8 @@ describe("WAVE 10C / NAV-1 — Header o tim ma dong bo hai chieu voi URL", () =>
     h.useI18n.mockReset();
     h.useCoreQuery.mockReset();
     h.getAlertCenterSummary.mockReset();
+    h.getSymbolList.mockReset();
+    h.getSymbolList.mockResolvedValue({ results: [{ symbol: "VCB", name: "Ngân hàng TMCP Công thương Việt Nam" }] });
 
     h.usePortfolio.mockReturnValue({
       userIdentity: { id: 42, username: "nam", email: "nam@example.com", isStaff: false, isSuperuser: false },
@@ -164,13 +176,31 @@ describe("WAVE 10C / NAV-1 — Header o tim ma dong bo hai chieu voi URL", () =>
     expect(currentNavType()).toBe("REPLACE");
   });
 
-  // Enter navigates AND clears — the clear must propagate back to the URL.
-  it("AC-B''' — bam Enter: dieu huong va xoa q khoi URL", async () => {
+  // P0-1 — Enter must actually REACH /stocks/:symbol. The old test only checked
+  // that `q` was cleared, so the setSearchVal('') override swallowed the
+  // navigation while the test stayed green.
+  it("AC-B''' — bam Enter: dieu huong TAI /stocks/:symbol va xoa q", async () => {
     renderHeader("?q=vcb");
 
     expect(searchInput().value).toBe("vcb");
     fireEvent.keyDown(searchInput(), { key: "Enter" });
 
-    await waitFor(() => expect(currentSearch()).toBe(""));
+    await waitFor(() => expect(currentPath()).toBe("/stocks/VCB"));
+    expect(currentSearch()).toBe("");
+  });
+
+  // P0-1 / Q3 — autocomplete dropdown: arrow-down then Enter opens the
+  // highlighted suggestion, not the raw text typed in the box.
+  it("AC-B'''' — go 2 ky tu: dropdown goi y; ArrowDown + Enter mo ma duoc chon", async () => {
+    h.getSymbolList.mockResolvedValueOnce({ results: [{ symbol: "FPT", name: "FPT Corporation" }] });
+    renderHeader("");
+
+    fireEvent.change(searchInput(), { target: { value: "FP" } });
+    await waitFor(() => expect(screen.getByRole("option", { name: /FPT/ })).toBeTruthy());
+
+    fireEvent.keyDown(searchInput(), { key: "ArrowDown" });
+    fireEvent.keyDown(searchInput(), { key: "Enter" });
+
+    await waitFor(() => expect(currentPath()).toBe("/stocks/FPT"));
   });
 });
