@@ -1,3 +1,17 @@
+## Entry 529: Dashboard wave 2 — dong toan bo 7 P1 + 5 P2 + Q4 popover Heatmap
+
+- **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-p1p2-uiux` -> `dev`. **Claim**: `dash-p1p2-uiux` done.
+- **Owner**: chot lam toan bo P1+P2 (khong chi P0). Plan `docs/PLAN_DASHBOARD_P1P2_20261118.md`; B3 NEED_REVISION (5 objection) -> B4 AGREE (3 reservation) -> B8 AGREE (0 blocker/major code).
+- **A (alert)**: `.seg` wrap 5 pill; bodyText chi summary (khong lap title, `line-clamp-2`); SPA `<Link>` + du 4 prop `readAlertIds`/`unreadCount`/`markAlertAsRead`/`muteSymbolFor30m` (wrapper scalar->object qua `useAlertCenterActions`).
+- **B (heatmap)**: header wrap, subtitle khong truncate; dinh nghia `--dash-chrome` (con 296px la uoc luong, CHUA do runtime); **Q4 kich hoat popover** sparkline 24h + Escape/dialog; sunburst tooltip nhanh `isOther`; `resizeEChart` goi `getEchartsInstance().resize()`.
+- **C (header)**: Bell khong navigate tren trigger + i18n `noNotifications`; status lay `useRealtimeContext().feed.realtimeStatus` (export them `.js` + `.d.ts`, KHONG register consumer); breadcrumb co nhan, bo emoji co, search hien mobile; SmartStatsHeader `top-[4.5rem] z-20`.
+- **D (AI/deck)**: bo flash alert khong-AI + nut disabled chet (+ dọn key i18n); 4 tab/3 badge qua `t`, truyen `t` vao `AIAdvisorDeckPanel`, ma CK link `/stocks/:symbol`.
+- **E (page)**: `calculateBreadth` uu tien `change_pct` (`change_value=0` khong dem nham flat); `watchlistGroups` vao heatmap + deck; `formatRealtimeStatus` dich enum; giu 2 hook realtime (co chu dich khac nhau).
+- **TDD**: 14 RED -> xanh; local 18/18 + 25/25. VPS full suite **196 file / 1299 test / 5 fail baseline SSE** (0 hoi quy) + build exit 0. Chi tiet: `docs/evidence/dashboard-uiux/gates-p1p2.md`.
+- **2 regression router da dong**: `c2a06706d` 15 test nổ do `<Link>` ngoai `<Router>` -> `261d7ef2a` bridge `useInRouterContext` (lan 2 sau `useNavigate` o Entry 528); da cap nhat checklist L-V04.
+- **CHUA CHAY**: visual QA/screenshot (can de xac nhan `--dash-chrome` that), E2E, a11y runtime, jest `npm run test`.
+- **Lessons**: [L-001 L-002 L-003 L-008 L-M02 L-A01 L-F03 L-F08 L-F09 L-F10 L-F12 L-V01 L-V02 L-V03 L-V04].
+
 ## Entry 528: Dashboard UI/UX 6 P0 — Header Enter+autocomplete, Heatmap Đỏ→Vàng→Xanh, price_shock %, CTA routes, marketCap fallback, first-symbol
 
 - **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-p0-uiux` -> `dev`. **Claim**: `dash-p0-uiux` done.
