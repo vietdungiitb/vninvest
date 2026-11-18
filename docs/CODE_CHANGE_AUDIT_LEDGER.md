@@ -1,3 +1,19 @@
+## Entry 528: Dashboard UI/UX 6 P0 — Header Enter+autocomplete, Heatmap Đỏ→Vàng→Xanh, price_shock %, CTA routes, marketCap fallback, first-symbol
+
+- **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-p0-uiux` -> `dev`. **Claim**: `dash-p0-uiux` done.
+- **Nguồn**: audit đối chiếu ảnh chụp/code `docs/evidence/dashboard-uiux/AUDIT_20261118.md`; plan `docs/PLAN_DASHBOARD_P0_20261118.md`; B3 `AUDIT_PLAN_B3.md` (NEED_REVISION x3 → B4 AGREE); B8 `REAUDIT_B8.md` (AGREE, 0 blocker).
+- **Owner decisions**: Q1 kẹp ±7% + 0% vàng `#eab308`; Q2 fallback vốn hóa; Q3 sửa Enter + autocomplete; Q4 kích hoạt popover (defer wave P2); Q5 scope P0-only.
+- **S1** `Header.tsx`: `navigate({pathname, search:''})` thay `navigate()+setSearchVal('')` (hết nuốt điều hướng); dropdown gợi ý qua `coreApiAdapter.getSymbolList` (debounce module-scope, Arrow/Enter/Escape, `role=listbox/option`); mock test mở rộng + `LocationProbe` assert pathname.
+- **S2** `PortfolioHeatmap.js`: `HEAT_STOPS` 5 mốc đơn điệu (0% = `#eab308`), `NO_DATA_COLOR`, `heatmapLegendGradient()` làm SSOT cho legend (inline style, `index.css` bỏ gradient cũ), i18n `≤/≥` vi+en.
+- **S3** `utils/alertCenterFormat.ts`: `formatAlertMetric` phân biệt `price_shock` (% có dấu) vs family VND; dùng ở `UnifiedAlertCenter.js` + `AlertCard.tsx` (không cộng `VND` sau `₫`).
+- **S4** `SmartStatsHeader.js`: 2 CTA navigate `/portfolios/manage` và `/broker`, bỏ `onRefresh` giả.
+- **S5** `resolveTileSize()` fallback `marketCap` khi chưa có holdings + subtitle notice + key `sizeFallbackCap` 2 locale.
+- **S6** `DashboardPage.tsx:320`: `.split('|')[0]` (helper trả chuỗi, contract giữ nguyên).
+- **TDD**: 16 RED → 35 GREEN (6 file test); regression `AlertCard` + `dashboard_lifecycle` 7 pass.
+- **Gates**: tsc 0 · lint 0 errors/4629 warn · check:tokens PASS · i18n scan 0 · i18n-hardcoded 0 (gate chỉ quét 5 path) · check-multi-agent PASS · `pwsh scripts/agent-sync.ps1` build OK. Chi tiết + danh sách CHƯA CHẠY: `docs/evidence/dashboard-uiux/gates.md`.
+- **CHƯA CHẠY**: full FE suite/build riêng trên VPS staging, visual QA (đổi màu Heatmap), E2E, a11y runtime, pre-push gate riêng.
+- **Lessons**: [L-001 L-002 L-003 L-008 L-M02 L-A01 L-F03 L-F08 L-F09 L-F10 L-V01 L-V02 L-V03 L-V04].
+
 ## Entry 527: Dong goi C1-C7 + REQ-VN-01..06 (xoa public_urls.py chet, dong nhat PAT scope C2/C6/C7, docstring C3/C4/C5, bang E3/E4)
 
 - **Date**: 2026-11-18. **Type**: code + docs + test (BE). **Branch**: `feat/req-vn-c1-c7-20261118` -> `dev`. **Claim**: `req-vn-c1-c7-20261118` done.
