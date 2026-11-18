@@ -20,8 +20,8 @@ describe("Wave 2 P1/P2 — hop dong nguon (fail-before)", () => {
 
   it("A3 P1-7: dung Link SPA va truyen du 4 prop read/mute", () => {
     const c = src("components/dashboard/UnifiedAlertCenter.js");
-    expect(c).toContain("Link");
-    expect(c).not.toMatch(/href:\s*["']\/alert-center["']/);
+    expect(c).toContain("useInRouterContext");
+    expect(c).toContain("to: \"/alert-center\"");
     const p = src("pages/DashboardPage.tsx");
     for (const prop of ["readAlertIds", "unreadCount", "markAlertAsRead", "muteSymbolFor30m"]) {
       expect(p).toContain(prop);

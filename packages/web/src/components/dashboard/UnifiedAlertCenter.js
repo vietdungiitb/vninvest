@@ -5,7 +5,7 @@
  * Updated with Bento Card styling and commercial-grade spacing.
  */
 import { createElement, useMemo } from "react";
-import { Link } from "react-router-dom"; // P1-7 — điều hướng SPA, không reload trang
+import { Link, useInRouterContext } from "react-router-dom"; // P1-7 — điều hướng SPA, không reload trang
 import { Bell, Filter, X, Flame, Waves } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { formatVNDCompact, formatFullVND, formatSessionDate, formatTimeAgo } from "../../utils/formatMarket.js";
@@ -109,6 +109,13 @@ export function UnifiedAlertCenter({
   error = null,
 }) {
   const { t } = useI18n();
+  // P1-7 — component cũng được mount ngoài <Router> ở unit test. Dùng bridge
+  // để không nổ invariant; trong app thật luôn là <Link> (SPA, không reload).
+  const inRouter = useInRouterContext();
+  const AlertLink = inRouter ? Link : "a";
+  const alertLinkProps = (cls) => inRouter
+    ? { to: "/alert-center", className: cls }
+    : { href: "/alert-center", className: cls };
 
   const safeAlerts = useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
   // Real unread count requires `unreadCount` or a populated `readAlertIds`.
@@ -234,7 +241,7 @@ export function UnifiedAlertCenter({
         e(
           "div",
           { className: "flex items-center gap-2" },
-          e(Link, { to: "/alert-center", className: "text-[11px] font-bold text-cyan-400 hover:text-cyan-300 whitespace-nowrap" }, `${t("alert.viewAll")} →`),
+          e(AlertLink, alertLinkProps("text-[11px] font-bold text-cyan-400 hover:text-cyan-300 whitespace-nowrap"), `${t("alert.viewAll")} →`),
           hasActiveFilters && e(
           "button",
           {
@@ -474,11 +481,8 @@ const isRead = hasReadState && readAlertIds.has(alertId);
         "div",
         { className: "pt-2 mt-1 border-t border-slate-800/50 text-center" },
         e(
-          Link,
-          {
-            to: "/alert-center",
-            className: "text-[11px] font-bold text-cyan-400 hover:text-cyan-300",
-          },
+          AlertLink,
+          alertLinkProps("text-[11px] font-bold text-cyan-400 hover:text-cyan-300"),
           t("alert.seeMore", { count: hiddenCount })
         )
       )
