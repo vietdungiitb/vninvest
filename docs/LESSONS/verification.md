@@ -82,6 +82,7 @@ mới phát hiện được.
   - [ ] Đã kiểm status code **không phải 404/403/500** trước khi kết luận endpoint chạy?
   - [ ] Đã có test **dương tính** chứng minh cơ chế *vẫn dùng* khi cấu hình hợp lệ không? (thiếu thì "luôn không làm gì cả" cũng xanh)
   - [ ] Khi thấy 2+ test ghim hành vi cũ **đỏ** sau khi mình đổi code → cân nhắc mình đang **đổi nghĩa** một field đã có hợp đồng, **không** phải test sai. Đọc lại tên field + comment trước khi sửa test.
+  - [ ] Sau khi thêm hook cần context (`useNavigate`, `useSearchParams`) vào component dùng ở nhiều nơi: đã chạy **FULL component suite trên VPS** chưa? Test mới tự mock router sẽ xanh dù component nổ `invariant` ở 5 test cũ mount ngoài `<Router>` (Proof: Entry 528, commit `2927ced2a` — targeted 35 xanh, full suite 10 fail). C2 đang đầy 60/60 nên ghi vào checklist entry này thay vì tạo lesson mới.
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 369 §"XANH GIẢ vì URL sai"; `docs/evidence/ai-cc/r42-gates.md` §"Bẫy thật".
 
 ## L-V05: Bằng chứng ảnh/screenshot — exit 0 KHÔNG chứng minh được gì, phải mở ảnh ra xem
