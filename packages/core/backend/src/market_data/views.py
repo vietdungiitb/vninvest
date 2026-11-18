@@ -425,12 +425,13 @@ class IntradayPricesView(APIView):
 )
 class IntradayTapeView(APIView):
     """
-    GET /core/v1/market-data/intraday-tape/{symbol}/
+    GET /core/v1/market-data/intraday-tape/{symbol}/ — Canonical intraday trade-tape endpoint.
 
-    Phase 2: Query native IntradayTick model with Redis cache (5 min TTL).
+    Queries IntradayTick directly in DB and returns the standard `{data, meta}` envelope
+    with `ts` (ISO-8601) and `match_type` fields. Replaces legacy flat `RealtimeIntradayView`.
 
     Query params:
-        page_size: int  (default: 50)
+        page_size: int  (default: 50, max: 200)
     """
     permission_classes = [permissions.IsAuthenticated]
 

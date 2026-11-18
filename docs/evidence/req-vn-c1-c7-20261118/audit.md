@@ -38,4 +38,18 @@
 
 ## 3. B8 — Re-audit Implementation độc lập
 
-*(Chờ cập nhật sau bước B7)*
+### Round 1
+- **Auditor:** Subagent độc lập read-only (`1b579834-7bb9-4a5d-8c51-2982c7bbb95c`)
+- **Verdict Round 1:** `NEED_REVISION` (0 lỗi ở `src/**` và `test_req_vn_c1_c7.py`; 1 Major + 1 Minor ở `docs/`)
+- **Findings & Xử lý:**
+  1. **`[MAJOR] F-B8-01`** — `docs/CLAIMS.md:1985` trong commit `657a7f42a` bị dính ký tự điều khiển `\x0c` (`\x0ceat/...`) và mất backtick/ký tự `r` do escape PowerShell (`node -e "..."`). → **ĐÃ SỬA**: viết lại dòng `1985` bằng script `.mjs` thuần UTF-8 không qua shell interpolation (đồng thời chuyển `done`), kiểm chứng lại byte-level **0 control char** (`< 0x20` trừ `\n`).
+  2. **`[MINOR] F-B8-02`** — Lệch `+1` dòng sau edit tại `docs/BACKEND_RESPONSE_REQ_VN_01_06_2026-11-18.md:47` (`IndexConstituentsView`: `511-558`, `:517`, `:530-531`, `:547-551`; và `:16` `ws_ticket.py:1-7`) và `docs/BACKEND_VNINVEST_ENTERPRISE_DEMO_SPEC_2026-11-12.md:97` (`StockManagementFinancialsView`: `:3373,3404`). → **ĐÃ SỬA**.
+- **Lưu ý báo cáo trung thực (`L-V01` / `L-V09`):**
+  - `check-openapi-schema-budget.py`: exit 1 FAIL so với baseline JSON (`32/8`) là pre-existing trên `dev @ 20d0a98c7` (`Errors=56/14, Warnings=125/123` khớp hệt 2 bên → 0 hồi quy).
+  - `check-envelope-contract.py`: `signal_intelligence` `0 UNWRAPPED` (OK); `market_data:553` & `identity_access:40` là pre-existing.
+  - Full BE suite (`manage.py test --noinput` toàn bộ): **CHƯA CHẠY**; đã chạy `manage.py check` (0 issues) + 18 suites tác động trực tiếp (`212/213 PASS`, 1 FAIL pre-existing `test_stock_management_technicals_bulk_returns_compatible_technical_payload` khớp hệt `dev @ 20d0a98c7`).
+
+### Round 2
+- **Auditor:** Subagent độc lập read-only (`1b579834-7bb9-4a5d-8c51-2982c7bbb95c`)
+- **Verdict Round 2:** **`AGREE` (`PASS`)** — **0 Blocker / 0 Major / 0 Minor**
+- **Xác minh:** `F-B8-01` (`docs/CLAIMS.md:1985` **0 control char**, đúng tên/nhánh/`done`), `F-B8-02` (`BACKEND_RESPONSE:16,47` và `DEMO_SPEC:97` khớp line hậu chỉnh sửa), `Entry 527` trung thực, 14/14 file đúng Scope §4, toàn bộ local gates (`check-multi-agent`, `check-ledger-entry`, `check-lessons`, `scan-secrets`, `normalize-eol`) exit `0`. (Nit `:2189` → `:2187-2188` trong `Entry 527` đã sửa đồng thời.)

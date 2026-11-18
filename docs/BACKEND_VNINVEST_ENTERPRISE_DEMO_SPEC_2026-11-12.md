@@ -94,7 +94,7 @@
 
 ### B-4 — Fundamentals: contract ổn định · effort M
 
-**Hiện trạng:** `GET /core/v1/stock-management/stocks/<symbol>/financials/` (`market_data/core_urls.py:73`; mount thứ 2 ở `market_data/public_urls.py:75`) → `StockManagementFinancialsView` (`market_data/stock_mgmt_native_views.py:3286-3313`) → `get_company_financials_response` (`market_data/vnbroker_adapter.py:1323`) → `fetch_company_financials` (`:1215`) với **cứng `period='quarter'`** cho cả 3 bảng: ratio (`:1226`), income (`:1239`), balance (`:1252`); **không có cash_flow** (grep `cash_flow|cashflow` 0 hit).
+**Hiện trạng:** `GET /core/v1/stock-management/stocks/<symbol>/financials/` (`market_data/core_urls.py:73`; file chết `market_data/public_urls.py` không được include đã xoá 2026-11-18 theo C1/REQ-VN-01) → `StockManagementFinancialsView` (`market_data/stock_mgmt_native_views.py:3373,3404`) → `get_company_financials_response` (`market_data/vnbroker_adapter.py:1374`) → `fetch_company_financials` (`:1215`) hiện nhận `period=quarter|year` và luôn trả `cash_flow: None` (hoặc 400 `INVALID_PERIOD` / `FINANCIALS_YEAR_UNAVAILABLE`).
 ⇒ Client phải thử nhiều tên khả năng (`market_data/screener_helpers.py:331-360`) ⇒ **không bind chắc chắn**; đây là lý do widget chưa mở `fundamentals_full`.
 
 > **Không cần tạo model `StockFundamental`** — đã bị remove ở `market_data/migrations/0006_remove_stockfundamental.py` (migration `0005_add_stock_fundamental.py` là lịch sử). **Đừng làm theo EP-4 cũ trong spec 09-28** ở phần "model StockFundamental".

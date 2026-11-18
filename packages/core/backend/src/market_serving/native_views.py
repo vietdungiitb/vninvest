@@ -189,7 +189,7 @@ def _serialize_intraday_tick(tick: IntradayTick) -> dict:
     },
 )
 class RealtimeIntradayView(APIView):
-    """GET /api/realtime/intraday/<symbol>/ — intraday matched trades from shared DB."""
+    """GET /core/v1/realtime/intraday/<symbol>/ — [LEGACY/COMPAT] flat intraday trades (bars=trades). Canonical endpoint: GET /core/v1/market-data/intraday-tape/<symbol>/ (IntradayTapeView, envelope with match_type/ts)."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):

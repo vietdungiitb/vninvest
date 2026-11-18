@@ -20,7 +20,7 @@ class WsTicketResponseSerializer(serializers.Serializer):
 
 
 class WsTicketView(APIView):
-    """Cap ticket WS single-use 60s cho user/PAT da xac thuc."""
+    """Cap ticket WS/SSE single-use 60s cho human session da xac thuc (machine PAT -> 403 via require_human_session)."""
 
     permission_classes = [permissions.IsAuthenticated]
 
