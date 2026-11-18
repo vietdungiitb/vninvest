@@ -7,7 +7,6 @@ export const aiAdvisor = {
       initialLoading: 'Đang phân tích dữ liệu dòng tiền và RSI...',
       empty: 'Chưa ghi nhận tín hiệu cảnh báo AI nào trong phiên hiện tại.',
       emptyTitle: 'Chưa có tín hiệu trong phiên này',
-    viewPrevSession: 'Xem tín hiệu phiên trước',
     rescan: 'Quét lại',
     lastScan: 'Lần quét gần nhất {time} · {count} tín hiệu',
       noScan: 'Chưa có lượt quét',

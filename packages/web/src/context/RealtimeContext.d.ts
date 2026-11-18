@@ -25,4 +25,7 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 export function RealtimeProvider({ children }: { children: ReactNode }): JSX.Element;
 
+/** P1-5 — đọc context có sẵn, KHÔNG register consumer mới. */
+export function useRealtimeContext(): RealtimeContextValue | null;
+
 export function useRealtimeFeedFromManager({ symbols, pollInterval, maxAlerts }: { symbols: string[]; pollInterval?: number; maxAlerts?: number }): RealtimeFeed | null;

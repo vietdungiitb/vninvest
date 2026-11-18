@@ -112,7 +112,7 @@ function SmartStatsHeaderView({
 
   return e(
     "div",
-    { className: "smart-stats-header sticky top-0 z-30 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-6 py-2 " + className },
+    { className: "smart-stats-header sticky top-[4.5rem] z-20 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-6 py-2 " + className },
     e(
       "div",
       { className: "mx-auto flex w-full max-w-[1800px] items-center justify-between gap-6" },

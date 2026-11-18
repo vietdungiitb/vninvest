@@ -451,6 +451,14 @@
       BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
       ========================================================================== */
 
+  /* P1-4 — chiều cao "chrome" phía trên triad (Header 72px + heading + KPI bar
+     + gap/padding). Con số này từng nằm trong comment nhưng KHÔNG được định
+     nghĩa ⇒ fallback 320px luôn có hiệu lực. Giá trị dưới đây cập nhật theo
+     layout hiện tại; cần đối chiếu computed style trên staging (visual QA). */
+  .core-dashboard-page {
+    --dash-chrome: 296px;
+  }
+
   /* S4.1+S4.2 — Triad lane single card layer, content-sized height, responsive grid */
   .dashboard-triad-lane {
     background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
@@ -466,7 +474,7 @@
        past max-height. */
     height: auto;
     min-height: 360px;
-    max-height: 720px;
+    max-height: min(720px, calc(100dvh - var(--dash-chrome)));
     min-width: 0;
     overflow: hidden;
     display: flex;
@@ -615,15 +623,12 @@
 
   /* Dashboard audit fix — segmented 1 hàng cuộn ngang (audit #14) */
   .seg {
+    /* P1-1 — wrap thay vì cuộn ẩn: 5 pill severity luôn nhìn thấy,
+       không còn "Cao (7" bị cắt và 2 pill bị che ở lane hẹp. */
     display: inline-flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
     gap: 4px;
-    scrollbar-width: none;
     max-width: 100%;
-  }
-  .seg::-webkit-scrollbar {
-    display: none;
   }
 
   /* S4.2+S4.4 — Scroll delegation: lane overflow hidden, panel-body flex:1 scroll + mask fade */

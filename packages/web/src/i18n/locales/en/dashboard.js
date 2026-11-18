@@ -18,4 +18,11 @@ export const dashboard = {
     thousandVndUnitShort: 'thousand VND',
     holdings: 'Current holdings',
     chartsComingSoon: 'Multi-symbol charts (VNInvestMultiCharts) — coming in a future update.',
+    tabOverview: 'Overview',
+    tabTechnical: 'Technical',
+    tabCharts: 'Charts',
+    tabAI: 'AI Bot',
+    sourceHolding: 'Holding',
+    sourceTracked: 'Tracked',
+    sourceWatchlist: 'Watchlist',
   };

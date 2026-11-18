@@ -21,4 +21,11 @@ export const dashboard = {
     holdings: 'Vị thế đang nắm giữ',
     breadthLabel: 'Độ rộng danh mục',
     chartsComingSoon: 'Biểu đồ đa mã (VNInvestMultiCharts) — áp dụng trong tương lai.',
+    tabOverview: 'Tổng quan',
+    tabTechnical: 'Kỹ thuật',
+    tabCharts: 'Biểu đồ',
+    tabAI: 'AI Bot',
+    sourceHolding: 'Đang giữ',
+    sourceTracked: 'Theo dõi',
+    sourceWatchlist: 'Danh sách theo dõi',
   };

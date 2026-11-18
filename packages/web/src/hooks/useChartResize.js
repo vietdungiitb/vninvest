@@ -10,13 +10,22 @@ import { useEffect, useRef, useCallback } from 'react';
  * @param {React.RefObject} containerRef - Ref to the container element
  * @param {Array} dependencies - Additional dependencies to re-observe
  */
+/**
+ * P2-1 — ReactEChartsCore không có `.resize()` trên ref; instance nằm ở
+ * `getEchartsInstance()`. Giữ fallback cho ref kiểu ECharts thuần.
+ */
+export function resizeEChart(ref) {
+  const inst = ref?.current?.getEchartsInstance?.();
+  if (inst && typeof inst.resize === "function") return inst.resize();
+  if (typeof ref?.current?.resize === "function") return ref.current.resize();
+  return undefined;
+}
+
 export function useChartResize(chartRef, containerRef, dependencies = []) {
   const resizeObserverRef = useRef(null);
 
   const resizeChart = useCallback(() => {
-    if (chartRef.current && typeof chartRef.current.resize === 'function') {
-      chartRef.current.resize();
-    }
+    resizeEChart(chartRef);
   }, [chartRef]);
 
   useEffect(() => {

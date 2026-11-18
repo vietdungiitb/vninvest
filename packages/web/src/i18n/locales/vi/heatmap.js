@@ -5,6 +5,7 @@ export const heatmap = {
     sizeCap: 'Vốn hóa',
     sizeWeight: 'Tỷ trọng',
     sizeFallbackCap: 'Chưa có danh mục · đang hiển thị theo vốn hóa',
+    otherTooltip: 'Gồm {count} mã: {symbols} · biến động TB {pct}%',
     empty: 'Chưa có dữ liệu để hiển thị heatmap.',
     scopeLine: '{count} mã · Danh mục + theo dõi · cập nhật {time}',
     scopeGrouped: '· đang gộp {grouped} mã nhỏ',

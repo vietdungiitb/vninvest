@@ -4,6 +4,11 @@ import useRealtimeFeedCore from '../hooks/useRealtimeFeedCore.js';
 
 const RealtimeContext = React.createContext(null);
 
+/** P1-5 — đọc trạng thái realtime đang có mà KHÔNG register consumer mới. */
+export function useRealtimeContext() {
+  return React.useContext(RealtimeContext);
+}
+
 function toUniqueSymbols(symbols) {
   return [...new Set((symbols || []).filter(Boolean).map((s) => String(s).trim().toUpperCase()))];
 }
