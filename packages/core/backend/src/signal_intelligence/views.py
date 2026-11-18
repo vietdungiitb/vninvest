@@ -695,20 +695,14 @@ class AlertCenterSymbolContextView(APIView):
         'Endpoint chuẩn hóa `/core/v1/signals/alert-center/events/{alert_id}/ack`. '
         'Thao tác trên delivery projection của user hiện tại và áp dụng state transition guard từ service layer.'
     ),
-    responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
-)
-@extend_schema(
-    summary='AlertCenterAcknowledgeView',
-    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
-    # Body-carrying method: the REQUEST side must be typed too;
-    # responses= alone still yields the unguessable-serializer error.
     request=OpenApiTypes.OBJECT,
     responses={
-        200: envelope_response(),
+        200: envelope_response(UserAlertDeliveryStateSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
     },
 )
 class AlertCenterAcknowledgeView(APIView):
@@ -716,6 +710,8 @@ class AlertCenterAcknowledgeView(APIView):
     throttle_classes = [SignalRateThrottle]
 
     def post(self, request, alert_id):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         qs = UnifiedAlert.objects.all().order_by('-triggered_at')
         lane = str(request.query_params.get('lane') or 'main').strip().lower()
         if lane not in ('main', 'ai'):
@@ -738,13 +734,21 @@ class AlertCenterAcknowledgeView(APIView):
     ),
     request=AlertCenterMutePreferenceRequestSerializer,
     # `data` free-form: payload dựng tay ở `post`, không có serializer payload.
-    responses={200: envelope_response(), 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+    responses={
+        200: envelope_response(),
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        429: OpenApiTypes.OBJECT,
+    },
 )
 class AlertCenterMutePreferenceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [SignalRateThrottle]
 
     def post(self, request):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        require_pat_scopes_or_human_session(request, 'signals:read')
         serializer = AlertCenterMutePreferenceRequestSerializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)

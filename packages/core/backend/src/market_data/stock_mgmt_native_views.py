@@ -28,7 +28,7 @@ from rest_framework.views import APIView
 
 from advisory.models import AdvisoryRecord
 from advisory.serializers import AdvisoryRecordSerializer
-from identity_access.permissions import IsTenantActive
+from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from service_ops.models import CachedSymbolGroup
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 from vninvest_core.api_envelope import envelope_response
@@ -2185,6 +2185,7 @@ class StockManagementOrderFlowView(APIView):
     )
 
     def get(self, request, symbol):
+        require_pat_scopes_or_human_session(request, 'market:read')
         from signal_intelligence.models import UnifiedAlert
 
         symbol = symbol.upper()
@@ -3370,7 +3371,7 @@ class StockManagementAIAdvisorySummaryDetailView(APIView):
 
 
 class StockManagementFinancialsView(APIView):
-    """GET /api/stock-management/stocks/<symbol>/financials/ — graceful empty."""
+    """GET /core/v1/stock-management/stocks/<symbol>/financials/ — trả payload thật (cash_flow=None) hoặc 400 INVALID_PERIOD / FINANCIALS_YEAR_UNAVAILABLE."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     @extend_schema(
@@ -4698,11 +4699,13 @@ class StockManagementPriceAlertsView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request):
+        require_pat_scopes_or_human_session(request, 'market:read')
         alerts = list(_price_alerts_queryset_for_user(request.user).order_by('-created_at', '-pk'))
         price_map = _build_price_change_map([alert.symbol for alert in alerts])
         return envelope([_serialize_price_alert_row(alert, price_map) for alert in alerts])
 
     def post(self, request):
+        require_pat_scopes_or_human_session(request, 'market:read')
         try:
             symbol = _validate_stock_symbol(request.data.get('symbol'))
             condition = _parse_price_alert_condition(request.data.get('condition'))
@@ -4750,6 +4753,7 @@ class StockManagementPriceAlertDetailView(APIView):
         },
     )
     def patch(self, request, pk):
+        require_pat_scopes_or_human_session(request, 'market:read')
         alert = _get_price_alert_or_404_for_user(request.user, pk)
         update_fields = []
 
@@ -4807,6 +4811,7 @@ class StockManagementPriceAlertDetailView(APIView):
         },
     )
     def delete(self, request, pk):
+        require_pat_scopes_or_human_session(request, 'market:read')
         alert = _get_price_alert_or_404_for_user(request.user, pk)
         alert.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -4831,6 +4836,7 @@ class StockManagementPriceAlertTriggerView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request, pk):
+        require_pat_scopes_or_human_session(request, 'market:read')
         alert = _get_price_alert_or_404_for_user(request.user, pk)
         alert.last_triggered_at = timezone.now()
         alert.save(update_fields=['last_triggered_at', 'updated_at'])

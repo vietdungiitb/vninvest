@@ -1,8 +1,9 @@
-"""G0.2/C02: short-lived single-use WS handshake tickets.
+"""G0.2/C02 + C-01: short-lived single-use WS/SSE handshake tickets.
 
-Khong dung DB migration — ticket song trong Django cache (60s, xoa ngay khi
-dung). Widget lay ticket qua POST /core/v1/auth/ws-ticket/ (Bearer PAT), roi
-noi WS bang ?ticket= thay cho ?token=<raw_pat> (van tuong thich nguoc).
+Khong dung DB migration — ticket song trong Django cache (60s, xoa ngay khi dung).
+Human session (JWT/session) lay ticket qua POST /core/v1/auth/ws-ticket/ roi noi WS/SSE
+bang ?ticket=. Machine PAT bi chan 403 khi mint ticket (require_human_session) va dung
+?token=<raw_pat> tuong thich nguoc qua TLS.
 """
 import secrets
 
