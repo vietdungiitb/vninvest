@@ -31,18 +31,31 @@ Regression check: `npx vitest run src/components/alert-center/AlertCard.componen
 
 `pwsh -File scripts/agent-sync.ps1` → `SYNC_EXIT=0`: rebase no-op · `✓ built in 39.83s` (vite build OK) · OpenCore doc sync PASS · large-file guard **cảnh báo có sẵn trên `dev`** (SocDataOpsConfigSection.tsx 971 dòng, AICommandCenterForm.tsx 948, … — không phải file slice này, không chặn).
 
-## 4. CHƯA CHẠY (không suy diễn)
+## 4. VPS staging — full FE suite + build (ĐÃ CHẠY 2026-11-18)
 
-- Full `npm run test:components` toàn bộ 167 file / 1134 test và `npm run test` — theo runbook chỉ chạy trên **VPS staging** `14.225.255.47` (`bash scripts/deploy-staging.sh --verify`), không local.
-- Visual QA / screenshot sau đổi màu Heatmap (P0-2) — cần chạy staging và **mở ảnh ra xem** (L-V05), không tin exit code.
+Theo `docs/STAGING_VPS_RUNBOOK.md` §12.4, worktree tạm `/tmp/wt-dash-p0-uiux` từ `origin/feat/dash-p0-uiux` @ `2927ced2a`, `node_modules` Linux tái dùng (lock trùng `wt-gatep0-fix`), `corepack npm 11.18.0`. **Không deploy đè staging đang chạy.**
+
+| Lệnh | Kết quả |
+|---|---|
+| `/usr/bin/corepack npm run test:components` | **193 file / 1281 test · 1276 pass · 5 fail** — exit 1. 5 fail là đúng 2 file SSE (`soc-overview-stream.component.test.tsx`, `soc-signals-stream.component.test.tsx`) |
+| Baseline đối chứng: cùng 2 file SSE tại `dev @ 577ddf646` (worktree `/tmp/wt-dash-base`) | **2 file / 5 test · 5 fail** — y hệt ⇒ **5 fail có sẵn, slice gây 0 hồi quy** |
+| Regression thật do slice gây ra (lần chạy đầu @ `3396afbd7`) | 10 fail, trong đó 5 là `smart-stats-header-null-value.component.test.js`: `useNavigate() may be used only in context of <Router>`. Đã sửa bằng bridge `useInRouterContext` + prop `onNavigate` ở commit `2927ced2a`; lokal 40/40 pass, VPS full suite còn đúng 5 fail baseline. |
+| `/usr/bin/corepack npm run build` | exit **0** — `✓ built in 33.78s` (cảnh báo chunk >1 MB có sẵn) |
+
+Dọn dẹp bắt buộc: `git worktree remove --force /tmp/wt-{dash-p0-uiux,dash-base}` + `git worktree prune` trên VPS.
+
+## 5. CHƯA CHẠY (không suy diễn)
+
+- **Visual QA / screenshot sau đổi màu Heatmap (P0-2)** — staging hiện vẫn chạy code `dev @ 7a0bd7aa7`, không phải branch này. Muốn chụp ảnh thật phải deploy branch lên staging dùng chung ⇒ cần coordinator chốt. Không báo PASS.
 - E2E Playwright `/dashboard` + `/alert-center` — CHƯA CHẠY.
 - `check-a11y-runtime` cho dropdown gợi ý mới — CHƯA CHẠY (jsdom test chỉ phủ role/option, không đo focus ring thật).
+- `npm run test` (jest) — CHƯA CHẠY.
 
-## 5. Ghi chú citation (auditor B8, L-T02)
+## 6. Ghi chú citation (auditor B8, L-T02)
 
 Do thêm comment khi sửa, số dòng thực tế lệch nhẹ so với plan: legend inline `PortfolioHeatmap.js:642` (plan ghi `:609`), P0-6 call-site `DashboardPage.tsx:320` (`:319` là dòng comment). Nội dung đúng; tra cứu nên tìm theo tên helper `heatmapLegendGradient()` / `collectUniqueSortedSymbols(...).split('|')[0]` thay vì số dòng cứng.
 
-## 6. Reservation từ B4 đã đóng
+## 7. Reservation từ B4 đã đóng
 
 - S2: `PortfolioHeatmap.js:642` gọi thẳng `heatmapLegendGradient()` (không inline `HEAT_STOPS.map`).
 - S3: helper nằm ở `utils/alertCenterFormat.ts` (extension `.ts` đúng như glob của auditor).
