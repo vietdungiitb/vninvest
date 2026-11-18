@@ -8,7 +8,7 @@ import { createElement, useMemo } from "react";
 import { Bell, Filter, X, Flame, Waves } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { formatVNDCompact, formatFullVND, formatSessionDate, formatTimeAgo } from "../../utils/formatMarket.js";
-import { isDuplicateSummary } from "../../utils/alertCenterFormat";
+import { isDuplicateSummary, formatAlertMetric } from "../../utils/alertCenterFormat";
 import { sortAlertsByPriority } from "../../utils/alertDedup.js";
 
 const e = createElement;
@@ -34,6 +34,17 @@ function familyLabel(alert, t) {
   const raw = alert?.alert_family || alert?.alert_type || alert?.source;
   const key = FAMILY_LABEL_KEY[String(raw || "").trim().toLowerCase()];
   return t(key ? `alertCenter.${key}` : "alertCenter.famSystem");
+}
+
+/** P0-3 — price_shock lưu % (materializers.py:585), mọi family khác lưu VND. */
+function alertValueNode(alert) {
+  if (alert?.value == null || !Number.isFinite(Number(alert.value))) return null;
+  const metric = formatAlertMetric(alert, { compact: formatVNDCompact, full: formatFullVND });
+  return e(
+    "span",
+    { className: "desc text-[11px] font-bold text-slate-200 tabular-nums", title: metric.full },
+    metric.text
+  );
 }
 
 function freshnessLabel(state, t) {
@@ -433,12 +444,7 @@ const isRead = hasReadState && readAlertIds.has(alertId);
                 e(
                   "div",
                   { className: "flex flex-col items-end gap-0.5 flex-shrink-0" },
-                  alert.value != null && Number(alert.value) > 0 &&
-                    e(
-                      "span",
-                      { className: "desc text-[11px] font-bold text-slate-200 tabular-nums", title: formatFullVND(alert.value) },
-                      formatVNDCompact(alert.value)
-                    ),
+                  alertValueNode(alert),
                   e("span", { className: "time text-[10px] text-slate-400 tabular-nums whitespace-nowrap" },
                     alert.executed_at
                       ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)

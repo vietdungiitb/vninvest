@@ -115,3 +115,41 @@ export function isDuplicateSummary(title: unknown, summary: unknown): boolean {
   const b = normalizeAlertText(summary);
   return a.length > 0 && a === b;
 }
+
+/**
+ * P0-3 — `alert.value` KHÔNG phải lúc nào cũng là tiền.
+ * Backend `materializers.py:585-600` lưu `abs(pct)` cho `price_shock`, kèm
+ * `metadata.price_change_pct` (có dấu) và `direction` (buy/sell).
+ * Các family còn lại mới là VND. formatters đã tự nối `₫` — KHÔNG nối thêm.
+ */
+export function formatAlertMetric(
+  alert: Record<string, unknown> | null | undefined,
+  formatters: { compact: (v: unknown) => string; full: (v: unknown) => string },
+): { text: string; full: string } {
+  const family = String(alert?.alert_family ?? alert?.alert_type ?? alert?.source ?? "")
+    .trim()
+    .toLowerCase();
+  const meta =
+    alert?.metadata && typeof alert.metadata === "object"
+      ? (alert.metadata as Record<string, unknown>)
+      : {};
+  const rawMeta = Number(meta.price_change_pct);
+  const rawValue = Number(alert?.value);
+  const isPriceShock = family === "price_shock" || Number.isFinite(rawMeta);
+
+  if (!isPriceShock) {
+    return { text: formatters.compact(alert?.value), full: formatters.full(alert?.value) };
+  }
+
+  let magnitude = Number.isFinite(rawMeta) ? rawMeta : rawValue;
+  if (!Number.isFinite(rawMeta)) {
+    const direction = String(alert?.direction ?? "").trim().toLowerCase();
+    if (["sell", "down", "short"].includes(direction)) magnitude = -Math.abs(magnitude);
+    else if (["buy", "up", "long"].includes(direction)) magnitude = Math.abs(magnitude);
+  }
+  if (!Number.isFinite(magnitude)) return { text: "—", full: "—" };
+
+  const sign = magnitude < 0 ? "−" : "+";
+  const text = `${sign}${Math.abs(magnitude).toFixed(2)}%`;
+  return { text, full: text };
+}
