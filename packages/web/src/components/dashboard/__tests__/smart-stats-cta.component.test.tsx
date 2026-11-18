@@ -3,7 +3,10 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 
 const h = vi.hoisted(() => ({ navigate: vi.fn() }));
 
-vi.mock("react-router-dom", () => ({ useNavigate: () => h.navigate }));
+vi.mock("react-router-dom", () => ({
+  useInRouterContext: () => true,
+  useNavigate: () => h.navigate,
+}));
 vi.mock("../../../context/LangContext.js", () => ({
   useI18n: () => ({ t: (key: string) => key, locale: "vi", setLanguage: vi.fn() }),
 }));

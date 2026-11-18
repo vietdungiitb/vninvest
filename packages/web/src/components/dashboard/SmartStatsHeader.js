@@ -1,5 +1,5 @@
 import { createElement, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useInRouterContext, useNavigate } from "react-router-dom";
 import { RotateCw } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { signOf, formatUpdateTime, formatTimeAgo } from "../../utils/formatMarket.js";
@@ -10,7 +10,8 @@ const e = createElement;
 // Quá 15 phút không có updatedAt mới thì gắn badge "Dữ liệu cũ".
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
-export function SmartStatsHeader({
+function SmartStatsHeaderView({
+  onNavigate,
   summary,
   analytics,
   metrics = null,
@@ -26,8 +27,6 @@ export function SmartStatsHeader({
   className = "",
 }) {
   const { t } = useI18n();
-  // P0-4 — CTA phải điều hướng thật tới route đã có trong routeCatalog.js:202-223.
-  const navigate = useNavigate();
   const analyticsData = analytics;
 
   // `total_market_value` / `total_unrealized_pnl` arrive from the API as
@@ -170,7 +169,7 @@ export function SmartStatsHeader({
               e(
                 "button",
                 {
-                  onClick: () => navigate("/portfolios/manage"),
+                  onClick: () => onNavigate?.("/portfolios/manage"),
                   className: "rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300 transition-all hover:bg-cyan-500/20",
                 },
                 t("smartStats.createPortfolio")
@@ -178,7 +177,7 @@ export function SmartStatsHeader({
               e(
                 "button",
                 {
-                  onClick: () => navigate("/broker"),
+                  onClick: () => onNavigate?.("/broker"),
                   className: "rounded-lg border border-slate-700/60 px-2.5 py-1 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-800",
                 },
                 t("smartStats.connectPaper")
@@ -249,4 +248,23 @@ export function SmartStatsHeader({
       )
     )
   );
+}
+
+/**
+ * P0-4 — component này cũng được mount trong unit test KHÔNG có <Router>.
+ * Gọi `useNavigate()` trực tiếp làm 5 test null-value nổ invariant. Tách bridge:
+ * chỉ dùng router khi có context; ngoài Router dùng onNavigate do caller truyền
+ * (hoặc no-op an toàn) — hành vi production giữ nguyên.
+ */
+function SmartStatsHeaderRouterBridge(props) {
+  const navigate = useNavigate();
+  return e(SmartStatsHeaderView, { ...props, onNavigate: navigate });
+}
+
+const noopNavigate = () => {};
+
+export function SmartStatsHeader(props) {
+  return useInRouterContext()
+    ? e(SmartStatsHeaderRouterBridge, props)
+    : e(SmartStatsHeaderView, { ...props, onNavigate: props.onNavigate ?? noopNavigate });
 }
