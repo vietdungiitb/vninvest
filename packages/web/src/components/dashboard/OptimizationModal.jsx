@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
+import { useModalA11y } from '../../hooks/useModalA11y.js';
 import useAIAdvisor from '../../hooks/useAIAdvisor.js';
 import { useI18n } from '../../context/LangContext.js';
 
@@ -8,6 +9,8 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
   const [acknowledged, setAcknowledged] = useState({}); // { symbol: true }
   const [expandedSymbol, setExpandedSymbol] = useState(null);
   const [confirmCount, setConfirmCount] = useState(null); // null | number — toast state
+  const contentRef = useRef(null);
+  useModalA11y(true, onClose, contentRef);
 
   // Configuration based on strategy
   const { recommendations, config } = useAIAdvisor({ holdings, technicals, alerts, strategy });
@@ -24,7 +27,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-slate-900/90 border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+      <div ref={contentRef} className="bg-slate-900/90 border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
         
         {/* Header Section */}
         <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6">

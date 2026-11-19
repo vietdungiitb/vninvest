@@ -24,6 +24,17 @@ import {
 } from "./nav1-rule.mjs";
 
 const ROOT = process.argv[2] ?? "packages/web/src";
+// W1-a11y: reduced-motion da duoc khai TOAN CUC tai src/index.css. Rule CSS-2
+// truoc day chi nhin tung file => 55 false-positive. Doc 1 lan, dung chung.
+const GLOBAL_REDUCED_MOTION = (() => {
+  try {
+    return /@media\s*\(prefers-reduced-motion/.test(
+      fs.readFileSync(path.join(ROOT, "index.css"), "utf8"),
+    );
+  } catch {
+    return false;
+  }
+})();
 const EXTS = new Set([".tsx", ".jsx", ".ts", ".js", ".css"]);
 const SKIP_DIR = new Set(["node_modules", "__tests__", "tests", "__mocks__"]);
 
@@ -155,11 +166,13 @@ const RULES = [
       if (!m) return null;
       // control native 1 dòng kèm id → label htmlFor hợp lệ
       if (/\bid=/.test(ctx.line) && !/type=["'](checkbox|radio)["']/.test(ctx.line)) return null;
-      if (/aria-label|aria-labelledby/.test(ctx.line)) return null;
+      // W1-a11y: aria-label thường nằm ở dòng SAU `<input` trong cùng JSX element.
+      // Rule cũ chỉ so chính dòng nên báo false-positive (FilterBar, command, …).
+      // Dùng chung cửa sổ ±6 dòng như <label> để nhất quán.
+      const win = ctx.prev6.concat(ctx.next6).join("\n");
+      if (/aria-label|aria-labelledby/.test(ctx.line) || /aria-label|aria-labelledby/.test(win)) return null;
       // component wrapper <Input>/<Select> → label có thể ở component khác, đánh dấu review
       if (/<(Input|Select|Textarea|Checkbox|Switch)\b/.test(ctx.line)) return null;
-      // tìm <label ...for="id"> trong ±6 dòng
-      const win = ctx.prev6.concat(ctx.next6).join("\n");
       if (/<label\b/.test(win)) return null;
       return `${ctx.line.trim().slice(0, 120)}  → ${m[1]} không label/aria-label`;
     },
@@ -198,6 +211,7 @@ const RULES = [
     check(ctx) {
       if (!ctx.isCss) return null;
       if (!/transition\s*:|animation\s*:|@keyframes/.test(ctx.line)) return null;
+      if (GLOBAL_REDUCED_MOTION) return null;
       if (/@media\s*\(prefers-reduced-motion/.test(ctx.fileHasReducedMotion ? "@media (prefers-reduced-motion)" : "")) return null;
       if (!ctx.fileHasReducedMotion) {
         return `${ctx.line.trim().slice(0, 110)}  → file không có prefers-reduced-motion`;
