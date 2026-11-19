@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T00:00:00.000Z",
+  "title": "Design System: VNInvest Web — SOC Operations",
+  "extensions": {
+    "colorMeta": {
+      "accent-cyan": { "role": "primary", "displayName": "Accent Cyan", "canonical": "#06b6d4" },
+      "gain": { "role": "status", "displayName": "Bloomberg Gain", "canonical": "#34d399" },
+      "loss": { "role": "status", "displayName": "Bloomberg Loss", "canonical": "#f87171" },
+      "surface-panel": { "role": "neutral", "displayName": "Surface Panel", "canonical": "#0f172a" }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 2px 8px rgba(0,0,0,0.15)", "purpose": "Panel nổi nhẹ" },
+      { "name": "shadow-md", "value": "0 8px 20px rgba(0,0,0,0.2)", "purpose": "Hover/drawer" }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Tab/metric transition" }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Page Chrome",
+      "kind": "custom",
+      "refersTo": "page-chrome",
+      "description": "Hero glass với 1 h1 duy nhất và actions ở titleRow.",
+      "html": "<section class=\"ds-page-chrome\"><h1 class=\"ds-page-title\">Tiêu đề trang</h1></section>",
+      "css": ".ds-page-chrome{background:var(--glass-surface,#rgba(15,23,42,0.72));color:var(--text-primary,#f1f5f9);border-radius:var(--r-lg,12px);padding:1rem 1.5rem}.ds-page-title{font-size:1.5rem;font-weight:700;margin:0}"
+    },
+    {
+      "name": "Metric Card",
+      "kind": "card",
+      "refersTo": "metric-card",
+      "description": "Thẻ số tabular-nums, nền kính, border alpha thấp.",
+      "html": "<div class=\"ds-metric-card\"><span class=\"ds-metric-label\">P&L</span><strong class=\"ds-metric-value\">0</strong></div>",
+      "css": ".ds-metric-card{background:var(--bg-panel,#0f172a);border:1px solid var(--border-default);border-radius:var(--r-md,8px);padding:0.75rem 1rem}.ds-metric-label{font-size:0.65rem;text-transform:uppercase;color:var(--text-muted,#94a3b8)}.ds-metric-value{font-size:1.15rem;font-variant-numeric:tabular-nums;color:var(--text-primary,#f1f5f9)}"
+    },
+    {
+      "name": "Freshness Badge",
+      "kind": "chip",
+      "description": "Pill trạng thái dữ liệu, có data-note giải thích.",
+      "html": "<span class=\"ds-freshness\" data-state=\"delayed\" data-note=\"estimated_from_snapshot\">Dữ liệu ước tính</span>",
+      "css": ".ds-freshness{display:inline-block;background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;border-radius:999px;padding:2px 8px;font-size:0.68rem;font-weight:700}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Trading Cockpit",
+    "overview": "Một buồng lái giao dịch: nền tối, mật độ thông tin cao, panel kính mờ xếp lớp, và dữ liệu là nhân vật chính. Mọi quyết định thị giác phục vụ việc quét nhanh bảng số — trang trí chỉ xuất hiện khi nó mang nghĩa.",
+    "keyCharacteristics": ["Dark-first", "Glass có chủ đích", "Màu chỉ cho trạng thái", "Tabular figures"],
+    "rules": [
+      { "name": "The Bloomberg Rule", "body": "Xanh = tăng, đỏ = giảm. Không đổi chiều.", "section": "colors" },
+      { "name": "The One Accent Rule", "body": "Accent cyan chỉ chiếm ≤10% diện tích màn hình.", "section": "colors" }
+    ],
+    "dos": ["Do dùng token từ soc.tokens.css / theme/tokens.css", "Do deep-link filter qua useUrlState", "Do gắn data-reason/data-note khi thiếu dữ liệu"],
+    "donts": ["Don't đổi màu tăng/giảm (L-F08)", "Don't dùng soc.module.css chứa token/class", "Don't nâng baseline gate để làm xanh giả"]
+  }
+}

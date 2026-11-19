@@ -1,3 +1,14 @@
+## Entry 555: B8 re-audit uiux-exp-w2 — AGREE (0 blocker, 0 major)
+
+- **Date**: 2026-11-19 · **Type**: audit (read-only) · **Branch**: `feat/uiux-exp-w2` · **HEAD**: `cc6459f06` · **Repo**: `D:/Mujoco Projects/uiux-exp-w2`.
+- **Scope**: `docs/PLAN_UIUX_W2_EXPERIENCE_20261119.md` rev2, 6 mục kiểm chứng B8. Không mở lại O-01..O-30. Bằng chứng: `docs/evidence/uiux-ssot/w2/REAUDIT.md`.
+- **Verdict AGREE** → cho phép B9. Auditor độc lập; chỉ ghi REAUDIT.md + Entry này, không sửa code/plan/claim, không commit/push/deploy. Kèm 3 reservation minor O-31a/b/c.
+- FreshnessBadge `src/components/feedback/FreshnessBadge.tsx:3,14-16,30`: 4 state `fresh|delayed|stale|empty`, `data-state` + `data-note`, label do caller truyền (không hardcode i18n). Widget `StockOrderBookWidget.jsx:4,155-164` import không extension + dùng component thay span thô.
+- DESIGN.md `:1-50` frontmatter · `:54,66,84,96,100,104,108,122` đúng 8 section canonical theo thứ tự · `:56` North Star "The Trading Cockpit". Hex đối chiếu `check-tokens.mjs:10-29`: 8/9 có, `#0b1424` (`:7,74`) là token có sẵn `soc.tokens.css:46` → O-31a; sidecar `.impeccable/design.json` parse exit 0, schemaVersion 2, 3 component html/css self-contained.
+- Gate exit 0 thật: vitest 2/2 · check-tokens · check-contrast · check-theme-contrast · check-token-conflict · check-light-theme · check-heading-contract · check-focus-ring · check-dom-landmarks · check-portfolio-contrast · design.json parse. `check-ui-baseline/` diff rỗng; diff không chứa `CommandRegistry`/`SettingsProvider`; `CLAIMS.md:1993` vẫn in-progress.
+- O-31a/b/c (minor): hex token-definition, file untracked `green2.md`, test chưa assert `empty` — do coordinator đóng ở B9, không chặn.
+- **CHƯA CHẠY**: staging VPS, ảnh/visual, E2E, full vitest, tsc, build, lint, i18n:scan:strict, budget, a11y-runtime. Không suy ra kết quả.
+
 ## Entry 554: B8 re-audit vòng 2 uiux-a11y-w1 — PASS (0 blocker, 0 major)
 
 - **Date**: 2026-11-19 · **Type**: audit (read-only) · **Branch**: `feat/uiux-a11y-w1` · **HEAD**: `f5d20b15e`.
