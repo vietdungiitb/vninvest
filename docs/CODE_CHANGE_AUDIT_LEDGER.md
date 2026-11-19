@@ -1,3 +1,15 @@
+## Entry 533: Alert card height — đưa action buttons thành overlay (E2E regression sau P1-7)
+
+- **Date**: 2026-11-19. **Type**: code + test evidence + docs (FE). **Branch**: `feat/dash-alert-card-height` -> `dev`. **Claim**: `dash-alert-card-height` done.
+- **Trigger**: E2E staging `dashboard-alert-probe.spec.ts` 2 fail — `firstCardH 138 > 100`, `cardHeights 138 > 110` (contract đo 2026-09-27: 98px).
+- **Root cause**: P1-7 truyền read state từ DashboardPage ⇒ 2 nút "Đánh dấu đã đọc"/"Tắt 30p" hiện; action row `mt-3 pt-2 border-t` cộng ~40px/card.
+- **Fix**: `UnifiedAlertCenter.js` — card `relative group`, action row `absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100`. Nút vẫn focusable & có accessible name; không chiếm chiều cao. Không đổi logic read/mute.
+- **Verify**: E2E 2 fail → **3 pass** (`firstCardH 96px`, `overlapY 0`); vitest 25 pass; tsc 0; VPS **197 file / 1304 test · 5 fail SSE baseline** (0 hồi quy) + build 0. Evidence `docs/evidence/dashboard-uiux/gates-alert-card-height.md`.
+- **CHƯA XÁC MINH**: a11y runtime — gate tự báo staging build khác hash baseline nên 67 "violation mới" (chủ yếu `ai-advisory`/`screener`); violation duy nhất trên `/dashboard` là `<h1>` sidebar có sẵn. Cần owner re-baseline, KHÔNG báo PASS.
+- **Sự cố index**: agent khác stage file trong cùng main tree; commit đầu kéo nhầm 6 docs + ledger + ảnh artifact, đã tách bằng `git rm --cached` + `git update-index --cacheinfo` từ `dev`, KHÔNG đè working copy của agent kia; force-with-lease branch. Diff cuối `dev...HEAD` chỉ CLAIMS + 1 file code.
+- **Note số Entry**: 531/532 đang do agent khác soạn trong working tree → dùng 533 để tránh trùng.
+- **Lessons**: [L-001 L-002 L-V04]. Không backend/migration/package.json.
+
 ## Entry 530: Heatmap scope — loại nhóm thị trường (1833 mã) khỏi universe của user
 
 - **Date**: 2026-11-18. **Type**: code + test + docs (FE). **Branch**: `feat/dash-heatmap-scope` -> `dev`. **Claim**: `dash-heatmap-scope` done.
