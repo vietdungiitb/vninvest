@@ -12,6 +12,8 @@ describe("W2 FreshnessBadge", () => {
     expect(delayed.getAttribute("data-note")).toBe("delay_15m");
     rerender(<FreshnessBadge state="stale" label="Cũ" note="feed_down" />);
     expect(screen.getByTestId("freshness-stale").getAttribute("data-state")).toBe("stale");
+    rerender(<FreshnessBadge state="empty" label="Chưa nhận" note="backend_missing" />);
+    expect(screen.getByTestId("freshness-empty").getAttribute("data-state")).toBe("empty");
   });
 
   it("StockOrderBookWidget dùng FreshnessBadge thay badge thô", async () => {
