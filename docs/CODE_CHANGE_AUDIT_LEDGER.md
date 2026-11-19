@@ -6,6 +6,24 @@
 - Ảnh staging 4 route × 2 theme được chụp lại (light bằng injection `data-theme` vì staging env thiếu `VITE_DEV_THEME_FLAG`). Chưa đối chiếu h1 sau sửa — sẽ verify sau merge+deploy.
 - Claim `sidebar-h1-fix` đã đóng. **CHƯA CHẠY**: E2E/full suite; staging re-verify sau merge.
 
+## Entry 559: R1 — Header realtime indicator 5 trạng thái, hết báo "Offline" sai trên trang không có symbol
+
+- **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/header-realtime-status` · **Claim commit**: `966a70ed1` · **Bằng chứng**: `docs/PLAN_HEADER_REALTIME_STATUS_20261119.md`, `docs/evidence/header-status/{AUDIT_PLAN,CONSENSUS,GATES,REAUDIT}.md`.
+- **Gốc rễ (Entry 558)**: `Header.tsx:90-94` gom mọi trạng thái không-live thành `Offline`; trang SOC không đăng ký symbol ⇒ `RealtimeContext.js:45-50` tắt feed ⇒ `useRealtimeFeedCore.js:554-563` đặt `idle` ⇒ header hiện `Offline` dù API vẫn chạy.
+- **Fix**: `Header.tsx` khai module-level `REALTIME_INDICATOR` (5 trạng thái: `idle`/`connecting`/`polling`/`connected`/`disconnected`) + `resolveRealtimeIndicator(ctx)` với `!ctx || (consumerCount ?? 0) === 0 || status === 'idle' → idle`; render `t(labelKey,{defaultValue})` cho title + nhãn, dot xám/vàng/vàng+xanh-pulse/đỏ. Thêm 5 key `layout.realtime.*` vào `locales/{vi,en}/layout.js` (không đụng barrel i18n nóng). `disconnected` là nhánh phòng thủ — grep prod 0 hit `setRealtimeStatus('disconnected')`.
+- **Audit độc lập**: B3 `NEED_REVISION` (O1 `common.online` không tồn tại · O2 citation `disconnected` sai · O3 null context · O4 mock test · O5 assert phủ định · O6 numstat) → plan sửa → B4 `AGREE` (R1 precedence `??` đã sửa) → B8 `PASS` 0 blocker/0 major, 3 reservation minor đã đóng ở B9.
+- **Gate chạy thật**: baseline tsc 0 / Header 7/7 / check-multi-agent 0 lỗi. **Fail-before**: 13 test → 4 đỏ (AC0–AC3) / 9 xanh. **Pass-after**: Header **13/13** · tsc 0 · eslint 0 error (3 warning cũ) · i18n-scan-strict 0 · check-multi-agent 0 lỗi · normalize-eol OK · numstat đúng 4 file SCOPE (`46 8` Header, `100 3` test, `8 0` mỗi locale) · U+FFFD 0 · LF đúng. **Full suite**: 1334 test, 13 fail/7 file — đã đối chứng trên worktree `HEAD` sạch: cùng 7 file/13 fail ⇒ **pre-existing**, không quy cho slice; worktree + junction đã gỡ.
+- **B9 reservation**: M1 numstat GATES sửa `100 3` · M2 citation plan sửa · M3 artifact auditor (PNG/probe scripts ngoài SCOPE) đã `git restore`/`git clean`, không commit.
+- **CHƯA CHẠY**: `npm run build`/`vite build`, deploy + verify VPS staging `14.225.255.47`, Playwright/visual 375–1440, eslint/i18n strict toàn repo. Không báo PASS giả.
+
+## Entry 560: Chẩn đoán "Offline" + 404 advisory/billing trên DataOps — 3 tín hiệu độc lập, 0 dòng source
+
+- **Date**: 2026-11-19 · **Type**: điều tra (docs-only, read-only source) · **Branch**: `dev` (không commit, không claim) · **Bằng chứng**: `docs/DIAGNOSIS_OFFLINE_404_DATAOPS_20261119.md`.
+- **Kết luận**: (1) DataOps **đã load dữ liệu thật** (`4.582.503` dòng, ảnh staging) — không có sự cố API. (2) Header `Offline` là chỉ báo **realtime/WebSocket**, không phải health API: `RealtimeContext.js:45-50` tắt feed khi `symbols=[]` ⇒ `useRealtimeFeedCore.js:554-563` đặt `idle` ⇒ `Header.tsx:90-94,331,334` gán mọi trạng thái không-live thành `Offline`. Trang SOC (`ShellOperationsCenterPage.tsx:1-110`) không đăng ký symbol nào. (3) 404 `/advisory/latest/VMG/` = `AdvisoryLatestView.get()` `views.py:276-289` trả 404 khi chưa có record generated hôm nay; FE nuốt thành `null` (`transport.js:453-459`, `market.js:472-480`). (4) 404 `/billing/subscription` = `get_object_or_404(Subscription, tenant=...)` (`commercial/views.py:56-65`); `useTenantTier.js:54-69` fail-closed về `free`. (5) Badge `LIVE` trong SOC là chuỗi tĩnh (`ShellOperationsCenterPage.tsx:99-102`) — tín hiệu sai chiều ngược lại.
+- **Route KHÔNG sai**: `vninvest_core/urls.py:60,64` mount đúng `core/v1/commercial` + `core/v1/advisory` ⇒ 404 do logic view, không do proxy/URL.
+- **Đề xuất**: R1 (P1) Header phân biệt `idle`/`connecting`/`polling`/`disconnected`, hiện "Chưa theo dõi" thay vì `Offline` khi không có symbol; R2 (P2) giữ contract 404 empty-state hoặc đổi có kiểm soát; R3 (P2) gắn badge LIVE vào freshness thật. Chưa có slice code nào được mở.
+- **Lessons áp dụng**: L-V01, L-V02, L-V04, L-F01. **CHƯA CHẠY**: curl staging có token, test component, tsc/build, deploy. Không báo PASS giả.
+
 ## Entry 557: W3 — đóng 3 reservation minor (O-32/33/34), đóng claim, chờ PR
 
 - **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-cmd-w3`.

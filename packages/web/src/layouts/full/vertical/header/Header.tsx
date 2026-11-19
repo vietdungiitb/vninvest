@@ -26,6 +26,44 @@ interface UserIdentity {
 
 const e = createElement;
 
+/**
+ * R1 (2026-11-19) — chỉ báo realtime ở header.
+ *
+ * Trước đây mọi trạng thái không phải 'live' đều bị ghi thành "Offline", kể cả
+ * khi trang không đăng ký symbol nào (`realtimeStatus='idle'`, consumerCount=0)
+ * — tức là báo sai "mất kết nối" trên /operations-center?tab=dataops.
+ *
+ * Metadata khai ở cấp module (không tạo object trong render — L-F10).
+ */
+type RealtimeIndicatorState = 'idle' | 'connecting' | 'polling' | 'connected' | 'disconnected';
+
+const REALTIME_INDICATOR: Record<RealtimeIndicatorState, {
+  labelKey: string;
+  defaultValue: string;
+  dotClass: string;
+  pulse: boolean;
+}> = {
+  idle: { labelKey: 'layout.realtime.idle', defaultValue: 'Chưa theo dõi', dotClass: 'bg-slate-500', pulse: false },
+  connecting: { labelKey: 'layout.realtime.connecting', defaultValue: 'Đang kết nối', dotClass: 'bg-amber-400', pulse: false },
+  polling: { labelKey: 'layout.realtime.polling', defaultValue: 'Dự phòng', dotClass: 'bg-amber-400', pulse: false },
+  connected: { labelKey: 'layout.realtime.online', defaultValue: 'Online', dotClass: 'bg-emerald-400', pulse: true },
+  disconnected: { labelKey: 'layout.realtime.disconnected', defaultValue: 'Offline', dotClass: 'bg-rose-400', pulse: false },
+};
+
+function resolveRealtimeIndicator(ctx: unknown): RealtimeIndicatorState {
+  const feed = (ctx as {
+    feed?: { realtimeStatus?: string; metrics?: { manager?: { consumerCount?: number } } };
+  } | null)?.feed;
+  const status = String(feed?.realtimeStatus || '');
+  const consumerCount = feed?.metrics?.manager?.consumerCount ?? 0;
+  if (!ctx || consumerCount === 0 || status === 'idle') return 'idle';
+  if (status === 'live' || status === 'connected') return 'connected';
+  if (status === 'polling') return 'polling';
+  // Defensive: useRealtimeFeedCore hiện không bao giờ set 'disconnected' (grep 0 hit).
+  if (status === 'disconnected') return 'disconnected';
+  return 'connecting';
+}
+
 // P0-1 — gợi ý mã trên Header. Khai ở cấp module để không đổi identity mỗi render (L-F10).
 const SUGGEST_DEBOUNCE_MS = 200;
 const SUGGEST_LIMIT = 20;
@@ -88,10 +126,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   const newLayout = isNewLayoutEnabled();
 
   const realtimeCtx = useRealtimeContext();
-  const feedStatus = String(realtimeCtx?.feed?.realtimeStatus || '');
-  const wsStatus: 'connecting' | 'connected' | 'disconnected' =
-    feedStatus === 'live' || feedStatus === 'connected' ? 'connected'
-      : feedStatus === 'disconnected' ? 'disconnected' : 'connecting';
+  const indicator = REALTIME_INDICATOR[resolveRealtimeIndicator(realtimeCtx)];
   // WAVE 6 / NAV-1 — o tim ma o header chua dong bo URL: F5 mat noi dung dung.
   // Mac dinh giong het `useState` cu (`''`) va KHONG ghi ra URL.
   // `replace: true` — o input gắn thẳng `onChange`; neu push, moi KY TU tao
@@ -323,15 +358,18 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
     e(
       'div',
       { className: 'flex items-center gap-4' },
-      // WebSocket Status
+      // Realtime feed status (R1) — idle/polling KHÔNG phải "Offline"
       e(
         'div',
-        { className: 'flex items-center gap-2 text-xs text-slate-400' },
+        {
+          className: 'flex items-center gap-2 text-xs text-slate-400',
+          title: t(indicator.labelKey, { defaultValue: indicator.defaultValue }),
+        },
         e('span', {
-          className: `w-2 h-2 rounded-full ${wsStatus === 'connected' ? 'bg-emerald-400 live-dot-pulse' : 'bg-rose-400'}`,
+          className: `w-2 h-2 rounded-full ${indicator.dotClass}${indicator.pulse ? ' live-dot-pulse' : ''}`,
           'aria-hidden': 'true'
         }),
-        e('span', { className: 'hidden sm:inline' }, wsStatus === 'connected' ? 'Online' : 'Offline')
+        e('span', { className: 'hidden sm:inline' }, t(indicator.labelKey, { defaultValue: indicator.defaultValue }))
       ),
       // Language Selector
       e(

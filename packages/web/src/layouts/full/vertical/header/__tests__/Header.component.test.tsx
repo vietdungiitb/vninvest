@@ -21,11 +21,13 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 import { MemoryRouter, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 
 /**
- * MOCKS REQUIRED (the other 5 imports are real):
- *  1. `@/context/PortfolioContext.js` — `usePortfolio`: auth identity + logout.
+ * MOCKS REQUIRED (the other 4 imports are real):
+ *  1. `@/context/PortfolioContext.js`  — `usePortfolio`: auth identity + logout.
  *  2. `@/context/LangContext.js`       — `useI18n`: t/locale/setLanguage.
  *  3. `@/hooks/useCoreQuery.ts`        — needs a QueryClientProvider otherwise.
  *  4. `@/adapters/coreApiAdapter.js`   — `coreApiAdapter.getAlertCenterSummary`.
+ *  5. `@/context/RealtimeContext.js`   — `useRealtimeContext`: feed status indicator
+ *     (R1, 2026-11-19). Default `null` = mounted without provider, like the 7 legacy tests.
  */
 const h = vi.hoisted(() => ({
   usePortfolio: vi.fn(),
@@ -33,6 +35,7 @@ const h = vi.hoisted(() => ({
   useCoreQuery: vi.fn(),
   getAlertCenterSummary: vi.fn(),
   getSymbolList: vi.fn(),
+  useRealtimeContext: vi.fn(),
 }));
 
 vi.mock("@/context/PortfolioContext.js", () => ({ usePortfolio: h.usePortfolio }));
@@ -41,6 +44,7 @@ vi.mock("@/hooks/useCoreQuery.ts", () => ({ useCoreQuery: h.useCoreQuery }));
 vi.mock("@/adapters/coreApiAdapter.js", () => ({
   coreApiAdapter: { getAlertCenterSummary: h.getAlertCenterSummary, getSymbolList: h.getSymbolList },
 }));
+vi.mock("@/context/RealtimeContext.js", () => ({ useRealtimeContext: h.useRealtimeContext }));
 
 import { Header } from "../Header";
 
@@ -105,6 +109,8 @@ describe("WAVE 10C / NAV-1 — Header o tim ma dong bo hai chieu voi URL", () =>
     h.useCoreQuery.mockReset();
     h.getAlertCenterSummary.mockReset();
     h.getSymbolList.mockReset();
+    h.useRealtimeContext.mockReset();
+    h.useRealtimeContext.mockReturnValue(null); // 7 legacy tests mount without RealtimeProvider
     h.getSymbolList.mockResolvedValue({ results: [{ symbol: "VCB", name: "Ngân hàng TMCP Công thương Việt Nam" }] });
 
     h.usePortfolio.mockReturnValue({
@@ -202,5 +208,96 @@ describe("WAVE 10C / NAV-1 — Header o tim ma dong bo hai chieu voi URL", () =>
     fireEvent.keyDown(searchInput(), { key: "Enter" });
 
     await waitFor(() => expect(currentPath()).toBe("/stocks/FPT"));
+  });
+});
+
+/**
+ * R1 (2026-11-19) — header realtime indicator must NOT say "Offline" on a page
+ * that simply has no subscribed symbol (e.g. /operations-center?tab=dataops).
+ * `realtimeStatus` values come from useRealtimeFeedCore; `disconnected` is a
+ * defensive branch only (grep: 0 setRealtimeStatus('disconnected') in prod code).
+ *
+ * The legacy `t: (key) => key` mock would make these assert on keys; here we
+ * deliberately use a translating mock so the assertions prove the real label.
+ */
+const REALTIME_LABELS_VI: Record<string, string> = {
+  "layout.realtime.idle": "Chưa theo dõi",
+  "layout.realtime.connecting": "Đang kết nối",
+  "layout.realtime.polling": "Dự phòng",
+  "layout.realtime.online": "Online",
+  "layout.realtime.disconnected": "Offline",
+};
+
+function feedWith(status: string, consumerCount = 1) {
+  return {
+    feed: {
+      realtimeStatus: status,
+      metrics: { manager: { consumerCount, symbolUnionCount: consumerCount } },
+    },
+  };
+}
+
+function renderWithFeed(feed: unknown) {
+  h.useRealtimeContext.mockReturnValue(feed);
+  h.useI18n.mockReturnValue({
+    t: (key: string, opts?: { defaultValue?: string }) => REALTIME_LABELS_VI[key] ?? opts?.defaultValue ?? key,
+    locale: "vi",
+    setLanguage: vi.fn(),
+  });
+  return renderHeader("");
+}
+
+function assertIndicator(label: string, dotClass: string) {
+  const labelEl = screen.getByText(label);
+  const dot = labelEl.previousElementSibling;
+  expect(dot, "indicator dot must exist").toBeTruthy();
+  expect(dot!.className).toContain(dotClass);
+  return labelEl;
+}
+
+describe("R1 — Header realtime indicator co 5 trang thai, khong gan nhan Offline sai", () => {
+  it("AC0 — khong co RealtimeProvider: trạng thái idle, khong throw, khong hien Offline", () => {
+    renderWithFeed(null);
+
+    assertIndicator("Chưa theo dõi", "bg-slate-500");
+    expect(screen.queryByText("Offline")).toBeNull();
+  });
+
+  it("AC1 — consumerCount=0 (trang SOC khong co symbol): idle + cham xam", () => {
+    renderWithFeed(feedWith("idle", 0));
+
+    assertIndicator("Chưa theo dõi", "bg-slate-500");
+    expect(screen.queryByText("Offline")).toBeNull();
+  });
+
+  it("AC2 — dang ket noi: nhan vang", () => {
+    renderWithFeed(feedWith("connecting"));
+
+    assertIndicator("Đang kết nối", "bg-amber-400");
+    expect(screen.queryByText("Offline")).toBeNull();
+  });
+
+  it("AC3 — polling (fallback hop le): nhan vang Dự phòng", () => {
+    renderWithFeed(feedWith("polling"));
+
+    assertIndicator("Dự phòng", "bg-amber-400");
+    expect(screen.queryByText("Offline")).toBeNull();
+  });
+
+  it("AC4 — live/connected: Online + cham xanh nhap nhay (giu hanh vi cu)", () => {
+    renderWithFeed(feedWith("live"));
+    assertIndicator("Online", "bg-emerald-400");
+    expect(document.querySelector(".live-dot-pulse")).toBeTruthy();
+    cleanup();
+
+    renderWithFeed(feedWith("connected"));
+    assertIndicator("Online", "bg-emerald-400");
+  });
+
+  it("AC5 — disconnected (defensive): chi luc nay moi hien Offline + cham do", () => {
+    renderWithFeed(feedWith("disconnected"));
+
+    assertIndicator("Offline", "bg-rose-400");
+    expect(screen.queryByText("Chưa theo dõi")).toBeNull();
   });
 });
