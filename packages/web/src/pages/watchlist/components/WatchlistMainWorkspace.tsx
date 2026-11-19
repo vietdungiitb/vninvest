@@ -3,6 +3,7 @@ import { useWatchlist } from "./WatchlistContext";
 import { WatchlistTable } from "./WatchlistTable";
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../../context/LangContext.js";
+import { useSettings } from "../../../context/SettingsProvider";
 import { ShellSkeleton } from "../../../components/ShellSkeleton.js";
 import styles from "../../../components/soc/soc.module.css";
 
@@ -142,7 +143,8 @@ export function WatchlistMainWorkspace() {
 
   const { t } = useI18n();
 
-  const [density, setDensity] = useState<"compact" | "comfortable">("comfortable");
+  // W3/O-33: dùng nguồn density duy nhất từ SettingsProvider (không local state).
+  const { density, setDensity } = useSettings();
   const [newSymbolInput, setNewSymbolInput] = useState("");
   const [addingSymbol, setAddingSymbol] = useState(false);
 

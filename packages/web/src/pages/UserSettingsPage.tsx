@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { useSettings } from "../context/SettingsProvider";
 import { changePasswordSchema, type ChangePasswordValues } from "./changePasswordSchema.js";
 import { isDevThemeFlagActive } from "../lib/devThemeFlag.js";
 import { FormField } from "../components/ui/FormField.js";
@@ -86,6 +87,7 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
     t: (key: string, opts?: Record<string, unknown>) => string;
     setLanguage: (lang: string) => void;
   };
+  const { density, setDensity } = useSettings();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -203,6 +205,12 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       e("label", null, t("userSettings.theme", { defaultValue: "Giao diện:" }),
         e("select", { name: "theme", value: form.theme, onChange: handleChange },
           e("option", { value: "dark" }, t("userSettings.themeDark", { defaultValue: "Tối" }))
+        )
+      ),
+      e("label", null, t("userSettings.density", { defaultValue: "Mật độ giao diện:" }),
+        e("select", { "aria-label": t("userSettings.density", { defaultValue: "Mật độ giao diện" }), value: density, onChange: (ev) => setDensity((ev.target as HTMLSelectElement).value as "comfortable" | "compact") },
+          e("option", { value: "comfortable" }, t("userSettings.densityComfortable", { defaultValue: "Thoải mái" })),
+          e("option", { value: "compact" }, t("userSettings.densityCompact", { defaultValue: "Nén" }))
         )
       ),
       e("label", null, t("userSettings.whaleThreshold", { defaultValue: "Ngưỡng cảnh báo cá mập (VND):" }),
