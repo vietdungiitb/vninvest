@@ -3,7 +3,6 @@ import { TenantAdminSidebar } from './TenantAdminSidebar.js';
 import { Breadcrumb } from './Breadcrumb.js';
 import { PageTransition } from './PageTransition.js';
 import { TenantAdminErrorBoundary } from './TenantAdminErrorBoundary.js';
-import { TenantAdminCommandPalette } from './TenantAdminCommandPalette.js';
 const LAYOUT_CSS = `
 .taLayout {
   display: flex;
@@ -87,7 +86,7 @@ export function TenantAdminLayout() {
           </PageTransition>
         </TenantAdminErrorBoundary>
       </main>
-      <TenantAdminCommandPalette />
+      {/* W3: palette đã mount ở FullLayout — route này là con của `/`, không mount lại. */}
     </div>
   );
 }

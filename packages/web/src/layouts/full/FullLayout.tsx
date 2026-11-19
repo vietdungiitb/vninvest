@@ -4,6 +4,8 @@ import { Sidebar } from './vertical/sidebar/Sidebar';
 import { Header } from './vertical/header/Header';
 import { StaffSwitchBanner } from '../../components/StaffSwitchBanner.js';
 import { PageErrorBoundary } from '../../components/PageErrorBoundary.js';
+import { AppCommandPalette } from '../../components/AppCommandPalette';
+import { SettingsProvider } from '../../context/SettingsProvider';
 import { isNewLayoutEnabled } from '../../lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +56,9 @@ export function FullLayout() {
   }, [location.pathname]);
 
   return e(
+    SettingsProvider,
+    null,
+    e(
     'div',
     { className: 'min-h-screen bg-[var(--color-bg-primary)] text-slate-100 font-sans flex relative overflow-hidden' },
     // Sidebar backdrop overlay
@@ -112,7 +117,10 @@ export function FullLayout() {
         },
         e('div', { className: 'max-w-[var(--layout-content-max-width,80rem)] mx-auto' },
           e(PageErrorBoundary, { key: location.pathname }, e(Outlet)))
-      )
+      ),
+      // W3: Cmd+K mount DUY NHẤT tại đây — tránh 2 palette trên /tenant-admin/*
+      e(AppCommandPalette)
+    )
     )
   );
 }
