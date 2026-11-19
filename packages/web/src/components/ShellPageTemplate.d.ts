@@ -42,6 +42,8 @@ export interface ShellPageChromeProps {
   title: string;
   description?: string;
   badge?: ReactNode;
+  /** W1-chrome: nút/điều khiển ở titleRow (không nhét vào description). */
+  actions?: ReactNode;
   metrics?: ReactNode[];
   notice?: string;
   error?: string;

@@ -16,6 +16,7 @@ import type { NavPoint } from "../../components/portfolio/PortfolioChart";
 const PortfolioChart = lazy(() => import("../../components/portfolio/PortfolioChart").then((m) => ({ default: m.PortfolioChart })));
 import { usePortfolioResource, unwrapEnvelope, type PortfolioAdapter } from "../../hooks/usePortfolioWorkspace";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 
 const EMPTY_CURVE_REASON = "no_equity_curve";
 
@@ -114,6 +115,7 @@ export function PortfolioOverviewPage({
   ];
 
   return (
+    <ShellPageChrome title={t("portfolioWorkspace.overviewTitle", { defaultValue: "Tổng quan danh mục" })}>
     <div className="pf-overview">
       <ul className="pf-metric-grid">
         {cards.map((c) => (
@@ -152,6 +154,7 @@ export function PortfolioOverviewPage({
       </Suspense>
       </section>
     </div>
+    </ShellPageChrome>
   );
 }
 

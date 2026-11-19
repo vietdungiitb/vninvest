@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { SocUsersPanel } from "../../components/soc/SocUsersPanel.js";
-import { AdminPageHeader } from "./adminUi.js";
+import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 import { useI18n } from "../../context/LangContext.js";
 
 const e = createElement;
@@ -18,7 +18,7 @@ export function AdminUsersPage() {
   return e(
     "div",
     { className: "admin-users-page" },
-    e(AdminPageHeader, { title: t("routes.adminUsers") }),
+    e(ShellPageChrome, { title: t("routes.adminUsers") }),
     e(SocUsersPanel, null),
   );
 }

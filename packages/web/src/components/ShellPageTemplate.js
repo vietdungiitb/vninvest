@@ -92,6 +92,7 @@ export function ShellPageChrome({
   title,
   description,
   badge = null,
+  actions = null,
   metrics = [],
   notice = "",
   error = "",
@@ -123,6 +124,7 @@ export function ShellPageChrome({
           description ? renderElement("p", { className: styles.description }, description) : null,
         ),
         badge,
+        actions,
       ),
     ),
     metrics.length > 0 ? renderElement("section", { className: styles.metrics }, metrics) : null,
@@ -164,35 +166,8 @@ export function renderShellSelectField(props) {
   return renderElement(ShellSelectField, props);
 }
 
-export function ShellEmptyState({ icon = null, title, description, ctaLabel, ctaOnClick, children }) {
-  return renderElement(
-    "div",
-    { className: styles.empty, style: { textAlign: "center", padding: "32px 18px" } },
-    icon || renderElement(
-      "svg",
-      {
-        width: 48, height: 48, viewBox: "0 0 48 48", fill: "none",
-        style: { margin: "0 auto 16px", opacity: 0.4, display: "block" },
-      },
-      renderElement("rect", { x: 8, y: 12, width: 32, height: 24, rx: 4, stroke: "var(--text-secondary)", strokeWidth: 2, fill: "none" }),
-      renderElement("path", { d: "M16 20h16M16 26h12M16 32h8", stroke: "var(--text-secondary)", strokeWidth: 2, strokeLinecap: "round" }),
-    ),
-    title ? renderElement("p", { style: { fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" } }, title) : null,
-    description ? renderElement("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: ctaLabel ? 16 : 0 } }, description) : null,
-    ctaLabel
-      ? renderElement(
-        "button",
-        {
-          className: styles.button,
-          onClick: ctaOnClick,
-          style: { padding: "8px 20px", fontSize: 13, fontWeight: 600 },
-        },
-        ctaLabel,
-      )
-      : null,
-    children,
-  );
-}
+// W1-chrome: bản duplicate nội bộ đã gỡ — 1 nguồn duy nhất là ShellEmptyState.tsx.
+export { ShellEmptyState } from "./ShellEmptyState";
 
 export function renderShellPanel(props) {
   return renderElement(ShellPanel, props);

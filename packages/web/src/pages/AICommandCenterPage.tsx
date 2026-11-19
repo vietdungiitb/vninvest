@@ -3,7 +3,7 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
-import { ShellPanel } from "../components/ShellPageTemplate.js";
+import { ShellPanel, ShellPageChrome } from "../components/ShellPageTemplate.js";
 import styles from "../components/aiSettings.module.css";
 import { providerLabelKey, aiSourceLabelKey } from "../shared/providerModels.js";
 import {
@@ -207,16 +207,11 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       errorMessage: t("aiCommandCenter.unknownError"),
       retryLabel: t("aiCommandCenter.retryButton")
     },
-    e("div", { className: `shellPage ${styles.hubPage} ${className}` }, [
-      e("header", { className: styles.pageHeader },
-        e("div", null, [
-          // S4 (2026-10-19): đã bỏ eyebrow "Cài đặt". Nó trùng khái niệm với breadcrumb
-          // "Cài đặt tài khoản" ngay trên màn hình đó, khiến người dùng tưởng đang
-          // đọc hướng dẫn của trang cài đặt chứ không phải trung tâm điều hành AI.
-          e("h1", { key: "title", className: styles.pageTitle }, t("aiCommandCenter.title")),
-          e("p", { key: "desc", className: styles.pageDesc }, t("aiCommandCenter.description")),
-        ])
-      ),
+    e(ShellPageChrome, {
+      title: t("aiCommandCenter.title"),
+      description: t("aiCommandCenter.description"),
+      className: `${styles.hubPage} ${className}`,
+    }, [
 
       // R4.4 AC2: breadcrumb 3 mức /settings -> /settings/ai -> tab con.
       e(Breadcrumb, { key: "breadcrumb" }),
