@@ -35,6 +35,20 @@ describe("W1 chrome — 4 route RED + 1 regression GREEN", () => {
     });
   }
 
+  it("D2: admin card là glass thật (alpha + backdrop-filter), không phải bg-white đục", () => {
+    const s = readFileSync("src/pages/admin/adminUi.tsx", "utf8");
+    expect(s).not.toMatch(/bg-white/);
+    expect(s).toMatch(/--glass-surface/);
+    expect(s).toMatch(/backdropFilter:\s*["']blur\(var\(--glass-blur\)\)/);
+  });
+
+  it("feedback kit có 1 nguồn EmptyState duy nhất", () => {
+    const shell = readFileSync("src/components/ShellPageTemplate.js", "utf8");
+    expect(shell).toMatch(/export \{ ShellEmptyState \}/);
+    expect(shell).not.toMatch(/export function ShellEmptyState/);
+    expect(readFileSync("src/components/feedback/EmptyState.tsx", "utf8")).toMatch(/ShellEmptyState as EmptyState/);
+  });
+
   it("control dương/âm của detector", () => {
     expect(detectH1('e("h1", {}, "x")')).toBe(true);
     expect(detectH1('// <h1>x</h1>\nconst y = 1')).toBe(false);

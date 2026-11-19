@@ -12,6 +12,9 @@
   --accent-purple-rgb: 168 85 247;
   --bg-panel: var(--color-bg-panel, #0f172a);
   --bg-panel-soft: #0f172a; /* W0: không còn trỏ nhầm --color-bg-panel */
+  /* W1-chrome/D2: glass surface thật (alpha < 1 + blur), không phải card đục */
+  --glass-surface: rgba(15, 23, 42, 0.72);
+  --glass-blur: 12px;
   --border-default: var(--color-border-primary, #1e293b);
   --shadow-panel: var(--shadow-lg, 0 10px 15px rgb(0 0 0 / 0.1));
 
@@ -70,6 +73,7 @@
   --accent-blue: #2563eb;
   --bg-panel: #ffffff;
   --bg-panel-soft: #f8fafc;
+  --glass-surface: rgba(255, 255, 255, 0.88);
   --border-default: rgba(15, 23, 42, 0.12); /* W0: dời từ soc.tokens.css light */
   --shadow-panel: var(--shadow-lg, 0 10px 15px rgb(15 23 42 / 0.1));
   --accent-purple: #7e22ce;

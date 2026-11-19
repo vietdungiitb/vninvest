@@ -45,7 +45,15 @@ export function AdminPanel({ title, description, actions, children }: {
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
+    <section
+      className="border p-5 shadow-sm"
+      style={{
+        background: "var(--glass-surface)",
+        borderColor: "var(--border-default)",
+        borderRadius: "var(--r-lg)",
+        backdropFilter: "blur(var(--glass-blur))",
+      }}
+    >
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
@@ -68,7 +76,15 @@ type Metric = {
 export function AdminMetricCard(props: Metric & { card?: Metric }) {
   const { label, value, detail, status } = props.card ?? props;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
+    <div
+      className="border p-4 shadow-sm"
+      style={{
+        background: "var(--glass-surface)",
+        borderColor: "var(--border-default)",
+        borderRadius: "var(--r-lg)",
+        backdropFilter: "blur(var(--glass-blur))",
+      }}
+    >
       <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>

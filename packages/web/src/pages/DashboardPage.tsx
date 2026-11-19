@@ -17,6 +17,7 @@ import { collectUniqueSortedSymbols } from "../utils/dashboardSymbols.js";
 import { calculateBreadth, formatRealtimeStatus } from "../utils/dashboardBreadth.js";
 import { useAlertCenterActions } from "../hooks/useAlertCenterActions.ts";
 import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
+import { ShellPageChrome } from "../components/ShellPageTemplate.js";
 
 const e = createElement;
 
@@ -106,21 +107,15 @@ interface ErrorBannerProps {
 }
 
 /**
- * FU-02c: DashboardPage co 3 nhanh `return` (empty / error / main). Chi them
- * `<h1>` o nhanh main se lam mat heading luc chua co danh muc hoac bi loi =>
- * phai dung o CA 3. Dung helper de khong quyen mot nhanh nao.
+ * W1-chrome: 3 nhanh return (empty/error/main) deu dung chung 1 helper.
+ * ShellPageChrome cung cap <h1> duy nhat — page khong tu render heading.
  */
 function DashboardHeading() {
-  // M-6 (audit Stage 5): phai lay `t` tu `useI18n()`, KHONG nhan tu prop.
-  // Prop `t` cua DashboardPage co default `(_key, defaultText) => defaultText`
-  // (L135) va `pageRegistry.js:32` khong truyen prop nao => neu nhan tu prop thi
-  // `<h1>` LUON ra tieng Viet, ke ca khi locale la `en`.
+  // M-6: lay `t` tu useI18n(), KHONG nhan tu prop (pageRegistry khong truyen).
   const { t } = useI18n();
-  return e(
-    "h1",
-    { className: "core-dashboard-title" },
-    t("dashboard.title", { defaultValue: "Tổng quan" }),
-  );
+  return e(ShellPageChrome, {
+    title: t("dashboard.title", { defaultValue: "Tổng quan" }),
+  });
 }
 
 function ErrorBanner({ message, t = (_key: string, defaultText: string) => defaultText }: ErrorBannerProps) {
