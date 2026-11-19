@@ -40,7 +40,7 @@ Giới hạn toán học đã verify: tỉ lệ giữa `#0f172a`/`#ffffff` ≈19
 
 ## 4. C options cần Owner chốt (không tự chọn)
 
-- **(a) Sửa gate** để light variant dùng `light-theme.css` đúng (O-25 option c ban đầu) — thay semantics gate, cần Owner approve + plan rev5 + audit vòng 5.
+- **(a) Sửa gate đúng gốc (KHUYẾN NGHỊ)**: light variant phải dùng **cả nền sáng lẫn chữ light** từ `light-theme.css`, không ghép chữ base vào nền light. Khi đó thêm `--text-muted: #475569` vào `theme/tokens.css` light block là hợp lệ: dark `#94a3b8` trên `#0f172a` = 6.96 ✅, light `#475569` trên `#f8fafc` = 7.24 ✅. Cần Owner approve đổi semantics gate + plan rev5 + audit vòng 5; **không nâng baseline**.
 - **(b) Giữ `--text-muted: #475569` trong SOC light block** — vi phạm O-25 fix (a), tạo lại 2.66 regression.
 - **(c) Owner sign-off nâng baseline** 2 ID mới — vi phạm R2 (cấm nâng baseline để xanh), trừ khi Owner ghi rõ lý do.
 - **(d) Giữ `--bg-panel` trong SOC base** — vi phạm O-05 / test 13 base không xanh.
