@@ -1,3 +1,15 @@
+## Entry 551: B8 re-audit v2 uiux-chrome-w1 — PASS (O-29 đóng, 0 blocker/0 major)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (read-only re-audit) · **Branch**: `feat/uiux-chrome-w1` (worktree `D:/Mujoco Projects/uiux-chrome-w1`).
+- **Vai trò**: auditor độc lập (session khác người viết code) — chỉ đọc + chạy gate; không sửa code/plan, không claim, không commit/push/deploy. Chỉ ghi 2 file: `REAUDIT2.md` + Entry này.
+- **Scope**: chỉ kiểm việc đóng O-29 từ B8 v1 (Entry 549/REAUDIT.md) + Entry 550. Không mở lại mục đã PASS ở v1.
+- **Verdict**: **PASS** — 0 blocker, 0 major. O-29 đã đóng đúng đặc tả; đủ điều kiện B9.
+- **O-29 đóng**: `check-heading-contract.mjs:86` `H1_RE` nhận `<h1`/`createElement`/`renderElement`/alias `e`; `:88-92` `stripCommentsKeepLines` giữ số dòng; `:94-96,114-119` dùng chung regex cho detect + đếm (hết false-negative `renderElement` + false-positive comment). Self-test `:270-380` **7/7 PASS** có control thật (dương JSX/createElement/renderElement/e · âm comment/allowlist/test). File giờ nằm trong diff (`41 8`) + claim `CLAIMS.md:1991`.
+- **Gate 11/11 exit 0**: self-test 7/7 · heading 23/103 baseline 23 (0 mới) · dom-landmarks static · focus-ring 2/642 baseline 8 · portfolio 12x2 · tokens 79 · contrast 7x2 · light-theme 230/642 · theme-contrast 6 ⊆ baseline 32 (0 mới) · token-conflict 0/0 · vitest component 8/8 (chạy từ `packages/web`; từ root `MODULE_NOT_FOUND` — note N4).
+- **Baseline**: 5 ID nợ cũ có mặt (`AIUsageAnalytics`/`Support`/`Transactions`/`Upgrade`/`UserSettings`), hết `DashboardPage.tsx#2`; `baseline-heading-migration.md:3-4,21,34` giải trình Owner + follow-up slice riêng; diff `check-ui-baseline/` chỉ 1 file. 5 ID admin xoá là false-positive comment (grep xác nhận `<h1` chỉ ở comment). `WatchlistMainWorkspace#0` có sẵn trên `origin/dev` — out of scope.
+- **CHƯA CHẠY**: staging VPS, ảnh 4 route × 2 theme, test:visual/E2E, vitest full, tsc/build, lint, canvas runtime contrast (theo handoff `:53` chỉ VPS).
+- **Evidence/Next**: `docs/evidence/uiux-ssot/w1-chrome/REAUDIT2.md` → coordinator cho B9: đóng claim + PR merge-commit. N1–N5 chuyển owner; `W1-HEADING-FOLLOWUP` là slice riêng.
+
 ## Entry 550: W1-chrome — O-29 đóng: detector heading đúng + baseline migrate có giải trình
 
 - **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-chrome-w1`.
