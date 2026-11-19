@@ -65,7 +65,8 @@
 :root[data-theme="light"] {
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-on-accent: #0f172a; /* W0/O-24: chữ đen trên accent cyan (7.35:1) */
+  --text-muted: #475569; /* W0/O-26: chữ light trên nền sáng 7.24:1 */
+  /* O-28: giữ --text-on-accent = #ffffff (base) — accent light #0e7490 cho white 5.36:1 */
   --accent-blue: #2563eb;
   --bg-panel: #ffffff;
   --bg-panel-soft: #f8fafc;

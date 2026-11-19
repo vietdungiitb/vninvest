@@ -8,14 +8,14 @@ export const BASE_TOKENS = [
   "--fs-xs", "--fs-sm", "--fs-md", "--shadow-sm", "--shadow-md",
 ] as const;
 
-/** 6 light override cũ cần dời sang owner (không gồm --accent-cyan / --text-muted). */
+/** 6 light override cần có ở owner (O-26/O-28 rev6: gồm --text-muted). */
 export const LIGHT_KEYS = [
   "--text-primary", "--text-secondary", "--border-default",
-  "--bg-panel", "--bg-panel-soft",
+  "--bg-panel", "--bg-panel-soft", "--text-muted",
 ] as const;
 
-/** O-24/O-25: 2 tên này KHÔNG được khai trong light block. */
-export const FORBIDDEN_LIGHT = ["--accent-cyan", "--text-muted"] as const;
+/** O-24: chỉ --accent-cyan bị cấm ở light block. */
+export const FORBIDDEN_LIGHT = ["--accent-cyan"] as const;
 
 const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "");
 const declareRe = (n: string) => new RegExp("(?<![-\\w])" + n + "\\s*:");
@@ -45,21 +45,21 @@ describe("SOC/theme token SSOT (W0)", () => {
     }
   });
 
-  it("5 light key nằm ở theme/tokens.css light block", () => {
+  it("6 light key nằm ở theme/tokens.css light block", () => {
     for (const name of LIGHT_KEYS) {
       expect(theme.light, `${name} light value phải ở owner`).toMatch(declareRe(name));
     }
   });
 
-  it("O-24: --text-on-accent light = #0f172a; --accent-cyan KHÔNG override light", () => {
-    expect(theme.light).toMatch(/--text-on-accent:\s*#0f172a/);
-    for (const f of ["--accent-cyan", "--text-muted"]) {
+  it("O-24/O-28: accent-cyan KHÔNG override light; text-on-accent giữ trắng", () => {
+    for (const f of FORBIDDEN_LIGHT) {
       expect(theme.light, `${f} không được khai ở light block`).not.toMatch(declareRe(f));
     }
+    expect(theme.light, "O-28: chữ đen trên accent #0e7490 chỉ 3.33:1").not.toMatch(/--text-on-accent:\s*#0f172a/);
   });
 
-  it("R3: soc.tokens.css light block cũng không còn --accent-cyan/--text-muted", () => {
-    for (const f of FORBIDDEN_LIGHT) {
+  it("R3: soc.tokens.css light block không còn --accent-cyan/--text-muted", () => {
+    for (const f of ["--accent-cyan", "--text-muted"]) {
       expect(soc.light, `${f} phải đã dời/xoá khỏi SOC light`).not.toMatch(declareRe(f));
     }
   });
