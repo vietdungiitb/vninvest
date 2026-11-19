@@ -1,3 +1,11 @@
+## Entry 558: Runtime staging — Sidebar brand h1 gây 2 <h1>/trang, đã sửa
+
+- **Date**: 2026-11-19 · **Type**: code + test + docs · **Branch**: `feat/sidebar-h1-fix`.
+- Bằng chứng runtime: sau khi force rebuild frontend staging (build cũ `index-C8Fumerq.js`, code mới `index-BeC-m3Uv.js`), Playwright chụp 4 route cho thấy **mỗi route có 2 `<h1>`**: brand `VNInvest` từ `Sidebar.tsx:81` + tiêu đề trang từ shell/page. Gate `check-heading-contract` không bắt vì chỉ quét `src/pages/`.
+- Sửa: `Sidebar.tsx` brand `'h1'` → `'div'`; test source-scan có control dương (`e('h1')`/`<h1>` phải bị bắt) — 2/2 PASS. `check-heading-contract` exit 0, `check:tokens` PASS.
+- Ảnh staging 4 route × 2 theme được chụp lại (light bằng injection `data-theme` vì staging env thiếu `VITE_DEV_THEME_FLAG`). Chưa đối chiếu h1 sau sửa — sẽ verify sau merge+deploy.
+- Claim `sidebar-h1-fix` đã đóng. **CHƯA CHẠY**: E2E/full suite; staging re-verify sau merge.
+
 ## Entry 557: W3 — đóng 3 reservation minor (O-32/33/34), đóng claim, chờ PR
 
 - **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-cmd-w3`.

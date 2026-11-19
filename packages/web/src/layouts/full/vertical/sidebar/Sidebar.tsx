@@ -78,7 +78,8 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         'div',
         { className: 'flex items-center justify-between mb-4' },
         e(
-          'h1',
+          // W1 runtime fix: brand KHÔNG được là <h1> — mỗi route đã có 1 <h1> từ shell/page.
+          'div',
           {
             className: cn(
               'text-xl font-bold text-cyan-400 tracking-tight transition-opacity duration-200',
