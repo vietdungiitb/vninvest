@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { useI18n } from "../../../context/LangContext.js";
+import { useModalA11y } from "../../../hooks/useModalA11y";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_COLORS,
@@ -23,6 +25,8 @@ function formatDate(iso) {
 
 export default function CampaignDetailDrawer({ campaign, onClose, onEdit }) {
   const { t } = useI18n();
+  const contentRef = useRef(null);
+  useModalA11y(Boolean(campaign), onClose, contentRef);
 
   if (!campaign) return null;
 
@@ -32,7 +36,7 @@ export default function CampaignDetailDrawer({ campaign, onClose, onEdit }) {
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
 
       {/* Drawer */}
-      <div className="relative ml-auto flex h-full w-full max-w-lg flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
+      <div ref={contentRef} role="dialog" aria-modal="true" className="relative ml-auto flex h-full w-full max-w-lg flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
           <div>

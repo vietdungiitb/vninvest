@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
@@ -9,6 +9,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface ScheduledReport {
   id: number;
@@ -76,6 +77,9 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
   const confirm = useConfirm();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const createModalRef = useRef<HTMLDivElement>(null);
+  const closeCreateModal = useCallback(() => setShowCreateModal(false), []);
+  useModalA11y(showCreateModal, closeCreateModal, createModalRef);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     report_type: "usage_summary",
@@ -254,8 +258,15 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       </div>
 
       {showCreateModal && (
-        <div className={`${styles.modal}`} onClick={() => setShowCreateModal(false)}>
-          <div className={`${styles.modalContent}`} onClick={e => e.stopPropagation()}>
+        <div className={`${styles.modal}`} onClick={closeCreateModal}>
+          <div
+            ref={createModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("tenantReports.createTitle")}
+            className={`${styles.modalContent}`}
+            onClick={e => e.stopPropagation()}
+          >
             <h3 className={ta.rep_5}>{t("tenantReports.createTitle")}</h3>
             <div className={ta.rep_6}>
               <label className={ta.rep_7}>{t("tenantReports.nameLabel")}</label>

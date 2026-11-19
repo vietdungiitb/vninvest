@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import soc from "../soc/soc.module.css";
 
 interface MuteTarget {
@@ -22,6 +23,8 @@ export function MuteModal(props: MuteModalProps) {
   const { t } = useI18n();
   const [minutes, setMinutes] = useState(30);
   const [reason, setReason] = useState("");
+  const contentRef = useRef<HTMLDivElement>(null);
+  useModalA11y(Boolean(props.alert), props.onClose, contentRef);
 
   if (!props.alert) return null;
   const family = String(props.alert.alert_family || props.alert.alert_type || "—");
@@ -29,6 +32,7 @@ export function MuteModal(props: MuteModalProps) {
   return (
     <div className={`${soc.drawerOverlay}`} onClick={props.onClose}>
       <div
+        ref={contentRef}
         className={`${soc.sectionCard}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"

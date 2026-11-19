@@ -1,3 +1,37 @@
+## Entry 554: B8 re-audit vòng 2 uiux-a11y-w1 — PASS (0 blocker, 0 major)
+
+- **Date**: 2026-11-19 · **Type**: audit (read-only) · **Branch**: `feat/uiux-a11y-w1` · **HEAD**: `f5d20b15e`.
+- **Scope**: chỉ O-30 + N1/N2/N3 từ Entry 552 / Entry 553. Không mở lại O-01..O-29. Bằng chứng: `docs/evidence/uiux-ssot/w1-a11y/REAUDIT2.md`.
+- **Verdict PASS** → cho phép B9. Auditor độc lập vòng 2; chỉ ghi REAUDIT2.md + Entry này, không sửa code/plan/claim, không commit/push.
+- O-30 ĐÓNG: `TenantAdminReportsPage.tsx:263-266` `ref={createModalRef}` + `role="dialog"` + `aria-modal` + `aria-label`; `:81` `useCallback`; `:261` backdrop dùng callback. `useModalA11y.ts:22,30-41,44-48,53` chạy thật (ref không còn null).
+- N1 ĐÓNG: `a11y9-control.mjs` tồn tại, chạy exit 0, 4 CONTROL đúng. N2 ĐÓNG: `check-focus-ring.mjs` exit 0, **0 vi phạm / 643 file** (8 baseline đã hết). N3 ĐÓNG: `CLAIMS.md:1992` có `scan-ui-guidelines.mjs`, vẫn in-progress.
+- Gate exit 0 thật: modal test 3/3 · a11y9-control 4/4 · focus-ring 0 mới · baseline diff rỗng. Scanner rule đổi có control (`scan-ui-guidelines.mjs:29-37,163-180,217` + `index.css:812` + `guard-fixes.md:9,26`).
+- **CHƯA CHẠY**: budget re-run v2 (timeout 5'+6', chấp nhận `budget-pass.md`/Entry 553/v1 gate 11); 8 gate v1 còn lại; staging VPS; visual/E2E; full vitest/tsc/build/lint/i18n.
+- Ledger trước khi ghi U+FFFD=0 · CJK=0 · endsLF=true; baseline `check-ui-baseline/` không đổi; không `--write-baseline`.
+
+## Entry 553: W1-a11y — đóng O-30 + 3 note, focus-ring về 0
+
+- **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-a11y-w1`.
+- B8 v1 (Entry 552) NEED_REVISION: O-30 major — `TenantAdminReportsPage` có `useModalA11y` nhưng **quên gắn `ref`** vào content node ⇒ trap/focus đầu không chạy; `onClose` inline làm effect re-run.
+- Sửa: `ref={createModalRef}` + `role="dialog"` + `aria-modal` + `aria-label` trên content (`:262+`), `closeCreateModal` dùng `useCallback`, backdrop dùng cùng callback.
+- Note auditor: (N1) copy `a11y9-control.mjs` vào `docs/evidence/uiux-ssot/w1-a11y/`; (N2) sửa 2 focus-ring cuối (`PortfolioHeatmap.js:674`, `Sidebar.tsx:93`) bằng ring thay thế ⇒ gate **0 vi phạm** (8 baseline đều hết); (N3) bổ sung `scan-ui-guidelines.mjs` vào claim.
+- Budget vẫn PASS (`A11Y-9 2`, `CSS-2 0`, giảm 102); không nâng baseline, không `--write-baseline`.
+- Chưa PR, claim vẫn in-progress, chờ B8 v2.
+
+## Entry 552: B8 re-audit uiux-a11y-w1 — NEED_REVISION (1 major O-30, 0 blocker)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (read-only re-audit) · **Branch**: `feat/uiux-a11y-w1` (worktree `D:/Mujoco Projects/uiux-a11y-w1`).
+- **Vai trò**: auditor độc lập (session khác người viết code/plan) — không sửa code/plan, không claim, không commit/push/deploy; chỉ ghi `docs/evidence/uiux-ssot/w1-a11y/REAUDIT.md` + Entry này.
+- **Scope**: verify `docs/PLAN_UIUX_W1_A11Y_URL_20261119.md` rev2. Không mở lại O-01..O-29 đã đóng.
+- **Verdict**: **NEED_REVISION** — 0 blocker, **1 major (O-30)**, 3 note. Chưa đủ điều kiện B9.
+- **Git**: `git status --short` sạch; 5 commit slice; `git diff --name-only origin/dev..HEAD` = 10 file; claim `docs/CLAIMS.md:1992` vẫn `in-progress` (đúng B8); `git diff origin/dev..HEAD -- packages/web/scripts/check-ui-baseline/` **rỗng** — không nâng baseline. Ledger trước khi ghi: U+FFFD=0, CJK=0.
+- **Code đúng**: hook `hooks/useModalA11y.ts:24-28` Escape · `:30-41` Tab trap · `:21,49-52` focus return; test `hooks/__tests__/useModalA11y.component.test.tsx:20-42` **3/3 PASS**; áp đúng tại `MuteModal.tsx:27,35` · `OptimizationModal.jsx:13,30` · `CampaignDetailDrawer.jsx:29,39`. Scanner `scan-ui-guidelines.mjs:172-179` (A11Y-9 ±6 dòng + `htmlFor`) và `:29-37,217` (CSS-2 đọc `src/index.css`; `index.css:812` có reduced-motion) đúng đặc tả. 12 file URL state grep xác nhận (§1 REAUDIT.md).
+- **O-30 (MAJOR)**: `pages/tenant-admin/TenantAdminReportsPage.tsx:80-81,259-261` — `createModalRef` chỉ xuất hiện ở `:80` (khai báo) + `:81` (truyền hook), **không có `ref=` trên content node `:261`**, cũng thiếu `role="dialog"`/`aria-modal`. `ref.current` luôn `null` ⇒ `useModalA11y.ts:30,44-48` bỏ qua Tab trap + focus đầu; chỉ Escape/focus-return chạy. Thêm vào đó `onClose` arrow inline `:81` làm effect re-run mỗi render. Fix: gắn ref + role + aria-modal, ổn định `onClose`, thêm test hành vi.
+- **N1**: `guard-fixes.md:9` nhắc control `a11y9-control.mjs` 4/4 nhưng `glob **/a11y9-control.mjs` = 0 file — không tự chạy lại được. **N2**: `PLAN:37,73` muốn focus-ring 8→0, thực tế còn 2 (`PortfolioHeatmap.js:674`, `Sidebar.tsx:93`), gate xanh chỉ vì ⊆ baseline. **N3**: claim `CLAIMS.md:1992` không liệt kê `scan-ui-guidelines.mjs` dù nằm trong diff, mà lại liệt kê ledger append (chưa có — auditor làm Entry 552).
+- **Gate chạy thật 11/11 exit 0**: vitest modal 3/3 · token-conflict 0/0 · theme-contrast 6 ⊆ baseline 32 (0 mới; canvas **CHƯA CHẠY**, build staging khác) · tokens 79 · contrast 7×2 · light-theme 230/643 · dom-landmarks static · heading 23/baseline 23 · focus-ring 2/baseline 8 · portfolio 12×2 · budget `162→60 (-102)`, A11Y-9 5→2, CSS-2 46→0, 0 rule tăng. Lệnh tái lập trong REAUDIT.md §5.
+- **CHƯA CHẠY**: staging VPS, ảnh 4 route × 2 theme, E2E/`test:visual`, vitest full, tsc/build/lint/i18n scan, canvas runtime contrast.
+- **Next**: agent sửa O-30 + test riêng → chạy lại 11 gate, giữ baseline rỗng → B8 vòng 2 → B9. Owner/coordinator xử lý N1–N3.
+
 ## Entry 551: B8 re-audit v2 uiux-chrome-w1 — PASS (O-29 đóng, 0 blocker/0 major)
 
 - **Date**: 2026-11-19 · **Type**: DOCS (read-only re-audit) · **Branch**: `feat/uiux-chrome-w1` (worktree `D:/Mujoco Projects/uiux-chrome-w1`).
