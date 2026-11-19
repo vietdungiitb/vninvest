@@ -108,7 +108,7 @@ interface ErrorBannerProps {
 
 /**
  * W1-chrome: 3 nhanh return (empty/error/main) deu dung chung 1 helper.
- * ShellPageChrome cung cap <h1> duy nhat — page khong tu render heading.
+ * ShellPageChrome cung cap heading duy nhat — page khong tu render heading.
  */
 function DashboardHeading() {
   // M-6: lay `t` tu useI18n(), KHONG nhan tu prop (pageRegistry khong truyen).
