@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
-import { FreshnessBadge } from "../feedback/FreshnessBadge.js";
+import { FreshnessBadge } from "../feedback/FreshnessBadge";
 
 /**
  * StockOrderBookWidget - Market Depth (Order Book) Display
