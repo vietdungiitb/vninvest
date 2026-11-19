@@ -1,3 +1,13 @@
+## Entry 543: W0 code partial — blocker O-26, Owner chốt sửa gate đúng gốc (rev5)
+
+- **Date**: 2026-11-19 · **Type**: code + docs (FE) · **Branch**: `feat/uiux-ssot-w0` (worktree `D:/Mujoco Projects/uiux-ssot-w0`) · **Base**: `dev@a4f745b3e` (S0/PR #433 đã merge).
+- **Tiến độ**: claim riêng `5ce5a3833` trước dòng code → test red `9e56ee797` (3 fail/2 pass, có control âm/dương) → code partial `5671233a1` + `1886522fb`. `check-token-conflict` = **0**, `check:tokens`/`contrast`/`portfolio-contrast`/`light-theme` đều PASS.
+- **BLOCKER O-26**: `check-theme-contrast --no-runtime` exit 1, 2 ID mới `text-muted-on-bg-panel-token@shell/light|soc/light` = 2.56:1; baseline tương ứng `text-muted-on-bg-panel@shell/light` = 3.75 ⇒ **hồi quy thật**. Root cause: O-05 bắt xoá `--bg-panel` base + O-25 cấm `--text-muted` light ⇒ không có giá trị đơn lẻ pass cả hai nền (max contrast ≈4.38 < 4.5). Các vòng audit mô phỏng bằng cách giữ 7 light override SOC nên không thấy tổ hợp này. Evidence: `docs/evidence/uiux-ssot/w0/BLOCKER_O26.md`.
+- **Owner chốt**: sửa gate đúng gốc — light variant resolve **cả chữ lẫn nền** từ `light-theme.css`; thêm `--text-muted: #475569` vào light block (dark `#94a3b8` 6.96 ✅ · light `#475569` 7.24 ✅). Plan **rev5** thêm Task 2b; **audit vòng 5** phải AGREE trước khi đụng gate. **Không nâng baseline, không `--update-baseline`, không báo PASS giả** (R2).
+- **Files plan/handoff cập nhật**: `docs/PLAN_UIUX_W0_TOKEN_SSOT_20261119.md` (rev5, D10→D11, Task 2/2b) · `docs/handoffs/HANDOFF_2026-11-19_UIUX-SSOT.md`.
+- **Lessons**: [L-001 L-002 L-003 L-M02 L-F03 L-F05 L-F08 L-F11 L-G02 L-V02 L-T01]. **CHƯA CHẠY**: audit v5, simulation sau sửa gate, staging, browser/vitest full, build, ảnh.
+- **Next**: audit vòng 5 → implement Task 2b + Task 2 Step 2 (light muted) → Task 3–5 → B8 re-audit → PR. Chưa đóng claim, chưa push branch.
+
 ## Entry 542: Audit vòng 4 rev4 — AGREE (0 blocker, 0 major, O-25 đóng)
 
 - **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base**: `dev@2b10b3016`.
