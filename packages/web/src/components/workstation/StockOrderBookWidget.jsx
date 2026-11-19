@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { FreshnessBadge } from "../feedback/FreshnessBadge.js";
 
 /**
  * StockOrderBookWidget - Market Depth (Order Book) Display
@@ -151,19 +152,13 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
         { className: "ob-title-row", style: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" } },
         e("h3", { className: "ob-title" }, "Độ sâu thị trường (Market Depth)"),
         (orderBook?.data_quality === "unavailable" || orderBook?.is_mock) &&
-          e(
-            "span",
-            {
-              className: "ob-estimated-badge",
-              title: orderBook?.data_quality === "unavailable"
-                ? t("workstation.orderBook.unavailableTooltip", { defaultValue: "Chưa có sổ lệnh thật — backend không có nguồn order book" })
-                : t("workstation.orderBook.estimatedTooltip", { defaultValue: "Sổ lệnh đang được ước tính từ snapshot — chưa phải dữ liệu khớp lệnh thật" }),
-              style: { background: "rgba(245, 158, 11, 0.18)", border: "1px solid rgba(245, 158, 11, 0.45)", color: "#fbbf24", borderRadius: "9999px", padding: "2px 8px", fontSize: "0.68rem", fontWeight: "700", letterSpacing: "0.02em" },
-            },
-            orderBook?.data_quality === "unavailable"
+          e(FreshnessBadge, {
+            state: orderBook?.data_quality === "unavailable" ? "empty" : "delayed",
+            note: orderBook?.data_quality === "unavailable" ? "backend_missing" : "estimated_from_snapshot",
+            label: orderBook?.data_quality === "unavailable"
               ? t("workstation.orderBook.unavailableBadge", { defaultValue: "Chưa có sổ lệnh" })
-              : t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" })
-          )
+              : t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" }),
+          })
       ),
       orderBook && typeof orderBook.spread === "number" && e(
         "div",
