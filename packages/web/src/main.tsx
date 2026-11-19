@@ -11,6 +11,7 @@ import { getPageComponent } from './pages/pageRegistry.js';
 import { AppShell } from './layouts/AppShell';
 import { TenantAdminLayout } from './components/TenantAdminLayout.js';
 import { StaffRoute, TenantRoute } from './components/StaffRoute.js';
+import { applyDevThemeFlag } from './lib/devThemeFlag.js';
 import './index.css';
 
 // Feature flag for gradual rollout of the Advertising & Trademark admin page.
@@ -261,9 +262,14 @@ function App() {
 // Áp theme đã lưu trước first paint để không nháy dark khi user chọn light.
 try {
   if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-    // Light theme disabled (D1=b, 2026-11-12): always dark until token migration (A2b) lands.
-    document.documentElement.removeAttribute('data-theme');
-    try { window.localStorage.setItem('vninvest-theme', 'dark'); } catch { /* ignore */ }
+    // W0/D5: light theme chỉ bật khi dev flag active (?theme=light ở dev/staging).
+    // production vẫn dark mặc định — flag early-return, không bị force dark ghi đè.
+    if (applyDevThemeFlag()) {
+      // flag đã set data-theme=light + storage; giữ nguyên cho first paint.
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      try { window.localStorage.setItem('vninvest-theme', 'dark'); } catch { /* ignore */ }
+    }
   }
 } catch {
   // private mode — bỏ qua

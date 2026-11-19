@@ -1,6 +1,6 @@
 :root {
   --text-primary: var(--color-text-primary, #f1f5f9);
-  --text-muted: var(--color-text-muted, #64748b);
+  --text-muted: #94a3b8; /* W0/O-25: direct value — khong phu thuoc --color-text-muted (index.css:67) */
   --text-secondary: var(--color-text-secondary, #94a3b8);
   --accent-cyan: var(--color-accent-primary, #06b6d4);
   --accent-emerald: var(--color-success-500, #10b981);
@@ -11,7 +11,7 @@
   --accent-purple: #a855f7;
   --accent-purple-rgb: 168 85 247;
   --bg-panel: var(--color-bg-panel, #0f172a);
-  --bg-panel-soft: var(--color-bg-panel, #0f172a);
+  --bg-panel-soft: #0f172a; /* W0: không còn trỏ nhầm --color-bg-panel */
   --border-default: var(--color-border-primary, #1e293b);
   --shadow-panel: var(--shadow-lg, 0 10px 15px rgb(0 0 0 / 0.1));
 
@@ -65,10 +65,12 @@
 :root[data-theme="light"] {
   --text-primary: #0f172a;
   --text-secondary: #334155;
+  --text-muted: #475569; /* W0/O-26: chữ light trên nền sáng 7.24:1 */
+  /* O-28: giữ --text-on-accent = #ffffff (base) — accent light #0e7490 cho white 5.36:1 */
   --accent-blue: #2563eb;
   --bg-panel: #ffffff;
   --bg-panel-soft: #f8fafc;
-  --border-default: #e2e8f0;
+  --border-default: rgba(15, 23, 42, 0.12); /* W0: dời từ soc.tokens.css light */
   --shadow-panel: var(--shadow-lg, 0 10px 15px rgb(15 23 42 / 0.1));
   --accent-purple: #7e22ce;
   --accent-shell: #0e7490;

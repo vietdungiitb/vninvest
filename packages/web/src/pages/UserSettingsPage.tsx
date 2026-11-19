@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { changePasswordSchema, type ChangePasswordValues } from "./changePasswordSchema.js";
+import { isDevThemeFlagActive } from "../lib/devThemeFlag.js";
 import { FormField } from "../components/ui/FormField.js";
 import { ShellSkeleton } from "../components/ShellSkeleton.js";
 import { ShellEmptyState } from "../components/ShellEmptyState.js";
@@ -18,7 +19,9 @@ export const USER_THEME_STORAGE_KEY = "vninvest-theme";
 /** Áp theme light/dark thật lên document (trước đây select theme chỉ ghi DB, không đổi pixel nào). */
 export function applyUserTheme(_theme: string | null | undefined) {
   if (typeof document === "undefined") return;
-  // Light theme disabled (D1=b, 2026-11-12): always dark.
+  // W0/D5: dev flag (?theme=light ở dev/staging) có quyền ưu tiên — KHÔNG force dark ghi đè.
+  if (isDevThemeFlagActive()) return;
+  // Mặc định production: luôn dark cho tới khi Owner bật light chính thức.
   document.documentElement.removeAttribute("data-theme");
   try { window.localStorage.setItem(USER_THEME_STORAGE_KEY, "dark"); } catch { /* ignore */ }
 }

@@ -143,7 +143,7 @@ const TOKEN_LIGHT = {
   "--color-border-secondary": "#cbd5e1",
   "--color-border-focus": "#2563eb",
   "--color-border-error": "#dc2626",
-  "--color-accent-primary": "#0891b2",
+  "--color-accent-primary": "#0e7490", // O-28: #0891b2 tren nen sang chi 3.52:1; #0e7490 = 5.12:1
   "--color-accent-secondary": "#0e7490",
   "--color-accent-hover": "#0e7490",
   // Semantic tones (W1-A): the bright tones are unreadable on a light canvas

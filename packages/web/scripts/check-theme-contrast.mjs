@@ -86,7 +86,13 @@ const TOKEN_FILES = [
 const VARIANTS = {
   shell: {
     label: "shell (khong nap SOC chunk)",
-    order: ["packages/web/src/theme/tokens.css", "packages/web/src/index.css"],
+    order: [
+      "packages/web/src/theme/tokens.css",
+      "packages/web/src/index.css",
+      // W0/O-26/O-28: light variant phai dung CA nền SANG lan CHU LIGHT.
+      // light-theme.css cai dat sau @theme ⇒ override --color-* o light mode.
+      "packages/web/src/theme/light-theme.css",
+    ],
   },
   soc: {
     label: "soc (da nap SOC chunk)",
@@ -94,6 +100,7 @@ const VARIANTS = {
       "packages/web/src/theme/tokens.css",
       "packages/web/src/index.css",
       "packages/web/src/components/soc/soc.tokens.css",
+      "packages/web/src/theme/light-theme.css",
     ],
   },
 };
