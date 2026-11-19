@@ -174,6 +174,9 @@ const RULES = [
       // component wrapper <Input>/<Select> → label có thể ở component khác, đánh dấu review
       if (/<(Input|Select|Textarea|Checkbox|Switch)\b/.test(ctx.line)) return null;
       if (/<label\b/.test(win)) return null;
+      // FormField component truyền `htmlFor` + `id` qua props (không có literal
+      // <label> trong cùng file) — vẫn là label hợp lệ.
+      if (/htmlFor\s*=/.test(win)) return null;
       return `${ctx.line.trim().slice(0, 120)}  → ${m[1]} không label/aria-label`;
     },
   },

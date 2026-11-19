@@ -5,7 +5,8 @@
 - File: `docs/audit-uiux/scripts/scan-ui-guidelines.mjs` rule A11Y-9.
 - Trước: chỉ check `ctx.line` ⇒ `<input` dòng 107 + `aria-label` dòng 111 bị tính là "không label" (`FilterBar`, `command`, …).
 - Sau: check `ctx.line` **hoặc** cửa sổ ±6 dòng (cùng cửa sổ đã dùng cho `<label`).
-- Control (`a11y9-control.mjs`): aria-label dòng sau → `false` ✅ · không có tên → `true` ✅ · `<label htmlFor>` → `false` ✅.
+- Bổ sung: `FormField` truyền `htmlFor`/`id` qua props (không có literal `<label>`) cũng được coi là có label — 8 hit auth là false-positive.
+- Control (`a11y9-control.mjs`): aria-label dòng sau → `false` ✅ · không có tên → `true` ✅ · `<label htmlFor>` → `false` ✅ · `FormField htmlFor` → `false` ✅ (4/4).
 
 ## CSS-2 — reduced-motion đã có toàn cục
 
