@@ -77,11 +77,22 @@ function walk(dir, acc = []) {
   return acc;
 }
 
-/** `<h1` in JSX, or `createElement("h1")` in imperative code. */
-function buildsH1(src) {
-  const jsx = /<h1[\s/>]/.test(src);
-  const imperative = /createElement\(\s*["']h1["']/.test(src);
-  return jsx || imperative;
+/**
+ * W1-chrome (O-29): strip comment trước khi detect — comment có `<h1>` từng
+ * cho false positive (AdminUsersPage:13-14). Nhận cả alias `e("h1")` và
+ * `renderElement("h1")`. Dùng CHUNG 1 hàm cho phát hiện VÀ đếm dòng, nếu không
+ * `buildsH1` true mà `at.length = 0` ⇒ ID `#0` giả (5 page lọt ra ngoài baseline).
+ */
+const H1_RE = /<h1[\s/>]|(?:createElement|renderElement|\be)\(\s*["']h1["']/;
+
+function stripCommentsKeepLines(s) {
+  return s
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/^\s*\/\/.*$/gm, (m) => m.replace(/[^\n]/g, " "));
+}
+
+function buildsH1(rawSrc) {
+  return H1_RE.test(stripCommentsKeepLines(rawSrc));
 }
 
 function collect(repo) {
@@ -100,11 +111,11 @@ function collect(repo) {
   const violations = [];
   for (const rel of files) {
     if (isAllowed(rel)) continue;
-    const src = fs.readFileSync(path.join(repo, rel), "utf8");
-    if (!buildsH1(src)) continue;
+    const src = stripCommentsKeepLines(fs.readFileSync(path.join(repo, rel), "utf8"));
+    if (!H1_RE.test(src)) continue;
     const lines = src.split("\n");
     const at = lines
-      .map((l, i) => (/<h1[\s/>]/.test(l) || /createElement\(\s*["']h1["']/.test(l) ? i + 1 : 0))
+      .map((l, i) => (H1_RE.test(l) ? i + 1 : 0))
       .filter(Boolean);
     violations.push({
       // The count is part of the id: a page that is already in the baseline
@@ -312,6 +323,28 @@ function selfTest() {
     },
     1,
     "ImperativePage.js",
+  );
+
+  probe(
+    "CASE: trang tu dung renderElement('h1') / e('h1') → exit != 0",
+    CLEAN,
+    (root) => {
+      const p = path.join(root, "packages", "web", "src", "pages", "AliasPage.js");
+      writeFileSync(p, "const a = renderElement('h1', {}); const b = e(\"h1\", {}, 'x');\n", "utf8");
+    },
+    1,
+    "AliasPage.js",
+  );
+
+  probe(
+    "NEGATIVE: <h1> trong comment → van exit 0 (L-F06)",
+    CLEAN,
+    (root) => {
+      const p = path.join(root, "packages", "web", "src", "pages", "CommentPage.js");
+      writeFileSync(p, "// <h1>chi la comment</h1>\n/* createElement('h1') */\nconst x = 1;\n", "utf8");
+    },
+    0,
+    null,
   );
 
   probe(

@@ -1,3 +1,25 @@
+## Entry 550: W1-chrome — O-29 đóng: detector heading đúng + baseline migrate có giải trình
+
+- **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-chrome-w1`.
+- B8 v1 (Entry 549) NEED_REVISION: `check-heading-contract.mjs` detector cũ bỏ sót `e("h1")`/`renderElement("h1")` và đếm cả comment.
+- Sửa detector: 1 regex `H1_RE` dùng chung cho phát hiện + đếm dòng, `stripCommentsKeepLines` giữ số dòng; self-test **7/7 PASS** (thêm case alias + negative comment).
+- Detector đúng lộ **5 ID nợ cũ** (`AIUsageAnalyticsPage`, `SupportPage`, `TransactionsPage`, `UpgradePage`, `UserSettingsPage` — mỗi page 1 `<h1>`, shell = 0) ngoài scope 4 route D6. **Owner chốt**: ghi baseline có giải trình + mở slice riêng `W1-HEADING-FOLLOWUP`; không che regression từ slice này.
+- Baseline `check-heading-contract` update (23 ID): 5 ID nợ cũ vào baseline, entry `DashboardPage.tsx#2` biến mất sau khi chuyển shell. Gate exit 0, 0 vi phạm mới. Không đụng baseline gate khác.
+- Evidence: `docs/evidence/uiux-ssot/w1-chrome/baseline-heading-migration.md`. Chưa PR, claim vẫn in-progress.
+
+## Entry 549: B8 re-audit uiux-chrome-w1 — NEED_REVISION (1 major O-29, 0 blocker)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (read-only re-audit) · **Branch**: `feat/uiux-chrome-w1` (worktree `D:/Mujoco Projects/uiux-chrome-w1`).
+- **Vai trò**: auditor độc lập (session khác người viết plan/code) — chỉ đọc + chạy gate; không sửa code/plan, không claim, không commit/push, không deploy. Chỉ ghi 2 file: REAUDIT.md + Entry này.
+- **Scope**: verify `docs/PLAN_UIUX_W1_CHROME_20261119.md` rev4 + handoff D2/D6. Không mở lại W0/O-01..O-28.
+- **Verdict**: **NEED_REVISION** — 0 blocker, **1 major (O-29)**, 3 note không chặn (N1 glass-blur kế thừa · N2 adminUi `<h1>` nằm allowlist · N3 baseline theme-contrast cũ không được động). Chưa đủ điều kiện B9.
+- **Git**: `git status --short` sạch; `git log --oneline -6` = 6 commit slice; `git diff --name-only origin/dev..HEAD` = 17 file, đều trong claim `docs/CLAIMS.md:1991` (vẫn `in-progress` — đúng B8); `git diff origin/dev..HEAD -- packages/web/scripts/check-ui-baseline/` rỗng (không nâng baseline).
+- **Code PASS**: `ShellPageTemplate.js:95,127` prop `actions` + render; `.d.ts:46` `actions?: ReactNode`; 4 route vào chrome (`AICommandCenter:210`, `Dashboard:116`, `PortfolioOverview:118`, `AdminUsers:21`), 0 h1 thật; `ShellOperationsCenterPage.tsx:4,91` giữ nguyên (regression); `tokens.css:16,76` glass alpha 0.72/0.88 + `:17` blur; `adminUi.tsx:51,54,82,85` glass + backdrop-filter, không `bg-white`; duplicate `ShellEmptyState` đã xoá, re-export tại `:170`, feedback kit 3 file tồn tại.
+- **Gate chạy thật 10/10 exit 0**: vitest 8/8 · check:tokens 79 · check:contrast 7x2 · check-theme-contrast 6 ⊆ baseline 32 (0 mới) · check-token-conflict 0/0 · check-light-theme 230/642 · check-dom-landmarks static · check-heading-contract 23/baseline 24 · check-focus-ring 2/baseline 8 · check-portfolio-contrast 12x2. Lệnh tái lập trong REAUDIT.md §3.
+- **O-29 (MAJOR)**: `PLAN_W1_CHROME:16,39,54,68,104` yêu cầu detector dùng chung cho test **và** gate (strip comment + nhận `renderElement("h1")` + `createElement("h1")` + control âm). Thực tế `packages/web/scripts/check-heading-contract.mjs:81-85` vẫn `/<h1[\s/>]/` + `/createElement\(...h1...\)/`, **không nhận `renderElement`/`e`, không strip comment**; self-test `:286-339` thiếu control âm; file này không nằm trong diff slice. Hệ quả: `renderElement("h1")` (pattern gốc Dashboard:120) tái phạm sẽ lọt gate; `<h1>` trong comment vẫn bị đếm (`AdminUsersPage.tsx:13-14`), commit `cb43e3463` chỉ sửa comment `DashboardPage.tsx:111`. Exit 0 bị che bởi baseline-locked — không được tin.
+- **CHƯA CHẠY**: staging VPS, ảnh 4 route × 2 theme, test:visual/E2E, vitest full, tsc/build, lint, canvas runtime contrast (theo handoff `:53` chỉ VPS).
+- **Evidence/Next**: `docs/evidence/uiux-ssot/w1-chrome/REAUDIT.md` → agent S2 đồng bộ detector gate + control, giữ baseline 24, chạy lại 10 gate → B8 vòng 2 → B9 (đóng claim + PR). Không nâng baseline, không đụng 4 route đã đúng.
+
 ## Entry 548: B8 re-audit uiux-ssot-w0 — PASS (0 blocker, 0 major)
 
 - **Date**: 2026-11-19 · **Type**: DOCS (read-only re-audit) · **Branch**: `feat/uiux-ssot-w0` (worktree `D:/Mujoco Projects/uiux-ssot-w0`).
