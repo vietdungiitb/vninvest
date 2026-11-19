@@ -167,7 +167,7 @@ export function renderShellSelectField(props) {
 }
 
 // W1-chrome: bản duplicate nội bộ đã gỡ — 1 nguồn duy nhất là ShellEmptyState.tsx.
-export { ShellEmptyState } from "./ShellEmptyState.js";
+export { ShellEmptyState } from "./ShellEmptyState";
 
 export function renderShellPanel(props) {
   return renderElement(ShellPanel, props);
