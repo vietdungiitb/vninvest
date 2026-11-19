@@ -208,7 +208,7 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
         )
       ),
       e("label", null, t("userSettings.density", { defaultValue: "Mật độ giao diện:" }),
-        e("select", { "aria-label": t("userSettings.density", { defaultValue: "Mật độ giao diện" }), value: density, onChange: (ev) => setDensity(ev.target.value as "comfortable" | "compact") },
+        e("select", { "aria-label": t("userSettings.density", { defaultValue: "Mật độ giao diện" }), value: density, onChange: (ev) => setDensity((ev.target as HTMLSelectElement).value as "comfortable" | "compact") },
           e("option", { value: "comfortable" }, t("userSettings.densityComfortable", { defaultValue: "Thoải mái" })),
           e("option", { value: "compact" }, t("userSettings.densityCompact", { defaultValue: "Nén" }))
         )
