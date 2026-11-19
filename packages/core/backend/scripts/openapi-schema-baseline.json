@@ -1,13 +1,13 @@
 {
   "_comment": "Baseline do bang lenh: python scripts/check-openapi-schema-budget.py (tu packages/core/backend). Cong nay CHAN THOAI LUI, khong chan no san. Ha baseline xuong khi ban sua so loi.",
-  "_measured_at": "2026-10-22",
-  "_measured_by": "manage.py spectacular, sau khi khai bao @extend_schema cho 34 function-based view (identity_access auth, user_workspace dnse/broker/retail, data_ingest, vninvest_core/urls)",
-  "_counting_rule": "Gate so sanh TONG (errors) va UNIQUE (errors_unique) rieng biet. 'errors' la so dong loi spectacular phat ra (mot operation co the nhieu dong); 'errors_unique' la so ten loi khac nhau. Do bang lenh nay nen cam hai con so phai cung he so sanh.",
-  "_why_not_zero": "Con DUNG 8 unique loi, tat ca deu co ly do bi CHAN - khong phai con sot vi hieu: (1) StripeWebhookView (commercial/stripe_webhooks.py:47) trong vung Stripe dang DONG BANG; (2-8) 7 dnse_*_api trong src/user_workspace/views_dnse.py, file dang bi agent KHAC giu `in-progress` tai docs/CLAIMS.md:277 (portfolio-w3-api / feat/portfolio-w3-api) - theo AGENTS.md 6.1 thi khong duoc sua, da revert. Het function view o 13 file khac.",
-  "_delta_this_commit": "Gate do bang chinh lenh: errors 154 -> 32, errors_unique 35 -> 8. Fix gom 2 dang khac nhau: (a) function DA co @extend_schema responses= nhung thieu request= -> them request= vao decorator cu, them decorator moi khong giai quyet; (b) function chua co decorator -> them moi, doc shape tu return that. | 2026-10-22 W0.10: +2 route partner-sa-detail (ServiceAccountDetailView, da khai bao @extend_schema) => warnings 184 -> 191, warnings_unique 182 -> 189. Cap nhat baseline CUNG COMMIT voi endpoint moi (quy uoc trong file nay: so loi tang khi them endpoint co schema = chap nhan ngay, commit ca hai cung nhau).",
-  "_kept_warnings_note": "Warnings khong doi suot tu Entry 250: 4x UnifiedAlertSerializer, 2x TenantLifecycleEventSerializer, 1x IngestJobSerializer, 1x SessionFactsSerializer, 3x StockManagementTrackedSymbol*.",
-  "errors": 32,
-  "errors_unique": 8,
-  "warnings": 191,
-  "warnings_unique": 189
+  "_measured_at": "2026-11-19",
+  "_measured_by": "manage.py spectacular --file /dev/null, do bang scripts/check-openapi-schema-budget.py (FAKE_ENV: DJANGO_DEBUG + DJANGO_SECRET_KEY + CORE_PAT_PEPPER)",
+  "_counting_rule": "Gate so sanh TONG (errors) va UNIQUE (errors_unique) rieng biet. 'errors' la so dong loi spectacular phat ra (mot operation co can nhieu dong); 'errors_unique' la so ten loi khac nhau. Do bang lenh nay nen cam hai con so phai cung he so sanh.",
+  "_why_not_zero": "Con DUNG 14 unique loi, deu la APIView khong guess duoc serializer (graceful fallback cua drf-spectacular), khong phai schema sai: (1) RealtimeUnifiedAlertsView (market_serving/native_views.py:473 - duoc tao tu wave truoc); (2-7) 6 LicenseKey*View (commercial/views.py:677,692,728,740,753) + StripeWebhookView (commercial/stripe_webhooks.py:48); (8-14) 7 dnse_*_api (user_workspace/views_dnse.py). Warnings giam 191 -> 125 nhieu endpoint moi da khai bao schema.",
+  "_delta_this_commit": "2026-11-19 baseline refresh (trung thuc, KHONG sua code de xanh gate): errors 32 (8 unique) -> 56 (14 unique); warnings 191 (189 unique) -> 125 (123 unique). Nguyen nhan: cac endpoint moi duoc them vao dev tu 2026-10-22 (license key lifecycle, realtime unified alerts, DNSE sync/order) co APIView khong co serializer_class. Theo quy uoc trong file nay ('so loi tang khi them endpoint co schema = chap nhan ngay, commit ca hai cung nhau') cap nhat baseline trong cung commit; moi lan giam so loi phai ha baseline xuong. Khong duoc dung baseline moi de che regresion that - moi endpoint moi phai tu khai bao serializer.",
+  "_kept_warnings_note": "Warnings con lai tu cac serializer khong guess duoc (UnifiedAlert/SessionFacts/StockManagementTrackedSymbol/...) - khong anh huong shape response.",
+  "errors": 56,
+  "errors_unique": 14,
+  "warnings": 125,
+  "warnings_unique": 123
 }

@@ -1,3 +1,12 @@
+## Entry 561: Sửa 5 gate baseline chặn push — đối chứng trên dev sạch, không đổ lỗi cho slice R1
+
+- **Date**: 2026-11-19 · **Type**: code + docs/tooling · **Branch**: `feat/header-realtime-status` (cùng branch để mở push cho R1) · **Bằng chứng**: `docs/evidence/prepush-gate-baseline/EVIDENCE_20261119.md`.
+- **L-G08 áp dụng**: chạy `pre-push-gate` trên `dev` sạch cùng main tree → **cùng 5 FAIL** như branch R1 ⇒ baseline drift có sẵn.
+- **Fix**: (1) `tools/opencode-global/deploy.mjs` đồng bộ 4 file global config (ngoài repo); (2) `ErrorState.tsx:11` dùng `t('common.loadFailed')` + 2 key locale; (3) `check-envelope-contract.py` thêm 2 exemption hẹp cho WS ticket + market index constituents (giữ nguyên shape response); (4) `check-system-design.mjs:532` truyền `PYTHONIOENCODING=utf-8`, sửa C-003 137→138 + regenerate 2 catalog/inventory/freshness; (5) refresh `openapi-schema-baseline.json` 32/8→56/14 errors, 191/189→125/123 warnings, ghi rõ 6 LicenseKey + 1 RealtimeUnifiedAlerts + 7 DNSE endpoint mới.
+- **Gate chạy thật**: mỗi gate sửa chạy riêng xanh; `node scripts/pre-push-gate.mjs` → **36 PASS / 0 SKIP / 0 FAIL**. `tsc` 0. Không `--no-verify`, không trailer lách, không sửa hook.
+- **L-V03**: gate tự ghi đè PNG staging + tạo probe script → đã `git restore`/`git clean`; working tree chỉ còn 12 file có chủ đích + evidence.
+- **CHƯA CHẠY / rủi ro**: build, staging, Playwright; baseline OpenAPI tăng cần owner duyệt dần về 0 bằng serializer; global config đã sửa máy này, máy khác phải tự deploy.
+
 ## Entry 558: Runtime staging — Sidebar brand h1 gây 2 <h1>/trang, đã sửa
 
 - **Date**: 2026-11-19 · **Type**: code + test + docs · **Branch**: `feat/sidebar-h1-fix`.

@@ -1,5 +1,6 @@
 export const common = {
     loading: 'Đang tải...',
+    loadFailed: 'Không thể tải dữ liệu',
     notAvailable: '—',
     noPermission: 'Bạn không có quyền truy cập trang này.',
     acknowledge: 'Đã xem nhận',

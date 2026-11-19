@@ -173,6 +173,22 @@ def _returns_envelope(node: ast.expr) -> str:
                 # field khái báo dữ liệu thì đó là response thật và phải bọc.
                 if _is_dict_with(first, 'received') and len(first.keys) == 1:
                     return 'SKIP_WEBHOOK_ACK'
+                # WS handshake ticket: hop dong giao thuc phang {"ticket","expiresIn"}
+                # (identity_access/views_ws_ticket.py:40). Widget doc raw
+                # `r.json().ticket` o top-level; boc vao {data,meta} se hong WS.
+                if (_is_dict_with(first, 'ticket')
+                        and _is_dict_with(first, 'expiresIn')
+                        and len(first.keys) == 2):
+                    return 'SKIP_WS_TICKET_PROTOCOL'
+                # Danh sach thanh phan chi so market_data/views.py:553 tra phang
+                # {code,count,symbols,note}. Nhan dien dung to hop 4 khoa — khong
+                # danh theo rieng `count`/`symbols` (qua rong, se bo sot response that).
+                if (_is_dict_with(first, 'code')
+                        and _is_dict_with(first, 'count')
+                        and _is_dict_with(first, 'symbols')
+                        and _is_dict_with(first, 'note')
+                        and len(first.keys) == 4):
+                    return 'SKIP_MARKET_GROUP_CONSTITUENTS'
                 return 'UNWRAPPED'
             return 'UNVERIFIED'
 
@@ -274,7 +290,8 @@ def scan(app: str):
     unverified_detail = []
     skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': [],
                'SKIP_GATEWAY_PROTOCOL': [], 'SKIP_WEBHOOK_ACK': [],
-               'SKIP_PUBLIC_BOOTSTRAP': []}
+               'SKIP_PUBLIC_BOOTSTRAP': [], 'SKIP_WS_TICKET_PROTOCOL': [],
+               'SKIP_MARKET_GROUP_CONSTITUENTS': []}
     for path in sorted(app_dir.rglob('*.py')):
         rel = path.relative_to(SRC)
         if 'migrations' in rel.parts or 'tests' in rel.parts:
