@@ -1,4 +1,4 @@
-# UI/UX W0 — Token SSOT Implementation Plan (rev5 — O-26, chờ audit vòng 5)
+# UI/UX W0 — Token SSOT Implementation Plan (rev6 — O-27/O-28, chờ audit vòng 6)
 
 > **For agentic workers:** thực thi theo skill repo `workflow-dev-loop` (9 bước) + `writing-plans` (task fail-before), từng step checkbox `- [ ]`. Không dùng `superpowers:*` (skill không tồn tại — O-20).
 
@@ -18,7 +18,7 @@
 |---|---|---|
 | `--accent-cyan` | `#22d3ee` | `#06b6d4` — **giữ ở base, KHÔNG thêm override `#0e7490` vào light block** (O-24) |
 | `--text-on-accent` (light) | `#ffffff` (base) | `#0f172a` trong `theme/tokens.css` light block — chữ đen trên cyan: **7.35:1** (O-24 fix a, đã tự tính) |
-| `--text-muted` (dark) | `#94a3b8` | **giữ `#94a3b8` (KHÔNG hội tụ về `#64748b`, KHÔNG override light)** dưới dạng giá trị trực tiếp; net delta = 0. Đổi `theme/tokens.css:3` từ `var(--color-text-muted, #64748b)` sang `#94a3b8` — sửa fallback không đủ vì `index.css:67` định nghĩa biến (C1/C2 minor, O-25 fix a) |
+| `--text-muted` (dark) | `#94a3b8` | **giữ `#94a3b8` (KHÔNG hội tụ về `#64748b`)** dưới dạng giá trị trực tiếp; net delta = 0. Đổi `theme/tokens.css:3` từ `var(--color-text-muted, #64748b)` sang `#94a3b8` (C1/C2). Light block dùng `#475569` riêng (O-26/O-28) |
 | `--border-default` | `rgba(80,120,168,.15)` | `#1e293b` |
 | `--fs-xs/sm/md` | `0.68/0.75/0.85rem` | `0.75/0.8125/0.875rem` |
 | `--bg-panel` | `rgba(8,23,52,.4)` | `#0f172a` |
@@ -30,6 +30,7 @@
 - `.vnbConsole` **không migrate** — đưa vào allowlist test (O-15).
 - **O-24 trade-off đã chốt**: gate đo canvas tối `#020617`, app light dùng canvas sáng. `#06b6d4` pass gate (8.31) nhưng chữ trắng chỉ 2.43; `#0e7490` pass app (5.36) nhưng gate 3.77. ⇒ giữ base `#06b6d4`, thêm `--text-on-accent: #0f172a` ở light block (7.35). Không đổi `--pf-gain/--pf-loss` (L-F08 — chỉ đổi màu chữ trên nút).
 - **O-25 trade-off → bị O-26 bác một phần**: fix (a) ban đầu (không khai `--text-muted` light) khi áp đủ O-05 (xoá `--bg-panel` base) sinh 2 ID mới `text-muted-on-bg-panel-token@shell/light|soc/light` = 2.56:1, shell/light **xấu đi từ baseline 3.75** (`docs/evidence/uiux-ssot/w0/BLOCKER_O26.md`). Owner rev5 chốt **sửa gate đúng gốc**: light variant dùng **cả nền sáng lẫn chữ light** từ `light-theme.css`; thêm `--text-muted: #475569` vào light block. Kết quả mong đợi: dark `#94a3b8` trên `#0f172a` = 6.96 ✅, light `#475569` trên `#f8fafc` = 7.24 ✅. **Không nâng baseline, không báo PASS giả** (R2). Cần audit vòng 5 trước khi đụng gate.
+- **O-28 (audit v5) — Owner rev6 chốt**: đổi mapping light `--color-accent-primary` `#0891b2→#0e7490` qua `check-light-theme.mjs --update`; accent trên nền sáng 5.12 ✅, **chữ trắng** trên accent 5.36 ✅ ⇒ bỏ override `--text-on-accent: #0f172a` của O-24. Task 2b phải full simulation (`fresh/worse/undecodable = 0`) + negative proof bao phủ 4 ID. Audit vòng 6 trước khi sửa gate.
 - Không `--update-baseline` trước khi sửa thật (R2). Gate phải **đỏ trước khi sửa, xanh sau**.
 - Branch `feat/uiux-ssot-w0` (agent `uiux-ssot-w0`). Claim trước dòng code đầu tiên.
 - Light flag: dev/staging-only, revert trước production (D5).
@@ -76,18 +77,17 @@ expect(declareRe("--bg-panel").test("/* --bg-panel: red; */")).toBe(false);   //
 expect(declareRe("--bg-panel").test("--soc-bg-panel: red;")).toBe(false);    // âm (prefix)
 // base block (trước :root[data-theme="light"])
 expect(baseBlock.match(declareRe("--bg-panel"))).toBeNull();  // đỏ hôm nay
-// light block: 5 key phải có đúng ở theme/tokens.css, KHÔNG ở soc.tokens.css
-// O-24: --accent-cyan KHÔNG được khai trong light block (dùng base #06b6d4)
-// O-25: --text-muted CŨNG KHÔNG được khai trong light block (giữ base #94a3b8)
-//       --text-on-accent: #0f172a phải có trong light block
-expect(themeLight).toMatch(/--text-on-accent:\s*#0f172a/);
-for (const n of ["--accent-cyan", "--text-muted"]) expect(themeLight).not.toMatch(new RegExp("(?<![-\\w])" + n + "\\s*:"));
-// R3/O-26 rev5: socLight không còn --accent-cyan; --text-muted co o OWNER light block
-//     (legacy --soc-c-94a3b8: #475569 KHÔNG phải --text-muted, nằm ngoài yêu cầu)
-expect(socLight).not.toMatch(/(?<![-\w])--text-muted\s*:/);
+// rev6/O-27: 6 key có ở theme/tokens.css light, gồm --text-muted: #475569
+expect(themeLight).toMatch(/--text-muted:\s*#475569/);
+// O-24: --accent-cyan KHÔNG được khai ở light block (giữ base)
+for (const n of FORBIDDEN_LIGHT) expect(themeLight).not.toMatch(new RegExp("(?<![-\\w])" + n + "\\s*:"));
+// O-28: accent light = #0e7490 ⇒ chữ TRẮNG 5.36 ✅; chữ đen 3.33 ❌ ⇒ bỏ override đen
+expect(themeLight).not.toMatch(/--text-on-accent:\s*#0f172a/);
+// R3: SOC light không còn --accent-cyan lẫn --text-muted
+for (const n of ["--accent-cyan", "--text-muted"]) expect(socLight).not.toMatch(new RegExp("(?<![-\\w])" + n + "\\s*:"));
 ```
 
-- [ ] **Step 2:** `npx vitest run …token-ssot…` → **FAIL đúng 13 base + 5 light thiếu + 2 light bị cấm (`--accent-cyan`, `--text-muted`)**, control PASS. Ghi evidence `red.md`. Nếu control âm fail → dừng, sửa test.
+- [ ] **Step 2:** `npx vitest run …token-ssot…` → **FAIL đúng 13 base + 6 light thiếu (gồm `--text-muted`) + 1 light bị cấm (`--accent-cyan`)**, control PASS. Ghi evidence `red.md`. Nếu control âm fail → dừng, sửa test. ⚠ Khi code partial rev4 đang có assert cấm `--text-muted` ở theme light, test sẽ đỏ sai chỗ — phải sửa test theo rev6 **trước** chạy (O-27).
 - [ ] **Step 3: Commit test đỏ.**
 
 ---
@@ -97,21 +97,23 @@ expect(socLight).not.toMatch(/(?<![-\w])--text-muted\s*:/);
 **Files:**
 - Modify `packages/web/src/components/soc/soc.tokens.css` (xoá 13 dòng base + 7 dòng light)
 - Modify `packages/web/src/theme/tokens.css:3,14,65-82` (muted dark `#94a3b8`, bg-panel-soft alias, bổ sung light key)
+- Modify file test Task 1 theo rev6 (O-27): `LIGHT_KEYS` 5→6, bỏ `--text-muted` khỏi `FORBIDDEN_LIGHT`, bỏ assert cấm ở `theme.light`, thêm assert `--text-muted: #475569` + assert không có `--text-on-accent: #0f172a`; giữ assert `socLight` vắng cả 2 tên.
 - Modify `.vnbConsole` allowlist test trong file test Task 1
 
 **Interfaces:** Consumes `BASE_TOKENS`/`LIGHT_KEYS`. Produces: `check-theme-contrast` exit 0.
 
 - [ ] **Step 1: Simulation đỏ trước khi sửa repo thật** — chạy lại script mô phỏng của audit (temp copy 4 file CSS + baseline, xoá 13 base, `--repo <tmp> --no-runtime`) → exit 1, 4 violation mới. Lưu vào `docs/evidence/uiux-ssot/w0/contrast-red.md`.
-- [ ] **Step 2:** Xoá 13 dòng base (comment thay thế), dời **6** light value sang `theme/tokens.css` light block (`--text-primary`, `--text-secondary`, `--border-default`, `--bg-panel`, `--bg-panel-soft`, **`--text-muted: #475569`**), bổ sung **`--text-on-accent: #0f172a`**. **KHÔNG** dời `--accent-cyan: #0e7490` (O-24) — giữ base `#06b6d4`.
+- [ ] **Step 2:** Xoá 13 dòng base (comment thay thế), dời **6** light value sang `theme/tokens.css` light block (`--text-primary`, `--text-secondary`, `--border-default`, `--bg-panel`, `--bg-panel-soft`, **`--text-muted: #475569`**). **O-28**: KHÔNG thêm `--text-on-accent: #0f172a` (chữ trắng giữ nguyên — accent light `#0e7490` cho white 5.36 ✅); **KHÔNG** dời `--accent-cyan: #0e7490` vào light block (O-24) — map light nằm ở `light-theme.css`.
 - [ ] **Step 3:** Sửa `theme/tokens.css:3` thành `--text-muted: #94a3b8` (**giá trị trực tiếp**, không phải fallback — C1); sửa `theme/tokens.css:14` alias `--bg-panel-soft` trỏ đúng. Không tạo token trùng tên.
-- [ ] **Step 4:** Sau Task 2b, chạy `node packages/web/scripts/check-theme-contrast.mjs --no-runtime` → exit 0, **0 vi phạm mới**: dark `#94a3b8` trên `#0f172a` = 6.96 ✅, light `#475569` trên `#f8fafc` = 7.24 ✅, `text-on-accent` light = 7.35 ✅. Ghi `docs/evidence/uiux-ssot/w0/contrast-green.md` kèm 10 tỉ lệ tự tính (C5). Nếu còn đỏ → dừng, **không** update baseline.
+- [ ] **Step 4:** Sau Task 2b, chạy `node packages/web/scripts/check-theme-contrast.mjs --no-runtime` → exit 0, **fresh=0 · worse=0 · undecodable mới=0**. Tỉ lệ kỳ vọng (tự tính C5): dark muted `#94a3b8/#0f172a` 6.96 ✅ · light muted `#475569/#f8fafc` 7.24 ✅ · accent light `#0e7490/#f8fafc` 5.12 ✅ · chữ trắng trên accent `#ffffff/#0e7490` 5.36 ✅. Ghi `contrast-green.md` kèm **toàn bộ** ID đổi (không chỉ 2 cặp). Nếu còn đỏ → dừng, **không** update baseline.
 
 ### Task 2b (rev5): Sửa `check-theme-contrast.mjs` dùng chữ light + nền light
 
-- **Files:** Modify `packages/web/scripts/check-theme-contrast.mjs`; Test `packages/web/scripts/__tests__/check-theme-contrast.light.test.*` (hoặc self-test có sẵn).
-- **Yêu cầu:** variant `*/light` phải resolve **cả foreground lẫn background** từ `theme/tokens.css` light block + `light-theme.css`; không ghép chữ base (`#94a3b8`) vào nền light (`#ffffff`). Giữ nguyên variant dark.
-- **Negative proof:** inject hành vi cũ (chỉ đổi bg) → gate phải đỏ đúng 2 cặp `text-muted-on-bg-panel*@*/light`; khôi phục → xanh. Ghi `docs/evidence/uiux-ssot/w0/gate-negative-light.md`.
-- **Không** đổi baseline JSON, **không** đổi hợp đồng `exit 0 = subset baseline`. Audit vòng 5 phải AGREE trước khi sửa gate.
+- **Files:** Modify `packages/web/scripts/check-theme-contrast.mjs`; Modify `packages/web/scripts/check-light-theme.mjs` (mapping `--color-accent-primary` light `#0891b2 → #0e7490`) rồi chạy `--update` — **KHÔNG sửa tay `theme/light-theme.css`** (file autogenerated); Test self-test của gate.
+- **Yêu cầu:** variant `*/light` resolve **cả fg lẫn bg** từ `theme/tokens.css` light + `light-theme.css`; không ghép chữ base vào nền light. Giữ nguyên variant dark.
+- **Negative proof (mở rộng O-28):** inject hành vi cũ → gate đúng **cả 4** ID: `text-muted-on-bg-panel*@*/light` VÀ `accent-cyan-on-bg-primary@*/light`; khôi phục → xanh. Ghi `gate-negative-light.md`.
+- **Full simulation:** assert `fresh=0` · `worse=0` · `newUndecodable=0` · `lostToUndecodable=0` (`mjs:848-871`) và list **toàn bộ** ID đổi vào evidence.
+- **Không** đổi baseline JSON, **không** đổi hợp đồng `exit 0 = subset baseline`. **Audit vòng 6** phải AGREE trước khi sửa gate.
 - [ ] **Step 5:** Vitest Task 1 → xanh. `check-token-conflict --print-count` → `0`.
 - [ ] **Step 6: Commit** — `fix(uiux-w0): single token owner + WCAG-safe muted + light migration`.
 
