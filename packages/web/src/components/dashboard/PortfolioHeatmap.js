@@ -671,7 +671,7 @@ export function PortfolioHeatmap({
         e("div", { className: "flex items-center gap-2" },
           e("button", {
             onClick: () => handleNavigateToStock(selectedDetail.name),
-            className: "text-lg font-black text-slate-100 hover:text-cyan-400 hover:underline transition-all focus:outline-none",
+            className: "text-lg font-black text-slate-100 hover:text-cyan-400 hover:underline transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900",
           }, selectedDetail.name),
           e("span", {
             className: `px-1.5 py-0.5 rounded text-[10px] font-extrabold ${

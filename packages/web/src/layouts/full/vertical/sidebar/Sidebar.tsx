@@ -90,7 +90,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         (!newLayout && collapsed && !mobileOpen) && e(
           'button',
           {
-            className: 'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none',
+            className: 'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
             onClick: onToggle,
             'aria-label': t('layout.expandMenu', { defaultValue: 'Mở menu' })
           },
