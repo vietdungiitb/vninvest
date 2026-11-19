@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
-import { useModalA11y } from "../../hooks/useModalA11y.js";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import soc from "../soc/soc.module.css";
 
 interface MuteTarget {

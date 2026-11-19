@@ -9,7 +9,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-import { useModalA11y } from "../../hooks/useModalA11y.js";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface ScheduledReport {
   id: number;

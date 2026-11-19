@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useI18n } from "../../../context/LangContext.js";
-import { useModalA11y } from "../../../hooks/useModalA11y.js";
+import { useModalA11y } from "../../../hooks/useModalA11y";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_STATUS_COLORS,

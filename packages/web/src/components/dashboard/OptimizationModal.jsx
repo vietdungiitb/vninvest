@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { useModalA11y } from '../../hooks/useModalA11y.js';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import useAIAdvisor from '../../hooks/useAIAdvisor.js';
 import { useI18n } from '../../context/LangContext.js';
 
