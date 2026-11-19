@@ -414,7 +414,16 @@ const isRead = hasReadState && readAlertIds.has(alertId);
               );
             }
 
-            const actionsRow = actionButtons.length > 0 && e("div", { className: "flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/40" }, actionButtons);
+            // P1-7 fix (E2E 2026-11-19): action row từng có `mt-3 pt-2 border-t`
+            // ⇒ +40px mỗi card (138px, vượt contract 100/110). Đưa thành overlay
+            // absolute: không chiếm chiều cao, vẫn focusable & hiện khi hover/focus.
+            const actionsRow = actionButtons.length > 0 && e(
+              "div",
+              {
+                className: "absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100",
+              },
+              actionButtons
+            );
 
             return e(
               "div",
@@ -425,7 +434,7 @@ const isRead = hasReadState && readAlertIds.has(alertId);
                   if (alertId && markAlertAsRead) markAlertAsRead(alertId);
                 },
                 // Không `border` 4 cạnh: chỉ severity rail (xem severityCardStyles).
-                className: `alert-card p-3 rounded-xl cursor-pointer transition-all ${
+                className: `alert-card relative group p-3 rounded-xl cursor-pointer transition-all ${
                   severityCardStyles(alert.severity, isRead)
                 }`,
               },
