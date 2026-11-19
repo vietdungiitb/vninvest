@@ -3,7 +3,7 @@
 - **Ngày**: 2026-11-19
 - **Vai trò**: auditor độc lập (subagent), **CHỈ ĐỌC** — không sửa code, không commit
 - **Đối tượng**: `docs/PLAN_HEADER_REALTIME_STATUS_20261119.md` (89 dòng)
-- **Nguồn liên quan**: `docs/DIAGNOSIS_OFFLINE_404_DATAOPS_20261119.md` (Entry 558)
+- **Nguồn liên quan**: `docs/DIAGNOSIS_OFFLINE_404_DATAOPS_20261119.md` (Entry 560)
 - **Baseline**: `dev` @ `62f0d1aba` · `git status` = ledger đã modified + 2 file plan/diagnosis untracked (không có code runtime đang bị giữ)
 - **VERDICT: NEED_REVISION**
 

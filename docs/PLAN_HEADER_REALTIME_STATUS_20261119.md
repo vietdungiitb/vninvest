@@ -1,6 +1,6 @@
 # PLAN — Header realtime indicator phân biệt 5 trạng thái (R1)
 
-- **Ngày**: 2026-11-19 · **Nguồn**: `docs/DIAGNOSIS_OFFLINE_404_DATAOPS_20261119.md` (Entry 558) · **Ưu tiên**: P1
+- **Ngày**: 2026-11-19 · **Nguồn**: `docs/DIAGNOSIS_OFFLINE_404_DATAOPS_20261119.md` (Entry 560) · **Ưu tiên**: P1
 - **Lessons áp dụng**: L-V01, L-V02, L-V04, L-F10 (spec/constant ở cấp module), L-T01 (encoding).
 - **Mục tiêu**: trang không có symbol realtime (vd. `/operations-center?tab=dataops`) **không** còn hiện chữ `Offline` sai; header phản ánh đúng `idle | connecting | polling | connected | disconnected`.
 

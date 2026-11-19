@@ -20,6 +20,6 @@
 
 ## Cập nhật 2026-11-19 (gate baseline)
 
-Trước push, `pre-push-gate` có 5 FAIL baseline (đã đối chứng trên `dev` sạch). Đã sửa trong cùng branch: global config deploy, i18n `ErrorState`, 2 envelope exemption, system-design encoding + regenerate catalog, refresh OpenAPI baseline. Kết quả: **36 PASS / 0 FAIL**, đủ điều kiện push. Chi tiết: `docs/evidence/prepush-gate-baseline/EVIDENCE_20261119.md` (Entry 560).
+Trước push, `pre-push-gate` có 5 FAIL baseline (đã đối chứng trên `dev` sạch). Đã sửa trong cùng branch: global config deploy, i18n `ErrorState`, 2 envelope exemption, system-design encoding + regenerate catalog, refresh OpenAPI baseline. Kết quả: **36 PASS / 0 FAIL**, đủ điều kiện push. Chi tiết: `docs/evidence/prepush-gate-baseline/EVIDENCE_20261119.md` (Entry 561).
 
 **Owner**: coordinator · **Ngày**: 2026-11-19.

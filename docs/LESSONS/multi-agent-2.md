@@ -57,6 +57,7 @@
   - [ ] Neu VPS khong truy cap duoc => ghi "CHUA CHAY" + **ly do cu the** (khong doi thu nghiem sang local docker).
   - [ ] Da **dọn** sau thu nghiem: DB tam DROP · worktree tam remove · node_modules tam xoa · `docker ps` khong con container thu nghiem?
   - [ ] Da ghi bang chong VPS vao ledger (lenh + ket qua + so do) chua?
+  - [ ] **2026-11-19 (lap lai):** da doc §12 **TRUOC** khi goi lenh khong? Slice nay chay `npm run build` local (41.67s) roi moi mo §12 ⇒ vi phap "npm run build RAM-heavy — cam local" (§12.1). Ket qua chu phai chay lai tren VPS `/usr/bin/corepack npm run build` (39.12s) + vitest 13/13. Doc runbook truoc mo leng, khong chay roi moi doc. Proof: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 561 (bai hoc ghi sau khi phat hien).
 - **Proof:** `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 397; `docs/STAGING_VPS_RUNBOOK.md` §12; `docs/AGENT_PROTOCOL.md` §12.
 
 ## L-V09: Grep theo ĐƯỜNG DẪN DOTTED cho kết quả GIẢ khi code dùng RELATIVE import / include() bằng CHUỖI
