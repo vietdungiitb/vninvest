@@ -1,3 +1,105 @@
+## Entry 542: Audit vòng 4 rev4 — AGREE (0 blocker, 0 major, O-25 đóng)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base**: `dev@2b10b3016`.
+- **Scope**: CHỈ O-25 + C1–C5 từ vòng 3; không audit lại O-01..O-24. Auditor độc lập, read-only; không claim, không sửa plan/code, không deploy.
+- **Verdict**: **AGREE** — 0 blocker, 0 major. O-25 FIXED theo fix (a): `PLAN_W0:7,21,32,53,81,84,95,102-104` + `HANDOFF:33,39-40`. C1–C5 FIXED: `PLAN_W0:21,103,126,101,104` + `PLAN_UIUX_W1_CHROME:39,68`. Code trên disk chưa đổi (plan audit) — `theme/tokens.css:3` vẫn `var(...)`, `soc.tokens.css:146` vẫn `#475569`.
+- **WCAG tự tính (script Node riêng)**: `#475569` = 2.662/7.243 · `#94a3b8` = 7.868/2.451 · `#64748b` = 4.239/4.548 trên `#020617`/`#f8fafc`; `sqrt(19.2806) = 4.3910 < 4.5` ⇒ đúng "không có giá trị đơn lẻ pass cả hai", khớp Entry 541. Lệnh tái lập + script trong evidence.
+- **Ledger/hygiene**: Entry 541 (`:1`) và 540 (`:11`) nguyên vẹn, không trùng; U+FFFD=0, CJK=0 trên plan/handoff/ledger. Entry 386 trùng tại `:1715/:1782` là lỗi lịch sử, ghi nhận riêng.
+- **Gates**: docs-only ⇒ **CHƯA CHẠY** simulation sau fix, staging, browser, E2E, vitest/build, ảnh before/after.
+- **Reservation minor (không chặn)**: R1 nhãn rev2 lạc hậu (`PLAN_W0:1`, `HANDOFF:1,3`) · R2 D1 handoff thiếu cụm "không hội tụ" (`HANDOFF:39`) · R3 chưa assert `socLight` hết `--text-muted` (`PLAN_W0:84`).
+- **Evidence**: `docs/evidence/uiux-ssot/AUDIT_ROUND4_20261119.md`. **Next**: S0 merge docs → cấp worktree S1; Owner sửa gate include `light-theme.css` ở program riêng.
+
+## Entry 541: Plan rev4 — sửa O-25 (inverse text-muted), giữ baseline sạch
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base**: `dev@2b10b3016`.
+- **Trigger**: Audit vòng 3 (Entry 540) **NEED_REVISION** — 0 blocker, 1 major **O-25**: rev3 thêm `--text-muted: #475569` vào light block để app light accessible, nhưng gate đo canvas tối nên 3 cặp `text-muted*@shell/light` bị **xấu đi** (3.75→~2.66, 4.24→~2.66) ⇒ regression.
+- **Tự tính WCAG (script Node, replicate)**: `#475569` trên `#020617` = **2.66** · trên `#f8fafc` = **7.24** · `#94a3b8` trên `#f8fafc` = **2.45** · trên `#020617` = **7.87** · `#64748b` trên `#f8fafc` = **4.55**. Lệch nhẹ số auditor (2.36/7.58) do khác nền đo, nhưng **hướng đúng**. Chứng minh giới hạn: tỉ lệ giữa 2 nền ≈19.2 ⇒ max contrast của 1 màu xám ≈**4.38 < 4.5** ⇒ không có giá trị đơn lẻ pass cả hai.
+- **Fix (a) — Owner chốt**: **KHÔNG** khai `--text-muted` trong light block; giữ base `#94a3b8` dạng direct (`theme/tokens.css:3`), net delta 0. Gate 0 vi phạm mới; app light `text-muted` 2.45 ghi **known limitation** (light là dev-only, D5); mở program riêng sửa gate include `light-theme.css`. **Không nâng baseline, không dùng `--update-baseline` để che regression** (R2).
+- **Files cập nhật**: `docs/PLAN_UIUX_W0_TOKEN_SSOT_20261119.md` (Task 1 `LIGHT_KEYS 5`, `FORBIDDEN_LIGHT = [--accent-cyan, --text-muted]` + control; Task 2 dời 5 light key, bỏ `#475569`, simulation assert 3 cặp không xấu đi + known limitation) · `docs/handoffs/HANDOFF_2026-11-19_UIUX-SSOT.md` (D10 + disposition O-25). **GHI**: ledger này.
+- **Lessons**: [L-001 L-002 L-F03 L-F08 L-G02 L-V02 L-V04]. **CHƯA CHẠY**: audit vòng 4, simulation sau fix, staging, browser, vitest/build, ảnh before/after.
+- **Next**: auditor vòng 4 chỉ kiểm O-25 → `PASS`/`AGREE` → S0 merge docs → cấp worktree S1. Chưa có code production nào sửa.
+
+## Entry 540: Audit vòng 3 rev3 — NEED_REVISION (0 blocker, 1 major O-25)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Base**: `dev@2b10b3016`.
+- **Verdict**: **NEED_REVISION**. 0 blocker, 1 major (O-25 text-muted light inverse). O-24 FIXED (tự tính WCAG khớp: 8.31/2.43/7.35/3.77/3.75/6.96). 5 minor notes C1-C5 FIXED. 4 slice: W0 NEED_REVISION (O-25), W1-chrome/W1-a11y/W2/W3 AGREE.
+- **O-25**: rev3 thêm `--text-muted: #475569` vào light block → 3 baseline violation TỆ HƠN (3.75→2.36, gate đo canvas tối). Fix (a): KHÔNG thêm text-muted vào light block, giữ #94a3b8; gate clean. App light theme text-muted = #94a3b8 (2.45, dev-only). Hoặc (b) thêm + update baseline (Owner sign-off), (c) sửa gate include light-theme.css.
+- **Evidence**: `docs/evidence/uiux-ssot/AUDIT_ROUND3_20261119.md` + stub w0 cập nhật.
+- **Gates**: không chạy thêm (rev3 không đổi code). Simulation rev3 (với #475569) → exit 1, 3 baseline got worse. Simulation với fix (a) (#94a3b8, no light override) → dự đoán exit 0 (chưa chạy).
+- **Next**: Owner chốt O-25 → planner sửa W0 (xóa 1 dòng instruction + cập nhật D1 table) → audit vòng 4 → PASS/AGREE → S0.
+
+## Entry 539: Plan rev3 — sửa O-24 (accent-cyan light) + 5 minor notes, chờ audit vòng 3
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base**: `dev@2b10b3016`.
+- **Trigger**: Audit vòng 2 (Entry 538) **NEED_REVISION** — 0 blocker, 1 major **O-24**: `check-theme-contrast` đo canvas tối `#020617`, app light dùng canvas sáng `#f8fafc`; không có giá trị `--accent-cyan` đơn lẻ nào pass cả hai.
+- **Tự tính WCAG (script Node, replicate trong phiên này)**: `#06b6d4` trên `#020617` = **8.31** ✅ · chữ trắng trên `#06b6d4` = **2.43** ❌ · chữ đen `#0f172a` trên `#06b6d4` = **7.35** ✅ · `#0e7490` trên `#020617` = **3.77** ❌ · chữ trắng trên `#0e7490` = **5.36** ✅ · `#64748b` trên `#0f172a` = **3.75** ❌ · `#94a3b8` trên `#0f172a` = **6.96** ✅.
+- **Fix O-24 (Owner chốt phương án a)**: giữ base `--accent-cyan: #06b6d4` (**không** thêm `#0e7490` vào light block); thêm `--text-on-accent: #0f172a;` vào light block `theme/tokens.css:65-82`. Net: gate 0 vi phạm mới + app light chữ đen trên cyan 7.35. Không đổi `--pf-gain/--pf-loss` (L-F08 — chỉ đổi màu chữ trên nút).
+- **5 minor notes đã đưa vào plan**: (C1) `--text-muted` dark = **giá trị trực tiếp** `#94a3b8`, không phải fallback `var(--color-text-muted)` — `index.css:67` định nghĩa biến; (C2) D1 table ghi **giữ `#94a3b8`, net delta 0** thay vì 2 mũi tên; (C3) dev light flag có precedence rõ — `applyUserTheme()` early-return khi flag active, không force dark ghi đè; (C4) detector `renderElement("h1")` cập nhật gate **trong Task 2**, baseline-locked → vi phạm mới ngoài scope phải sửa hoặc dừng, không nâng baseline; (C5) simulation sau fix ghi `docs/evidence/uiux-ssot/w0/contrast-green.md` kèm 10 tỉ lệ.
+- **Files cập nhật**: `docs/PLAN_UIUX_W0_TOKEN_SSOT_20261119.md` (D1 table 9 dòng, Task 1 assert `--accent-cyan` vắng ở light block + `--text-on-accent` hiện diện, Task 2 dời 6 key, Task 4 precedence) · `docs/handoffs/HANDOFF_2026-11-19_UIUX-SSOT.md` (D9 mới + disposition O-24) · `docs/PLAN_UIUX_W1_CHROME_20261119.md` (gate detector rõ ràng). **GHI**: ledger này.
+- **Lessons**: [L-001 L-002 L-003 L-F03 L-F05 L-F08 L-G02 L-V02 L-V04]. **CHƯA CHẠY**: audit vòng 3, simulation sau fix, staging, browser, vitest/build, ảnh.
+- **Next**: auditor vòng 3 chỉ kiểm O-24 + minor notes → `PASS`/`AGREE` → S0 merge docs → cấp worktree S1. Chưa có code production nào sửa, chưa claim.
+
+## Entry 538: Audit vòng 2 rev2 — NEED_REVISION (0 blocker, 1 major O-24)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Base**: `dev@2b10b3016`.
+- **Verdict**: **NEED_REVISION**. 0 blocker, 1 major (O-24 accent-cyan light trade-off). 22/23 objection round 1 FIXED, O-21 ĐÍNH CHÍNH. 4 slice: W0 NEED_REVISION (O-24), W1-chrome/W1-a11y/W2/W3 AGREE.
+- **O-24**: gate đo canvas tối (`--color-bg-primary = #020617`), app light theme canvas sáng (`#f8fafc`). `#06b6d4` pass gate (8.31) fail app (2.32); `#0e7490` pass app (5.12) fail gate (3.77). Fix khuyến nghị: thêm `--text-on-accent: #0f172a;` vào light block (1 dòng) → text đen trên cyan, pass cả hai. Hoặc sửa gate include `light-theme.css`.
+- **Minor notes**: C1 direct value `--text-muted`; C2 net delta muted = 0; C3 dev flag precedence; C4 detector gate update; C5 re-run simulation.
+- **Evidence**: `docs/evidence/uiux-ssot/AUDIT_ROUND2_20261119.md` + 4 stub cập nhật.
+- **Gates**: không chạy thêm (rev2 không đổi code). CHƯA CHẠY: staging, browser, E2E, vitest/build, ảnh.
+- **Next**: Owner chốt O-24 → planner sửa W0 Task 2 + D1 table → audit vòng 3 → PASS/AGREE → S0.
+
+## Entry 537: Plan rev2 — sửa 5 blocker + 9 major từ audit NEED_REVISION, chưa audit vòng 2
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base**: `dev@2b10b3016` (đã cập nhật từ `69141ab93`, O-19).
+- **Trigger**: B3 v1 verdict **NEED_REVISION** (`docs/evidence/uiux-ssot/AUDIT_PLAN_PROGRAM_20261119.md`, Entry 536) với 5 blocker + 9 major + 7 minor. Theo `workflow-dev-loop` B3→B2, planner sửa plan, **không** cấp worktree/merge cho tới audit vòng 2.
+- **Owner chốt 5 câu hỏi §F**: (1) D1 nhận **8 nhóm delta** + nâng `--text-muted` dark `#94a3b8` trong W0; (2) light theme bật **dev/staging-only** để chụp ảnh, revert trước production; (3) W1-chrome scope **4 route RED + 1 regression** (`ShellOperationsCenterPage` đã xanh); (4) Cmd+K/density tách **S5/W3**, W2 chỉ freshness + DESIGN.md; (5) S0 **bỏ** release 2 claim stale (đã có dòng `done` tại `CLAIMS.md:1629/:1685/:1691/:1697`).
+- **Tự kiểm chứng trước khi sửa** (không tin tóm tắt): regex plan `0/13` + control `--bg-panel: red;` = false; simulate W0 trên bản sao token → `check-theme-contrast` **exit 1, 4 vi phạm mới @soc/dark** (3.75/4.24); baseline token 13/11 · heading 24 · focus 8 · theme 32+12 undecodable · a11y-runtime 113; `ShellPageTemplate.js:90-101` **không có prop `actions`**; `TenantAdminReportsPage.tsx:243-245` là nút Xoá, modal thật `:256`; `.vnbConsole` (`soc.components.css:4341-4352`) khai lại 9 token; `reference/document.md` tồn tại ⇒ `impeccable document` là **skill procedure**, không phải CLI (O-21 đính chính một phần).
+- **Files cập nhật**: `docs/handoffs/HANDOFF_2026-11-19_UIUX-SSOT.md` (rev2 + bảng disposition O-01..O-23 + baseline thật + ownership) · `docs/PLAN_UIUX_W0_TOKEN_SSOT_20261119.md` (rev2: regex control âm/dương, 13 base + 7 light, contrast fix, dev light flag) · `docs/PLAN_UIUX_W1_CHROME_20261119.md` (rev2: 4 RED + detector `renderElement`, prop `actions`, glass computed style) · `docs/PLAN_UIUX_W1_A11Y_URL_20261119.md` (rev2: full path modal, Radix wrapper, behavior test, 8 focus file, baseline 113) · `docs/PLAN_UIUX_W2_EXPERIENCE_20261119.md` (rev2: chỉ freshness + DESIGN.md, S4←S3) · **mới** `docs/PLAN_UIUX_W3_COMMAND_DENSITY_20261119.md` (CommandRegistry + SettingsProvider + mount một lần). **GHI**: ledger này.
+- **Lessons áp dụng**: [L-001 L-002 L-003 L-005 L-006 L-007 L-008 L-M02 L-A01 L-T01 L-T02 L-F03 L-F05 L-F06 L-F08 L-F11 L-F12 L-G02 L-V01 L-V02 L-V03 L-V04 L-V05].
+- **Gates chạy trong rev2**: replicate regex/baseline/simulation bằng Node (chỉ đọc) — số khớp audit. **CHƯA CHẠY**: audit vòng 2, staging, browser, E2E, vitest/build, ảnh before/after.
+- **Next**: gửi rev2 cho auditor độc lập vòng 2 → `PASS`/`AGREE` (0 blocker + 0 major) → mới S0 merge docs → cấp worktree S1. Chưa có dòng code production nào bị sửa.
+
+## Entry 536: Audit độc lập bộ kế hoạch UI/UX SSOT — NEED_REVISION (5 blocker)
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Base thật**: `dev@2b10b3016` (handoff ghi `69141ab93`, lệch 6 commit).
+- **Verdict**: **NEED_REVISION**. Không cấp worktree S1, không merge docs. Audit độc lập, read-only; không claim, không sửa plan.
+- **5 blocker**: (1) regex test W0 `\b${name}\s*:` match **0/13**, control `--bg-panel: red;` cũng false → red test xanh giả; (2) mô phỏng W0 trên bản sao token: `check-theme-contrast` **exit 1 + 4 vi phạm mới** (dark `--text-muted` 3.75/4.24 < 4.5) trong khi `HANDOFF:48` chờ exit 0; (3) D1 delta thiếu `--bg-panel` opacity, `--bg-panel-soft`, `--shadow-sm/md`, `--font-sans`, và `AUDIT:292` nói "giữ giá trị dark/light" >< `HANDOFF:12` "chấp nhận delta"; (4) light theme bị tắt cứng ở `main.tsx:264-266` + `UserSettingsPage.tsx:19-24` nên 8 ảnh light của W0 và QA 2 theme của W2 không chạy được; (5) W0 test quét toàn file nhưng chỉ gỡ 13 base, còn **7 light override** ở `soc.tokens.css:144-153` → test không thể xanh.
+- **Major**: W1-chrome 4/5 red (không phải 5/5), `ShellPageChrome` không có prop `actions`; D2 "glass" dùng `--bg-panel` đục; W1-a11y sai path/line modal (`TenantAdminReportsPage:244-245` là nút xoá, modal thật `:256-258`), hook `useModalA11y` không thể trap focus, test modal xanh sẵn 2/5; focus baseline 8 file nhưng S3 bỏ sót 6; `check-a11y-runtime` baseline 113 + không đo modal; `.vnbConsole` là owner thứ 3 của 6 token; W2 Cmd+K mount trùng + density không có settings context; S3/S4 cùng sửa 2 file.
+- **Minor**: ledger mất Entry 533 (khôi phục trong commit này; 531/532 đánh lại 534/535); `superpowers:*` không có; `impeccable document` không phải lệnh; scanner không có timeout 300s; 2 claim S0 đã có dòng `done` + `CLAIMS.md` có NUL byte.
+- **Evidence**: `docs/evidence/uiux-ssot/AUDIT_PLAN_PROGRAM_20261119.md` + 4 stub `{w0,w1-chrome,w1-a11y,w2}/AUDIT_PLAN.md`.
+- **Gates chạy thật**: `check-multi-agent` 0 lỗi PASS; `check-uiux-budget` exit 1 (129, CSS-2 55, A11Y-9 16, ~6.2 phút); JSON baseline: token 13/11, heading 24, focus 8, theme 32+12 undecodable, a11y-runtime 113 (2026-10-21, 10 route). **CHƯA CHẠY**: staging, browser, E2E, vitest full, build.
+- **Lessons**: [L-001 L-002 L-003 L-007 L-V01 L-V02 L-V05 L-G02 L-F03 L-F06 L-F11 L-T01].
+- **Next**: Owner/coordinator sửa 5 blocker trong W0 trước; W1/W2 sửa objection major; audit lại vòng 2. Chưa merge docs, chưa cấp worktree.
+
+
+## Entry 535: Kế hoạch bàn giao UI/UX SSOT — handoff + 4 plan theo workflow-dev-loop
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit; dự kiến `docs/uiux-ssot-plan-20261119` → PR → merge trước khi cấp worktree) · **Base**: `dev@69141ab93`.
+- **Skill đã nạp**: `workflow-dev-loop` (repo, 9 bước) · `project-lessons` (Planning Gate) · `writing-plans` (header + task red/green) · `multi-agent-workflow` (8 gate) · `soc-uiux` · `impeccable` · `ponytail`.
+- **Lessons áp dụng**: [L-001, L-002, L-003, L-005, L-006, L-007, L-008, L-M02, L-A01, L-T01, L-T02, L-F03, L-F05, L-F06, L-F08, L-F11, L-F12, L-G02, L-V02, L-V03]. Checklist Planning Gate đã tick trong từng plan.
+- **Files mới**: `docs/handoffs/HANDOFF_2026-11-19_UIUX-SSOT.md` · `docs/PLAN_UIUX_W0_TOKEN_SSOT_20261119.md` · `docs/PLAN_UIUX_W1_CHROME_20261119.md` · `docs/PLAN_UIUX_W1_A11Y_URL_20261119.md` · `docs/PLAN_UIUX_W2_EXPERIENCE_20261119.md`. **GHI**: ledger này.
+- **4 slice / branch đúng ký tự L-M02**: `uiux-ssot-w0` → `feat/uiux-ssot-w0` (W0 chặn) · `uiux-chrome-w1` → `feat/uiux-chrome-w1` · `uiux-a11y-w1` → `feat/uiux-a11y-w1` (song song được với chrome vì i18n đã module hoá, `vi.js:1-2` barrel) · `uiux-exp-w2` → `feat/uiux-exp-w2`.
+- **Precondition S0 (coordinator)**: release 2 claim stale `ai-cc-uiux` (`CLAIMS.md:1610`) + `vnbroker-console` (`:1679`) — cả 2 branch `git rev-parse --verify` local/remote đều fail ⇒ BRANCH_GONE; chỉ **append** dòng released, không sửa dòng cũ. Merge tài liệu kế hoạch vào `dev` **trước** `new-agent.ps1` (worktree tạo từ HEAD, nếu không agent không đọc được plan).
+- **Blast radius đo thật**: `soc.components.css` dùng `var(--border-default` 33 · `--accent-cyan` 30 · `--text-muted` 55 · `--text-primary` 42 · `--bg-panel` 3 · `--fs-` 6 · `--shadow-sm` 2. D1 chấp nhận delta cyan/muted/border/fs → bắt buộc ảnh before/after 4 route × 2 theme; không tự tạo alias `--soc-*` (tái lập nợ).
+- **Gate baseline khoá trong handoff**: token-conflict 13→0 · `check-uiux-budget` FAIL (`CSS-2 46→55`, `A11Y-9 5→16`) → PASS (≤46 / ≤5) · focus-ring & heading-contract baseline → 0 · a11y-runtime CHƯA CHẠY.
+- **Quy trình B3→B9**: auditor độc lập `edit: deny`, verdict thành file `docs/evidence/uiux-ssot/<slice>/`; `NEED_REVISION` → sửa → audit lại tối đa 3 vòng; B8 0 blocker/0 major mới bàn giao. FE test/build/E2E **chỉ VPS staging**, cấm local Docker.
+- **Owner đã chốt**: token owner `theme/tokens.css` · admin card convert glass · Wave 1 cả 4 nhóm · DESIGN.md sinh sau W0. Không palette mới, không dependency mới, không đổi màu tăng/giảm.
+- **Gates chạy trong phiên lập kế hoạch**: `check-multi-agent` PASS 0 lỗi (+ cảnh báo claim stale) · `git status` 2 file docs trước đó. **CHƯA CHẠY**: `scan-ui-guidelines` (timeout 300s — plan S3 Task 1 yêu cầu regenerate 600s), mọi gate sau code, staging, ảnh.
+- **Next**: Owner review handoff + 4 plan → coordinator làm S0 → cấp worktree S1. Chưa có dòng code production nào bị sửa.
+
+## Entry 534: Audit UI/UX toàn diện — nợ SSOT token (13 conflict baseline) + page chrome phân mảnh
+
+- **Date**: 2026-11-19 · **Type**: DOCS (0 source line) · **Branch**: `dev` (chưa commit) · **Scope**: `packages/web/src`.
+- **Trigger**: Owner yêu cầu audit toàn bộ UI/UX, so sánh giải pháp thương mại và đề xuất lộ trình nâng cấp; nghi ngờ theme/template không áp dụng đồng bộ giữa các trang.
+- **Đính chính thuật ngữ**: không phải "2 theme system" (dark/light là 1 theme 2 mode). Đúng là **1 SSOT trên giấy nhưng khai báo base ở 3 file** — `index.css:19` (`@theme`), `theme/tokens.css:1`, `soc.tokens.css:5`. `check-token-conflict.mjs:5-21` tự ghi nhận hệ quả runtime: `--bg-panel` khác giá trị giữa `/dashboard` và `/admin/users` tuỳ CSS chunk.
+- **Evidence chính**: `node packages/web/scripts/check-token-conflict.mjs` → **13 vi phạm / baseline 13** (root-only 11); 13 tên trùng gồm `--text-primary`, `--text-secondary`, `--text-muted`, `--accent-cyan`, `--bg-panel`, `--bg-panel-soft`, `--border-default`, `--font-sans`, `--fs-xs/sm/md`, `--shadow-sm/md`. 4 kiểu page header, 5 kiểu empty/loading state, 4 cơ chế styling (92 CSS module / 101 Tailwind / 23 plain CSS / 102 inline style trên 834 file), `ShellPageChrome` chỉ adopt 40 file. Detector `impeccable`: 3 warning `side-tab` tại `PortfolioWorkspace.css:683,687,691`.
+- **Gates chạy thật**: `check:tokens` PASS (79 hex) · `check:contrast` PASS (7 cặp × 2 mode) · `check-portfolio-contrast` PASS (12 × 2 theme) · `check:light-theme` PASS (230 utility/638 file) · `check:dom-landmarks` PASS · `check:focus-ring`/`check-heading-contract`/`check-theme-contrast` exit 0 **baseline-locked** (≠ hết nợ) · **`check-uiux-budget` FAIL**: baseline 2026-10-09 = 162, hiện tại 129 (−33) nhưng `CSS-2 46→55 (+9)` + `A11Y-9 5→16 (+11)` — tổng giảm vẫn đỏ theo hợp đồng gate. **CHƯA CHẠY**: `test:visual`, `check-a11y-runtime` (cần Chromium), `scan-ui-guidelines` (timeout 300s), BE test, E2E, ảnh staging.
+- **Root cause**: lớp SOC self-contained được ghép vào app sau khi `theme/` thành SSOT; không ai gỡ 13 tên dùng chung. Gate baseline-locked xanh làm nợ bị vô hình hoá.
+- **Đề xuất**: Wave 0 hội tụ SSOT (chọn 1 owner, gỡ 13 tên, hạ baseline về 0 **sau khi sửa thật**, siết gate) → Wave 1 một chrome cho mọi route + a11y + URL state → Wave 2 density toggle / Cmd+K / data-freshness disclosure → Wave 3 đo & duy trì. Không thêm catalog thiết kế ngoài (xem `AUDIT_UIUX_PRO_MAX_SKILL_APPLICABILITY_20261114.md:93-99`).
+- **Owner ĐÃ CHỐT 2026-11-19**: token owner = `theme/tokens.css` (gỡ 13 tên khỏi `soc.tokens.css:5`, giữ giá trị dark/light); admin card trắng (`adminUi.tsx:48,71`) **convert sang glass** (không giữ ngoại lệ); Wave 1 làm **cả 4 nhóm** (gồm 29 điểm URL state, tái dùng `useUrlState`); sinh `DESIGN.md` **sau Wave 0**. **Không đụng** màu tăng/giảm (L-F08), không cài dependency mới, không thêm class vào `soc.module.css` (L-F03).
+- **Files**: `docs/AUDIT_UIUX_FULL_20261119.md` (mới) · ledger này. **Gates**: docs-only ⇒ BE test / migration **KHÔNG CHẠY**. Chưa commit, chưa khai claim (sẽ theo `workflow-dev-loop` khi Owner chốt).
+
 ## Entry 533: Alert card height — đưa action buttons thành overlay (E2E regression sau P1-7)
 
 - **Date**: 2026-11-19. **Type**: code + test evidence + docs (FE). **Branch**: `feat/dash-alert-card-height` -> `dev`. **Claim**: `dash-alert-card-height` done.
