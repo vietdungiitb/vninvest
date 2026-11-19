@@ -1,3 +1,23 @@
+## Entry 557: W3 — đóng 3 reservation minor (O-32/33/34), đóng claim, chờ PR
+
+- **Date**: 2026-11-19 · **Type**: code + docs · **Branch**: `feat/uiux-cmd-w3`.
+- B8 (Entry 556) AGREE, 0 blocker/0 major, 3 minor:
+  - O-32: thêm 3 key `density`/`densityComfortable`/`densityCompact` vào `locales/{vi,en}/userSettings.js`.
+  - O-33: `WatchlistMainWorkspace.tsx:145` local density state → migrate sang `useSettings()`, không còn nguồn density thứ 2.
+  - O-34: commit `green2.md`/`green3.md` (test 3/3 sau các fix).
+- Claim `uiux-cmd-w3`: in-progress → done. Baseline diff rỗng; không dependency/package.json mới.
+- **CHƯA CHẠY**: staging/Playwright 375-1440/E2E/full suite; không báo PASS giả.
+
+## Entry 556: B8 re-audit uiux-cmd-w3 — AGREE (0 blocker, 0 major)
+
+- **Date**: 2026-11-19 · **Type**: audit (read-only) · **Branch**: `feat/uiux-cmd-w3` · **HEAD**: `b6fb956c6` · **Repo**: `D:/Mujoco Projects/uiux-cmd-w3`.
+- **Scope**: `docs/PLAN_UIUX_W3_COMMAND_DENSITY_20261119.md` + 5 mục kiểm chứng B8. Không mở lại O-01..O-31. Bằng chứng: `docs/evidence/uiux-ssot/w3/REAUDIT.md`.
+- **Verdict AGREE** → cho phép B9. Auditor độc lập; chỉ ghi REAUDIT.md + Entry này, không sửa code/plan/claim, không commit/push/deploy. Kèm 3 reservation minor O-32/O-33/O-34.
+- **Code đúng**: `CommandRegistry.tsx:15-20` 4 global + `:23-39` 15 tenant, subject CASL action `"read"` giữ nguyên so với `origin/dev`; `AppCommandPalette.tsx:5,35-41` dùng registry + `data-testid="app-command-palette"`; `FullLayout.tsx:7,122` mount `e(AppCommandPalette)` đúng 1 lần (grep toàn `src` chỉ 1 match); `TenantAdminLayout.tsx:76-92` không import/mount palette; `TenantAdminCommandPalette.tsx:1-2` re-export compat; `SettingsProvider.tsx:6,15-35,38-42` nguồn density duy nhất (`vninvest-density`, `data-density` trên documentElement); `UserSettingsPage.tsx:8,90,210-215` select density dùng `useSettings()` + cast `HTMLSelectElement`. Route `/tenant-admin` là con của `/` (`main.tsx:158,230`, `AppShell.tsx:1,8`) ⇒ 1 listener Cmd+K. Guard theme W0 còn nguyên (`UserSettingsPage.tsx:21-28`).
+- **Gate exit 0 thật**: vitest 3/3 · check-tokens · check-contrast · check-theme-contrast · check-token-conflict · check-light-theme · check-heading-contract · check-focus-ring · check-dom-landmarks · check-portfolio-contrast. `check-ui-baseline/` diff rỗng; diff không có package.json/dependency; `CLAIMS.md:1994` vẫn in-progress; U+FFFD=0 · CJK=0 · endsLF=true trước khi ghi.
+- **O-32/33/34 (minor)**: thiếu 4 key density trong `locales/{vi,en}/userSettings.js`; local density state cũ ở `WatchlistMainWorkspace.tsx:145`; file untracked `green2.md` — do coordinator đóng ở B9, không chặn.
+- **CHƯA CHẠY**: staging VPS, Playwright 375/1440, E2E, full vitest, tsc, build, lint, i18n:scan:strict, budget, a11y-runtime, check-multi-agent. Không suy ra kết quả.
+
 ## Entry 555: B8 re-audit uiux-exp-w2 — AGREE (0 blocker, 0 major)
 
 - **Date**: 2026-11-19 · **Type**: audit (read-only) · **Branch**: `feat/uiux-exp-w2` · **HEAD**: `cc6459f06` · **Repo**: `D:/Mujoco Projects/uiux-exp-w2`.
