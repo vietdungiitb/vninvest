@@ -19,6 +19,14 @@ export const layout = {
     notifications: 'Thông báo',
     noNotifications: 'Chưa có thông báo mới',
     searchPlaceholder: 'Tìm mã cổ phiếu...',
+    // R1 — chỉ báo realtime ở header. 'disconnected' là nhánh phòng thủ.
+    realtime: {
+      idle: 'Chưa theo dõi',
+      connecting: 'Đang kết nối',
+      polling: 'Dự phòng',
+      online: 'Online',
+      disconnected: 'Offline',
+    },
     nav: {
       group: {
         dashboard: 'Thị trường',

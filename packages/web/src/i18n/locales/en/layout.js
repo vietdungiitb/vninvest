@@ -19,6 +19,14 @@ export const layout = {
     notifications: 'Notifications',
     noNotifications: 'No new notifications',
     searchPlaceholder: 'Search symbol...',
+    // R1 — header realtime indicator. 'disconnected' is a defensive branch.
+    realtime: {
+      idle: 'Not monitoring',
+      connecting: 'Connecting',
+      polling: 'Fallback',
+      online: 'Online',
+      disconnected: 'Offline',
+    },
     nav: {
       group: {
         dashboard: 'Market',

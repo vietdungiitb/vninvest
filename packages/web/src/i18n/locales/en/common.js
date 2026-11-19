@@ -1,5 +1,6 @@
 export const common = {
     loading: 'Loading...',
+    loadFailed: 'Could not load data',
     notAvailable: '—',
     noPermission: 'You do not have permission to view this page.',
     acknowledge: 'Acknowledge',

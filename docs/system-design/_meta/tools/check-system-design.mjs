@@ -531,6 +531,9 @@ function checkGenerated(genName, targetRel, okNote) {
   try {
     r = spawnSync('python', [gen, '--check', target], {
       encoding: 'utf8', shell: false, windowsHide: true, cwd: ROOT,
+      // Python tren Windows mac dinh cp1252: generator in ten file/license tieng Viet
+      // ra stdout ⇒ UnicodeEncodeError, gate doc hieu nham thanh DRIFT that.
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
     });
   } catch {
     return { code: 2, out: ['catalog: khong chay duoc python — KHONG verify duoc'] };
