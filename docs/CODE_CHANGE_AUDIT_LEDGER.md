@@ -1,3 +1,12 @@
+## Entry 563: Cold DataOps inventory 24.8s → ~7s (1 query SQL + cache 1h)
+
+- **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `perf/dataops-inventory-cold` · **Bằng chứng**: `docs/evidence/dataops-inventory/COLD_LATENCY.md` · PR #447 + #448 (đều merged).
+- **Baseline**: 38 query / 24.8s — `by_year` 3.0s, 7 group aggregate ~10.4s, `COUNT(*)` 2.0s; warm 3.61s.
+- **Fix**: gom toàn bộ DailyPrice aggregation thành 1 raw SQL `GROUP BY symbol, EXTRACT(YEAR FROM date)` với `COUNT(*) FILTER (WHERE date >= cutoff)`; tính summary/by_year/by_group trong Python; shape response không đổi. TTL cache Redis 5p → 1h.
+- **Đo thật sau deploy**: cold **6.72s → 7.13s**, warm **0.02s**; `summary.total_rows=4582503`. BE test trên VPS (DB tạm `dataops_cold`, đã DROP) **OK**; worktree tạm đã remove; `pre-push-gate` 36 PASS.
+- **Sự cố quy trình**: working tree dùng chung bị agent khác chuyển nhánh ⇒ 2 commit docs lọt sang `feat/ws-ticket-machine-scope`; đã revert ở nhánh đó, nội dung ghi đúng tại evidence. Agent kia chuyển sang worktree riêng. Bài học: không commit khi đang chia sẻ tree.
+- **CHƯA CHẠY**: materialized summary/Celery refresh để cold <3s (ticket riêng); full BE/E2E suite.
+
 ## Entry 562: DataOps inventory treo do KBS ngoài — dùng DB group cache, hết skeleton
 
 - **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `fix/dataops-inventory-hang` · **Bằng chứng**: `docs/PLAN_DATAOPS_INVENTORY_DB_GROUPS_20261120.md`, `docs/evidence/dataops-inventory/EVIDENCE_20261120.md`.
