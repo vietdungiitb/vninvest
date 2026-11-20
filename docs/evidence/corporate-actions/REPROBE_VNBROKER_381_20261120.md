@@ -1,5 +1,7 @@
 # RE-PROBE — vnbroker 3.8.1 sau bump pin (2026-11-20)
 
+> ✅ **CẬP NHẬT**: lỗi P0 `ex_date=None` ghi trong file này đã được vnbroker sửa ở **3.8.2** (`common/corporate_actions.py:128,168,172`) và re-probe đạt 57/79/23 dòng, 0 null — xem `REPROBE_VNBROKER_382_20261120.md`. File này giữ lại làm bằng chứng phát hiện.
+
 - **Scope**: Slice 4 Entry 573 — verify PyPI release, bump `vnbroker==3.7.2 → 3.8.1`, re-probe VNM/FPT/VCB.
 - **Nguồn sự thật**:
   - PyPI JSON `https://pypi.org/pypi/vnbroker/3.8.1/json` → `version=3.8.1`, `upload_time_iso_8601=2026-11-20T13:17:40.951813Z`, wheel + sdist, release_url đúng.

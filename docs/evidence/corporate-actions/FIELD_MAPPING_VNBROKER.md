@@ -1,6 +1,6 @@
 # Field mapping — vninvest pipeline ↔ vnbroker package 3.8.x (2026-11-20)
 
-> ⚠ **CẬP NHẬT 3.8.1**: re-probe (`REPROBE_VNBROKER_381_20261120.md`) phát hiện `ex_date=None` cho 100% dòng do `common/corporate_actions.py:155` thiếu key raw `exrightDate`. Bảng dưới vẫn đúng khi **sau khi package sửa**; hiện tại **chưa được dùng** để chuyển ingest — vninvest vẫn gọi `events()` + parser riêng.
+> ✅ **CẬP NHẬT 3.8.2**: lỗi `ex_date=None` của 3.8.1 đã được sửa và re-probe đạt (`REPROBE_VNBROKER_382_20261120.md`: VNM 57 / FPT 79 / VCB 23, 0 null, golden 950+1.500 giữ riêng). Bảng dưới đã verify, sẵn sàng dùng khi chuyển ingest sang field số — nhưng pipeline hiện tại vẫn gọi `events()` + parser riêng cho tới slice migration riêng và khi owner chốt Q1/Q2.
 
 > Bối cảnh: Entry 573 F-NEW-5. Hai repo cùng rule parse ESOP nhưng khác tên field. File này là ánh xạ khi vninvest chuyển từ parse-text sang `VCI.corporate_actions()` sau khi vnbroker release 3.8.x và consumer bump pin (`requirements.txt:38`, hiện vẫn 3.7.2).
 
