@@ -538,3 +538,13 @@ class OHLCVBarsWeeklyAdjustedTestCase(TestCase):
         self.assertEqual(len(bars), 1)
         self.assertEqual(bars[0]['adj_close'], 66.0)
         self.assertEqual(bars[0]['close'], 76.0)
+
+    def test_weekly_bar_flag_off_keeps_old_contract(self):
+        # A-02: khóa hồi quy — flag tắt thì W/M KHÔNG được lộ adj_close.
+        resp = self.client.get(_URL.format(symbol='HPG'), {
+            'timeframe': 'W', 'from': '1704067200000', 'to': '1706486400000',
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bars = unwrapped_json(resp)['bars']
+        self.assertEqual(len(bars), 1)
+        self.assertNotIn('adj_close', bars[0])
