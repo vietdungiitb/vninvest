@@ -62,6 +62,21 @@ SAMPLE {'timestamp':1731628800000,'open':55133.0,'high':55133.0,'low':54113.0,
 
 - Flag wiring + deploy + sync + bars API **đều chạy thật trên staging**, không còn `CHƯA CHẠY` cho E2E cơ bản.
 - Dữ liệu staging đã có corporate actions VNM (57 event / 48 factor / 2584 giá điều chỉnh) — chỉ là dữ liệu staging, không production.
-- **CHƯA CHẠY**: browser/visual regression (Playwright) với tài khoản thật; follow-up per-bar `adjusted` flag.
+- ~~**CHƯA CHẠY**: browser/visual regression (Playwright) với tài khoản thật~~ → **ĐÃ CHẠY** (xem §6); chỉ còn follow-up per-bar `adjusted` flag.
+
+## 6. PLAYWRIGHT BROWSER E2E (đã chạy 2026-11-21)
+
+Tool: skill `playwright-skill`, Chromium visible, URL `https://docker.edusuccess.vn`, credentials admin (không lưu vào repo). Script tạm tại `%TEMP%/opencode/playwright-*.js`.
+
+| Bước | Kết quả |
+|---|---|
+| `GET /login` | 200, title `VNInvest — Quản lý Danh mục Đầu tư`, input `username`/`password`, button "Đăng nhập" |
+| Login admin | redirect `/dashboard` ✅ |
+| `GET /stocks/VNM` | chờ overlay "Đang xác thực tài khoản…" biến mất; page render thật: **VNM 51.400,00 (+300, +0.59%)**, realtime "Đã kết nối", các widget dữ liệu thật (whale, order book, strength matrix) |
+| Fetch bars từ browser session | dùng `localStorage.access_token` làm `Bearer` → `GET /core/v1/stock-management/stocks/VNM/bars/?timeframe=D` → **200**, `bars=500`, **493 có `adj_close`**, sample `close=54113.0 → adj_close=45072.48`, `adjusted=false` + note 5 ex_date (đúng thiết kế per-date) |
+| Console / failed responses | lần chụp cuối: **0 page error, 0 response ≥400** (2 lần 404 thoáng qua ở lần chạy giữa không lặp lại — không chạm endpoint pipeline) |
+| Screenshot | `pw-vnm-chart.png` — **đã mở xem**, xác nhận giao diện thật (không phải màn loading) |
+
+Kết luận: browser E2E xanh; dữ liệu điều chỉnh `adj_close` đến được client qua cùng luồng xác thực thật. Vùng chart chính của widget báo "Chưa có dữ liệu" là vấn đề riêng của widget/realtime chart, **không phải** bars API corporate actions (endpoint này trả 200 đầy đủ).
 
 **Lessons**: `[L-002, L-V01, L-V04, L-T01]` — mọi số kèm lệnh; đọc response thật; không suy diễn từ cờ tổng.
