@@ -5,7 +5,8 @@
 - **Root cause**: `DataOpsInventoryView.get()` gọi `fetch_symbol_group_members()` (KBS, có retry) cho mỗi group; khi upstream chậm request treo ⇒ `loading.inventory` không clear.
 - **Fix**: helper `_db_group_symbols()` đọc `CachedSymbolGroup`/`CachedSymbolGroupMember` (SSOT 22 nhóm / 3968 mã) + alias `vn50→VNX50`, custom group vẫn `clean_symbols()`. Bỏ external import/call. Không migration, không đổi shape.
 - **Gate thật trên VPS** (DB tạm `dataops_fix`, đã DROP): fail-before @ `6417b4b14` **FAILED** (`0 != 1`, TEST_EXIT=1) → pass-after @ `fdc9ff8ae` **OK** (TEST_EXIT=0). System check 0 issues. Worktree tạm + session Django tạm đã dọn.
-- **CHƯA CHẠY**: Playwright verify sau deploy (ghi rõ khi có), full BE suite; external call ở các luồng khác vẫn còn (ngoài scope).
+- **Bổ sung PR #445**: Profile lộ cold 27.6s (`by_year` 8.1s + tổng 4.0s + mỗi group ~2.3s). Thêm Redis cache payload 5p + bỏ `COUNT(DISTINCT)` ⇒ cold 22.71s, warm **3.61s**; BE test vẫn OK. Deploy staging + Playwright: inventory 200, `HAS_4_6M=true`, `HERO_VALUES=["4.6M","0","0","1"]`, hết skeleton.
+- **CHƯA CHẠY**: full BE suite / E2E; external call ở luồng khác vẫn còn; cold cache ~22s cần tối ưu sâu (ticket riêng).
 
 ## Entry 561: Sửa 5 gate baseline chặn push — đối chứng trên dev sạch, không đổ lỗi cho slice R1
 
