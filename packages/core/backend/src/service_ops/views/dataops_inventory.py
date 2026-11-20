@@ -9,7 +9,7 @@ from .dataops_base import *
 #: 4.5M row DailyPrice mất ~28s. Cache 5 phút trên Redis (dùng chung mọi worker)
 #: để FE polling 15s không tính lại liên tục. Fail-soft khi Redis lỗi.
 _INVENTORY_CACHE_KEY = 'soc:dataops:inventory:v1'
-_INVENTORY_CACHE_TTL = 300
+_INVENTORY_CACHE_TTL = 3600  # dữ liệu DailyPrice cập nhật theo phiên/ngày; 1h là đủ tươi
 
 
 #: PREDEFINED_SYMBOL_GROUPS dùng id thấp (`vn50`), nhưng cache lưu tên provider
