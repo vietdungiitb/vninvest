@@ -9,6 +9,7 @@ All views require IsAuthenticated; symbol params are always uppercased.
 Graceful stubs return empty/null for features not yet fully native.
 """
 import math
+import os
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, time, timedelta
@@ -39,7 +40,7 @@ from vninvest_core.exceptions import (
 
 from .envelope import adopt_envelope, envelope, envelope_schema, paginated_envelope
 from .global_symbol_planner import create_global_planner_run
-from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
+from .models import AdjFactor, DailyPrice, IntradayBar, IntradayTick, StockProfile
 
 
 def clean_nan(obj):
@@ -4040,9 +4041,14 @@ def _ohlcv_bar_from_intraday(bar):
     }
 
 
+def _corporate_actions_enabled() -> bool:
+    """Feature flag CORPORATE_ACTIONS_ENABLED — mặc định tắt để giữ contract cũ."""
+    return os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes')
+
+
 def _ohlcv_bar_from_daily(row):
     dt = datetime.combine(row.date, time.min).replace(tzinfo=dt_timezone.utc)
-    return {
+    bar = {
         'timestamp': _dt_to_unix_ms(dt),
         'open': _to_float(row.open),
         'high': _to_float(row.high),
@@ -4050,6 +4056,9 @@ def _ohlcv_bar_from_daily(row):
         'close': _to_float(row.close),
         'volume': _to_int(row.volume) or 0,
     }
+    if _corporate_actions_enabled():
+        bar['adj_close'] = _to_float(row.adj_close)
+    return bar
 
 
 def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
@@ -4369,6 +4378,27 @@ class StockManagementOHLCVBarsView(APIView):
             next_before = bars[0]['timestamp'] if bars else None
             next_after = bars[-1]['timestamp'] if bars else None
 
+        if _corporate_actions_enabled():
+            partial_dates = list(
+                AdjFactor.objects.filter(symbol=symbol, status=AdjFactor.Status.PARTIAL)
+                .order_by('ex_date')
+                .values_list('ex_date', flat=True)
+            )
+            has_adjusted = any(bar.get('adj_close') is not None for bar in bars)
+            if partial_dates:
+                adjusted = False
+                dates = ', '.join(day.isoformat() for day in partial_dates)
+                adjustment_note = f'Bars chưa điều chỉnh: sự kiện chưa parse được tại ex_date {dates}.'
+            elif has_adjusted:
+                adjusted = True
+                adjustment_note = None
+            else:
+                adjusted = False
+                adjustment_note = 'Chưa có hệ số điều chỉnh cho mã này.'
+        else:
+            adjusted = False
+            adjustment_note = 'Bars chua dieu chinh co tuc (corporate actions).'
+
         return envelope({
             'symbol': symbol,
             'timeframe': timeframe,
@@ -4378,10 +4408,8 @@ class StockManagementOHLCVBarsView(APIView):
             'next_before': next_before,
             'next_after': next_after,
             'snapshot_id': snapshot_id,
-            # S3.1 nhanh B (2026-11-13): khong co nguon corporate action
-            # (probe QB2: Company.events() rong) => bars CHUA dieu chinh.
-            'adjusted': False,
-            'note': 'Bars chua dieu chinh co tuc (corporate actions).',
+            'adjusted': adjusted,
+            'note': adjustment_note,
         })
 
 
