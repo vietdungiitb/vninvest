@@ -38,3 +38,23 @@ class ParseEventTitleTests(SimpleTestCase):
             self.assertIsNone(result.cash_amount)
             self.assertIsNone(result.stock_ratio_pct)
             self.assertEqual(result.status, 'unparsed')
+
+    def test_esop_percent_is_ambiguous_not_stock_ratio(self):
+        # C-02: probe FPT 3.7.2 — "Phát hành cho CBCNV tỉ lệ 0.5%/0.2%" là ESOP,
+        # không phải cổ phiếu thưởng làm đổi giá niêm yết.
+        for percent in ('0.5%', '0.2%'):
+            title = f'Phát hành cổ phiếu - Phát hành cho CBCNV tỉ lệ {percent}'
+            result = parse_event_title(title, 'ISS')
+            self.assertIsNone(result.cash_amount)
+            self.assertIsNone(result.stock_ratio_pct)
+            self.assertEqual(result.status, 'unparsed')
+            self.assertTrue(result.ambiguous_ratio_pct)
+
+    def test_tra_co_tuc_bang_co_phieu_still_parsed(self):
+        # VCB 2025-03-12 — cụm "Trả Cổ tức bằng Cổ phiếu" mới là stock ratio.
+        result = parse_event_title(
+            'Phát hành cổ phiếu - Trả Cổ tức bằng Cổ phiếu tỉ lệ 49.5%', 'ISS'
+        )
+        self.assertEqual(result.stock_ratio_pct, Decimal('49.5'))
+        self.assertEqual(result.status, 'parsed_from_text')
+        self.assertFalse(result.ambiguous_ratio_pct)

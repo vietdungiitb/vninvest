@@ -1,3 +1,13 @@
+## Entry 572: Sửa C-02 — ESOP `CBCNV tỉ lệ X%` không còn bị parse thành stock ratio
+
+- **Date**: 2026-11-20 · **Type**: code fix (backend parser) · **Branch**: `fix/corporate-actions-esop` · **Claim**: `967c897ad`.
+- **Nguồn**: finding C-02 trong `docs/AUDIT_VNBROKER_PLAN_CRITIQUE_20261120.md` (PR #460) — probe 3.7.2 FPT cho `ISS ... Phát hành cho CBCNV tỉ lệ 0.5%/0.2%` bị parse nhầm thành `stock_ratio_pct`, làm sai adjustment factor.
+- **Files**: `market_data/corporate_actions/parser.py` (+`ambiguous_ratio_pct`, helper `_fold` bỏ dấu, hằng `BONUS_SHARE_HINTS`) · `market_data/tests/test_corporate_action_parser.py` (+2 test).
+- **Rule mới**: ISS + `%` chỉ trả `stock_ratio_pct` khi tiêu đề chứa `Cổ phiếu thưởng` **hoặc** `Trả Cổ tức bằng Cổ phiếu`; mọi ISS + `%` khác (đặc biệt ESOP `Phát hành cho CBCNV`) ⇒ `parse_status='unparsed'`, `ambiguous_ratio_pct=True`, không suy diễn số. DIV + `%` giữ nguyên (`ambiguous_cash_pct=True`).
+- **Fail-before thật**: `parse_event_title('... CBCNV tỉ lệ 0.5%', 'ISS')` trả `Decimal('0.5')` + `AttributeError: ParsedAmount has no attribute ambiguous_ratio_pct` (2 fail). Sau fix: **parser 7/7 OK**; regression cả 6 module **62/62 OK** trên VPS staging DB tạm `corp_actions_verify` (container `vninvest-core-api`, Django 5.2.19, không đụng `vninvest_core`, không Docker local).
+- **Gates**: `node packages/web/scripts/check-multi-agent.mjs` exit 0 trước khi sửa; `git diff --numstat` khớp; không migration, không pip/npm. **CHƯA CHẠY**: full BE suite, FE build, deploy — docs/code gates như Entry 570.
+- **Next**: re-audit nhanh C-02 bởi auditor độc lập; phía vnbroker vẫn cần áp cùng rule trong `common/corporate_actions.py` (Slice 1 của họ) để hai bên không phân kỳ. DB tạm sẽ bị drop sau merge.
+
 ## Entry 571: Audit độc lập chẩn đoán + 3-slice plan của vnbroker
 
 - **Date**: 2026-11-20 · **Type**: audit (read-only, cross-repo) · **Branch**: `docs/audit-vnbroker-plan-critique` · **File**: `docs/AUDIT_VNBROKER_PLAN_CRITIQUE_20261120.md`.
