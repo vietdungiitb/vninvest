@@ -46,6 +46,7 @@ services:
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
+      CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
 
   # ══════════════════════════════════════════════════════════════════════
   # WORKERS — cùng bộ biến. `entrypoint.sh` KHÔNG chạy `migrate` cho
@@ -60,6 +61,7 @@ services:
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
+      CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
 
   core-worker-realtime-prefetch:
     environment:
@@ -68,6 +70,7 @@ services:
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
+      CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
 
   core-worker-realtime-stream:
     environment:
@@ -76,6 +79,7 @@ services:
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
+      CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
 
   core-beat:
     environment:
@@ -84,6 +88,7 @@ services:
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
+      CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
 
   # ══════════════════════════════════════════════════════════════════════
   # FRONTEND — 2 việc:
