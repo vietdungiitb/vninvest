@@ -1,3 +1,12 @@
+## Entry 574: Follow-up Entry 573 — DIV+%, persist cờ ambiguous, W/M adj_close
+
+- **Date**: 2026-11-20 · **Type**: code + docs · **Branch**: `feat/corp-actions-followups` · **Claim**: `524896b9`.
+- **Files**: `parser.py` (F-NEW-1: `stock_ratio_pct=None` cho DIV dù có `%`), `models.py` + migration `0009_corporateaction_ambiguous_cash_pct_and_more.py` (**do `makemigrations` sinh** trên staging, dependency `0008`) + `ingest.py` (F-NEW-2: persist `ambiguous_cash_pct`/`ambiguous_ratio_pct`), `stock_mgmt_native_views.py` (F-NEW-3: `_aggregate_daily_to_ohlcv_bars` giữ `adj_close` của ngày cuối bucket, thêm key khi flag bật), 3 file test (+3 case), `docs/PLAN_...md:167` (F-NEW-4 contract), `docs/evidence/corporate-actions/FIELD_MAPPING_VNBROKER.md` (F-NEW-5, mới).
+- **Fail-before thật** (staging `corp_actions_verify`, Django 5.2.19, không Docker local): 3 fail — parser trả `Decimal('20')` cho title DIV vừa tiền vừa `%`; `CorporateAction` thiếu field ambiguous (`AttributeError` ngay tại assert của test, chưa tới save); weekly bar `KeyError: 'adj_close'`. Sau fix: **65/65 OK** (62 cũ + 3 mới), `makemigrations --check --dry-run` sạch. Auditor re-audit PASS; đóng thêm reservation A-01 (sửa từ ngữ này) + A-02 (thêm test âm tính flag-off W/M) → **66/66 OK**.
+- **Flag vẫn `False`** — việc này chỉ sửa độ đúng của dữ liệu, không thay đổi điều kiện bật (Q1/Q2 đối chiếu độc lập vẫn mở, Entry 573 §F.1).
+- **C-01 vẫn mở**: vnbroker local `6020aac` ở 3.8.0 chưa release; vninvest pin `vnbroker==3.7.2` (`requirements.txt:38`). Field mapping 2 repo ghi tại `docs/evidence/corporate-actions/FIELD_MAPPING_VNBROKER.md` (`is_esop ↔ ambiguous_ratio_pct`).
+- **Gates**: `check-multi-agent` exit 0 trước sửa; `git diff --check` sạch; system-design regenerate sau khi migration 0009 làm tăng số migration 139→140. **CHƯA CHẠY**: full BE suite/FE build/deploy (như Entry 570/573).
+
 ## Entry 573: Re-audit pipeline corporate actions + hướng xử lý tiếp theo
 
 - **Date**: 2026-11-20 · **Type**: audit (read-only, doc-only) · **Branch**: `docs/reaudit-corp-actions-next` · **Claim**: `be63a1674` · **File**: `docs/AUDIT_CORPORATE_ACTIONS_REAUDIT_20261120.md`.

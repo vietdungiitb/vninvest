@@ -497,3 +497,54 @@ class OHLCVBarsCorporateActionsTestCase(TestCase):
         self.assertFalse(data['adjusted'])
         self.assertIn('chưa', data['note'].lower())
         self.assertIn(date.today().isoformat(), data['note'])
+
+
+class OHLCVBarsWeeklyAdjustedTestCase(TestCase):
+    """F-NEW-3 — weekly bars cũng phải kèm adj_close khi flag bật."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='ohlcv-bars-w-adj',
+            email='ohlcv-bars-w-adj@test.local',
+            password='pass123',
+        )
+        StockProfile.objects.create(
+            symbol='HPG',
+            company_name='Hoa Phat Group',
+            exchange=StockProfile.ExchangeChoices.HOSE,
+            status=StockProfile.StatusChoices.ACTIVE,
+        )
+        base = date(2024, 1, 1)
+        for i in range(7):
+            DailyPrice.objects.create(
+                symbol='HPG', date=base + timedelta(days=i),
+                open=Decimal('70.00'), high=Decimal('71.00'),
+                low=Decimal('69.00'), close=Decimal(str(70 + i)),
+                adj_close=Decimal(str(60 + i)), volume=1000,
+            )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'true'})
+    def test_weekly_bar_exposes_adj_close(self):
+        resp = self.client.get(_URL.format(symbol='HPG'), {
+            'timeframe': 'W', 'from': '1704067200000', 'to': '1706486400000',
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bars = unwrapped_json(resp)['bars']
+        self.assertEqual(len(bars), 1)
+        self.assertEqual(bars[0]['adj_close'], 66.0)
+        self.assertEqual(bars[0]['close'], 76.0)
+
+    def test_weekly_bar_flag_off_keeps_old_contract(self):
+        # A-02: khóa hồi quy — flag tắt thì W/M KHÔNG được lộ adj_close.
+        resp = self.client.get(_URL.format(symbol='HPG'), {
+            'timeframe': 'W', 'from': '1704067200000', 'to': '1706486400000',
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        bars = unwrapped_json(resp)['bars']
+        self.assertEqual(len(bars), 1)
+        self.assertNotIn('adj_close', bars[0])

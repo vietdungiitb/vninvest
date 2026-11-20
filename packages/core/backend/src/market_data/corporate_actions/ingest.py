@@ -142,6 +142,8 @@ def fetch_corporate_actions(symbol: str, from_date: date, to_date: date | None =
             'source_event_id': source_id,
             'raw_title': raw_title,
             'parse_status': parsed.status,
+            'ambiguous_cash_pct': parsed.ambiguous_cash_pct,
+            'ambiguous_ratio_pct': parsed.ambiguous_ratio_pct,
             'is_latest': True,
             'fetched_at': timezone.now(),
             '_fallback_id': fallback,

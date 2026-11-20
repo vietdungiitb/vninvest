@@ -130,6 +130,9 @@ class CorporateAction(models.Model):
         max_length=20, choices=ParseStatus.choices,
         default=ParseStatus.UNPARSED, verbose_name='Trạng thái parse',
     )
+    # Cờ ambiguous từ parser — lưu lại để API/DB phân biệt ESOP vs thiếu dữ liệu (F-NEW-2).
+    ambiguous_cash_pct = models.BooleanField(default=False, verbose_name='Cổ tức % trên mệnh giá')
+    ambiguous_ratio_pct = models.BooleanField(default=False, verbose_name='Tỉ lệ % không rõ bản chất')
     is_latest = models.BooleanField(default=True, db_index=True, verbose_name='Bản ghi mới nhất')
     fetched_at = models.DateTimeField(default=timezone.now, verbose_name='Thời điểm lấy')
 

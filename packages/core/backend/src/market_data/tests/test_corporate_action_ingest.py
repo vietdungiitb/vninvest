@@ -140,3 +140,26 @@ class IngestTests(TestCase):
 
     def test_dnse_not_used_as_source(self):
         self.assertNotIn('DNSE', SUPPORTED_EVENT_CODES)
+
+    @patch('vnbroker.explorer.vci.company.Company')
+    def test_ambiguous_flags_persisted(self, vci_cls):
+        # F-NEW-2: cờ ambiguous phải sống qua ranh giới parser -> DB.
+        vci_cls.return_value.events.return_value = pd.DataFrame([
+            {
+                'id': 'esop-1', 'event_code': 'ISS',
+                'exright_date': '2024-10-09',
+                'event_title_vi': 'Phát hành cổ phiếu - Phát hành cho CBCNV tỉ lệ 0.5%',
+            },
+            {
+                'id': 'div-pct', 'event_code': 'DIV',
+                'exright_date': '2024-01-01',
+                'event_title_vi': 'Trả cổ tức bằng tiền mặt - tỉ lệ 20%',
+            },
+        ])
+        upsert_corporate_actions('VNM', fetch_corporate_actions('VNM', date(2024, 1, 1)))
+        esop = CorporateAction.objects.get(source_event_id='esop-1')
+        self.assertTrue(esop.ambiguous_ratio_pct)
+        self.assertEqual(esop.parse_status, 'unparsed')
+        div_pct = CorporateAction.objects.get(source_event_id='div-pct')
+        self.assertTrue(div_pct.ambiguous_cash_pct)
+        self.assertEqual(div_pct.parse_status, 'unparsed')
