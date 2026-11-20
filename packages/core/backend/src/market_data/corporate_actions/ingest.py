@@ -42,7 +42,7 @@ def get_provider_token(provider: str) -> str | None:
     return os.getenv(f'{provider.upper()}_TOKEN')
 
 
-def normalize_provider_error(error: Exception) -> ProviderAuthError:
+def normalize_provider_error(error: Exception) -> ProviderError:
     message = str(error)
     lowered = message.lower()
     if any(token in lowered for token in ('token', 'auth', 'unauthor', 'quyền', 'provider_auth')):
