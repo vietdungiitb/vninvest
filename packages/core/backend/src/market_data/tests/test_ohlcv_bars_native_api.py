@@ -4,13 +4,15 @@ GET /api/stock-management/stocks/<symbol>/bars/
 """
 from datetime import date, datetime, time, timedelta
 from datetime import timezone as dt_timezone
+from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from market_data.models import DailyPrice, IntradayBar, StockProfile
+from market_data.models import AdjFactor, DailyPrice, IntradayBar, StockProfile
 from market_data.tests.envelope import unwrapped_json
 
 User = get_user_model()
@@ -442,3 +444,56 @@ class OHLCVBarsWeeklyTestCase(TestCase):
         bar = bars[0]
         for field in ('timestamp', 'open', 'high', 'low', 'close', 'volume'):
             self.assertIn(field, bar)
+
+
+class OHLCVBarsCorporateActionsTestCase(TestCase):
+    """Task 6 — adj_close/adjusted chỉ phơi bày khi feature flag bật."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='ohlcv-bars-corp',
+            email='ohlcv-bars-corp@test.local',
+            password='pass123',
+        )
+        StockProfile.objects.create(
+            symbol='VNM',
+            company_name='Vinamilk',
+            exchange=StockProfile.ExchangeChoices.HOSE,
+            status=StockProfile.StatusChoices.ACTIVE,
+        )
+        today = date.today() - timedelta(days=1)
+        cls.price = DailyPrice.objects.create(
+            symbol='VNM', date=today, open=Decimal('100000'), high=Decimal('100000'),
+            low=Decimal('100000'), close=Decimal('100000'), volume=1000,
+            adj_close=Decimal('97550'), is_adjusted=True,
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'true'})
+    def test_adj_close_exposed(self):
+        resp = self.client.get(_URL.format(symbol='VNM'), {'timeframe': 'D'})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = unwrapped_json(resp)
+        self.assertTrue(data['adjusted'])
+        self.assertIsNotNone(data['bars'])
+        adjusted_bars = [bar for bar in data['bars'] if bar.get('adj_close') is not None]
+        self.assertTrue(adjusted_bars)
+        self.assertEqual(adjusted_bars[0]['adj_close'], 97550.0)
+        self.assertEqual(adjusted_bars[0]['close'], 100000.0)
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'true'})
+    def test_unparsed_keeps_false(self):
+        AdjFactor.objects.create(
+            symbol='VNM', ex_date=date.today(), prev_close=Decimal('100000'),
+            cash_factor=Decimal('1'), stock_factor=Decimal('1'), factor_total=Decimal('1'),
+            status=AdjFactor.Status.PARTIAL,
+        )
+        resp = self.client.get(_URL.format(symbol='VNM'), {'timeframe': 'D'})
+        data = unwrapped_json(resp)
+        self.assertFalse(data['adjusted'])
+        self.assertIn('chưa', data['note'].lower())
+        self.assertIn(date.today().isoformat(), data['note'])
