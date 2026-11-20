@@ -1,3 +1,11 @@
+## Entry 568: Handoff vnbroker team — yêu cầu nguồn corporate action có cấu trúc
+
+- **Date**: 2026-11-20 · **Type**: docs-only (báo cáo bàn giao cho đội package) · **Branch**: `docs/handoff-vnbroker-dividend`.
+- **File**: `docs/handoffs/HANDOFF_2026-11-20_VNBROKER_CORPORATE_ACTION.md` (sẽ đẩy sang `main` theo handoff-evidence-rule).
+- **Nội dung**: 8 yêu cầu (R1–R8, trong đó R1–R3 là P0), contract `CorporateActionEvent` với `ex_date`/`cash_amount_per_share`/`stock_ratio_pct`/`parse_status`/`source_event_id`, công thức adjust factor, bộ test VNM/FPT/VCB, 7 AC dạng Given/When/Then, 6 câu hỏi cần vnbroker team phản hồi.
+- **Evidence**: dựa trên probe thực Entry 567 + source `vnbroker==3.7.2` (`vci/company.py:104-116,303-318`; `kbs/company.py:580-645`; `tcbs/company.py:469-492`; `common/data.py:308-345`).
+- **Trạng thái**: chưa có phản hồi package team; vninvest chưa mở slice code. **CHƯA CHẠY**: gate code (doc-only).
+
 ## Entry 567: Probe nguồn corporate actions trong vnbroker 3.7.2 — VCI khả thi, KBS rỗng
 
 - **Date**: 2026-11-20 · **Type**: audit (read-only package + live probe, docs-only) · **Branch**: `docs/vnbroker-corp-action-source` · **Bằng chứng**: `docs/AUDIT_VNBROKER_CORPORATE_ACTION_SOURCE_20261120.md`.
