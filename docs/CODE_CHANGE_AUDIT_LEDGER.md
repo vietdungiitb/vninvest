@@ -1,3 +1,11 @@
+## Entry 566: Audit đồng bộ dữ liệu thị trường — giá có tự update, cổ tức/chia tách không
+
+- **Date**: 2026-11-20 · **Type**: audit (read-only, docs-only) · **Branch**: `docs/audit-market-sync-20261120` · **Bằng chứng**: `docs/AUDIT_MARKET_DATA_SYNC_20261120.md`.
+- **Kết luận chính**: DailyPrice tự cập nhật 17:05 ICT (`settings.py:776-783`) + weekly deep backfill + snapshot/phiên 300s (`settings.py:656-661`); **không có pipeline corporate actions** — grep `corporate_action|ex_date|split_ratio|rights_issue|bonus_share` trong `packages/core/backend/src` = 0 hit, `is_adjusted` (`market_data/models.py:80`) không bao giờ set True, bars trả `adjusted:false`+note (`stock_mgmt_native_views.py:4381-4384`).
+- **Finding khác**: `dividend_yield` là financials snapshot cache 12h (`screener_helpers.py:328`, `vnbroker_adapter.py:1414`), không phải dividend event; sync nhóm mã chỉ thủ công (`symbol_groups.py:296-312`, không có beat entry); banner coverage 60.1% là freshness chứ không phải sai 40% dữ liệu.
+- **6 findings (1 HIGH / 4 MED / 1 LOW)** + 4 câu hỏi owner + đánh giá implementable nhưng blocked bởi nguồn feed. Không đổi code, không tự tích hợp feed.
+- **Gates**: doc-only — lint/build/test **CHƯA CHẠY** trong slice này (không suy diện từ slice trước).
+
 ## Entry 565: DataOps hết flash skeleton khi polling 15s
 
 - **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `fix/dataops-poll-flash` · **Bằng chứng**: `docs/evidence/dataops-inventory/POLL_FLASH.md`.
