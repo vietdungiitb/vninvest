@@ -142,6 +142,36 @@ class IngestTests(TestCase):
         self.assertNotIn('DNSE', SUPPORTED_EVENT_CODES)
 
     @patch('vnbroker.explorer.vci.company.Company')
+    def test_fetch_prefers_structured_fields(self, vci_cls):
+        # vnbroker 3.8.2: dùng field số, KHÔNG gọi events()/parse text.
+        frame = pd.DataFrame([{
+            'symbol': 'VNM', 'action_type': 'DIV', 'ex_date': '2024-09-24',
+            'record_date': None, 'payment_date': None,
+            'cash_amount': Decimal('950'), 'stock_ratio_pct': None,
+            'currency': 'VND', 'source': 'VCI', 'source_event_id': 'id-structured',
+            'raw_title': 'Trả cổ tức bằng tiền mặt - 950 VND',
+            'parse_status': 'parsed_from_text', 'group_id': 'VNM:2024-09-24',
+            'fetched_at': None,
+        }])
+        vci_cls.return_value.corporate_actions.return_value = frame
+        rows = fetch_corporate_actions('VNM', date(2024, 1, 1))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['cash_amount_per_share'], Decimal('950'))
+        self.assertEqual(rows[0]['source_event_id'], 'id-structured')
+        self.assertEqual(rows[0]['source'], 'VCI')
+        self.assertEqual(rows[0]['_source_api'], 'structured')
+        vci_cls.return_value.events.assert_not_called()
+
+    @patch('vnbroker.explorer.vci.company.Company')
+    def test_structured_empty_falls_back_to_events(self, vci_cls):
+        vci_cls.return_value.corporate_actions.return_value = pd.DataFrame()
+        vci_cls.return_value.events.return_value = _events_frame([_div_row()])
+        rows = fetch_corporate_actions('VNM', date(2024, 1, 1))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['source_event_id'], 'id-001')
+        vci_cls.return_value.events.assert_called_once()
+
+    @patch('vnbroker.explorer.vci.company.Company')
     def test_ambiguous_flags_persisted(self, vci_cls):
         # F-NEW-2: cờ ambiguous phải sống qua ranh giới parser -> DB.
         vci_cls.return_value.events.return_value = pd.DataFrame([

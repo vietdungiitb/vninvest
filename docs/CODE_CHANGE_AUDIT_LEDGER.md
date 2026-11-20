@@ -1,3 +1,14 @@
+## Entry 578: Triệt để baseline + structured ingest + Q1/Q2 + FE build
+
+- **Date**: 2026-11-20 · **Type**: code + audit · **Branch**: `feat/corp-actions-structured` · **Claim**: `53001d956` · **Evidence**: `docs/evidence/corporate-actions/STRUCTURED_MIGRATION_20261120.md`.
+- **Baseline closure**: full BE trên cây trước pipeline `165cdc8d2` = 3536 tests / **35 fail / 221 error**; cây sau fix = 3576 tests / **35 fail / 221 error**; `comm` danh sách FAIL/ERROR giữa 2 cây **đều rỗng** ⇒ **0 regression**. Entry 577 (36 fail) do 2 Admin thiếu `date_hierarchy` — đã thêm `date_hierarchy='ex_date'` cho `CorporateActionAdmin`/`AdjFactorAdmin`.
+- **Structured ingest**: `ingest.fetch_corporate_actions` thử `VCI.corporate_actions()` (field số 3.8.2) trước, map 8 cột contract, fallback `events()` + parser khi package cũ/empty/sai schema; cờ `ambiguous_*` vẫn lấy từ parser (package không trả). Thêm 2 test (`test_fetch_prefers_structured_fields`, `test_structured_empty_falls_back_to_events`). Pipeline **68/68 OK**.
+- **FE build**: `npm run build` exit 0 (37.99s), chỉ chunk-size warning; working tree sạch.
+- **Q1/Q2 ĐÓNG**: VSDC CN TP.HCM `https://vsdc.vn/vi/ad/174349` (30/08/2024) — VNM GDKHQ 24/09/2024, 24,5%/cp = 2.450 = 950 (đợt cuối 2023) + 1.500 (tạm ứng đợt 1/2024), 2 kỳ riêng; đối chiếu 4 nguồn khác. Không có TCBS_JWT_TOKEN trên staging nên không probe TCBS.
+- **Deploy**: VPS pulled dev `ffe511d1c`, `deploy-staging.sh --verify` OK; deploy thật sau khi merge slice này.
+- **Flag vẫn `False`** (owner quyết bật env). **CHƯA CHẠY**: E2E sau deploy.
+- **Next**: merge → pull VPS → deploy staging → owner bật flag nếu muốn → re-audit cuối.
+
 ## Entry 577: Full BE gate sau bump 3.8.2 — ghi nhận KHÔNG xanh, chờ baseline
 
 - **Date**: 2026-11-20 · **Type**: audit/gate (doc-only) · **Branch**: `docs/gates-fullbe-382` · **Claim**: `89df3ffb2` · **File**: `docs/evidence/corporate-actions/FULL_BE_GATE_20261120.md`.

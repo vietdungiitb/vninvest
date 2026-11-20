@@ -53,6 +53,7 @@ class CorporateActionAdmin(VNAdminMixin, admin.ModelAdmin):
     list_filter = ('action_type', 'source', 'parse_status', 'is_latest')
     search_fields = ('symbol', 'source_event_id', 'raw_title')
     readonly_fields = ('fetched_at',)
+    date_hierarchy = 'ex_date'
     ordering = ('-ex_date', 'symbol')
 
 
@@ -62,6 +63,7 @@ class AdjFactorAdmin(VNAdminMixin, admin.ModelAdmin):
     list_filter = ('status',)
     search_fields = ('symbol',)
     readonly_fields = ('computed_at',)
+    date_hierarchy = 'ex_date'
     ordering = ('-ex_date', 'symbol')
 
 
