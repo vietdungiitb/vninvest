@@ -3,10 +3,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase, override_settings
+from django.utils.module_loading import import_string
 
-from data_ingest.tasks import sync_corporate_actions
-from market_data.models import CorporateAction
+from data_ingest.tasks import sync_all_corporate_actions, sync_corporate_actions
+from market_data.models import CorporateAction, DailyPrice
 
 ENV_ON = {'CORPORATE_ACTIONS_ENABLED': 'true'}
 
@@ -49,3 +51,41 @@ class SyncCorporateActionsTests(TestCase):
         stats = sync_corporate_actions('VNM')
         self.assertTrue(stats.get('skipped'))
         fetch.assert_not_called()
+
+
+class SyncAllCorporateActionsTests(TestCase):
+    """Orchestrator cho MỌI mã có DailyPrice — fail-before cho beat gap."""
+
+    def _price(self, symbol):
+        return DailyPrice.objects.create(
+            symbol=symbol, date=date(2024, 1, 1),
+            open=Decimal('10'), high=Decimal('11'), low=Decimal('9'),
+            close=Decimal('10'), volume=100,
+        )
+
+    @patch.dict('os.environ', ENV_ON)
+    @patch('data_ingest.tasks.sync_corporate_actions.delay')
+    def test_orchestrator_dispatches_every_price_symbol(self, delay):
+        self._price('VNM')
+        self._price('FPT')
+        stats = sync_all_corporate_actions(countdown_seconds=0)
+        called = sorted(call.args[0] for call in delay.call_args_list)
+        self.assertEqual(called, ['FPT', 'VNM'])
+        self.assertEqual(stats['symbols'], 2)
+        self.assertEqual(stats['queued'], 2)
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
+    @patch('data_ingest.tasks.sync_corporate_actions.delay')
+    def test_orchestrator_flag_off_skips(self, delay):
+        self._price('VNM')
+        stats = sync_all_corporate_actions()
+        self.assertTrue(stats.get('skipped'))
+        delay.assert_not_called()
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
+    def test_beat_kwargs_can_invoke_orchestrator(self):
+        """Beat hiện tại truyền kwargs gì cũng phải gọi được task (không TypeError)."""
+        entry = settings.CELERY_BEAT_SCHEDULE['sync-corporate-actions-nightly']
+        task = import_string(entry['task'])
+        result = task(**entry.get('kwargs', {}))
+        self.assertTrue(result.get('skipped'))

@@ -3508,3 +3508,35 @@ def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
         'factors': len(factors), 'applied': applied, 'from_date': from_date.isoformat(),
     }
 
+
+@shared_task(bind=True)
+def sync_all_corporate_actions(self, symbols: list[str] | None = None,
+                               countdown_seconds: int = 2,
+                               _scheduler_job_key: str | None = None) -> dict:
+    """Nightly orchestrator: dispatch sync_corporate_actions cho MỌI mã có DailyPrice.
+
+    Mỗi symbol là một subtask riêng (dễ retry, không một mã hỏng làm cả đêm dừng).
+    `countdown` giãn đều để không bắn ~1900 request VCI cùng lúc.
+    """
+    if os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() not in ('1', 'true', 'yes'):
+        return {'skipped': True, 'reason': 'CORPORATE_ACTIONS_ENABLED=false'}
+
+    from market_data.models import DailyPrice
+
+    if symbols is None:
+        symbols = sorted(set(DailyPrice.objects.values_list('symbol', flat=True).distinct()))
+    else:
+        symbols = sorted(set(symbols))
+
+    stagger = max(0, int(countdown_seconds))
+    queued = 0
+    for index, symbol in enumerate(symbols):
+        sync_corporate_actions.delay(symbol, countdown=index * stagger)
+        queued += 1
+
+    logger.info(
+        'sync_all_corporate_actions queued %d symbols (stagger=%ss, job=%s)',
+        queued, stagger, _scheduler_job_key,
+    )
+    return {'symbols': len(symbols), 'queued': queued, 'countdown_seconds': stagger}
+
