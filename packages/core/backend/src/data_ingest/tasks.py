@@ -18,6 +18,7 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
+from django.db.models import Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
@@ -3470,4 +3471,40 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
 #        (market_data.vnbroker_adapter.get_company_financials_response, cached 12h).
 #        No bespoke StockFundamental store / enrichment task — SSOT.
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Corporate Actions Pipeline — incremental nightly sync (flag-gated).
+# ---------------------------------------------------------------------------
+@shared_task(bind=True)
+def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
+                           _scheduler_job_key: str | None = None) -> dict:
+    """Fetch event mới từ VCI, upsert, recompute factor và materialize adj_close."""
+    if os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() not in ('1', 'true', 'yes'):
+        return {'skipped': True, 'reason': 'CORPORATE_ACTIONS_ENABLED=false', 'symbol': symbol}
+
+    from market_data.corporate_actions.adjustment import apply_adjustments, compute_adj_factors
+    from market_data.corporate_actions.ingest import fetch_corporate_actions, upsert_corporate_actions
+    from market_data.models import CorporateAction
+
+    if from_date is None:
+        latest = CorporateAction.objects.filter(symbol=symbol).aggregate(Max('ex_date'))['ex_date__max']
+        from_date = (latest - timedelta(days=7)) if latest else date(2010, 1, 1)
+
+    try:
+        rows = fetch_corporate_actions(symbol, from_date)
+        created, updated = upsert_corporate_actions(symbol, rows)
+        factors = compute_adj_factors(symbol)
+        applied = apply_adjustments(symbol)
+    except Exception as exc:  # noqa: BLE001 - task phải trả stats, không nuốt lỗi
+        logger.warning('sync_corporate_actions failed symbol=%s: %s', symbol, exc)
+        return {
+            'symbol': symbol, 'fetched': 0, 'created': 0, 'updated': 0,
+            'factors': 0, 'applied': 0, 'error': str(exc),
+        }
+
+    return {
+        'symbol': symbol, 'fetched': len(rows), 'created': created, 'updated': updated,
+        'factors': len(factors), 'applied': applied, 'from_date': from_date.isoformat(),
+    }
 

@@ -782,6 +782,14 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
 
+    # === Corporate actions incremental sync — sau backfill giá (18:30 ICT) ===
+    'sync-corporate-actions-nightly': {
+        'task': 'data_ingest.tasks.sync_corporate_actions',
+        'schedule': crontab(hour=18, minute=30),
+        'kwargs': {'_scheduler_job_key': 'sync-corporate-actions-nightly'},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('sync-corporate-actions-nightly', 'enrichment_offhours')},
+    },
+
     # === DNSE intraday tape backfill 90 ngày — Chủ nhật 01:00 ICT (Sat 18:00 UTC) ===
     # Orchestrator: resolve VN100, presence-check, queue missing (symbol, date) slots.
     # Subtasks chạy queue manual_on_demand; orchestrator chạy enrichment_offhours.
