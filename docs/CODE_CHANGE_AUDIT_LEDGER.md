@@ -1,3 +1,13 @@
+## Entry 569: Phase 0 corporate actions — đính chính B1, probe DNSE/VCI, sửa plan + handoff
+
+- **Date**: 2026-11-20 · **Type**: audit + docs-only · **Branch**: `docs/corp-action-phase0-evidence` · **Claim**: `dccfe1ba6` (agent = tên branch bỏ tiền tố `docs/`).
+- **Files**: `docs/AUDIT_CORPORATE_ACTION_PHASE0_EVIDENCE_20261120.md` (mới) · `docs/AUDIT_CRITIQUE_VNBROKER_CORPORATE_ACTION_20261120.md` (§5 Owner Resolution) · `docs/PLAN_CORPORATE_ACTIONS_PIPELINE_20261120.md` (B1b, D1–D7, Task 9→8, dedup key, golden) · `docs/handoffs/HANDOFF_2026-11-20_VNBROKER_CORPORATE_ACTION.md` (sửa D7) · claim + ledger này.
+- **B1 đính chính**: plan cũ kết luận "Generic profile" do chạy `node scripts/check-multi-agent.mjs` (sai path) + `git ls-tree origin/main`. Trên `dev@3845063a5` có `docs/CLAIMS.md`, `docs/AGENT_PROTOCOL.md`, `packages/web/scripts/check-multi-agent.mjs`; gate đúng **exit 0** ⇒ **VNSAAS profile**. Đã nạp `project-lessons` + `multi-agent-workflow`; lessons [L-001 L-002 L-003 L-M02 L-V01 L-V02 L-V04 L-F04 L-T01 L-T02].
+- **Probe read-only (vnbroker 3.7.2 trong container staging)**: D3 `get_corporate_action_history` có ở `connector/dnse/client.py:612` + `services/account_service.py:56` nhưng **account-scoped** (`account_no`, `DNSEClient(api_key, api_secret)`) ⇒ không thay feed công khai; D4 VCI trả cột `id` hex 24, 2 fetch cùng ID (2 DIV cùng `2024-09-24` có 2 ID khác nhau); D6 chỉ `DIV,ISS`, `SPLIT/RIGHTS/ALL` trả tin tức không có `event_code`.
+- **D1–D7 chốt**: D1 `Σ cash` động (không assert 2450), D2 per-date, D3 đóng, D4 dùng VCI `id` (fallback hash **không** chứa `raw_title`), D5 raw close liền trước + `Decimal(28,10)`, D6 `DIV,ISS`, D7 handoff sửa — PR #455 đã merge nên mở PR mới.
+- **Gates**: `node packages/web/scripts/check-multi-agent.mjs` **exit 0** (sau fetch). `npx tsc --noEmit` / BE test / FE test / build **CHƯA CHẠY** — docs-only, không đổi source. Code gates sẽ chạy ở Task 1–8 trên VPS staging DB tạm riêng.
+- **Next**: gửi auditor độc lập (B3) verdict `PASS`/`AGREE` ghi file → mở `feat/corporate-actions` theo VNSAAS 9 bước; chờ vnbroker trả Q1/Q2/Q7/Q8/Q9.
+
 ## Entry 568: Handoff vnbroker team — yêu cầu nguồn corporate action có cấu trúc
 
 - **Date**: 2026-11-20 · **Type**: docs-only (báo cáo bàn giao cho đội package) · **Branch**: `docs/handoff-vnbroker-dividend`.
