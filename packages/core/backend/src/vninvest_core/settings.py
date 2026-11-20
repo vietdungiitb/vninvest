@@ -783,8 +783,11 @@ CELERY_BEAT_SCHEDULE = {
     },
 
     # === Corporate actions incremental sync — sau backfill giá (18:30 ICT) ===
+    # Orchestrator dispatch từng mã có DailyPrice (~1899 trên staging), giãn 2s/mã.
+    # Task cũ sync_corporate_actions(symbol) KHÔNG gọi trực tiếp từ beat:
+    # beat kwargs chỉ có _scheduler_job_key ⇒ thiếu symbol (đã có test chặn).
     'sync-corporate-actions-nightly': {
-        'task': 'data_ingest.tasks.sync_corporate_actions',
+        'task': 'data_ingest.tasks.sync_all_corporate_actions',
         'schedule': crontab(hour=18, minute=30),
         'kwargs': {'_scheduler_job_key': 'sync-corporate-actions-nightly'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('sync-corporate-actions-nightly', 'enrichment_offhours')},

@@ -462,7 +462,8 @@ class OHLCVBarsCorporateActionsTestCase(TestCase):
             exchange=StockProfile.ExchangeChoices.HOSE,
             status=StockProfile.StatusChoices.ACTIVE,
         )
-        today = date.today() - timedelta(days=1)
+        # Ngày cố định — không phụ thuộc đồng hồ container (staging có thể lệch ngày).
+        today = date(2024, 1, 2)
         cls.price = DailyPrice.objects.create(
             symbol='VNM', date=today, open=Decimal('100000'), high=Decimal('100000'),
             low=Decimal('100000'), close=Decimal('100000'), volume=1000,
