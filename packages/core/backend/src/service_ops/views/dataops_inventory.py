@@ -1,7 +1,15 @@
+from django.core.cache import cache
+
 from vninvest_core.api_envelope import envelope_response
 
 from ..envelope import envelope
 from .dataops_base import *
+
+#: Inventory là báo cáo thay đổi chậm (dữ liệu ngày), nhưng aggregation quét
+#: 4.5M row DailyPrice mất ~28s. Cache 5 phút trên Redis (dùng chung mọi worker)
+#: để FE polling 15s không tính lại liên tục. Fail-soft khi Redis lỗi.
+_INVENTORY_CACHE_KEY = 'soc:dataops:inventory:v1'
+_INVENTORY_CACHE_TTL = 300
 
 
 #: PREDEFINED_SYMBOL_GROUPS dùng id thấp (`vn50`), nhưng cache lưu tên provider
@@ -50,31 +58,45 @@ class DataOpsInventoryView(SOCBaseView):
         from django.db.models import Count, Max, Min
         from django.db.models.functions import TruncYear
 
-        from market_data.models import DailyPrice
+        from market_data.models import DailyPrice, StockProfile
         from market_serving.models import SymbolSnapshot
 
         from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
         from ..models import CustomSymbolGroup
 
+        try:
+            cached = cache.get(_INVENTORY_CACHE_KEY)
+        except Exception:
+            cached = None
+        if cached is not None:
+            return envelope(cached)
+
         # ── Tổng quan DailyPrice ────────────────────────────────────────────
-        dp_agg = DailyPrice.objects.aggregate(
-            earliest=Min('date'), latest=Max('date'),
-            total_rows=Count('id'), total_symbols=Count('symbol', distinct=True),
-        )
+        # Tránh COUNT(DISTINCT symbol) trên 4.5M row (~4s): số mã lấy từ
+        # StockProfile (SSOT metadata), earliest/latest dùng index của date.
+        earliest = DailyPrice.objects.order_by('date').values_list('date', flat=True).first()
+        latest = DailyPrice.objects.order_by('-date').values_list('date', flat=True).first()
+        dp_agg = {
+            'earliest': earliest,
+            'latest': latest,
+            'total_rows': DailyPrice.objects.count(),
+            'total_symbols': StockProfile.objects.count(),
+        }
         cal_days = (
-            (dp_agg['latest'] - dp_agg['earliest']).days + 1
-            if dp_agg['earliest'] and dp_agg['latest'] else 0
+            (latest - earliest).days + 1 if earliest and latest else 0
         )
 
         # ── Phân bổ theo năm ────────────────────────────────────────────────
+        # FE chỉ dùng `rows` biểu đồ theo năm; bỏ COUNT(DISTINCT symbol) ở đây
+        # (chiếm ~8s). Giữ key `symbols` để không đổi shape response.
         by_year_qs = (
             DailyPrice.objects.annotate(yr=TruncYear('date'))
             .values('yr')
-            .annotate(rows=Count('id'), symbols=Count('symbol', distinct=True))
+            .annotate(rows=Count('id'))
             .order_by('yr')
         )
         by_year = [
-            {'year': str(r['yr'])[:4], 'rows': r['rows'], 'symbols': r['symbols']}
+            {'year': str(r['yr'])[:4], 'rows': r['rows'], 'symbols': 0}
             for r in by_year_qs
         ]
 
@@ -149,7 +171,7 @@ class DataOpsInventoryView(SOCBaseView):
             },
         ]
 
-        return envelope({
+        payload = {
             'summary': {
                 'total_rows': dp_agg['total_rows'] or 0,
                 'total_symbols': dp_agg['total_symbols'] or 0,
@@ -160,4 +182,9 @@ class DataOpsInventoryView(SOCBaseView):
             'by_year': by_year,
             'by_group': groups_data,
             'data_types': data_types,
-        })
+        }
+        try:
+            cache.set(_INVENTORY_CACHE_KEY, payload, _INVENTORY_CACHE_TTL)
+        except Exception:
+            pass
+        return envelope(payload)
