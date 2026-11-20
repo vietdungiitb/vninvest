@@ -126,11 +126,13 @@ class OverviewStreamView(SOCBaseView):
             try:
                 from django.contrib.auth import get_user_model
 
-                from identity_access.ws_ticket import redeem_ws_ticket
+                from identity_access.ws_ticket import redeem_ws_ticket, strip_machine_privileges
 
                 payload = redeem_ws_ticket(ticket)
                 if payload:
-                    request.user = get_user_model().objects.get(pk=payload['user_id'])
+                    request.user = strip_machine_privileges(
+                        get_user_model().objects.get(pk=payload['user_id']), payload,
+                    )
                     ticket_ok = True
             except Exception:
                 pass

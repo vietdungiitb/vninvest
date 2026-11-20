@@ -1,3 +1,12 @@
+## Entry 564: WS ticket cho machine PAT có scope `ws:realtime` — demo realtime bền vững
+
+- **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `feat/ws-ticket-machine-iso` · **Bằng chứng**: `docs/PLAN_WS_TICKET_MACHINE_SCOPE_20261120.md`.
+- **Root cause**: `views_ws_ticket.py:36` dùng `require_human_session` ⇒ machine PAT (demo widget) 403 ⇒ `fetchWsTicket()` null ⇒ WS không connect ⇒ Watchlist demo chỉ hiện symbol, giá `—` (PARTIAL của D1). `/core/v1/auth/` middleware-exempt ⇒ `request.tenant` luôn None.
+- **Fix**: view tự gán tenant từ `credential.service_account.tenant`; dùng `require_pat_scopes_or_human_session(request, "ws:realtime")`; ticket payload mang `machine` + TTL 30s; `strip_machine_privileges()` áp tại 5 redeem site (WS resolver + 4 SSE view); AlertCenter (không `IsAdminUser`) từ chối machine ticket 403 bằng raise ngoài `try/except`.
+- **Bảo mật**: không xoá guard human ở endpoint khác; PAT không có scope vẫn 403; staff/superuser bị strip in-memory trước permission check; không migration, không đổi response shape.
+- **Gates** (chạy thật trên VPS, DB tạm, đã DROP): RED @ `96fce22ab` `FAILED (errors=5)`; GREEN @ `23a6ebe3a` + fixture fix `7f7f6ead4`: `Ran 24 tests — OK` (gồm 8 `test_ws_ticket.py` + 10 `test_soc_sse_ticket_c01.py` + 7 machine-scope). Re-audit vòng 1 BLOCK (docs/claim) → đã đóng. Local `py_compile` 0, `pre-push-gate` 36 PASS.
+- **CHƯA CHẠY**: deploy staging, re-issue PAT `ws:realtime`, E2E DOM prices (Rule 17) — cập nhật ở evidence trước khi đóng.
+
 ## Entry 563: Cold DataOps inventory 24.8s → ~7s (1 query SQL + cache 1h)
 
 - **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `perf/dataops-inventory-cold` · **Bằng chứng**: `docs/evidence/dataops-inventory/COLD_LATENCY.md` · PR #447 + #448 (đều merged).

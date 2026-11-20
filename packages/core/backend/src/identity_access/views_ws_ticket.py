@@ -10,8 +10,12 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .permissions import require_human_session
-from .ws_ticket import WS_TICKET_TTL_S, issue_ws_ticket
+from .permissions import is_machine_pat_request, require_pat_scopes_or_human_session
+from .ws_ticket import (
+    WS_TICKET_MACHINE_TTL_S,
+    WS_TICKET_TTL_S,
+    issue_ws_ticket,
+)
 
 
 class WsTicketResponseSerializer(serializers.Serializer):
@@ -31,10 +35,21 @@ class WsTicketView(APIView):
         responses={200: WsTicketResponseSerializer, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
     )
     def post(self, request):
-        # C-01: ticket luôn = human semantics (request.auth giữ None ở SSE).
-        # Machine PAT không được mint ticket — giữ ?token= tương thích cho client máy.
-        require_human_session(request)
+        # /core/v1/auth/ is middleware-exempt => request.tenant is absent.
+        # Derive it from the *authenticated credential*, never from a client header.
+        machine = is_machine_pat_request(request)
+        if machine:
+            credential = getattr(request, "auth", None)
+            request.tenant = credential.service_account.tenant
+        # Human path unchanged; machine PAT must carry the narrow ws:realtime scope.
+        require_pat_scopes_or_human_session(request, "ws:realtime")
         tenant = getattr(request, "tenant", None)
         tenant_id = str(getattr(tenant, "public_id", "") or "") or None
-        ticket, _ = issue_ws_ticket(request.user.id, tenant_id, WS_TICKET_TTL_S)
-        return Response({"ticket": ticket, "expiresIn": WS_TICKET_TTL_S}, status=status.HTTP_200_OK)
+        ttl = WS_TICKET_MACHINE_TTL_S if machine else WS_TICKET_TTL_S
+        credential = getattr(request, "auth", None)
+        sa_id = str(getattr(getattr(credential, "service_account", None), "public_id", "") or "") or None
+        ticket, _ = issue_ws_ticket(
+            request.user.id, tenant_id, ttl,
+            machine=machine, service_account_id=sa_id if machine else None,
+        )
+        return Response({"ticket": ticket, "expiresIn": ttl}, status=status.HTTP_200_OK)
