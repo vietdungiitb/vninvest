@@ -1,3 +1,12 @@
+## Entry 579: E2E bật flag corporate actions trên staging
+
+- **Date**: 2026-11-21 · **Type**: config + E2E (doc/evidence) · **Branch**: `feat/enable-corp-actions-flag` (PR #474, `fe4d4f626`) · **Claim**: `enable-corp-actions-flag` (`a5f8ef3fd`) · **Evidence**: `docs/evidence/corporate-actions/E2E_FLAG_STAGING_20261121.md`.
+- **Vấn đề phát hiện**: `docker-compose.staging.yml` không wired `CORPORATE_ACTIONS_ENABLED` ⇒ env file vô nghĩa. Đã thêm biến (default `false`) cho 5 service core.
+- **Deploy**: VPS pull dev, set `CORPORATE_ACTIONS_ENABLED=true`, `deploy-staging.sh` exit 0; container env = true; migrations 0008/0009 `[X]`; celery task registered 3 worker; `/api/health/` 200.
+- **E2E thật**: `sync_corporate_actions('VNM')` → `fetched=57, created=57, factors=48, applied=2584`; DB staging có 57 event / 48 factor / 2584 `adj_close`. Bars API `GET .../VNM/bars/?timeframe=D` → 200, 500 bar, **493 có `adj_close`** (vd close 54113.0 → adj_close 45072.48).
+- **Giải thích**: envelope `adjusted=false` + note 5 ex_date unparsed là hành vi per-date conservative đã thiết kế (D2/F2), không phải lỗi; client nên đọc `bar.adj_close`. Follow-up P3: thêm cờ `adjusted` per-bar.
+- **CHƯA CHẠY**: Playwright/visual regression với tài khoản thật. Flag giờ bật trên staging; production vẫn do owner quyết.
+
 ## Entry 578: Triệt để baseline + structured ingest + Q1/Q2 + FE build
 
 - **Date**: 2026-11-20 · **Type**: code + audit · **Branch**: `feat/corp-actions-structured` · **Claim**: `53001d956` · **Evidence**: `docs/evidence/corporate-actions/STRUCTURED_MIGRATION_20261120.md`.
