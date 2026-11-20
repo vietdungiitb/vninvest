@@ -78,6 +78,10 @@ class DailyPrice(models.Model):
     # Source / quality
     source = models.CharField(max_length=32, default='vnbroker', verbose_name='Nguồn dữ liệu')
     is_adjusted = models.BooleanField(default=False, verbose_name='Đã điều chỉnh')
+    adj_close = models.DecimalField(
+        max_digits=18, decimal_places=2, null=True, blank=True,
+        verbose_name='Giá đóng cửa đã điều chỉnh',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -91,6 +95,86 @@ class DailyPrice(models.Model):
 
     def __str__(self) -> str:
         return f'{self.symbol} {self.date} close={self.close}'
+
+
+class CorporateAction(models.Model):
+    """Một sự kiện corporate action gốc từ provider (DIV/ISS), chưa gộp mất dữ liệu."""
+
+    class ActionType(models.TextChoices):
+        DIV = 'DIV', 'Cổ tức tiền mặt'
+        ISS = 'ISS', 'Phát hành / cổ phiếu thưởng'
+
+    class ParseStatus(models.TextChoices):
+        STRUCTURED = 'structured', 'Có cấu trúc từ provider'
+        PARSED_FROM_TEXT = 'parsed_from_text', 'Parse từ tiêu đề'
+        UNPARSED = 'unparsed', 'Không xác định được số'
+
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    action_type = models.CharField(max_length=4, choices=ActionType.choices, verbose_name='Loại sự kiện')
+    ex_date = models.DateField(db_index=True, verbose_name='Ngày quyền')
+    record_date = models.DateField(null=True, blank=True, verbose_name='Ngày chốt danh sách')
+    payment_date = models.DateField(null=True, blank=True, verbose_name='Ngày chi trả')
+    cash_amount_per_share = models.DecimalField(
+        max_digits=18, decimal_places=2, null=True, blank=True,
+        verbose_name='Tiền cổ tức / cổ phiếu (VND)',
+    )
+    stock_ratio_pct = models.DecimalField(
+        max_digits=18, decimal_places=4, null=True, blank=True,
+        verbose_name='Tỉ lệ cổ phiếu thưởng (%)',
+    )
+    currency = models.CharField(max_length=3, default='VND', verbose_name='Đơn vị')
+    source = models.CharField(max_length=8, verbose_name='Nguồn')
+    source_event_id = models.CharField(max_length=128, verbose_name='ID sự kiện tại nguồn')
+    raw_title = models.TextField(blank=True, default='', verbose_name='Tiêu đề gốc')
+    parse_status = models.CharField(
+        max_length=20, choices=ParseStatus.choices,
+        default=ParseStatus.UNPARSED, verbose_name='Trạng thái parse',
+    )
+    is_latest = models.BooleanField(default=True, db_index=True, verbose_name='Bản ghi mới nhất')
+    fetched_at = models.DateTimeField(default=timezone.now, verbose_name='Thời điểm lấy')
+
+    class Meta:
+        verbose_name = 'Sự kiện corporate action'
+        verbose_name_plural = 'Sự kiện corporate action'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['source', 'source_event_id'], name='uniq_corp_action_source_event',
+            ),
+        ]
+        indexes = [models.Index(fields=['symbol', 'ex_date'])]
+        ordering = ['symbol', 'ex_date']
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.action_type} {self.ex_date} {self.source_event_id}'
+
+
+class AdjFactor(models.Model):
+    """Hệ số điều chỉnh theo ngày quyền — lưu riêng để recompute được."""
+
+    class Status(models.TextChoices):
+        COMPUTED = 'computed', 'Đã tính đủ'
+        PARTIAL = 'partial', 'Có event chưa parse được'
+        INVALID = 'invalid', 'Hệ số không hợp lệ'
+
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    ex_date = models.DateField(db_index=True, verbose_name='Ngày quyền')
+    prev_close = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá đóng cửa phiên trước')
+    cash_factor = models.DecimalField(max_digits=28, decimal_places=10, verbose_name='Hệ số tiền mặt')
+    stock_factor = models.DecimalField(max_digits=28, decimal_places=10, verbose_name='Hệ số cổ phiếu')
+    factor_total = models.DecimalField(max_digits=28, decimal_places=10, verbose_name='Hệ số tổng')
+    status = models.CharField(max_length=16, choices=Status.choices, verbose_name='Trạng thái')
+    computed_at = models.DateTimeField(default=timezone.now, verbose_name='Thời điểm tính')
+
+    class Meta:
+        verbose_name = 'Hệ số điều chỉnh'
+        verbose_name_plural = 'Hệ số điều chỉnh'
+        constraints = [
+            models.UniqueConstraint(fields=['symbol', 'ex_date'], name='uniq_adj_factor_symbol_exdate'),
+        ]
+        ordering = ['symbol', 'ex_date']
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.ex_date} factor={self.factor_total}'
 
 
 class VnbrokerRuntimeConfig(models.Model):

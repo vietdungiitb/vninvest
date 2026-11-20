@@ -8,7 +8,7 @@ from vninvest_core.admin_ui import (
     percent_vi,
 )
 
-from .models import DailyPrice, StockProfile, VnbrokerRuntimeConfig
+from .models import AdjFactor, CorporateAction, DailyPrice, StockProfile, VnbrokerRuntimeConfig
 
 
 @admin.register(StockProfile)
@@ -45,6 +45,24 @@ class DailyPriceAdmin(VNAdminMixin, admin.ModelAdmin):
             return ''
         tone = 'gain' if obj.change_pct > 0 else ('loss' if obj.change_pct < 0 else 'neutral')
         return badge(percent_vi(obj.change_pct), tone)
+
+
+@admin.register(CorporateAction)
+class CorporateActionAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('symbol', 'action_type', 'ex_date', 'cash_amount_per_share', 'stock_ratio_pct', 'source', 'parse_status', 'is_latest')
+    list_filter = ('action_type', 'source', 'parse_status', 'is_latest')
+    search_fields = ('symbol', 'source_event_id', 'raw_title')
+    readonly_fields = ('fetched_at',)
+    ordering = ('-ex_date', 'symbol')
+
+
+@admin.register(AdjFactor)
+class AdjFactorAdmin(VNAdminMixin, admin.ModelAdmin):
+    list_display = ('symbol', 'ex_date', 'prev_close', 'factor_total', 'status', 'computed_at')
+    list_filter = ('status',)
+    search_fields = ('symbol',)
+    readonly_fields = ('computed_at',)
+    ordering = ('-ex_date', 'symbol')
 
 
 @admin.register(VnbrokerRuntimeConfig)
