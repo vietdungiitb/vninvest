@@ -1,3 +1,14 @@
+## Entry 576: Slice 4 vòng 2 — bump pin 3.8.2 + re-probe đạt (đóng lỗi P0)
+
+- **Date**: 2026-11-20 · **Type**: dependency bump + audit · **Branch**: `feat/bump-vnbroker-382` · **Claim**: `fb1ceb651`.
+- **Nguồn**: PyPI `vnbroker==3.8.2` verify trực tiếp (`upload 2026-11-20T15:03:56Z`, wheel sha256 `899946f9…2ab`, `yanked=false`); owner trực tiếp yêu cầu — `requirements.txt` deny-list §2, commit có trailer `Claim-Deny-List`.
+- **Fix package đã verify source**: `vnbroker@main:e996cb4:common/corporate_actions.py:128` (`_is_event_row`), `:168` (lọc event), `:171-172` (`_pick("exrightDate", …)`).
+- **Files**: `requirements.txt:38` (`3.8.1 → 3.8.2`) · `docs/evidence/corporate-actions/REPROBE_VNBROKER_382_20261120.md` (mới) · `REPROBE_VNBROKER_381_...md` + `FIELD_MAPPING_VNBROKER.md` (cập trạng thái đã fix) · ledger này.
+- **Re-probe thật** (venv tạm `pip --index-url https://pypi.org/simple`, mirror local stale 3.8.1; không đụng `/app` hay DB dùng chung): VNM **57** / FPT **79** / VCB **23** dòng, **0 `ex_date=None`**; contract 14 cột đúng; `group_id='SYM:YYYY-MM-DD'`; ESOP VNM 4/4 + FPT 28/28 `unparsed`; facade 57 dòng; golden `2024-09-24` = 2 DIV ID khác nhau 950 + 1.500, cùng group. Lỗi P0 Entry 575 **đóng**.
+- **Tác động**: pipeline vẫn dùng `events()` + parser riêng (bump không breaking), baseline 66/66 Entry 574. Điều kiện kỹ thuật để map sang field số đã đạt, nhưng **flag vẫn `False`** — chờ full BE/FE + deploy staging và owner đối chiếu Q1/Q2 (Entry 573 §F.1). Chuyển ingest là slice riêng có test song song.
+- **Gates**: PyPI verify ✅ · probe 3 mã + golden ✅ · `check-multi-agent` exit 0. **CHƯA CHẠY**: full BE/FE suite + deploy staging sau bump; migration ingest sang field số.
+- **Next**: chạy full BE/FE + deploy staging → (owner Q1/Q2) → slice migrate ingest sang `VCI.corporate_actions()` theo `FIELD_MAPPING_VNBROKER.md`, giữ parser làm fallback → mới bật flag.
+
 ## Entry 575: Slice 4 — bump pin vnbroker 3.8.1 + re-probe (phát hiện lỗi P0 package)
 
 - **Date**: 2026-11-20 · **Type**: dependency bump + audit · **Branch**: `feat/bump-vnbroker-381` · **Claim**: `2608d773`.
