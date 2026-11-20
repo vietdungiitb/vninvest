@@ -1,11 +1,16 @@
 """Parse số tiền cổ tức / tỉ lệ cổ phiếu từ event_title_vi của VCI (plan B)."""
 import re
+import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 CASH_RE = re.compile(r'(?P<amount>\d[\d.,]*)\s*VND', re.IGNORECASE)
 PERCENT_RE = re.compile(r'(?P<ratio>\d[\d.,]*)\s*%')
+
+# Chỉ các cụm này mới là cổ phiếu thưởng làm đổi giá niêm yết. ESOP
+# ("Phát hành cho CBCNV tỉ lệ X%") KHÔNG được tính vào adjustment factor (C-02).
+BONUS_SHARE_HINTS = ('Cổ phiếu thưởng', 'Trả Cổ tức bằng Cổ phiếu')
 
 ParseStatus = Literal['structured', 'parsed_from_text', 'unparsed']
 
@@ -16,6 +21,15 @@ class ParsedAmount:
     stock_ratio_pct: Decimal | None = None
     status: ParseStatus = 'unparsed'
     ambiguous_cash_pct: bool = False
+    ambiguous_ratio_pct: bool = False
+
+
+def _fold(text: str) -> str:
+    """Bỏ dấu + casefold để so khung tiêu đề ổn định trước mọi format VCI."""
+    decomposed = unicodedata.normalize('NFD', text)
+    return ''.join(
+        char for char in decomposed if unicodedata.category(char) != 'Mn'
+    ).casefold()
 
 
 def _normalize_number(raw: str) -> Decimal:
@@ -53,6 +67,13 @@ def parse_event_title(title: str, action_type: str) -> ParsedAmount:
     # Cổ tức tính theo % trên mệnh giá KHÔNG phải cổ phiếu thưởng — không được gán nhầm.
     if action_type == 'DIV' and pct_match and cash is None:
         return ParsedAmount(status='unparsed', ambiguous_cash_pct=True)
+
+    # ISS + % chỉ là stock ratio khi tiêu đề nói rõ cổ phiếu thưởng / trả cổ tức
+    # bằng cổ phiếu. ESOP ("Phát hành cho CBCNV tỉ lệ 0.5%") làm sai factor (C-02).
+    if action_type == 'ISS' and pct_match:
+        folded = _fold(title)
+        if not any(_fold(hint) in folded for hint in BONUS_SHARE_HINTS):
+            return ParsedAmount(status='unparsed', ambiguous_ratio_pct=True)
 
     if cash is None and ratio is None:
         return ParsedAmount()
