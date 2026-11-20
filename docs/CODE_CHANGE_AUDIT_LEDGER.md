@@ -1,3 +1,12 @@
+## Entry 562: DataOps inventory treo do KBS ngoài — dùng DB group cache, hết skeleton
+
+- **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `fix/dataops-inventory-hang` · **Bằng chứng**: `docs/PLAN_DATAOPS_INVENTORY_DB_GROUPS_20261120.md`, `docs/evidence/dataops-inventory/EVIDENCE_20261120.md`.
+- **Reproduce**: Playwright trên staging với JWT staff, chờ 45s ⇒ request `/core/v1/operator/soc/dataops/inventory/` không trả response (4 endpoint khác 200 ~5s); daphne log "took too long to shut down and was killed"; FE dính 4 skeleton cards. Django test client trả 200 đúng shape ⇒ lỗi ở external blocking.
+- **Root cause**: `DataOpsInventoryView.get()` gọi `fetch_symbol_group_members()` (KBS, có retry) cho mỗi group; khi upstream chậm request treo ⇒ `loading.inventory` không clear.
+- **Fix**: helper `_db_group_symbols()` đọc `CachedSymbolGroup`/`CachedSymbolGroupMember` (SSOT 22 nhóm / 3968 mã) + alias `vn50→VNX50`, custom group vẫn `clean_symbols()`. Bỏ external import/call. Không migration, không đổi shape.
+- **Gate thật trên VPS** (DB tạm `dataops_fix`, đã DROP): fail-before @ `6417b4b14` **FAILED** (`0 != 1`, TEST_EXIT=1) → pass-after @ `fdc9ff8ae` **OK** (TEST_EXIT=0). System check 0 issues. Worktree tạm + session Django tạm đã dọn.
+- **CHƯA CHẠY**: Playwright verify sau deploy (ghi rõ khi có), full BE suite; external call ở các luồng khác vẫn còn (ngoài scope).
+
 ## Entry 561: Sửa 5 gate baseline chặn push — đối chứng trên dev sạch, không đổ lỗi cho slice R1
 
 - **Date**: 2026-11-19 · **Type**: code + docs/tooling · **Branch**: `feat/header-realtime-status` (cùng branch để mở push cho R1) · **Bằng chứng**: `docs/evidence/prepush-gate-baseline/EVIDENCE_20261119.md`.
