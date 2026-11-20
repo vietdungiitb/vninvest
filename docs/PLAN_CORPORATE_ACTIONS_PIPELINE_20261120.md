@@ -1,6 +1,6 @@
 # Corporate Actions Pipeline — Implementation Plan
 
-> **For agentic workers:** dùng skill repo `workflow-dev-loop` (VNSAAS profile — repo có `docs/CLAIMS.md` + `packages/web/scripts/check-multi-agent.mjs`) + `project-lessons`; khi chạy song song thêm `multi-agent-workflow`. Mỗi task TDD fail-before, steps dùng checkbox `- [ ]`. `Lessons áp dụng: [L-001, L-002, L-003, L-M02, L-V01, L-V02, L-V04, L-F04, L-T01, L-T02]` (chi tiết §B1b).
+> **For agentic workers:** dùng skill repo `workflow-dev-loop` (vninvest profile — repo có `docs/CLAIMS.md` + `packages/web/scripts/check-multi-agent.mjs`) + `project-lessons`; khi chạy song song thêm `multi-agent-workflow`. Mỗi task TDD fail-before, steps dùng checkbox `- [ ]`. `Lessons áp dụng: [L-001, L-002, L-003, L-M02, L-V01, L-V02, L-V04, L-F04, L-T01, L-T02]` (chi tiết §B1b).
 
 **Goal:** Xây pipeline corporate action phía vninvest — parse/ingest sự kiện từ `vnbroker` 3.7.2, lưu `CorporateAction` + `AdjFactor`, tính `adj_close` cho `DailyPrice`, và phục vụ qua bars API — theo contract đã bàn giao, có plan B parse-from-text khi đối tác chưa trả field số.
 
@@ -31,7 +31,7 @@ B1 do người viết plan kết luận "Generic profile" là **SAI**: đã ch�
 | `node packages/web/scripts/check-multi-agent.mjs` | **exit 0** — 0 lỗi, 0 trùng migration (chỉ cảnh báo CLAIMS stale) |
 | `Test-Path .opencode/skills/workflow-dev-loop/SKILL.md` / `docs/LESSONS/INDEX.md` | `True` |
 
-⇒ **Router: VNSAAS profile** (9 bước), không phải Generic. Bằng chứng: `docs/AUDIT_CORPORATE_ACTION_PHASE0_EVIDENCE_20261120.md` §1. Slice docs đã khai claim riêng `dccfe1ba6` (agent `corp-action-phase0-evidence` = tên branch bỏ tiền tố `docs/`). Slice code dùng branch `feat/corporate-actions` + claim agent `corporate-actions`, 1 worktree, DB riêng, không commit thẳng `dev`/`main`.
+⇒ **Router: vninvest profile** (9 bước), không phải Generic. Bằng chứng: `docs/AUDIT_CORPORATE_ACTION_PHASE0_EVIDENCE_20261120.md` §1. Slice docs đã khai claim riêng `dccfe1ba6` (agent `corp-action-phase0-evidence` = tên branch bỏ tiền tố `docs/`). Slice code dùng branch `feat/corporate-actions` + claim agent `corporate-actions`, 1 worktree, DB riêng, không commit thẳng `dev`/`main`.
 
 **Đã đọc system-design**: repo `dev` không có `docs/system-design/`; xây mới có lý do — evidence qua `AGENTS.md` §"AI Audit/Research Framework" + mã nguồn `dev@3845063a5`.
 
@@ -73,17 +73,17 @@ B1 do người viết plan kết luận "Generic profile" là **SAI**: đã ch�
 | R4 KBS rỗng | handoff §4 / C12 | dependency register §Phase 0 (ngoài code) | — |
 | R5 TCBS auth | handoff §4 / C10 | 3 (env `TCBS_TOKEN`) | `test_corporate_action_ingest.py::test_tcbs_token_from_env` |
 | R6 `parse_status`, không suy diễn | handoff §4 / C2 | 2, 4 | `::test_unparsed_status`, `::test_unparsed_is_per_date` |
-| R7 độ sâu lịch sử + rate limit | handoff §4 / C9 | 6 | `test_corporate_action_sync_task.py::test_incremental_only_new_ex_dates` |
-| R8 factor/adj_close series | handoff §4 | 4, 7 | `::test_adj_factor_table`, `test_ohlcv_bars_native_api.py::test_adj_close_exposed` |
+| R7 độ sâu lịch sử + rate limit | handoff §4 / C9 | 5 | `test_corporate_action_sync_task.py::test_incremental_only_new_ex_dates` |
+| R8 factor/adj_close series | handoff §4 | 4, 6 | `::test_adj_factor_table`, `test_ohlcv_bars_native_api.py::test_adj_close_exposed` |
 | C1 golden tự mâu thuẫn | critique | Phase 0 + 4 | `test_two_div_same_ex_date` |
 | C2 rule unparsed toàn mã | critique | 4 | `test_unparsed_is_per_date` |
 | C3 DNSE `get_corporate_action_history` | critique | Phase 0 (ĐÓNG: account-scoped, không dùng) + 3 (ghi `source='DNSE_UNAVAILABLE'` nếu thử) | evidence doc §2 |
-| C4 evidence sai giữa dev/main | critique | Phase 0 + 7 | citation check Task 8 |
+| C4 evidence sai giữa dev/main | critique | Phase 0 + 7, 8 | citation check Task 8 |
 | C5 enum parse_status | critique | 1, 2 | parser status enum test |
 | C6 `source_event_id` chưa verified | critique | Phase 0 + 3 | `test_idempotent_refetch` |
 | C7 P_prev/guard/precision | critique | 4 | `test_invalid_factor_guard`, `test_golden_numeric_values` |
 | C8 SPLIT/RIGHTS bị lọc mất | critique | Phase 0 + 3 | `test_event_code_coverage` |
-| C9 recompute khi correction | critique | 4 | `test_is_latest_supersedes_old` |
+| C9 recompute khi correction | critique | 4, 5 | `test_is_latest_supersedes_old` |
 
 ---
 
@@ -163,7 +163,7 @@ Fields chốt:
 **Files:** Create `corporate_actions/__init__.py`, `corporate_actions/parser.py`, `tests/test_corporate_action_parser.py`.
 
 **Interfaces**
-- Consumes: `event_title_vi`, `event_code` từ VCI DataFrame (audit §A: `vci/company.py:104-116,303-318`, `a6e7bb7f2`).
+- Consumes: `event_title_vi`, `event_code` từ VCI DataFrame (audit §A: `vnbroker-3.7.2@container:explorer/vci/company.py:104-116,303-318`, `a6e7bb7f2`).
 - Produces: `ParsedAmount(cash_amount: Decimal|None, stock_ratio_pct: Decimal|None, status: Literal['structured','parsed_from_text','unparsed'], ambiguous_cash_pct: bool=False)`; `parse_event_title(title: str, action_type: str) -> ParsedAmount`.
 
 - [ ] **Step 1 — Test fail-before** (5 case, value lấy từ audit §B):
@@ -190,12 +190,14 @@ Fields chốt:
 - [ ] **Step 1 — Test fail-before** (mock `vnbroker.explorer.vci.company.Company`, không gọi mạng thật):
   - `test_fetch_uses_vci_directly`: assert patch đích là `vnbroker.explorer.vci.company.Company`, **không** phải `vnbroker.api.company.Company` (facade KBS — audit VCA-02).
   - `test_idempotent_refetch`: fetch 2 lần cùng `source_event_id`, title đổi ⇒ vẫn 1 row, `raw_title` được update, `is_latest=True` (C6).
-  - `test_all_providers_empty_keeps_existing`: seed 1 row, fetch trả `[]` ⇒ row cũ vẫn tồn tại, không xoá.
+  - `test_all_providers_empty_keeps_existing`: seed 1 row có `source='VCI'`, fetch trả `[]` (mọi provider rỗng) ⇒ row cũ vẫn tồn tại, **giữ nguyên `source`**, không xoá (AC6).
   - `test_tcbs_token_from_env`: mock auth error, assert đọc `os.getenv('TCBS_TOKEN')`, không hardcode token (C10).
+  - `test_tcbs_provider_auth_error_mapped`: mock lỗi auth ⇒ normalize thành mã `PROVIDER_AUTH` + thông báo hướng dẫn cấu hình (AC5), không để exception chung lọt ra.
+  - `test_fallback_id_collision_two_div_same_ex_date`: test double bỏ cột `id`, trả 2 DIV cùng `(symbol, ex_date, action_type)` với amount 950/1.500 ⇒ vẫn **2 row**, hash khác nhau; nếu vẫn va chạm thì sinh suffix + log `FALLBACK_ID_COLLISION` (O3 re-audit).
   - `test_event_code_coverage`: assert gọi `event_codes` lấy từ constant `SUPPORTED_EVENT_CODES`; test double trả mã lạ ⇒ log warning + bỏ qua, không crash (C8).
   - `test_dnse_probe_recorded`: D3 đã đóng bằng probe Phase 0 (method account-scoped, cần `DNSEClient(api_key, api_secret)` + `account_no`) — test chỉ đảm bảo ingest **không** fallback sang DNSE; nếu thử thì ghi `source='DNSE_UNAVAILABLE'` + note, không dùng làm nguồn.
 - [ ] **Step 2 — Chạy expect FAIL**.
-- [ ] **Step 3 — Implement**: `fetch_corporate_actions` gọi `VCI(symbol).events(from_date=from_date.strftime('%Y%m%d'), event_codes=...)`, map cột sang dict, chạy parser, sinh `source_event_id` từ **cột `id` của VCI** (D4). Fallback khi thiếu `id`: `hashlib.sha256(f"{symbol}|{ex_date}|{action_type}".encode()).hexdigest()[:32]` — **KHÔNG đưa `raw_title` vào hash**, nếu không test đổi title sẽ tạo row mới (AC7 fail). Ghi log `FALLBACK_ID`. `upsert` dùng `update_or_create(source, source_event_id)`; title đổi ⇒ update `raw_title` + giữ `is_latest=True`, supersede bản cũ.
+- [ ] **Step 3 — Implement**: `fetch_corporate_actions` gọi `VCI(symbol).events(from_date=from_date.strftime('%Y%m%d'), event_codes=...)`, map cột sang dict, chạy parser, sinh `source_event_id` từ **cột `id` của VCI** (D4 — khóa chính, probe 9/9 dòng có `id`). Fallback khi thiếu `id`: `hashlib.sha256(f"{symbol}|{ex_date}|{action_type}|{cash_normalized}|{ratio_normalized}".encode()).hexdigest()[:32]` — **đưa amount/ratio đã chuẩn hoá vào hash** để 2 DIV cùng ex_date không va chạm, nhưng **KHÔNG đưa `raw_title`** (nếu không, test đổi title sẽ tạo row mới ⇒ AC7 fail). Nếu sau đó vẫn va chạm (cùng amount, title khác) ⇒ sinh suffix theo thứ tự xuất hiện + log `FALLBACK_ID_COLLISION`. Ghi log `FALLBACK_ID`. `upsert` dùng `update_or_create(source, source_event_id)`; title đổi ⇒ update `raw_title` + giữ `is_latest=True`, supersede bản cũ.
 - [ ] **Step 4 — Test PASS**.
 - [ ] **Step 5 — Commit** `feat: ingest corporate actions from VCI with idempotent upsert`.
 
@@ -234,7 +236,7 @@ Fields chốt:
 
 - [ ] **Step 1 — Test fail-before**: `test_incremental_only_new_ex_dates` — seed `CorporateAction` đến `2026-01-01`, task gọi fetch với `from_date = max(ex_date) - 7 days` (không phải `2010-01-01`) ⇒ chứng minh không full-history mỗi đêm (C9/R7); `test_stats_shape` ⇒ dict có `fetched/created/updated/factors/applied`.
 - [ ] **Step 2 — Chạy expect FAIL**.
-- [ ] **Step 3 — Implement task với `@shared_task(bind=True)`, guard `CORPORATE_ACTIONS_ENABLED`, queue `enrichment_offhours`; beat entry `'sync-corporate-actions-nightly'` `crontab(hour=18, minute=30)` (sau backfill giá 17:05, `settings.py:776-783`); kwargs `_scheduler_job_key` theo pattern existing.
+- [ ] **Step 3 — Implement task với `@shared_task(bind=True)`, guard `CORPORATE_ACTIONS_ENABLED`, queue `enrichment_offhours`; beat entry `'sync-corporate-actions-nightly'` `crontab(hour=18, minute=30)` (sau backfill giá 17:05, `dev@3845063a5:packages/core/backend/src/vninvest_core/settings.py:776-783`); kwargs `_scheduler_job_key` theo pattern existing.
 - [ ] **Step 4 — Test PASS**; chạy `python manage.py check` + `celery -A vninvest_core inspect registered` trên staging (ghi output thật hoặc `CHƯA CHẠY`).
 - [ ] **Step 5 — Commit** `feat: nightly incremental corporate action sync`.
 
@@ -263,7 +265,7 @@ Fields chốt:
 - [x] **Step 1 — Sửa handoff theo D7 (ĐÃ LÀM ở docs slice Phase 0, commit `dccfe1ba6` trở đi)**: xoá "2.450" khỏi §7/AC3; thống nhất `parse_status`; gắn `dev@3845063a5:`/`main@117b2de98:`; đổi KBS → "probe params hiện tại trả rỗng, đang hỏi Q3"; thêm 3 câu hỏi (ID VCI, P_prev/precision, SPLIT/RIGHTS) + câu DNSE account-scoped. PR #455 đã merge ⇒ mở PR mới, không gửi lại PR cũ.
 - [ ] **Step 2 — Thêm Entry 570** vào ledger (Entry 569 đã dùng cho Phase 0 docs) với lệnh tái tạo migrations/golden/gate + `CHƯA CHẠY`. Không round-trip file tiếng Việt qua PowerShell; dùng `edit`, verify `git diff --numstat`.
 - [ ] **Step 3 — Verification**: `git grep -n "2.450" docs/handoffs/HANDOFF_2026-11-20_...` ⇒ 0 hit (trừ trích dẫn audit); `git grep -n "stock_mgmt_native_views.py:"` ⇒ mọi hit có `@sha`.
-- [ ] **Step 4 — Commit** `docs: revise handoff + ledger entry 569`.
+- [ ] **Step 4 — Commit** `docs: revise handoff + ledger entry 570`.
 
 ---
 

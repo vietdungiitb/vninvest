@@ -141,6 +141,6 @@ Owner đã xử lý từng finding trong plan `docs/PLAN_CORPORATE_ACTIONS_PIPEL
 | C7 MAJOR | D5: `P_prev` = raw close phiên liền trước, `Decimal(28,10)`, guard `0 < factor ≤ 1`, golden assert số FPT/VCB | plan Task 4 |
 | C8 MAJOR | D6: probe chứng minh VCI chỉ hỗ trợ `DIV,ISS`; `SPLIT/RIGHTS` trả tin tức ⇒ enum thu hẹp + log unknown | evidence §4 + plan D6 |
 | C9 MAJOR | Task 5 incremental (`max(ex_date) - 7 days`), `is_latest` supersede, recompute khi correction | plan Task 4/5 |
-| C10–C13 | token đọc env (không ghi doc); KBS đổi ngôn ngữ "probe params hiện tại trả rỗng"; plan B flag bật ngay không chờ contract; **B1 sửa sai router** — repo `dev` có tooling, gate đúng `node packages/web/scripts/check-multi-agent.mjs` exit 0 ⇒ VNSAAS profile | evidence §1 + plan B1b |
+| C10–C13 | token đọc env (không ghi doc); KBS đổi ngôn ngữ "probe params hiện tại trả rỗng"; plan B flag bật ngay không chờ contract; **B1 sửa sai router** — repo `dev` có tooling, gate đúng `node packages/web/scripts/check-multi-agent.mjs` exit 0 ⇒ vninvest profile | evidence §1 + plan B1b |
 
 **Sai sót mới phát hiện trong Phase 0 (ghi để không lặp lại):** người viết plan chạy `node scripts/check-multi-agent.mjs` (đường dẫn cũ) và `git ls-tree origin/main` (nhánh không có tooling) rồi kết luận "Generic profile" — đây là lỗi **L-V01/L-V02** (đo sai vẫn ra số hợp lý + tin gốc rễ kế thừa). Đã đính chính B1b, nạp lesson `project-lessons`, khai claim riêng `dccfe1ba6` trước khi sửa docs.

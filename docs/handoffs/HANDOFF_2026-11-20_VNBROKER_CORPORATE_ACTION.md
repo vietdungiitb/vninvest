@@ -45,12 +45,12 @@ Mọi `file:line` ở bảng §3.2 là đường dẫn **trong package 3.7.2 t�
 
 | Provider | file:line trong package | Kết quả probe (VNM, VCB, FPT) | Đánh giá |
 |---|---|---|---|
-| **VCI** | `explorer/vci/company.py:104-116` (`_fetch_news_events` → `/v1/news-events-for-chart?...eventCode=DIV,ISS`) và `:303-318` (`events()`) | VNM: 57 dòng có `exright_date`, 45 `DIV` + 12 `ISS`, `2010-02-09` → `2026-11-11` | ✅ **Khả thi nhất**, nhưng số tiền/tỉ lệ nằm trong `event_title_vi` |
-| KBS | `explorer/kbs/company.py:580-645` (`events(event_type)` → `/event/{symbol}?eID=...`); `explorer/kbs/const.py:164-171` (`1 ĐHCĐ, 2 Trả cổ tức, 3 Phát hành, 4 Giao dịch nội bộ, 5 Khác`) | `(0,0)` cho cả 3 mã, kể cả `event_type=None` | ⚠️ Method có nhưng **probe với params hiện tại trả rỗng**, nguyên nhân chưa rõ (đang hỏi Q3) — không khẳng định provider không hỗ trợ |
-| TCBS | `explorer/tcbs/company.py:469-492` (`dividends()` → `/v1/company/{symbol}/dividend-payment-histories`) | `ProviderAuthError`: "Token hết hạn/không hợp lệ hoặc provider từ chối quyền truy cập" | ❌ Cần hỗ trợ cấu hình token/quyền |
-| DNSE | `explorer/dnse/company.py:257-265` → `empty_df`; `connector/dnse/client.py:612` + `services/account_service.py:56` → `get_corporate_action_history(account_no, market_type, ...)` | Method tồn tại nhưng **account-scoped**, cần `DNSEClient(api_key, api_secret)` + số tài khoản | ❌ Không phải feed thị trường công khai; không thay được VCI. Đã probe 3.7.2 (xem evidence Phase 0 §2) |
-| SSI | `explorer/ssi/company.py:229-237` | `empty_df(_EVENTS_COLUMNS)` / `_DIVIDENDS_COLUMNS` | ❌ Theo thiết kế |
-| Facade | `common/data.py:308-345` (`_call_with_fallback`), `:1092`; `api/company.py:179-180` | Mặc định KBS → fallback providers rỗng → kết quả rỗng | ⚠️ Giải thích vì sao audit cũ kết luận "không có nguồn" |
+| **VCI** | `vnbroker-3.7.2@container:explorer/vci/company.py:104-116` (`_fetch_news_events` → `/v1/news-events-for-chart?...eventCode=DIV,ISS`) và `:303-318` (`events()`) | VNM: 57 dòng có `exright_date`, 45 `DIV` + 12 `ISS`, `2010-02-09` → `2026-11-11` | ✅ **Khả thi nhất**, nhưng số tiền/tỉ lệ nằm trong `event_title_vi` |
+| KBS | `vnbroker-3.7.2@container:explorer/kbs/company.py:580-645` (`events(event_type)` → `/event/{symbol}?eID=...`); `explorer/kbs/const.py:164-171` (`1 ĐHCĐ, 2 Trả cổ tức, 3 Phát hành, 4 Giao dịch nội bộ, 5 Khác`) | `(0,0)` cho cả 3 mã, kể cả `event_type=None` | ⚠️ Method có nhưng **probe với params hiện tại trả rỗng**, nguyên nhân chưa rõ (đang hỏi Q3) — không khẳng định provider không hỗ trợ |
+| TCBS | `vnbroker-3.7.2@container:explorer/tcbs/company.py:469-492` (`dividends()` → `/v1/company/{symbol}/dividend-payment-histories`) | `ProviderAuthError`: "Token hết hạn/không hợp lệ hoặc provider từ chối quyền truy cập" | ❌ Cần hỗ trợ cấu hình token/quyền |
+| DNSE | `vnbroker-3.7.2@container:explorer/dnse/company.py:257-265` → `empty_df`; `connector/dnse/client.py:612` + `services/account_service.py:56` → `get_corporate_action_history(account_no, market_type, ...)` | Method tồn tại nhưng **account-scoped**, cần `DNSEClient(api_key, api_secret)` + số tài khoản | ❌ Không phải feed thị trường công khai; không thay được VCI. Đã probe 3.7.2 (xem evidence Phase 0 §2) |
+| SSI | `vnbroker-3.7.2@container:explorer/ssi/company.py:229-237` | `empty_df(_EVENTS_COLUMNS)` / `_DIVIDENDS_COLUMNS` | ❌ Theo thiết kế |
+| Facade | `vnbroker-3.7.2@container:common/data.py:308-345` (`_call_with_fallback`), `:1092`; `api/company.py:179-180` | Mặc định KBS → fallback providers rỗng → kết quả rỗng | ⚠️ Giải thích vì sao audit cũ kết luận "không có nguồn" |
 
 ### 3.3 Dữ liệu VCI thực tế (trích)
 
@@ -146,7 +146,7 @@ Trong đó `P_prev` = raw close của **phiên giao dịch liền trước** `ex
 
 | Symbol | Tình huống | Kỳ vọng |
 |---|---|---|
-| VNM | 2 DIV cùng `2024-09-24` (950 + 1.500 VND, **2 `id` VCI khác nhau**) | 2 event gốc, tổng = `Σ cash_amount_per_share` **đã xác minh** (không fix số cứng khi chưa đối chiếu); dedup theo `source_event_id`, không double-count |
+| VNM | 2 DIV cùng `2024-09-24` (950 + 1.500 VND, **2 `id` VCI khác nhau**) | 2 event gốc, tổng = `Σ cash_amount_per_share` — **số tiền chưa đối chiếu độc lập**, không fix số cứng; dedup theo `source_event_id`, không double-count |
 | FPT | ISS `Cổ phiếu thưởng tỉ lệ 15.0%` | `stock_ratio_pct = 15.0`, factor = 1/1.15 (làm tròn `Decimal(28,10)`) |
 | VCB | ISS `49.5%` + DIV `450 VND` **cùng `ex_date`** (tách 2 dòng) | Cả 2 event, `factor_total = factor_cash × factor_stock`, assert số cụ thể |
 | VNM | 5 event "Phát hành cho CBCNV"/"riêng lẻ" | `parse_status = unparsed`, không tự gán tỉ lệ |
@@ -191,5 +191,5 @@ Trong đó `P_prev` = raw close của **phiên giao dịch liền trước** `ex
 ## 11. TIẾP NHẬN & LIÊN LẠC
 
 - Người nhận: vnbroker package team (thông qua owner vninvest).
-- vninvest đã chốt nội bộ (Phase 0): parse text tạm thời sau flag (D1 `Σ cash` động, D2 per-date, D4 dùng VCI `id`, D5 `P_prev`/precision, D6 `DIV,ISS`). Còn chờ đối tác: Q1/Q2/Q7/Q8/Q9.
-- vninvest mở slice `feat/corporate-actions` (model + ingest + adjustment engine + test golden VNM/FPT/VCB) theo workflow-dev-loop VNSAAS; bản sửa này thay thế nội dung đã merge ở PR #455 (sẽ có PR mới).
+- vninvest đã chốt nội bộ (Phase 0): parse text tạm thời sau flag (D1 `Σ cash` động, D2 per-date, D4 dùng VCI `id`, D5 `P_prev`/precision, D6 `DIV,ISS`). Còn chờ đối tác: **Q1–Q9 (tất cả)** — trong đó Q3 đang được hỏi, Q4/Q5/Q6 chưa có câu trả lời; Q7/Q8/Q9 là câu hỏi mới từ Phase 0. Chưa có câu nào được đóng bởi phản hồi chính thức.
+- vninvest mở slice `feat/corporate-actions` (model + ingest + adjustment engine + test golden VNM/FPT/VCB) theo workflow-dev-loop vninvest; bản sửa này thay thế nội dung đã merge ở PR #455 (sẽ có PR mới).

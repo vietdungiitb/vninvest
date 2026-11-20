@@ -6,13 +6,13 @@
 
 ## TÓM TẮT 5 ĐIỂM QUAN TRỌNG NHẤT
 
-1. **B1 của plan SAI ở phần router**: repo `dev` **có** `docs/CLAIMS.md`, `docs/AGENT_PROTOCOL.md`, `packages/web/scripts/check-multi-agent.mjs`, `.opencode/skills/workflow-dev-loop/SKILL.md`, `docs/LESSONS/`. Plan kết luận "Generic profile" vì chạy `node scripts/check-multi-agent.mjs` (sai đường dẫn) và `git ls-tree origin/main` (main không có tooling). Gate đúng `node packages/web/scripts/check-multi-agent.mjs` chạy thật: **exit 0** ⇒ dùng **VNSAAS profile**.
+1. **B1 của plan SAI ở phần router**: repo `dev` **có** `docs/CLAIMS.md`, `docs/AGENT_PROTOCOL.md`, `packages/web/scripts/check-multi-agent.mjs`, `.opencode/skills/workflow-dev-loop/SKILL.md`, `docs/LESSONS/`. Plan kết luận "Generic profile" vì chạy `node scripts/check-multi-agent.mjs` (sai đường dẫn) và `git ls-tree origin/main` (main không có tooling). Gate đúng `node packages/web/scripts/check-multi-agent.mjs` chạy thật: **exit 0** ⇒ dùng **vninvest profile**.
 2. **D3 (DNSE) ĐÓNG**: `get_corporate_action_history` **có thật** trong `vnbroker-3.7.2@container:connector/dnse/client.py:612` và `connector/dnse/services/account_service.py:56`, nhưng là API **theo tài khoản** — chữ ký `(account_no, market_type, from_date, to_date, dry_run)`; class `DNSEClient` bắt buộc `api_key` + `api_secret`. Không phải feed thị trường công khai ⇒ không giải quyết được R1. `explorer/dnse/company.py:257-265 events()` vẫn trả rỗng. Critique C3 đúng về "chưa probe", sai về kỳ vọng "có thể thay regex".
 3. **D4 (ID) ĐÓNG ở mức thực tế**: VCI `events()` trả cột `id` (hex 24 ký tự). Fetch VNM 2 lần cùng `from_date=20240101` ⇒ **cùng 9 dòng, cùng `id`** (vd `6708f3eb0ec61045ab7fdfbb` = DIV 950 VND, `6708f3eb0ec61045ab7fdfbc` = DIV 1.500 VND, cùng `2024-09-24`). ⇒ dùng `id` làm `source_event_id`; ổn định ngắn hạn đã chứng minh, dài hạn vẫn là câu hỏi gửi vnbroker.
 4. **D6 (event codes) ĐÓNG**: VCI mặc định `DIV,ISS` (`vnbroker-3.7.2@container:explorer/vci/company.py:111-112`). Probe `event_codes='DIV,ISS,SPLIT,RIGHTS'` và `'SPLIT'`/`'RIGHTS'` riêng lẻ ⇒ chỉ `DIV`/`ISS` có `event_code`+`exright_date`; `SPLIT`/`RIGHTS`/`ALL` trả 1000 dòng tin tức, **không có** `event_code`. Enum contract thu hẹp đúng `DIV,ISS`.
 5. **D1 chọn phương án an toàn**: 2 DIV cùng `2024-09-24` có **2 `id` khác nhau** ⇒ không phải trùng bản ghi provider, nhưng **chưa có đối chiếu độc lập** số tiền (TCBS token chưa có, chưa xem disclosure). Chọn `Σ cash` động; **không** hardcode 2.450 / 0.9755 trong test; assert dedup theo `source_event_id`.
 
-## 1. ĐÍNH CHÍNH B1 — ROUTER VNSAAS
+## 1. ĐÍNH CHÍNH B1 — ROUTER vninvest
 
 | Lệnh thật | Kết quả |
 |---|---|
@@ -22,7 +22,7 @@
 | `node packages/web/scripts/check-multi-agent.mjs` | `0 lỗi, 0 trùng số migration — PASS`, **exit 0** |
 | `node scripts/check-multi-agent.mjs` (lệnh cũ trong plan) | `MODULE_NOT_FOUND`, exit 1 — **sai đường dẫn, không phải thiếu tooling** |
 
-Hệ quả: plan §B1 dòng 21-23 phải sửa; dùng VNSAAS 9 bước; nạp `project-lessons` (bắt buộc) + `multi-agent-workflow` (khi ≥2 agent); khai claim trước khi sửa. Đã làm: claim `corp-action-phase0-evidence` commit riêng `dccfe1ba6`.
+Hệ quả: plan §B1 dòng 21-23 phải sửa; dùng vninvest 9 bước; nạp `project-lessons` (bắt buộc) + `multi-agent-workflow` (khi ≥2 agent); khai claim trước khi sửa. Đã làm: claim `corp-action-phase0-evidence` commit riêng `dccfe1ba6`.
 
 ## 2. PROBE D3 — DNSE `get_corporate_action_history`
 
