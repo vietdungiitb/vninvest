@@ -85,6 +85,13 @@ class IngestTests(TestCase):
         self.assertEqual(error.code, 'PROVIDER_AUTH')
         self.assertIn('env', str(error).lower())
 
+    def test_non_auth_error_is_not_mapped_to_auth(self):
+        from market_data.corporate_actions.ingest import ProviderError
+        error = normalize_provider_error(RuntimeError('connection reset by peer'))
+        self.assertIsInstance(error, ProviderError)
+        self.assertNotIsInstance(error, ProviderAuthError)
+        self.assertEqual(error.code, 'PROVIDER_ERROR')
+
     def test_event_code_coverage(self):
         self.assertEqual(tuple(SUPPORTED_EVENT_CODES), ('DIV', 'ISS'))
 

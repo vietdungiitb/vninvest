@@ -92,3 +92,23 @@ class AdjustmentTests(TestCase):
         self._event('VNM', '2024-09-24', 'e1', cash='1000')
         factor = compute_adj_factors('VNM')[0]
         self.assertEqual(factor.prev_close, Decimal('100000.00'))
+
+    def test_recompute_clears_stale_factor_and_adj_close(self):
+        price = self._price('VNM', '2024-09-23', Decimal('100000'))
+        self._event('VNM', '2024-09-24', 'e1', cash='1000')
+        compute_adj_factors('VNM')
+        self.assertEqual(apply_adjustments('VNM'), 1)
+        price.refresh_from_db()
+        self.assertIsNotNone(price.adj_close)
+
+        # Correction: số tiền mới vô hiệu hệ số ⇒ factor cũ bị xoá, adj_close bị reset.
+        CorporateAction.objects.filter(source_event_id='e1').delete()
+        self._event('VNM', '2024-09-24', 'e2', cash='120000')
+        with self.assertLogs('market_data.corporate_actions.adjustment', level='WARNING'):
+            factors = compute_adj_factors('VNM')
+        self.assertEqual(factors, [])
+        self.assertEqual(AdjFactor.objects.filter(symbol='VNM').count(), 0)
+        apply_adjustments('VNM')
+        price.refresh_from_db()
+        self.assertIsNone(price.adj_close)
+        self.assertFalse(price.is_adjusted)

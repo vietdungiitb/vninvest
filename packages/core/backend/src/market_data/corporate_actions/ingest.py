@@ -16,13 +16,25 @@ SUPPORTED_EVENT_CODES = ('DIV', 'ISS')
 DNSE_NOTE = 'DNSE get_corporate_action_history là API theo tài khoản — không dùng làm nguồn thị trường.'
 
 
-class ProviderAuthError(Exception):
+class ProviderError(Exception):
+    """Lỗi provider chung (network/parse/cache) — KHÔNG phải lỗi xác thực."""
+
+    code = 'PROVIDER_ERROR'
+
+    def __init__(self, message: str):
+        super().__init__(f'{message} (mã={self.code}).')
+        self.code = ProviderError.code
+
+
+class ProviderAuthError(ProviderError):
     """Lỗi xác thực provider, đã chuẩn hoá mã để client xử lý."""
 
     code = 'PROVIDER_AUTH'
 
     def __init__(self, message: str):
-        super().__init__(f'{message} (mã={self.code}). Kiểm tra env <PROVIDER>_TOKEN / quyền provider.')
+        super(ProviderError, self).__init__(
+            f'{message} (mã={self.code}). Kiểm tra env <PROVIDER>_TOKEN / quyền provider.'
+        )
         self.code = ProviderAuthError.code
 
 
@@ -35,7 +47,7 @@ def normalize_provider_error(error: Exception) -> ProviderAuthError:
     lowered = message.lower()
     if any(token in lowered for token in ('token', 'auth', 'unauthor', 'quyền', 'provider_auth')):
         return ProviderAuthError(message)
-    return ProviderAuthError(message)
+    return ProviderError(message)
 
 
 def _event_date(value: Any) -> date | None:

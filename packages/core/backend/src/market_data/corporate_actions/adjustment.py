@@ -54,6 +54,8 @@ def compute_adj_factors(symbol: str) -> list[AdjFactor]:
                 'Hệ số không hợp lệ symbol=%s ex_date=%s cash_sum=%s ratio_sum=%s prev_close=%s',
                 symbol, ex_date, cash_sum, ratio_sum, prev_close,
             )
+            # Recompute: bỏ factor cũ để không áp dụng hệ số stale sau correction (F1).
+            AdjFactor.objects.filter(symbol=symbol, ex_date=ex_date).delete()
             continue
 
         cash_factor = ((prev_close - cash_sum) / prev_close).quantize(Q10)
@@ -79,18 +81,18 @@ def compute_adj_factors(symbol: str) -> list[AdjFactor]:
 def apply_adjustments(symbol: str) -> int:
     """Walk ex_date tăng, nhân dồn factor cho mọi ex_date > t; không ghi đè close thô."""
     factors = list(AdjFactor.objects.filter(symbol=symbol).order_by('ex_date'))
-    if not factors:
-        return 0
-
-    latest_ex = factors[-1].ex_date
-    prices = list(DailyPrice.objects.filter(symbol=symbol, date__lt=latest_ex).order_by('date'))
+    # Không return sớm: khi correction xoá hết factor vẫn phải reset adj_close cũ (F1).
+    prices = list(DailyPrice.objects.filter(symbol=symbol).order_by('date'))
     updated = 0
     for price in prices:
         affecting = [f for f in factors if f.ex_date > price.date]
-        if not affecting:
-            continue
-        if any(f.status != AdjFactor.Status.COMPUTED for f in affecting):
-            # per-date: giữ nguyên adjusted:false cho đoạn lịch sử phụ thuộc event chưa parse
+        reset = (not affecting) or any(f.status != AdjFactor.Status.COMPUTED for f in affecting)
+        if reset:
+            # per-date: reset cả state cũ (F1) — sau correction không giữ adj_close stale.
+            if price.adj_close is not None or price.is_adjusted:
+                price.adj_close = None
+                price.is_adjusted = False
+                price.save(update_fields=['adj_close', 'is_adjusted'])
             continue
         product = ONE
         for factor in affecting:
