@@ -45,16 +45,18 @@ class MachineWsTicketTests(TestCase):
         self.client = APIClient()
 
     def _pat(self, scopes):
-        cred, _ = CorePATCredential.issue_for_service_account(
+        _, raw = CorePATCredential.issue_for_service_account(
             service_account=self.sa, scopes=scopes,
             label='ws:machine', audit_reason='test', is_human_session=False,
         )
-        return cred
+        return raw
 
     def _client_as_machine(self, scopes):
+        # Bearer header makes CorePATAuthentication set request.auth = credential
+        # (permissions.py:39-52 reads it); force_authenticate(auth=...) is not
+        # available in this DRF version.
         client = APIClient()
-        # request.auth must be the credential, not the user (permissions.py:39-52).
-        client.force_authenticate(user=self.owner, auth=self._pat(scopes))
+        client.credentials(HTTP_AUTHORIZATION=f'Bearer {self._pat(scopes)}')
         return client
 
     def test_machine_pat_with_scope_mints_ticket(self):
