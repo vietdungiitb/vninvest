@@ -1,3 +1,14 @@
+## Entry 573: Re-audit pipeline corporate actions + hướng xử lý tiếp theo
+
+- **Date**: 2026-11-20 · **Type**: audit (read-only, doc-only) · **Branch**: `docs/reaudit-corp-actions-next` · **Claim**: `be63a1674` · **File**: `docs/AUDIT_CORPORATE_ACTIONS_REAUDIT_20261120.md`.
+- **HEAD verified**: `dev@5ae5f24b6` (local == `origin/dev`, sạch). Không đổi source trong slice này.
+- **Kết luận**: pipeline ở trạng thái tốt, **0 blocker, 0 major mới**. A1–A10 verified: parser/ingest/engine/migration/flag/claim/ledger/main-mirror đều đúng; gates máy (`check-multi-agent` exit 0, `system-design --check` SẠCH, `diff --check` sạch).
+- **Fresh evidence**: rerun `test_corporate_action_parser` trên staging với code HEAD → **7/7 OK**; repro latent DIV+% (cash=1500 kèm ratio=20) → ghi F-NEW-1 (watch, chưa có title thực tế).
+- **Findings mới**: F-NEW-1 MED DIV+% guard thiếu · F-NEW-2 MED cờ `ambiguous_*` rớt ở ingest→DB · F-NEW-3 LOW bars W/M thiếu `adj_close` · F-NEW-4 LOW plan contract drift · F-NEW-5 LOW tên field ESOP khác nhau 2 repo (`is_esop` vs `ambiguous_ratio_pct`).
+- **vnbroker đã triển khai cả 3 slice** (`vnbroker@main:6020aac`: `3cfebb9` parser+`VCI.corporate_actions`, `78009ab` facade+test, `c3c028e` TCBS docs/message) — rule ESOP hội tụ với ta. **C-01 vẫn mở**: họ ở 3.8.0 chưa release, ta pin 3.7.2 (`requirements.txt:38`).
+- **Next (theo thứ tự)**: (1) đối chiếu độc lập Q1/Q2 trước khi bật flag — flag giữ `False`; (2) track release 3.8.x → slice bump pin + re-probe; (3) ticket guard DIV+%; (4) ticket persist cờ/document; (5) quyết định W/M adj_close + cập plan; (6) TCBS probe khi có JWT. Không sửa kiến trúc.
+- **Gates**: như §E trong audit doc. **CHƯA CHẠY**: full 62-test suite, BE suite, FE build, deploy (dựa bằng chứng Entry 570/572).
+
 ## Entry 572: Sửa C-02 — ESOP `CBCNV tỉ lệ X%` không còn bị parse thành stock ratio
 
 - **Date**: 2026-11-20 · **Type**: code fix (backend parser) · **Branch**: `fix/corporate-actions-esop` · **Claim**: `967c897ad`.
