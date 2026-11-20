@@ -1,3 +1,11 @@
+## Entry 565: DataOps hết flash skeleton khi polling 15s
+
+- **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `fix/dataops-poll-flash` · **Bằng chứng**: `docs/evidence/dataops-inventory/POLL_FLASH.md`.
+- **Root cause**: `DataOpsContext.refreshAll()` chạy mỗi 15s và bật `loading.inventory/runs`; `SocDataOpsPanel.tsx:103` và `SocDataInventorySection.tsx:79` dùng trực tiếp cờ đó để render skeleton ⇒ cứ 15s dữ liệu bị thay bằng khối rỗng rồi hiện lại (3 ảnh chụp liên tiếp của owner).
+- **Fix**: helper thuần `shouldShowDataOpsSkeleton(inventory, loading)` — skeleton chỉ khi **chưa có inventory**; khi đã có dữ liệu thì refresh nền giữ số liệu cũ trên màn hình. Dùng ở cả 2 component. Không đổi API/cache/migration.
+- **Gate**: test mới **4/4 PASS** (fail-before: import module chưa tồn tại → transform fail), `tsc --noEmit` exit 0; `pre-push-gate` + Playwright >30s ghi sau khi deploy.
+- **CHƯA CHẠY**: Playwright verify sau deploy (cập nhật evidence khi có số).
+
 ## Entry 564: WS ticket cho machine PAT có scope `ws:realtime` — demo realtime bền vững
 
 - **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `feat/ws-ticket-machine-iso` · **Bằng chứng**: `docs/PLAN_WS_TICKET_MACHINE_SCOPE_20261120.md`.

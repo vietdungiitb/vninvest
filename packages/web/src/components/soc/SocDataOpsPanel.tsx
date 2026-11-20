@@ -3,6 +3,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import { DataOpsProvider, useDataOps } from "./DataOpsContext.js";
+import { shouldShowDataOpsSkeleton } from "./dataopsLoading.js";
 import { SocDataInventorySection } from "./SocDataInventorySection.js";
 import { SocDataOpsOperationsSection } from "./SocDataOpsOperationsSection.js";
 import { SocDataOpsMonitorSection } from "./SocDataOpsMonitorSection.js";
@@ -100,7 +101,7 @@ function DataOpsContent() {
     );
   };
 
-  const isLoading = loading.inventory || loading.runs;
+  const isLoading = shouldShowDataOpsSkeleton(inventory, loading);
 
   return createElement(
     "div",

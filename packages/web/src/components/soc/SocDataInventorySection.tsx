@@ -3,6 +3,7 @@ import { createElement, useEffect, useState } from "react";
 import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
+import { shouldShowDataOpsSkeleton } from "./dataopsLoading.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
@@ -75,7 +76,7 @@ export function SocDataInventorySection() {
     }
   }, [queueTiersLoading, queueTiers.length, queueTiersError, t]);
 
-  if (loading.inventory) {
+  if (shouldShowDataOpsSkeleton(inventory, loading)) {
     return createElement("div", { className: styles.inventorySkeletonGrid, "aria-busy": "true" },
       Array.from({ length: 4 }).map((_, i) =>
         createElement("div", { key: i, className: styles.inventorySkeletonCard }),
