@@ -1,3 +1,14 @@
+## Entry 571: Audit độc lập chẩn đoán + 3-slice plan của vnbroker
+
+- **Date**: 2026-11-20 · **Type**: audit (read-only, cross-repo) · **Branch**: `docs/audit-vnbroker-plan-critique` · **File**: `docs/AUDIT_VNBROKER_PLAN_CRITIQUE_20261120.md`.
+- **Nguồn**: `vnbroker@main:eac374b` (clone local, **v3.8.0**, sạch) + `vnbroker-3.7.2@container` ( bản vninvest thực sự pin ở `dev@0ce7a99b0:packages/core/backend/requirements.txt:38`) + docs/LESSONS của vnbroker.
+- **Kết luận**: chẩn đoán gốc đúng ~80% (thiếu field số + API ổn định, không phải adj_close), nhưng plan **chưa đủ điều kiện code**: 1 blocker + 4 major.
+- **Blocker**: version trap — plan viết trên 3.8.0, consumer pin 3.7.2 ⇒ thiếu Slice 4 (release + bump pin + re-probe), nếu không 3 slice vô tác dụng.
+- **Major**: (1) parser ISS+ESOP `Phát hành cho CBCNV tỉ lệ 0.5%` (probe FPT) bị nhầm thành `stock_ratio_pct` — vninvest PR #458 cũng dính; (2) golden VCB 49.5%/450 VND thực tế **khác ex_date** (`2025-03-12` vs `2025-10-03`); (3) docs auth vẫn dạy `TCBS_AUTH_TOKEN` sai (`explorer/tcbs/IMPLEMENTATION_SUMMARY.md:146`, `MIGRATION_GUIDE.md:36,44,47`) + message `dividends()` thiếu hướng dẫn; (4) `source_event_id`/`group_id` chưa định nghĩa serialization + độ ổn định ID (Q7) chưa chốt.
+- **Điều plan làm đúng** (giữ): không đưa adj_close vào package; không sửa KBS mù; `events()` additive; phát hiện cache decorator no-op; tránh `common/data.py` đang bị `w34-ratelimit` claim (`vnbroker@main:eac374b:docs/CLAIMS.md:47`).
+- **Gates**: verify 10/10 citation bằng read/grep · probe live 3.7.2 VNM/FPT/VCB (57/79/23 event) · `git status` sạch. **CHƯA CHẠY**: `scripts/check_all.ps1`, `pytest` vnbroker, runtime `dividends()` (thiếu JWT thật).
+- **Next**: vnbroker owner chốt 5 câu hỏi §F → cập nhật plan 4 slice + nạp lesson (`CLAUDE.md:4-13`) → re-audit → mới khai claim. Không commit audit vào repo vnbroker.
+
 ## Entry 570: Corporate Actions Pipeline — Task 1–6 implement (plan 8 task)
 
 - **Date**: 2026-11-20 · **Type**: code (backend-only) · **Branch**: `feat/corporate-actions` · **Claim**: `73d370443` (agent = tên branch bỏ `feat/`).
