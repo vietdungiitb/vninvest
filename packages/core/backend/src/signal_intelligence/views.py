@@ -19,7 +19,7 @@ from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
@@ -807,21 +807,30 @@ class AlertCenterStreamView(APIView):
 
     def initial(self, request, *args, **kwargs):
         # C-01: EventSource không gửi được Authorization header → ưu tiên
-        # ?ticket= single-use (human-only). request.auth giữ None = human semantics.
+        # ?ticket= single-use. Machine tickets are rejected here (view is not
+        # IsAdminUser-protected), so they cannot escalate via this stream.
         ticket_ok = False
+        machine_ticket = False
         ticket = request.query_params.get('ticket') or request.GET.get('ticket')
         if ticket and not request.META.get('HTTP_AUTHORIZATION'):
             try:
                 from django.contrib.auth import get_user_model
 
-                from identity_access.ws_ticket import redeem_ws_ticket
+                from identity_access.ws_ticket import redeem_ws_ticket, strip_machine_privileges
 
                 payload = redeem_ws_ticket(ticket)
                 if payload:
-                    request.user = get_user_model().objects.get(pk=payload['user_id'])
+                    machine_ticket = bool(payload.get('machine'))
+                    request.user = strip_machine_privileges(
+                        get_user_model().objects.get(pk=payload['user_id']), payload,
+                    )
                     ticket_ok = True
             except Exception:
                 pass
+        # Raise OUTSIDE try/except — PermissionDenied is an Exception and would
+        # otherwise be swallowed by `except Exception: pass` above.
+        if machine_ticket:
+            raise PermissionDenied('Machine PAT không được dùng SSE Alert Center.')
         # Tương thích: ?token= cho client cũ — log cảnh báo, sẽ bỏ sau 1 tuần.
         token = request.query_params.get('token') or request.GET.get('token')
         if not ticket_ok and token and not request.META.get('HTTP_AUTHORIZATION'):

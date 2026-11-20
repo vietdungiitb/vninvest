@@ -1,3 +1,12 @@
+## Entry 563: WS ticket cho machine PAT có scope `ws:realtime` — demo realtime bền vững
+
+- **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `feat/ws-ticket-machine-iso` · **Bằng chứng**: `docs/PLAN_WS_TICKET_MACHINE_SCOPE_20261120.md`.
+- **Root cause**: `views_ws_ticket.py:36` dùng `require_human_session` ⇒ machine PAT (demo widget) 403 ⇒ `fetchWsTicket()` null ⇒ WS không connect ⇒ Watchlist demo chỉ hiện symbol, giá `—` (PARTIAL của D1). `/core/v1/auth/` middleware-exempt ⇒ `request.tenant` luôn None.
+- **Fix**: view tự gán tenant từ `credential.service_account.tenant`; dùng `require_pat_scopes_or_human_session(request, "ws:realtime")`; ticket payload mang `machine` + TTL 30s; `strip_machine_privileges()` áp tại 5 redeem site (WS resolver + 4 SSE view); AlertCenter (không `IsAdminUser`) từ chối machine ticket 403 bằng raise ngoài `try/except`.
+- **Bảo mật**: không xoá guard human ở endpoint khác; PAT không có scope vẫn 403; staff/superuser bị strip in-memory trước permission check; không migration, không đổi response shape.
+- **Gates**: fail-before trên VPS DB tạm `FAILED (errors=5)`; pass-after/regression CHƯA CHẠY (xem evidence khi chốt). Local `py_compile` 0.
+- **CHƯA CHẠY**: full BE suite, deploy staging, E2E DOM prices (Rule 17) — cập nhật ở evidence trước khi đóng.
+
 ## Entry 562: DataOps inventory treo do KBS ngoài — dùng DB group cache, hết skeleton
 
 - **Date**: 2026-11-20 · **Type**: code + test + docs · **Branch**: `fix/dataops-inventory-hang` · **Bằng chứng**: `docs/PLAN_DATAOPS_INVENTORY_DB_GROUPS_20261120.md`, `docs/evidence/dataops-inventory/EVIDENCE_20261120.md`.

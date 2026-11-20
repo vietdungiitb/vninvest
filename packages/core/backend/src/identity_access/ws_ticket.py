@@ -11,16 +11,31 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
 WS_TICKET_TTL_S = 60
+# Machine PAT tickets are short-lived: demo WS handshake only, never SSE admin.
+WS_TICKET_MACHINE_TTL_S = 30
 
 
 def _cache_key(ticket: str) -> str:
     return f"ws_ticket:{ticket}"
 
 
-def issue_ws_ticket(user_id, tenant_id=None, timeout_s: int = WS_TICKET_TTL_S):
-    """Cap ticket 1 lan dung. Tra ve (ticket, expires_in)."""
+def issue_ws_ticket(
+    user_id, tenant_id=None, timeout_s: int = WS_TICKET_TTL_S,
+    machine: bool = False, service_account_id=None,
+):
+    """Cap ticket 1 lan dung. Tra ve (ticket, expires_in).
+
+    `machine=True` danh dau ticket cap cho service account (khong phai human session).
+    Moi redeem site PHAI goi `strip_machine_privileges` de tranh escalation (O2/2026-11-15).
+    """
     ticket = secrets.token_urlsafe(32)
-    cache.set(_cache_key(ticket), {"user_id": user_id, "tenant_id": tenant_id}, timeout=timeout_s)
+    payload = {
+        "user_id": user_id,
+        "tenant_id": tenant_id,
+        "machine": bool(machine),
+        "service_account_id": service_account_id,
+    }
+    cache.set(_cache_key(ticket), payload, timeout=timeout_s)
     return ticket, timeout_s
 
 
@@ -33,6 +48,19 @@ def redeem_ws_ticket(ticket):
         return None
     cache.delete(_cache_key(ticket))
     return payload
+
+
+def strip_machine_privileges(user, payload):
+    """Strip staff/superuser on a machine ticket, in-memory only (no DB write).
+
+    `redeem` loads the user fresh from DB, which restores privileges that
+    `apply_pat_user_privileges` had stripped for machine PAT (resolve_tenant.py:216-226).
+    Applying this before DRF permission checks closes that escalation path.
+    """
+    if isinstance(payload, dict) and payload.get("machine"):
+        user.is_staff = False
+        user.is_superuser = False
+    return user
 
 
 def _user_from_token_token(token: str):
@@ -54,7 +82,8 @@ def resolve_user_from_ws_query(query_string: str):
             if not payload:
                 return None
             try:
-                return get_user_model().objects.get(pk=payload["user_id"])
+                user = get_user_model().objects.get(pk=payload["user_id"])
+                return strip_machine_privileges(user, payload)
             except Exception:
                 return None
     for part in (query_string or "").split("&"):
