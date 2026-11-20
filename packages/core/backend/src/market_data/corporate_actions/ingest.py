@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+import pandas as pd
 from django.utils import timezone
 
 from .parser import parse_event_title
@@ -86,8 +87,70 @@ def make_fallback_event_id(
     return 'fb-' + hashlib.sha256(payload.encode('utf-8')).hexdigest()[:32]
 
 
+STRUCTURED_REQUIRED_COLUMNS = {
+    'action_type', 'ex_date', 'cash_amount', 'stock_ratio_pct', 'source_event_id',
+    'raw_title', 'parse_status', 'source',
+}
+
+
+def _rows_from_structured(frame: pd.DataFrame, symbol: str, fetched_at) -> list[dict] | None:
+    """Map contract 14 cột của `VCI.corporate_actions()` (vnbroker >= 3.8.2)."""
+    if not STRUCTURED_REQUIRED_COLUMNS.issubset(set(frame.columns)):
+        return None
+
+    rows: list[dict] = []
+    for record in frame.to_dict('records'):
+        code = str(record.get('action_type') or '').upper()
+        if code not in SUPPORTED_EVENT_CODES:
+            logger.warning('Bỏ qua action_type lạ: %s (symbol=%s)', code or '<rỗng>', symbol)
+            continue
+        ex_date = _event_date(record.get('ex_date'))
+        if ex_date is None:
+            continue
+
+        raw_title = str(record.get('raw_title') or '')
+        # Parser chỉ dùng để lấy cờ ambiguous — số tiền/tỉ lệ lấy từ field số của package.
+        parsed = parse_event_title(raw_title, code)
+        status = str(record.get('parse_status') or 'unparsed')
+        if status not in ('structured', 'parsed_from_text', 'unparsed'):
+            status = 'unparsed'
+
+        cash = record.get('cash_amount')
+        ratio = record.get('stock_ratio_pct')
+        cash = Decimal(cash) if cash not in (None, '') else None
+        ratio = Decimal(ratio) if ratio not in (None, '') else None
+
+        source_id = str(record.get('source_event_id') or '').strip()
+        fallback = not source_id
+        if fallback:
+            source_id = make_fallback_event_id(symbol.upper(), ex_date, code, cash, ratio)
+            logger.warning('FALLBACK_ID symbol=%s ex_date=%s raw_title=%s', symbol, ex_date, raw_title)
+
+        rows.append({
+            'symbol': symbol.upper(),
+            'action_type': code,
+            'ex_date': ex_date,
+            'record_date': _event_date(record.get('record_date')),
+            'payment_date': _event_date(record.get('payment_date')),
+            'cash_amount_per_share': cash,
+            'stock_ratio_pct': ratio,
+            'currency': str(record.get('currency') or 'VND'),
+            'source': str(record.get('source') or 'VCI'),
+            'source_event_id': source_id,
+            'raw_title': raw_title,
+            'parse_status': status,
+            'ambiguous_cash_pct': parsed.ambiguous_cash_pct,
+            'ambiguous_ratio_pct': parsed.ambiguous_ratio_pct,
+            'is_latest': True,
+            'fetched_at': fetched_at,
+            '_fallback_id': fallback,
+            '_source_api': 'structured',
+        })
+    return rows
+
+
 def fetch_corporate_actions(symbol: str, from_date: date, to_date: date | None = None) -> list[dict]:
-    """Gọi trực tiếp VCI `explorer.vci.company.Company`, map sang dict chuẩn."""
+    """Ưu tiên `VCI.corporate_actions()` (field số 3.8.2+), fallback `events()` + parser."""
     # Import tại call-time để patch `vnbroker.explorer.vci.company.Company` trong test.
     from vnbroker.explorer.vci.company import Company as VCICompany
 
@@ -98,8 +161,19 @@ def fetch_corporate_actions(symbol: str, from_date: date, to_date: date | None =
     if to_date is not None:
         kwargs['to_date'] = to_date.strftime('%Y%m%d')
 
+    company = VCICompany(symbol.upper())
     try:
-        frame = VCICompany(symbol.upper()).events(**kwargs)
+        structured = company.corporate_actions(**kwargs)
+        if isinstance(structured, pd.DataFrame) and not structured.empty:
+            mapped = _rows_from_structured(structured, symbol, timezone.now())
+            if mapped is not None:
+                logger.info('Structured corporate actions used for %s (%d rows)', symbol, len(mapped))
+                return mapped
+    except Exception as exc:  # noqa: BLE001 - fallback về contract cũ khi package cũ/không có method
+        logger.warning('STRUCTURED_UNAVAILABLE symbol=%s: %s — fallback events()', symbol, exc)
+
+    try:
+        frame = company.events(**kwargs)
     except Exception as exc:  # noqa: BLE001 - chuẩn hoá lỗi provider
         raise normalize_provider_error(exc) from exc
 
