@@ -1,3 +1,12 @@
+## Entry 567: Probe nguồn corporate actions trong vnbroker 3.7.2 — VCI khả thi, KBS rỗng
+
+- **Date**: 2026-11-20 · **Type**: audit (read-only package + live probe, docs-only) · **Branch**: `docs/vnbroker-corp-action-source` · **Bằng chứng**: `docs/AUDIT_VNBROKER_CORPORATE_ACTION_SOURCE_20261120.md`.
+- **Nguồn**: package `vnbroker==3.7.2` (`requirements.txt:38`) cài trong container staging; không có clone local. Probe trực tiếp 3 mã VNM/VCB/FPT.
+- **Kết quả**: KBS `events(event_type=2)` (`kbs/company.py:580-645`) trả `(0,0)`; **VCI `events(from_date='20100101', event_codes='DIV,ISS')` (`vci/company.py:104-116,303-318`) trả 57 sự kiện có `exright_date` cho VNM (45 DIV + 12 ISS, 2010-02-09 → 2026-11-11)**. TCBS `dividends()` (`tcbs/company.py:469-492`) lỗi `ProviderAuthError`; DNSE/SSI empty. Facade `Company.events()` mặc định KBS ⇒ rỗng (giải thích audit cũ `qb2-probe.md:28`).
+- **Rủi ro parse**: số tiền/tỉ lệ nằm trong `event_title_vi` dạng text — VNM 45 parse tiền, 7 parse %, **5 không parse**; có 2 DIV cùng `2024-09-24` (950 + 1.500 VND) ⇒ phải cộng theo ex_date.
+- **Đính chính**: Entry 566 MDS-01 nói "blocked bởi nguồn" — nay nguồn đã xác minh (VCI), block chuyển sang parse/model/quyết định owner. Chưa đổi code, chưa tích hợp feed.
+- **Gates**: doc-only — lint/build/test **CHƯA CHẠY** (không suy diện). 4 câu hỏi owner trong doc §F.
+
 ## Entry 566: Audit đồng bộ dữ liệu thị trường — giá có tự update, cổ tức/chia tách không
 
 - **Date**: 2026-11-20 · **Type**: audit (read-only, docs-only) · **Branch**: `docs/audit-market-sync-20261120` · **Bằng chứng**: `docs/AUDIT_MARKET_DATA_SYNC_20261120.md`.
