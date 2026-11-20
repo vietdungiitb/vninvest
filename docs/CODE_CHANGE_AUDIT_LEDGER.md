@@ -1,3 +1,12 @@
+## Entry 577: Full BE gate sau bump 3.8.2 — ghi nhận KHÔNG xanh, chờ baseline
+
+- **Date**: 2026-11-20 · **Type**: audit/gate (doc-only) · **Branch**: `docs/gates-fullbe-382` · **Claim**: `89df3ffb2` · **File**: `docs/evidence/corporate-actions/FULL_BE_GATE_20261120.md`.
+- **Lệnh thật**: `python manage.py test -v 1` trên cây backend đầy đủ, container `vninvest-core-api`, DB tạm `corp_fullbe_verify` (đã drop). Kết quả: **3574 tests, 36 failures, 221 errors, 7 skipped** — **KHÔNG PASS**.
+- **Phân loại**: 66 test pipeline corporate actions xanh riêng (Entry 574/576); **0 fail/error** có tên `corporate`/`adj_close`/`ohlcv`. Error tập trung ở `user_workspace` migration-backfill/schema-pollution (thông báo lỗi tự nhận "để lại schema nửa vời"),tenant isolation, openapi envelope, advisory — không chạm module pipeline. Lần chạy đầu do harness chép thiếu `scripts/` đã bị loại (đã chạy lại với cây đầy đủ).
+- **Trung thực**: **CHƯA CHẠY** full suite trên checkout sạch trước pipeline để so baseline ⇒ không khẳng định 36/221 là pre-existing 100%; không so với baseline cũ 602 test (khác cây, khác lần — L-E07).
+- **Gates khác xanh**: `check-multi-agent` exit 0, `system-design --check` SẠCH, `tsc --noEmit` PASS. **CHƯA CHẠY**: FE build, deploy staging, E2E.
+- **Quyết định**: giữ `CORPORATE_ACTIONS_ENABLED=False`; **không deploy** staging khi full gate chưa xanh/waiver chưa có; không chuyển ingest sang field số cho tới khi xong baseline + owner đối chiếu Q1/Q2.
+
 ## Entry 576: Slice 4 vòng 2 — bump pin 3.8.2 + re-probe đạt (đóng lỗi P0)
 
 - **Date**: 2026-11-20 · **Type**: dependency bump + audit · **Branch**: `feat/bump-vnbroker-382` · **Claim**: `fb1ceb651`.
