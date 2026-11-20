@@ -2,8 +2,9 @@
 
 Khong dung DB migration — ticket song trong Django cache (60s, xoa ngay khi dung).
 Human session (JWT/session) lay ticket qua POST /core/v1/auth/ws-ticket/ roi noi WS/SSE
-bang ?ticket=. Machine PAT bi chan 403 khi mint ticket (require_human_session) va dung
-?token=<raw_pat> tuong thich nguoc qua TLS.
+bang ?ticket=. Machine PAT chi duoc mint khi co scope `ws:realtime` (2026-11-20);
+ticket machine mang flag `machine=True`, TTL ngan hon va phai strip quyen o moi redeem
+site. Client cu van co ?token=<raw_pat> tuong thich nguoc qua TLS (deprecated).
 """
 import secrets
 
