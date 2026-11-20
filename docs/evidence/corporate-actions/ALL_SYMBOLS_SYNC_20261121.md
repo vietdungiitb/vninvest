@@ -47,6 +47,14 @@ Ngoài ra sửa 1 test flakes theo đồng hồ container: fixture bars dùng `d
 
 ## DEPLOY + VERIFY SAU MERGE
 
-*(cập nhật sau khi merge/deploy: pull VPS, `deploy-staging.sh`, `celery inspect registered` phải thấy `data_ingest.tasks.sync_all_corporate_actions`, `django_celery_beat` periodic task `sync-corporate-actions-nightly` trỏ đúng orchestrator).*
+**Deploy lần 1 (PR #477, `6bbb28bcc`)**: pull VPS + `deploy-staging.sh` exit 0, flag true, health 200, `celery inspect registered` thấy cả 2 task trên 3 worker. **Nhưng** kiểm tra DB phát hiện `PeriodicTask` vẫn trỏ task cũ `data_ingest.tasks.sync_corporate_actions` — đổi `CELERY_BEAT_SCHEDULE` trong settings **không cập nhật row đã lưu** (django-celery-beat DatabaseScheduler).
+
+Xử lý: (a) cập nhật row staging bằng shell (`PeriodicTask.objects.filter(name=...).update(task='data_ingest.tasks.sync_all_corporate_actions')` → `UPDATED_ROWS 1`); (b) thêm data migration `data_ingest/migrations/0003_fix_corporate_beat_task.py` (RunPython, guard `LookupError` nếu app/row không có) để mọi môi trường tự sửa khi migrate. Sau fix:
+
+```
+BEAT sync-corporate-actions-nightly data_ingest.tasks.sync_all_corporate_actions enabled= True
+celery registered: sync_all_corporate_actions + sync_corporate_actions (3 worker)
+FLAG true · HEALTH 200
+```
 
 **Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1.899) và cập nhật `adj_close`, thay vì chỉ sync tay từng mã. Flag phải bật (`CORPORATE_ACTIONS_ENABLED=true` — staging đã bật; production do owner).

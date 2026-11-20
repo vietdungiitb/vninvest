@@ -4,7 +4,7 @@
 - **Vấn đề**: beat `sync-corporate-actions-nightly` gọi `sync_corporate_actions(symbol)` mà kwargs chỉ có `_scheduler_job_key` ⇒ thiếu `symbol`, sẽ TypeError mỗi đêm; không có service quét toàn mã.
 - **Fix**: thêm `sync_all_corporate_actions` — lấy mọi symbol có `DailyPrice` (staging **1.899**), dispatch `sync_corporate_actions.delay(symbol, countdown=index*2)`; flag off ⇒ skip. Beat đổi target sang orchestrator. 3 test fail-before (ImportError) → **sync 6/6, pipeline 71/71 OK**, có test chặn beat kwargs gọi được task.
 - **Full BE**: 3579 tests / 36 fail / 221 error (baseline tối 20/11: 35/221). 1 fail mới `test_warm_intraday...` là **time-dependent** — chạy lại trên baseline `165cdc8d2` cùng thời điểm **cũng fail** ⇒ 0 regression. Sửa fixture bars dùng ngày cố định (clock staging lệch ngày).
-- **Deploy/verify**: *(cập nhật sau merge)*. Flag staging đã `true`; service chạy 18:30 nightly.
+- **Deploy/verify**: PR #477 (`6bbb28bcc`) deploy exit 0, health 200, 2 task registered trên 3 worker. Phát hiện `PeriodicTask` trong DB vẫn trỏ task cũ (đổi settings không sửa row) ⇒ cập nhật row staging (`UPDATED_ROWS 1`) + thêm data migration `data_ingest/0003_fix_corporate_beat_task.py` (RunPython, guard `LookupError`) cho mọi env. Sau fix: beat row = `sync_all_corporate_actions`, enabled True, flag true, health 200. Service chạy 18:30 nightly.
 - **Trả lời owner**: sau slice này có service nightly cập nhật `adj_close` cho toàn bộ mã có giá, không chỉ sync tay VNM.
 
 ## Entry 579: E2E bật flag corporate actions trên staging
