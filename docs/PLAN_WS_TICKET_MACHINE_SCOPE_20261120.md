@@ -16,7 +16,7 @@
    - `ws_ticket.py:49-63` (`resolve_user_from_ws_query`) — WS consumers.
    - 4 SSE view: `signal_intelligence/views.py:817-824`, `service_ops/views/{signals_stream.py:138-145, overview_stream.py:129-136, dataops_stream.py:91-98}`.
    - Dùng 1 helper `strip_machine_privileges(user, payload)` trong `ws_ticket.py` để tránh 5 bản copy.
-   - **Ngoại lệ bắt buộc:** `AlertCenterStreamView` chỉ có `[IsAuthenticated]` (`signal_intelligence/views.py:804`), không có `IsAdminUser` như 3 view `SOCBaseView` (`service_ops/views/base.py:104`) ⇒ sau khi strip quyền vẫn vào được. Phải **từ chối ticket machine (403)** ngay tại nhánh ticket của view này (`:817-824`) — `PermissionDenied` khi `payload.get("machine")`. Human ticket giữ nguyên.
+   - **Ngoại lệ bắt buộc:** `AlertCenterStreamView` chỉ có `[IsAuthenticated]` (`signal_intelligence/views.py:804`), không có `IsAdminUser` như 3 view `SOCBaseView` (`service_ops/views/base.py:104`) ⇒ sau khi strip quyền vẫn vào được. Phải **từ chối ticket machine với 403**: trong khối `try` tại `:814-824` chỉ **gắn cờ** `machine_ticket = bool(payload.get("machine"))`, rồi **`raise PermissionDenied(...)` Ở NGOÀI `try/except`** (sau `:824`, trước `super().initial()` ở `:839`) — nếu raise trong `try` sẽ bị `except Exception: pass` (`:823-824`) nuốt ⇒ 401 hoặc 200 escalation. Test assert `status_code == 403`. Human ticket giữ nguyên.
 4. PAT demo: re-issue service account PAT với scopes gồm `ws:realtime` bằng `issue_vnbrokerchart_pat --scopes ... --force` (command đã hỗ trợ `--scopes` tại `:29-34`), inject token qua cơ chế `/demo-token.json` hiện hữu. Không nhét token vào repo/log/chat.
 
 ## 3. AC (Given/When/Then)
@@ -28,7 +28,7 @@
 - **AC6** E2E staging: widget demo `?standalone=1&dock=1` mở Watchlist ⇒ `priceCells` có ít nhất 1 giá không phải `—` (đóng PARTIAL của D1).
 
 ## 4. Tasks (fail-before → pass-after)
-**T1** Viết `tests/test_ws_ticket_machine_scope.py` cho AC1–AC5 (mock PAT + `force_authenticate` với `CorePATCredential`, kèm 4 case redeem SSE + AlertCenter riêng). Chạy trên VPS DB tạm ⇒ FAIL.
+**T1** Viết `tests/test_ws_ticket_machine_scope.py` cho AC1–AC5. Auth phải dùng `force_authenticate(user=owner, auth=credential)` (hoặc `Bearer <raw>` như `test_soc_sse_ticket_c01.py:82-85`) — nếu chỉ truyền credential vào `user`, `request.auth=None` ⇒ helper return sớm ⇒ test vô hiệu. Kèm 4 case redeem SSE + AlertCenter riêng. Chạy trên VPS DB tạm ⇒ FAIL.
 **T2** Sửa `views_ws_ticket.py` + `ws_ticket.py` (helper scope, machine payload, TTL, strip helper). Chạy lại ⇒ PASS; 8 test cũ `test_ws_ticket.py` vẫn PASS.
 **T3** Sửa 4 SSE view gọi strip helper; thêm test AC4. Chạy lại ⇒ PASS.
 **T4** Re-issue PAT staging + deploy backend (`bash scripts/deploy-staging.sh`) + verify `health`/endpoint + chạy lại E2E D1 (AC6).
