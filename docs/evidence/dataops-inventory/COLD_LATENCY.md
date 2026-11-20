@@ -33,7 +33,7 @@ GROUP BY symbol, EXTRACT(YEAR FROM date)::int
   - `by_year[yr].rows = sum(n)`
   - mỗi group: `rows`, `covered` (#symbol có n>0), `recent` (#symbol có recent_n>0), `earliest/latest`
 - `symbols` key trong `by_year` giữ `0` (FE chỉ dùng `rows`) — không đổi shape.
-- Cache Redis vẫn giữ nguyên (5 phút).
+- Cache Redis giữ nguyên cơ chế, TTL tăng 5 phút → **1 giờ** (PR #448) vì dữ liệu DailyPrice cập nhật theo phiên/ngày.
 
 ## AC
 
@@ -47,3 +47,16 @@ GROUP BY symbol, EXTRACT(YEAR FROM date)::int
 - BE test trên VPS (DB tạm, drop sau) — PASS.
 - `pre-push-gate` 36 PASS.
 - Deploy staging + xoá cache + đo cold time + Playwright `HAS_4_6M=true`.
+
+## Kết quả thật (2026-11-20)
+
+| Giai đoạn | Cold (xoá cache) | Warm |
+|---|---|---|
+| Baseline | 24.8s · 38 query | 3.61s |
+| Sau 1 raw SQL query (PR #447) | **6.72s** | **0.02s** |
+| Sau TTL 1h (PR #448) | 7.13s (chỉ 1 lần/giờ) | **0.02s** |
+
+- BE test trên VPS: DB tạm `dataops_cold` đã tạo → test **OK** (TEST_EXIT=0) → DROP; worktree tạm `/tmp/wt-cold` đã remove.
+- Response shape không đổi; sau deploy `summary.total_rows = 4582503`, `total_symbols = 1400`.
+- Query chậm nhất còn lại chính là raw aggregation ~4.5s. Muốn cold <3s cần materialized summary + Celery refresh — ticket riêng.
+- ⚠ Sự cố branch: working tree dùng chung bị agent khác chuyển nhánh, 2 commit docs lọt sang `feat/ws-ticket-machine-scope`; đã revert ở nhánh đó, nội dung được ghi lại đúng tại đây. Agent kia đã chuyển sang worktree riêng `wt/ws-ticket-machine`.
