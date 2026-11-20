@@ -55,8 +55,8 @@ class DataOpsInventoryView(SOCBaseView):
     def get(self, request):
         from datetime import timedelta
 
+        from django.db import connection
         from django.db.models import Count, Max, Min
-        from django.db.models.functions import TruncYear
 
         from market_data.models import DailyPrice, StockProfile
         from market_serving.models import SymbolSnapshot
@@ -71,37 +71,60 @@ class DataOpsInventoryView(SOCBaseView):
         if cached is not None:
             return envelope(cached)
 
-        # ── Tổng quan DailyPrice ────────────────────────────────────────────
-        # Tránh COUNT(DISTINCT symbol) trên 4.5M row (~4s): số mã lấy từ
-        # StockProfile (SSOT metadata), earliest/latest dùng index của date.
+        # ── MỘT query duy nhất quét 4.5M row DailyPrice ─────────────────────
+        # Trước đây: 1 query tổng + 1 by_year + 7 query group (~25s cold).
+        # GROUP BY (symbol, year) cho ra mọi số liệu cần cho summary/by_year/by_group.
         earliest = DailyPrice.objects.order_by('date').values_list('date', flat=True).first()
         latest = DailyPrice.objects.order_by('-date').values_list('date', flat=True).first()
+        cutoff = latest - timedelta(days=30) if latest else None
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT symbol,
+                       EXTRACT(YEAR FROM date)::int AS yr,
+                       COUNT(*) AS n,
+                       COUNT(*) FILTER (WHERE date >= %s) AS recent_n,
+                       MIN(date) AS earliest,
+                       MAX(date) AS latest
+                FROM market_data_dailyprice
+                GROUP BY symbol, EXTRACT(YEAR FROM date)::int
+                """,
+                [cutoff],
+            )
+            raw_rows = cur.fetchall()
+
+        per_symbol = {}
+        year_rows = {}
+        for symbol, yr, n, recent_n, symbol_earliest, symbol_latest in raw_rows:
+            yr = int(yr)
+            year_rows[yr] = year_rows.get(yr, 0) + int(n)
+            st = per_symbol.setdefault(
+                symbol,
+                {'rows': 0, 'recent': 0, 'earliest': None, 'latest': None},
+            )
+            st['rows'] += int(n)
+            st['recent'] += int(recent_n or 0)
+            if symbol_earliest is not None and (st['earliest'] is None or symbol_earliest < st['earliest']):
+                st['earliest'] = symbol_earliest
+            if symbol_latest is not None and (st['latest'] is None or symbol_latest > st['latest']):
+                st['latest'] = symbol_latest
+
         dp_agg = {
             'earliest': earliest,
             'latest': latest,
-            'total_rows': DailyPrice.objects.count(),
+            'total_rows': sum(s['rows'] for s in per_symbol.values()),
             'total_symbols': StockProfile.objects.count(),
         }
-        cal_days = (
-            (latest - earliest).days + 1 if earliest and latest else 0
-        )
+        cal_days = (latest - earliest).days + 1 if earliest and latest else 0
 
-        # ── Phân bổ theo năm ────────────────────────────────────────────────
-        # FE chỉ dùng `rows` biểu đồ theo năm; bỏ COUNT(DISTINCT symbol) ở đây
-        # (chiếm ~8s). Giữ key `symbols` để không đổi shape response.
-        by_year_qs = (
-            DailyPrice.objects.annotate(yr=TruncYear('date'))
-            .values('yr')
-            .annotate(rows=Count('id'))
-            .order_by('yr')
-        )
+        # FE chỉ dùng `rows` cho biểu đồ theo năm; giữ key `symbols` để không đổi shape.
         by_year = [
-            {'year': str(r['yr'])[:4], 'rows': r['rows'], 'symbols': 0}
-            for r in by_year_qs
+            {'year': str(yr), 'rows': n, 'symbols': 0}
+            for yr, n in sorted(year_rows.items())
         ]
 
         # ── Coverage theo nhóm (30-ngày gần nhất) ──────────────────────────
-        cutoff = dp_agg['latest'] - timedelta(days=30) if dp_agg['latest'] else None
         groups_data = []
         all_groups = list(PREDEFINED_SYMBOL_GROUPS) + [
             {'id': cg.group_id, 'name': cg.name, 'type': 'custom'}
@@ -110,26 +133,26 @@ class DataOpsInventoryView(SOCBaseView):
         for g in all_groups:
             try:
                 syms = _db_group_symbols(g['id'])
-                total = len(syms)
-                agg = DailyPrice.objects.filter(symbol__in=syms).aggregate(
-                    earliest=Min('date'), latest=Max('date'),
-                    rows=Count('id'), covered=Count('symbol', distinct=True),
+                selected = [per_symbol[s] for s in syms if s in per_symbol]
+                group_earliest = min(
+                    (s['earliest'] for s in selected if s['earliest'] is not None),
+                    default=None,
                 )
-                recent = (
-                    DailyPrice.objects.filter(symbol__in=syms, date__gte=cutoff)
-                    .values('symbol').distinct().count()
-                    if cutoff else 0
+                group_latest = max(
+                    (s['latest'] for s in selected if s['latest'] is not None),
+                    default=None,
                 )
                 group_days = (
-                    (agg['latest'] - agg['earliest']).days + 1
-                    if agg['earliest'] and agg['latest'] else 0
+                    (group_latest - group_earliest).days + 1
+                    if group_earliest and group_latest else 0
                 )
                 groups_data.append({
                     'id': g['id'], 'name': g['name'], 'type': g.get('type', 'index'),
-                    'symbol_count': total, 'covered_symbols': agg['covered'] or 0,
-                    'recent_symbols': recent, 'total_rows': agg['rows'] or 0,
-                    'earliest_date': agg['earliest'].isoformat() if agg['earliest'] else None,
-                    'latest_date': agg['latest'].isoformat() if agg['latest'] else None,
+                    'symbol_count': len(syms), 'covered_symbols': len(selected),
+                    'recent_symbols': sum(1 for s in selected if s['recent'] > 0),
+                    'total_rows': sum(s['rows'] for s in selected),
+                    'earliest_date': group_earliest.isoformat() if group_earliest else None,
+                    'latest_date': group_latest.isoformat() if group_latest else None,
                     'calendar_days': group_days,
                 })
             except Exception:
