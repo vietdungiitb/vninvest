@@ -4,7 +4,7 @@
 - **Root cause**: `DataOpsContext.refreshAll()` chạy mỗi 15s và bật `loading.inventory/runs`; `SocDataOpsPanel.tsx:103` và `SocDataInventorySection.tsx:79` dùng trực tiếp cờ đó để render skeleton ⇒ cứ 15s dữ liệu bị thay bằng khối rỗng rồi hiện lại (3 ảnh chụp liên tiếp của owner).
 - **Fix**: helper thuần `shouldShowDataOpsSkeleton(inventory, loading)` — skeleton chỉ khi **chưa có inventory**; khi đã có dữ liệu thì refresh nền giữ số liệu cũ trên màn hình. Dùng ở cả 2 component. Không đổi API/cache/migration.
 - **Gate**: test mới **4/4 PASS** (fail-before: import module chưa tồn tại → transform fail), `tsc --noEmit` exit 0; `pre-push-gate` + Playwright >30s ghi sau khi deploy.
-- **CHƯA CHẠY**: Playwright verify sau deploy (cập nhật evidence khi có số).
+- **Verify sau deploy**: Playwright 18 mẫu / 36s (2 chu kỳ poll) ⇒ `skeleton=0` ở 18/18, `flashSamples=0`, values luôn `4.6M / 0 / 0 / 1`; PR #450 merged (`ea6d887aa`), deploy staging healthy. Xem `docs/evidence/dataops-inventory/POLL_FLASH.md`.
 
 ## Entry 564: WS ticket cho machine PAT có scope `ws:realtime` — demo realtime bền vững
 

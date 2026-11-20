@@ -24,7 +24,15 @@ Dùng helper ở cả 2 component. Không đổi API, không migration.
 2. Playwright trên staging theo dõi >30s: sau khi có số liệu, skeleton không xuất hiện lại dù polling chạy ít nhất 2 lần.
 3. `pre-push-gate` 36 PASS.
 
+## Kết quả thật (2026-11-20)
+
+- vitest file test mới: **4/4 PASS** (fail-before: module chưa tồn tại → transform fail). `tsc --noEmit` exit 0. `pre-push-gate` **36 PASS / 0 FAIL**. PR #450 merged (`ea6d887aa`), deploy staging healthy.
+- Playwright trên staging sau deploy: chờ có `4.6M`, sample mỗi 2s trong 36s (18 mẫu, >2 chu kỳ poll 15s):
+  - `skeleton = 0` ở **18/18 mẫu**, `flashSamples = 0`.
+  - Values luôn `["4.6M","0","0","1"]` (mẫu đầu `["4.6M","0","0","0"]` lúc runs chưa về) — không có khoảng trống.
+- Header vẫn "Chưa theo dõi" đúng R1.
+
 ## Gate
 
-- vitest file test mới PASS.
-- Deploy staging + Playwright verify.
+- vitest file test mới PASS — **xong**.
+- Deploy staging + Playwright verify — **xong**, số liệu ở trên.
