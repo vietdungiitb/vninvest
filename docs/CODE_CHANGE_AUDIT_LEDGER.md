@@ -1,3 +1,13 @@
+## Entry 575: Slice 4 — bump pin vnbroker 3.8.1 + re-probe (phát hiện lỗi P0 package)
+
+- **Date**: 2026-11-20 · **Type**: dependency bump + audit · **Branch**: `feat/bump-vnbroker-381` · **Claim**: `2608d773`.
+- **Nguồn**: PyPI `vnbroker==3.8.1` verify trực tiếp (`upload 2026-11-20T13:17:40Z`, wheel + sdist); owner trực tiếp yêu cầu bump pin — `requirements.txt` nằm trong deny-list §2 nên claim có note + commit trailer `Claim-Deny-List`.
+- **Files**: `packages/core/backend/requirements.txt:38` (`3.7.2 → 3.8.1`) · `docs/evidence/corporate-actions/REPROBE_VNBROKER_381_20261120.md` (mới) · `docs/evidence/corporate-actions/FIELD_MAPPING_VNBROKER.md` (thêm cảnh báo) · ledger này.
+- **Re-probe thật** (venv tạm `/tmp/vnb381venv` trong container `vninvest-core-api`, **không** đụng `/app` hay DB dùng chung): `VCI.corporate_actions()` trả đúng 14 cột contract, facade `Company.corporate_actions()` chạy (`source='VCI'`); VNM 1057 / FPT 1079 / VCB 1023 dòng. **Lỗi P0 package**: `ex_date=None` cho 100% dòng — raw key VCI là `exrightDate` nhưng `vnbroker@main:6020aac:common/corporate_actions.py:155` chỉ `_pick("exright_date","exRightDate","ex_date")`; `group_id` thành `VNM:None`; 1000 dòng tin tức lẫn vào 57 event thật.
+- **Tác động vninvest**: không — pipeline vẫn gọi legacy `VCI.events()` (snake_case `exright_date` ở `vci/company.py:310-315`) + parser riêng, tự lọc `event_code`/`exright_date`. Bump không breaking (release notes xác nhận), 66/66 test Entry 574 ở HEAD trước bump. **Không bật flag, không chuyển ingest** sang `corporate_actions()` cho tới khi package sửa + release 3.8.2.
+- **Gates**: PyPI verify ✅ · probe 3 mã ✅ · `check-multi-agent` exit 0. **CHƯA CHẠY**: full BE/FE suite + deploy staging sau bump (để CI/deploy gate).
+- **Next**: gửi ticket P0 cho vnbroker (sửa `_pick` thêm `exrightDate`, lọc `isEvent`, golden 57 dòng VNM/2 DIV cùng ex-date) → 3.8.2 → bump lại + re-probe → mới cân nhắc map sang field số.
+
 ## Entry 574: Follow-up Entry 573 — DIV+%, persist cờ ambiguous, W/M adj_close
 
 - **Date**: 2026-11-20 · **Type**: code + docs · **Branch**: `feat/corp-actions-followups` · **Claim**: `524896b9`.

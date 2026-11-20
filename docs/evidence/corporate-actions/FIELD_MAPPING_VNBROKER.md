@@ -1,5 +1,7 @@
 # Field mapping — vninvest pipeline ↔ vnbroker package 3.8.x (2026-11-20)
 
+> ⚠ **CẬP NHẬT 3.8.1**: re-probe (`REPROBE_VNBROKER_381_20261120.md`) phát hiện `ex_date=None` cho 100% dòng do `common/corporate_actions.py:155` thiếu key raw `exrightDate`. Bảng dưới vẫn đúng khi **sau khi package sửa**; hiện tại **chưa được dùng** để chuyển ingest — vninvest vẫn gọi `events()` + parser riêng.
+
 > Bối cảnh: Entry 573 F-NEW-5. Hai repo cùng rule parse ESOP nhưng khác tên field. File này là ánh xạ khi vninvest chuyển từ parse-text sang `VCI.corporate_actions()` sau khi vnbroker release 3.8.x và consumer bump pin (`requirements.txt:38`, hiện vẫn 3.7.2).
 
 | Khái niệm | vninvest (`market_data.corporate_actions.parser` / `CorporateAction`) | vnbroker 3.8.x (`common/corporate_actions.py`) | Ghi chú |
