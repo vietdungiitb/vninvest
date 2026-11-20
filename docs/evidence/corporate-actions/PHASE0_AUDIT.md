@@ -39,4 +39,24 @@ Auditor chấp nhận các quyết định kỹ thuật D1–D7 (D1 có reservat
 
 ## VÒNG 2 (re-audit)
 
-> Chờ cập nhật sau khi coordinator commit O1–O8 và auditor chạy lại. Chưa có verdict vòng 2 ⇒ **chưa mở** `feat/corporate-actions`.
+**VERDICT VÒNG 2: AGREE** — auditor xác nhận O2–O8 đóng hoàn toàn; O1 chỉ còn 1 dòng self-review sai số task (đã sửa `C4→T7/T8`). Đủ điều kiện mở `feat/corporate-actions`. Không cần vòng 3.
+
+### Reservation và cách đóng
+
+| ID | Reservation | Đóng ở đâu |
+|---|---|---|
+| R1 | Ghi verdict vòng 2 vào file này | **Đóng bằng chính mục này** — coordinator ghi sau khi nhận AGREE, trước dòng code đầu tiên ✅ |
+| R2 | Self-review `C4→T6+T7` lệch ma trận | Sửa thành `C4→T7/T8` trong plan ✅ |
+| R3 | Chuẩn hoá `cash_normalized`/`ratio_normalized` chưa định nghĩa | Plan Task 3 thêm contract `Decimal.quantize('0.01'/'0.0001')`, null ⇒ `''` + test `test_fallback_normalize_stable` ✅ |
+| R4 | Amount đổi cùng title trên đường fallback ⇒ ID mới, cộng đôi | Plan Task 3 thêm rule supersede theo business key + test `test_fallback_amount_change_supersedes_old` ✅ |
+| R5 | Suffix "thứ tự xuất hiện" không deterministic | Plan Task 3 đổi sang suffix `sha256` tuple sắp xếp ✅ |
+| R6 | Entry 569 còn chữ "VNSAAS profile" | Plan Task 7 Step 2 thêm dòng đính chính trong Entry 570 (append-only, không sửa Entry cũ) ✅ |
+| R7 | Claim docs slice còn `in-progress`; branch chưa push | Coordinator push + PR + merge, sau đó đổi claim → `done` ✅ (thực hiện ở bàn giao slice docs) |
+
+### Reservation kỹ thuật giữ nguyên khi implement
+
+- **D1**: golden là test cơ học (dedup + công thức + số event), **không phải oracle số tiền thật**; Q2 vẫn mở, không assert 2.450.
+- **D3**: auditor không tự re-probe container; kết luận DNSE account-scoped dựa trên lệnh probe có trong evidence §2.
+- **D4**: đường có `id` đúng (probe 9/9 dòng); mọi rủi ro nằm ở đường fallback đã được siết ở R3–R5. VCI `id` là khóa chính.
+
+**Gate B3→B4: ĐÓNG (AGREE).** Có thể khai claim + branch `feat/corporate-actions` theo 9 bước workflow-dev-loop, subagent-driven.

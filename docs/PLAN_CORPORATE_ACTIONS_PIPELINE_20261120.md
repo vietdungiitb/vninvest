@@ -193,11 +193,13 @@ Fields chốt:
   - `test_all_providers_empty_keeps_existing`: seed 1 row có `source='VCI'`, fetch trả `[]` (mọi provider rỗng) ⇒ row cũ vẫn tồn tại, **giữ nguyên `source`**, không xoá (AC6).
   - `test_tcbs_token_from_env`: mock auth error, assert đọc `os.getenv('TCBS_TOKEN')`, không hardcode token (C10).
   - `test_tcbs_provider_auth_error_mapped`: mock lỗi auth ⇒ normalize thành mã `PROVIDER_AUTH` + thông báo hướng dẫn cấu hình (AC5), không để exception chung lọt ra.
-  - `test_fallback_id_collision_two_div_same_ex_date`: test double bỏ cột `id`, trả 2 DIV cùng `(symbol, ex_date, action_type)` với amount 950/1.500 ⇒ vẫn **2 row**, hash khác nhau; nếu vẫn va chạm thì sinh suffix + log `FALLBACK_ID_COLLISION` (O3 re-audit).
+  - `test_fallback_id_collision_two_div_same_ex_date`: test double bỏ cột `id`, trả 2 DIV cùng `(symbol, ex_date, action_type)` với amount 950/1.500 ⇒ vẫn **2 row**, hash khác nhau; nếu vẫn va chạm thì sinh suffix deterministic + log `FALLBACK_ID_COLLISION` (O3 re-audit).
+  - `test_fallback_amount_change_supersedes_old`: cùng business key `(symbol, ex_date, action_type)`, amount đổi 950→1.000 ⇒ bản mới `is_latest=True`, bản cũ `False`, factor chỉ tính bản mới (R4 re-audit).
+  - `test_fallback_normalize_stable`: cùng amount `1,500` dạng `"1,500"` và `"1500"` ⇒ cùng `cash_normalized` ⇒ cùng hash (R3 re-audit).
   - `test_event_code_coverage`: assert gọi `event_codes` lấy từ constant `SUPPORTED_EVENT_CODES`; test double trả mã lạ ⇒ log warning + bỏ qua, không crash (C8).
   - `test_dnse_probe_recorded`: D3 đã đóng bằng probe Phase 0 (method account-scoped, cần `DNSEClient(api_key, api_secret)` + `account_no`) — test chỉ đảm bảo ingest **không** fallback sang DNSE; nếu thử thì ghi `source='DNSE_UNAVAILABLE'` + note, không dùng làm nguồn.
 - [ ] **Step 2 — Chạy expect FAIL**.
-- [ ] **Step 3 — Implement**: `fetch_corporate_actions` gọi `VCI(symbol).events(from_date=from_date.strftime('%Y%m%d'), event_codes=...)`, map cột sang dict, chạy parser, sinh `source_event_id` từ **cột `id` của VCI** (D4 — khóa chính, probe 9/9 dòng có `id`). Fallback khi thiếu `id`: `hashlib.sha256(f"{symbol}|{ex_date}|{action_type}|{cash_normalized}|{ratio_normalized}".encode()).hexdigest()[:32]` — **đưa amount/ratio đã chuẩn hoá vào hash** để 2 DIV cùng ex_date không va chạm, nhưng **KHÔNG đưa `raw_title`** (nếu không, test đổi title sẽ tạo row mới ⇒ AC7 fail). Nếu sau đó vẫn va chạm (cùng amount, title khác) ⇒ sinh suffix theo thứ tự xuất hiện + log `FALLBACK_ID_COLLISION`. Ghi log `FALLBACK_ID`. `upsert` dùng `update_or_create(source, source_event_id)`; title đổi ⇒ update `raw_title` + giữ `is_latest=True`, supersede bản cũ.
+- [ ] **Step 3 — Implement**: `fetch_corporate_actions` gọi `VCI(symbol).events(from_date=from_date.strftime('%Y%m%d'), event_codes=...)`, map cột sang dict, chạy parser, sinh `source_event_id` từ **cột `id` của VCI** (D4 — khóa chính, probe 9/9 dòng có `id`). Fallback khi thiếu `id`: `hashlib.sha256(f"{symbol}|{ex_date}|{action_type}|{cash_normalized}|{ratio_normalized}".encode()).hexdigest()[:32]` — **đưa amount/ratio đã chuẩn hoá vào hash** để 2 DIV cùng ex_date không va chạm, nhưng **KHÔNG đưa `raw_title`** (nếu không, test đổi title sẽ tạo row mới ⇒ AC7 fail). Nếu sau đó vẫn va chạm (cùng amount, title khác) ⇒ sinh suffix **deterministic** từ `sha256` của tuple đã sắp xếp (KHÔNG dùng thứ tự xuất hiện của DataFrame — thứ tự đổi giữa 2 fetch làm ID flip) + log `FALLBACK_ID_COLLISION`. **Contract normalize (R3 re-audit)**: `cash_normalized = format(Decimal(amount).quantize(Decimal('0.01')), 'f')`, `ratio_normalized = format(Decimal(ratio).quantize(Decimal('0.0001')), 'f')`, null ⇒ `''` — phải ổn định qua mọi fetch. Ghi log `FALLBACK_ID`. `upsert` dùng `update_or_create(source, source_event_id)`; title đổi ⇒ update `raw_title` + giữ `is_latest=True`, supersede bản cũ. Với đường fallback, amount đổi cùng title ⇒ `source_event_id` mới: áp rule supersede theo business key `(symbol, ex_date, action_type)` — bản mới `is_latest=True`, bản cũ `False`, và `compute_adj_factors` **chỉ dùng `is_latest=True`** để không cộng đôi. Thêm test `test_fallback_amount_change_supersedes_old`.
 - [ ] **Step 4 — Test PASS**.
 - [ ] **Step 5 — Commit** `feat: ingest corporate actions from VCI with idempotent upsert`.
 
@@ -263,7 +265,7 @@ Fields chốt:
 **Files:** Modify `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `docs/handoffs/HANDOFF_2026-11-20_VNBROKER_CORPORATE_ACTION.md`.
 
 - [x] **Step 1 — Sửa handoff theo D7 (ĐÃ LÀM ở docs slice Phase 0, commit `dccfe1ba6` trở đi)**: xoá "2.450" khỏi §7/AC3; thống nhất `parse_status`; gắn `dev@3845063a5:`/`main@117b2de98:`; đổi KBS → "probe params hiện tại trả rỗng, đang hỏi Q3"; thêm 3 câu hỏi (ID VCI, P_prev/precision, SPLIT/RIGHTS) + câu DNSE account-scoped. PR #455 đã merge ⇒ mở PR mới, không gửi lại PR cũ.
-- [ ] **Step 2 — Thêm Entry 570** vào ledger (Entry 569 đã dùng cho Phase 0 docs) với lệnh tái tạo migrations/golden/gate + `CHƯA CHẠY`. Không round-trip file tiếng Việt qua PowerShell; dùng `edit`, verify `git diff --numstat`.
+- [ ] **Step 2 — Thêm Entry 570** vào ledger (Entry 569 đã dùng cho Phase 0 docs) với lệnh tái tạo migrations/golden/gate + `CHƯA CHẠY` + 1 dòng đính chính: Entry 569 dùng chữ "VNSAAS profile", nay thống nhất là **"profile vninvest (9 bước, tooling repo)"** (append-only, không sửa Entry 569). Không round-trip file tiếng Việt qua PowerShell; dùng `edit`, verify `git diff --numstat`.
 - [ ] **Step 3 — Verification**: `git grep -n "2.450" docs/handoffs/HANDOFF_2026-11-20_...` ⇒ 0 hit (trừ trích dẫn audit); `git grep -n "stock_mgmt_native_views.py:"` ⇒ mọi hit có `@sha`.
 - [ ] **Step 4 — Commit** `docs: revise handoff + ledger entry 570`.
 
@@ -280,7 +282,7 @@ Fields chốt:
 
 ## Self-review (checklist writing-plans)
 
-1. **Spec coverage**: R1→T2, R2→T3, R3→T4, R5→T3, R6→T2/T4, R7→T5, R8→T4/T6; R4 là external (dependency register). C1→T4+Phase0, C2→T4, C3→T3+Phase0, C4→T6+T7, C5→T1/T2, C6→T3, C7→T4, C8→T3+Phase0, C9→T4/T5, C10→T3, C11→flag global, C12→T7, C13→B1. ✅
+1. **Spec coverage**: R1→T2, R2→T3, R3→T4, R5→T3, R6→T2/T4, R7→T5, R8→T4/T6; R4 là external (dependency register). C1→T4+Phase0, C2→T4, C3→T3+Phase0, C4→T7/T8, C5→T1/T2, C6→T3, C7→T4, C8→T3+Phase0, C9→T4/T5, C10→T3, C11→flag global, C12→T7, C13→B1. ✅
 2. **Step scan**: mỗi step là 1 hành động, có expected output; không có "handle edge cases" trần. ✅
 3. **Type consistency**: `ParsedAmount`, `parse_event_title`, `fetch_corporate_actions`, `upsert_corporate_actions`, `compute_adj_factors`, `apply_adjustments`, `sync_corporate_actions` — tên/signature dùng nhất quán ở mọi task. ✅
 4. **Review Focus**: 5 dòng, mỗi dòng có test ghim cụ thể ở Task 3/4. ✅
