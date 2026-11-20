@@ -80,6 +80,7 @@ def parse_event_title(title: str, action_type: str) -> ParsedAmount:
 
     return ParsedAmount(
         cash_amount=cash,
-        stock_ratio_pct=ratio,
+        # DIV vừa tiền vừa %: % là cổ tức trên mệnh giá, KHÔNG phải tỉ lệ cổ phiếu (F-NEW-1).
+        stock_ratio_pct=ratio if action_type != 'DIV' else None,
         status='parsed_from_text',
     )

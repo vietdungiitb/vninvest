@@ -58,3 +58,11 @@ class ParseEventTitleTests(SimpleTestCase):
         self.assertEqual(result.stock_ratio_pct, Decimal('49.5'))
         self.assertEqual(result.status, 'parsed_from_text')
         self.assertFalse(result.ambiguous_ratio_pct)
+
+    def test_div_with_cash_and_percent_never_gets_stock_ratio(self):
+        # F-NEW-1: title DIV vừa tiền vừa % — tiền đã rõ, % trên mệnh giá không
+        # được gán vào stock_ratio_pct (sẽ cộng nhầm denominator ở engine).
+        result = parse_event_title('Trả cổ tức bằng tiền mặt tỉ lệ 20% - 1,500 VND', 'DIV')
+        self.assertEqual(result.cash_amount, Decimal('1500'))
+        self.assertIsNone(result.stock_ratio_pct)
+        self.assertEqual(result.status, 'parsed_from_text')

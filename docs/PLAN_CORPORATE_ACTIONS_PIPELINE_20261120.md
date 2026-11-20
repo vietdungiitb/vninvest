@@ -164,7 +164,7 @@ Fields chốt:
 
 **Interfaces**
 - Consumes: `event_title_vi`, `event_code` từ VCI DataFrame (audit §A: `vnbroker-3.7.2@container:explorer/vci/company.py:104-116,303-318`, `a6e7bb7f2`).
-- Produces: `ParsedAmount(cash_amount: Decimal|None, stock_ratio_pct: Decimal|None, status: Literal['structured','parsed_from_text','unparsed'], ambiguous_cash_pct: bool=False)`; `parse_event_title(title: str, action_type: str) -> ParsedAmount`.
+- Produces: `ParsedAmount(cash_amount: Decimal|None, stock_ratio_pct: Decimal|None, status: Literal['structured','parsed_from_text','unparsed'], ambiguous_cash_pct: bool=False, ambiguous_ratio_pct: bool=False)`; `parse_event_title(title: str, action_type: str) -> ParsedAmount`. Hai cờ ambiguous được persist sang `CorporateAction` (migration `0009`) để API/DB phân biệt ESOP vs thiếu dữ liệu. Quy ước bổ sung (Entry 573): DIV vừa tiền vừa `%` ⇒ `stock_ratio_pct=None` (% trên mệnh giá, không phải cổ phiếu thưởng).
 
 - [ ] **Step 1 — Test fail-before** (5 case, value lấy từ audit §B):
   - `"Trả cổ tức bằng tiền mặt - Đợt 1 2024 - 1,500 VND"`, `DIV` ⇒ `Decimal('1500')`, status `parsed_from_text`.

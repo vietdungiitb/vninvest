@@ -4077,6 +4077,7 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
                 'high': row.high,
                 'low': row.low,
                 'close': row.close,
+                'adj_close': row.adj_close,
                 'volume': _to_int(row.volume) or 0,
             }
             buckets.append(current)
@@ -4084,18 +4085,22 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
             current['high'] = max(current['high'], row.high)
             current['low'] = min(current['low'], row.low)
             current['close'] = row.close
+            current['adj_close'] = row.adj_close
             current['volume'] += _to_int(row.volume) or 0
     result = []
     for b in buckets:
         dt = datetime.combine(b['date'], time.min).replace(tzinfo=dt_timezone.utc)
-        result.append({
+        bar = {
             'timestamp': _dt_to_unix_ms(dt),
             'open': _to_float(b['open']),
             'high': _to_float(b['high']),
             'low': _to_float(b['low']),
             'close': _to_float(b['close']),
             'volume': b['volume'],
-        })
+        }
+        if _corporate_actions_enabled():
+            bar['adj_close'] = _to_float(b['adj_close'])
+        result.append(bar)
     return result
 
 
