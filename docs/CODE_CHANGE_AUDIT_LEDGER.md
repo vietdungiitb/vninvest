@@ -5,7 +5,7 @@
 - **Fix**: view tự gán tenant từ `credential.service_account.tenant`; dùng `require_pat_scopes_or_human_session(request, "ws:realtime")`; ticket payload mang `machine` + TTL 30s; `strip_machine_privileges()` áp tại 5 redeem site (WS resolver + 4 SSE view); AlertCenter (không `IsAdminUser`) từ chối machine ticket 403 bằng raise ngoài `try/except`.
 - **Bảo mật**: không xoá guard human ở endpoint khác; PAT không có scope vẫn 403; staff/superuser bị strip in-memory trước permission check; không migration, không đổi response shape.
 - **Gates** (chạy thật trên VPS, DB tạm, đã DROP): RED @ `96fce22ab` `FAILED (errors=5)`; GREEN @ `23a6ebe3a` + fixture fix `7f7f6ead4`: `Ran 24 tests — OK` (gồm 8 `test_ws_ticket.py` + 10 `test_soc_sse_ticket_c01.py` + 7 machine-scope). Re-audit vòng 1 BLOCK (docs/claim) → đã đóng. Local `py_compile` 0, `pre-push-gate` 36 PASS.
-- **CHƯA CHẠY**: deploy staging, re-issue PAT `ws:realtime`, E2E DOM prices (Rule 17) — cập nhật ở evidence trước khi đóng.
+- **Đã chốt**: deploy staging `core-api` healthy; re-issue PAT `charts-demo` id 1067 (`market:read` + `ws:realtime`, pepper từ compose.env); `POST ws-ticket` 200/`expiresIn:30`; E2E widget staging `a3b23772`/`d3b9d356` có 30 dòng DEMO + giá thật, 0 console error. Chi tiết `docs/evidence/ws-ticket-machine/EVIDENCE_20261120.md`.
 
 ## Entry 563: Cold DataOps inventory 24.8s → ~7s (1 query SQL + cache 1h)
 
