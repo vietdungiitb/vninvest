@@ -5,7 +5,8 @@
 - **Deploy**: VPS pull dev, set `CORPORATE_ACTIONS_ENABLED=true`, `deploy-staging.sh` exit 0; container env = true; migrations 0008/0009 `[X]`; celery task registered 3 worker; `/api/health/` 200.
 - **E2E thật**: `sync_corporate_actions('VNM')` → `fetched=57, created=57, factors=48, applied=2584`; DB staging có 57 event / 48 factor / 2584 `adj_close`. Bars API `GET .../VNM/bars/?timeframe=D` → 200, 500 bar, **493 có `adj_close`** (vd close 54113.0 → adj_close 45072.48).
 - **Giải thích**: envelope `adjusted=false` + note 5 ex_date unparsed là hành vi per-date conservative đã thiết kế (D2/F2), không phải lỗi; client nên đọc `bar.adj_close`. Follow-up P3: thêm cờ `adjusted` per-bar.
-- **CHƯA CHẠY**: Playwright/visual regression với tài khoản thật. Flag giờ bật trên staging; production vẫn do owner quyết.
+- **Playwright E2E (đã chạy)**: skill `playwright-skill`, Chromium, staging `https://docker.edusuccess.vn`, login admin → `/stocks/VNM` render thật (VNM 51.400, +0.59%, realtime kết nối). Fetch bars qua `localStorage.access_token` → **200**, 500 bar / **493 `adj_close`** (sample 54113.0 → 45072.48). Screenshot `pw-vnm-chart.png` đã mở xem; lần chạy cuối 0 page error / 0 response ≥400. Xem §6 của evidence.
+- **Còn follow-up P3**: cờ `adjusted` per-bar (envelope vẫn `false` do 5 event unparsed — đúng thiết kế per-date). Flag giờ bật trên staging; production vẫn do owner quyết.
 
 ## Entry 578: Triệt để baseline + structured ingest + Q1/Q2 + FE build
 
