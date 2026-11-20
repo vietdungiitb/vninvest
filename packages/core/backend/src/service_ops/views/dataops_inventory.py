@@ -4,6 +4,38 @@ from ..envelope import envelope
 from .dataops_base import *
 
 
+#: PREDEFINED_SYMBOL_GROUPS dùng id thấp (`vn50`), nhưng cache lưu tên provider
+#: (`VNX50` / group_code `X50`). Ánh xạ ở đây thay vì gọi provider ngoài.
+_DB_GROUP_NAME_ALIASES = {'top100': 'VN100', 'vn50': 'VNX50'}
+
+
+def _db_group_symbols(group_id):
+    """Trả thành viên nhóm từ DB cache — KHÔNG gọi vnbroker/KBS.
+
+    `CachedSymbolGroup` + `CachedSymbolGroupMember` là SSOT đã sync từ provider
+    (22 nhóm / ~4k mã trên staging). Gọi `fetch_symbol_group_members()` ở đây
+    từng làm request inventory treo khi KBS chậm ⇒ FE dính skeleton vĩnh viễn.
+    """
+    from ..models import CachedSymbolGroup, CustomSymbolGroup
+
+    gid = str(group_id or '').strip().lower()
+    if gid.startswith('custom_'):
+        try:
+            custom = CustomSymbolGroup.objects.get(slug=gid[len('custom_'):], is_active=True)
+        except CustomSymbolGroup.DoesNotExist:
+            return []
+        return custom.clean_symbols()
+
+    name = _DB_GROUP_NAME_ALIASES.get(gid, gid.upper())
+    group = (
+        CachedSymbolGroup.objects.filter(is_active=True, group_name__iexact=name).first()
+        or CachedSymbolGroup.objects.filter(is_active=True, group_code__iexact=gid.upper()).first()
+    )
+    if group is None:
+        return []
+    return list(group.members.values_list('symbol', flat=True))
+
+
 class DataOpsInventoryView(SOCBaseView):
     """GET /api/soc/dataops/inventory/ — data warehouse inventory stats."""
 
@@ -19,7 +51,6 @@ class DataOpsInventoryView(SOCBaseView):
         from django.db.models.functions import TruncYear
 
         from market_data.models import DailyPrice
-        from market_data.vnbroker_adapter import fetch_symbol_group_members
         from market_serving.models import SymbolSnapshot
 
         from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
@@ -56,7 +87,7 @@ class DataOpsInventoryView(SOCBaseView):
         ]
         for g in all_groups:
             try:
-                syms = fetch_symbol_group_members(g['id'])
+                syms = _db_group_symbols(g['id'])
                 total = len(syms)
                 agg = DailyPrice.objects.filter(symbol__in=syms).aggregate(
                     earliest=Min('date'), latest=Max('date'),
