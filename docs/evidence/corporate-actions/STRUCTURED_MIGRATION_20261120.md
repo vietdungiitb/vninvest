@@ -40,7 +40,16 @@ Hệ quả: reservation D1 trong `PHASE0_AUDIT.md` (golden chỉ là test cơ h�
 ## 5. DEPLOY STAGING
 
 - VPS `/opt/vninvest` pulled `origin/dev` → `ffe511d1c`; `bash scripts/deploy-staging.sh --verify` **OK** (compose config, API health, container chết/restart, worker chạy ổn).
-- Deploy thật chỉ sau khi slice này merge (để VPS có thêm fix Admin + structured ingest) — ghi trạng thái cuối trong ledger Entry 578.
+- Deploy thật chỉ sau khi slice này merge (để VPS có thêm fix Admin + structured ingest).
+
+**Deploy thật đã chạy sau PR #472** (`89f9bb06`): VPS pull dev → `bash scripts/deploy-staging.sh` **exit 0**, "Deploy xong"; `core-api/core-beat/core-worker*/frontend` đều Up (core-api healthy). Post-deploy verify:
+
+```
+[X] market_data/0008_dailyprice_adj_close_adjfactor_corporateaction
+[X] market_data/0009_corporateaction_ambiguous_cash_pct_and_more
+celery inspect registered -> data_ingest.tasks.sync_corporate_actions (3 workers)
+GET https://docker.edusuccess.vn/api/health/ -> 200
+```
 
 ## 6. FLAG
 
