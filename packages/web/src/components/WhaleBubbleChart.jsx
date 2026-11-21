@@ -194,8 +194,17 @@ function formatOverlayPrice(value) {
   return `${numericValue.toLocaleString('vi-VN')} đ`;
 }
 
-function formatPanelTimestamp(epochMs, fallbackLabel) {
-  if (Number.isFinite(epochMs)) {
+// S1: label phiên YYYY-MM-DD → vi-VN. Giờ 12:00 để tránh lệch ngày khi parse
+// (trade_date BE là ngày phiên Asia/Ho_Chi_Minh, không gắn giờ).
+function formatTradeDateLabel(tradeDate) {
+  if (!tradeDate) return null;
+  const day = String(tradeDate).slice(0, 10);
+  const parsed = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return day;
+  return parsed.toLocaleDateString('vi-VN');
+}
+
+function formatPanelTimestamp(epochMs, fallbackLabel) {  if (Number.isFinite(epochMs)) {
     return new Date(epochMs).toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
@@ -499,7 +508,6 @@ function buildHoverPanelData(params, {
   institutionalStrengthByTimestamp,
   priceByTimestamp,
         speedByTimestamp,
-        priceContextSeries,
 }) {
   if (params?.componentType !== 'series') {
     return null;
@@ -566,6 +574,9 @@ export default function WhaleBubbleChart({
   symbolOptions = [],
   isEmbedded = false,
   env,
+  // S1: phiên được chọn (YYYY-MM-DD) từ click nến ở StockDetailPage.
+  // Chỉ dùng cho internal fetch (uncontrolled); null = phiên mới nhất.
+  tradeDate = null,
   // Controlled props for synchronization
   isControlled = false,
   externalSymbol,
@@ -671,6 +682,8 @@ export default function WhaleBubbleChart({
         timeframe,
         compact: 1,
         includeBaseline: false,
+        // S1: phiên được chọn từ click nến; vắng mặt = BE fallback phiên mới nhất.
+        ...(tradeDate ? { tradeDate: String(tradeDate).slice(0, 10) } : {}),
       });
       const snapshot = response?.data || response || {};
       const normalized = normalizeWhaleAnalyticsSnapshot(snapshot, timeframe);
@@ -683,10 +696,13 @@ export default function WhaleBubbleChart({
     } finally {
       setInternalLoading(false);
     }
-  }, [symbol, timeframe, isControlled, adapter]);
+  }, [symbol, timeframe, tradeDate, isControlled, adapter]);
 
   useEffect(() => {
     if (!isControlled) {
+      // S1: đổi ngày → xoá dữ liệu ngày cũ trước khi fetch (tránh flash sai phiên).
+      setInternalOrderData(null);
+      setInternalFlowData(null);
       fetchOrders();
     }
   }, [fetchOrders, isControlled]);
@@ -765,14 +781,6 @@ export default function WhaleBubbleChart({
       return { value: [Number(item.ts) * 1000, cvdVal >= 0 ? Number(item.strength || 0) : null] };
     }).filter((d) => d.value[1] !== null);
   }, [flowData]);
-  const flowSellStrengthSeries = useMemo(() => {
-    const cvdMap = {};
-    (flowData?.cvd_series || []).forEach((c) => { cvdMap[c.ts] = Number(c.cvd ?? 0); });
-    return (flowData?.strength_series || []).map((item) => {
-      const cvdVal = cvdMap[item.ts] ?? 0;
-      return { value: [Number(item.ts) * 1000, cvdVal < 0 ? Number(item.strength || 0) : null] };
-    }).filter((d) => d.value[1] !== null);
-  }, [flowData]);
   const hasAnyFlowData = flowCvdSeries.length > 0 || flowStrengthSeries.length > 0;
   const hasAnyChartData = totalOrders > 0 || hasAnyFlowData;
   const priceByTimestamp = useMemo(() => new Map(
@@ -828,7 +836,7 @@ export default function WhaleBubbleChart({
 
   useEffect(() => {
     setHoveredPanel(null);
-  }, [symbol, timeframe, orderData?.session_start, totalOrders]);
+  }, [symbol, timeframe, tradeDate, orderData?.session_start, totalOrders]);
 
   const infoPanelLineItems = useMemo(() => getPanelLineItems({
     t,
@@ -890,103 +898,6 @@ export default function WhaleBubbleChart({
         },
         metadata: bubble,
       }));
-
-    // Prepare series data
-    const series = [
-      {
-        name: t('whaleChart.buyFlow') || 'Mua chủ động',
-        data: bubbles.buy.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]], // Convert epoch seconds to ms for ECharts 'time' axis
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.2,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.8,
-              shadowBlur: 10,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
-        symbolSize: (val) => val[2],
-        itemStyle: { opacity: 1 },
-        emphasis: { scale: true, focus: 'self' },
-        tooltip: { show: true },
-        type: 'scatter',
-        animationDuration: 120,
-        animationDurationUpdate: 80,
-      },
-      {
-        name: t('whaleChart.sellFlow') || 'Bán chủ động',
-        data: bubbles.sell.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]],
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.2,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.8,
-              shadowBlur: 10,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
-        symbolSize: (val) => val[2],
-        itemStyle: { opacity: 1 },
-        emphasis: { scale: true, focus: 'self' },
-        tooltip: { show: true },
-        type: 'scatter',
-        animationDuration: 120,
-        animationDurationUpdate: 80,
-      },
-      {
-        name: t('whaleChart.internal') || 'Giao dịch nội bộ',
-        data: bubbles.internal.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]],
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.1,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.6,
-              shadowBlur: 8,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
-        symbolSize: (val) => val[2],
-        itemStyle: { opacity: 1 },
-        emphasis: { scale: true, focus: 'self' },
-        tooltip: { show: true },
-        type: 'scatter',
-        animationDuration: 120,
-        animationDurationUpdate: 80,
-      },
-      {
-        name: t('whaleChart.seriesFlowTrend', { window: windowSize, defaultValue: `Xu hướng dòng tiền (MA${windowSize})` }),
-        type: 'line',
-        data: maData.map(d => [d[0] * 1000, d[1]]),
-        smooth: true,
-        showSymbol: false,
-        lineStyle: { color: '#fbbf24', width: 2, type: 'dashed', opacity: 0.5 },
-        z: 1,
-      },
-    ];
 
     const topGrid = { left: 72, right: 64, top: 40, bottom: '47%' };
     const bottomGrid = { left: 72, right: 64, top: '57%', bottom: 62 };
@@ -1479,7 +1390,7 @@ export default function WhaleBubbleChart({
             <p className="text-sm italic">{t('whaleChart.selectSymbolToStart', { defaultValue: 'Chọn mã để bắt đầu' })}</p>
           </div>
         ) : !hasAnyChartData ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
+          <div data-testid="whale-bubble-empty" className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
             {isDegradedMode && (
               <div className="mx-6 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-200">
                 <div className="font-semibold">{degradedModeCopy.title}</div>
@@ -1489,6 +1400,9 @@ export default function WhaleBubbleChart({
             <Inbox className="h-16 w-16 opacity-30 text-slate-500" />
             <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe', { defaultValue: 'Không có dữ liệu' })}</p>
             <p className="text-xs">{isDegradedMode ? t('whaleChart.awaitingValidIntradayData', { defaultValue: 'Dữ liệu chi tiết của phiên này chưa đủ ổn định để hiển thị đầy đủ.' }) : t('whaleChart.tryDifferentTimeframe', { defaultValue: 'Thử khoảng thời gian khác' })}</p>
+            {tradeDate ? (
+              <p className="text-xs text-slate-400">{t('whaleAnalytics.sessionFocusLabel', { defaultValue: 'Phiên đang xem' })}: {formatTradeDateLabel(tradeDate)}</p>
+            ) : null}
           </div>
         ) : (
           <div className="h-full w-full flex flex-col">
@@ -1514,6 +1428,11 @@ export default function WhaleBubbleChart({
                           </span>
                         </div>
                         <div className="mt-1 text-[11px] text-slate-500">{t('whaleAnalytics.filterVisibleCount', { count: visibleBubbleCount, defaultValue: `${visibleBubbleCount} bubble đang hiển thị` })}</div>
+                        {tradeDate ? (
+                          <div className="mt-1 text-[11px] font-semibold text-cyan-300" data-testid="whale-bubble-session">
+                            {t('whaleAnalytics.sessionFocusLabel', { defaultValue: 'Phiên đang xem' })}: {formatTradeDateLabel(tradeDate)}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <select

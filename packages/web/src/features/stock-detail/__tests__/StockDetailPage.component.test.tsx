@@ -8,6 +8,8 @@ const mockLoadBlocking = vi.fn();
 const mockRefreshAdvisoryData = vi.fn();
 const mockSetSelectedSession = vi.fn();
 
+const h2 = vi.hoisted(() => ({ bubbleProps: {} as Record<string, any> }));
+
 let mockModelReturn = {};
 
 vi.mock("../hooks/useStockDetailPageModel.js", () => ({
@@ -33,7 +35,10 @@ vi.mock("../../../components/VNStockChartPanel.js", () => ({
 }));
 
 vi.mock("../../../components/WhaleBubbleChart.jsx", () => ({
-  default: () => createElement("div", { "data-testid": "whale-bubble" }, "whale"),
+  default: (props: any) => {
+    h2.bubbleProps = props;
+    return createElement("div", { "data-testid": "whale-bubble" }, "whale");
+  },
 }));
 
 vi.mock("../../../context/LangContext.js", () => ({
@@ -193,5 +198,15 @@ describe("StockDetailPage", () => {
     const { createCoreApiAdapter } = require("../../../adapters/coreApiAdapter.js");
     // Adapter đã được mock ở top-level, không gọi thật trong test này (chỉ StockDetailPage gọi getWatchlists ở useEffect, đã mock)
     expect(createCoreApiAdapter).toBeDefined();
+  });
+
+  it("(d) S1 — forward selectedSession.tradeDate cho bubble chart", () => {
+    mockModelReturn = baseModel({ selectedSession: null });
+    renderPage("TPB");
+    expect(h2.bubbleProps.tradeDate ?? null).toBeNull();
+
+    mockModelReturn = baseModel({ selectedSession: { tradeDate: "2026-11-20", timestamp: 1763596800000 } });
+    renderPage("TPB");
+    expect(h2.bubbleProps.tradeDate).toBe("2026-11-20");
   });
 });
