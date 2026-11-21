@@ -90,7 +90,16 @@ Dispatch đã chạy **thật thành công**: orchestrator `sync_all_corporate_a
 
 Kết luận: code + deploy + dispatch đều đúng; dữ liệu toàn mã sẽ tự cập nhật khi worker rảnh (dynamic beat 18:30 vẫn chạy). Muốn ép ngay cần owner dọn backlog queue `celery` hoặc tăng concurrency riêng cho `enrichment_offhours`.
 
-**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Lệnh chạy tay (khi worker rảnh):
+### Cập nhật cuối cùng — root cause thực sự của "không consume"
+
+Sau khi fix queue (Entry 591), orchestrator chạy thành công thật:
+`sync_all_corporate_actions[74cce4f7...] succeeded in 68.8s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 0}`, và subtask đầu tiên `sync_corporate_actions['41I1G7000']` đã `received`.
+
+Tuy nhiên `celery inspect active` cho thấy worker `vninvest-core-worker` chỉ có **2 slot** (`ForkPoolWorker-1/2`), cả hai liên tục bị chiếm bởi task hệ thống khác chạy rất lâu: `fetch_and_upsert_price_board` (~10 phút/lần), `detect_order_flow`, `prefetch_realtime_ticker_shard` (5 shard). Ngoài ra Redis `celery` LIST vẫn ~501k task tồn đọng. ⇒ 1899 subtask corporate actions xếp đúng queue sạch nhưng **không bao giờ có slot để chạy** trong điều kiện staging hiện tại.
+
+Đây là **giới hạn concurrency/quản trị queue của staging**, không phải lỗi code corporate actions (mọi bước đã được chứng minh chạy đúng: raw SQL 1899 mã, apply_async, queue option, test 6/6 + 53/53, deploy healthy). Lỗi `InvalidCursorName` trong log là từ task `identity_access.cross_ref_pat_audit_events`, không phải pipeline này.
+
+**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Để chạy ngay cần staging owner tăng concurrency hoặc dành worker riêng cho `enrichment_offhours` (hiện worker dùng chung 2 slot với 501k task khác). Lệnh chạy tay (khi có slot):
 ```
 docker exec -i vninvest-core-api sh -c 'cd /app/src && python manage.py shell' \
   <<< 'from data_ingest.tasks import sync_all_corporate_actions; print(sync_all_corporate_actions())'
