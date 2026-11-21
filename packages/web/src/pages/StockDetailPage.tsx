@@ -303,6 +303,9 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
         selectedSymbol: symbol,
         env,
         isEmbedded: false,
+        // S1: forward phiên được chọn từ click nến → bubble fetch đúng trade_date.
+        // null = giữ hành vi cũ (phiên mới nhất do BE fallback).
+        tradeDate: selectedSession?.tradeDate ?? null,
       })
     )
   );

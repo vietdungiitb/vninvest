@@ -3,14 +3,14 @@ import React, { createElement, useState, useCallback, useMemo, useRef, useEffect
 import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
-import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries, mapTapeTradesToEntries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
+import { mapToWhaleOrders, mapToCvdSeries, mapTapeTradesToEntries, mapAdvisorySessionToResult } from '../utils/VNInvestSignalAdapter.js';
 import { mapComparisonOverlaysToSymbols } from '../utils/comparisonOverlayAdapter.js';
-import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 import { useI18n } from '../context/LangContext.js';
 import { useTenantTier } from '../adapters/useTenantTier.js';
 import { useTrustTelemetry } from '../hooks/useTrustTelemetry.js';
 import { ensureLicenseTrustAnchor } from '../lib/licenseTrustAnchor.js';
+import { resolveSessionFromChartItem } from '../utils/chartSessionDate.js';
 
 // Trust anchor cho key license offline (JWK public kid=primary, nhung vao bundle
 // la chu y — khong phai secret). Nap 1 lan luc module load, truoc khi widget verify.
@@ -222,7 +222,6 @@ export default function VNStockChartPanel({
   }, [nextBar, adapter]);
 
   const [internalBars, setInternalBars] = useState([]);
-  const [visibleRange, setVisibleRange] = useState(null);
   // W-A: advisory session V2 (BE native) + loading; chi fetch khi pro
   // (dock tab advisory cua widget bi tier-gate dock_pro — free fetch la thua).
   const [advisorySession, setAdvisorySession] = useState(null);
@@ -306,21 +305,7 @@ export default function VNStockChartPanel({
     // M-2 (B3 W-C): xoa bars ma cu khi doi symbol/timeframe/period (E4) —
     // tranh flash bars cu + nhanh empty co co hoi kich dung.
     setInternalBars([]);
-    setVisibleRange(null);
   }, [symbol, activeTimeframe, activePeriod]);
-
-  const enrichedBars = useMemo(() => mapToOHLCVBars(internalBars), [internalBars]);
-
-  const candlesForHook = useMemo(() => {
-    return enrichedBars.map((bar) => ({
-      ...bar,
-      time: bar.time ?? bar.timestamp ?? (bar.date instanceof Date ? bar.date.getTime() : new Date(bar.date).getTime()) ?? bar.index,
-    }));
-  }, [enrichedBars]);
-
-  const startIndex = visibleRange ? visibleRange.startIndex : 0;
-  const endIndex = visibleRange ? visibleRange.endIndex : 0;
-  const whaleTimes = useViewportWhaleMarkers(candlesForHook, startIndex, endIndex);
 
   const mappedWhaleOrders = useMemo(() => {
     // T1.4 R-1: BE trả matched_value/ts — map đầy đủ alias, skip khi thiếu price để không plot tại 0
@@ -346,21 +331,18 @@ export default function VNStockChartPanel({
   // Demo-parity: KHONG truyen custom panes — dung DEFAULT_PANES cua widget.
 
   const handleVisibleRangeChange = useCallback((range) => {
-    setVisibleRange(range);
     onVisibleRangeChange?.(range);
   }, [onVisibleRangeChange]);
 
   const handleClick = useCallback((moreProps) => {
-    if (moreProps?.currentItem) {
-      const item = moreProps.currentItem;
-      const parsedDate = item.date instanceof Date ? item.date : new Date(item.date);
-      const pad = (v) => String(v).padStart(2, '0');
-      const dateStr = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}`;
-      onSessionChange?.({
-        tradeDate: dateStr,
-        timestamp: parsedDate.getTime(),
-      });
-    }
+    // S2: resolve phiên theo múi Asia/Ho_Chi_Minh + guard date invalid
+    // (click vùng trống → null → bỏ qua, không set session rác).
+    const session = resolveSessionFromChartItem(moreProps?.currentItem);
+    if (!session) return;
+    onSessionChange?.({
+      tradeDate: session.tradeDate,
+      timestamp: session.timestamp,
+    });
   }, [onSessionChange]);
 
   const handleBarsChange = useCallback((bars) => {

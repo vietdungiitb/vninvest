@@ -37,7 +37,7 @@ Khi click 1 cây nến trên chart chính của `/stocks/:symbol`, bubble chart 
 **SCOPE (chạm)**:
 - `packages/web/src/pages/StockDetailPage.tsx` (forward `tradeDate={selectedSession?.tradeDate ?? null}` cho `WhaleBubbleChart`)
 - `packages/web/src/components/WhaleBubbleChart.jsx` (nhận prop `tradeDate`, đưa vào `fetchOrders` + deps, reset `internalOrderData` khi đổi ngày, header in ngày đang xem, empty-state nêu ngày)
-- Test mới: `packages/web/src/components/__tests__/whale-bubble-tradedate.component.test.jsx` (mock adapter, assert query có `trade_date=`) + bổ sung `StockDetailPage.component.test.tsx` (assert bubble nhận đúng `tradeDate` từ `selectedSession`)
+- Test mới: `packages/web/src/components/__tests__/whale-bubble-tradedate.component.test.tsx` (mock adapter, assert query có `trade_date=`) + bổ sung `StockDetailPage.component.test.tsx` (assert bubble nhận đúng `tradeDate` từ `selectedSession`)
 - i18n key mới nếu cần (qua `t(key, {defaultValue})` đúng pattern B2 trong file)
 
 **AC (Given/When/Then)**:
