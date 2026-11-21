@@ -1,3 +1,14 @@
+## Entry 585: Phase A S3 bounded async audit write (PASS gates + B8 PASS)
+
+- **Date**: 2026-11-21 · **Type**: code (BE) · **Branch**: `feat/fast-data-a` · **Claim**: `fast-data-a` (in-progress) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
+- **Thay đổi**: `ops_audit/middleware.py` (+78/-13): ThreadPoolExecutor(2) + sync fallback + logged failures + `flush_audit_events`; test mới `test_async_audit_write.py` (4 test, TDD fail-before: symbol 0 hit trên base); `test_tenantreg_b.py` (+4/-2: drain trước assert).
+- **Gates (VPS, DB tạm `fastdata_a`, direct core-db)**: 68 tests OK / 2.163s. Phát hiện: worker thread INSERT ngoài TestCase tx ⇒ test dùng resource_id duy nhất + tearDown dọn (commit riêng).
+- **B8 re-audit**: PASS (0 blocker, 0 major). 1 minor backlog: cap backpressure `_pending_futures`.
+- **S0**: api 67% / redis 84% MEM — S4 tăng worker trong container KHÔNG khả thi; db CPU 10%, pgbouncer CPU 26.6%; `SHOW POOLS` CHƯA XÁC MINH.
+- **Đính chính**: `cross_ref_pat_audit_events` KHÔNG cần đổi code (task 60s vs delay sub-second) — claim đã ghi thừa, evidence này làm rõ.
+- **CHƯA CHẠY**: full BE suite, E2E percentile sau deploy (cần merge + deploy — Owner-gated).
+- **Next**: PR `feat/fast-data-a` → merge → deploy staging → verify E2E → cleanup (DROP `fastdata_a`/`test_fastdata_a`, remove `/tmp/wt-*`) → claim done.
+
 ## Entry 580: Service sync corporate actions cho TOÀN BỘ mã (fix beat gap)
 
 - **Date**: 2026-11-21 · **Type**: code + audit · **Branch**: `feat/corp-actions-all-symbols` · **Claim**: `45717afc4` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
