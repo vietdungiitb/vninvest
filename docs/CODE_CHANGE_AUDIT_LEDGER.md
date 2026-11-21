@@ -1,3 +1,11 @@
+## Entry 593: Worker riêng bị VCI rate-limit (418) — dừng, giữ thiết kế stagger
+
+- **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-rate-limit` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).
+- **Thử**: tạo `vninvest-core-worker-corp` (`-Q enrichment_offhours -c 8`, copy env từ worker cũ). 91 subtask succeeded nhưng **100% fetched=0**: 45× 502, 37× 418, 6× mã bond/phái sinh bị từ chối, 3× timeout. Probe VNM ngay sau đó cũng **418** kể cả fallback `events()` ⇒ VCI chặn tạm sau lượt dồn ~1900 request.
+- **Xử lý**: dừng worker riêng ngay (`docker rm -f`), không đốt thêm lượt. DB vẫn 57/48/2584. Còn 3645 message trong queue `enrichment_offhours` chờ (sẽ fetched=0 đến khi VCI hết chặn).
+- **Kết luận vận hành**: không tăng concurrency cho backfill; giữ `countdown_seconds=2` (~1h/1899 mã) như thiết kế beat 18:30, hoặc chia đợt. Flag staging vẫn true; code đúng (test 6/6 + 53/53, orchestrator succeeded 1899).
+- **Next**: khi VCI hết chặn, chạy lại orchestrator mặc định; theo dõi tỉ lệ `fetched>0` thay vì số task succeeded.
+
 ## Entry 592: Root cause cuối — worker concurrency 2 bị chiếm bởi task hệ thống
 
 - **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-queue-report` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối cùng).

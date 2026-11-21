@@ -99,7 +99,18 @@ Tuy nhiên `celery inspect active` cho thấy worker `vninvest-core-worker` ch�
 
 Đây là **giới hạn concurrency/quản trị queue của staging**, không phải lỗi code corporate actions (mọi bước đã được chứng minh chạy đúng: raw SQL 1899 mã, apply_async, queue option, test 6/6 + 53/53, deploy healthy). Lỗi `InvalidCursorName` trong log là từ task `identity_access.cross_ref_pat_audit_events`, không phải pipeline này.
 
-**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Để chạy ngay cần staging owner tăng concurrency hoặc dành worker riêng cho `enrichment_offhours` (hiện worker dùng chung 2 slot với 501k task khác). Lệnh chạy tay (khi có slot):
+### Thử worker riêng — VCI rate-limit (418)
+
+Được phép đổi cấu hình staging, tôi tạo worker riêng `vninvest-core-worker-corp` (cùng image, `-Q enrichment_offhours -c 8`, copy env từ worker cũ). Kết quả:
+
+- 1899 subtask bắt đầu consume thật: **91 task succeeded** trong vài phút (8 slot, ~3.7s/task).
+- **Nhưng 100% `fetched=0`**: 45× `502 Bad Gateway`, 37× `418`, 6× mã trái phiếu/phái sinh bị provider từ chối, 3× HTTPS timeout.
+- Probe lại ngay `fetch_corporate_actions('VNM', ...)` → **`418`** (kể cả fallback `events()`) ⇒ **VCI đang chặn tạm** sau lượt dồn ~1900 request + các probe trước đó.
+- Đã **dừng worker riêng ngay** (`docker rm -f vninvest-core-worker-corp`) để không đốt thêm lượt. Còn 3645 message trong `enrichment_offhours` (subtask bị reject) — sẽ tự chạy khi worker cũ rảnh, nhưng VCI vẫn 418 nên vẫn `fetched=0`. DB không đổi (57/48/2584).
+
+Bài học vận hành: chạy full backfill 1899 mã liên tục bị VCI rate-limit. Cần backfill **chậm** (countdown 2s/mã như thiết kế ban đầu — ~1h) hoặc chia nhỏ theo đợt, không tăng concurrency. Dynamic beat 18:30 với stagger=2s là thiết kế đúng; worker riêng concurrency 8 là sai trong trường hợp này và đã bị dừng.
+
+**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Lệnh chạy tay (khi VCI hết chặn, dùng stagger mặc định 2s — KHÔNG tăng concurrency):
 ```
 docker exec -i vninvest-core-api sh -c 'cd /app/src && python manage.py shell' \
   <<< 'from data_ingest.tasks import sync_all_corporate_actions; print(sync_all_corporate_actions())'
