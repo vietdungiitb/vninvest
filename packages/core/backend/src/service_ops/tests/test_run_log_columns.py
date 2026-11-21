@@ -57,3 +57,16 @@ class QueueTierLookupTests(TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(row.parent_run_log_id, parent.id)
         self.assertTrue(_has_inflight_child_run(parent.id))
+
+    def test_lookup_indexes_exist(self):
+        """O4: khóa regression — ai revert lookup về JSONB thì index thiếu sẽ đỏ ở đây."""
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT indexname FROM pg_indexes WHERE tablename = 'service_ops_servicerunlog'"
+            )
+            names = {row[0] for row in cursor.fetchall()}
+        self.assertIn('runlog_svc_trg_tier_time_idx', names)
+        self.assertIn('runlog_trigger_idx', names)
+        self.assertIn('runlog_parent_idx', names)

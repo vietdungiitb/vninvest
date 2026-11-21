@@ -39,6 +39,12 @@ def backfill_run_log_columns(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
+    # O1 (B8 re-audit): backfill ~1.78M row KHÔNG được nằm chung transaction
+    # với DDL — giữ lock suốt migrate sẽ block scheduler writes và treo deploy.
+    # atomic=False: mỗi statement commit riêng; fail giữa chừng chạy lại
+    # migrate (RunPython idempotent — skip row đã đồng bộ).
+    atomic = False
+
     dependencies = [
         ('service_ops', '0013_configchangeaudit_rule_request_action'),
     ]
