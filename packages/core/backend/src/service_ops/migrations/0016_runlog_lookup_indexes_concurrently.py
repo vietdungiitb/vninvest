@@ -1,5 +1,7 @@
 # S1 (Phase B): index cho lookup cột phẳng — CONCURRENTLY để không block
-# write trên bảng ~1.8M row/1.2GB. atomic=False bắt buộc với CONCURRENTLY.
+# write trên bảng ~1.78M row/1.2GB. atomic=False bắt buộc với CONCURRENTLY.
+# CONCURRENTLY fail giữa chừng để lại INVALID index → DROP CONCURRENTLY rồi
+# migrate lại (xem evidence runbook).
 from django.contrib.postgres.operations import AddIndexConcurrently
 from django.db import migrations, models
 
@@ -9,7 +11,7 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ('service_ops', '0014_runlog_flat_lookup_columns'),
+        ('service_ops', '0015_runlog_backfill_lookup_columns'),
     ]
 
     operations = [
