@@ -1,3 +1,12 @@
+## Entry 587: Phase B S1 ServiceRunLog flat lookup columns (gates + B8 PASS x2)
+
+- **Date**: 2026-11-21 · **Type**: code (BE) + migration · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (in-progress) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2.
+- **Thay đổi**: 3 cột + `save()` dual-write + 3 index (composite + 2 single) · migration 0014 (AddField + backfill batched, `atomic=False`) + 0015 (CONCURRENTLY x3, `atomic=False`) · 5 lookup đổi sang cột · test mới 5 test (functional + index tồn tại).
+- **Gates (VPS, DB tạm)**: fail-before đỏ (4 errors base) · pass-after 76 tests OK · makemigrations --check clean · EXPLAIN Index Scan đúng index · system-design SẠCH (143 migration) · pre-push-gate 36 PASS.
+- **B8**: v1 NEED_REVISION (O1) → fix atomic=False + index test → v2 PASS.
+- **CHƯA CHẠY**: đo mean pg_stat sau deploy 1h (mục tiêu < 50ms); backfill 1.78M row chạy trong entrypoint migrate lúc deploy.
+- **Next**: PR → merge → deploy staging → đo pg_stat + verify E2E → Phase C (Owner-gated).
+
 ## Entry 585: Phase A S3 bounded async audit write (PASS gates + B8 PASS)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) · **Branch**: `feat/fast-data-a` · **Claim**: `fast-data-a` (in-progress) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
