@@ -1,3 +1,12 @@
+## Entry 594: Phase A S3 lên staging + verify (đóng slice `fast-data-a`) — (đánh lại số từ 586 do trùng với entry corp agent)
+
+- **Date**: 2026-11-21 · **Type**: code + deploy + verify · **Branch**: `feat/fast-data-a` → `dev` (PR #482 merged `6eccd99`, merge-commit) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
+- **Deploy**: `deploy-staging.sh` exit 0 (pull gồm cherry-pick S3). **Verify E2E**: stock API vẫn ~10s (audit INSERT không phải dominant trong view-time — đúng như peer review đã hiệu chỉnh); alert-center/summary 450ms; hết 301 (F-07 giữ nguyên). Percentile 2h vẫn cao nhưng lẫn traffic pre-deploy — cần đo lại 1h thuần sau.
+- **Gates**: B7 68 tests OK / 2.163s (VPS, DB tạm) · B8 PASS (0 blocker/major) · pre-push-gate 36 PASS · ledger-entry PASS.
+- **Cleanup**: DROP `fastdata_a`/`test_fastdata_a`, remove `/tmp/wt-fastdata` + `/tmp/wt-devbase`. Claim `fast-data-a` → done.
+- **Trung thực**: S3 một mình KHÔNG hạ được 10s view-time. Đòn tiếp theo là Phase B (S1 index JSONB + S2 throttle coverage) — slice riêng, claim riêng.
+- **GHI LESSON MỚI**: chưa (phiên này chưa mắc lỗi đủ chuẩn: 1 lần suýt vi phạm L-F07 đã tự bắt; hook normalize-eol chặn 1 lần là quy trình hoạt động đúng).
+
 ## Entry 592: Root cause cuối — worker concurrency 2 bị chiếm bởi task hệ thống
 
 - **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-queue-report` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối cùng).
@@ -19,15 +28,6 @@
 - **Dispatch thật**: orchestrator chạy thành công `succeeded in 64.9s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 2}` (log worker), kèm 2 lần retry với countdown=0.
 - **Blocker cuối**: Redis db3 `celery` queue = **499.126 task tồn đọng** của hệ thống khác ⇒ worker không consume được 1899 subtask (`0 succeeded`, DB vẫn 57 event / 48 factor / 2584 adj). **Không xóa queue chung** — báo staging owner. Dynamic beat 18:30 vẫn tự chạy; dữ liệu toàn mã sẽ cập nhật dần khi worker rảnh. Muốn ép ngay: owner dọn backlog hoặc tăng concurrency riêng cho `enrichment_offhours`.
 - **Context các lỗi đã fix trong chuỗi dispatch**: OOM (Entry 586, raw SQL), `countdown` kwarg (Entry 588, apply_async), broker URL (`app.set_current()`), migration conflict (fake). Code corporate actions đúng, test 53/53 + 6/6 xanh.
-
-## Entry 592: S1 deploy lần 2 — backfill keyset pagination + verify (claim done)
-
-- **Date**: 2026-11-21 · **Type**: deploy-recovery + verify · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (done) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
-- **Sự cố 2**: 0015 backfill `qs.iterator()` crash `InvalidCursorName` qua pgbouncer transaction mode (server cursor chết giữa chunk) → api crash-loop.
-- **Fix repo (0015)**: keyset pagination (`pk__gt` + LIMIT, không server cursor) — pooler-safe.
-- **Fix staging**: DROP 3 index partial? KHÔNG — index đã VALID; chạy single-statement SQL backfill (1.233.565 row / 1m45s); verify mismatch = 0; `migrate service_ops 0016 --fake` (index đã tồn tại + đúng định nghĩa).
-- **Verify sau deploy sạch**: services healthy; pg_stat reset → chờ 10 phút đo mean tier-lookup mới; Playwright E2E.
-- **Claim**: `fast-data-b` → done. Next: Phase C (S2) slice riêng; minor backlog: cap backpressure `_pending_futures`.
 
 ## Entry 589: Phase B S1 deploy-fix — tách migration 0014/0015/0016 (B8 v3 PASS)
 
