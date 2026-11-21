@@ -1,3 +1,13 @@
+## Entry 584: Deploy F-07 lên staging + verify hết 301 (đóng slice `stock-slow-load` / `stock-f07-slash`)
+
+- **Date**: 2026-11-21 · **Type**: deploy + verify · **Branch**: `feat/stock-f07-slash` → `dev` (PR #480 merged `45bf2862f`, merge-commit) · **Evidence**: `docs/evidence/stock-slow-load/FIX_GATES_20261121.md` (§VERIFY).
+- **Deploy**: `scripts/deploy-staging.sh` exit 0 (VPS pull dev gồm cherry-pick 0071af48e), services healthy, frontend rebuild bundle mới.
+- **Verify staging** (Playwright capture `/stocks/VIC`): `200 .../session-facts/VIC/cvd/?window=1h` — **không còn 301**. 2 console 404 còn lại đúng như dự kiến (advisory/billing "no data").
+- **Trung thực**: stock API vẫn ~9–12s; auth gate dao động 1,8–8,5s/lần chạy → systemic chưa hết (F-01/F-02, Owner-gated).
+- **Đóng claim**: `stock-slow-load` → done (F-07 shipped+verified; R2 giữ 0 có lý do; F-04 giữ nguyên by design). `stock-f07-slash` → done.
+- **Next slices** (Owner đã duyệt hướng): F-01 (giới hạn audit-write, có điều kiện — kèm update `cross_ref_pat_audit_events` + test tenantreg_b) · F-03 (gộp bootstrap tuần tự `PortfolioContext.js:599-642`).
+- **Gates**: check-ledger-entry PASS. Pre-push-gate trên feat branch: 36 PASS / 0 FAIL.
+
 ## Entry 583: Fix F-07 trailing slash `getSessionFactsCvd` + R2/F-04 kết luận (slice `stock-slow-load`)
 
 - **Date**: 2026-11-21 · **Type**: code + audit · **Branch**: `docs/allsymbols-close-claims` · **Claim**: `stock-slow-load` (in-progress) · **Evidence**: `docs/evidence/stock-slow-load/FIX_GATES_20261121.md` · **Plan**: `docs/PLAN_STOCK_SLOW_LOAD_FIX_20261121.md`.
