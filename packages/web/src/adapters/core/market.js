@@ -290,8 +290,11 @@ export function createMarketClient({ coreGet, corePost }) {
       const query = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
       ).toString();
+      // F-07: trailing slash bat buoc — BE route co slash
+      // (`core-route-manifest.json`: `/core/v1/session-facts/<str:symbol>/cvd/`);
+      // thieu slash Django APPEND_SLASH tra 301, mat ~8.7s/request.
       return coreGet(
-        `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/cvd${query ? `?${query}` : ""}`
+        `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/cvd/${query ? `?${query}` : ""}`
       ).catch((err) => {
         if (err && err.status === 404) return null;
         throw err;
