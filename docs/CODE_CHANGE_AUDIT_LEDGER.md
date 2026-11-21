@@ -1,3 +1,13 @@
+## Entry 598: Phase C S2 — coverage refresh tự throttle phía callee (gates + B8 PASS, chờ deploy)
+
+- **Date**: 2026-11-21 · **Type**: code (BE) + test · **Branch**: `feat/phase-c-s2` → `dev` (PR chưa mở) · **Claim**: `phase-c-s2` · **Plan**: `docs/PLAN_PHASE_C_S2_20261121.md` REV.1 · **Evidence**: `docs/evidence/perf/phase-c-s2-gates.md`, `phase-c-s2-plan-audit.md` (B3 NEED_REVISION→round 2 AGREE), `phase-c-s2-reaudit.md` (B8 PASS).
+- **Vấn đề**: post-ingest loop gọi `refresh_global_symbol_coverage` từng mã, mỗi lần ~20 query nặng (aggregate+first+count trên bảng triệu row + 5 upsert) — đo fail-before trên VPS: refresh lần 2 tốn 22 queries (str) / 21 (instance).
+- **Fix** (`market_data/global_symbol_coverage.py`, +91/-6, không đổi signature, không migration, KHÔNG chạm `data_ingest/tasks.py`): skip khi đủ 5 rows + cùng `detail.reference_trade_date` + cached state ∈ {FRESH,WARM} + `age < T` strict (T=`GLOBAL_MARKET_DATA_COVERAGE_THROTTLE_SECONDS`, default 600s) + short-circuit T≤0; skip luôn registry tail; atomic dời vào persist path ⇒ skip path 2 queries (str) / 1 (instance), 0 transaction overhead.
+- **An toàn**: readers fail-safe (`promotion_fast_path` MISSING/STALE→repair); worst-case trễ repair ≤600s; registry summary stale ≤T (hiển thị). Test mới 6 (AC1/AC1b/AC1c/AC3/AC4 + O7), không sửa test cũ.
+- **Gates (VPS, DB tạm `phasec_s2`, đã DROP + verify worktree mất)**: fail-before RED 2 đúng thiết kế; pass-after **30/30 OK** (24 cũ + 6 mới); makemigrations no-changes; tsc 0; check-multi-agent PASS; pre-push-gate 36/36.
+- **B8 re-audit**: PASS (0 blocker/major; M1 minor: age âm khi T>0 vẫn skip — vô hại production, chấp nhận, không sửa để giữ nguyên B8).
+- **CHƯA CHẠY**: deploy staging + verify pg_stat/queue/E2E (AC6, Owner-gated). Next: PR → merge → deploy → đo.
+
 ## Entry 597: Probe TCBS 3.8.2 — có events/dividends, thiếu JWT + bug wrap lỗi
 
 - **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/tcbs-events-probe` · **Claim**: `tcbs-events-probe` (`58e1a5887`) · **File**: `docs/AUDIT_TCBS_COMPANY_EVENTS_20261121.md`.
