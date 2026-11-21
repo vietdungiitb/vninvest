@@ -45,6 +45,16 @@
 - Worst-case đã lượng hóa (audit round 2): truth tụt FRESH→STALE trong cửa sổ T ⇒ trễ repair ≤ 600s, không mất hẳn (planner + promotion đọc state cũ, fail-safe hướng repair).
 - Registry summary (`freshness_state_summary`) có thể stale ≤ T — chỉ là dữ liệu hiển thị; planner/promotion đọc coverage trực tiếp.
 
-## CHƯA CHẠY
+## AC6 — deploy + verify staging (chạy thật 2026-11-21 sau merge PR #501)
+
+- **Deploy**: `bash scripts/deploy-staging.sh` exit 0 (merge commit `e97b70ba`); `vninvest-core-api Up (healthy)`; không migration mới (makemigrations clean); không crash-loop.
+- **Queue** (10 phút): `celery` 504028 → 504117 (+89 trên nền 504k backlog hệ thống khác = noise); `enrichment_offhours` 3454 → 3439 (drain). **Không dispatch storm**.
+- **pg_stat_statements queryid-level** (300s): lookup coverage +6.320 vs UPDATE chỉ-bump-`last_verified_at` +6.318 — lockstep 1:1 ⇒ hiện tại hầu hết refresh vẫn recompute (không đổi giá trị, chỉ bump timestamp).
+- **Nguyên nhân (đo thật, không đoán)**: `SELECT freshness_state, count(*)`: STALE 5395 + MISSING 2891 = 85% rows **không đủ điều kiện skip** (guard O3 đúng thiết kế — repair đang pending do VCI rate-limit chặn backfill, Entry 595). Chỉ FRESH 1038 + WARM 386 (15%) được skip.
+- **Kết luận trung thực**: skip đã live (code trên staging) và đúng (unit test 2/1 query); production skip rate hiện thấp vì staging coverage đang STALE-pinned — đúng hành vi guard, không phải bug. Đo lại khi VCI hết chặn + backfill xong.
+- **Nhiễu phát hiện, KHÔNG chạm**: worker log có lỗi sẵn của slice khác (`signal_intelligence.tasks`: `TypeError _b02_mark_run_failed_on_crash() missing exc`, `UnboundLocalError datetime`) — báo Owner, ngoài scope.
+- **Còn nợ**: percentile E2E 1h thuần sau deploy (cần traffic mới); re-measure pg sau khi backfill xong.
+
+## CHƯA CHẠY (lúc viết evidence)
 
 - Deploy staging + verify pg_stat/queue-depth/E2E (AC6) — Owner-gated (cần merge PR + `deploy-staging.sh`).
