@@ -3,7 +3,10 @@ RequestTraceMiddleware — injects X-Request-ID into every request/response.
 
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 """
+import collections
+import concurrent.futures
 import logging
+import threading
 import time
 import uuid
 
@@ -12,6 +15,59 @@ from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
 from .models import AuditEvent
 
 logger = logging.getLogger(__name__)
+
+
+# S3 (Phase A — fast data service): audit write rời critical path.
+# Sync Django chạy dưới daphne trên shared thread (thread_sensitive=True) nên
+# INSERT sync mỗi request làm mọi request xếp hàng. Executor RIÊNG có giới hạn
+# (2 worker) để ghi audit không chặn response; submit lỗi (shutdown) ⇒ fallback
+# sync + log; worker lỗi ⇒ log warning (KHÔNG nuốt âm thầm, KHÔNG raise ra caller).
+audit_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix='audit-write',
+)
+_pending_futures: collections.deque = collections.deque()
+_pending_lock = threading.Lock()
+
+
+def _audit_write_done(future):
+    with _pending_lock:
+        try:
+            _pending_futures.remove(future)
+        except ValueError:
+            pass
+    try:
+        future.result()
+    except Exception as exc:  # noqa: BLE001 — log rồi bỏ, không raise ra request
+        logger.warning('RequestTraceMiddleware: background audit write failed: %r', exc)
+
+
+def _submit_audit_event(payload):
+    try:
+        future = audit_executor.submit(AuditEvent.objects.create, **payload)
+    except RuntimeError:
+        # Executor đang shutdown: ghi sync để không mất dòng (fail-closed).
+        logger.warning('RequestTraceMiddleware: executor busy/shutdown, sync fallback')
+        AuditEvent.objects.create(**payload)
+        return
+    with _pending_lock:
+        _pending_futures.append(future)
+    future.add_done_callback(_audit_write_done)
+
+
+def flush_audit_events(timeout=10):
+    """Chờ các audit write đang chờ xong. Dùng cho test (tenantreg_b)."""
+    deadline = time.perf_counter() + timeout
+    while True:
+        with _pending_lock:
+            pending = list(_pending_futures)
+        if not pending:
+            return True
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            return False
+        done, _ = concurrent.futures.wait(pending, timeout=min(remaining, 0.5))
+        if not done:
+            continue
 
 
 class RequestTraceMiddleware:
@@ -71,22 +127,22 @@ class RequestTraceMiddleware:
             actor_label = user.get_username() if getattr(user, 'is_authenticated', False) else 'anonymous'
             duration_ms = int((time.perf_counter() - started_at) * 1000)
 
-            AuditEvent.objects.create(
-                actor_user_id=actor_user_id,
-                actor_label=actor_label or 'anonymous',
-                tenant_id=str(getattr(tenant, 'public_id', '') or ''),
-                action=AuditEvent.ActionChoices.ACCESS,
-                resource_type='HttpRequest',
-                resource_id=path[:64],
-                request_id=request_id,
-                ip_address=client_ip,
-                metadata={
+            _submit_audit_event({
+                'actor_user_id': actor_user_id,
+                'actor_label': actor_label or 'anonymous',
+                'tenant_id': str(getattr(tenant, 'public_id', '') or ''),
+                'action': AuditEvent.ActionChoices.ACCESS,
+                'resource_type': 'HttpRequest',
+                'resource_id': path[:64],
+                'request_id': request_id,
+                'ip_address': client_ip,
+                'metadata': {
                     'method': getattr(request, 'method', ''),
                     'path': path,
                     'status_code': getattr(response, 'status_code', None),
                     'duration_ms': duration_ms,
                 },
-            )
+            })
         except Exception as e:
             logger.warning('RequestTraceMiddleware: audit event write failed for %s %s: %s', getattr(request, 'method', ''), path, e)
             return

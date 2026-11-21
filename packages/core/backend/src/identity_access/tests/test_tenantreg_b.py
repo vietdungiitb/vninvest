@@ -443,7 +443,7 @@ class B4ClientIpSpoofingTests(TenantFixtureMixin, TestCase):
     @override_settings(TRUSTED_PROXY_IPS=[])
     def test_audit_event_ip_is_peer_not_spoofed_xff(self):
         """ops_audit.RequestTraceMiddleware._record_access_event must store the peer."""
-        from ops_audit.middleware import RequestTraceMiddleware
+        from ops_audit.middleware import RequestTraceMiddleware, flush_audit_events
 
         request = self.factory.get('/core/v1/partner/tenant/')
         request.user = self.user
@@ -451,6 +451,7 @@ class B4ClientIpSpoofingTests(TenantFixtureMixin, TestCase):
         request.META['REMOTE_ADDR'] = '203.0.113.9'
         request.META['HTTP_X_FORWARDED_FOR'] = '10.0.0.7'
         RequestTraceMiddleware(get_response=_ok)(request)
+        flush_audit_events(timeout=10)
 
         event = AuditEvent.objects.filter(resource_id='/core/v1/partner/tenant/').latest('occurred_at')
         self.assertEqual(event.ip_address, '203.0.113.9')
@@ -708,10 +709,11 @@ class B7MembershipFallbackTests(TenantFixtureMixin, TestCase):
 # ---------------------------------------------------------------------------
 class B8AuditEventAttributionTests(TenantFixtureMixin, TestCase):
     def _record(self, request, response=None):
-        from ops_audit.middleware import RequestTraceMiddleware
+        from ops_audit.middleware import RequestTraceMiddleware, flush_audit_events
         RequestTraceMiddleware(
             get_response=lambda r: response or JsonResponse({}, status=200)
         )(request)
+        flush_audit_events(timeout=10)
         return AuditEvent.objects.latest('occurred_at')
 
     def test_member_only_user_is_attributed_to_the_request_tenant(self):
