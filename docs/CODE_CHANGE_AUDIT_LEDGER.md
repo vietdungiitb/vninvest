@@ -3,7 +3,8 @@
 - **Date**: 2026-11-21 · **Type**: code fix · **Branch**: `fix/corp-celery-countdown` · **Claim**: `corp-celery-countdown` (`299b3a259`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
 - **Vấn đề**: deploy PR #483 xong, chạy `sync_all_corporate_actions()` thực tế raise `TypeError: sync_corporate_actions() got an unexpected keyword argument 'countdown'` — `Task.delay(*args, **kwargs)` đưa `countdown` vào kwargs của task thay vì execution option. Test cũ mock `.delay` nên không bắt được (L-E06).
 - **Fix**: `sync_corporate_actions.apply_async((symbol,), countdown=index*stagger)`; test đổi sang patch `apply_async`, assert `countdown` nằm ở kwargs của option và **không** lọt vào args task. Sync task **6/6 OK**.
-- **Gates/deploy**: *(cập nhật sau merge)*. Mục tiêu: dispatch 1899 mã, Redis queue > 0, worker active.
+- **Deploy**: PR #485 merge (`39c3ec5fe`), deploy lúc đó exit 0. Dispatch thật dừng ở 3 lỗi môi trường đã cô lập (OOM → fix Entry 586; `countdown` → fix Entry 588; broker URL trong shell), và cuối cùng **staging restart loop do migration `service_ops.0014` của agent `fast-data-b` (PR #484)**: `column "trigger" ... already exists`, health 000. **Không đụng DB chung** — báo owner slice đó xử lý. Code corporate actions đã đúng (raw SQL 1899 mã + apply_async, test 53/53 + 6/6 xanh); khi staging healthy, chạy orchestrator bằng lệnh trong evidence.
+- **Kết luận**: service nightly cho toàn bộ mã đã có và được deploy; dispatch ngay thủ công bị chặn tạm bởi incident ngoài scope.
 
 ## Entry 587: Phase B S1 ServiceRunLog flat lookup columns (gates + B8 PASS x2)
 

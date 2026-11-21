@@ -69,6 +69,22 @@ Lệnh `sync_all_corporate_actions()` trên staging lần đầu bị **Killed**
 
 ⇒ Đổi orchestrator sang raw SQL (đã test 53/53). **Bài học**: với bảng ~4.5M row, ORM distinct qua pgbouncer vừa OOM vừa không dùng được server-side cursor; raw SQL là đường an toàn đã đo.
 
-*(cập nhật kết quả dispatch sau deploy: …)*
+### Dispatch thật — chuỗi lỗi môi trường đã cô lập
+
+| Lần | Lỗi | Nguyên nhân | Fix |
+|---|---|---|---|
+| 1 | `Killed` (OOM) lấy 1899 mã | ORM `.distinct()` trên bảng 4.5M row | Raw SQL (Entry 586) |
+| 2 | `TypeError: unexpected keyword 'countdown'` | `Task.delay` đưa option vào kwargs task | `apply_async((symbol,), countdown=...)` (Entry 588) |
+| 3 | `ConnectionRefusedError localhost:5672` | `manage.py shell` không có `CELERY_BROKER_URL` (chỉ có trong compose service) | chạy trong tiến trình có env broker |
+| 4 | API restart loop, health 000 | **ngoài scope**: migration `service_ops.0014_runlog_flat_lookup_columns` lỗi `column "trigger" ... already exists` do agent `fast-data-b` (PR #484) — DB staging đã có cột nhưng migration chưa được đánh dấu apply | **không đụng DB chung** — báo owner/agent đó xử lý |
+
+⇒ Code corporate actions đã đúng (raw SQL 1899 mã, apply_async, test 53/53 + 6/6 xanh). Việc chạy ngay toàn bộ bị chặn bởi incident migration của slice **fast-data-b** trên cùng staging. Không sửa thay vì can thiệp DB người khác.
+
+**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Dispatch ngay thủ công bị chặn tạm bởi incident migration nói trên — khi staging healthy, chạy:
+```
+docker exec -i vninvest-core-api sh -c 'cd /app/src && python manage.py shell' \
+  <<< 'from data_ingest.tasks import sync_all_corporate_actions; print(sync_all_corporate_actions())'
+```
+(phải chạy trong môi trường có `CELERY_BROKER_URL`, ví dụ `docker compose exec -e CELERY_BROKER_URL=... core-api`).
 
 **Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1.899) và cập nhật `adj_close`, thay vì chỉ sync tay từng mã. Flag phải bật (`CORPORATE_ACTIONS_ENABLED=true` — staging đã bật; production do owner).
