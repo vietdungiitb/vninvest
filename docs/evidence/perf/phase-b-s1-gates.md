@@ -31,6 +31,9 @@
 - Đo mean pg_stat sau deploy 1h (mục tiêu < 50ms) — bằng chứng hiệu quả thật.
 - Backfill 1.78M row chạy trong entrypoint migrate (one-time, ~phút). Re-run an toàn (idempotent) nếu fail.
 - CONCURRENTLY fail → runbook: kiểm tra INVALID index + DROP CONCURRENTLY rồi migrate lại.
+- **Sự cố deploy thật 2026-11-21**: 0014 gộp (AddField+backfill, atomic=False) bị kill giữa backfill → rerun crash `column "trigger" already exists` → api crash-loop. ĐÃ SỬA: tách 0014 DDL-only (atomic) + 0015 backfill (atomic=False, idempotent) + 0016 CONCURRENTLY; staging DROP 3 cột partial rồi deploy lại chuỗi sạch. Catalog 144 migration.
+
+## B8 vòng 3 (migration tách) — CHỜ verdict auditor độc lập
 
 ## Next
 

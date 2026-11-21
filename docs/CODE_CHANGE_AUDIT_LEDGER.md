@@ -1,3 +1,12 @@
+## Entry 589: Phase B S1 deploy-fix — tách migration 0014/0015/0016 (B8 v3 PASS)
+
+- **Date**: 2026-11-21 · **Type**: code (BE) + deploy-recovery · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (in-progress) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
+- **Sự cố**: deploy S1 lần đầu fail — api crash-loop `column "trigger" already exists`: 0014 gộp (AddField+backfill, atomic=False) bị kill giữa backfill 1.78M row → rerun crash vì DDL không idempotent. Bài học: atomic=False KHÔNG đủ — phải tách DDL khỏi DML dài.
+- **Fix**: 0014 DDL-only (atomic) + 0015 backfill idempotent (atomic=False) + 0016 CONCURRENTLY x3 (atomic=False); catalog 144 migration; staging DROP 3 cột partial rồi deploy lại chuỗi sạch.
+- **Gates**: 76 tests OK / makemigrations clean / EXPLAIN Index Scan / system-design SẠCH / pre-push 36 PASS (lần push S1).
+- **B8 v3**: PASS (0014 atomic, 0015 idempotent+atomic=False, 0016 chain đúng, Meta khớp state).
+- **Next**: PR #484 → merge → deploy (entrypoint chạy 0014→0015→0016 + backfill) → đo mean pg_stat 1h + verify E2E → Phase C (Owner-gated).
+
 ## Entry 588: Fix Celery countdown option trong corporate actions dispatch
 
 - **Date**: 2026-11-21 · **Type**: code fix · **Branch**: `fix/corp-celery-countdown` · **Claim**: `corp-celery-countdown` (`299b3a259`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
