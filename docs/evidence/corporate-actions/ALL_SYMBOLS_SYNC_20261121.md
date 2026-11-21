@@ -57,4 +57,18 @@ celery registered: sync_all_corporate_actions + sync_corporate_actions (3 worker
 FLAG true · HEALTH 200
 ```
 
+## CHẠY NGAY TOÀN BỘ — OOM VÀ FIX
+
+Lệnh `sync_all_corporate_actions()` trên staging lần đầu bị **Killed** (OOM) ngay ở bước lấy danh sách mã; queue snapshot = 0, DB không đổi (57 event / 48 factor / 2584 adj). Cô lập:
+
+| Cách lấy 1.899 mã | Kết quả |
+|---|---|
+| `list(DailyPrice.objects.values_list('symbol', flat=True).distinct())` | **Killed** (OOM) |
+| `.distinct().iterator(chunk_size=500)` | `OperationalError: cursor ... does not exist` (pgbouncer transaction pooling) |
+| Raw SQL `SELECT DISTINCT symbol FROM market_data_dailyprice ORDER BY symbol` qua `connection.cursor()` | **1899 dòng, OK** |
+
+⇒ Đổi orchestrator sang raw SQL (đã test 53/53). **Bài học**: với bảng ~4.5M row, ORM distinct qua pgbouncer vừa OOM vừa không dùng được server-side cursor; raw SQL là đường an toàn đã đo.
+
+*(cập nhật kết quả dispatch sau deploy: …)*
+
 **Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1.899) và cập nhật `adj_close`, thay vì chỉ sync tay từng mã. Flag phải bật (`CORPORATE_ACTIONS_ENABLED=true` — staging đã bật; production do owner).

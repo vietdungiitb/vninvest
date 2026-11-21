@@ -18,6 +18,7 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
+from django.db import connection
 from django.db.models import Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
@@ -3524,7 +3525,11 @@ def sync_all_corporate_actions(self, symbols: list[str] | None = None,
     from market_data.models import DailyPrice
 
     if symbols is None:
-        symbols = sorted(set(DailyPrice.objects.values_list('symbol', flat=True).distinct()))
+        # ORM values_list().distinct() trên bảng DailyPrice (~4.5M rows) bị OOM
+        # trong container staging; raw SQL DISTINCT trả đúng 1899 mã, đo thật.
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT DISTINCT symbol FROM market_data_dailyprice ORDER BY symbol')
+            symbols = [row[0] for row in cursor.fetchall()]
     else:
         symbols = sorted(set(symbols))
 
