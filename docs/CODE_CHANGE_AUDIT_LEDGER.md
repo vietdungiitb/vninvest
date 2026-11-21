@@ -1,3 +1,11 @@
+## Entry 595: Worker riêng bị VCI rate-limit (418) — dừng, giữ thiết kế stagger — (đánh lại số từ 593 do dev đã có 2 Entry 593 trùng)
+
+- **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-rate-limit` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).
+- **Thử**: tạo `vninvest-core-worker-corp` (`-Q enrichment_offhours -c 8`, copy env từ worker cũ). 91 subtask succeeded nhưng **100% fetched=0**: 45× 502, 37× 418, 6× mã bond/phái sinh bị từ chối, 3× timeout. Probe VNM ngay sau đó cũng **418** kể cả fallback `events()` ⇒ VCI chặn tạm sau lượt dồn ~1900 request.
+- **Xử lý**: dừng worker riêng ngay (`docker rm -f`), không đốt thêm lượt. DB vẫn 57/48/2584. Còn 3645 message trong queue `enrichment_offhours` chờ (sẽ fetched=0 đến khi VCI hết chặn).
+- **Kết luận vận hành**: không tăng concurrency cho backfill; giữ `countdown_seconds=2` (~1h/1899 mã) như thiết kế beat 18:30, hoặc chia đợt. Flag staging vẫn true; code đúng (test 6/6 + 53/53, orchestrator succeeded 1899).
+- **Next**: khi VCI hết chặn, chạy lại orchestrator mặc định; theo dõi tỉ lệ `fetched>0` thay vì số task succeeded.
+
 ## Entry 594: Phase A S3 lên staging + verify (đóng slice `fast-data-a`) — (đánh lại số từ 586 do trùng với entry corp agent)
 
 - **Date**: 2026-11-21 · **Type**: code + deploy + verify · **Branch**: `feat/fast-data-a` → `dev` (PR #482 merged `6eccd99`, merge-commit) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
@@ -28,6 +36,15 @@
 - **Dispatch thật**: orchestrator chạy thành công `succeeded in 64.9s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 2}` (log worker), kèm 2 lần retry với countdown=0.
 - **Blocker cuối**: Redis db3 `celery` queue = **499.126 task tồn đọng** của hệ thống khác ⇒ worker không consume được 1899 subtask (`0 succeeded`, DB vẫn 57 event / 48 factor / 2584 adj). **Không xóa queue chung** — báo staging owner. Dynamic beat 18:30 vẫn tự chạy; dữ liệu toàn mã sẽ cập nhật dần khi worker rảnh. Muốn ép ngay: owner dọn backlog hoặc tăng concurrency riêng cho `enrichment_offhours`.
 - **Context các lỗi đã fix trong chuỗi dispatch**: OOM (Entry 586, raw SQL), `countdown` kwarg (Entry 588, apply_async), broker URL (`app.set_current()`), migration conflict (fake). Code corporate actions đúng, test 53/53 + 6/6 xanh.
+
+## Entry 593: S1 deploy lần 2 — backfill keyset pagination + verify (claim done)
+
+- **Date**: 2026-11-21 · **Type**: deploy-recovery + verify · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (done) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
+- **Sự cố 2**: 0015 backfill `qs.iterator()` crash `InvalidCursorName` qua pgbouncer transaction mode (server cursor chết giữa chunk) → api crash-loop.
+- **Fix repo (0015)**: keyset pagination (`pk__gt` + LIMIT, không server cursor) — pooler-safe.
+- **Fix staging**: DROP 3 index partial? KHÔNG — index đã VALID; chạy single-statement SQL backfill (1.233.565 row / 1m45s); verify mismatch = 0; `migrate service_ops 0016 --fake` (index đã tồn tại + đúng định nghĩa).
+- **Verify sau deploy sạch**: services healthy; pg_stat reset → chờ 10 phút đo mean tier-lookup mới; Playwright E2E.
+- **Claim**: `fast-data-b` → done. Next: Phase C (S2) slice riêng; minor backlog: cap backpressure `_pending_futures`.
 
 ## Entry 589: Phase B S1 deploy-fix — tách migration 0014/0015/0016 (B8 v3 PASS)
 
