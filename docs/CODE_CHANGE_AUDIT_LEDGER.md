@@ -1,3 +1,10 @@
+## Entry 588: Fix Celery countdown option trong corporate actions dispatch
+
+- **Date**: 2026-11-21 · **Type**: code fix · **Branch**: `fix/corp-celery-countdown` · **Claim**: `corp-celery-countdown` (`299b3a259`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
+- **Vấn đề**: deploy PR #483 xong, chạy `sync_all_corporate_actions()` thực tế raise `TypeError: sync_corporate_actions() got an unexpected keyword argument 'countdown'` — `Task.delay(*args, **kwargs)` đưa `countdown` vào kwargs của task thay vì execution option. Test cũ mock `.delay` nên không bắt được (L-E06).
+- **Fix**: `sync_corporate_actions.apply_async((symbol,), countdown=index*stagger)`; test đổi sang patch `apply_async`, assert `countdown` nằm ở kwargs của option và **không** lọt vào args task. Sync task **6/6 OK**.
+- **Gates/deploy**: *(cập nhật sau merge)*. Mục tiêu: dispatch 1899 mã, Redis queue > 0, worker active.
+
 ## Entry 587: Phase B S1 ServiceRunLog flat lookup columns (gates + B8 PASS x2)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) + migration · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (in-progress) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2.

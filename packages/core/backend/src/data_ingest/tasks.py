@@ -3536,7 +3536,9 @@ def sync_all_corporate_actions(self, symbols: list[str] | None = None,
     stagger = max(0, int(countdown_seconds))
     queued = 0
     for index, symbol in enumerate(symbols):
-        sync_corporate_actions.delay(symbol, countdown=index * stagger)
+        # delay() đưa countdown vào kwargs của task ⇒ TypeError; apply_async mới
+        # nhận execution options (countdown) tách biệt với args.
+        sync_corporate_actions.apply_async((symbol,), countdown=index * stagger)
         queued += 1
 
     logger.info(
