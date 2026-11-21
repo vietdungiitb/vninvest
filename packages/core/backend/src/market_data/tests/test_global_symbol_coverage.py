@@ -544,3 +544,144 @@ class GlobalSymbolCoverageServiceTestCase(TestCase):
             coverage_by_dataset[GlobalSymbolCoverage.DatasetChoices.SESSION_FACTS].next_recommended_action,
             'refresh_session_facts',
         )
+
+class GlobalSymbolCoverageThrottleTestCase(TestCase):
+    """Phase C S2: callee-side self-throttle (fail-before: skip chua ton tai)."""
+
+    def _ensure_registry(self, symbol: str) -> GlobalSymbolRegistry:
+        registry, _ = upsert_global_symbol_demand(
+            symbol=symbol,
+            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
+            source_ref=f'watchlist:test-{symbol.lower()}',
+        )
+        return registry
+
+    def _make_all_fresh_market_data(self, symbol, today, verified_at):
+        DailyPrice.objects.create(
+            symbol=symbol, date=today,
+            open=Decimal('120.00'), high=Decimal('121.00'),
+            low=Decimal('119.00'), close=Decimal('120.50'), volume=1000,
+        )
+        IntradayBar.objects.create(
+            symbol=symbol, datetime=verified_at - timedelta(minutes=5), timeframe='1M',
+            open=Decimal('121.00'), high=Decimal('123.00'),
+            low=Decimal('120.50'), close=Decimal('122.50'), volume=500,
+        )
+        IntradayTick.objects.create(
+            symbol=symbol, timestamp=verified_at - timedelta(minutes=1),
+            price=Decimal('122.50'), volume=100, side=IntradayTick.SideChoices.BUY,
+        )
+        SymbolSnapshot.objects.create(
+            symbol=symbol, session_date=today,
+            price=Decimal('120.50'), volume=1500, stale=False,
+        )
+        SessionFacts.objects.create(symbol=symbol, session_date=today, stale=False)
+
+    def test_second_immediate_refresh_skips_heavy_queries(self):
+        # AC1: input str -> <= 2 queries, tra ve 5 rows cu (fail-before: code cu ~20+ queries).
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('FPT')
+        self._make_all_fresh_market_data('FPT', today, verified_at)
+        rows_first = refresh_global_symbol_coverage(
+            registry, reference_trade_date=today, as_of=verified_at,
+        )
+        self.assertEqual(len(rows_first), 5)
+        with self.assertNumQueries(2):
+            rows_second = refresh_global_symbol_coverage(
+                'FPT', reference_trade_date=today, as_of=verified_at,
+            )
+        self.assertEqual(len(rows_second), 5)
+        self.assertEqual(
+            [row.dataset for row in rows_second],
+            [row.dataset for row in rows_first],
+        )
+        self.assertEqual(
+            {row.pk for row in rows_second},
+            {row.pk for row in rows_first},
+        )
+
+    def test_second_refresh_with_registry_instance_uses_single_query(self):
+        # AC1/O7: input instance -> <= 1 query.
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('HPG')
+        self._make_all_fresh_market_data('HPG', today, verified_at)
+        refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+        with self.assertNumQueries(1):
+            rows_second = refresh_global_symbol_coverage(
+                registry, reference_trade_date=today, as_of=verified_at,
+            )
+        self.assertEqual(len(rows_second), 5)
+
+    def test_refresh_recomputes_when_reference_date_changes(self):
+        # AC1b/O1: qua ngay -> recompute du T rat lon (guard, pin hanh vi).
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('VCI')
+        self._make_all_fresh_market_data('VCI', today, verified_at)
+        with self.settings(GLOBAL_MARKET_DATA_COVERAGE_THROTTLE_SECONDS=10 ** 9):
+            refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+            next_day = today + timedelta(days=1)
+            next_verified = verified_at + timedelta(days=1)
+            with CaptureQueriesContext(connection) as ctx:
+                rows = refresh_global_symbol_coverage(
+                    registry, reference_trade_date=next_day, as_of=next_verified,
+                )
+            self.assertGreater(len(ctx.captured_queries), 2)
+            for row in rows:
+                self.assertEqual(row.detail.get('reference_trade_date'), next_day.isoformat())
+
+    def test_refresh_recomputes_when_cached_state_missing(self):
+        # AC1c/O3: cached MISSING -> khong skip (guard, pin hanh vi).
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('HPG')
+        DailyPrice.objects.create(
+            symbol='HPG', date=today - timedelta(days=5),
+            open=Decimal('25.00'), high=Decimal('25.50'),
+            low=Decimal('24.70'), close=Decimal('25.20'), volume=1000,
+        )
+        refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+        with CaptureQueriesContext(connection) as ctx:
+            rows = refresh_global_symbol_coverage(
+                registry, reference_trade_date=today, as_of=verified_at,
+            )
+        self.assertGreater(len(ctx.captured_queries), 2)
+        by_dataset = {row.dataset: row for row in rows}
+        self.assertEqual(
+            by_dataset[GlobalSymbolCoverage.DatasetChoices.PRICE_BOARD_SNAPSHOT].freshness_state,
+            GlobalSymbolCoverage.FreshnessChoices.MISSING,
+        )
+
+    def test_throttle_disabled_when_T_zero(self):
+        # AC4/O4+O8: T=0 -> luon recompute (guard, pin hanh vi).
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        today = date(2026, 5, 15)
+        verified_at = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('VCB')
+        self._make_all_fresh_market_data('VCB', today, verified_at)
+        with self.settings(GLOBAL_MARKET_DATA_COVERAGE_THROTTLE_SECONDS=0):
+            refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+            with CaptureQueriesContext(connection) as ctx:
+                refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=verified_at)
+            self.assertGreater(len(ctx.captured_queries), 2)
+
+    def test_stale_verified_rows_recomputed(self):
+        # AC3: rows cu hon T -> recompute (guard, pin hanh vi).
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        today = date(2026, 5, 15)
+        old_verified = timezone.make_aware(datetime.combine(today, time(hour=9, minute=0)))
+        new_verified = timezone.make_aware(datetime.combine(today, time(hour=14, minute=30)))
+        registry = self._ensure_registry('VNM')
+        self._make_all_fresh_market_data('VNM', today, old_verified)
+        refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=old_verified)
+        with CaptureQueriesContext(connection) as ctx:
+            refresh_global_symbol_coverage(registry, reference_trade_date=today, as_of=new_verified)
+        self.assertGreater(len(ctx.captured_queries), 2)
