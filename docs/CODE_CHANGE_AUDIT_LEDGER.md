@@ -1,10 +1,19 @@
-## Entry 593: Worker riêng bị VCI rate-limit (418) — dừng, giữ thiết kế stagger
+## Entry 595: Worker riêng bị VCI rate-limit (418) — dừng, giữ thiết kế stagger — (đánh lại số từ 593 do dev đã có 2 Entry 593 trùng)
 
 - **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-rate-limit` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).
 - **Thử**: tạo `vninvest-core-worker-corp` (`-Q enrichment_offhours -c 8`, copy env từ worker cũ). 91 subtask succeeded nhưng **100% fetched=0**: 45× 502, 37× 418, 6× mã bond/phái sinh bị từ chối, 3× timeout. Probe VNM ngay sau đó cũng **418** kể cả fallback `events()` ⇒ VCI chặn tạm sau lượt dồn ~1900 request.
 - **Xử lý**: dừng worker riêng ngay (`docker rm -f`), không đốt thêm lượt. DB vẫn 57/48/2584. Còn 3645 message trong queue `enrichment_offhours` chờ (sẽ fetched=0 đến khi VCI hết chặn).
 - **Kết luận vận hành**: không tăng concurrency cho backfill; giữ `countdown_seconds=2` (~1h/1899 mã) như thiết kế beat 18:30, hoặc chia đợt. Flag staging vẫn true; code đúng (test 6/6 + 53/53, orchestrator succeeded 1899).
 - **Next**: khi VCI hết chặn, chạy lại orchestrator mặc định; theo dõi tỉ lệ `fetched>0` thay vì số task succeeded.
+
+## Entry 594: Phase A S3 lên staging + verify (đóng slice `fast-data-a`) — (đánh lại số từ 586 do trùng với entry corp agent)
+
+- **Date**: 2026-11-21 · **Type**: code + deploy + verify · **Branch**: `feat/fast-data-a` → `dev` (PR #482 merged `6eccd99`, merge-commit) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
+- **Deploy**: `deploy-staging.sh` exit 0 (pull gồm cherry-pick S3). **Verify E2E**: stock API vẫn ~10s (audit INSERT không phải dominant trong view-time — đúng như peer review đã hiệu chỉnh); alert-center/summary 450ms; hết 301 (F-07 giữ nguyên). Percentile 2h vẫn cao nhưng lẫn traffic pre-deploy — cần đo lại 1h thuần sau.
+- **Gates**: B7 68 tests OK / 2.163s (VPS, DB tạm) · B8 PASS (0 blocker/major) · pre-push-gate 36 PASS · ledger-entry PASS.
+- **Cleanup**: DROP `fastdata_a`/`test_fastdata_a`, remove `/tmp/wt-fastdata` + `/tmp/wt-devbase`. Claim `fast-data-a` → done.
+- **Trung thực**: S3 một mình KHÔNG hạ được 10s view-time. Đòn tiếp theo là Phase B (S1 index JSONB + S2 throttle coverage) — slice riêng, claim riêng.
+- **GHI LESSON MỚI**: chưa (phiên này chưa mắc lỗi đủ chuẩn: 1 lần suýt vi phạm L-F07 đã tự bắt; hook normalize-eol chặn 1 lần là quy trình hoạt động đúng).
 
 ## Entry 592: Root cause cuối — worker concurrency 2 bị chiếm bởi task hệ thống
 
@@ -81,6 +90,44 @@
 - **Đính chính**: `cross_ref_pat_audit_events` KHÔNG cần đổi code (task 60s vs delay sub-second) — claim đã ghi thừa, evidence này làm rõ.
 - **CHƯA CHẠY**: full BE suite, E2E percentile sau deploy (cần merge + deploy — Owner-gated).
 - **Next**: PR `feat/fast-data-a` → merge → deploy staging → verify E2E → cleanup (DROP `fastdata_a`/`test_fastdata_a`, remove `/tmp/wt-*`) → claim done.
+
+## Entry 584: Deploy F-07 lên staging + verify hết 301 (đóng slice `stock-slow-load` / `stock-f07-slash`)
+
+- **Date**: 2026-11-21 · **Type**: deploy + verify · **Branch**: `feat/stock-f07-slash` → `dev` (PR #480 merged `45bf2862f`, merge-commit) · **Evidence**: `docs/evidence/stock-slow-load/FIX_GATES_20261121.md` (§VERIFY).
+- **Deploy**: `scripts/deploy-staging.sh` exit 0 (VPS pull dev gồm cherry-pick 0071af48e), services healthy, frontend rebuild bundle mới.
+- **Verify staging** (Playwright capture `/stocks/VIC`): `200 .../session-facts/VIC/cvd/?window=1h` — **không còn 301**. 2 console 404 còn lại đúng như dự kiến (advisory/billing "no data").
+- **Trung thực**: stock API vẫn ~9–12s; auth gate dao động 1,8–8,5s/lần chạy → systemic chưa hết (F-01/F-02, Owner-gated).
+- **Đóng claim**: `stock-slow-load` → done (F-07 shipped+verified; R2 giữ 0 có lý do; F-04 giữ nguyên by design). `stock-f07-slash` → done.
+- **Next slices** (Owner đã duyệt hướng): F-01 (giới hạn audit-write, có điều kiện — kèm update `cross_ref_pat_audit_events` + test tenantreg_b) · F-03 (gộp bootstrap tuần tự `PortfolioContext.js:599-642`).
+- **Gates**: check-ledger-entry PASS. Pre-push-gate trên feat branch: 36 PASS / 0 FAIL.
+
+## Entry 583: Fix F-07 trailing slash `getSessionFactsCvd` + R2/F-04 kết luận (slice `stock-slow-load`)
+
+- **Date**: 2026-11-21 · **Type**: code + audit · **Branch**: `docs/allsymbols-close-claims` · **Claim**: `stock-slow-load` (in-progress) · **Evidence**: `docs/evidence/stock-slow-load/FIX_GATES_20261121.md` · **Plan**: `docs/PLAN_STOCK_SLOW_LOAD_FIX_20261121.md`.
+- **F-07 DONE**: `market.js:293` `/cvd` → `/cvd/` (BE route có slash, manifest:430). Fail-before: test mới `market-session-facts-slash.test.js` 2 failed exit 1 (Received URL thiếu slash); pass-after 2 passed. Hồi quy: `route-contract.test.js` 4 passed (gate này normalize slash nên không bắt được 301 — test mới là bằng chứng duy nhất). `tsc --noEmit` exit 0 rỗng. Numstat 4/1, blob staged thuần LF, `--check` sạch. Hook `normalize-eol` từng chặn 1 lần (worktree CRLF) → chạy `--fix` rồi stage lại, diff giữ nguyên.
+- **R2 KHÔNG ĐỔI (blocked có bằng chứng)**: (1) `CONN_MAX_AGE=0` là kiến trúc có chủ đích — `infra/pgbouncer/RUNBOOK.md:4`, `evidence/audit-bl/BL-05/gates.md:4`, backlog audit — tránh double-pooling qua pgbouncer transaction mode; đổi cần Owner. (2) Không đủ định lượng: TCP+auth tới pgbouncer 16ms, không giải thích view-time 10s. Nguồn giá trị `0` không nằm trong repo (staging yml + env trên VPS đều 0 hit) — đổi là thao tác staging, chưa làm.
+- **F-04 giữ nguyên**: params khác nhau (model 1h vs chart 30m/session) phục vụ granularity khác nhau → by design, không đổi behavior khi chưa có quyết định sản phẩm.
+- **CHƯA CHẠY**: verify 301 biến mất trên staging (cần rebuild+deploy — Owner-gated); full FE/BE suite, E2E. Test jest chạy local (unit thuần, không Docker/DB) — ghi rõ, không giấu.
+- **Next / Owner**: (F1) giới hạn audit-write có được phép mù PAT traffic không (`cross_ref_pat_audit_events`); (F2) đổi CONN_MAX_AGE / tăng daphne worker (cần số liệu memory+pool) — đề xuất experiment an toàn theo runbook (`compose run --rm -e CORE_DB_CONN_MAX_AGE=60`); (F3) F-03 bootstrap + deploy F-07 lên staging.
+
+## Entry 582: Peer review độc lập chẩn đoán `/stocks/VIC` chậm — verdict AGREE + hiệu chỉnh attribution
+
+- **Date**: 2026-11-21 · **Type**: audit (doc-only, 0 dòng runtime) · **Branch**: `docs/allsymbols-close-claims` · **Evidence**: `docs/evidence/stock-slow-load/PEER_REVIEW_20261121.md`.
+- **Phương pháp**: auditor độc lập (subagent, chỉ đọc) verify 13/13 citation code TỒN TẠI + rà giả thuyết thay thế (TenantResolution/Quota/RateLimit middleware, N+1 view, 401-refresh, ngoài giờ giao dịch — đều loại trừ có đọc code); coordinator chạy 2 probe read-only đóng reservation.
+- **Kết quả**: AGREE với R1–R6. Xương sống đứng: latency systemic backend, 404 là noise có chủ đích (verify cả `advisory/views.py:285-289` + `commercial/views.py:63-65`), P0-backend trước FE đúng.
+- **Hiệu chỉnh quan trọng**: (1) `duration_ms` middleware ghi TRƯỚC khi INSERT (dòng 87 vs 37) ⇒ percentile 2h (overview p50 10,8s/p95 20,6s; mọi path đều chậm; 11,8% req ≥5s) là view-time thuần — INSERT ~0,6s chỉ là cộng thêm, đòn bẩy lớn nhất là worker/connection (F-02), không phải F-01. (2) R2 ĐÃ ĐÓNG: `printenv CORE_DB_CONN_MAX_AGE` trong container = `0`. (3) Finding mới F-07: `getSessionFactsCvd` (`market.js:293`) thiếu trailing slash ⇒ 301 mất 8,7s, fix 1 ký tự. (4) F-01 không drop-in được: `cross_ref_pat_audit_events` (`tasks.py:507-551`) + test tenantreg_b phụ thuộc dòng ACCESS.
+- **Thứ tự fix hiệu chỉnh**: `CONN_MAX_AGE=60` + đo lại percentile → F-07 + F-04 → F-02 (cần số liệu memory/pool) → F-01 (kèm update task+test).
+- **Gates**: `check-ledger-entry` PASS (chạy sau prepend). Probe staging read-only; `/tmp/probe_*` đã dọn. **CHƯA CHẠY**: BE/FE suite, build, E2E (không thuộc phạm vi).
+
+## Entry 581: Chẩn đoán tải dữ liệu mã chứng khoán chậm (~30s) trên `/stocks/VIC`
+
+- **Date**: 2026-11-21 · **Type**: audit (doc-only, 0 dòng runtime) · **Branch**: `docs/allsymbols-close-claims` · **Evidence**: `docs/AUDIT_STOCK_DETAIL_SLOW_LOAD_20261121.md`.
+- **Vấn đề**: người dùng báo `/stocks/VIC` hiện `Đang tải biểu đồ...` lâu + 2 dòng console `VIC/:1` và `subscription:1` 404.
+- **Reproduce thật**: Playwright Chromium đăng nhập staging, capture 45 request. Auth gate `Đang xác thực tài khoản...` đứng 0–9s; shell render ~18s; biểu đồ xong ~33s. Asset tĩnh 24–554ms → loại bundle/widget. Curl đối chứng với token mới: `auth/me` 5.9s, `overview` 9.6s, `billing/subscription` 5.1s, `advisory/latest/VIC/` 4.8s. Probe trong container: TCP pgbouncer 16ms / redis 1ms nhưng daphne nội bộ 1.5–2.2s ⇒ trễ nằm trong Django.
+- **Root cause**: (1) `ops_audit/middleware.py:35-39,74` ghi `AuditEvent` cho MỌI request vào bảng **1.370.086 dòng / 819 MB / 12 index** (INSERT đo 3–676ms) + `CORE_DB_CONN_MAX_AGE=0`; (2) 2 tiến trình daphne chạy sync middleware/ORM ⇒ xếp hàng request, mọi API 9–12s; (3) `PortfolioContext.js:612-625` bootstrap tuần tự `syncAuthState`→`fetchPortfolios`; (4) `useStockDetailPageModel.js:122-131,188-191` + `WhaleBubbleChart.jsx:622,670` bắn 4 request trùng (order-flow 30m/1h, whale session/1h).
+- **2 dòng 404 là noise, KHÔNG phải nguyên nhân**: `/core/v1/advisory/latest/VIC/` (404="chưa có advisory", xử lý tại `transport.js:453-459`) và `/core/v1/billing/subscription` (404→`tier=free`, `useTenantTier.js:63-68`). Backend log `Not Found` lúc 01:00:26/27.
+- **Refute giả thuyết cũ**: widget 2.1MB / lazy chunk KHÔNG phải nút thắt (asset 24–554ms); sửa path 2 endpoint 404 là vô hiệu; không có retry loop do 404.
+- **Next / Owner**: hạ tầng xử lý audit table + daphne workers (P0, kỳ vọng ~70–80% cải thiện); FE gộp bootstrap + bỏ request trùng (P1). Chạy lại script Playwright đối chứng sau mỗi fix. **CHƯA CHẠY**: full BE suite, build, E2E visual (không thuộc phạm vi chẩn đoán). Không có thay đổi code runtime.
 
 ## Entry 580: Service sync corporate actions cho TOÀN BỘ mã (fix beat gap)
 
