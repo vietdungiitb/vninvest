@@ -7,6 +7,14 @@
 - **CHƯA CHẠY**: đo mean pg_stat sau deploy 1h (mục tiêu < 50ms); backfill 1.78M row chạy trong entrypoint migrate lúc deploy.
 - **Next**: PR → merge → deploy staging → đo pg_stat + verify E2E → Phase C (Owner-gated).
 
+## Entry 586: Fix OOM dispatch sync corporate actions cho 1899 mã
+
+- **Date**: 2026-11-21 · **Type**: code fix + audit · **Branch**: `fix/corp-oom-rebase` · **Claim**: `corp-symbols-query-oom` (`5b03ccc65`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (§CHẠY NGAY TOÀN BỘ).
+- **Vấn đề**: chạy `sync_all_corporate_actions()` trên staging bị **Killed** (OOM) khi lấy danh sách mã bằng ORM `values_list('symbol',flat=True).distinct()` trên bảng `DailyPrice` ~4.5M row; queue 0, DB không đổi. `.iterator()` cũng lỗi do pgbouncer (`cursor does not exist`).
+- **Fix**: `tasks.py` dùng `connection.cursor()` + `SELECT DISTINCT symbol FROM market_data_dailyprice ORDER BY symbol` — đo thật trả **1899 mã**, không OOM. Test sync/ingest/bars **53/53 OK**.
+- **Gates**: `check-multi-agent` exit 0; raw SQL verified trên staging. **Deploy + dispatch toàn bộ**: *(cập nhật sau khi merge)*.
+- **Next**: deploy → chạy ngay orchestrator → verify queue/worker → đóng claim.
+
 ## Entry 585: Phase A S3 bounded async audit write (PASS gates + B8 PASS)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) · **Branch**: `feat/fast-data-a` · **Claim**: `fast-data-a` (in-progress) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
