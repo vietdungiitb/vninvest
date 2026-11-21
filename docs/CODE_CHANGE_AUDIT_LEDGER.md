@@ -24,6 +24,15 @@
 - **Trạng thái loop**: dừng ở B4 (đủ điều kiện B5 khi owner duyệt). Chưa claim, chưa code, chưa commit.
 - **Gates**: doc-only; full BE/FE **CHƯA CHẠY** (ngoài baseline B1 nêu trên).
 
+## Entry 601: Fix click nến đổi bubble TPB — S1+S2+S3 xong, B8 AGREE (chờ B7 staging)
+
+- **Date**: 2026-11-21 · **Type**: code TDD · **Branch**: `feat/stock-tpb-candle-bubble` (`9a9da6d3c`) · **Claim**: `stock-tpb-candle-bubble` → done.
+- **Làm gì**: S1 forward `selectedSession.tradeDate` (`StockDetailPage.tsx:308`) → bubble fetch `?trade_date=` (`WhaleBubbleChart.jsx:685`), reset khi đổi ngày, header/empty-state nêu ngày; S2 `resolveSessionFromChartItem` (`Asia/Ho_Chi_Minh` + guard) + `handleClick` dùng helper, source-verify widget 0.4.4 bắn `onClick(currentItem)`; ADR blocking lane giữ latest; S3 xóa dead-code đã verify (`whaleTimes` chain, `series`, `flowSellStrengthSeries`).
+- **Fail-before**: test mới đỏ trên code cũ (AC2 sai param, AC2b/AC3 thiếu testid), xanh sau sửa. Vitest 26/26 (5 files) · `tsc` exit 0 · `eslint` 0 error · i18n không thêm key.
+- **Sự cố quy trình đã bắt**: hook chặn commit 1 lần vì edit tool đổi LF→CRLF (L-T01) — fix bằng `normalize-eol --fix`, numstat khớp, không `--no-verify`. Vitest include chỉ `{js,ts,tsx}` nên test mới đặt `.tsx` (plan/claim đã cập nhật).
+- **B8 re-audit độc lập: AGREE** (0 blocker/major, `docs/evidence/stock-tpb-candle-bubble/re-audit-verdict.md`). Reservation: S2-AC3 click runtime + B7 staging E2E (click 3 nến TPB trên VPS) **CHƯA CHẠY** — cần merge + deploy feat rồi thao tác tay; đề xuất merge kèm nhãn monitoring hoặc chạy B7 trước.
+- **Next (rebase)**: renumber 600→601 do `dev` đã có Entry 598 (Phase C S2); merge PR → deploy staging → chạy B7 click tay.
+
 ## Entry 597: Probe TCBS 3.8.2 — có events/dividends, thiếu JWT + bug wrap lỗi
 
 - **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/tcbs-events-probe` · **Claim**: `tcbs-events-probe` (`58e1a5887`) · **File**: `docs/AUDIT_TCBS_COMPANY_EVENTS_20261121.md`.
