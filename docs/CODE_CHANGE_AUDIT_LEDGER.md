@@ -1,3 +1,10 @@
+## Entry 592: Root cause cuối — worker concurrency 2 bị chiếm bởi task hệ thống
+
+- **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-queue-report` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối cùng).
+- **Sau Entry 591**: orchestrator chạy thành công `succeeded in 68.8s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 0}`; subtask đầu tiên `sync_corporate_actions['41I1G7000']` `received` trên queue `enrichment_offhours`.
+- **Root cause không consume**: worker staging chỉ có **2 slot** (`ForkPoolWorker-1/2`), bị chiếm liên tục bởi `fetch_and_upsert_price_board` (~10 phút), `detect_order_flow`, 5 shard `prefetch_realtime_ticker_shard`; Redis `celery` list ~501k task. Subtask corporate actions xếp đúng queue nhưng **không có slot**. Không sửa bằng cách xóa queue chung.
+- **Kết luận**: code + deploy + dispatch đều đúng (test 6/6 + 53/53, health 200, task registered). Cần staging owner tăng concurrency / worker riêng cho `enrichment_offhours` để chạy ngay; dynamic beat 18:30 vẫn tự chạy. Flag staging = true.
+
 ## Entry 591: Route subtask corporate actions sang queue sạch
 
 - **Date**: 2026-11-21 · **Type**: code fix · **Branch**: `fix/corp-subtask-queue` · **Claim**: `corp-subtask-queue` (`44be36442`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
