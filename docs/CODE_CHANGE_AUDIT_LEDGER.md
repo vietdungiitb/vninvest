@@ -1,3 +1,11 @@
+## Entry 596: Probe DNSE 3.8.2 — không thay được VCI cho company events
+
+- **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/dnse-events-probe` · **Claim**: `dnse-events-probe` (`6966a1f30`) · **File**: `docs/AUDIT_DNSE_COMPANY_EVENTS_20261121.md`.
+- **Kết quả**: DNSE **không** phải nguồn thay thế. (1) staging **không có** `DNSE_API_KEY`/`DNSE_API_SECRET`, DB `UserDNSECredential` = 0 dòng; (2) dù truyền dummy key, `DNSECompany.events()` vẫn trả **0 dòng** (hard-coded `_empty_df`, upstream không có company endpoint, `explorer/dnse/company.py:257-265`); (3) `DNSECompany` không có `corporate_actions()`, facade ném `NotImplementedError` (`api/company.py:184`); (4) `DNSEClient.get_corporate_action_history` (`connector/dnse/client.py:743`) có path đã sửa ở 3.8.2 và đo 200 production nhưng **account-scoped** — cần `account_no` + credentials, không phải feed thị trường.
+- **Không còn blocker TLS**: DNS `103.151.242.24`, TLS 1.3 OK (ghi chú timeout 2026-10-10 đã lỗi thời).
+- **Quyết định**: không chuyển ingest sang DNSE, không request credentials cho mục đích này. VCI vẫn nguồn duy nhất; chờ hết 418 rồi backfill với `countdown=2s` (Entry 595). Nếu cần đối chiếu 1 tài khoản: owner cung cấp key/secret/account_no qua secret manager, gọi trực tiếp connector (use case khác).
+- **Gates**: doc/read-only; không đổi code/migration; full BE/FE **CHƯA CHẠY** (không liên quan).
+
 ## Entry 595: Worker riêng bị VCI rate-limit (418) — dừng, giữ thiết kế stagger — (đánh lại số từ 593 do dev đã có 2 Entry 593 trùng)
 
 - **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/final-rate-limit` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).
