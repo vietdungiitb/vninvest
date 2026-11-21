@@ -208,14 +208,41 @@ class ServiceRunLog(models.Model):
     output_summary = models.JSONField(default=dict)
     error_detail = models.TextField(blank=True)
 
+    # S1 (Phase B — fast data service): cột phẳng mirror input_summary keys
+    # để query dùng btree index thay vì scan JSONB (pg_stat: 31k calls x 6.2s
+    # mean cho input_summary__trigger/__queue_tier). Đồng bộ trong save()
+    # (choke point duy nhất — không có bulk_create/bulk_update nào chạm model
+    # này) nên mọi creation site tự có giá trị mà không cần sửa từng nơi.
+    trigger = models.CharField(max_length=120, default='', blank=True)
+    queue_tier = models.CharField(max_length=64, default='', blank=True)
+    parent_run_log_id = models.IntegerField(null=True, blank=True)
+
     class Meta:
         ordering = ['-started_at']
         indexes = [
             models.Index(fields=['service', 'status']),
             models.Index(fields=['service', 'started_at']),
+            models.Index(
+                fields=['service', 'trigger', 'queue_tier', '-started_at'],
+                name='runlog_svc_trg_tier_time_idx',
+            ),
+            models.Index(fields=['trigger'], name='runlog_trigger_idx'),
+            models.Index(fields=['parent_run_log_id'], name='runlog_parent_idx'),
         ]
         verbose_name = 'Service Run Log'
         verbose_name_plural = 'Service Run Logs'
+
+    def save(self, *args, **kwargs):
+        summary = self.input_summary or {}
+        if isinstance(summary, dict):
+            self.trigger = str(summary.get('trigger') or '')
+            self.queue_tier = str(summary.get('queue_tier') or '')
+            parent = summary.get('parent_run_log_id')
+            try:
+                self.parent_run_log_id = int(parent) if parent is not None else None
+            except (TypeError, ValueError):
+                self.parent_run_log_id = None
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.service.service_key} run {self.status} @ {self.started_at}'

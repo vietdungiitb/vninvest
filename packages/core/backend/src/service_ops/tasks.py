@@ -787,8 +787,8 @@ def create_signal_job_run_log(requested_by: str = 'api', domain: str = 'all', sy
 def _get_latest_queue_tier_run(service: ServiceDefinition, tier_name: str) -> ServiceRunLog | None:
     return ServiceRunLog.objects.filter(
         service=service,
-        input_summary__trigger='market_data.queue_tier_scheduler',
-        input_summary__queue_tier=tier_name,
+        trigger='market_data.queue_tier_scheduler',
+        queue_tier=tier_name,
     ).order_by('-started_at').first()
 
 
@@ -909,7 +909,7 @@ def _is_celery_task_live(task_id: str | None) -> bool | None:
 
 def _has_inflight_child_run(parent_run_log_id: int) -> bool:
     return ServiceRunLog.objects.filter(
-        input_summary__parent_run_log_id=parent_run_log_id,
+        parent_run_log_id=parent_run_log_id,
         status__in={'queued', 'running'},
     ).exists()
 
@@ -924,7 +924,7 @@ def _recover_inflight_child_runs(
 ) -> int:
     recovered = 0
     child_run_logs = ServiceRunLog.objects.filter(
-        input_summary__parent_run_log_id=parent_run_log.id,
+        parent_run_log_id=parent_run_log.id,
         status__in={'queued', 'running'},
     )
     for child_run_log in child_run_logs:
