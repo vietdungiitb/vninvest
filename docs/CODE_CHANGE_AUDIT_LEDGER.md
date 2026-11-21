@@ -1,3 +1,12 @@
+## Entry 586: Phase A S3 lên staging + verify (đóng slice `fast-data-a`)
+
+- **Date**: 2026-11-21 · **Type**: code + deploy + verify · **Branch**: `feat/fast-data-a` → `dev` (PR #482 merged `6eccd99`, merge-commit) · **Evidence**: `docs/evidence/perf/phase-a-s3-gates.md` · **Plan**: `docs/PLAN_FAST_DATA_SERVICE_20261121.md` REV.2 (B4 AGREE).
+- **Deploy**: `deploy-staging.sh` exit 0 (pull gồm cherry-pick S3). **Verify E2E**: stock API vẫn ~10s (audit INSERT không phải dominant trong view-time — đúng như peer review đã hiệu chỉnh); alert-center/summary 450ms; hết 301 (F-07 giữ nguyên). Percentile 2h vẫn cao nhưng lẫn traffic pre-deploy — cần đo lại 1h thuần sau.
+- **Gates**: B7 68 tests OK / 2.163s (VPS, DB tạm) · B8 PASS (0 blocker/major) · pre-push-gate 36 PASS · ledger-entry PASS.
+- **Cleanup**: DROP `fastdata_a`/`test_fastdata_a`, remove `/tmp/wt-fastdata` + `/tmp/wt-devbase`. Claim `fast-data-a` → done.
+- **Trung thực**: S3 một mình KHÔNG hạ được 10s view-time. Đòn tiếp theo là Phase B (S1 index JSONB + S2 throttle coverage) — slice riêng, claim riêng.
+- **GHI LESSON MỚI**: chưa (phiên này chưa mắc lỗi đủ chuẩn: 1 lần suýt vi phạm L-F07 đã tự bắt; hook normalize-eol chặn 1 lần là quy trình hoạt động đúng).
+
 ## Entry 584: Deploy F-07 lên staging + verify hết 301 (đóng slice `stock-slow-load` / `stock-f07-slash`)
 
 - **Date**: 2026-11-21 · **Type**: deploy + verify · **Branch**: `feat/stock-f07-slash` → `dev` (PR #480 merged `45bf2862f`, merge-commit) · **Evidence**: `docs/evidence/stock-slow-load/FIX_GATES_20261121.md` (§VERIFY).
