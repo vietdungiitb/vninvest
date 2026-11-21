@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -9,6 +10,8 @@ from django.db.models import Max, Min
 from django.utils import timezone
 
 from market_serving.models import SessionFacts, SymbolSnapshot
+
+logger = logging.getLogger(__name__)
 
 from .global_symbol_registry import normalize_symbol, refresh_global_symbol_registry
 from .models import (
@@ -463,6 +466,60 @@ def _build_session_facts_payload(symbol: str, reference_trade_date: date, verifi
     }
 
 
+# ---------------------------------------------------------------------------
+# Phase C S2 — callee-side self-throttle: skip recompute when coverage is fresh
+# ---------------------------------------------------------------------------
+
+#: Settings key for the skip window (seconds). Default 600s >= fastest ingest
+#: beat (60-180s) and ~= full coverage rotation (~9 min). T <= 0 disables skip.
+COVERAGE_THROTTLE_SETTING = 'GLOBAL_MARKET_DATA_COVERAGE_THROTTLE_SECONDS'
+COVERAGE_THROTTLE_DEFAULT_SECONDS = 600
+
+#: Cached states that never trigger a planner repair on their own — skipping a
+#: refresh while rows sit in these states cannot lose repair work (worst case:
+#: a FRESH->STALE transition is noticed at most T late).
+_SKIP_ELIGIBLE_STATES = frozenset({
+    GlobalSymbolCoverage.FreshnessChoices.FRESH,
+    GlobalSymbolCoverage.FreshnessChoices.WARM,
+})
+
+
+def _resolve_coverage_throttle_seconds() -> int:
+    try:
+        return int(getattr(settings, COVERAGE_THROTTLE_SETTING, COVERAGE_THROTTLE_DEFAULT_SECONDS))
+    except (TypeError, ValueError):
+        return int(COVERAGE_THROTTLE_DEFAULT_SECONDS)
+
+
+def _should_skip_coverage_refresh(
+    existing_rows: list,
+    *,
+    reference_trade_date_str: str,
+    verified_at: datetime,
+    throttle_seconds: int,
+) -> bool:
+    """True when a full recompute can be skipped (0 extra queries beyond lookup)."""
+    if throttle_seconds <= 0:
+        return False
+    if len(existing_rows) != len(DATASET_ORDER):
+        return False
+    seen_datasets = set()
+    for row in existing_rows:
+        detail = row.detail if isinstance(row.detail, dict) else {}
+        if detail.get('reference_trade_date') != reference_trade_date_str:
+            return False
+        if row.freshness_state not in _SKIP_ELIGIBLE_STATES:
+            return False
+        last_verified_at = _normalize_dt(row.last_verified_at)
+        if last_verified_at is None:
+            return False
+        age_seconds = (verified_at - last_verified_at).total_seconds()
+        if not age_seconds < throttle_seconds:
+            return False
+        seen_datasets.add(row.dataset)
+    return seen_datasets == set(DATASET_ORDER)
+
+
 @transaction.atomic
 def refresh_global_symbol_coverage(
     symbol_or_registry: str | GlobalSymbolRegistry,
@@ -473,7 +530,28 @@ def refresh_global_symbol_coverage(
     registry = _resolve_registry(symbol_or_registry)
     verified_at = _normalize_dt(as_of) or timezone.now()
     reference_trade_date = reference_trade_date or timezone.localdate()
+    reference_trade_date_str = reference_trade_date.isoformat()
     symbol = registry.symbol
+    throttle_seconds = _resolve_coverage_throttle_seconds()
+    existing_rows = list(
+        GlobalSymbolCoverage.objects.filter(registry=registry, dataset__in=DATASET_ORDER)
+    )
+    if _should_skip_coverage_refresh(
+        existing_rows,
+        reference_trade_date_str=reference_trade_date_str,
+        verified_at=verified_at,
+        throttle_seconds=throttle_seconds,
+    ):
+        min_age = min(
+            (verified_at - _normalize_dt(row.last_verified_at)).total_seconds()
+            for row in existing_rows
+        )
+        logger.debug(
+            'refresh_global_symbol_coverage: skip symbol=%s age=%.0fs<T=%ss (throttled)',
+            symbol, min_age, throttle_seconds,
+        )
+        rows_by_dataset = {row.dataset: row for row in existing_rows}
+        return [rows_by_dataset[dataset] for dataset in DATASET_ORDER]
     payloads = (
         _build_daily_prices_payload(symbol, reference_trade_date, verified_at),
         _build_snapshot_payload(symbol, reference_trade_date, verified_at),
