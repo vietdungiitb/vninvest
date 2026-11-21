@@ -1,3 +1,12 @@
+## Entry 597: Probe TCBS 3.8.2 — có events/dividends, thiếu JWT + bug wrap lỗi
+
+- **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/tcbs-events-probe` · **Claim**: `tcbs-events-probe` (`58e1a5887`) · **File**: `docs/AUDIT_TCBS_COMPANY_EVENTS_20261121.md`.
+- **Kết quả**: TCBS `Company` **có** `events()` (gọi `/ticker/{symbol}/events-news` — news) và `dividends()` (gọi `/company/{symbol}/dividend-payment-histories` — **có field số**), nhưng **KHÔNG có `corporate_actions()`** — facade ném `NotImplementedError`. Staging **không có** `TCBS_JWT_TOKEN` (chỉ `TCBS_AUTH_TOKEN` bị server 401); `events()` với dummy token trả `ProviderAuthError [PROVIDER_AUTH]` sạch.
+- **Bug 3.8.2 phát hiện**: `explorer/tcbs/company.py:497-503` wrap `raise type(exc)(message)` nhưng `ProviderAuthError.__init__` có `http_status` keyword-only ⇒ `TypeError: ... missing 1 required keyword-only argument: 'http_status'`, che cả thông báo hướng dẫn vừa thêm ở c3c028e. Đề xuất giữ nguyên exception, chỉ sửa `exc.args`. Gửi vnbroker team.
+- **Điều còn thiếu để dùng TCBS**: (1) `TCBS_JWT_TOKEN` qua secret manager; (2) fix bug wrap; (3) slice ingest riêng map schema `dividends()` + phân trang `page_size=15`; VCI vẫn nguồn chính.
+- **So sánh 3 nguồn**: VCI có data (đang 418 tạm), TCBS có field số riêng nhưng cần work, DNSE rỗng hard-coded (Entry 596).
+- **Gates**: doc/read-only, không đổi code/migration; full BE/FE **CHƯA CHẠY** (không liên quan).
+
 ## Entry 596: Probe DNSE 3.8.2 — không thay được VCI cho company events
 
 - **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/dnse-events-probe` · **Claim**: `dnse-events-probe` (`6966a1f30`) · **File**: `docs/AUDIT_DNSE_COMPANY_EVENTS_20261121.md`.
