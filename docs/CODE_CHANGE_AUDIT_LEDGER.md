@@ -20,7 +20,7 @@
 - **Blocker cuối**: Redis db3 `celery` queue = **499.126 task tồn đọng** của hệ thống khác ⇒ worker không consume được 1899 subtask (`0 succeeded`, DB vẫn 57 event / 48 factor / 2584 adj). **Không xóa queue chung** — báo staging owner. Dynamic beat 18:30 vẫn tự chạy; dữ liệu toàn mã sẽ cập nhật dần khi worker rảnh. Muốn ép ngay: owner dọn backlog hoặc tăng concurrency riêng cho `enrichment_offhours`.
 - **Context các lỗi đã fix trong chuỗi dispatch**: OOM (Entry 586, raw SQL), `countdown` kwarg (Entry 588, apply_async), broker URL (`app.set_current()`), migration conflict (fake). Code corporate actions đúng, test 53/53 + 6/6 xanh.
 
-## Entry 592: S1 deploy lần 2 — backfill keyset pagination + verify (claim done)
+## Entry 593: S1 deploy lần 2 — backfill keyset pagination + verify (claim done)
 
 - **Date**: 2026-11-21 · **Type**: deploy-recovery + verify · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (done) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
 - **Sự cố 2**: 0015 backfill `qs.iterator()` crash `InvalidCursorName` qua pgbouncer transaction mode (server cursor chết giữa chunk) → api crash-loop.
