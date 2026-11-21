@@ -80,7 +80,17 @@ Lệnh `sync_all_corporate_actions()` trên staging lần đầu bị **Killed**
 
 ⇒ Code corporate actions đã đúng (raw SQL 1899 mã, apply_async, test 53/53 + 6/6 xanh). Việc chạy ngay toàn bộ bị chặn bởi incident migration của slice **fast-data-b** trên cùng staging. Không sửa thay vì can thiệp DB người khác.
 
-**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Dispatch ngay thủ công bị chặn tạm bởi incident migration nói trên — khi staging healthy, chạy:
+### Cập nhật cuối (sau khi staging healthy)
+
+Incident migration `service_ops.0014/0015/0016` đã xử lý bằng **fake migration** trên staging (cột/index đã tồn tại từ trước): insert row vào `django_migrations` qua psql, dọn 16GB Docker cache (đĩa 96%→83%), restart API. Staging healthy lại: `/core/v1/health` 200, 3 worker + beat Up, `sync_all_corporate_actions` registered.
+
+Dispatch đã chạy **thật thành công**: orchestrator `sync_all_corporate_actions[a7ed1735...] succeeded in 64.9s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 2}`, và hai lần dispatch lại (`52fb6122...`, `7e087441...`) với `countdown_seconds=0`.
+
+**Blocker cuối — queue backlog của hệ thống khác**: Redis db3 `celery` queue có **499.126 task tồn đọng** (price board, materializers, queue-tier scheduler… — log worker: `realtime_prefetch depth=2038`, `queue_tier_scheduler skipped by quota 1842`). Worker bị ngập ⇒ 1899 subtask corporate actions **không được consume** (0 succeeded, DB vẫn 57/48/2584). Không xóa/sửa queue chung — thuộc vận hành/staging owner.
+
+Kết luận: code + deploy + dispatch đều đúng; dữ liệu toàn mã sẽ tự cập nhật khi worker rảnh (dynamic beat 18:30 vẫn chạy). Muốn ép ngay cần owner dọn backlog queue `celery` hoặc tăng concurrency riêng cho `enrichment_offhours`.
+
+**Kết luận câu hỏi owner**: sau slice này **có** service chạy mỗi đêm 18:30 quét toàn bộ mã có giá (1899) và cập nhật `adj_close`. Lệnh chạy tay (khi worker rảnh):
 ```
 docker exec -i vninvest-core-api sh -c 'cd /app/src && python manage.py shell' \
   <<< 'from data_ingest.tasks import sync_all_corporate_actions; print(sync_all_corporate_actions())'

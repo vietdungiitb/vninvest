@@ -1,3 +1,11 @@
+## Entry 590: Dispatch toàn bộ 1899 mã — staging blocker queue backlog
+
+- **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/dispatch-backlog` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).
+- **Incident ngoài scope đã xử lý để staging sống**: migration `service_ops.0014/0015/0016` conflict (`column trigger already exists`, `InvalidCursorName`, `index exists`) — cột/index đã có nhưng `django_migrations` chưa ghi ⇒ fake bằng SQL trực tiếp trên staging DB (`INSERT ... WHERE NOT EXISTS`). Dọn 16.92GB Docker build cache (đĩa 96%→83%). Restart API → healthy, worker/beat Up, task registered.
+- **Dispatch thật**: orchestrator chạy thành công `succeeded in 64.9s: {'symbols': 1899, 'queued': 1899, 'countdown_seconds': 2}` (log worker), kèm 2 lần retry với countdown=0.
+- **Blocker cuối**: Redis db3 `celery` queue = **499.126 task tồn đọng** của hệ thống khác ⇒ worker không consume được 1899 subtask (`0 succeeded`, DB vẫn 57 event / 48 factor / 2584 adj). **Không xóa queue chung** — báo staging owner. Dynamic beat 18:30 vẫn tự chạy; dữ liệu toàn mã sẽ cập nhật dần khi worker rảnh. Muốn ép ngay: owner dọn backlog hoặc tăng concurrency riêng cho `enrichment_offhours`.
+- **Context các lỗi đã fix trong chuỗi dispatch**: OOM (Entry 586, raw SQL), `countdown` kwarg (Entry 588, apply_async), broker URL (`app.set_current()`), migration conflict (fake). Code corporate actions đúng, test 53/53 + 6/6 xanh.
+
 ## Entry 589: Phase B S1 deploy-fix — tách migration 0014/0015/0016 (B8 v3 PASS)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) + deploy-recovery · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (in-progress) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
