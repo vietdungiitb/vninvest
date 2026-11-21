@@ -24,6 +24,14 @@
 - **Trạng thái loop**: dừng ở B4 (đủ điều kiện B5 khi owner duyệt). Chưa claim, chưa code, chưa commit.
 - **Gates**: doc-only; full BE/FE **CHƯA CHẠY** (ngoài baseline B1 nêu trên).
 
+## Entry 602: Merge PR #503 + deploy staging + B7 verify (fix click nến → bubble)
+
+- **Date**: 2026-11-21 · **Type**: merge + deploy + verify · **Branch**: `feat/stock-tpb-candle-bubble` → `dev` (PR #503 MERGED `f88f53a56`, merge-commit) · **Claim**: `stock-tpb-candle-bubble` done.
+- **Rebase trước merge**: dev đã có Entry 598 (Phase C S2) → resolve conflict ledger (giữ 598 dev, ours 598/599/600→599/600/601), dedupe 2 dòng claim in-progress do union-merge (giữ 1 dòng done), `normalize-eol --fix` 1 lần chặn CRLF (L-T01). Gates chạy lại sau rebase: `check-multi-agent` PASS · vitest 26/26 · `tsc` 0 · `eslint` 0 error.
+- **Deploy staging** (`scripts/deploy-staging.sh`, exit 0): VPS `/opt/vninvest` đã ở `f88f53a56`; all services Up healthy; `GET /stocks/TPB/` 200; `GET /api/health/` ok. Bundle frontend phục vụ chứa `whale-bubble-session` (= code S1 đã lên).
+- **B7 còn lại (CHƯA CHẠY)**: click tay 3 nến TPB trên `https://docker.edusuccess.vn/stocks/TPB` (cần browser + login) — checklist trong plan `## B7`. Giao owner/coordinator.
+- **Triage 3 lỗi user báo bằng ảnh staging (đều TIỀN TỒN, không phải regression)**: (1) TPB lặp 3 chỗ (breadcrumb/shell/header) — UI có sẵn, chưa đụng, ticket follow-up; (2) modal prompt-config lệch + 404 `advisory/latest/TPB` + 404 `billing/subscription` — modal chưa đụng, 2 route BE TỒN TẠI (`advisory/urls.py:6`, `commercial/urls.py:7`) nên 404 là gating/dữ liệu (advisory fail-closed `catch→null`), chưa đụng; (3) nến "Chưa có dữ liệu" — staging lúc chụp chạy code cũ (chưa merge), fetch chart không đổi trong slice này; cần điều tra riêng (BE chart TPB/timeframe hoặc tier-gating widget).
+
 ## Entry 601: Fix click nến đổi bubble TPB — S1+S2+S3 xong, B8 AGREE (chờ B7 staging)
 
 - **Date**: 2026-11-21 · **Type**: code TDD · **Branch**: `feat/stock-tpb-candle-bubble` (`9a9da6d3c`) · **Claim**: `stock-tpb-candle-bubble` → done.
