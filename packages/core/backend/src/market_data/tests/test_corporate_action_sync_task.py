@@ -64,23 +64,26 @@ class SyncAllCorporateActionsTests(TestCase):
         )
 
     @patch.dict('os.environ', ENV_ON)
-    @patch('data_ingest.tasks.sync_corporate_actions.delay')
-    def test_orchestrator_dispatches_every_price_symbol(self, delay):
+    @patch('data_ingest.tasks.sync_corporate_actions.apply_async')
+    def test_orchestrator_dispatches_every_price_symbol(self, apply_async):
         self._price('VNM')
         self._price('FPT')
-        stats = sync_all_corporate_actions(countdown_seconds=0)
-        called = sorted(call.args[0] for call in delay.call_args_list)
+        stats = sync_all_corporate_actions(countdown_seconds=2)
+        called = sorted(call.args[0][0] for call in apply_async.call_args_list)
         self.assertEqual(called, ['FPT', 'VNM'])
-        self.assertEqual(stats['symbols'], 2)
+        # countdown là execution option, KHÔNG được lọt vào kwargs của task (L-E06).
+        for call in apply_async.call_args_list:
+            self.assertIn('countdown', call.kwargs)
+            self.assertNotIn('countdown', call.args[1] if len(call.args) > 1 else {})
         self.assertEqual(stats['queued'], 2)
 
     @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
-    @patch('data_ingest.tasks.sync_corporate_actions.delay')
-    def test_orchestrator_flag_off_skips(self, delay):
+    @patch('data_ingest.tasks.sync_corporate_actions.apply_async')
+    def test_orchestrator_flag_off_skips(self, apply_async):
         self._price('VNM')
         stats = sync_all_corporate_actions()
         self.assertTrue(stats.get('skipped'))
-        delay.assert_not_called()
+        apply_async.assert_not_called()
 
     @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
     def test_beat_kwargs_can_invoke_orchestrator(self):
