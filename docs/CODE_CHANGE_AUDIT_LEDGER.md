@@ -13,6 +13,15 @@
 - **Blocker cuối**: Redis db3 `celery` queue = **499.126 task tồn đọng** của hệ thống khác ⇒ worker không consume được 1899 subtask (`0 succeeded`, DB vẫn 57 event / 48 factor / 2584 adj). **Không xóa queue chung** — báo staging owner. Dynamic beat 18:30 vẫn tự chạy; dữ liệu toàn mã sẽ cập nhật dần khi worker rảnh. Muốn ép ngay: owner dọn backlog hoặc tăng concurrency riêng cho `enrichment_offhours`.
 - **Context các lỗi đã fix trong chuỗi dispatch**: OOM (Entry 586, raw SQL), `countdown` kwarg (Entry 588, apply_async), broker URL (`app.set_current()`), migration conflict (fake). Code corporate actions đúng, test 53/53 + 6/6 xanh.
 
+## Entry 592: S1 deploy lần 2 — backfill keyset pagination + verify (claim done)
+
+- **Date**: 2026-11-21 · **Type**: deploy-recovery + verify · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (done) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.
+- **Sự cố 2**: 0015 backfill `qs.iterator()` crash `InvalidCursorName` qua pgbouncer transaction mode (server cursor chết giữa chunk) → api crash-loop.
+- **Fix repo (0015)**: keyset pagination (`pk__gt` + LIMIT, không server cursor) — pooler-safe.
+- **Fix staging**: DROP 3 index partial? KHÔNG — index đã VALID; chạy single-statement SQL backfill (1.233.565 row / 1m45s); verify mismatch = 0; `migrate service_ops 0016 --fake` (index đã tồn tại + đúng định nghĩa).
+- **Verify sau deploy sạch**: services healthy; pg_stat reset → chờ 10 phút đo mean tier-lookup mới; Playwright E2E.
+- **Claim**: `fast-data-b` → done. Next: Phase C (S2) slice riêng; minor backlog: cap backpressure `_pending_futures`.
+
 ## Entry 589: Phase B S1 deploy-fix — tách migration 0014/0015/0016 (B8 v3 PASS)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) + deploy-recovery · **Branch**: `feat/fast-data-b` · **Claim**: `fast-data-b` (in-progress) · **Evidence**: `docs/evidence/perf/phase-b-s1-gates.md`.

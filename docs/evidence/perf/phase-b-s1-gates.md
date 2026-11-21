@@ -33,7 +33,14 @@
 - CONCURRENTLY fail → runbook: kiểm tra INVALID index + DROP CONCURRENTLY rồi migrate lại.
 - **Sự cố deploy thật 2026-11-21**: 0014 gộp (AddField+backfill, atomic=False) bị kill giữa backfill → rerun crash `column "trigger" already exists` → api crash-loop. ĐÃ SỬA: tách 0014 DDL-only (atomic) + 0015 backfill (atomic=False, idempotent) + 0016 CONCURRENTLY; staging DROP 3 cột partial rồi deploy lại chuỗi sạch. Catalog 144 migration.
 
-## B8 vòng 3 (migration tách) — CHỜ verdict auditor độc lập
+## B8 vòng 3 (migration tách) — PASS. O1 đóng (atomic=False + comment idempotent). O4 đóng (test introspection).
+
+## Deploy #2 + sự cố backfill thứ 2 (pgbouncer server cursor)
+
+- Deploy 0014→0015→0016: 0014 OK; 0015 backfill crash `InvalidCursorName` — `qs.iterator()` mở server-side cursor, chết giữa chunk qua pgbouncer transaction mode. Containers crash-loop.
+- Fix repo (0015): keyset pagination (`pk__gt` + LIMIT, không server cursor).
+- Fix staging: single-statement SQL UPDATE (1.233.565 row / 1m45s) — chứng minh lock DB trực tiếp rẻ hơn ORM loop qua pooler hàng chục lần.
+- Verify sau fix: mismatch = 0; 3 index VALID + đúng định nghĩa; duration_ms percentile + Playwright E2E chạy sau deploy sạch.
 
 ## Next
 
