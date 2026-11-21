@@ -8,6 +8,22 @@
 - **B8 re-audit**: PASS (0 blocker/major; M1 minor: age âm khi T>0 vẫn skip — vô hại production, chấp nhận, không sửa để giữ nguyên B8).
 - **CHƯA CHẠY**: deploy staging + verify pg_stat/queue/E2E (AC6, Owner-gated). Next: PR → merge → deploy → đo.
 
+## Entry 599: Audit /stocks/TPB — click nến không đổi bubble do thiếu wiring session
+
+- **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/tcbs-close` · **File**: `docs/AUDIT_STOCK_TPB_CANDLE_BUBBLE_20261121.md`.
+- **Kết quả**: tìm đúng root cause bug user báo. Click nến có set `selectedSession` (`VNStockChartPanel.js:353-364` → `StockDetailPage.tsx:135-137`) và banner/whale-feed đổi theo session, nhưng `StockDetailPage.tsx:302-306` không truyền session cho `WhaleBubbleChart`, và `WhaleBubbleChart.jsx:663-686` fetch chỉ theo `[symbol, timeframe]`, không gửi `trade_date` dù adapter (`market.js:386-400`) và BE (`portfolio_analytics_views.py:2704-2710,2790-2807`) đã hỗ trợ. Bubble vì thế luôn ở phiên mới nhất — click không bao giờ đổi. `handleClick` phụ thuộc `onClick(currentItem.date)` của widget 0.4.4 (`VNInvestChartsProps.d.ts:142-147`, `EnrichedDatum.date: Date`) nhưng **CHƯA XÁC MINH** runtime (cần repro staging log `moreProps`).
+- **Gates**: `npx tsc --noEmit` exit 0 · `npm run i18n:scan` exit 0 · `eslint` 4 file luồng 0 error (chỉ warning) · `vitest` 2 file stock-detail 12/12 pass (test hiện có mock bubble nên không bắt được lỗi — cần bổ sung assert `trade_date`). BE probe staging có auth **CHƯA CHẠY**.
+- **Next**: PR P0 forward `selectedSession.tradeDate` → bubble → `?trade_date=`, kèm loading/header ngày/empty-state nêu ngày; repro F-03 trước merge; sau đó xử P1 (blocking lane theo session, format ngày `Asia/Ho_Chi_Minh`, test click/timezone/BE contract).
+
+## Entry 600: Re-audit + plan khép kín fix click nến không đổi bubble (/stocks/TPB)
+
+- **Date**: 2026-11-21 · **Type**: re-audit + plan, read-only (chưa sửa code) · **Branch**: `docs/tcbs-close` · **Files**: `docs/PLAN_STOCK_TPB_CANDLE_BUBBLE_20261121.md` (B2) + `docs/evidence/stock-tpb-candle-bubble/plan-audit-verdict.md` (B3/B4).
+- **B1 đo lường**: `docs/tcbs-close`, worktree sạch (ngoài 2 file audit trước); `check-multi-agent` PASS; grep claim không thấy ai giữ file luồng (có 1 worktree khác `wt/ws-ticket-machine`, khác phạm vi); baseline `tsc` exit 0, `i18n:scan` exit 0, `eslint` 4 file 0 error, `vitest` 2 file 12/12.
+- **B2 plan**: 3 slice (S1/P0 nối `selectedSession.tradeDate` → bubble → `?trade_date=` + test fail-before; S2/P1 repro click + guard + timezone `Asia/Ho_Chi_Minh` + ADR blocking lane; S3/P2 UX + dọn dead-code). Lessons: [L-V02, L-V04, L-F09, L-F12, L-T01, L-F07].
+- **B3/B4 verdict: AGREE** (auditor độc lập chỉ đọc). 4 reservation đã đóng tại B4: (R1) `market.js` đang bị 2 claim giữ → S1 giữ LIMIT không đổi adapter; (R2) tránh monolith i18n → giữ pattern `defaultValue`; (R3) tham chiếu B7 treo → đã bổ sung `## B7. Verify staging` vào plan; (R4) chạy lại gates sau rebase/sửa.
+- **Trạng thái loop**: dừng ở B4 (đủ điều kiện B5 khi owner duyệt). Chưa claim, chưa code, chưa commit.
+- **Gates**: doc-only; full BE/FE **CHƯA CHẠY** (ngoài baseline B1 nêu trên).
+
 ## Entry 597: Probe TCBS 3.8.2 — có events/dividends, thiếu JWT + bug wrap lỗi
 
 - **Date**: 2026-11-21 · **Type**: audit read-only · **Branch**: `docs/tcbs-events-probe` · **Claim**: `tcbs-events-probe` (`58e1a5887`) · **File**: `docs/AUDIT_TCBS_COMPANY_EVENTS_20261121.md`.
