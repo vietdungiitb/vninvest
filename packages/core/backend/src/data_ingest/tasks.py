@@ -3538,7 +3538,9 @@ def sync_all_corporate_actions(self, symbols: list[str] | None = None,
     for index, symbol in enumerate(symbols):
         # delay() đưa countdown vào kwargs của task ⇒ TypeError; apply_async mới
         # nhận execution options (countdown) tách biệt với args.
-        sync_corporate_actions.apply_async((symbol,), countdown=index * stagger)
+        sync_corporate_actions.apply_async(
+            (symbol,), countdown=index * stagger, queue='enrichment_offhours',
+        )
         queued += 1
 
     logger.info(

@@ -1,3 +1,10 @@
+## Entry 591: Route subtask corporate actions sang queue sạch
+
+- **Date**: 2026-11-21 · **Type**: code fix · **Branch**: `fix/corp-subtask-queue` · **Claim**: `corp-subtask-queue` (`44be36442`) · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md`.
+- **Nguyên nhân blocker Entry 590**: orchestrator `sync_all_corporate_actions` gọi `apply_async` **không truyền `queue`** ⇒ 1899 subtask rơi vào default queue `celery` đang có ~501k task của hệ thống khác ⇒ worker không consume được dù orchestrator `succeeded queued=1899`. (Queue `enrichment_offhours` sạch, worker có consume.)
+- **Fix**: `apply_async((symbol,), countdown=..., queue='enrichment_offhours')`; test cũ chỉ assert args/countdown (L-E06) — giờ assert thêm `queue`. Sync task **6/6 OK**.
+- **Deploy + dispatch lại**: *(cập nhật sau merge)*. Kỳ vọng DB event/factor/adj tăng dần trên toàn mã.
+
 ## Entry 590: Dispatch toàn bộ 1899 mã — staging blocker queue backlog
 
 - **Date**: 2026-11-21 · **Type**: E2E/ops · **Branch**: `docs/dispatch-backlog` · **Evidence**: `docs/evidence/corporate-actions/ALL_SYMBOLS_SYNC_20261121.md` (cập nhật cuối).

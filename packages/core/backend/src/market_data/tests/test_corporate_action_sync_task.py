@@ -75,6 +75,9 @@ class SyncAllCorporateActionsTests(TestCase):
         for call in apply_async.call_args_list:
             self.assertIn('countdown', call.kwargs)
             self.assertNotIn('countdown', call.args[1] if len(call.args) > 1 else {})
+            # Subtask phải vào queue riêng — queue `celery` đang có ~500k task
+            # của hệ thống khác, xếp vào đó thì corporate actions không chạy.
+            self.assertEqual(call.kwargs.get('queue'), 'enrichment_offhours')
         self.assertEqual(stats['queued'], 2)
 
     @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
