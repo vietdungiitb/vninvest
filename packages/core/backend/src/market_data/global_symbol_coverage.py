@@ -521,6 +521,18 @@ def _should_skip_coverage_refresh(
 
 
 @transaction.atomic
+def _persist_coverage_payloads(
+    registry: GlobalSymbolRegistry,
+    payloads: tuple,
+) -> list[GlobalSymbolCoverage]:
+    coverage_rows = [
+        _upsert_coverage_row(registry, **payload)
+        for payload in payloads
+    ]
+    refresh_global_symbol_registry(registry)
+    return coverage_rows
+
+
 def refresh_global_symbol_coverage(
     symbol_or_registry: str | GlobalSymbolRegistry,
     *,
@@ -559,12 +571,7 @@ def refresh_global_symbol_coverage(
         _build_intraday_payload(GlobalSymbolCoverage.DatasetChoices.INTRADAY_TICKS, symbol, reference_trade_date, verified_at),
         _build_session_facts_payload(symbol, reference_trade_date, verified_at),
     )
-    coverage_rows = [
-        _upsert_coverage_row(registry, **payload)
-        for payload in payloads
-    ]
-    refresh_global_symbol_registry(registry)
-    return coverage_rows
+    return _persist_coverage_payloads(registry, payloads)
 
 
 def build_symbol_coverage_detail(symbol_or_registry: str | GlobalSymbolRegistry) -> dict[str, Any]:
