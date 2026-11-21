@@ -593,7 +593,7 @@ def _build_parity_history_from_persisted_snapshots(*, window_hours: int, points:
 def _build_parity_history_from_scheduler_logs(*, window_key: str, points: int = 7) -> list[dict[str, object]]:
     normalized_points = max(int(points or 0), 1)
     run_logs = ServiceRunLog.objects.filter(
-        input_summary__trigger='market_data.queue_tier_scheduler',
+        trigger='market_data.queue_tier_scheduler',
     ).order_by('-started_at', '-pk')
 
     history = []
@@ -807,8 +807,8 @@ def build_market_data_observability_summary() -> dict[str, object]:
 
         latest_progress_run = ServiceRunLog.objects.filter(
             service=matrix_service,
-            input_summary__trigger='market_data.queue_tier_scheduler',
-            input_summary__queue_tier=tier_name,
+            trigger='market_data.queue_tier_scheduler',
+            queue_tier=tier_name,
             status__in={'success', 'partial'},
         ).order_by('-started_at', '-pk').first()
 
