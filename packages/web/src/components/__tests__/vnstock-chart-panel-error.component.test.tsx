@@ -8,7 +8,7 @@
  * Test ĐỎ trên code cũ (stash: widget không mount), XANH sau sửa.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, fireEvent, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { createElement, forwardRef } from "react";
 
@@ -27,11 +27,12 @@ vi.mock("@vninvestcharts/widget", () => ({
   widgetMessagesVi: {},
   WidgetErrorBoundary: ({ children }: any) => children,
   WidgetI18nProvider: ({ children }: any) => children,
-  WidgetEmptyState: ({ loading, error }: any) =>
+  WidgetEmptyState: ({ loading, error, onRetry }: any) =>
     createElement(
       "div",
       { "data-testid": "mock-empty" },
       loading ? "loading" : error ? `error:${error.message}` : "empty",
+      !loading && onRetry ? createElement("button", { "data-testid": "mock-retry", onClick: onRetry }, "retry") : null,
     ),
   PaperTradePanel: () => null,
   SettingsModal: () => null,
@@ -169,5 +170,30 @@ describe("S2 — panel mount widget + hiện lỗi thật + phát hiện stall",
     expect(screen.getByTestId("mock-widget")).toBeTruthy();
     expect(screen.queryByTestId("vnsc-no-fetch")).toBeNull();
     expect(screen.queryByTestId("vnsc-widget-error")).toBeNull();
+  });
+
+  it("AC4 (OB-1) — retry từ banner stall: hết kẹt, timer chạy lại", async () => {
+    vi.useFakeTimers();
+    renderPanel();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(screen.getByTestId("mock-widget")).toBeTruthy();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(screen.getByTestId("vnsc-no-fetch")).toBeTruthy();
+
+    // Retry: banner mất ngay (reset stall); timer chạy lại nên 10s sau hiện lại
+    // (chứng minh không kẹt vĩnh viễn và effect re-run).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-retry"));
+    });
+    expect(screen.queryByTestId("vnsc-no-fetch")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(screen.getByTestId("vnsc-no-fetch")).toBeTruthy();
   });
 });

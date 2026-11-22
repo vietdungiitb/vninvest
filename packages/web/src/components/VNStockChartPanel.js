@@ -146,7 +146,8 @@ export default function VNStockChartPanel({
         if (active) setWidgetModule(mod);
       })
       .catch((err) => {
-        if (active) setWidgetError(err instanceof Error ? err.message : String(err));
+        // OB-2 (B8r3): chuan hoa Error object (chartBody doc .message ca hai nhanh).
+        if (active) setWidgetError(err instanceof Error ? err : new Error(String(err?.message ?? err ?? 'Widget load failed')));
       });
     return () => {
       active = false;
@@ -527,6 +528,10 @@ onSymbolChange: (sym) => {
   // S2: retry tren empty-state — import fail thi nap lai module, runtime thi remount content.
   const handleEmptyRetry = useCallback(() => {
     setWidgetError(null);
+    // OB-1 (B8r3): retry tu banner stall phai reset stall + dem fetch,
+    // neu khong bump retryKey la vo hinh (effect khong re-run, banner ket vinh vien).
+    setFetchStalled(false);
+    fetchCallsRef.current = 0;
     if (!chartComponent) {
       handleImportRetry();
     } else {
@@ -549,7 +554,7 @@ onSymbolChange: (sym) => {
     }, 10000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartComponent, loading, symbol, activeTimeframe, activePeriod, internalBars, widgetError]);
+  }, [chartComponent, loading, symbol, activeTimeframe, activePeriod, internalBars, widgetError, retryKey]);
 
   const chartWithBoundary = WidgetErrorBoundary
     ? e(WidgetErrorBoundary, { key: retryKey, onRetry: handleBoundaryRetry }, chartElement)
