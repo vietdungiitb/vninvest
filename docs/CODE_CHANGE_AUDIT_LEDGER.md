@@ -1,3 +1,14 @@
+## Entry 606: Runtime verify whale-detect sau PR #506 — beat sống, backfill 9 phiên TPB
+
+- **Date**: 2026-11-22 · **Type**: ops verify + backfill (KHÔNG đổi code) · **Branch**: `docs/stock-tpb-runtime-verify-20261122` · **Tiếp nối**: Entry 605.
+- **Deploy**: PR #506 merge @ `3cf85ad5b`; `bash scripts/deploy-staging.sh` trên VPS; API/worker/beat restart healthy.
+- **Evidence beat**: log worker `Task signal_intelligence.tasks.detect_and_store_global_whale_alerts received`, **0 `UnboundLocalError`**; `WhaleAlertCanonical` từ `max=2026-11-06` (trước fix) → `max=2026-11-20`, 42052 dòng toàn hệ thống.
+- **Backfill TPB**: 8 phiên 10→19/11 qua `detect_and_store_global_whale_alerts(symbol='TPB', session_date=...)` → 9/17/13/5/7/8/14/4 whale ticks, đều `status='ok'`; cộng 06/11 (48) + 20/11 (10) = 87.
+- **Probe view**: `GET /core/v1/workspace/whale-analytics/TPB/?trade_date=...` (Client force_login, `HTTP_HOST=docker.edusuccess.vn`) → 200, `bubble_series` = 9/8/4/10 cho 10/17/19/20-11, `resolved trade_date` đúng.
+- **Đính chính (L-V02)**: psql quoting sai cho `(0 rows)` ở lần đầu — đã chạy lại bằng file SQL, không phải thiếu data. Mọi con số có lệnh tái tạo trong plan.
+- **Next / owner**: user test `/stocks/TPB` click nến 10→20/11; nếu bubble vẫn rỗng gửi console/network + nhãn phiên + text chẩn đoán. TPB lặp (breadcrumb/hero/card) và 404 advisory/billing chờ product decision — không mở rộng trong slice này.
+- **Lessons áp dụng**: L-V02 (không tin kết quả chưa reproduce/control), L-T01 (normalize-eol trước commit).
+
 ## Entry 605: Whale-detect chết từ 06/11 — UnboundLocalError datetime (B8 PASS)
 
 - **Date**: 2026-11-22 · **Type**: code BE + test · **Branch**: `feat/stock-tpb-whale-detect` · **Claim**: `stock-tpb-whale-detect` → done · **Plan**: `docs/PLAN_STOCK_TPB_WHALE_DETECT_20261122.md`.

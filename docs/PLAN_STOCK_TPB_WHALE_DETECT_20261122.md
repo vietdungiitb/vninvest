@@ -71,7 +71,34 @@ CHƯA CHẠY → ghi rõ.
 - **Ghi nhận ngoài scope (KHÔNG sửa)**: log fail-before có
   `TypeError: _b02_mark_run_failed_on_crash() missing 1 required positional argument: 'exc'`
   (celery signal handler) — lỗi pre-existing, không chặn task; ticket riêng nếu cần.
-- **S3 staging**: CHƯA CHẠY — chờ merge + deploy, sau đó verify log beat 5m và dòng mới.
+- **S3 staging**: **ĐÃ CHẠY 2026-11-22** (sau merge PR #506 @ `3cf85ad5b` + deploy) — chi tiết mục dưới.
+
+## Runtime verification trên staging (2026-11-22, sau deploy)
+
+- **Deploy**: `bash scripts/deploy-staging.sh` trên VPS; HEAD `/opt/vninvest` = `3cf85ad5b`;
+  `vninvest-core-api`/`worker`/`beat` restarted, healthy.
+- **Beat/worker**: `docker logs vninvest-core-worker --since 5m` có
+  `Task signal_intelligence.tasks.detect_and_store_global_whale_alerts[...] received`,
+  **KHÔNG** còn `UnboundLocalError`; task ghi thành công. (Dòng HINT `BROKER_SECRET_KEY`
+  là cảnh báo pre-existing, ngoài scope.)
+- **DB**: trước fix `max(session_date)=2026-11-06`; sau deploy `max=2026-11-20`,
+  `count(*)=42052` (toàn hệ thống).
+- **Backfill TPB** (8 phiên còn thiếu, gọi trực tiếp
+  `detect_and_store_global_whale_alerts(symbol='TPB', session_date=...)` trong
+  `vninvest-core-api`, `/app/src/manage.py shell`): 10/11 → 9, 11/11 → 17,
+  12/11 → 13, 13/11 → 5, 16/11 → 7, 17/11 → 8, 18/11 → 14, 19/11 → 4 whale ticks;
+  mọi ngày đều `status='ok'`. Cộng 06/11 (48, cũ) + 20/11 (10, beat mới) = **87 whale ticks TPB**.
+- **Probe endpoint** (`django.test.Client.force_login(user=1)`, `HTTP_HOST=docker.edusuccess.vn`,
+  `GET /core/v1/workspace/whale-analytics/TPB/?trade_date=YYYY-MM-DD`):
+  `10/11 → 9`, `17/11 → 8`, `19/11 → 4`, `20/11 → 10` bubbles trong `bubble_series`
+  (HTTP 200, `resolved trade_date` đúng phiên yêu cầu).
+- **Đính chính đo lường (L-V02)**: truy vấn psql đầu tiên với quoting shell dạng
+  `symbol = 'TPB' AND session_date >= '2026-11-06'` trả `(0 rows)` — **sai do quoting**,
+  không phải thiếu dữ liệu. Chạy lại qua file SQL (`/tmp/tpb_whale_days.sql`) cho kết quả
+  06/11=48, 20/11=10 trước backfill. Mọi số liệu ở trên lấy từ lệnh có thể tái tạo.
+- **Chờ user**: mở `https://docker.edusuccess.vn/stocks/TPB`, click các nến 10→20/11
+  xác nhận bubble đổi theo phiên. Nếu vẫn rỗng: cung cấp console/network + nhãn
+  "Phiên đang xem" + text chẩn đoán (`vnsc-no-fetch` / `vnsc-widget-error`).
 
 ## MANDATORY CHECKLIST
 
