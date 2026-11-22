@@ -30,9 +30,16 @@
 - Rollback: không có (thêm dữ liệu đúng thì giữ; sai thì xóa theo symbol+date).
 - LIMIT: 3 lần thử tổng; VCI vẫn 418 toàn provider → ghi blocker + dừng (không đốt quota).
 
-### S2 (P0-FE) — panel không nuốt lỗi widget nữa + phát hiện "không gọi API"
+### S2 (P0-FE) — panel không nuốt lỗi widget + sửa deadlock mount + phát hiện stall
 
-**SCOPE**: `packages/web/src/components/VNStockChartPanel.js`, test mới `vnstock-chart-panel-error.component.test.jsx` (mock widget).
+**Phát hiện B6 (bằng chứng: test jsdom + đọc code)**: `chartBody` cũ chỉ render widget khi `internalBars` đã có, mà bars chỉ đến từ `onBarsChange` của widget → widget không bao giờ mount → không bao giờ fetch (khớp access log 0 cuộc gọi/72h). Đây mới là nguyên nhân lớp FE; thiếu data (S1) là lớp thứ hai, đã lấp (2146 rows, chart 200 + 21 points qua shell).
+
+**SCOPE**: `packages/web/src/components/VNStockChartPanel.js`, test mới `vnstock-chart-panel-error.component.test.tsx` (mock widget).
+- (a) **Luôn mount widget** khi module load xong (`chartWithBoundary` thay nhánh `bars.length===0 → empty`); widget tự quản lý loading/empty nội bộ. Panel chỉ chen khi: chưa có module, đang `loading` blocking, widget báo lỗi, hoặc stall.
+- (b) Truyền `onError` cho widget (dts `VNInvestChartsProps.d.ts:208`) → state `widgetError` → `emptyStateNode` hiện message thật + nút thử lại (`handleEmptyRetry`: import fail → nạp lại module, runtime → remount). Giữ nguyên mọi hành vi khác; không đụng adapter/BE/widget version (L-F12).
+- (c) **Stall detector** (OB-1 round 2: onError không phủ nhánh no-fetch): bọc adapter đếm lượt gọi `fetchBars*` (single identity — 1 object cho cả prop widget lẫn `pushRealtimeBar`, delegate hết về base, R1); effect 10s grace: mount xong + hết loading + 0 fetch + 0 bars + không lỗi → `fetchStalled` → copy chẩn đoán riêng (`vnsc-no-fetch`). Reset ở M-2 + khi bars về.
+- **AC (fail-before, đã chứng minh đỏ trên code cũ bằng stash: widget không mount)**: widget mount ngay khi module load; zero-call sau 10s (fake timers) hiện chẩn đoán; `onError` hiện đúng message; có bars → chart, không banner empty.
+- LIMIT: 3 vòng.
 - (a) Truyền `onError` cho widget (dts `VNInvestChartsProps.d.ts:208`) → state `widgetError` → `emptyStateNode` hiện message thật + nút thử lại (dùng `retryKey` đã có). Giữ nguyên mọi hành vi khác; không đụng adapter/BE/widget version (L-F12).
 - (b) **Thừa nhận giới hạn (OB-1)**: `onError` chỉ bắn khi fetch LỖI; nhánh "widget không gọi API" (0 HTTP như staging TPB) vẫn im lặng. Nên panel bọc adapter đã tạo bằng wrapper đếm lượt gọi `fetchBarsBefore/fetchBarsInRange` (không đổi logic, chỉ đếm + timestamp lần gọi cuối); khi `loading=false`, `internalBars` rỗng, không error mà lượt gọi = 0 → hiện trạng thái chẩn đoán riêng ("biểu đồ chưa yêu cầu dữ liệu — bấm thử lại hoặc xem console") thay vì "Chưa có dữ liệu" chung chung. Test assert cả 3 trạng thái: error thật / zero-call / có bars.
 - **AC (fail-before)**: test đỏ trên code cũ (onError bị bỏ qua; zero-call vẫn "trống" chung); xanh sau sửa (hiện đúng lỗi; zero-call hiện copy chẩn đoán; retry remount).
