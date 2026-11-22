@@ -146,7 +146,8 @@ export default function VNStockChartPanel({
         if (active) setWidgetModule(mod);
       })
       .catch((err) => {
-        if (active) setWidgetError(err instanceof Error ? err.message : String(err));
+        // OB-2 (B8r3): chuan hoa Error object (chartBody doc .message ca hai nhanh).
+        if (active) setWidgetError(err instanceof Error ? err : new Error(String(err?.message ?? err ?? 'Widget load failed')));
       });
     return () => {
       active = false;
@@ -184,7 +185,26 @@ export default function VNStockChartPanel({
   const WidgetErrorBoundary = widgetModule?.WidgetErrorBoundary;
   const WidgetEmptyState = widgetModule?.WidgetEmptyState;
 
-  const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
+  // S2(b): dem so lan widget THAT SU goi fetch (zero-call = chua tung hoi du lieu).
+  // Single identity (R1): 1 object `adapter` cho ca prop widget lan pushRealtimeBar —
+  // delegate het ve base de khong tach doi `this._barCallbacks` registry.
+  // Ref (khong phai state) de tranh re-render vo ich moi lan fetch; render doc qua stall timer.
+  const fetchCallsRef = useRef(0);
+  const adapter = useMemo(() => {
+    const base = createChartStockDataAdapter({ env });
+    const noteFetch = () => { fetchCallsRef.current += 1; };
+    return {
+      ...base,
+      fetchBarsInRange: (...args) => { noteFetch(); return base.fetchBarsInRange(...args); },
+      fetchBarsBefore: (...args) => { noteFetch(); return base.fetchBarsBefore(...args); },
+      subscribeToBar: (...args) => base.subscribeToBar(...args),
+      pushRealtimeBar: (...args) => base.pushRealtimeBar(...args),
+      subscribeToTrades: (...args) => base.subscribeToTrades(...args),
+      subscribeToOrderbook: (...args) => base.subscribeToOrderbook(...args),
+      getSourceSemantics: (...args) => base.getSourceSemantics(...args),
+      searchSymbols: (...args) => base.searchSymbols(...args),
+    };
+  }, [env]);
 
   const realtimeFeed = useRealtimeFeedFromManager({
     symbols: symbol ? [symbol] : [],
@@ -305,7 +325,14 @@ export default function VNStockChartPanel({
     // M-2 (B3 W-C): xoa bars ma cu khi doi symbol/timeframe/period (E4) —
     // tranh flash bars cu + nhanh empty co co hoi kich dung.
     setInternalBars([]);
+    setWidgetError(null);
+    setFetchStalled(false);
+    fetchCallsRef.current = 0;
   }, [symbol, activeTimeframe, activePeriod]);
+
+  // S2(b): stall detector — widget da mount, het loading, nhung sau STALL_GRACE_MS
+  // van 0 fetch + 0 bars + khong loi => hien chan doan (khong phai "khong co du lieu").
+  const [fetchStalled, setFetchStalled] = useState(false);
 
   const mappedWhaleOrders = useMemo(() => {
     // T1.4 R-1: BE trả matched_value/ts — map đầy đủ alias, skip khi thiếu price để không plot tại 0
@@ -334,6 +361,11 @@ export default function VNStockChartPanel({
     onVisibleRangeChange?.(range);
   }, [onVisibleRangeChange]);
 
+  const handleWidgetError = useCallback((err) => {
+    // S2(a): loi runtime tu widget (fetch fail, enrich fail...) — hien that, khong nuot.
+    setWidgetError(err instanceof Error ? err : new Error(String(err?.message ?? err ?? 'Unknown widget error')));
+  }, []);
+
   const handleClick = useCallback((moreProps) => {
     // S2: resolve phiên theo múi Asia/Ho_Chi_Minh + guard date invalid
     // (click vùng trống → null → bỏ qua, không set session rác).
@@ -347,6 +379,11 @@ export default function VNStockChartPanel({
 
   const handleBarsChange = useCallback((bars) => {
     setInternalBars(bars);
+    if (Array.isArray(bars) && bars.length > 0) {
+      // Co du lieu that -> xoa trang thai loi/stall cu (tranh banner doi).
+      setWidgetError(null);
+      setFetchStalled(false);
+    }
     onBarsChange?.(bars);
   }, [onBarsChange]);
 
@@ -472,6 +509,8 @@ export default function VNStockChartPanel({
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
           onBarsChange: handleBarsChange,
+          // S2(a): widget bao loi runtime ve host (fetch fail, enrich fail...).
+          onError: handleWidgetError,
           onTimeframeChange: (tf) => {
             const mapped = tf === '1d' ? 'D' : tf === '1h' ? '1H' : tf;
             onTimeframeChange?.(mapped);
@@ -486,19 +525,59 @@ onSymbolChange: (sym) => {
   // W-C: thu tu nhanh bat buoc (M-3) — Provider > Boundary > content:
   // !module -> loading prop -> bars rong -> boundary(chart). Chart chi
   // render o nhanh cuoi nen throw luc loading la impossible.
+  // S2: retry tren empty-state — import fail thi nap lai module, runtime thi remount content.
+  const handleEmptyRetry = useCallback(() => {
+    setWidgetError(null);
+    // OB-1 (B8r3): retry tu banner stall phai reset stall + dem fetch,
+    // neu khong bump retryKey la vo hinh (effect khong re-run, banner ket vinh vien).
+    setFetchStalled(false);
+    fetchCallsRef.current = 0;
+    if (!chartComponent) {
+      handleImportRetry();
+    } else {
+      // Remount content (widget refetch) — giu module da load.
+      setRetryKey((k) => k + 1);
+    }
+  }, [chartComponent, handleImportRetry]);
+
+  // S2(b): stall detector — widget da mount + het loading, nhung sau grace van
+  // 0 fetch + 0 bars + khong loi => hien chan doan rieng (khong phai "khong co du lieu" chung).
+  // Deps gom bars/error de reset timer + danh gia lai moi khi trang thai doi.
+  useEffect(() => {
+    setFetchStalled(false);
+    if (!chartComponent || loading) return undefined;
+    if (internalBars.length > 0 || widgetError) return undefined;
+    const timer = setTimeout(() => {
+      if (internalBars.length === 0 && !widgetError && fetchCallsRef.current === 0) {
+        setFetchStalled(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartComponent, loading, symbol, activeTimeframe, activePeriod, internalBars, widgetError, retryKey]);
+
   const chartWithBoundary = WidgetErrorBoundary
     ? e(WidgetErrorBoundary, { key: retryKey, onRetry: handleBoundaryRetry }, chartElement)
     : chartElement;
 
+  // S2-fix deadlock mount (W-C cu): widget CHI render khi da co bars, nhung bars
+  // chi den tu onBarsChange cua widget -> khong bao gio fetch. Bay gio LUON mount
+  // widget khi module load xong (widget tu quan ly loading/empty noi bo);
+  // panel chi chen khi: chua co module, dang loading blocking, widget bao loi,
+  // hoac stall (mount xong qua grace ma chua tung fetch).
   const chartBody = !chartComponent
     ? (widgetError
-      ? emptyStateNode(false, widgetError, handleImportRetry)
+      ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || t('vninvest.chart_load_error', { defaultValue: 'Không thể tải biểu đồ' }), handleImportRetry))
       : emptyStateNode(true, null, null))
     : loading
       ? emptyStateNode(true, null, null)
-      : internalBars.length === 0
-        ? emptyStateNode(false, null, null)
-        : chartWithBoundary;
+      : widgetError
+        // S2(a): loi that tu widget — hien message + retry (fail-visible).
+        ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || t('vninvest.chart_load_error', { defaultValue: 'Không thể tải biểu đồ' }), handleEmptyRetry))
+        : fetchStalled
+          // S2(b): widget mount xong qua grace ma chua tung goi fetch.
+          ? e('div', { 'data-testid': 'vnsc-no-fetch' }, emptyStateNode(false, t('vninvest.no_fetch_attempt', { defaultValue: 'Biểu đồ chưa yêu cầu dữ liệu — bấm thử lại hoặc mở console kiểm tra.' }), handleEmptyRetry))
+          : chartWithBoundary;
 
   const panels = [];
   // W-I: bo mount `<DrawingDock>` standalone (luon render null — thieu `isOpen`).
