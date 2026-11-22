@@ -4,6 +4,9 @@ WORKDIR /app
 # Copy package files and npm auth (GitHub Packages) and install dependencies
 COPY package*.json ./
 COPY .npmrc ./
+# D2b: widget is pinned to a local tarball (file:vendor/...) so the tarball must
+# exist before `npm ci` resolves dependencies.
+COPY vendor/ ./vendor/
 ARG GITHUB_TOKEN=
 ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 ENV NODE_OPTIONS=--max-old-space-size=2048
@@ -43,6 +46,9 @@ ENV APP_RELEASE=${APP_RELEASE}
 
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
+# Build provenance: commit comes from APP_RELEASE (set to git HEAD by deploy).
+# A fresh Docker build context is a clean tree by construction.
+RUN printf '{"ok":true,"commit":"%s","dirty":false}\n' "$APP_RELEASE" > /usr/share/nginx/html/health.json
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

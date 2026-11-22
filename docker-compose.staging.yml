@@ -124,6 +124,10 @@ services:
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
         VITE_VNINVEST_LICENSE_KEY: ${VITE_VNINVEST_LICENSE_KEY:-}
         GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # Enterprise demo entitlement: SaaS PAT stays on the host (root-only);
+      # the browser only receives the resolved tier from /api/v1/entitlement.
+      - /opt/vninvest/secrets/entitlement-auth.conf:/etc/nginx/entitlement-auth.conf:ro
     environment:
       # `docker-compose.prod.yml:561-564` **hard-code** domain prod
       # (`saas.edusuccess.vn`). Không ghi đè thì VPS staging vẫn trỏ về
