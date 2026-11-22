@@ -1,5 +1,6 @@
 import "./StockDetailPage.css";
 import { createElement, useCallback, useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
@@ -387,12 +388,25 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
         onOpenConfigDrawer: () => setDrawerOpen(true)
       }),
 
-      drawerOpen && e(AIAdvisoryPromptConfigDrawer, {
-        isOpen: drawerOpen,
-        onClose: () => setDrawerOpen(false),
-        config: promptConfig,
-        onConfigChange: handleConfigChange
-      }),
+      // S1 (drawer-portal): drawer overlay `position: fixed` bi rule
+      // `.sdp-page > :not(.sdp-bg-glow)` (0,2,0) de thanh relative vi la con
+      // truc tiep cua .sdp-page → rot xuong cuoi trang. Portal ra body
+      // (mau SocSchedulerBoard) de fixed dung viewport that.
+      drawerOpen
+        ? (typeof document !== "undefined"
+          ? createPortal(e(AIAdvisoryPromptConfigDrawer, {
+            isOpen: drawerOpen,
+            onClose: () => setDrawerOpen(false),
+            config: promptConfig,
+            onConfigChange: handleConfigChange
+          }), document.body)
+          : e(AIAdvisoryPromptConfigDrawer, {
+            isOpen: drawerOpen,
+            onClose: () => setDrawerOpen(false),
+            config: promptConfig,
+            onConfigChange: handleConfigChange
+          }))
+        : null,
 
       toast && e(
         "div",
