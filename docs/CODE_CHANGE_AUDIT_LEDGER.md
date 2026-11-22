@@ -1,3 +1,13 @@
+## Entry 612: Chart enterprise always-on demo — code + deploy staging (B5–B9)
+
+- **Date**: 2026-11-22 · **Type**: FE + deploy + verify · **Branch**: `feat/chart-enterprise-demo` · **Claim**: `chart-enterprise-demo` → done.
+- **Code**: pin widget local `0.4.7` @ `ddc947dd` (`vendor/*.tgz`, deny-list có trailer + lý do trong commit); preload entitlement trước render (`chartDemoEntitlement.js`, `main.tsx`); `enterpriseBinding` 6 dock tab do widget render (`chartEnterpriseBinding.js`, `VNStockChartPanel.js`); alias stub cho `widget-pro/register` (D4b); nginx exact-match `/api/v1/entitlement`; compose mount PAT root-only; Dockerfile copy `vendor/` + sinh `health.json` từ commit.
+- **Provision VPS**: tenant `vninvest-demo` id 16, subscription enterprise id 7 (end 2126-10-29), PAT machine file root-only (không lưu repo/chat). `curl .../api/v1/entitlement` → 200 `tier_code=enterprise`.
+- **Gates chạy thật**: vitest 8/8 (2 file slice) + 29/29 (3 file hồi quy) · `tsc` 0 · `npm run build` exit 0 · pre-push-gate **36 PASS / 0 FAIL** · deploy staging 12 container healthy · `check-staging.mjs` → `STAGING_OK commit=042037f3a dirty=false`. B8 re-audit `AGREE` (`REAUDIT_FINAL.md`).
+- **CHƯA CHẠY**: E2E browser có đăng nhập + screenshot badge/dock (cần session staging); không báo PASS.
+- **Bảo mật**: GITHUB_TOKEN transient, không lưu file; đã lộ chat ⇒ rotate. Segment secret-scan 0 hit trong file slice.
+- **Lessons**: [L-V01, L-V02, L-V05, L-F01, L-F02, L-F12, L-T01, L-T02] + 6 luật cứng `workflow-dev-loop`.
+
 ## Entry 611: Owner chốt D2b/D4b — build local widget @ ddc947dd, defer widget-pro (B4 mở lại)
 
 - **Date**: 2026-11-22 · **Type**: quyết định (doc-only, 0 dòng code) · **Evidence**: `CONSENSUS_20261122.md` §4 + `REGISTRY_PROBE_20261122.md`.
