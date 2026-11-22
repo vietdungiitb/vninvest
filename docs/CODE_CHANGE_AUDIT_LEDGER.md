@@ -1,3 +1,11 @@
+## Entry 604: Drawer AI config portal ra body (fix modal rớt cuối trang) — B8 PASS
+
+- **Date**: 2026-11-22 · **Type**: code FE + test · **Branch**: `feat/stock-tpb-drawer-portal` · **Claim**: `stock-tpb-drawer-portal` → done.
+- **Root cause**: drawer là con trực tiếp của `.sdp-page`; rule `.sdp-page > :not(.sdp-bg-glow)` (0,2,0) đè `position: fixed` (0,1,0) của `.drawerOverlay` → thành relative in-flow, rớt xuống cuối trang. Xác minh specificity tay, không đoán.
+- **Fix**: `createPortal(drawer, document.body)` khi mở (guard SSR theo mẫu `SocSchedulerBoard`), fallback inline khi không có document. Không đụng CSS, không đụng file agent khác.
+- **Gates**: fail-before đỏ 2/2 (overlay trong `.sdp-page`) → xanh 2/2; page suite 8/8; tsc 0; eslint 0. B8 round 1 PASS (0 OB).
+- **Next**: merge PR → deploy staging → user mở drawer kiểm tra bám phải + scroll độc lập. TPB lặp (breadcrumb/hero/card) chờ product quyết định — ticket riêng.
+
 ## Entry 603: Chart TPB trống — S1 backfill xong + S2 mount-always (B8 round4 PASS)
 
 - **Date**: 2026-11-22 · **Type**: ops BE-data + code FE TDD · **Branch**: `feat/stock-tpb-chart-empty` · **Claim**: `stock-tpb-chart-empty` → done.
