@@ -55,12 +55,24 @@ class DetectHistoricalSessionDateTests(TestCase):
     @patch('signal_intelligence.tasks._get_latest_session_date')
     @patch('market_data.models.IntradayTick.objects')
     def test_session_date_none_uses_latest(self, mock_qs, mock_latest):
-        """T-D3: session_date=None → gọi _get_latest_session_date()."""
-        mock_latest.return_value = None  # trả về None để task skip
+        """T-D3: session_date=None → fallback latest rồi CHẠM datetime.combine (:101).
+
+        Regression: `from datetime import datetime` trong nhánh if (:86) biến
+        datetime thành local của cả hàm → đường beat (None) nổ UnboundLocalError.
+        Mock latest trả date THẬT để không return sớm ở :94-96.
+        """
+        from datetime import date
+
+        mock_latest.return_value = date(2026, 11, 20)
+        # Mock queryset chain trả rỗng (mẫu T-D1 :38-40) → loop 0 vòng,
+        # rơi xuống return cuối :243 status='ok'.
+        mock_qs_filter = MagicMock()
+        mock_qs.filter.return_value = mock_qs_filter
+        mock_qs_filter.values.return_value.annotate.return_value.order_by.return_value.values_list.return_value.__getitem__ = MagicMock(return_value=[])
+
         result = self._call(session_date=None)
         mock_latest.assert_called_once()
-        self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason'], 'no_tick_data')
+        self.assertEqual(result.get('status'), 'ok')
 
     @patch('signal_intelligence.tasks._get_latest_session_date')
     @patch('signal_intelligence.order_flow_engine.load_session_ticks_df')

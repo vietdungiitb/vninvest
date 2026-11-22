@@ -1,3 +1,13 @@
+## Entry 605: Whale-detect chết từ 06/11 — UnboundLocalError datetime (B8 PASS)
+
+- **Date**: 2026-11-22 · **Type**: code BE + test · **Branch**: `feat/stock-tpb-whale-detect` · **Claim**: `stock-tpb-whale-detect` → done · **Plan**: `docs/PLAN_STOCK_TPB_WHALE_DETECT_20261122.md`.
+- **Root cause**: `signal_intelligence/tasks.py:86` (thêm ở D05) `from datetime import datetime` nằm trong nhánh `if session_date is not None` → Python coi `datetime` là biến local của **cả hàm** → đường beat `session_date=None` (chạy 5 phút/lần) không bind, nổ `UnboundLocalError` ở `:101`. Hệ quả: `WhaleAlertCanonical` toàn hệ thống đứng ở **2026-11-06**, 0 dòng 8 ngày gần nhất, dù intraday tick TPB vẫn chảy tới 20/11 (9364 dòng/30 ngày) — bubble chart chỉ phản ánh dữ liệu detect, không phải lỗi FE/wiring (đã sửa ở Entry 599/601).
+- **Fix**: xóa đúng 1 dòng import local, dùng import module-level `:3`. Không đụng engine/ngưỡng, không migration, không FE.
+- **Fail-before thật**: T-D3 cũ mock `latest=None` → return sớm `:94-96` → **xanh giả**. B3 r1 NEED_REVISION (OB-1) → sửa T-D3: mock `_get_latest_session_date` trả `date(2026,11,20)` + qs chain rỗng, assert `status='ok'`. Trên code lỗi: `Ran 4 tests — FAILED (errors=1)`, đúng `UnboundLocalError tasks.py:101`. B3 r2 PASS.
+- **Gates (VPS, DB riêng `ag_stock_tpb_whale`/`whale2`, đã DROP WITH FORCE)**: pass-after 4/4 OK · full app `signal_intelligence` **77 tests OK** (`--keepdb`, do teardown không drop được 2 session celery — lỗi môi trường) · `check-multi-agent` 0 lỗi PASS · `check-lessons` 60/60 sạch · `git diff --check` 0 · normalize-eol 2 file BE về LF. B8 r1 NEED_REVISION (thiếu evidence) → bổ sung → B8 r2 PASS, 0 OB.
+- **Ghi nhận ngoài scope (KHÔNG sửa)**: log fail-before có `TypeError: _b02_mark_run_failed_on_crash() missing 1 required positional argument: 'exc'` (`data_ingest/tasks.py:31,62`) — celery signal handler pre-existing, ticket riêng.
+- **Next**: merge PR → deploy staging → verify log beat không còn `UnboundLocalError` + `WhaleAlertCanonical` có dòng mới → backfill phiên thiếu 10→20/11 (9 ngày có snapshot TPB) qua tham số `session_date` (D05). S3 **CHƯA CHẠY** tại thời điểm ghi Entry.
+
 ## Entry 604: Drawer AI config portal ra body (fix modal rớt cuối trang) — B8 PASS
 
 - **Date**: 2026-11-22 · **Type**: code FE + test · **Branch**: `feat/stock-tpb-drawer-portal` · **Claim**: `stock-tpb-drawer-portal` → done.
