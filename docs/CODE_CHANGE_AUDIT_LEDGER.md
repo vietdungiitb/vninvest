@@ -1,3 +1,13 @@
+## Entry 607: Backfill whale toàn thị trường 10→20/11 — over_threshold_missing = 0 (B8 PASS r2)
+
+- **Date**: 2026-11-22 · **Type**: ops backfill + verify (KHÔNG đổi code) · **Branch**: `feat/stock-whale-backfill-all` · **Claim**: `stock-whale-backfill-all` → done (commit claim riêng `22f8e6617` + update done) · **Plan**: `docs/PLAN_STOCK_WHALE_BACKFILL_ALL_20261122.md` (B3 AGREE + R-1..R-5 đã bổ sung; B8 r1 NEED_REVISION OB-1..OB-5 → đã sửa hết → r2 PASS).
+- **Bối cảnh**: sau fix PR #506 beat chỉ hồi phục phiên hiện tại; 8 phiên 10→19/11 toàn thị trường vẫn trống (trừ TPB đã backfill ở Entry 606: mỗi phiên chỉ 1 symbol).
+- **Chạy**: `detect_and_store_global_whale_alerts(session_date=...)` (global, top 500/phiên) trong `vninvest-core-api` trên VPS: 10/11 → 548, 11 → 650, 12 → 442, 13 → 611, 16 → 527, 17 → 1013, 18 → 2011, 19 → 526 (chạy thử trước), 20/11 top-up → 0 dòng mới (beat đã phủ đủ — đúng semantics idempotent). Mọi phiên `status='ok'`.
+- **Verify**: GROUP BY `10: 552/109 · 11: 651/103 · 12: 439/101 · 13: 614/109 · 16: 530/76 · 17: 955/100 · 18: 2003/106 · 19: 528/99 · 20: 443/110`. Tiêu chí nháp `symbols >= 120` bị bác bằng đối chứng: `max(price*volume)` theo symbol-ngày vs ngưỡng `WHALE_VALUE_MIN_VND = 500M` (`order_flow_engine.py:31`) → cả 9 phiên `over_threshold_missing = 0`; vd 16/11: 71 symbol có tick nhưng không có whale rows, **0** symbol nào có tick ≥ 500M (max nhóm thiếu = 486M). Mọi symbol-ngày có tick cá mập đều đã có rows.
+- **Probe view** (`whale-analytics`, force_login): VCB 18/11 → 53, HPG 18/11 → 49, VIC 16/11 → 38, TPB 18/11 → 14 bubbles (HTTP 200, `resolved trade_date` khớp).
+- **Gates**: `check-multi-agent` PASS · `normalize-eol` OK · `git diff --check` sạch (output paste ở plan §7). BE/FE suite CHƯA CHẠY (không đổi code).
+- **Lessons áp dụng**: [L-B01, L-V01, L-V02, L-T01].
+
 ## Entry 606: Runtime verify whale-detect sau PR #506 — beat sống, backfill 9 phiên TPB
 
 - **Date**: 2026-11-22 · **Type**: ops verify + backfill (KHÔNG đổi code) · **Branch**: `docs/stock-tpb-runtime-verify-20261122` · **Tiếp nối**: Entry 605.
