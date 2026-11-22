@@ -1,3 +1,11 @@
+## Entry 613: E2E browser chart enterprise — 3 runtime fixes + verify
+
+- **Date**: 2026-11-22 · **Type**: E2E verify + bugfix (PR #512, #513, #514 merged vào `dev`).
+- **E2E**: Playwright staging với user QA, `/stocks/TPB` → `data-tier=enterprise`, chart/nến/whale/tape/order-flow render, 0 runtime error. Ảnh `docs/evidence/chart-enterprise/e2e-enterprise.png` (đã mở xem).
+- **Fix**: (1) enterprise panel shapes đầy đủ `holdings`/`count` (`.length` undefined); (2) bỏ standalone `PaperTradePanel` (widget tự render, thiếu `journal`); (3) thử `SaaSFeatureProvider serverTier` nhưng bundle không export runtime ⇒ bỏ.
+- **Giới hạn**: badge `FREE` trong toolbar widget vẫn hiện (npm package không có server-tier channel của demo build). Capability enterprise đã active — không báo PASS giả cho badge.
+- **Gates**: vitest 9/9 · tsc 0 · pre-push-gate 36 PASS mỗi PR · `STAGING_OK commit=c831f7831 dirty=false`.
+
 ## Entry 612: Chart enterprise always-on demo — code + deploy staging (B5–B9)
 
 - **Date**: 2026-11-22 · **Type**: FE + deploy + verify · **Branch**: `feat/chart-enterprise-demo` · **Claim**: `chart-enterprise-demo` → done.
