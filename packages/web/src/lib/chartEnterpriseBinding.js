@@ -58,20 +58,30 @@ export function createChartEnterpriseAdapter(baseAdapter = {}) {
         'workspace_unavailable',
         (raw) => ({ watchlists: asRows(raw) })
       ),
-    fetchPortfolioAnalyticsWithNote: (symbols) =>
-      withNote(
-        () => coreApiAdapter.getPortfolios(),
-        'portfolio_analytics_unavailable',
-        (raw) => ({
-          symbols: [...(symbols ?? [])],
-          portfolios: asRows(raw),
-          reasons: { nav: null, bySymbol: {} },
-        })
-      ),
+    fetchPortfolioAnalyticsWithNote: async (symbols) => {
+      const base = {
+        symbols: [...(symbols ?? [])],
+        // PortfolioPanelLike requires `holdings` — widget reads `.length`.
+        holdings: [],
+        reasons: { nav: null, bySymbol: {} },
+      };
+      try {
+        const raw = await coreApiAdapter.getPortfolios();
+        return { ...base, portfolios: asRows(raw), note: null };
+      } catch {
+        return { ...base, portfolios: [], note: 'portfolio_analytics_unavailable' };
+      }
+    },
     // Backend has no public constituents endpoint in the demo reference set;
     // an honest note is better than an empty array presented as real data.
     fetchIndexPanelDataWithNote: (index) =>
-      Promise.resolve(empty('index_constituents_unavailable')).then((value) => ({ ...value, index })),
+      Promise.resolve(empty('index_constituents_unavailable')).then((value) => ({
+        ...value,
+        index,
+        // IndexPanelLike requires `count` and `snapshot` (widget reads `.length`).
+        count: 0,
+        snapshot: null,
+      })),
   };
 }
 
