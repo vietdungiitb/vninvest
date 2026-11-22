@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 
 // Verify from OUTSIDE the container that the deployed bundle is the expected
-// clean-tree commit. Never trust `docker ps` / `Up (healthy)` as proof.
+// clean-tree commit. Container status alone is not proof of the deployed build.
 const args = process.argv.slice(2);
 const urlIndex = args.indexOf('--url');
 const base = urlIndex >= 0 ? args[urlIndex + 1] : 'https://docker.edusuccess.vn';
