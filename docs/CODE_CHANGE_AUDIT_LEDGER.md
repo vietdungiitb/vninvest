@@ -1,3 +1,13 @@
+## Entry 603: Chart TPB trống — S1 backfill xong + S2 mount-always (B8 round4 PASS)
+
+- **Date**: 2026-11-22 · **Type**: ops BE-data + code FE TDD · **Branch**: `feat/stock-tpb-chart-empty` · **Claim**: `stock-tpb-chart-empty` → done.
+- **S1 (data)**: backfill TPB staging qua `backfill_daily_prices(symbols=["TPB"], days=365)` — VCI hết 418 (262 inserted, 0 retry). Verify: 2146 rows (2018→2026-11-20), view chart 200 + 21 points khớp số overview.
+- **Đính chính đo lường (L-V02)**: con số "DB staging 0 dòng TPB" ban đầu SAI — query nhầm database (trực tiếp core-db thay vì đường app → pgbouncer → 172.19.0.9). Control (so DB trực tiếp vs ORM) mâu thuẫn ⇒ đào tiếp ⇒ ra DB đúng. Bài học: control phải reproduce trước khi kết luận.
+- **S2 root cause thật (deadlock mount)**: panel cũ chỉ mount widget khi đã có bars, bars chỉ từ onBarsChange → không bao giờ fetch (khớp 0 HTTP/72h). Fix: luôn mount widget; onError → lỗi thật + retry; stall detector 10s (wrapper đếm fetch, single identity R1, reset ở M-2/retry/bars); copy chẩn đoán riêng thay cho "trống" chung.
+- **B8**: round 3 NEED_REVISION (OB-1 stall-retry no-op — đúng là blocker; OB-2 string-vs-Error) → fix + AC4 (retry hết kẹt, timer re-arm) → round 4 PASS, 0 OB. Gates: fail-before đỏ 4/4 → xanh 4/4 (riêng file S2) + full 31/31 (6 files); tsc 0; eslint 0 error.
+- **Sự cố quy trình**: pop nhầm stash WIP `b1-ai-contract` (bare `git stash pop` không kiểm tra) → revert file lạ ngay + dựng lại entry stash RECOVERED để chủ sở hữu khôi phục. Proposal lesson L-T05 (cấm pop trần) KHÔNG nhập được vào `docs/LESSONS/` vì gate C2 (tổng đã 60/60) — cần coordinator dedup 4 ID trùng trước.
+- **Next (S3)**: merge PR → deploy staging → verify: chart HTTP xuất hiện + nến TPB hiển thị + click nến → bubble đổi (checklist B7 cũ). Nếu vẫn 0 HTTP → lấy console browser (đã ghi STOP condition trong plan).
+
 ## Entry 598: Phase C S2 — coverage refresh tự throttle phía callee (gates + B8 PASS, chờ deploy)
 
 - **Date**: 2026-11-21 · **Type**: code (BE) + test · **Branch**: `feat/phase-c-s2` → `dev` (PR chưa mở) · **Claim**: `phase-c-s2` · **Plan**: `docs/PLAN_PHASE_C_S2_20261121.md` REV.1 · **Evidence**: `docs/evidence/perf/phase-c-s2-gates.md`, `phase-c-s2-plan-audit.md` (B3 NEED_REVISION→round 2 AGREE), `phase-c-s2-reaudit.md` (B8 PASS).
