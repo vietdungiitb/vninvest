@@ -22,6 +22,9 @@ export default defineConfig({
       '@hooks': path.resolve(__dirname, 'src/hooks'),
       '@pages': path.resolve(__dirname, 'src/pages'),
       '@types': path.resolve(__dirname, 'src/types'),
+      // D4b: widget-pro deferred; keep the widget's optional dynamic import
+      // resolvable at build time without shipping the private package.
+      '@vninvestcharts/widget-pro/register': path.resolve(__dirname, 'src/lib/widgetProRegisterStub.js'),
     },
   },
   server: {

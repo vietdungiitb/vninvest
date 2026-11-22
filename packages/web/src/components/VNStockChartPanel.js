@@ -10,6 +10,8 @@ import { useI18n } from '../context/LangContext.js';
 import { useTenantTier } from '../adapters/useTenantTier.js';
 import { useTrustTelemetry } from '../hooks/useTrustTelemetry.js';
 import { ensureLicenseTrustAnchor } from '../lib/licenseTrustAnchor.js';
+import { readPreloadedChartTier } from '../lib/chartDemoEntitlement.js';
+import { createChartEnterpriseBinding } from '../lib/chartEnterpriseBinding.js';
 import { resolveSessionFromChartItem } from '../utils/chartSessionDate.js';
 
 // Trust anchor cho key license offline (JWK public kid=primary, nhung vao bundle
@@ -80,7 +82,11 @@ export default function VNStockChartPanel({
   // (state verifiedTier KHAI O DAY, truoc moi cho doc — tranh TDZ ReferenceError.)
   const [verifiedTier, setVerifiedTier] = useState(null);
   const { tier: serverTier } = useTenantTier();
+  // D1 Path A: server-side entitlement resolved before first render wins so the
+  // always-on enterprise demo never falls back to `free` when billing is 404.
+  const preloadedTier = readPreloadedChartTier();
   const tier = verifiedTier
+    ?? preloadedTier
     ?? (tierProp && tierProp !== 'free' ? tierProp : null)
     ?? serverTier;
   const isPro = tier === 'pro' || tier === 'enterprise';
@@ -205,6 +211,13 @@ export default function VNStockChartPanel({
       searchSymbols: (...args) => base.searchSymbols(...args),
     };
   }, [env]);
+
+  // Enterprise dock binding: the widget renders the six tabs; we only provide
+  // a host adapter backed by the existing core API adapter (honest notes).
+  const enterpriseBinding = useMemo(
+    () => (isEnterprise ? createChartEnterpriseBinding(symbol, { baseAdapter: adapter }) : null),
+    [isEnterprise, symbol, adapter]
+  );
 
   const realtimeFeed = useRealtimeFeedFromManager({
     symbols: symbol ? [symbol] : [],
@@ -460,6 +473,8 @@ export default function VNStockChartPanel({
           // + Watchlist + tinh nang dock; free giu an de tranh upsell lock "Nang cap Pro".
           // (Widget gate: showDock === false thi khong render.)
           showDock: isPro,
+          // D2b widget @ ddc947dd: enterprise dock tabs come from the widget.
+          enterpriseBinding,
           showNonTradingDays: false,
           workspaceId: workspaceId ?? `stock-${symbol}`,
           // W-B: tape dock tab (pro-only). Data THAT tu BE IntradayTapeView
