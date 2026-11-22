@@ -1,3 +1,10 @@
+## Entry 614: Badge ENTERPRISE parity — widget server-tier export (PR #516)
+
+- **Date**: 2026-11-22 · **Type**: widget repack + host wiring + E2E.
+- Build lại package widget từ commit `ddc947dd`, thêm export `SaaSFeatureProvider` vào `src/public-api.ts` (entry build thật; `src/widget/index.ts` đã export nhưng không phải entry ⇒ bản trước mất export ở runtime). Đóng gói `vendor/vninvestcharts-widget-0.4.7-ent.tgz`.
+- App bọc chart với `serverTier="enterprise"` — kênh server-entitlement chính thức của widget, không đưa PAT vào browser, không dùng static demo build.
+- **E2E**: `tier=enterprise`, `FREE=0`, `ENTERPRISE=1`. Gates: vitest 9/9 · tsc 0 · build 0 · pre-push-gate 36 PASS · `STAGING_OK commit=6cf463f31`.
+
 ## Entry 613: E2E browser chart enterprise — 3 runtime fixes + verify
 
 - **Date**: 2026-11-22 · **Type**: E2E verify + bugfix (PR #512, #513, #514 merged vào `dev`).
