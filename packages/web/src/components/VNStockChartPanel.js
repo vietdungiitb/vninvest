@@ -176,6 +176,7 @@ export default function VNStockChartPanel({
   const VNInvestMultiCharts = widgetModule?.VNInvestMultiCharts;
   const widgetMessagesVi = widgetModule?.widgetMessagesVi;
   const WidgetI18nProvider = widgetModule?.WidgetI18nProvider;
+  const SaaSFeatureProvider = widgetModule?.SaaSFeatureProvider;
   const PaperTradePanel = widgetModule?.PaperTradePanel;
   const SettingsModal = widgetModule?.SettingsModal;
   // W-I: KHONG destructure `DrawingDock` standalone nua. Widget 0.4.4 render
@@ -606,9 +607,18 @@ onSymbolChange: (sym) => {
     panels.push(e(SettingsModal, { key: 'settings', open: false }));
   }
 
-  const chartTree = WidgetI18nProvider
+  const i18nTree = WidgetI18nProvider
     ? e(WidgetI18nProvider, { locale, messages: widgetMessagesVi }, chartBody)
     : chartBody;
+  // Server-side entitlement (demo): the widget's own tier resolver reads the
+  // outer SaaSFeatureContext. No SaaS PAT reaches the browser.
+  const chartTree = SaaSFeatureProvider
+    ? e(
+      SaaSFeatureProvider,
+      { serverTier: isEnterprise ? 'enterprise' : undefined, sessionTelemetryEnabled: false },
+      i18nTree
+    )
+    : i18nTree;
 
   return e(
     'div',
