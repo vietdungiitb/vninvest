@@ -30,7 +30,7 @@ deploy VPS 12 container healthy · `check-staging.mjs` → `STAGING_OK commit=04
 
 ## Còn lại / next steps
 
-1. **E2E browser có đăng nhập: ĐÃ CHẠY** (`e2e-enterprise.png`, `data-tier=enterprise`, 0 runtime error, chart render đầy đủ). Badge toolbar widget vẫn `FREE` — giới hạn của npm package (không export server-tier channel như demo build); mọi capability enterprise đã active. Chi tiết `JOURNAL_20261122.md` mục E2E.
+1. **E2E browser có đăng nhập: ĐÃ CHẠY** (`e2e-enterprise.png`, `data-tier=enterprise`, 0 runtime error, chart render đầy đủ). Badge toolbar widget đã **`ENTERPRISE`** (`FREE=0`, PR #516): build lại package widget từ commit đã pin với export `SaaSFeatureProvider`, host truyền `serverTier=enterprise`. Chi tiết `JOURNAL_20261122.md` mục E2E.
 2. Rotate `GITHUB_TOKEN` đã lộ trong chat.
 3. PR merge → `dev`, rồi cleanup branch/worktree widget `vninvest-widget-ddc947dd`.
 4. Khi widget team publish bản tương thích: mở lại D4b (widget-pro) + thay `PortfolioChart` ECharts (D5/Wave 1).
