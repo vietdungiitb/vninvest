@@ -1,3 +1,39 @@
+## Entry 611: Owner chốt D2b/D4b — build local widget @ ddc947dd, defer widget-pro (B4 mở lại)
+
+- **Date**: 2026-11-22 · **Type**: quyết định (doc-only, 0 dòng code) · **Evidence**: `CONSENSUS_20261122.md` §4 + `REGISTRY_PROBE_20261122.md`.
+- **D2b (đảo D2)**: registry chỉ có widget 0.4.6 thiếu enterprise dock ⇒ dùng **build local @ commit `ddc947dd`** của repo widget, pin tarball/`file:` trong `packages/web/package.json` (deny-list, coordinator); bump `engine-core ^0.5.8`, `engine-drawing ^0.5.7`, `engine-react ^0.5.8` (registry có đủ bản).
+- **D4b (đảo D4)**: widget-pro mọi bản pin `widget@0.4.3` ⇒ **defer**, không cài, không `registerProExtension`, không import engine-pro; Pine/Strategy/Replay ngoài scope.
+- D1, D3, D5, D6, D7 giữ nguyên. **Cổng B4→B5 mở lại.** Plan + consensus đã cập nhật tương ứng.
+- **CHƯA CHẠY**: checkout/pack widget, bump dependency, `npm install`, build/test/E2E. Token Owner dùng transient ENV, không lưu file; đã lộ trong chat ⇒ rotate.
+
+## Entry 610: Registry probe — 0.4.6 thiếu enterprise dock, widget-pro pin 0.4.3 (B4 tạm đóng)
+
+- **Date**: 2026-11-22 · **Type**: read-only probe (0 dòng code) · **Evidence**: `docs/evidence/chart-enterprise/REGISTRY_PROBE_20261122.md`.
+- **Dùng token Owner qua ENV transient** — không ghi vào repo/file/log; token đã lộ trong chat ⇒ khuyến nghị rotate.
+- **Kết quả**: registry có `widget@0.4.6` (KHÔNG có 0.4.7), `widget-pro@0.4.5`, `engine-core@0.5.8`. Quét 735 file tarball 0.4.6: có `subscriptionTier` (5)/`tier_code` (10), nhưng **0 hit** `/api/v1/entitlement`, `enterpriseBinding`, `EnterpriseDockProvider`, `fetchWhaleCampaigns`, `fetchOrderbookDepth` ⇒ **không đạt parity demo**. Mọi `widget-pro@0.4.3/0.4.4/0.4.5` pin cứng `widget@0.4.3` ⇒ xung đột D2 (0.4.6) × D4 (widget-pro ngay).
+- **Hệ quả**: cổng **B4→B5 tạm đóng**, chờ Owner chốt D2b (nguồn build 0.4.7 / host-wiring / publish) + D4b (defer widget-pro / override / hạ widget). D1, D3, D5, D6, D7 giữ nguyên.
+- **CHƯA CHẠY**: bump dependency, `npm install`, build/test/E2E. **Lessons**: [L-V01, L-V02, L-T02].
+
+## Entry 609: PLAN thực thi vòng kín 9 bước — chart enterprise always-on demo (B1–B4 xong)
+
+- **Date**: 2026-11-22 · **Type**: research + plan + audit (DOC-ONLY, 0 dòng runtime) · **Branch**: `dev` · **Claim**: `chart-enterprise-plan` done (Entry 608) · chưa claim implement.
+- **Plan**: `docs/PLAN_CHART_ENTERPRISE_CLOSED_LOOP_20261122.md` (10 task, 5 Review Focus, target = app vninvest trên `docker.edusuccess.vn`, KHÔNG deploy lại stack charts-test). Spec đi kèm: `docs/PLAN_CHART_ENTERPRISE_DEMO_CONVERSION_20261122.md`.
+- **B3 audit**: vòng 1 `NEED_REVISION` (O1–O9: path nginx sai, mâu thuẫn target, health.json, entry preload, Origin) → vòng 2 `NEED_REVISION` (M1–M3) → vòng 3 **`AGREE`** (reservation N1 đã dọn). Verdict ghi tại `docs/evidence/chart-enterprise/PLAN_AUDIT_20261122.md`. LIMIT 3 dùng hết, không audit vòng 4.
+- **B4 đồng thuận**: Owner chốt D1–D7 tại `docs/evidence/chart-enterprise/CONSENSUS_20261122.md`: D1 Path A online PAT · D2 **Owner cung cấp `GITHUB_TOKEN`** (registry hiện E401, không dùng tarball local) · D3 tenant/PAT demo riêng · D4 **dùng widget-pro ngay** (EULA + token, `registerProExtension`) · D5 thay PortfolioChart sau verify export · D6 mở lại Wave 1/2 · D7 subscription dài hạn, không offline key. Reservation R-B4-1: đọc lại 2 đoạn cập nhật D2/D4 ở B6 lần đầu.
+- **Blueprint nhân bản**: `W:deploy/nginx-app.conf:141-168` (entitlement exact-match, PAT server-only) · `W:src/demo/serverEntitlement.ts:13-66` (preload 2500 ms fail-closed) · `W:docs/evidence/DEMO-ENTERPRISE-ENTITLEMENT_2026-11-19.md:8-30` (21/21 gate, badge ENTERPRISE, vni_pat rỗng) · `W:deploy/CHARTS-TEST.md:33-89` (build sạch, tarball, health.json).
+- **Gates**: `check-multi-agent` 0 lỗi · `git ls-files --eol` + `git diff --numstat` kiểm tra line-ending · `Test-Path` xác nhận 9 scriptrepo tồn tại, phát hiện `frontend/docker/nginx.conf` KHÔNG tồn tại → sửa thành `packages/web/docker/nginx.conf`. **CHƯA CHẠY**: mọi gate build/test/E2E (chưa đổi code).
+- **Lessons**: [L-V01, L-V02, L-V05, L-F01, L-F02, L-F12, L-T01, L-T02] + 6 luật cứng `workflow-dev-loop`. **Next**: B5 — append claim `chart-enterprise-demo` in-progress + worktree; prerequisite D2 token + D4 EULA. Không code trước B5.
+
+## Entry 608: Khảo sát + PLAN convert chart widget FREE → ENTERPRISE (demo charts.edusuccess.vn)
+
+- **Date**: 2026-11-22 · **Type**: research + plan (DOC-ONLY, 0 dòng runtime) · **Branch**: `dev` (chưa tạo branch implement) · **Claim**: `chart-enterprise-plan` → done (append riêng) · **Plan**: `docs/PLAN_CHART_ENTERPRISE_DEMO_CONVERSION_20261122.md`.
+- **Nguồn**: 3 subagent khảo sát độc lập (widget repo / code vninvest / vnsaas) + tự kiểm chứng lại số load-bearing theo L-V02. Không probe E2E trình duyệt trong phiên này.
+- **Kết quả chính**: (1) Badge FREE là do resolve tier thất bại — key hết hạn 18/11 (`docs/evidence/widget-license-verify/verify-20261111.md:80`) + billing 404 ⇒ `free` (`VNStockChartPanel.js:81-87,101-113`), **không phải** thiếu tính năng. (2) "Tài khoản demo" = tenant `widget-demo` + PAT server-only + nginx `/api/v1/entitlement` (`W:docs/evidence/DEMO-ENTERPRISE-ENTITLEMENT_2026-11-19.md:8-22`; `W:deploy/nginx-app.conf:151-168`), blob demo domain-bound `charts.edusuccess.vn` ⇒ **KHÔNG** dùng cho `docker.edusuccess.vn`. (3) Repo khóa widget `0.4.4`, demo chạy `0.4.7` (`/health.json` commit `ddc947dd`); quét 721 file dist: **0 hit** `/api/v1/entitlement`, `enterpriseBinding`, `fetchWhaleCampaigns`, `EnterpriseDockProvider`, `fetchOrderbookDepth` ⇒ phải nâng build, đổi credential đơn thuần vô dụng. (4) Offline license tối đa `pro` (Q8) ⇒ enterprise bắt buộc online PAT. (5) `npm view @vninvestcharts/widget versions` → **E401** (thiếu `GITHUB_TOKEN`).
+- **CONTRADICTIONS**: 7 mục C1–C7 trong plan §3 — đáng chú ý `MASTER_TRACKING_2026Q4.md:62` stale (1.2.5), `PLAN_WIDGET_FEATURE_LEVERAGE_20261112.md:224-232` Owner chốt dừng Wave 0, `REPORT_WIDGET_PRO_ENTERPRISE_GAPS…:40` nói DefinePlugin `VNI_DEMO_LICENSE` nhưng source hiện không còn.
+- **Plan**: 5 wave (Wave 0 quyết định+provision → Wave 1 nâng widget+entitlement → Wave 2 thay code tự viết bằng capability → Wave 3 widget-pro tuỳ chọn → Wave 4 đóng) + 7 quyết định Owner D1–D7. Ưu tiên thay: `WhaleBubbleChart.jsx:1-119`, `PortfolioChart.tsx:36-56`, `StockOrderBookWidget.jsx:23`; giữ bridge tape/advisory tới khi widget forward payload V2.
+- **Gates chạy thật**: `git status` sạch trước khi sửa · `npm view` E401 · dist scan 721 file/0 hit · `/health.json` live · `git ls-files --eol` (CLAIMS text, ledger LF-index/CRLF-worktree). **CHƯA CHẠY**: E2E staging, build/lint/vitest (không đổi code), registry với token Owner.
+- **Lessons**: [L-V01, L-V02, L-V05, L-F01, L-F02, L-F12, L-T01, L-T02]. **Next**: Owner chốt D1–D7; không code trước khi chốt; `packages/web/package.json` là deny-list ⇒ coordinator xử lý.
+
 ## Entry 607: Backfill whale toàn thị trường 10→20/11 — over_threshold_missing = 0 (B8 PASS r2)
 
 - **Date**: 2026-11-22 · **Type**: ops backfill + verify (KHÔNG đổi code) · **Branch**: `feat/stock-whale-backfill-all` · **Claim**: `stock-whale-backfill-all` → done (commit claim riêng `22f8e6617` + update done) · **Plan**: `docs/PLAN_STOCK_WHALE_BACKFILL_ALL_20261122.md` (B3 AGREE + R-1..R-5 đã bổ sung; B8 r1 NEED_REVISION OB-1..OB-5 → đã sửa hết → r2 PASS).
