@@ -83,7 +83,6 @@ def detect_and_store_global_whale_alerts(
     # D05: resolve session_date
     if session_date is not None:
         try:
-            from datetime import datetime
             resolved_date = datetime.strptime(session_date, '%Y-%m-%d').date()
         except ValueError:
             logger.error('detect_and_store_global_whale_alerts: invalid session_date=%s', session_date)
