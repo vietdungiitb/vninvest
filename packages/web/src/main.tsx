@@ -12,6 +12,7 @@ import { AppShell } from './layouts/AppShell';
 import { TenantAdminLayout } from './components/TenantAdminLayout.js';
 import { StaffRoute, TenantRoute } from './components/StaffRoute.js';
 import { applyDevThemeFlag } from './lib/devThemeFlag.js';
+import { preloadChartEntitlement } from './lib/chartDemoEntitlement.js';
 import './index.css';
 
 // Feature flag for gradual rollout of the Advertising & Trademark admin page.
@@ -277,6 +278,9 @@ try {
 
 const container = document.getElementById('root');
 if (container) {
+  // Resolve the same-origin chart entitlement BEFORE the first render so the
+  // widget never flashes FREE on the enterprise demo. Fail-closed in `finally`.
+  preloadChartEntitlement().finally(() => {
   const root = createRoot(container);
   root.render(
     createElement(
@@ -305,4 +309,5 @@ if (container) {
       )
     )
   );
+  });
 }
