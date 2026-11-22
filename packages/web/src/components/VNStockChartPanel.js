@@ -597,9 +597,11 @@ onSymbolChange: (sym) => {
   const panels = [];
   // W-I: bo mount `<DrawingDock>` standalone (luon render null — thieu `isOpen`).
   // Drawing dock that render THAT do widget qua prop `showDrawingDock` ben tren.
-  if (showPaperTrade && PaperTradePanel) {
-    panels.push(e(PaperTradePanel, { key: 'paper-trade', symbol }));
-  }
+  // Paper trading is owned by the widget (dock tab gated by tier). Mounting a
+  // second standalone <PaperTradePanel> with only `symbol` crashes the widget:
+  // it requires `journal`/`positions` arrays. Do not duplicate widget UI.
+  void showPaperTrade;
+  void PaperTradePanel;
   if (showSettings && SettingsModal) {
     panels.push(e(SettingsModal, { key: 'settings', open: false }));
   }
