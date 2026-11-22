@@ -4,6 +4,9 @@ WORKDIR /app
 # Copy package files and npm auth (GitHub Packages) and install dependencies
 COPY package*.json ./
 COPY .npmrc ./
+# D2b: widget is pinned to a local tarball (file:vendor/...) so the tarball must
+# exist before `npm ci` resolves dependencies.
+COPY vendor/ ./vendor/
 ARG GITHUB_TOKEN=
 ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 ENV NODE_OPTIONS=--max-old-space-size=2048
