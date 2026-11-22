@@ -567,13 +567,13 @@ onSymbolChange: (sym) => {
   // hoac stall (mount xong qua grace ma chua tung fetch).
   const chartBody = !chartComponent
     ? (widgetError
-      ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || 'Không thể tải biểu đồ', handleImportRetry))
+      ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || t('vninvest.chart_load_error', { defaultValue: 'Không thể tải biểu đồ' }), handleImportRetry))
       : emptyStateNode(true, null, null))
     : loading
       ? emptyStateNode(true, null, null)
       : widgetError
         // S2(a): loi that tu widget — hien message + retry (fail-visible).
-        ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || 'Không thể tải biểu đồ', handleEmptyRetry))
+        ? e('div', { 'data-testid': 'vnsc-widget-error' }, emptyStateNode(false, widgetError.message || t('vninvest.chart_load_error', { defaultValue: 'Không thể tải biểu đồ' }), handleEmptyRetry))
         : fetchStalled
           // S2(b): widget mount xong qua grace ma chua tung goi fetch.
           ? e('div', { 'data-testid': 'vnsc-no-fetch' }, emptyStateNode(false, t('vninvest.no_fetch_attempt', { defaultValue: 'Biểu đồ chưa yêu cầu dữ liệu — bấm thử lại hoặc mở console kiểm tra.' }), handleEmptyRetry))
