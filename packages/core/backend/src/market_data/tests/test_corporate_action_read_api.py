@@ -146,6 +146,11 @@ class CorporateActionReadApiTestCase(TestCase):
         response = self._get('VNM', '?from=2025-01-01&to=2024-01-01')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_limit_caps_results(self):
+        payload = unwrapped_json(self._get('VNM', '?limit=2'))
+        self.assertEqual(payload['count'], 2)
+        self.assertEqual(len(payload['actions']), 2)
+
     def test_symbol_normalized(self):
         payload = unwrapped_json(self._get('vnm'))
         self.assertEqual(payload['symbol'], 'VNM')
