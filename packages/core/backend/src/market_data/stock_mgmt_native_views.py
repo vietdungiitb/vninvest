@@ -2282,6 +2282,13 @@ class StockManagementNewsView(APIView):
                 description='Bỏ qua cache và fetch mới dữ liệu.',
                 required=False,
             ),
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Số tin tức tối đa (1-100). Mặc định 20. Cache key có hậu tố limit.',
+                required=False,
+            ),
         ],
         responses={
             200: _STOCK_NEWS_STUB_SCHEMA,
@@ -2298,7 +2305,12 @@ class StockManagementNewsView(APIView):
         
         symbol = symbol.upper()
         force = str(request.query_params.get('force', '')).lower() == 'true'
-        cache_key = f"stock_news:{symbol}"
+        try:
+            limit = int(request.query_params.get('limit', 20))
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(100, limit))
+        cache_key = f"stock_news:{symbol}:{limit}"
         
         if not force:
             cached_data = cache.get(cache_key)
@@ -2350,7 +2362,7 @@ class StockManagementNewsView(APIView):
 
         response_data = {
             'symbol': symbol,
-            'news': news_list,
+            'news': news_list[:limit],
             'note': 'news_loaded_successfully',
         }
         
