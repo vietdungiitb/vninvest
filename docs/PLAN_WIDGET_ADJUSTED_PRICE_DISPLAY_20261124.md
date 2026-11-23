@@ -1,6 +1,9 @@
 # Plan — Widget hiển thị giá đã điều chỉnh theo sự kiện doanh nghiệp (2026-11-24)
 
-> Trạng thái: **REVISION 2 — audit vòng 3 (cuối). KHÔNG sửa code.**
+> Trạng thái: **BLOCKED — audit vòng 3/3 vẫn NEED_REVISION (O6). KHÔNG sửa code.**
+> Theo workflow-dev-loop B3/B4: quá 3 vòng ⇒ dừng, cần owner cho phép vòng 4 hoặc thu hẹp scope.
+> Verdict v3: `docs/evidence/widget-news-events/AUDIT_PLAN_ADJUSTED_PRICE_V3_20261124.md`.
+> O6: transform tại `setBars:838` bị warmup/live tick ghi đè từ `historyChunkStoreRef` (bar thô) — phải cắm trong wrapper `useWidgetData.ts:254-263` / trước khi vào store.
 > Owner chốt: "lập plan rõ ràng, audit độc lập, không tự ý sửa".
 > Audit v1/v2: `docs/evidence/widget-news-events/AUDIT_PLAN_ADJUSTED_PRICE_V{1,2}_20261124.md`.
 
