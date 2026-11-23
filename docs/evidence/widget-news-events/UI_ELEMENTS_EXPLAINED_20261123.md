@@ -36,3 +36,12 @@
 
 ## Kết luận
 Cả 3 đều đến từ widget, không phải lỗi wiring của vninvest: (1) badge trung thực vì thiếu adj_close; (2) nhóm tool measurement render cứng + overlay theo `isPro`; (3) last-price line bật mặc định trong settings.
+
+## Phụ lục 2026-11-23 — kiểm chứng thêm: không có "fix FE" nào đổi được giá vẽ
+
+Sau khi owner chọn hướng "sửa wiring FE", đã probebundle trước khi viết code:
+- `vendor/vninvestcharts-widget-0.4.7-ent.tgz` → `package/dist/index.js`: `fetchAdjustedBars` **2 lần**, `adjClose` **2 lần**; `index.cjs`: 3/2.
+- 2 lần đó là định nghĩa interface + delegate (`MultiSourceDataAdapter.ts:107-109`) và `DataEnvelope.ts:151` + CSV export (`chartCsv.ts:111`). **Không có consumer nào đọc `adjClose` để tính nến/chỉ báo.**
+- Badge dùng presence-probe: `ForkEngineSurface.tsx:147-149` `hasAdjusted = typeof adapter.fetchAdjustedBars === "function"`.
+
+⇒ Implement `fetchAdjustedBars` ở host chỉ làm badge biến mất trong khi giá vẫn thô = **false green**, che giấu cảnh báo đúng. Thêm `adj_close` vào `mapToBar` cũng chỉ phục vụ CSV. Muốn chart thực sự vẽ giá điều chỉnh phải **sửa widget** (dùng `adjClose` làm plotData khi có), rồi rebuild local tarball — nằm ngoài repo vninvest. Không làm, không báo PASS giả.
