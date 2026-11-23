@@ -60,11 +60,14 @@ describe("W0.9 — chart data unlock (demo-parity, widget 0.4.1)", () => {
     expect(en).toMatch(/chartIndicators:/);
   });
 
-  it("S5 — KHONG bat showCorporateEvents khi BE chua co nguon du lieu (khong bat mu)", () => {
-    expect(src).toMatch(/showCorporateEvents:\s*false/);
-    // Comment ghi "corporate actions" (BE chua co nguon du lieu) — khop Y DO test:
-    // "co comment giai thich", khong khop mot cum tieng Anh cu the.
-    expect(src).toMatch(/corporate (events|actions)/i);
+  it("S5 — BAT showCorporateEvents vi BE DA co nguon corporate-actions (live, khong mock)", () => {
+    // Task 3 (2026-11-23): endpoint `GET .../stocks/{symbol}/corporate-actions/`
+    // + adapter.fetchCorporateEvents la nguon that; che do live (rong = that).
+    expect(src).toMatch(/showCorporateEvents:\s*true/);
+    expect(src).not.toMatch(/showCorporateEvents:\s*false/);
+    expect(src).toMatch(/corporateEventsMode:\s*['"]live['"]/);
+    expect(src).toMatch(/corporate-actions/);
+    expect(src).toMatch(/fetchCorporateEvents/);
   });
 
   it("S6 — UI gon (2026-11-10, sua 2026-11-11): khong Dark Flow badge; dock mo theo tier", () => {

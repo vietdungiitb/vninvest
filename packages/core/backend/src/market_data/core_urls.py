@@ -5,6 +5,7 @@ from .admin_sync_views import (
     AdminOpsMarketGroupsSyncView,
     AdminOpsSystemDefaultsSeedView,
 )
+from .corporate_actions.views import CorporateActionsReadView
 from .stock_mgmt_native_views import (
     StockManagementAdvisoryCompDetailView,
     StockManagementAdvisoryCompRefreshView,
@@ -64,6 +65,7 @@ urlpatterns = [
     path('stock-management/stocks/<str:symbol>/order-flow/', StockManagementOrderFlowView.as_view(), name='market-data-stock-order-flow'),
     path('stock-management/stocks/<str:symbol>/news/', StockManagementNewsView.as_view(), name='market-data-stock-news'),
     path('stock-management/stocks/<str:symbol>/news/ai-summary/', StockManagementNewsAISummaryView.as_view(), name='market-data-stock-news-ai-summary'),
+    path('stock-management/stocks/<str:symbol>/corporate-actions/', CorporateActionsReadView.as_view(), name='market-data-stock-corporate-actions'),
     path('stock-management/stocks/<str:symbol>/ai-advisory-session/', StockManagementAIAdvisorySessionView.as_view(), name='market-data-stock-ai-advisory-session'),
     path('stock-management/stocks/<str:symbol>/ai-advisory-observability/', StockManagementAIAdvisoryObservabilityView.as_view(), name='market-data-stock-ai-advisory-observability'),
     path('stock-management/stocks/<str:symbol>/ai-advisory-components/generate/', StockManagementAIAdvisoryComponentsGenerateView.as_view(), name='market-data-stock-ai-advisory-components-generate'),

@@ -6,6 +6,7 @@
  * becomes `{snapshot:null, note}` — never invented data.
  */
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { mapNewsListToNewsItems } from '../utils/corporateEventMapper.js';
 
 const empty = (note) => ({ snapshot: null, note });
 
@@ -52,6 +53,25 @@ export function createChartEnterpriseAdapter(baseAdapter = {}) {
         'cloud_alert_unavailable',
         (raw) => ({ records: asRows(raw), note: null })
       ),
+    /**
+     * Enterprise presence `fetchSymbolNews` (Task 3) — tra NewsItem[]|null
+     * (khong WithNote: widget can gia tri that, khong can snapshot/note).
+     * Hien chua co consumer UI trong bundle 0.4.7-ent (xem REQ_WIDGET_* RQ-1).
+     */
+    fetchSymbolNews: async (symbol, limit = 20) => {
+      try {
+        if (!symbol) return null;
+        const payload = await coreApiAdapter.getStockNews(symbol, { page_size: limit });
+        const news = payload?.news ?? payload?.data?.news ?? [];
+        const items = mapNewsListToNewsItems(news, limit).map((item) => ({
+          ...item,
+          symbol: String(symbol).toUpperCase(),
+        }));
+        return items.length ? items : null;
+      } catch {
+        return null;
+      }
+    },
     fetchWorkspaceSnapshotWithNote: () =>
       withNote(
         () => coreApiAdapter.getWatchlists(),

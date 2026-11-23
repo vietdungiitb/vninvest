@@ -18,6 +18,7 @@ import {
 
 import { createAuthClient } from "./core/auth.js";
 import { createMarketClient } from "./core/market.js";
+import { createCorporateClient } from "./core/corporate.js";
 import { createWorkspaceClient } from "./core/workspace.js";
 import { createCommercialClient } from "./core/commercial.js";
 import { createAdvisoryClient } from "./core/advisory.js";
@@ -63,6 +64,10 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   const marketClient = createMarketClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
+  });
+
+  const corporateClient = createCorporateClient({
+    coreGet: transport.coreGet,
   });
 
   const workspaceClient = createWorkspaceClient({
@@ -134,6 +139,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     coreDelete: transport.coreDelete,
     ...authClient,
     ...marketClient,
+    ...corporateClient,
     ...workspaceClient,
     ...commercialClient,
     ...advisoryClient,
