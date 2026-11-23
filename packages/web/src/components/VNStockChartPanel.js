@@ -210,6 +210,10 @@ export default function VNStockChartPanel({
       subscribeToOrderbook: (...args) => base.subscribeToOrderbook(...args),
       getSourceSemantics: (...args) => base.getSourceSemantics(...args),
       searchSymbols: (...args) => base.searchSymbols(...args),
+      // Task 3: widget tu goi fetchCorporateEvents theo visible range (>=50 bars);
+      // fetchSymbolNews mo enterprise presence (chua co consumer UI trong 0.4.7-ent).
+      fetchCorporateEvents: (...args) => base.fetchCorporateEvents(...args),
+      fetchSymbolNews: (...args) => base.fetchSymbolNews(...args),
     };
   }, [env]);
 
@@ -500,10 +504,13 @@ export default function VNStockChartPanel({
           // W-F: upsell CTA (free thay nudge -> ve /upgrade) + telemetry sink.
           upgradeUrl: '/upgrade',
           onTelemetry: handleWidgetTelemetry,
-          // W0.9: KHONG bat `showCorporateEvents` — BE chua co nguon du lieu
-          // corporate actions (ex-date / split / rights) nen overlay se rong;
-          // bat rong = nhieu tinh, giong "noi doi" (xem roadmap §5 W5.3).
-          showCorporateEvents: false,
+          // W0.9 (2026-11-23, Task 3): BAT `showCorporateEvents` — BE DA co nguon
+          // corporate actions that (`GET .../stocks/{symbol}/corporate-actions/`,
+          // Task 1) + `adapter.fetchCorporateEvents` map sang CorporateEvent.
+          // Che do `live`: thieu/fail -> [] (khong mock); symbol khong co event
+          // -> [] la su that, khong phai "noi doi".
+          showCorporateEvents: true,
+          corporateEventsMode: 'live',
           locale: locale,
           messages: widgetMessagesVi,
           theme: theme,

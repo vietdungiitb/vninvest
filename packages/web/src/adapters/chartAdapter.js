@@ -1,5 +1,9 @@
 import { createCoreApiAdapter } from './coreApiAdapter.js';
 import { authTokenStorage } from './core/transport.js';
+import {
+  mapCorporateActionToCorporateEvent,
+  mapNewsListToNewsItems,
+} from '../utils/corporateEventMapper.js';
 
 function normalizeTimeframe(tf) {
   const lower = (tf || '').toLowerCase();
@@ -213,6 +217,42 @@ export function createChartStockDataAdapter({ env = {} }) {
         }));
       } catch {
         return [{ symbol: query, name: 'Không tìm thấy', exchange: '' }];
+      }
+    },
+
+    /**
+     * Widget goi theo visible range (fromMs/toMs) — tra CorporateEvent[].
+     * Widget tu dien timeIndex tu timestamp; fail -> [] (live trung thuc).
+     */
+    async fetchCorporateEvents(symbol, fromMs, toMs) {
+      try {
+        if (!symbol || !Number.isFinite(fromMs) || !Number.isFinite(toMs)) return [];
+        const from = new Date(fromMs).toISOString().slice(0, 10);
+        const to = new Date(toMs).toISOString().slice(0, 10);
+        const payload = await coreAdapter.getCorporateActions(symbol, { from, to, limit: 1000 });
+        const actions = payload?.actions ?? payload?.data?.actions ?? [];
+        if (!Array.isArray(actions)) return [];
+        return actions.map(mapCorporateActionToCorporateEvent).filter(Boolean);
+      } catch {
+        return [];
+      }
+    },
+
+    /**
+     * Widget enterprise presence — tra NewsItem[] hoac null khi khong co tin.
+     */
+    async fetchSymbolNews(symbol, limit = 20) {
+      try {
+        if (!symbol) return null;
+        const payload = await coreAdapter.getStockNews(symbol, { page_size: limit });
+        const news = payload?.news ?? payload?.data?.news ?? [];
+        const items = mapNewsListToNewsItems(news, limit).map((item) => ({
+          ...item,
+          symbol: String(symbol).toUpperCase(),
+        }));
+        return items.length ? items : null;
+      } catch {
+        return null;
       }
     },
   };
