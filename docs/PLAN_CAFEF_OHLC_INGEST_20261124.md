@@ -1,91 +1,62 @@
-# Plan — Lấy toàn bộ OHLC từ CafeF làm nguồn ĐỐI CHIẾU (2026-11-24)
+# Plan — CafeF OHLC: ingest đối chiếu + vận hành trên UI COC (2026-11-24)
 
-> Trạng thái: **AGREE (audit v3) — plan được phê duyệt, chờ owner cho phép triển khai. Chưa sửa code.**
-> Audit v1/v2/v3: `docs/evidence/widget-news-events/AUDIT_PLAN_CAFEF_V{1,2,3}_20261124.md`.
-> Reservation trước C2: owner chốt ToS/rate-limit + `openpyxl` (deny-list); đo perf thật trước khi PASS.
+> Trạng thái: **REVISION 3 — thay C3 command bằng UI COC theo yêu cầu owner. Chờ audit lại. CHƯA sửa code.**
+> Audit v1/v2/v3 (bản command): `docs/evidence/widget-news-events/AUDIT_PLAN_CAFEF_V{1,2,3}_20261124.md` — bản đó AGREE nhưng đã bị thay scope.
 > Nguồn gốc: `docs/evidence/widget-news-events/TPB_OLD_BARS_ADJUSTMENT_REVERIFY_20261124.md`.
 
-## 0. Bằng chứng endpoint (auditor tự đo lại)
+## 0. Bằng chứng (giữ nguyên, đã audit)
 
-- JSON TPB 04/01/2022: `GiaDongCua=42.75`, `GiaDieuChinh=17.94`, volume `11.034.900`.
-- `PageSize=5000` → cap 30; range 3 năm → clamp ~1 năm (`TotalCount=250`).
-- Export `Symbol=ALL`, HOSE 2022: 4.467.581 byte, **101.756 data rows + 1 header**, 2–3 s; ALL 1 tháng = 8.911 dòng; HNX/UPCOM 247 dòng/năm.
-- Đơn vị: giá nghìn VNĐ (×1000); giá trị tỷ VNĐ (×1e9); volume cổ phiếu.
-- **⛔ Hai format ngày khác nhau**: **request** = `MM/DD/YYYY` (`12/31/2022`); **response XLSX** = `DD/MM/YYYY` (`30/12/2022`, `04/01/2022`). Gửi `31/12/2022` cho request → endpoint im lặng trả 246 dòng năm 2026.
-- XLSX chứa **cả** `01/04/2022` (giá 41,25) và `04/01/2022` (giá 42,75) — swap day/month vẫn "nằm trong range" nếu chỉ validate range.
-- `openpyxl 3.1.5` có trong image nhưng chưa có trong `requirements.txt` → blocker C2 (deny-list).
-- Backfill 3 exchange × 17 năm ≈ 51 request × 4,47 MB ≈ **228 MB**.
+- Export `Symbol=ALL`, HOSE 2022: 4.467.581 byte, **101.756 data rows**, 2–3 s; 3 exchange × 17 năm ≈ 51 request ≈ 228 MB.
+- Request `MM/DD/YYYY`, response XLSX `DD/MM/YYYY`; XLSX có cả `04/01/2022 (42,75)` và `01/04/2022 (41,25)`.
+- Golden 7 unit: `42750 / 17940 / 11034900 / 467260000000 / 41500 / 43250 / 41300`.
+- `openpyxl` có trong image, chưa có trong `requirements.txt` (deny-list).
 
-## 1. Thiết kế (sửa O1–O8)
+## 1. Thiết kế dữ liệu (giữ nguyên)
 
-1. **CafeF là nguồn ĐỐI CHIẾU, bảng riêng `CafefDailyPrice`** (`symbol`, `date`, `close_raw`, `close_adjusted`, `open/high/low_raw`, `volume`, `value`, `source='cafef'`, unique `(symbol,date)`). Không ghi `DailyPrice` ⇒ không tạo hệ giá thứ 3; consumer (`advisory_helpers.py:219,233`, `advisory/views.py:963-989`, `vnbroker_materializer.py:103-109,190-198`, `portfolio_analytics_views.py:488-498`, `screener_helpers.py:381`, `adjustment.py:19-22,61`) không đổi.
-2. **Không đụng** `apply_adjustments`, parser CA, `/chart/`, host, widget. Nightly `tasks.py:3498-3499` chỉ đụng `DailyPrice`.
-3. **Date handling (sửa O8):**
-   - Request: strict `MM/DD/YYYY` — reject `31/12/2022` **trước khi gửi network** bằng regex + `datetime.strptime`.
-   - Response: parse **DD/MM/YYYY** bằng `strptime('%d/%m/%Y')` — KHÔNG dùng chung format với request.
-   - Range validation so với `[Jan 1 của --year, Dec 31 của --year]` lấy từ **argument `--year`**, không parse từ input hay từ response.
-   - Golden test assert **cả ngày lẫn giá**: `04/01/2022 → date=2022-01-04, close_raw=42750, close_adjusted=17940` **và** `01/04/2022 → date=2022-04-01, close_raw=41250`.
-   - Control test: (a) request DD/MM bị reject; (b) mock response 246 dòng 2026 cho request 2022 → reject; (c) 2 golden date ở trên.
-4. **Mapping 12 cột (sửa reservation):**
+CafeF là **nguồn đối chiếu**, lưu bảng riêng `CafefDailyPrice` (`symbol`, `date`, `close_raw`, `close_adjusted`, `open/high/low_raw`, `volume`, `value`, `source='cafef'`, unique `(symbol,date)`). **Không ghi `DailyPrice`**, không đụng `apply_adjustments`/parser/widget/host. Reservation cũ vẫn giữ: owner chốt ToS/rate-limit + `openpyxl` trước C2.
 
-| Cột XLSX | Đích | Chuyển đổi |
+## 2. Vị trí UI trên COC (MỚI — thay command)
+
+Owner muốn **mục quản lý trên UI COC**, không dùng management command. Bám đúng pattern DataOps planner hiện có:
+
+| Lớp | file:line hiện có | Việc cần thêm |
 |---|---|---|
-| Mã | `symbol` | upper() |
-| Ngày | `date` | `strptime('%d/%m/%Y')` |
-| Giá đóng cửa | `close_raw` | ×1000 |
-| Giá điều chỉnh | `close_adjusted` | ×1000 |
-| Thay đổi | **bỏ qua** | chuỗi `'+1,65 (+4,01%)'`, không lưu |
-| Khối lượng khớp lệnh | `volume` | nguyên |
-| Giá trị khớp lệnh | `value` | ×1e9 |
-| Khối lượng thỏa thuận | **bỏ qua** | ghi rõ drop |
-| Giá trị thỏa thuận | **bỏ qua** | ghi rõ drop |
-| Giá mở cửa | `open_raw` | ×1000 |
-| Giá cao nhất | `high_raw` | ×1000 |
-| Giá thấp nhất | `low_raw` | ×1000 |
+| BE route | `service_ops/operator_urls.py:29-31` (`dataops/planner/preview|run|run/<id>/abort/`) | 3 route mới: `dataops/cafef/preview/`, `dataops/cafef/run/`, `dataops/cafef/run/<run_id>/abort/` |
+| BE view | `service_ops/views/dataops_planner.py:219 (Preview), 277 (Run, SOCBaseView)` + pattern abort `:315+` | `service_ops/views/dataops_cafef.py` (mới): `CafefPreviewView`, `CafefRunView`, `CafefAbortView` — kế thừa `SOCBaseView`, ownership `can_apply` (`_build_market_data_ownership_payload`, `_build_market_data_write_denied_response`) |
+| BE ownership | `service_ops/ownership.py:71` (`dataops_market_data`) | khai báo action mới (preview/run/abort) theo map hiện có |
+| BE run log | `service_ops` `ServiceRunLog` + `create_global_planner_run` pattern | run record cho Cafef import (run_id, trigger `soc.dataops.cafef.run`, status, counters, error) |
+| BE task | `service_ops/tasks.py` (planner task pattern) | `import_cafef_ohlc_task(exchange, year, run_id, dry_run)` —Celery async, tím progress |
+| BE domain | `market_data/cafef/{contract,fetcher,parser,reconcile}.py` | giữ nguyên từ bản cũ (logic thuần) |
+| FE adapter | `packages/web/src/adapters/core/soc.js:452-461` (`previewSocDataOpsPlanner`, `runSocDataOpsPlanner`, `abortSocDataOpsPlannerRun`) | thêm `previewCafefImport`, `runCafefImport`, `abortCafefImport`, `getCafefImportStatus` |
+| FE state | `components/soc/DataOpsContext.tsx:84-85,165-174` (`triggerBackfill`, `abortRun`) | thêm state + hàm trigger/abort/status riêng cho Cafef |
+| FE UI | `components/soc/SocDataOpsPanel.tsx` + `SocDataOpsOperationsSection.tsx:100,204` + `SocDataOpsPlannerConsole.tsx:78,102` + `SocBackfillProgressPanel.tsx:80-81` | section mới: chọn exchange, year, preview (#rows), Dry-run/Apply, progress + abort, link run log |
+| FE style | `soc.tokens.css` + `soc.components.css` | **KHÔNG dùng `soc.module.css`** (barrel 3 dòng, AGENTS.md) |
+| FE i18n | `packages/web/src/i18n/vi.js` + `en.js` (key `soc.*`) | thêm key đầy đủ 2 locale |
+| FE test | `adapters/core/__tests__/soc.test.js:372-385` + `components/soc/__tests__/*` | adapter test + component test (preview/dry-run/apply/abort) |
 
-Golden đủ 7 giá trị convert: `42750 / 17940 / 11034900 / 467260000000 / 41500 / 43250 / 41300`.
+## 3. Slice (cập nhật)
 
-5. **Exchange list**: chỉ **HOSE / HNX / UPCOM** (có bằng chứng probe). VN30 / HNX30 là index — **out of scope**, không khẳng định có.
-6. **Đăng ký model**: thêm `CafefDailyPrice` vào `market_data/admin.py:11` cho nhất quán. `service_ops/views/dataops_inventory.py:61,90` hardcode `market_data_dailyprice` — bảng đối chiếu **cố ý không hiện** trong SOC DataOps; ghi rõ trong plan.
-7. **Perf (sửa reservation)**: parse <30 s / mem <500 MB là **target chưa đo** — đổi thành AC bắt buộc: đo thật trên VPS bằng `/usr/bin/time -v` (hoặc `resource.getrusage`), ghi evidence; **không báo PASS khi chưa đo** (L-V01).
-
-## 2. Fan-out (đã mở rộng)
-
-`data_ingest/tasks.py:653-704` · `market_data/vnbroker_adapter.py:680-724` · `models.py:63-94,222-289` · `corporate_actions/adjustment.py:26-104` · `stock_mgmt_native_views.py:1871+,1935,4056+,4138-4145,1495-1503,1603,1516-1522,1781` · `market_serving/vnbroker_materializer.py:103-109,156,190-198` · `market_serving/materializers.py:80` · `market_data/views.py:155,232-252` · `service_ops/views/prefetch.py:481,535` · `advisory/*`, `portfolio_analytics_views.py:488-498`, `screener_helpers.py:381`. Intraday (`IntradayBar`/`IntradayTick`) bảng riêng; `TickerSessionClose` chỉ docstring — không ảnh hưởng.
-
-## 3. Slice
-
-### Vị trí đặt trong repo (đường dẫn thật)
-
-| Thành phần | Đường dẫn | Trạng thái |
-|---|---|---|
-| Model `CafefDailyPrice` | `packages/core/backend/src/market_data/models.py` (cạnh `DailyPrice:63-94`) | file có sẵn |
-| Migration | `packages/core/backend/src/market_data/migrations/00XX_...py` | sinh bằng `makemigrations`; head hiện tại `0009` |
-| Contract (12 cột, 2 format ngày, exchange) | `packages/core/backend/src/market_data/cafef/contract.py` | **thư mục mới** |
-| Fetcher / parser | `packages/core/backend/src/market_data/cafef/fetcher.py`, `parser.py` | mới |
-| **Backfill command** | `packages/core/backend/src/market_data/management/commands/import_cafef_ohlc.py` | **thư mục mới** (`management/__init__.py` + `management/commands/__init__.py`) |
-| Báo cáo đối chiếu | `packages/core/backend/src/market_data/cafef/reconcile.py` (C4, read-only) | mới |
-| Test | `packages/core/backend/src/market_data/tests/test_cafef_contract.py`, `test_cafef_parser.py`, `test_import_cafef_ohlc.py` | mới |
-| Admin register | `packages/core/backend/src/market_data/admin.py:11` | file có sẵn |
-
-Lý do chọn app `market_data`: model đích nằm ở đây; `data_ingest` hiện **không có** `management/commands/` (chỉ có tasks), trong khi convention repo là `<app>/management/commands/<tên>.py` (vd `signal_intelligence/management/commands/recompute_dark_flow_values.py`, `user_workspace/.../count_subaccount_backfill_gaps.py`).
-
-- **C1** — model `CafefDailyPrice` + migration (`makemigrations`, không tự đặt số) + `contract.py` (12 cột, 2 format ngày, exchange list) + admin register. Test golden 2 ngày + 7 unit + 3 control date.
-- **C2** — `fetcher.py` (`download_year(exchange, year, symbol='ALL')`, retry/backoff, pacing ≥1 s, timeout 45 s, temp file cleanup `finally`) + `parser.py` (parse DD/MM, validate range từ `--year`, drop 3 cột). **Blocker**: `openpyxl` vào requirements (coordinator + `Claim-Deny-List:`).
-- **C3** — `import_cafef_ohlc --exchange --year --dry-run --apply`: ghi `CafefDailyPrice` only. AC: dry-run 0 write; apply 2 lần → `inserted=0, updated=count`; đo perf thật.
-- **C4** — báo cáo đối chiếu read-only `CafefDailyPrice.close_adjusted` vs `DailyPrice.adj_close/close` cho TPB/VNM/VCB; **không tự sửa**.
+- **C1** — model `CafefDailyPrice` + migration (`makemigrations`, head `0009`) + `cafef/contract.py` (12 cột, 2 format ngày, exchange HOSE/HNX/UPCOM) + admin register. Test golden 2 ngày + 7 unit + 3 control date.
+- **C2** — `fetcher.py` + `parser.py` (parse DD/MM, validate range từ `year`, drop 3 cột, temp cleanup `finally`). **Blocker**: `openpyxl` vào requirements (coordinator + `Claim-Deny-List:`). Perf đo thật.
+- **C3 (UI, thay command)** — BE 3 endpoint + ownership + Celery task + run log; FE adapter/context/section/i18n/style. AC:
+  - Preview trả số dòng dự kiến (HOSE 2022 = 101.756) **không ghi DB**.
+  - Dry-run từ UI: 0 row `CafefDailyPrice`.
+  - Apply từ UI: row được ghi; apply lại → `inserted=0, updated=count`.
+  - Abort khi running → task revoke, run đóng terminal.
+  - UI staff-only (SOCBaseView + ownership), không cho free/user thường.
+- **C4** — báo cáo đối chiếu read-only (có thể nút "So sánh" trên cùng section): `CafefDailyPrice.close_adjusted` vs `DailyPrice.adj_close/close` cho TPB/VNM/VCB; **không tự sửa**.
 
 ## 4. Tiêu chí nghiệm thu
-- TPB 04/01/2022 → `2022-01-04 / 42750 / 17940 / 11034900 / 467260000000 / 41500 / 43250 / 41300`.
-- TPB 01/04/2022 → `2022-04-01 / 41250` (chống swap ngày).
-- ALL HOSE 2022 = 101.756 data rows; DD/MM request reject; response 2026 cho request 2022 reject.
-- dry-run 0 write; idempotent; perf đo thật ghi evidence; `git status` sạch sau lệnh tải file (L-V03).
+- Giữ nguyên golden TPB `04/01→2022-01-04/42750/17940` và `01/04→2022-04-01/41250`; DD/MM request reject; mock 2026 reject.
+- UI: preview/dry-run/apply/abort chạy thật trên staging Playwright (theo `webapp-testing`, VPS `14.225.255.47`); **mở ảnh xác nhận** (L-V05).
+- Gate: `npx tsc --noEmit`, `npm run build`, `npm run lint`, `npm run test` (FE); BE test cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1`; cấm local Docker.
+- `git status` sạch sau mọi lệnh có side effect.
 
-## 5. Gate & quy trình
-Nạp `project-lessons`; `check-lessons.mjs`; `agent-sync.ps1` (rebase→gate) + `check-multi-agent.mjs`; claim tên agent = tên branch (L-M02 trong `multi-agent.md` — trùng ID với file migrations); không commit thẳng `dev`. BE test trên VPS `14.225.255.47` với `CORE_DATABASE_URL` + `DJANGO_DEBUG=1`; cấm local Docker; `CHƯA CHẠY` nếu thiếu env. Owner chốt ToS/rate limit + openpyxl trước C2. Mỗi slice ≤ 3 vòng; ledger Entry riêng.
+## 5. Quy trình
+Nạp `project-lessons`; `check-lessons.mjs`; `agent-sync.ps1` (rebase→gate) + `check-multi-agent.mjs` + `check-experiment-env.mjs`; claim tên agent = tên branch (L-M02 trong `multi-agent.md`); không commit thẳng `dev`. Owner chốt ToS + openpyxl **trước C2**. Mỗi slice ≤ 3 vòng; ledger Entry riêng.
 
 ## 6. Non-goals / Rollback
-Không sửa widget/host, parser, `apply_adjustments`, `DailyPrice`, dữ liệu VCI/KBS; không cutover source. Rollback: drop bảng `CafefDailyPrice` / xoá row `source='cafef'` — không ảnh hưởng dữ liệu hiện hữu.
+Không sửa parser, `apply_adjustments`, `DailyPrice`, widget chart, dữ liệu VCI/KBS; không cutover source. Rollback: tắt route/UI flag + drop bảng `CafefDailyPrice` — không ảnh hưởng dữ liệu hiện hữu.
 
-## 7. Lessons áp dụng
-`[L-V01, L-V02, L-V04, L-V03, L-002, L-M02 (multi-agent.md)]`.
+## 7. Lessons
+`[L-V01, L-V02, L-V04, L-V05, L-V03, L-002, L-M02 (multi-agent.md), L-A01 (multi-agent.md)]`.
