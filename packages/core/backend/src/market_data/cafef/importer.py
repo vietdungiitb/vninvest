@@ -11,12 +11,45 @@ from market_data.models import CafefDailyPrice
 from .fetcher import fetch_xlsx
 from .parser import parse_xlsx_rows
 
+
+def _fetch_rows(exchange: str, year: int) -> list[dict]:
+    """Nguồn duy nhất = vnbroker 3.9.0 bulk_year; fallback local khi chưa pin.
+
+    vnbroker.bulk_year tra list dict da normalize (co close_raw/close_adjusted/...),
+    khong can parse XLSX lai o vninvest.
+    """
+    from vnbroker import Vnbroker
+
+    client = Vnbroker(show_log=False)
+    reference = client.reference('cafef')
+    if hasattr(reference, 'bulk_year'):
+        try:
+            frame = reference.bulk_year(exchange, year)
+            if frame is not None and not getattr(frame, 'empty', True):
+                return frame.to_dict('records')
+        except Exception:  # một số năm CafeF trả lỗi ⇒ fallback local XLSX
+            pass
+    return parse_xlsx_rows(fetch_xlsx(exchange, year))
+
+
+def _fetch_rows_with_rejected(exchange: str, year: int):
+    """Trả (rows, rejected) — local path đếm được rejected, vnbroker path trả []."""
+    try:
+        from vnbroker import Vnbroker
+        ref = Vnbroker(show_log=False).reference('cafef')
+        frame = ref.bulk_year(exchange, year)
+        if frame is not None and not getattr(frame, 'empty', True):
+            return frame.to_dict('records'), []
+    except Exception:
+        pass
+    return parse_xlsx_rows(fetch_xlsx(exchange, year), with_rejected=True)
+
 _CACHE_TTL_SECONDS = 600
 _preview_cache = {}
 
 _UPDATABLE = (
     'close_raw', 'close_adjusted', 'open_raw', 'high_raw', 'low_raw',
-    'volume', 'value', 'source',
+    'volume', 'value', 'change_pct', 'source',
 )
 
 
@@ -28,7 +61,7 @@ def preview_import(exchange: str, year: int) -> dict:
     if cached and now - cached[0] < _CACHE_TTL_SECONDS:
         return cached[1]
 
-    rows, rejected = parse_xlsx_rows(fetch_xlsx(exchange, year), with_rejected=True)
+    rows, rejected = _fetch_rows_with_rejected(exchange, year)
     result = {
         'exchange': exchange,
         'year': year,
@@ -43,7 +76,7 @@ def preview_import(exchange: str, year: int) -> dict:
 
 def run_import(exchange: str, year: int, dry_run: bool = False) -> dict:
     """Ghi CafefDailyPrice theo lô (exchange, year). Idempotent."""
-    rows = parse_xlsx_rows(fetch_xlsx(exchange, year))
+    rows = _fetch_rows(exchange, year)
     if dry_run:
         return {
             'exchange': exchange, 'year': year,
@@ -73,7 +106,10 @@ def run_import(exchange: str, year: int, dry_run: bool = False) -> dict:
             to_create.append(CafefDailyPrice(**row))
             continue
         for field in _UPDATABLE:
-            setattr(obj, field, row[field])
+            # vnbroker bulk_year frame không có cột change_pct — giữ giá trị cũ,
+            # KHÔNG xoá bằng None, và KHÔNG crash (O1' audit M0 v2).
+            if field in row:
+                setattr(obj, field, row[field])
         to_update.append(obj)
 
     with transaction.atomic():
