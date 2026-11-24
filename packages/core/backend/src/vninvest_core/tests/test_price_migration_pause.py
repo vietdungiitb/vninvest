@@ -22,8 +22,8 @@ def _reload_settings(paused):
 
 class PauseTests(SimpleTestCase):
     def tearDown(self):
-        os.environ.pop('PRICE_MIGRATION_PAUSED', None)
-        _reload_settings(False)
+        _reload_settings(False)  # trả schedule về trạng thái mặc định trước
+        os.environ.pop('PRICE_MIGRATION_PAUSED', None)  # rồi xoá env — sạch thật
 
     def test_paused_jobs_removed(self):
         mod = _reload_settings(True)
