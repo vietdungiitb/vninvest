@@ -1,6 +1,8 @@
 """Task 4 — adjustment engine: factor theo ex_date, cộng tiền, nhân dồn (fail-before)."""
+import os
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 
@@ -68,7 +70,20 @@ class AdjustmentTests(TestCase):
         self.assertEqual(len(factors), 2)
         apply_adjustments('VNM')
         self.assertIsNone(DailyPrice.objects.get(date=date(2024, 9, 23)).adj_close)
-        self.assertIsNotNone(DailyPrice.objects.get(date=date(2025, 5, 13)).adj_close)
+        # P0: flag mặc định tắt ⇒ không ghi adj_close (kể cả factor computed).
+        self.assertIsNone(DailyPrice.objects.get(date=date(2025, 5, 13)).adj_close)
+
+    def test_writes_disabled_by_default(self):
+        """AC-1: flag OFF ⇒ 0 UPDATE, freeze cả vòng reset lẫn vòng ghi."""
+        self._price('VNM', '2024-09-23', Decimal('100000'))
+        self._event('VNM', '2024-09-24', 'clean', cash='1000')
+        compute_adj_factors('VNM')
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('PRICE_ADJUSTMENT_WRITES_ENABLED', None)
+            self.assertEqual(apply_adjustments('VNM'), 0)
+        price = DailyPrice.objects.get(date=date(2024, 9, 23))
+        self.assertIsNone(price.adj_close)
+        self.assertFalse(price.is_adjusted)
 
     def test_invalid_factor_guard(self):
         self._price('VNM', '2024-09-23', Decimal('100000'))
@@ -93,6 +108,7 @@ class AdjustmentTests(TestCase):
         factor = compute_adj_factors('VNM')[0]
         self.assertEqual(factor.prev_close, Decimal('100000.00'))
 
+    @patch.dict(os.environ, {'PRICE_ADJUSTMENT_WRITES_ENABLED': '1'})
     def test_recompute_clears_stale_factor_and_adj_close(self):
         price = self._price('VNM', '2024-09-23', Decimal('100000'))
         self._event('VNM', '2024-09-24', 'e1', cash='1000')
