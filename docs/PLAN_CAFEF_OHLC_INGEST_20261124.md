@@ -17,7 +17,7 @@
 
 | Lớp | file:line | Việc cần thêm |
 |---|---|---|
-| BE route | `service_ops/operator_urls.py:29-31` (prefix `/operator/scraping/`) | `dataops/cafef/preview|run|run/<run_id>/abort/`; **không** đăng ký thêm prefix `/operator/soc/` (`urls.py:187-189`) — reservation m4, không có test parity |
+| BE route | `service_ops/operator_urls.py:29-31` (prefix `/operator/scraping/`) | `dataops/cafef/preview|run|run/<run_id>/abort/`; **không** đăng ký thêm prefix `/operator/soc/` (`urls.py:187-189`) — reservation m4; **owner = implementer C3** (ghi rõ khi khai claim), không có test parity |
 | BE view | `service_ops/views/dataops_planner.py:219,277,315+` (`SOCBaseView`) | `service_ops/views/dataops_cafef.py` mới: Preview/Run/Abort; **reuse** `_build_market_data_ownership_payload()` (`ownership.py:71`, `dataops_base.py:100-104`) — **không tạo action-map** (m3); `@extend_schema` **cả request lẫn response** (m6, cảnh báo `dataops_planner.py:349-354`) |
 | BE task | `service_ops/tasks.py` pattern planner | `import_cafef_ohlc_task(exchange, year, run_id, dry_run)`: commit theo `(exchange, year)`, **abort cooperative**, counters nhất quán; revoke `terminate=True, SIGTERM` + đóng run `'skipped'` như `dataops_planner.py:402-407,416-426` (m6) |
 | BE run log | `ServiceRunLog` | `service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops']` (`dataops_planner.py:106-108`) để hiện trong run-logs (m5) |
@@ -35,7 +35,7 @@
 - Dry-run cũng fetch+parse 101k rows nhưng **0 ghi DB**.
 
 ## 4. Gate (sửa M2)
-- FE: `npx tsc --noEmit`, `npm run build`, `npm run lint`, `npm run test`, **`npm run check:shell`** (= `check:tokens` + `check:contrast` + `i18n:scan:strict` + `check:i18n-hardcoded`, `package.json:12`).
+- FE: `npx tsc --noEmit`, `npm run build`, `npm run lint`, `npm run test`, **`npm run check:shell`** — `package.json:12` gồm **7 sub-script**: `check:tokens`, `check:contrast`, `i18n:scan:strict`, `check:i18n-hardcoded`, `check:dom-landmarks`, `check:stock-detail-shell`, `check:admin-spa-routes`.
 - Baseline UI: fingerprint staging đổi ⇒ chạy `--update-baseline` cho `scripts/check-ui-baseline/check-a11y-runtime.json` + `check-theme-contrast.json` (`check-a11y-runtime.mjs:850-857,902-904`); `check-uiux-budget.mjs:105-135` nếu thêm CSS rule. **Không báo PASS khi gate báo CHƯA CHẠY**.
 - BE: test trên VPS `14.225.255.47` với `CORE_DATABASE_URL` + `DJANGO_DEBUG=1`; cấm local Docker.
 - `agent-sync.ps1` (rebase→gate) + `check-multi-agent.mjs` + `check-experiment-env.mjs`; claim tên agent = tên branch (L-M02 trong `multi-agent.md`); không commit thẳng `dev`.
