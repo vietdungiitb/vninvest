@@ -22,3 +22,18 @@ AC1/AC3 (builder lọc `whale_tick:` + 8-field summary + ngưỡng 500M/1B/5B), 
 ### Gate
 
 Sau 3 fix → chạy lại 14 test trên VPS + re-audit vòng 2 rồi mới B9 bàn giao.
+
+---
+
+## RE-AUDIT CODE VÒNG 2 — @ `691587b3e`
+
+**VERDICT: `PASS`** — cả 3 objection đóng, không có objection mới.
+
+- `delta`: `'delta': 0` ở empty payload (`views.py:111`); top-level `delta = Σ(bucket.buy_volume - sell_volume)` (`:426-431`); giữ `delta` per-bucket (`:452`); test assert cả 2 nhánh (`test_session_facts_api.py:436,453`).
+- `alerts[]`: populate từ `UnifiedAlert` đúng shape cũ (`native_views.py:444-455,463`), regression guard `test_native_views.py:375-376`.
+- AC10: `RealtimeConsumerEventsTests` + InMemoryChannelLayer (`test_whale_ws_events.py:32-61`) assert ack `events` + `not_provisioned`.
+- Không migration / deny-list / `print()` tiếng Việt mới. 14 test khớp log. `gates.md` đã lấp placeholder (36 PASS / tsc 0 / jest 4/4). CORS env VPS vẫn CHƯA CHẠY — đúng owner coordinator.
+
+**Ghi chú không chặn:** `gates.md` header citation cũ (sửa ở handoff); docstring WS test hơi quá đà ("opt-out traffic is untouched") nhưng code xử lý đúng `consumers.py:203-204` — không sửa code.
+
+**Gate B8→B9:** PASS ⇒ bàn giao.

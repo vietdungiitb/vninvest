@@ -61,7 +61,22 @@ TEST_EXIT=0
 ```
 DB riêng `whale_cvd_r2` + `whale_cvd_r1`, cleanup DROP FORCE + remove worktree sau mỗi lần.
 
-### Local gates @ `1c405ca2c`
+### B8 re-audit vòng 1 → 3 objection → fix → re-audit vòng 2
+
+Objection B8 v1: (1) `delta` thiếu ở empty CVD payload + top-level; (2) `alerts[]` regression (builder trả `[]`); (3) AC10 chỉ test helper, chưa test consumer. Đều đã fix ở `246dfdcb9`, kèm test mới.
+
+WS consumer test ban đầu lỗi Redis (`redis:6379` không resolve trong container test) → đổi sang `InMemoryChannelLayer` (`691587b3e`).
+
+**PASS cuối cùng @ `691587b3e`:**
+```
+Found 14 test(s).
+Ran 14 tests in 2.521s
+OK
+TEST_EXIT=0
+```
+(4 whale feed + 4 CVD + 4 WS (3 helper + 1 consumer) + 2 CORS = 14 — khớp log Django.)
+
+### Local gates @ `691587b3e` (final)
 
 | Gate | Kết quả |
 |---|---|

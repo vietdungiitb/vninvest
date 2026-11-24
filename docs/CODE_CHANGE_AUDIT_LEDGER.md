@@ -1,3 +1,13 @@
+## Entry 624: Ship Whale/CVD API contract cho widget (branch feat/whale-cvd-contract-be)
+
+- **Date**: 2026-11-24 · **Type**: feat + test + audit (0 migration, 0 file deny-list) · **Claim**: `whale-cvd-contract-be` → `done`.
+- **G0 (trước code)**: probe staging 3 query — `IntradayTick.price` là VND thật (avg 33.057), UNKNOWN 0,75%; **6.290 row `tick_session:` lẫn vào `WhaleAlertCanonical`**, 623 clamp 5B. Evidence `docs/evidence/whale-cvd-contract/G0_PROBE.md` + `.sql`.
+- **Code**: `market_serving/native_views.py` builder per-tick (`whale_tick:` only), 8-field summary + invariant, default phiên gần nhất, keyset cursor, `+07:00`, `alerts[]` giữ shape cũ, 2 route 501; `market_serving/views.py` CVD `delta/unit/source/trade_count/revision`, scope `market:read`, strict window, cache key kẹp revision; `session_facts_engine.py` lọc aggregate + bỏ `else:sell`; `signal_intelligence/{views,tasks,order_flow_engine}.py` alias/guard UNKNOWN; `consumers.py`+`ws_ticket.py` additive `resolve_ws_identity()` + subscribe `events[]` → `not_provisioned`; manifest 540 route + catalog 1438.
+- **TDD**: S1 đỏ **4/4** (`7960fb3b8`) → S2+S3+S4+S5 xanh **14/14** (`691587b3e`) trên VPS DB riêng `whale_cvd_r1/r2`, cleanup DROP FORCE xong. 3 vòng fix lỗi trong LIMIT: decorator syntax, system-design catalog drift, `UNSUPPORTED_WINDOW`/import `status`; B8 fix 3 objection (delta, alerts regression, WS consumer test) + InMemoryChannelLayer.
+- **Gates chạy thật**: `pre-push-gate` **36 PASS / 0 SKIP / 0 FAIL** · `tsc` exit 0 · jest `route-contract.test.js` **4/4** · `check-multi-agent` 0 lỗi · `check-lessons` 60/60 · openapi budget Errors 56/Warnings 125 đúng baseline · `check-system-design` SACH. **CHƯA CHẠY**: env `CORS_ALLOWED_ORIGINS` trên VPS (owner coordinator), full BE suite, E2E/browser staging.
+- **Audit**: plan v1 NEED_REVISION (5) → v2 AGREE (3 reservation đóng); code v1 NEED_REVISION (3) → v2 **PASS**. Evidence `docs/evidence/whale-cvd-contract/{AUDIT_PLAN,AUDIT_CODE,gates}.md`.
+- **Next**: PR merge-commit → coordinator cập nhật env staging + restart, rồi widget team đổi URL CVD theo D4.
+
 ## Entry 623: REV.2.1 — lọc 2 writer trộn WhaleAlertCanonical + chốt window/tz/cache (2026-11-24)
 
 - **Date**: 2026-11-24 · **Type**: decision tinh chỉnh (doc-only, 0 dòng source) · **Lessons áp dụng**: L-V01, L-V02, L-V04, L-T01, L-T02, L-F04, L-F07 (checklist đã tick trong doc). Mọi điểm review tự mở code verify (log §6) — có thật cả.
