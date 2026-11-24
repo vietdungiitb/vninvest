@@ -24,6 +24,7 @@ class M2SchemaTests(SimpleTestCase):
                      if op.__class__.__name__ == 'RunPython']
         self.assertEqual(len(runpython), 1)
         self.assertFalse(runpython[0].atomic)
+        self.assertFalse(migration.atomic)  # R1: class-level atomic=False — xoá là production vỡ
         import inspect
 
         self.assertIn('CONCURRENTLY', inspect.getsource(mod._create_index_concurrently))

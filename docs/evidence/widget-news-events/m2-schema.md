@@ -19,4 +19,10 @@ Branch `feat/price-mig-schema` · base dev `140c82f6d` (sau merge PR #524/#526) 
 - `price_source`: 4.585.148 dòng, 100% `vnbroker_legacy` ✓
 - `adj_factor`: 0 dòng có giá trị ✓ (chưa persist — đúng scope M2 chỉ schema).
 
+## Reservation audit đã đóng
+- **R1**: test mới assert `Migration.atomic == False` (class level) — xoá dòng này ⇒ production vỡ `CONCURRENTLY inside transaction`, test đỏ. 3/3 OK.
+- **R2**: rollback `manage.py migrate market_data 0011` → `Unapplying 0012 OK`; apply lại `migrate market_data 0012` → OK. Tiêu chí AC plan:37 đạt.
+- **R3**: claim `price-mig-schema` sẽ chuyển `done` khi đóng slice.
+- **R4**: auditor read-only không tự verify DB staging — số staging ở trên là tự đo trên VPS; lệnh tái tạo đã ghi.
+
 Chưa đụng consumer, chưa ghi dữ liệu giá, chưa chạy S3c–S7.
