@@ -91,3 +91,18 @@ def resolve_user_from_ws_query(query_string: str):
         if part.startswith("token="):
             return _user_from_token_token(part[6:])
     return None
+
+
+def resolve_ws_identity(query_string: str):
+    """Additive helper: identity + auth_method without changing the legacy API.
+
+    `resolve_user_from_ws_query()` keeps returning User|None so existing ticket
+    tests (which assert `.id`) stay valid. The single-use ticket is redeemed
+    exactly once — through the legacy function called below.
+    """
+    user = resolve_user_from_ws_query(query_string)
+    if user is None:
+        return None
+    parts = (query_string or "").split("&")
+    method = 'ticket' if any(part.startswith('ticket=') for part in parts) else 'token'
+    return {'user': user, 'auth_method': method}
