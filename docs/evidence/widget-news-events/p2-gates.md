@@ -16,6 +16,12 @@ Branch `feat/cafef-dual-write` · base P0 (đã pin `vnbroker==3.9.0`). 5 điề
 - Parity **3 mã × 3 năm** (TPB/2011, VNM/2015, VIC/2022) qua mock; assert `close_raw`, `close_adjusted`, `symbol`.
 - Test `coverage='missing'` ⇒ `[]`; flag OFF ⇒ `_daily_bars` không được gọi.
 
+## Reservation auditor (AGREE) đã xử lý
+- R1 parity thiếu assert ngày → đã thêm `assertEqual(rows[0]['date'], date(year,1,4))` cho 3 mã × 3 năm.
+- R2 shape `coverage`: mapper đọc `frame.attrs['coverage']`; **CHƯA XÁC MINH** nếu vnbroker 3.9.0 trả coverage dạng cột — phải kiểm khi persist (lúc đó container reinstall 3.9.0).
+- R3 chưa validate ngày ∈ [start,end]/tz — chấp nhận ở mapper-only, bắt buộc ở bước persist.
+- R4 auditor không tự re-run 13/13 (ghi theo evidence); tôi đã chạy thật trên VPS DB riêng như §RED→GREEN.
+
 ## Chưa làm / reservation
 - Chưa ghi vào `DailyPrice` (chỉ mapper; dual-write persistence + ngắt ghi đè là bước sau khi ToS ký).
 - Container staging vẫn chạy vnbroker **3.8.2** — pin trong requirements đã có (P0), chưa reinstall image; mapper dùng mock nên không phụ thuộc runtime.

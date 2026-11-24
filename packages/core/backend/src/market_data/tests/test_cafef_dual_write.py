@@ -78,6 +78,8 @@ class DualWriteTests(SimpleTestCase):
             self.assertEqual(rows[0]['close_raw'], Decimal('1000.00'), (symbol, year))
             self.assertEqual(rows[0]['close_adjusted'], Decimal('500.00'), (symbol, year))
             self.assertEqual(rows[0]['symbol'], symbol, (symbol, year))
+            # Bài học nến 1970: phải assert ngày, không chỉ giá.
+            self.assertEqual(rows[0]['date'], date(year, 1, 4), (symbol, year))
 
     def test_missing_coverage_is_explicit(self):
         empty = _frame([])
