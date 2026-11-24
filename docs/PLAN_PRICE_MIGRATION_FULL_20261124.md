@@ -32,17 +32,17 @@
 |---|---|---|
 | `Giá đóng cửa` | `close` | raw |
 | `Giá điều chỉnh` | `adj_close` | adjusted |
-| `Giá mở/cao/thấp` | `open/high/low` | raw; **đọc adjusted bằng `ratio=adj_close/close`** (P0-2) |
+| `Giá mở/cao/thấp` | `open/high/low` | raw; **SSOT = lưu `adj_factor` trên `DailyPrice` (= `close_adjusted/close_raw`) và scale O/H/L khi đọc adjusted** (P0-2); plan §5 S3a thêm cột `adj_factor`, KHÔNG lưu 3 cột `adj_open/high/low` — một nguồn hệ số duy nhất |
 | `Khối lượng khớp lệnh` | **`volume`** | BẮT BUỘC (P0-4) |
 | `Giá trị khớp lệnh` | `value` | ×1e9 |
-| `Thay đổi` | `change_pct` | **phải thêm cột vào `CafefDailyPrice` + parser trước S1**; trên ex-date lấy theo giá tham chiếu điều chỉnh, không `(raw_t-raw_{t-1})/raw_{t-1}` |
+| `Thay đổi` | `change_pct` | **phải thêm cột vào `CafefDailyPrice` + sửa `cafef/contract.py:54-67 normalize_row` (đang drop `'Thay đổi'`) LẪN `cafef/importer.py:17-20 _UPDATABLE` trước S1**; trên ex-date lấy theo giá tham chiếu điều chỉnh, không `(raw_t-raw_{t-1})/raw_{t-1}` |
 | — | `source='cafef'`, `price_source='cafef'` (mới), `is_adjusted` | `is_adjusted` giữ semantics "close có adjusted tương ứng"; serializer phải trả thêm `adj_close`+`price_source` (P1-2) |
 | `KL/GT thỏa thuận` | bỏ | ghi rõ |
 
 **P0-2 NAV**: `PortfolioEquityCurve/_nav_series` (`portfolio_analytics_views.py:489-546`) phải đổi từ `quantity_hiện_tại × close_365d` sang **chuỗi quantity theo thời gian** (từ `Transaction`/`LedgerEntry`) hoặc ít nhất dùng `adj_close` cho cả entry/exit — không nhân số lượng sau chia với giá thô trước chia.
 
 ## 4. Fan-out (bổ sung P1-1)
-Thêm vào 🔴: 3 beat job (`deep-history-bootstrap-weekly` CN 03:00 `settings.py:811-816`, `pre5y-history-backfill-weekly` CN 04:00 `:821-830`, `ingest-daily-prices-1705` `:836-842`) + 4 on-demand (`promotion_fast_path.py:99`, `global_symbol_planner.py:143`, `backfill_service.py:56`, `data_ingest/views.py:157`) — pause hết trong S3c–S5. `/bars/` metadata `adjusted` (`stock_mgmt_native_views.py:4398-4418`) đang check `AdjFactor.PARTIAL` ⇒ đổi sang `price_source=='cafef'`. Anomaly-alert 5m (`signal_intelligence/materializers.py:508`) pause khi recompute snapshot. RVOL (`market_serving/native_views.py:427`) + whale fallback (`portfolio_analytics_views.py:2853-2870`) đối chiếu volume basis mới. `StockChartView` (`market_data/views.py:184-252`) là **dead code chưa mount** — không sửa, ghi rõ.
+Thêm vào 🔴: **4 beat job đang chạy** — `daily-backfill-prices-1700` (17:05, `settings.py:778-783`, `backfill_daily_prices` 365 ngày VCI+KBS — **job nightly chính, phải pause**), `deep-history-bootstrap-weekly` (CN 03:00 `:811-816`), `pre5y-history-backfill-weekly` (CN 04:00 `:821-830`), `sync-all-corporate-actions` (18:30 `:789-794`); **`ingest-daily-prices-1705` (`settings.py:836-842`) có `enabled: False` — KHÔNG cần pause** (ghi rõ tránh nhầm). + 4 on-demand (`promotion_fast_path.py:99`, `global_symbol_planner.py:143`, `backfill_service.py:56`, `data_ingest/views.py:157`) — pause hết trong S3c–S5. `/bars/` metadata `adjusted` (`stock_mgmt_native_views.py:4398-4418`) đang check `AdjFactor.PARTIAL` ⇒ đổi sang `price_source=='cafef'` nhưng **giữ nhánh `_corporate_actions_enabled()`** (`:4398-4415`) làm flag bao ngoài. Anomaly-alert 5m (`signal_intelligence/materializers.py:508`) pause khi recompute snapshot. RVOL (`market_serving/native_views.py:427`) + whale fallback (`portfolio_analytics_views.py:2853-2870`) đối chiếu volume basis mới. `StockChartView` (`market_data/views.py:184-252`) là **dead code chưa mount** — không sửa, ghi rõ.
 
 ## 5. Thứ tự triển khai (sửa P0-3 — 9 bước)
 
@@ -51,12 +51,12 @@ Thêm vào 🔴: 3 beat job (`deep-history-bootstrap-weekly` CN 03:00 `settings.
 | **S0 Backup** | `pg_dump` **từng bảng** + bảng staging `(symbol,date,old_*)` vào `/opt/backups/price-migration-20261124/` | checksum khớp; **gate dung lượng trống ≥80 GB** (VPS từng đầy 98%) |
 | **S1 Bulk CafeF** | **Thống nhất đường fetch**: dùng `vnbroker 3.9.0 bulk_year(exchange,year)` (48 req); thay `cafef/importer.py` gọi local `fetcher.py` bằng wrapper vnbroker. Thêm cột `change_pct` cho `CafefDailyPrice` + parser. Ghi 3 sàn × 2011–2026 | per-symbol coverage gate; đo phủ 3 sàn thật, báo cáo trước khi chốt scope |
 | **S2 Dry-run diff** | Diff `(symbol,date)` mọi field; phân loại DB-only 3 nhóm; kiểm tra CafeF có trả chỉ số | nhảy=warn; lệch unit/ngày=halt; drift phân loại theo §0.5 |
-| **S3a Schema migration** | Thêm `price_source` + index `CREATE INDEX CONCURRENTLY` trên bảng 4,58M; cột `adj_open/high/low` (hoặc `adj_factor`) theo §3 | migration chạy xong, không lock dài |
-| **S3b Guard + Pause** | Sửa `vnbroker_adapter.py:763` + `tasks.py:792-798` skip `(symbol,date)` có `price_source='cafef'`; **pause 3 beat + 4 on-demand + anomaly-alert 5m**; `adjustment.py` giữ flag tắt | chạy nightly giả lập → 0 row cafef bị đổi |
+| **S3a Schema migration** | Thêm `price_source` + **`adj_factor`** (SSOT hệ số, §3) + index `CREATE INDEX CONCURRENTLY` trên bảng 4,58M | migration chạy xong, không lock dài |
+| **S3b Guard + Pause** | **Điểm guard thật là `data_ingest/tasks.py:792-798`** (upsert `update_fields`), KHÔNG phải `vnbroker_adapter.py:763` (chỉ dựng row OHLCV — để nguyên). Thêm skip `(symbol,date)` có `price_source='cafef'` tại upsert; **pause 4 beat đang chạy (§4) + 4 on-demand + anomaly-alert 5m**; `adjustment.py` giữ flag tắt | chạy nightly giả lập → 0 row cafef bị đổi |
 | **S3c Persist** | Ghi mọi field từ `CafefDailyPrice`; **INSERT cả CafeF-only** (~38.986 dòng/2022); DB-only: giữ `close` cũ + **set `adj_close=NULL`** + cờ; **KHÔNG UPDATE in-place khi đang có traffic** — ghi cột mới rồi cutover bằng flag 1 lần | assert `updated_count == dry_run_matched_count` + checksum mẫu (không dùng "row count trước=after"); VACUUM ANALYZE giữa lô |
 | **S4 Invalidate** | Xoá cache §4.2; rebuild coverage/inventory | cache key mới trả số mới |
 | **S5 Recompute + Deploy consumer** | Chạy materializer SymbolSnapshot + pre-open (§4 bổ sung); deploy BE+FE §4 trong cùng release; gắn `price_basis`; **resume beat** | E2E: chart TPB adjusted=17.940 toggle raw=42.750; không trộn basis |
-| **S6 Verify + Monitor** | 20 mã × 5 năm đối chiếu; drift 2 tuần; rollback **chọn lọc `WHERE date<=cutover`** từ bảng old_* (KHÔNG restore pg_dump đè dữ liệu mới) | parity report; rollback sẵn trong 2 tuần |
+| **S6 Verify + Monitor** | 20 mã × 5 năm đối chiếu; drift 2 tuần; rollback **chọn lọc `WHERE date<=cutover`** từ bảng old_* + **DELETE các dòng CafeF-only vừa INSERT** (theo `inserted_keys` lưu ở S3c, ~38.986 dòng/2022) — KHÔNG restore pg_dump đè dữ liệu mới | parity report; rollback sẵn trong 2 tuần |
 | **S7 Dọn** | Sau parity: dọn local fetcher/parser; giữ `CafefDailyPrice` staging | — |
 
 ## 6. Ongoing T+1 + rebase (sửa P0-1)
