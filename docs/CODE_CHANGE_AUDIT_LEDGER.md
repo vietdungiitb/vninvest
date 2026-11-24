@@ -1,3 +1,12 @@
+## Entry 625: Chốt phiên 2026-11-24 — merge PR #525, deploy staging, handoff sang main
+
+- **Date**: 2026-11-24 · **Type**: closeout (docs + ops, 0 dòng source mới).
+- **Merge**: `gh pr merge 525 --merge` → MERGED, merge-commit `c75012499` vào `dev`; local `dev` fast-forward, tree sạch. `agent-cleanup.ps1` báo "Không tìm thấy worktree" — slice chạy trên main tree nên không cần cleanup.
+- **Handoff evidence rule**: `docs/handoffs/HANDOFF_2026-11-24_WHALE_CVD_CONTRACT.md` đã đẩy sang `main` commit `1465ed0ab`; verify `git log --oneline -3 main -- docs/handoffs` dòng đầu = commit này.
+- **Staging ops (đã chạy thật)**: backup + set `CORE_CORS_ALLOWED_ORIGINS=https://docker.edusuccess.vn,https://charts.edusuccess.vn` trong `/opt/vninvest/compose.staging.env`; `bash scripts/deploy-staging.sh` exit 0 (core-api healthy, 0 crash-loop) + `bash scripts/deploy-staging.sh --verify` exit 0; probe curl OPTIONS qua nginx proxy từ Origin `https://charts.edusuccess.vn` → `HTTP/2 200` + `access-control-allow-origin: https://charts.edusuccess.vn`. Reservation CORS của Entry 624 đã đóng.
+- **Còn lại cho phiên sau / owner**: ticket riêng P0-B6 (tắt `CORS_API_DYNAMIC_ALLOW=true` — hiện allow-all trên `/core/v1/*`); widget team đổi URL CVD sang `session-facts/{symbol}/cvd/?window=15m` + map `externalCvdSeries` + bỏ AC `<1s`; full BE suite / E2E staging (ngoài scope slice). Không có blocker code.
+- **Trạng thái**: claim `whale-cvd-contract-be` = `done`; slice `done`; **phiên chốt**.
+
 ## Entry 624: Ship Whale/CVD API contract cho widget (branch feat/whale-cvd-contract-be)
 
 - **Date**: 2026-11-24 · **Type**: feat + test + audit (0 migration, 0 file deny-list) · **Claim**: `whale-cvd-contract-be` → `done`.
