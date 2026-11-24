@@ -4,7 +4,7 @@ Branch `feat/price-adjustment-p0` · Plan `docs/PLAN_PRICE_ADJUSTMENT_P0_2026112
 
 ## RED → GREEN
 - RED: test mới `test_writes_disabled_by_default` → `AssertionError: 1 != 0`; `test_unparsed_is_per_date` expectation mới fail ⇒ 2 failures. F1 test (flag ON) đã xanh ngay cả trước khi implement — đúng AC-2.
-- GREEN: **8/8 OK** trên VPS `14.225.255.47`, DB riêng `vnsaas_core` (kết nối tạm vào `vnsaas-staging_data`, đã ngắt).
+- GREEN: **9/9 OK** trên VPS `14.225.255.47`, DB riêng `vnsaas_core` (kết nối tạm vào `vnsaas-staging_data`, đã ngắt). Test thứ 9 (`test_writes_disabled_preserves_stale_adj_close`) đóng reservation R1 của audit: seed stale `adj_close=999` + factor partial, flag OFF ⇒ vẫn 999 (nếu guard dời xuống dưới vòng reset thì test này đỏ).
 
 ## Thay đổi
 - `market_data/corporate_actions/adjustment.py`: `import os`; guard `os.getenv('PRICE_ADJUSTMENT_WRITES_ENABLED','0') != '1' → return 0` **ở đầu hàm `apply_adjustments`** (dòng 83 sau docstring) — freeze cả reset lẫn ghi. Docstring ghi rõ nguồn VCI/KBS đã trả giá điều chỉnh ở `close`.

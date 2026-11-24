@@ -1,3 +1,11 @@
+## Entry 617: P0 — tắt ghi adj_close nhân đôi + pin vnbroker 3.9.0
+
+- **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-adjustment-p0` · Claim `price-adjustment-p0`.
+- **Thay đổi**: `market_data/corporate_actions/adjustment.py` — guard `PRICE_ADJUSTMENT_WRITES_ENABLED` (default `'0'`) **ở đầu `apply_adjustments`**, freeze cả vòng reset lẫn vòng ghi; flag `'1'` giữ nguyên path cũ cho test F1. Docstring ghi rõ `close` từ VCI/KBS đã là giá điều chỉnh. Test: AC-1, AC-2b (stale `adj_close` không bị reset khi OFF), F1 chạy flag ON, expectation OFF đổi. `requirements.txt:38` pin `vnbroker==3.9.0` (commit có trailer `Claim-Deny-List:` theo ủy quyền owner).
+- **Gate chạy thật**: RED 2 fail → GREEN **9/9** trên VPS `14.225.255.47`, DB riêng `vnsaas_core` (kết nối tạm vào `vnsaas-staging_data`, đã ngắt). `pre-push-gate` **36 PASS / 0 FAIL**; đã push branch.
+- **Audit code độc lập**: **AGREE + reservation** — R1 (chưa test stale reset) đã đóng bằng `test_writes_disabled_preserves_stale_adj_close`; R3 (ledger Entry) đóng bằng Entry này; env neutralize mọi test qua `setUp`.
+- **Không làm**: không ghi đè `DailyPrice`, không bulk CafeF (ToS chờ ký trước P2), UI default giữ provider-adjusted tới P3. Evidence: `docs/evidence/widget-news-events/p0-gates.md`.
+
 ## Entry 616: Chốt 5 điều kiện SSOT + PLAN P0 (chỉ tài liệu, không code)
 
 - **Date**: 2026-11-24 · **Type**: decision + plan + audit độc lập (3 vòng, verdict cuối PASS).
