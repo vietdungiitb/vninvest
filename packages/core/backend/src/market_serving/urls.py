@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import views
 from .native_views import (
+    NotProvisionedView,
     RealtimeBreadthView,
     RealtimeDepthChartView,
     RealtimeIntradayView,
@@ -22,6 +23,9 @@ urlpatterns = [
     path('session-facts/', views.SessionFactsListView.as_view(), name='session-facts-list'),
     path('session-facts/<str:symbol>/cvd/', views.SessionFactsCvdView.as_view(), name='session-facts-cvd'),
     path('session-facts/<str:symbol>/', views.SessionFactsDetailView.as_view(), name='session-facts-detail'),
+    # Live aggressor endpoints are intentionally unprovisioned (Rule 15, G0).
+    path('orderflow/<str:symbol>/cvd/', NotProvisionedView.as_view(), name='orderflow-cvd-not-provisioned'),
+    path('orderflow/<str:symbol>/trades/', NotProvisionedView.as_view(), name='orderflow-trades-not-provisioned'),
     # Native realtime paths under core/v1/
     path('realtime/ticker/<str:symbol>/', RealtimeTickerView.as_view(), name='realtime-ticker'),
     path('realtime/tickers/', RealtimeTickerListView.as_view(), name='realtime-tickers'),

@@ -5,7 +5,7 @@ from django.utils import timezone as dj_timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -102,6 +102,13 @@ def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trad
         'bucket_count': 0,
         'data_status': code,
         'detail': detail,
+        'unit': 'vnd',
+        'source': 'whale_aggregate',
+        'data_quality': 'derived_from_whale_alerts',
+        'revision': 0,
+        'updated_at': None,
+        'trade_count': None,
+        'delta': 0,
     }
 
 
@@ -359,13 +366,21 @@ class SessionFactsCvdView(APIView):
     throttle_classes = [MarketDataThrottle]
 
     def get(self, request, symbol: str):
+        from identity_access.permissions import require_pat_scopes_or_human_session
+        from rest_framework.exceptions import ValidationError
+
+        require_pat_scopes_or_human_session(request, 'market:read')
+
         symbol = symbol.strip().upper()
         if not symbol:
-            from rest_framework.exceptions import ValidationError
             raise ValidationError({'detail': 'Symbol không hợp lệ.', 'code': 'invalid_symbol'})
 
         window = str(request.query_params.get('window', '15m')).strip().lower()
-        bucket_minutes = _WINDOW_TO_BUCKET_MINUTES.get(window, 15)
+        if window not in _WINDOW_TO_BUCKET_MINUTES:
+            return Response({'code': 'UNSUPPORTED_WINDOW',
+                             'detail': 'window chỉ nhận 5m | 15m | 30m | 1h.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window]
         requested_trade_date = _parse_trade_date_param(request)
 
         facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
@@ -383,7 +398,10 @@ class SessionFactsCvdView(APIView):
             empty_payload['_source'] = 'no-data'
             return Response(empty_payload)
 
-        cache_key = f'core:cvd_series:v2:{symbol}:{facts.session_date}:{bucket_minutes}'
+        # REV.2.1: version the cache key with the materialization timestamp so a
+        # recomputed SessionFacts can never be served with a stale series/revision.
+        revision = int(facts.computed_at.timestamp())
+        cache_key = f'core:cvd_series:v2:{symbol}:{facts.session_date}:{bucket_minutes}:{revision}'
 
         try:
             cached = cache.get(cache_key)
@@ -405,14 +423,24 @@ class SessionFactsCvdView(APIView):
             empty_payload['_source'] = 'no-data'
             return Response(empty_payload)
 
+        top_level_delta = sum(
+            int(row['buy_volume']) - int(row['sell_volume']) for row in bucket_rows
+        )
         data = {
             'symbol': symbol,
+            'delta': top_level_delta,
             'session_date': facts.session_date.isoformat(),
             'window': window,
             'bucket_minutes': bucket_minutes,
             'cvd_normalized': facts.cvd_normalized,
             'delta_strength_pct': _delta_strength_pct_from_facts(facts),
             'whale_net_flow': facts.whale_net_flow,
+            'unit': 'vnd',
+            'source': 'whale_aggregate',
+            'data_quality': 'derived_from_whale_alerts',
+            'revision': revision,
+            'updated_at': dj_timezone.localtime(facts.computed_at).isoformat(),
+            'trade_count': None,  # no raw trade counter in the materialized source
             'cvd_series': [
                 {
                     'bucket_ts': dj_timezone.localtime(bucket_row['bucket_ts']).isoformat(),
@@ -421,6 +449,8 @@ class SessionFactsCvdView(APIView):
                     'institutional_strength': bucket_row['institutional_strength'],
                     'buy_volume': bucket_row['buy_volume'],
                     'sell_volume': bucket_row['sell_volume'],
+                    'delta': bucket_row['buy_volume'] - bucket_row['sell_volume'],
+                    'trade_count': None,
                 }
                 for bucket_row in bucket_rows
             ],
