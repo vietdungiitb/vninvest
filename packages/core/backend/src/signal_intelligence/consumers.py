@@ -199,7 +199,7 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
                 raw_events = []
             opted = [name for name in raw_events if name in ('whale_order', 'orderflow_delta')]
             # New event types are ticket-only; the legacy ?token= fallback stays
-            for ticker clients but must not receive them (Rule 15, D5 REV.2.2).
+            # for old ticker clients but must not receive them (Rule 15, D5 REV.2.2).
             if opted and getattr(self, 'auth_method', None) != 'ticket':
                 opted = []
 
