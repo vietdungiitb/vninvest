@@ -55,6 +55,21 @@ Golden đủ 7 giá trị convert: `42750 / 17940 / 11034900 / 467260000000 / 41
 
 ## 3. Slice
 
+### Vị trí đặt trong repo (đường dẫn thật)
+
+| Thành phần | Đường dẫn | Trạng thái |
+|---|---|---|
+| Model `CafefDailyPrice` | `packages/core/backend/src/market_data/models.py` (cạnh `DailyPrice:63-94`) | file có sẵn |
+| Migration | `packages/core/backend/src/market_data/migrations/00XX_...py` | sinh bằng `makemigrations`; head hiện tại `0009` |
+| Contract (12 cột, 2 format ngày, exchange) | `packages/core/backend/src/market_data/cafef/contract.py` | **thư mục mới** |
+| Fetcher / parser | `packages/core/backend/src/market_data/cafef/fetcher.py`, `parser.py` | mới |
+| **Backfill command** | `packages/core/backend/src/market_data/management/commands/import_cafef_ohlc.py` | **thư mục mới** (`management/__init__.py` + `management/commands/__init__.py`) |
+| Báo cáo đối chiếu | `packages/core/backend/src/market_data/cafef/reconcile.py` (C4, read-only) | mới |
+| Test | `packages/core/backend/src/market_data/tests/test_cafef_contract.py`, `test_cafef_parser.py`, `test_import_cafef_ohlc.py` | mới |
+| Admin register | `packages/core/backend/src/market_data/admin.py:11` | file có sẵn |
+
+Lý do chọn app `market_data`: model đích nằm ở đây; `data_ingest` hiện **không có** `management/commands/` (chỉ có tasks), trong khi convention repo là `<app>/management/commands/<tên>.py` (vd `signal_intelligence/management/commands/recompute_dark_flow_values.py`, `user_workspace/.../count_subaccount_backfill_gaps.py`).
+
 - **C1** — model `CafefDailyPrice` + migration (`makemigrations`, không tự đặt số) + `contract.py` (12 cột, 2 format ngày, exchange list) + admin register. Test golden 2 ngày + 7 unit + 3 control date.
 - **C2** — `fetcher.py` (`download_year(exchange, year, symbol='ALL')`, retry/backoff, pacing ≥1 s, timeout 45 s, temp file cleanup `finally`) + `parser.py` (parse DD/MM, validate range từ `--year`, drop 3 cột). **Blocker**: `openpyxl` vào requirements (coordinator + `Claim-Deny-List:`).
 - **C3** — `import_cafef_ohlc --exchange --year --dry-run --apply`: ghi `CafefDailyPrice` only. AC: dry-run 0 write; apply 2 lần → `inserted=0, updated=count`; đo perf thật.
