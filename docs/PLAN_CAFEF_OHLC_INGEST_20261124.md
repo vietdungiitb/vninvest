@@ -1,89 +1,86 @@
-# Plan — Lấy toàn bộ OHLC từ CafeF làm nguồn đối chiếu / thay thế (2026-11-24)
+# Plan — Lấy toàn bộ OHLC từ CafeF làm nguồn ĐỐI CHIẾU (2026-11-24)
 
-> Trạng thái: **DRAFT — chờ audit độc lập. KHÔNG sửa code.**
-> Xuất phát từ re-verify nến cũ: `docs/evidence/widget-news-events/TPB_OLD_BARS_ADJUSTMENT_REVERIFY_20261124.md`
-> (VCI/KBS đã trả giá điều chỉnh; pipeline `adj_close` hiện đang double-adjust).
+> Trạng thái: **REVISION 1 sau audit NEED_REVISION — chờ audit vòng 2. KHÔNG sửa code.**
+> Audit v1: `docs/evidence/widget-news-events/AUDIT_PLAN_CAFEF_V1_20261124.md`.
+> Nguồn gốc: `docs/evidence/widget-news-events/TPB_OLD_BARS_ADJUSTMENT_REVERIFY_20261124.md`.
 
-## 0. Bằng chứng endpoint đã tự probe (không đoán)
+## 0. Bằng chứng endpoint (tự probe; auditor đã tự đo lại)
 
-| Hạng mục | Kết quả đo |
+| Hạng mục | Kết quả |
 |---|---|
-| JSON `PriceHistory.ashx` | `?ExchangeType=HOSE&Symbol=TPB&StartDate=01/04/2022&EndDate=01/06/2022&PageIndex=1&PageSize=10` → HTTP 200, `TotalCount=2`, 2 bản ghi |
-| Page size | `PageSize=5000` vẫn trả **30** dòng ⇒ phải pagination (9 trang cho 249 dòng/năm) |
-| Giới hạn range | yêu cầu 3 năm (2020-2022) → `TotalCount=250` (chặn ~1 năm) |
-| `Symbol=ALL` (JSON) | HOSE 2022 `TotalCount=101.768` |
-| **Export `PriceHistoryExport.ashx`** | `Symbol=TPB`, 1 năm 2022 → XLSX 14.171 byte, **249 dòng + header**, 3,1 s |
-| Export `ALL` 1 tháng HOSE | 388.397 byte, 8.911 dòng |
-| **Export `ALL` 1 năm HOSE** | **4.467.581 byte, 101.757 dòng, 3,1 s** |
-| Exchange khác | HNX (`SHS`), UPCOM (`ACV`) cùng contract, 247 dòng/năm |
-| 12 cột XLSX | `Mã, Ngày, Giá đóng cửa, Giá điều chỉnh, Thay đổi, Khối lượng khớp lệnh, Giá trị khớp lệnh, Khối lượng thỏa thuận, Giá trị thỏa thuận, Giá mở cửa, Giá cao nhất, Giá thấp nhất` |
-| Quy ước đơn vị | giá = nghìn VNĐ (42,75 = 42.750đ); giá trị = tỷ VNĐ; volume = cổ phiếu |
-| Dependency | `openpyxl 3.1.5`, `pandas 3.1.1` có trong container; **chưa khai báo trong `requirements.txt`** (file deny-list) |
+| JSON TPB 04/01/2022 | `GiaDongCua=42.75`, `GiaDieuChinh=17.94`, volume `11.034.900` |
+| `PageSize=5000` | cap **30** dòng ⇒ JSON phải pagination |
+| Range 3 năm | clamp ~1 năm (`TotalCount=250`) |
+| Export `Symbol=ALL`, HOSE 2022 | **4.467.581 byte, 101.756 data rows (+1 header), ~2–3 s** |
+| Export ALL 1 tháng HOSE | 8.911 dòng |
+| HNX `SHS` / UPCOM `ACV` 2022 | 247 / 247 dòng |
+| 12 cột | `Mã, Ngày, Giá đóng cửa, Giá điều chỉnh, Thay đổi, KL khớp lệnh, GT khớp lệnh, KL thỏa thuận, GT thỏa thuận, Giá mở cửa, Giá cao nhất, Giá thấp nhất` |
+| Đơn vị | giá = nghìn VNĐ (×1000); giá trị = tỷ VNĐ (×1e9); volume = cổ phiếu |
+| **Bẫy date format** | `EndDate=31/12/2022` (DD/MM) → endpoint **im lặng trả 246 dòng năm 2026**, không error. Phải strict MM/DD/YYYY + validate ngày trả về nằm trong range yêu cầu |
+| Dependency | `openpyxl 3.1.5` có trong image nhưng **chưa có trong `requirements.txt`** → blocker C2 (deny-list, coordinator) |
 
-⇒ Backfill toàn bộ ước **~3 exchange × 17 năm ≈ 51 request XLSX**, không phải hàng trăm nghìn request JSON.
+Backfill 3 exchange × 17 năm ≈ **51 request × 4,47 MB ≈ 228 MB** (con số cũ 150/~600 MB là sai).
 
-## 1. Fan-out đường dữ liệu hiện tại (bắt buộc phải đọc trước khi code)
+## 1. QUYẾT ĐỊNH THIẾT KẾ (sửa O1–O3)
 
-| Nhánh | file:line | Ghi chú |
+1. **CafeF là nguồn ĐỐI CHIẾU, không ghi đè `DailyPrice`.** Lưu vào bảng riêng `CafefDailyPrice` (`symbol`, `date`, `close_raw`, `close_adjusted`, `open/high/low_raw`, `volume`, `value`, `source='cafef'`, unique `(symbol,date)`). Lý do: `DailyPrice.close` hiện đã là giá đã chỉnh của VCI/KBS (≈0,932 × CafeF điều chỉnh) và `adj_close` đang double-adjust — ghi đè sẽ tạo **hệ giá thứ 3** và trộn consumer (`advisory_helpers.py:219,233`, `advisory/views.py:963-989`, `vnbroker_materializer.py:103-109,190-198`, `portfolio_analytics_views.py:488-498`, `screener_helpers.py:381`, `adjustment.py:19-22,61`).
+2. **Không đụng `apply_adjustments` / parser corporate action trong plan này.** Bảng đối chiếu tách biệt ⇒ nightly `tasks.py:3498-3499` không ghi đè dữ liệu CafeF. Việc sửa double-adjust là slice RIÊNG, chờ owner chốt basis.
+3. **Không upsert vào `DailyPrice`** (unique `(symbol,date)` tại `models.py:90` khiến "không ghi đè vnbroker" + "updated=count" tự mâu thuẫn). Bảng riêng có unique riêng ⇒ import lại cùng năm: `inserted=0`, `updated=count`.
+4. Hành vi widget không đổi: `/chart/` đọc `DailyPrice.close` (`stock_mgmt_native_views.py:1935,4138`) — ta **không sửa cột này**.
+
+## 2. Fan-out đã mở rộng (theo audit O4)
+
+| Nhánh | file:line | Xử lý |
 |---|---|---|
-| Ingest hàng ngày | `data_ingest/tasks.py:653-685 _fetch_daily_history_with_retry` → `:688+ _classify_daily_price_rows` | gọi `fetch_daily_history` |
-| Adapter provider | `market_data/vnbroker_adapter.py:680-724 fetch_daily_history` | resolve source + fallback chain |
-| Ghi DB | `market_data/models.py:63-94 DailyPrice` | `unique_together (symbol,date)`, có `source`, `is_adjusted`, `adj_close` |
-| Tính adj_close cũ | `market_data/corporate_actions/adjustment.py:26-104` | `apply_adjustments` nhân dồn factor — **nghi double-adjust** |
-| Đọc cho chart | `stock_mgmt_native_views.py:1871+ /chart/` (host dùng) + `:4056+ /bars/` | `/chart/` trả OHLC thô từ `DailyPrice.close` |
-| Host adapter | `packages/web/src/adapters/chartAdapter.js:42-54,94-102` | bỏ `adj_close` |
-| Widget bundle | `0.4.7-ent` | không consume `adjClose` để render |
+| Ingest hiện tại | `data_ingest/tasks.py:653-704` | không đụng |
+| Adapter VCI | `market_data/vnbroker_adapter.py:680-724` | không đụng |
+| DailyPrice | `market_data/models.py:63-94` | không đụng; bảng mới cạnh nó |
+| Adj cũ | `corporate_actions/adjustment.py:26-104` | không đụng (xem §1.2) |
+| Đọc chart | `stock_mgmt_native_views.py:1871+, 1935, 4056+, 4138-4145, 1516-1522, 1781` | không đụng |
+| Cache technicals | `stock_mgmt_native_views.py:1495-1503, 1603` | TTL theo ngày — bảng mới không vào cache này |
+| Materializer | `market_serving/vnbroker_materializer.py:103-109,156,190-198`; `market_serving/materializers.py:80` | đọc DailyPrice, không đụng |
+| Khác | `market_data/views.py:232-252`; `service_ops/views/prefetch.py:481,535` | không đụng |
+| Intraday | `stock_mgmt_native_views.py:1923,4045` (`IntradayBar`/`IntradayTick`) | bảng riêng — không ảnh hưởng |
+| Legacy | `TickerSessionClose` chỉ còn trong docstring `models.py:66` | 0 code |
 
-**Không sửa** widget/host trong plan này — chỉ lớp BE ingest + dữ liệu.
+## 3. Slice
 
-## 2. Quyết định cần owner chốt TRƯỚC khi code (chặn)
+### C1 — Contract + model (migration)
+- `market_data/models.py`: thêm `CafefDailyPrice` (unique `(symbol,date)`), sinh migration bằng `makemigrations` — **không tự đặt số**.
+- `market_data/cafef/contract.py`: 12 cột, unit, exchange list, strict MM/DD/YYYY.
+- Test golden TPB 04/01/2022: `close_raw=42750`, `close_adjusted=17940`, `volume=11034900`.
+- Negative: DD/MM → reject; response có ngày ngoài range → reject + log; thiếu ngày → reject + log.
 
-1. **Vai trò CafeF**: (a) nguồn bổ sung để đối chiếu/sửa `adj_close`, hay (b) nguồn chính thay VCI/KBS? Khuyến nghị (a) cho slice đầu.
-2. **Ép nghĩa giá**: CafeF có 2 cột riêng (`Giá đóng cửa` thô 42.750 vs `Giá điều chỉnh` 17.940 cho TPB 04/01/2022). Map `close` = cột nào? Đề xuất giữ `close` = giá đóng cửa CafeF, `adj_close` = giá điều chỉnh CafeF, và **ngừng chạy `apply_adjustments` trên row có `source='cafef'`**.
-3. **Phạm vi backfill**: toàn bộ 2010-2026 (~51 request/exchange) hay chỉ 5 năm gần?
-4. **ToS/rate limit**: tải ~150 request XLSX (~600 MB) có được phép không? Cần pacing (đề xuất ≥1 s/request) + không cache lại tài nguyên CafeF lên CDN công khai.
-5. **Dependency**: thêm `openpyxl` vào `requirements.txt` (deny-list ⇒ coordinator + trailer) hay dùng `pandas.read_excel` với openpyxl đã có sẵn?
+### C2 — Fetch + parse (BLOCKER: openpyxl)
+- `market_data/cafef/fetcher.py`: `download_year(exchange, year, symbol='ALL')` → XLSX bytes; retry/backoff; pacing ≥1 s; timeout 45 s; temp file + cleanup trên exception (kể cả `finally`).
+- `market_data/cafef/parser.py`: `pandas.read_excel` → dict chuẩn hoá VNĐ; assert mọi ngày nằm trong range.
+- Blocker: phê duyệt thêm `openpyxl` vào `requirements.txt` (deny-list ⇒ coordinator + trailer `Claim-Deny-List:`), Hoặc dùng engine khác đã có sẵn — phải chốt trước khi code.
+- AC: ALL HOSE 2022 parse đúng **101.756** data rows (header không tính); có TPB 04/01/2022.
 
-## 3. Thiết kế (slice hoá, mỗi slice ≤ 1 nhóm file)
+### C3 — Import command
+- `import_cafef_ohlc --exchange --year --dry-run --apply`: ghi `CafefDailyPrice`, không đụng `DailyPrice`.
+- AC: `--dry-run` 0 write; apply 2 lần → lần 2 `inserted=0, updated=count`; log inserted/updated/skipped.
+- Perf budget: 1 file ~101k rows, parse < 30 s, bộ nhớ < 500 MB (đo thật, ghi evidence).
 
-### C1 — Contract & probe (read-only + test)
-- File: `market_data/cafef/` (mới): `contract.py` định nghĩa 12 cột, unit, exchange list.
-- Test golden với TPB 04/01/2022: thô 42.750, điều chỉnh 17.940, volume 11.034.900 (control biết đáp án — L-V01).
-- AC: parse đúng số thập phân VN `,`; bỏ header; dòng thiếu ngày → reject + log; range > 1 năm → reject client-side.
-
-### C2 — Fetch + parse XLSX
-- `market_data/cafef/fetcher.py`: `download_year(exchange, year, symbol='ALL')` → XLSX bytes; retry/backoff; pacing; timeout 45 s.
-- `market_data/cafef/parser.py`: pandas.read_excel → list dict chuẩn hoá sang VNĐ (`×1000` cho giá, `×1e9` cho giá trị).
-- Test: 1-year ALL HOSE → 101.757 dòng; `Symbol=ALL` 2022 có TPB 04/01/2022.
-
-### C3 — Persist (có flag, chưa đổi dữ liệu hiện hữu)
-- Management command `import_cafef_ohlc --exchange --year --dry-run --apply --limit`.
-- Upsert `DailyPrice` với `source='cafef'`; **không** ghi đè row `source='vnbroker_*'` khi chưa có lệnh cutover; log inserted/updated/skipped.
-- Idempotent: chạy lại cùng năm không đổi số row (unique symbol+date).
-- Test: dry-run 0 ghi; apply 2 lần → lần 2 `updated` = count, `inserted` = 0.
-
-### C4 — Validation & cutover (chỉ sau owner chốt §2)
-- So sánh mẫu TPB/VNM/VCB: CafeF `Giá điều chỉnh` vs `adj_close` hiện tại; báo lệch.
-- Nếu chọn CafeF làm nguồn adj_close: command `reconcile_adj_close --apply` ghi `adj_close` từ CafeF, reset `is_adjusted`; **tắt** `apply_adjustments` cho row cafef.
-- Rollback: giữ bản dump `DailyPrice` trước cutover; không migrate DB.
+### C4 — Báo cáo đối chiếu (read-only)
+- So sánh `CafefDailyPrice.close_adjusted` vs `DailyPrice.adj_close` và `close` cho mẫu TPB/VNM/VCB; output báo lệch, **không tự sửa**.
+- Đây là đầu vào cho slice sửa double-adjust (riêng, chờ owner).
 
 ## 4. Tiêu chí nghiệm thu
-- Given TPB 04/01/2022, When parse XLSX, Then `close=42750`, `adj_close=17940`, `volume=11034900` ± 0.
-- Given chạy import 2022 twice, Then lần 2 không insert row mới.
-- Given range 3 năm, Then reject trước khi gửi request (không tải về rồi mới chặn).
-- Given `--dry-run`, Then 0 write DB.
-- Staging: chạy C2+C3 cho HOSE 2021-2022, kiểm tra 2 năm × ~101k dòng/ năm, `git status` sạch sau mọi lệnh có side effect.
+- TPB 04/01/2022: raw 42.750 / adjusted 17.940 / volume 11.034.900 ± 0.
+- ALL HOSE 2022: 101.756 data rows, 3 exchange, range clamp 1 năm, DD/MM bị reject.
+- Idempotent + dry-run như §3.
+- Staging: chạy C2+C3 HOSE 2021-2022; `git status` sạch sau lệnh tải file (L-V03).
 
 ## 5. Gate & quy trình
-- Nạp `project-lessons`; `check-lessons.mjs` nếu đụng LESSONS.
-- `agent-sync.ps1` (rebase → gate) + `check-multi-agent.mjs`; claim tên agent = tên branch; không commit thẳng `dev`.
-- BE test chỉ trên VPS `14.225.255.47` (`CORE_DATABASE_URL` + `DJANGO_DEBUG=1`), cấm local Docker; `CHƯA CHẠY` nếu thiếu env.
-- `requirements.txt` là deny-list ⇒ coordinator xử lý, trailer `Claim-Deny-List:`.
-- Mỗi slice tối đa 3 vòng sửa; quá ⇒ blocker dừng. Ledger Entry riêng.
+- Nạp `project-lessons`; `check-lessons.mjs`; `agent-sync.ps1` (rebase→gate) + `check-multi-agent.mjs`; claim tên agent = tên branch (L-M02, ghi kèm tên file do trùng ID); không commit thẳng `dev`.
+- BE test trên VPS `14.225.255.47`, cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1`; cấm local Docker; `CHƯA CHẠY` nếu thiếu env.
+- ToS/rate limit: owner chốt trước C2; pacing ≥1 s, không public CDN.
+- Mỗi slice ≤ 3 vòng sửa; ledger Entry riêng.
 
 ## 6. Non-goals / Rollback
-Không sửa widget/host, không sửa parser corporate action, không xoá dữ liệu VCI/KBS, không tự động cutover source.
-Rollback: xoá row `source='cafef'` + khôi phục dump nếu đã chạy reconcile; không cần migration.
+Không sửa widget/host, parser, `apply_adjustments`, `DailyPrice`, dữ liệu VCI/KBS. Không tự cutover source.
+Rollback: drop bảng `CafefDailyPrice` (hoặc xoá row `source='cafef'`) — không ảnh hưởng dữ liệu hiện hữu, không migrate ngược phức tạp.
 
 ## 7. Lessons áp dụng
-`[L-V01, L-V02, L-V04, L-V03, L-002, L-M02]` — control biết đáp án TPB, phản chứng root cause (đã refute 2 kết luận trước), assert giá trị thật, `git status` sau lệnh tải file, claim trước code, tên branch đúng.
+`[L-V01, L-V02, L-V04, L-V03, L-002, L-M02 (multi-agent.md)]` — control TPB, phản chứng kết luận cũ, assert giá thật + negative, `git status` sau tải file, claim trước code, tên branch đúng.
