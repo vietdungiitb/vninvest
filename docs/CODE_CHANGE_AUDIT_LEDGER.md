@@ -1,3 +1,12 @@
+## Entry 626: Chốt phiên nghỉ (2026-11-24) — final re-audit + handoff verified
+
+- **Date**: 2026-11-24 · **Type**: closeout (doc-only, 0 dòng source).
+- **Re-audit cuối:** code unchanged từ B8 PASS (`691587b3e`); gates chạy lại: `pre-push-gate` **36 PASS/0 FAIL** · `check-lessons` 60/60 · `tsc` exit 0 · BE contract **14/14 OK** · jest route-contract 4/4. CORS env staging verified live (HTTP/2 200 + allow-origin). Verdict vẫn **PASS**. `docs/evidence/whale-cvd-contract/AUDIT_CODE.md` append §FINAL RE-AUDIT.
+- **Handoff:** `docs/handoffs/HANDOFF_2026-11-24_WHALE_CVD_CONTRACT.md` đã trên `main` commit `9c45bd13c`; verify `git log --oneline -3 main -- docs/handoffs` dòng đầu = commit đó. `dev` = `0111b729f`.
+- **Ops:** PR #525 merged (`c75012499`); staging deploy + `--verify` exit 0; CORS `charts.edusuccess.vn` verified.
+- **Còn lại:** ticket P0-B6 (dynamic CORS), widget team adaptation, full BE suite/E2E (ngoài scope slice). Không blocker code.
+- **Trạng thái:** claim `whale-cvd-contract-be` = `done`; slice `done`; **phiên chốt nghỉ**.
+
 ## Entry 625: Chốt phiên 2026-11-24 — merge PR #525, deploy staging, handoff sang main
 
 - **Date**: 2026-11-24 · **Type**: closeout (docs + ops, 0 dòng source mới).

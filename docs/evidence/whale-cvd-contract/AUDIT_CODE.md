@@ -37,3 +37,9 @@ Sau 3 fix → chạy lại 14 test trên VPS + re-audit vòng 2 rồi mới B9 b
 **Ghi chú không chặn:** `gates.md` header citation cũ (sửa ở handoff); docstring WS test hơi quá đà ("opt-out traffic is untouched") nhưng code xử lý đúng `consumers.py:203-204` — không sửa code.
 
 **Gate B8→B9:** PASS ⇒ bàn giao.
+
+---
+
+## FINAL RE-AUDIT (2026-11-24, closeout)
+
+Code không đổi sau B8 PASS (`691587b3e` → `0111b729f` chỉ docs). Re-run gates: `pre-push-gate` **36 PASS / 0 FAIL** · `check-lessons` **60/60** · `tsc` exit 0 · BE contract **14/14 OK** · jest route-contract **4/4**. CORS env staging verified live (HTTP/2 200 + allow-origin). Verdict vẫn **PASS**. Phiên chốt.

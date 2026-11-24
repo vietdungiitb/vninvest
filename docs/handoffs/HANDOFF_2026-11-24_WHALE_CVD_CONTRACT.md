@@ -1,7 +1,7 @@
 # HANDOFF — Whale/CVD API contract cho widget (2026-11-24)
 
 - **Repo/branch:** `vninvest` · `feat/whale-cvd-contract-be` @ `691587b3e` (+ commit chốt B9).
-- **Trạng thái:** `done` — code + 14/14 test xanh, re-audit PASS, **PR #525 đã merge vào `dev`** (`c75012499`), env CORS staging đã cập nhật + deploy/verify xong, handoff đã đẩy sang `main` (`1465ed0ab`). Phiên chốt 2026-11-24.
+- **Trạng thái:** `done` — code + 14/14 test xanh, re-audit PASS (vòng 2), **PR #525 đã merge vào `dev`** (`c75012499`), env CORS staging đã cập nhật + deploy/verify xong, handoff đã đẩy sang `main` (`9c45bd13c`), final re-audit PASS, gate 36/0, tsc 0. **Phiên chốt nghỉ 2026-11-24.**
 - **Owner slice:** backend `whale-cvd-contract-be` (claim đã chuyển `done`).
 - **Nguồn:** `docs/DECISION_WHALE_CVD_API_CONTRACT_20261124.md` (REV.2.1/2.2), `docs/PLAN_WHALE_CVD_CONTRACT_BE_20261124.md`.
 
