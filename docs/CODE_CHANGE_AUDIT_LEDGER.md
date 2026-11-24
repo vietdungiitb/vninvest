@@ -1,3 +1,8 @@
+## Entry 619: Owner waiver ToS — cho phep keo thật CafeF / deploy (2026-11-24)
+
+- Owner chỉ đạo "làm luôn đi, ký gì nữa" ⇒ waiver gate ToS/rate-limit ghi tại `docs/DECISION_SSOT_OWNER_ITEMS_20261124.md` §5b. Pacing ≥1 s/req vẫn giữ. Gate UI default P3 không đổi.
+- Hành động: merge PR #521/#522/#523 → deploy staging image co `vnbroker==3.9.0` → verify `daily_bars` thật → keo/bulk CafeF voi backup + dual-write. Chi tài liệu + hành động vận hành.
+
 ## Entry 618: P2 — dual-write mapper + parity mock (vnbroker 3.9.0)
 
 - **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/cafef-dual-write` · Claim `cafef-dual-write`.

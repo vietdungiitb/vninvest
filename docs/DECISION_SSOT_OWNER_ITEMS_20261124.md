@@ -65,6 +65,10 @@ Quy tắc:
 | Ngày ngoài `[start,end]` / sai tz | bất kỳ | **DỪNG** (bài học nến 1970) |
 | Số dòng trả về khác kỳ vọng >0,1% | — | **DỪNG** |
 
+## 5b. Owner ủy quyền bỏ gate ToS (2026-11-24, cập nhật sau)
+
+Owner chỉ đạo "làm luôn đi, ký gì nữa" ⇒ **waiver rõ ràng cho gate ToS/rate-limit**: được phép kéo thật CafeF và deploy staging mà không chờ ký pháp lý. Ghi nhận để truy vết; pacing ≥1 s/req vẫn giữ. Gate UI default (P3) vẫn theo chốt cũ.
+
 ## 6. Trạng thái chốt
 
 | # | Mục | Chốt | Cần owner ký? |
