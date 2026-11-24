@@ -1,7 +1,7 @@
 """REV.2.1 WS identity helper — additive, never breaks legacy User|None callers."""
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, TransactionTestCase
+from django.test import SimpleTestCase, TransactionTestCase, override_settings
 
 from identity_access.ws_ticket import resolve_ws_identity
 
@@ -29,6 +29,9 @@ class ResolveWsIdentityTests(SimpleTestCase):
         self.assertTrue(callable(ws_ticket.resolve_user_from_ws_query))
 
 
+@override_settings(CHANNEL_LAYERS={
+    'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
+})
 class RealtimeConsumerEventsTests(TransactionTestCase):
     """AC10: opt-in events get `not_provisioned`; opt-out traffic is untouched."""
 
