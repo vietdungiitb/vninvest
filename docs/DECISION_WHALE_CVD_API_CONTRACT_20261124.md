@@ -23,7 +23,7 @@
 | Ví dụ `2.94B → whale` | Sửa thành **`shark`** | D2: `shark=[1B,5B)` |
 | CVD không nói đơn vị, thiếu scope | `unit:"vnd"` + `market:read` + fix `else:sell` + cache key kẹp `computed_at` | `session_facts_engine.py:122-127` cộng `matched_value` VND vào cột tên `*_volume`; `views.py:358-359` không gọi scope gate; `views.py:386` cache key không kẹp revision |
 | WS chỉ sửa `broadcasting.py` | Thêm `consumers.py` + `ws_ticket.py` + protocol `events[]` | `broadcasting.py` chỉ publisher; auth/subscribe ở `consumers.py:174-200`, `ws_ticket.py:78-93`; subscribe hiện chỉ có `symbols` |
-| Bảng phạm vi 8 file (đếm lệch) | Danh sách đúng 13 file (§5) | thiếu `consumers.py`, `ws_ticket.py`, `signal_intelligence/views.py`, `session_facts_engine.py`, env, manifest |
+| Bảng phạm vi 8 file (đếm lệch) | Danh sách đúng **14 path** (§5, sau audit plan vòng 1) | thiếu `consumers.py`, `ws_ticket.py`, `signal_intelligence/views.py`, `session_facts_engine.py`, env, manifest, 2 file test WS/CORS |
 | "bucket materialized ở 15m" | Sửa: materialize **4 window** `{5m,15m,30m,1h}`, `1m` không được hỗ trợ | `session_facts_engine.py:52,56-61,231-252,359` |
 | `409 revision_changed` cho whale feed | **Bỏ** — keyset cursor `(executed_at, pk)` không hỏng khi có row mới ở đầu | `pagination.py:35-59` chỉ là DRF cursor chuẩn, không có helper `{v,ts,id}`/`409` như REV.1 ghi |
 | `native_views.ts:120` | `nativeShapes.ts:120` | citation sai file (L-T02) |
@@ -171,4 +171,4 @@
 - P1 ✅ ví dụ `buy_value:0` trong khi `shark_buy:2.94B` sai; `min_value` clamp `[0,5B]` sai vì canonical không lưu <500M; `_build_empty_cvd_payload()` `views.py:91-105` thiếu field mới. **Có thật — đã sửa.**
 - P1 ✅ cache key kẹp revision thì tự miss; xoá cache từ app khác (`order_flow_engine.py:231-237`) vừa miss vừa chạy sai thứ tự. **Có thật — bỏ mục #8.**
 
-**Next:** sau khi Owner/Issuer chuyển lệnh triển khai → mở claim + branch `feat/whale-cvd-contract-be`, chạy G0 (3 query), viết test đỏ trước, code theo bảng **12 file**, re-audit rồi PR.
+**Next:** sau khi Owner/Issuer chuyển lệnh triển khai → mở claim + branch `feat/whale-cvd-contract-be`, chạy G0 (3 query), viết test đỏ trước, code theo bảng **14 path**, re-audit rồi PR. Audit plan vòng 1 = NEED_REVISION (5 objection nhỏ) — đã sửa ở `docs/PLAN_WHALE_CVD_CONTRACT_BE_20261124.md`, chờ re-audit vòng 2.

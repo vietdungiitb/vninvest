@@ -18,15 +18,15 @@
 |---|---|
 | AC1 | Given DB có cả `whale_tick:` lẫn `tick_session:`; When `GET /core/v1/realtime/whale-feed/VIC/`; Then `whale_orders[]` chỉ chứa per-tick, không có row aggregate/clamp 5B |
 | AC2 | Given seed tick `UNKNOWN` ≥ 500M; When detect; Then không có `WhaleAlertCanonical.side='sell'` giả từ row đó |
-| AC3 | Given 2 tick 2,94 tỷ + 200 triệu; When feed; Then `size_class` = `shark` / `small`, `summary` đủ 8 field, `buy_value == whale_buy+shark_buy+small_buy` |
+| AC3 | Given 2 tick 2,94 tỷ + **600 triệu** (nằm `[500M,1B)`); When feed; Then `size_class` = `shark` / `small`, `summary` đủ 8 field, `buy_value == whale_buy+shark_buy+small_buy` |
 | AC4 | Given widget gọi bare URL; When feed; Then dùng **phiên gần nhất có data**, không cộng 365 ngày; có `from/to` thì kẹp `session_date` ăn index |
 | AC5 | Given `min_value=100M` / symbol 0 row; When feed; Then `400 MIN_VALUE_BELOW_FLOOR` / `revision:0` + `updated_at:null` + summary 8 số 0 |
-| AC6 | Given mọi timestamp; When trả; Then `+07:00` (`dj_timezone.localtime`), kể cả `updated_at` CVD |
+| AC6 | Given mọi timestamp của **2 route mới** (`/realtime/whale-feed/{symbol}/`, `/session-facts/{symbol}/cvd/`); When trả; Then `+07:00` (`dj_timezone.localtime`), kể cả `updated_at` CVD. **Alias `/core/v1/whale-feed` bị loại khỏi AC6** — giữ nguyên `.isoformat()` `+00:00` (`signal_intelligence/views.py:1038`), envelope, serializer 2 field (`:107-109`), `?session_date=` để không phá consumer cũ; ghi lý do vào `gates.md` |
 | AC7 | Given CVD; When get; Then có `delta/unit:"vnd"/source/trade_count:null/revision`; PAT sai scope → 403; `window=1m` → 400; empty payload mang đủ field mới; cache key kẹp revision |
 | AC8 | Given aggregate `tick_session:` lẫn trong bảng; When CVD materialize đọc canonical; Then không cộng trùng vào `buy_volume/sell_volume` |
 | AC9 | Given `/core/v1/orderflow/{symbol}/cvd/` + `/trades/`; When get; Then `501 {reason:"not_provisioned", source:"live_aggressor"}` |
-| AC10 | Given WS subscribe `events:["whale_order"]`; When source chưa provision; Then chỉ event đó nhận `not_provisioned`, `ticker_update` bình thường; human ticket vẫn connect |
-| AC11 | Given CORS test với `override_settings(CORS_API_DYNAMIC_ALLOW=False)`; When OPTIONS từ `charts.edusuccess.vn`; Then 200 (không PASS giả) |
+| AC10 | Given WS subscribe `events:["whale_order"]`; When source chưa provision; Then chỉ event đó nhận `not_provisioned`, `ticker_update` bình thường; human ticket vẫn connect. **Thiết kế additive:** thêm `resolve_ws_identity()` trả `{user, auth_method}`, giữ nguyên `resolve_user_from_ws_query()` → `User|None` (`ws_ticket.py:78-93`) để không hỏng `tests/test_ws_ticket.py:60-63,74-76` + `test_ws_ticket_machine_scope.py:87,96`. Test trong `packages/core/backend/tests/test_whale_ws_events.py` (mới) |
+| AC11 | Given CORS test trong `packages/core/backend/tests/test_whale_cors.py` (mới) với `override_settings(CORS_API_DYNAMIC_ALLOW=False)`; When OPTIONS từ `charts.edusuccess.vn`; Then 200 (không PASS giả). Env VPS do **coordinator** cập nhật ở S5; agent chỉ viết test + evidence |
 
 ## 3. Baseline gate (đo trước khi sửa)
 
@@ -41,7 +41,22 @@
 
 ## 4. SCOPE / LIMIT / non-goals / rollback
 
-- **SCOPE (12 file)** theo decision doc §5: `order_flow_engine.py` (:244-256), `tasks.py` (:280-285), `signal_intelligence/views.py` (:354-360, :1010-1058), `market_serving/native_views.py` (builder mới + :340-362), `market_serving/views.py` (:91-105, :340-435), `session_facts_engine.py` (:93-101, :124-127, :231-252), `market_serving/urls.py`, `consumers.py`, `ws_ticket.py`, `compose.staging.env` (VPS), `core-route-manifest.json`, 3 file test BE.
+- **SCOPE (14 path)** theo decision doc §5 (sửa từ nhãn "12/13 file" — auditor vòng 1 objection 5):
+  1. `packages/core/backend/src/signal_intelligence/order_flow_engine.py` (:244-256)
+  2. `packages/core/backend/src/signal_intelligence/tasks.py` (:280-285)
+  3. `packages/core/backend/src/signal_intelligence/views.py` (:354-360, :1010-1058)
+  4. `packages/core/backend/src/market_serving/native_views.py` (builder mới + :340-362)
+  5. `packages/core/backend/src/market_serving/views.py` (:91-105, :340-435)
+  6. `packages/core/backend/src/market_serving/session_facts_engine.py` (:93-101, :124-127, :231-252)
+  7. `packages/core/backend/src/market_serving/urls.py`
+  8. `packages/core/backend/src/signal_intelligence/consumers.py`
+  9. `packages/core/backend/src/identity_access/ws_ticket.py`
+  10. `/opt/vninvest/compose.staging.env` (VPS-only, **owner = coordinator**, S5)
+  11. `packages/web/src/adapters/core/__tests__/core-route-manifest.json`
+  12. `packages/core/backend/src/market_serving/tests/test_native_views.py` (sửa)
+  13. `packages/core/backend/tests/test_session_facts_api.py` (sửa) + `tests/test_signal_intelligence_api_routes.py` (sửa) + `tests/test_whale_ws_events.py` (mới) + `tests/test_whale_cors.py` (mới)
+  14. `docs/evidence/whale-cvd-contract/{gates.md,AUDIT_PLAN.md}` + `docs/CLAIMS.md` + `docs/CODE_CHANGE_AUDIT_LEDGER.md`
+  - **Claim bổ sung (bắt buộc trước S1):** append 1 dòng vào `docs/CLAIMS.md` liệt kê 4 file test (objection 2).
 - **LIMIT:** tối đa 3 vòng sửa/bước; quá → blocker + dừng. Không migration; không đổi model; không `npm/pip install`.
 - **Non-goals:** không xây live tick feed; không đổi retention 30 ngày; không tắt dynamic CORS; không sửa repo widget; không đụng file của claim `in-progress` thật (đã verify stale).
 - **Rollback:** `git revert` từng commit; env VPS restore bản sao `compose.staging.env`.
