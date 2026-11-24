@@ -114,6 +114,10 @@ class CafefDailyPrice(models.Model):
     low_raw = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá thấp nhất')
     volume = models.BigIntegerField(verbose_name='Khối lượng khớp lệnh')
     value = models.BigIntegerField(null=True, blank=True, verbose_name='Giá trị khớp lệnh (VNĐ)')
+    change_pct = models.DecimalField(
+        max_digits=8, decimal_places=4, null=True, blank=True,
+        verbose_name='% thay đổi (từ cột Thay đổi CafeF)',
+    )
     source = models.CharField(max_length=32, default='cafef', verbose_name='Nguồn dữ liệu')
     imported_at = models.DateTimeField(auto_now_add=True)
 

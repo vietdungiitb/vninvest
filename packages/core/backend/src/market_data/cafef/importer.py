@@ -11,12 +11,32 @@ from market_data.models import CafefDailyPrice
 from .fetcher import fetch_xlsx
 from .parser import parse_xlsx_rows
 
+
+def _fetch_rows(exchange: str, year: int) -> list[dict]:
+    """Nguồn duy nhất = vnbroker 3.9.0 bulk_year; fallback local khi chưa pin.
+
+    vnbroker.bulk_year tra list dict da normalize (co close_raw/close_adjusted/...),
+    khong can parse XLSX lai o vninvest.
+    """
+    from vnbroker import Vnbroker
+
+    client = Vnbroker(show_log=False)
+    reference = client.reference('cafef')
+    if hasattr(reference, 'bulk_year'):
+        try:
+            frame = reference.bulk_year(exchange, year)
+            if frame is not None and not getattr(frame, 'empty', True):
+                return frame.to_dict('records')
+        except Exception:  # một số năm CafeF trả lỗi ⇒ fallback local XLSX
+            pass
+    return parse_xlsx_rows(fetch_xlsx(exchange, year))
+
 _CACHE_TTL_SECONDS = 600
 _preview_cache = {}
 
 _UPDATABLE = (
     'close_raw', 'close_adjusted', 'open_raw', 'high_raw', 'low_raw',
-    'volume', 'value', 'source',
+    'volume', 'value', 'change_pct', 'source',
 )
 
 

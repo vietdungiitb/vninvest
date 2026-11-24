@@ -51,8 +51,21 @@ def _to_vnd(value) -> Decimal:
     return (Decimal(str(value)) * _VND).quantize(_Q2)
 
 
+_PCT_RE = re.compile(r'\(([-+]?\d[\d.,]*)\s*%\)')
+
+
+def _to_change_pct(value) -> float | None:
+    """Từ '+1,65 (+4,01%)' → 4.01 (phần trong ngoặc, dấu phẩy thập phân)."""
+    if value is None:
+        return None
+    match = _PCT_RE.search(str(value))
+    if not match:
+        return None
+    return float(match.group(1).replace(',', '.'))
+
+
 def normalize_row(symbol: str, row: dict) -> dict:
-    """Map 1 dòng XLSX sang dict chuẩn hoá; bỏ 3 cột không có đích."""
+    """Map 1 dòng XLSX sang dict chuẩn hoá; bỏ 2 cột thỏa thuận."""
     return {
         'symbol': str(symbol).strip().upper(),
         'date': parse_response_date(row['Ngày']),
@@ -63,5 +76,6 @@ def normalize_row(symbol: str, row: dict) -> dict:
         'low_raw': _to_vnd(row['Giá thấp nhất']),
         'volume': int(row['Khối lượng khớp lệnh']),
         'value': int((Decimal(str(row['Giá trị khớp lệnh'])) * _TY).to_integral_value()),
+        'change_pct': _to_change_pct(row.get('Thay đổi')),
         'source': 'cafef',
     }
