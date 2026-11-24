@@ -1,7 +1,9 @@
 # Addendum — CafeF thành nguồn CANONICAL để hiệu chỉnh dữ liệu (2026-11-24)
 
 > Owner chốt 2026-11-24: "dữ liệu KBS/VCI tải về là dữ liệu đã hiệu chỉnh dẫn đến hệ thống ghi sai dữ liệu thật. Cần dữ liệu CafeF để đối chiếu và hiệu chỉnh lại cho chính xác; CafeF phải backfill đầy đủ toàn bộ dữ liệu đã có của thị trường."
-> Đây là **đổi mục tiêu** so với `PLAN_CAFEF_OHLC_COC_BACKFILL_FINAL_20261124.md` (bản AGREE: CafeF chỉ đối chiếu, KHÔNG đụng `DailyPrice`).
+> ⚠️ **DEFERRED — KHÔNG TRIỂN KHAI.** Owner chốt lại ngay sau đó: *"Tạm thời làm nguồn dữ liệu đối chiếu đã, sau đó mình sẽ làm mục hiệu chỉnh sau, đừng phá vỡ kế hoạch."*
+> ⇒ Giữ nguyên `PLAN_CAFEF_OHLC_COC_BACKFILL_FINAL_20261124.md` (AGREE): CafeF là **nguồn đối chiếu**, bảng riêng `CafefDailyPrice`, **KHÔNG đụng `DailyPrice` / `apply_adjustments` / VCI nightly**. C5 (hiệu chỉnh) chỉ là ý tưởng tương lai, chưa audit, chưa implement.
+> Nội dung bên dưới chỉ ghi nhận phân tích, không phải chỉ dẫn thực hiện.
 
 ## 1. Điều thay đổi
 
