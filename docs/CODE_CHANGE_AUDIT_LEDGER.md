@@ -1,3 +1,16 @@
+## Entry 619: Owner waiver ToS — cho phep keo thật CafeF / deploy (2026-11-24)
+
+- Owner chỉ đạo "làm luôn đi, ký gì nữa" ⇒ waiver gate ToS/rate-limit ghi tại `docs/DECISION_SSOT_OWNER_ITEMS_20261124.md` §5b. Pacing ≥1 s/req vẫn giữ. Gate UI default P3 không đổi.
+- Hành động: merge PR #521/#522/#523 → deploy staging image co `vnbroker==3.9.0` → verify `daily_bars` thật → keo/bulk CafeF voi backup + dual-write. Chi tài liệu + hành động vận hành.
+
+## Entry 618: P2 — dual-write mapper + parity mock (vnbroker 3.9.0)
+
+- **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/cafef-dual-write` · Claim `cafef-dual-write`.
+- **Thay đổi**: `market_data/cafef_dual_write.py` (mới) `map_frame_to_rows()` — map frame `daily_bars(basis='both')` của vnbroker 3.9.0 → `close_raw`/`close_adjusted`/`price_source='cafef'`; `coverage='missing'` ⇒ `[]`. `vnbroker_adapter.py` thêm `_daily_bars()` seam + `fetch_dual_write_bars()` với flag `DUAL_WRITE_PRICE_ENABLED` (default tắt). **Không ghi `DailyPrice`, không đổi UI, 0 request CafeF thật** (ToS chờ ký).
+- **Gate**: RED `AttributeError: _daily_bars` → GREEN **13/13** trên VPS DB riêng `vnsaas_core` (gồm 9 test P0 — không regression); `pre-push-gate` 36 PASS / 0 FAIL.
+- **Audit code độc lập**: **AGREE + reservation**. R1 parity thiếu assert ngày → đã thêm `assertEqual(rows[0]['date'], date(year,1,4))` cho 3 mã × 3 năm. R2 shape `coverage`, R3 validate ngày/tz → đẩy sang bước persist (khi container reinstall 3.9.0). R4 auditor không tự chạy lại test — evidence ghi rõ tôi đã chạy.
+- **parity**: TPB/2011, VNM/2015, VIC/2022 (mock); golden TPB `04/01/2022 → 42750/17940/11034900/467260000000`. Evidence: `docs/evidence/widget-news-events/p2-gates.md`.
+
 ## Entry 617: P0 — tắt ghi adj_close nhân đôi + pin vnbroker 3.9.0
 
 - **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-adjustment-p0` · Claim `price-adjustment-p0`.

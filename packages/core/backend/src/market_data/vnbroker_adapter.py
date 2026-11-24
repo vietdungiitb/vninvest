@@ -1637,3 +1637,29 @@ def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
         'error': 'Tất cả vnbroker providers đều không khả dụng',
     }
 
+
+
+
+def _daily_bars(symbol: str, start, end, *, basis: str = "both"):
+    """Thin wrapper to vnbroker 3.9.0 daily_bars (mockable seam)."""
+    from vnbroker import Vnbroker
+
+    return Vnbroker().daily_bars(
+        symbol, start.isoformat(), end.isoformat(), basis=basis,
+    )
+
+
+def fetch_dual_write_bars(symbol: str, start, end) -> list[dict]:
+    """P2 dual-write: tra dict close_raw/close_adjusted tu vnbroker 3.9.0.
+
+    Flag DUAL_WRITE_PRICE_ENABLED bat (mock, 0 request that when tested);
+    khong ghi DB, khong doi DailyPrice.close.
+    """
+    import os
+
+    if os.getenv('DUAL_WRITE_PRICE_ENABLED', '0') != '1':
+        return []
+    from market_data.cafef_dual_write import map_frame_to_rows
+
+    frame = _daily_bars(symbol.upper(), start, end, basis='both')
+    return map_frame_to_rows(frame, symbol.upper())
