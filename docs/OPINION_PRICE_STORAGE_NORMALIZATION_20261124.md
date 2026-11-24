@@ -51,6 +51,30 @@ Có 2 cách duy trì `adj_close`:
 - **Hành vi UI**: đổi `close` sang giá thô là thay đổi lớn về mặt người dùng; phải chốt default hiển thị raw hay adjusted.
 - Không migration DB cần thiết nếu chỉ đổi giá trị + thêm cờ; nhưng cần backup dữ liệu.
 
+## 5b. Phản biện đề xuất hybrid của owner (đo lại 2026-11-24)
+
+Owner đề xuất: `close` = CafeF thô, `adj_close` = VCI/KBS (giá `close` hiện lưu trong DB), thêm cột `cafef_adj_close` vì nghĩ CafeF chỉ có đến 2018.
+
+**Tiền đề bị refute bằng số liệu thật:**
+
+| Năm | CafeF HOSE rows | Cột điều chỉnh có giá trị | DB symbols | CafeF HOSE symbols |
+|---|---|---|---|---|
+| 2011 | 66.363 | 63.629 dòng khác giá thô | 618 | 280 |
+| 2015 | 74.064 | 68.985 | 789 | 313 |
+| 2018 | 93.323 | 84.267 | 1.298 | 391 |
+| 2020 | 100.646 | có | 1.409 | — |
+| 2022 | 101.756 | có | 1.484 | 418 (HOSE) + 346 (HNX) + 922 (UPCOM) |
+
+Độ phủ 2022 sau khi gộp 3 sàn: CafeF **399.315** cặp `(symbol,date)` / DB **365.459** → giao **360.329 = 98,6%**; DB-only 5.130 (1,4%).
+
+⇒ CafeF có từ **2011**, bằng với năm sớm nhất của DB, và có cả giá điều chỉnh. Không có khoảng trống lịch sử như owner lo ngại.
+
+**Đánh giá đề xuất hybrid:**
+- ✅ Ý tưởng tách `close` thô / `adj_close` chỉnh là đúng; thêm cột đối chiếu cũng hợp lý.
+- ⚠️ Nhưng dùng **VCI/KBS làm nguồn `adj_close`** có nhược điểm đã đo: chuỗi provider back-adjust lại theo thời gian (VNM 2019-12-23: gọi lại 66.154,52 vs DB 69.141,43, drift ~4,5%). Nếu lấy VCI làm `adj_close` canonical, DB sẽ tiếp tục drift mỗi lần có sự kiện mới.
+- ⇒ Khuyến nghị vẫn dùng **CafeF làm nguồn cho CẢ HAI cột** (98,6% phủ, có cả thô lẫn chỉnh, từ 2011). Giữ VCI/KBS `close` hiện tại làm `vci_adj_close` **chỉ để đối chiếu/drift monitoring**, không làm nguồn canonical.
+- Với 1,4% `(symbol,date)` DB-only: giữ nguyên giá cũ + cờ `price_source='unmapped_cafef'`, liệt kê riêng cho owner quyết định (mã huỷ niêm yết / sàn khác).
+
 ## 6. Kết luận / khuyến nghị
 
 Owner đúng: lưu sai cột dẫn đến `adj_close` sai hoàn toàn so với thị trường. Tôi khuyến nghị đi theo hướng **"raw từ CafeF + adjusted từ CafeF, không tự nhân factor"**, làm theo 6 bước §4, với điều kiện chốt §5. Đây là việc P0 về độ đúng dữ liệu, nhưng nên tách thành slice riêng (C5) có plan + audit độc lập riêng, không gộp vào slice đối chiếu đang làm.
