@@ -326,6 +326,150 @@ class RealtimeBreadthView(APIView):
         })
 
 
+# ── Whale feed contract REV.2.1 ─────────────────────────────────────────────
+# Only per-tick rows belong in whale_orders[]. WhaleAlertCanonical also receives
+# session aggregates (`tick_session:` from detect_and_store_global_whale_alerts →
+# materialize_whale_feed_aggregate) whose matched_value is clamped at 5B and whose
+# executed_at is the Celery run time — including them would draw fake whale
+# bubbles and double-count the summary. G0 probe 2026-11-24: 6.290 such rows.
+_WHALE_TICK_SOURCE_PREFIX = 'whale_tick:'
+_WHALE_MIN_VALUE_FLOOR = 500_000_000
+_WHALE_SHARK_MIN = 1_000_000_000
+_WHALE_WHALE_MIN = 5_000_000_000
+_WHALE_SUMMARY_KEYS = (
+    'buy_value', 'sell_value', 'whale_buy', 'whale_sell',
+    'shark_buy', 'shark_sell', 'small_buy', 'small_sell',
+)
+
+
+def _whale_size_class(matched_value: int) -> str:
+    if matched_value >= _WHALE_WHALE_MIN:
+        return 'whale'
+    if matched_value >= _WHALE_SHARK_MIN:
+        return 'shark'
+    return 'small'
+
+
+def _whale_local_iso(value):
+    if value is None:
+        return None
+    if timezone.is_aware(value):
+        value = timezone.localtime(value)
+    return value.isoformat()
+
+
+def _empty_whale_summary() -> dict:
+    return {key: 0 for key in _WHALE_SUMMARY_KEYS}
+
+
+def _parse_iso_param(raw):
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_default_timezone())
+        return parsed
+    except (TypeError, ValueError):
+        return None
+
+
+def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
+                             min_value=_WHALE_MIN_VALUE_FLOOR, limit=50,
+                             cursor=None, alert_limit=50) -> dict:
+    """Contract SSOT for /core/v1/realtime/whale-feed/<symbol>/ (flat, +07:00)."""
+    from signal_intelligence.models import WhaleAlertCanonical
+
+    symbol = symbol.upper()
+    per_tick = WhaleAlertCanonical.objects.filter(
+        symbol=symbol,
+        alert__source_ref__startswith=_WHALE_TICK_SOURCE_PREFIX,
+        matched_value__gte=min_value,
+    ).select_related('alert').order_by('-executed_at', '-pk')
+
+    if from_dt is None and to_dt is None:
+        latest_session = per_tick.aggregate(latest=Max('session_date'))['latest']
+        if latest_session is not None:
+            per_tick = per_tick.filter(session_date=latest_session)
+    else:
+        if from_dt is not None:
+            per_tick = per_tick.filter(
+                executed_at__gte=from_dt,
+                session_date__gte=timezone.localtime(from_dt).date(),
+            )
+        if to_dt is not None:
+            per_tick = per_tick.filter(
+                executed_at__lte=to_dt,
+                session_date__lte=timezone.localtime(to_dt).date(),
+            )
+
+    if cursor:
+        try:
+            decoded = json.loads(base64.urlsafe_b64decode(cursor.encode('ascii')).decode('ascii'))
+            last_ts = datetime.fromisoformat(decoded['ts'])
+            last_pk = int(decoded['id'])
+            per_tick = per_tick.filter(
+                Q(executed_at__lt=last_ts) | Q(executed_at=last_ts, pk__lt=last_pk)
+            )
+        except (KeyError, TypeError, ValueError, UnicodeDecodeError):
+            pass  # opaque cursor: bad input means first page, never an error
+
+    all_rows = list(per_tick)
+    rows = all_rows[:limit]
+    summary = _empty_whale_summary()
+    for row in all_rows:
+        side_key = 'buy' if row.side == 'buy' else 'sell'
+        summary[f'{side_key}_value'] += int(row.matched_value)
+        summary[f'{_whale_size_class(row.matched_value)}_{side_key}'] += int(row.matched_value)
+
+    orders = [{
+        'order_id': row.order_id or str(row.pk),
+        'ts': _whale_local_iso(row.executed_at),
+        'price': float(row.price),
+        'volume': int(row.volume),
+        'matched_value': int(row.matched_value),
+        'side': row.side,
+        'size_class': _whale_size_class(row.matched_value),
+        'buyer_broker': None,
+        'seller_broker': None,
+    } for row in rows]
+
+    next_cursor = None
+    if len(all_rows) > limit and rows:
+        last = rows[-1]
+        next_cursor = base64.urlsafe_b64encode(json.dumps({
+            'ts': last.executed_at.isoformat(), 'id': str(last.pk),
+        }).encode('ascii')).decode('ascii')
+
+    # Keep the legacy `alerts[]` list served by the old view (max 50, same shape).
+    from signal_intelligence.models import UnifiedAlert
+    alert_rows = UnifiedAlert.objects.filter(symbol=symbol).order_by('-triggered_at')[:alert_limit]
+    alerts = [{
+        'id': str(a.alert_id),
+        'alert_type': a.alert_type,
+        'severity': a.severity,
+        'title': a.title,
+        'value': str(a.value) if a.value is not None else None,
+        'direction': a.direction,
+        'triggered_at': a.triggered_at.isoformat(),
+    } for a in alert_rows]
+
+    updated_at = max((row.executed_at for row in all_rows), default=None)
+    return {
+        'symbol': symbol,
+        'revision': int(updated_at.timestamp()) if updated_at is not None else 0,
+        'updated_at': _whale_local_iso(updated_at),
+        'whale_orders': orders,
+        'alerts': alerts,
+        'summary': summary,
+        'next_cursor': next_cursor,
+        'source': 'whale_alert_canonical',
+        'data_quality': 'provider_side_from_tick',
+        'freshness_by_tier': {'hot': '<=300s', 'warm': '<=900s', 'cold': 'backfill_only'},
+        'retention_days': 365,
+    }
+
+
 @extend_schema(
     summary='RealtimeWhaleFeedView',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
@@ -338,28 +482,52 @@ class RealtimeBreadthView(APIView):
     },
 )
 class RealtimeWhaleFeedView(APIView):
-    """GET /api/realtime/whale-feed/<symbol>/ — whale alerts for a symbol."""
+    """GET /core/v1/realtime/whale-feed/<symbol>/ — per-tick whale feed."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
         from identity_access.permissions import require_pat_scopes_or_human_session
         require_pat_scopes_or_human_session(request, 'market:read')
-        from signal_intelligence.models import UnifiedAlert
-        symbol = symbol.upper()
-        limit = min(int(request.query_params.get('limit', 50)), 200)
-        alerts = UnifiedAlert.objects.filter(symbol=symbol).order_by('-triggered_at')[:limit]
-        return Response({
-            'symbol': symbol,
-            'alerts': [{
-                'id': str(a.alert_id),
-                'alert_type': a.alert_type,
-                'severity': a.severity,
-                'title': a.title,
-                'value': str(a.value) if a.value is not None else None,
-                'direction': a.direction,
-                'triggered_at': a.triggered_at.isoformat(),
-            } for a in alerts],
-        })
+
+        raw_min = request.query_params.get('min_value')
+        if raw_min is not None:
+            try:
+                min_value = int(raw_min)
+            except (TypeError, ValueError):
+                return Response({'code': 'INVALID_MIN_VALUE', 'detail': 'min_value phải là số.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if min_value < _WHALE_MIN_VALUE_FLOOR:
+                return Response({'code': 'MIN_VALUE_BELOW_FLOOR',
+                                 'detail': 'min_value phải >= 500000000 VND.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            min_value = _WHALE_MIN_VALUE_FLOOR
+
+        try:
+            limit = max(1, min(int(request.query_params.get('limit', 50)), 1000))
+        except (TypeError, ValueError):
+            limit = 50
+
+        payload = build_whale_feed_payload(
+            symbol,
+            from_dt=_parse_iso_param(request.query_params.get('from')),
+            to_dt=_parse_iso_param(request.query_params.get('to')),
+            min_value=min_value,
+            limit=limit,
+            cursor=request.query_params.get('cursor'),
+        )
+        return Response(payload)
+
+
+class NotProvisionedView(APIView):
+    """Live-aggressor endpoints are intentionally unprovisioned (Rule 15)."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = []
+
+    @extend_schema(responses={status.HTTP_501_NOT_IMPLEMENTED: OpenApiTypes.OBJECT})
+    def get(self, request, symbol):
+        return Response({'reason': 'not_provisioned', 'source': 'live_aggressor'},
+                        status=status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @extend_schema(

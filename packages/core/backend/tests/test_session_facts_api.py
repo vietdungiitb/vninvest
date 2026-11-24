@@ -407,3 +407,57 @@ class SessionFactsOpenApiMetadataTests(TestCase):
         # Cách portable: view có thể instantiate được mà không lỗi import
         view = SessionFactsDetailView()
         self.assertIsNotNone(view)
+
+
+class SessionFactsCvdContractTests(TestCase):
+    """REV.2.1 CVD contract: honest unit, scope gate, strict window, fresh cache."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='cvd-contract-user', password='pass')
+        self.client.force_authenticate(user=self.user)
+        self.facts = _make_facts('HPG')
+        _attach_bucket_series(self.facts, _make_series_payload())
+
+    def test_cvd_fields_and_timezone(self):
+        response = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        bucket = payload['cvd_series'][0]
+        self.assertEqual(bucket['delta'], bucket['buy_volume'] - bucket['sell_volume'])
+        self.assertEqual(payload['unit'], 'vnd')
+        self.assertEqual(payload['source'], 'whale_aggregate')
+        self.assertIn('trade_count', bucket)
+        self.assertIsNone(bucket['trade_count'])
+        self.assertEqual(payload['revision'], int(self.facts.computed_at.timestamp()))
+        self.assertTrue(payload['updated_at'].endswith('+07:00'))
+        self.assertEqual(payload['delta'], sum(b['delta'] for b in payload['cvd_series']))
+
+    def test_window_1m_is_rejected(self):
+        response = self.client.get('/core/v1/session-facts/HPG/cvd/?window=1m')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'UNSUPPORTED_WINDOW')
+
+    def test_empty_payload_carries_contract_fields(self):
+        response = self.client.get('/core/v1/session-facts/ZZZ/cvd/?window=15m')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['cvd_series'], [])
+        self.assertEqual(payload['unit'], 'vnd')
+        self.assertEqual(payload['source'], 'whale_aggregate')
+        self.assertEqual(payload['revision'], 0)
+        self.assertIsNone(payload['updated_at'])
+        self.assertEqual(payload['delta'], 0)
+
+    def test_market_read_scope_is_enforced(self):
+        from rest_framework.exceptions import PermissionDenied
+
+        with patch('identity_access.permissions.require_pat_scopes_or_human_session') as gate:
+            gate.side_effect = PermissionDenied('scope')
+            response = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        gate.assert_called_once()

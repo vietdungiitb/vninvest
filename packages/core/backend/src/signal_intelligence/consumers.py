@@ -126,15 +126,17 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
         # WS-502 codefix (Entry 512): giong MarketTickerConsumer — auth off shared thread.
         from asgiref.sync import sync_to_async
 
-        from identity_access.ws_ticket import resolve_user_from_ws_query
+        from identity_access.ws_ticket import resolve_ws_identity
 
         query_string = self.scope.get('query_string', b'').decode()
-        user = await sync_to_async(resolve_user_from_ws_query, thread_sensitive=False)(query_string)
-        if user is None:
+        identity = await sync_to_async(resolve_ws_identity, thread_sensitive=False)(query_string)
+        if identity is None:
             logger.warning('[WS:Realtime] Unauthenticated connection attempt')
             await self.close(code=4401)
             return
 
+        user = identity['user']
+        self.auth_method = identity['auth_method']
         self.user = user
         self.subscribed_groups: set[str] = set()
         await self.accept()
@@ -192,11 +194,29 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
                     await self.channel_layer.group_add(group, self.channel_name)
                     self.subscribed_groups.add(group)
 
+            raw_events = msg.get('events') or []
+            if not isinstance(raw_events, list):
+                raw_events = []
+            opted = [name for name in raw_events if name in ('whale_order', 'orderflow_delta')]
+            # New event types are ticket-only; the legacy ?token= fallback stays
+            # for old ticker clients but must not receive them (Rule 15, D5 REV.2.2).
+            if opted and getattr(self, 'auth_method', None) != 'ticket':
+                opted = []
+
             await self.send(text_data=json.dumps({
                 'event_type': 'subscribed',
                 'symbols': valid_symbols,
+                'events': opted,
             }))
-            logger.info('[WS:Realtime] Subscribed: user=%s symbols=%s', self.user.username, valid_symbols)
+            for event_name in opted:
+                await self.send(text_data=json.dumps({
+                    'event_type': 'error',
+                    'code': 'not_provisioned',
+                    'source': 'live_aggressor',
+                    'event': event_name,
+                }))
+            logger.info('[WS:Realtime] Subscribed: user=%s symbols=%s events=%s',
+                        self.user.username, valid_symbols, opted)
             return
 
         # Unsubscribe

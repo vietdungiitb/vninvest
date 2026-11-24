@@ -253,7 +253,10 @@ def detect_whale_ticks(
     """
     if df.empty:
         return df.iloc[:0].copy()
-    return df[df['value'] >= threshold_vnd].copy()
+    # G0 2026-11-24: 0.75% of IntradayTick rows are UNKNOWN. Never let them be
+    # coerced into `sell` by the canonical writer (tasks.py:281).
+    known_side = df['side'].astype(str).str.upper().isin(['BUY', 'SELL'])
+    return df[known_side & (df['value'] >= threshold_vnd)].copy()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -357,7 +357,7 @@ def _whale_size_class(matched_value) -> str:
         return 'whale'
     if v >= 1_000_000_000:
         return 'shark'
-    return 'normal'
+    return 'small'  # REV.2.1: enum thống nhất small|shark|whale (was 'normal')
 
 
 class WhaleAlertCursorPagination(AlertCursorPagination):
@@ -1026,7 +1026,11 @@ class WhaleFeedAggregateView(APIView):
         symbol = request.query_params.get('symbol', '').upper()
         session_date = request.query_params.get('session_date')
 
-        qs = WhaleAlertCanonical.objects.select_related('alert').order_by('-executed_at')
+        # REV.2.1: exclude session aggregates (`tick_session:`) — same guard as the
+        # flat whale-feed builder; they are clamped at 5B and double-count summary.
+        qs = WhaleAlertCanonical.objects.select_related('alert').filter(
+            alert__source_ref__startswith='whale_tick:',
+        ).order_by('-executed_at')
         if symbol:
             qs = qs.filter(symbol=symbol)
         if session_date:
