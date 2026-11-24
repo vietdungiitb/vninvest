@@ -1,3 +1,11 @@
+## Entry 621: M1 — dry-run diff 2022 (360.329 cặp khớp)
+
+- **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-mig-diff` (worktree `wt/price-mig-diff`) · Claim `price-mig-diff`.
+- **Thay đổi**: `market_data/cafef/diff.py` (`diff_row` 7 field, `classify_db_only`, `ratio_stats`) + command `price_migration_diff` (2 pass keyset pagination — không OOM/pgbouncer `InvalidCursorName`) + test 7/7. **KHÔNG ghi DB**.
+- **Chạy thật 2022**: legacy 365.459 · cafef 399.315 · **matched 360.329** · DB-only 5.130 (1,4%) · CafeF-only 38.986 · fingerprint `96f4ba51309dd038` · **halt=True** (ratio std 15,45 — spike chưa phân loại theo ex-date). Report copy vào repo `docs/evidence/widget-news-events/migration-diff-2022.json`.
+- **Audit độc lập AGREE + 3 reservation đã đóng bằng văn bản**: R1 `fields_changed` của 5 field sau là artifact (pass 1 chỉ lưu close/adj_close) — ghi rõ không phải kết quả đo; R2 `classify_db_only` là heuristic tự gán nhóm, không phải xác minh — ghi rõ sample chờ owner; R3 copy report vào repo.
+- **Nợ cho M4**: retry `change_pct` (NULL từ frame vnbroker), phân loại spike thành REBASE_SHIFT trước apply, xác minh benchmark/chỉ số. Evidence: `docs/evidence/widget-news-events/m1-diff.md`.
+
 ## Entry 620: M0 — backup + bulk CafeF 3 sàn 2011–2026 (2,3 triệu dòng)
 
 - **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-mig-bulk` (worktree `wt/price-mig-bulk`) · Claim `price-mig-bulk`.
