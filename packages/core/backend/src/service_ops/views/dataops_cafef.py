@@ -105,6 +105,7 @@ class CafefRunView(SOCBaseView):
 class CafefAbortView(SOCBaseView):
     @extend_schema(
         summary='Hủy CafeF import run',
+        request=None,
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
     )
     def post(self, request, run_id):
