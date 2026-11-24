@@ -1,5 +1,11 @@
-"""Tính hệ số điều chỉnh theo ex_date rồi materialize vào DailyPrice.adj_close."""
+"""Tính hệ số điều chỉnh theo ex_date rồi materialize vào DailyPrice.adj_close.
+
+P0 (2026-11-24): ghi adj_close bị TẮT mặc định. Nguồn VCI/KBS đã trả giá điều chỉnh
+ở cột `close`; tự nhân factor ở đây tạo ra adjacent price sai (double-adjust).
+Bật tường minh qua `PRICE_ADJUSTMENT_WRITES_ENABLED=1` chỉ để chạy test F1 legacy.
+"""
 import logging
+import os
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
@@ -79,7 +85,14 @@ def compute_adj_factors(symbol: str) -> list[AdjFactor]:
 
 
 def apply_adjustments(symbol: str) -> int:
-    """Walk ex_date tăng, nhân dồn factor cho mọi ex_date > t; không ghi đè close thô."""
+    """Walk ex_date tăng, nhân dồn factor cho mọi ex_date > t; không ghi đè close thô.
+
+    Guard đặt ở ĐẦU HÀM để freeze cả vòng reset (F1) lẫn vòng ghi. Đặt guard sau
+    vòng reset thì vẫn `save()` ⇒ vi phạm AC-1 "0 UPDATE".
+    """
+    if os.getenv('PRICE_ADJUSTMENT_WRITES_ENABLED', '0') != '1':
+        return 0
+
     factors = list(AdjFactor.objects.filter(symbol=symbol).order_by('ex_date'))
     # Không return sớm: khi correction xoá hết factor vẫn phải reset adj_close cũ (F1).
     prices = list(DailyPrice.objects.filter(symbol=symbol).order_by('date'))

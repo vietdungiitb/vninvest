@@ -97,6 +97,37 @@ class DailyPrice(models.Model):
         return f'{self.symbol} {self.date} close={self.close}'
 
 
+class CafefDailyPrice(models.Model):
+    """OHLC đối chiếu từ CafeF — nguồn ĐỘC LẬP, KHÔNG ghi đè DailyPrice.
+
+    `close_raw` là giá đóng cửa thật; `close_adjusted` là giá đã điều chỉnh
+    theo sự kiện doanh nghiệp (cột "Giá điều chỉnh" của CafeF). Cả hai được
+    lưu đồng thời để phục vụ bước đối chiếu; kế hoạch hiện tại chỉ đọc.
+    """
+
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    date = models.DateField(db_index=True, verbose_name='Ngày giao dịch')
+    close_raw = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá đóng cửa thô')
+    close_adjusted = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá đóng cửa đã điều chỉnh')
+    open_raw = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá mở cửa')
+    high_raw = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá cao nhất')
+    low_raw = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá thấp nhất')
+    volume = models.BigIntegerField(verbose_name='Khối lượng khớp lệnh')
+    value = models.BigIntegerField(null=True, blank=True, verbose_name='Giá trị khớp lệnh (VNĐ)')
+    source = models.CharField(max_length=32, default='cafef', verbose_name='Nguồn dữ liệu')
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Giá ngày CafeF (đối chiếu)'
+        verbose_name_plural = 'Giá ngày CafeF (đối chiếu)'
+        unique_together = [('symbol', 'date')]
+        ordering = ['-date', 'symbol']
+        indexes = [models.Index(fields=['symbol', 'date'])]
+
+    def __str__(self) -> str:
+        return f'Cafef {self.symbol} {self.date} close={self.close_raw}'
+
+
 class CorporateAction(models.Model):
     """Một sự kiện corporate action gốc từ provider (DIV/ISS), chưa gộp mất dữ liệu."""
 

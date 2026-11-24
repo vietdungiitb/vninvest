@@ -1,6 +1,8 @@
 """Task 4 — adjustment engine: factor theo ex_date, cộng tiền, nhân dồn (fail-before)."""
+import os
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 
@@ -11,6 +13,11 @@ Q10 = Decimal('0.0000000001')
 
 
 class AdjustmentTests(TestCase):
+    def setUp(self):
+        super().setUp()
+        # Mọi test chạy chế độ OFF mặc định; F1 test dùng patch.dict bật riêng.
+        os.environ.pop('PRICE_ADJUSTMENT_WRITES_ENABLED', None)
+
     def _price(self, symbol, iso, close):
         day = date.fromisoformat(iso)
         return DailyPrice.objects.create(
@@ -68,7 +75,32 @@ class AdjustmentTests(TestCase):
         self.assertEqual(len(factors), 2)
         apply_adjustments('VNM')
         self.assertIsNone(DailyPrice.objects.get(date=date(2024, 9, 23)).adj_close)
-        self.assertIsNotNone(DailyPrice.objects.get(date=date(2025, 5, 13)).adj_close)
+        # P0: flag mặc định tắt ⇒ không ghi adj_close (kể cả factor computed).
+        self.assertIsNone(DailyPrice.objects.get(date=date(2025, 5, 13)).adj_close)
+
+    def test_writes_disabled_by_default(self):
+        """AC-1: flag OFF ⇒ 0 UPDATE, không ghi adj_close cho dòng mới."""
+        self._price('VNM', '2024-09-23', Decimal('100000'))
+        self._event('VNM', '2024-09-24', 'clean', cash='1000')
+        compute_adj_factors('VNM')
+        self.assertEqual(apply_adjustments('VNM'), 0)
+        price = DailyPrice.objects.get(date=date(2024, 9, 23))
+        self.assertIsNone(price.adj_close)
+        self.assertFalse(price.is_adjusted)
+
+    def test_writes_disabled_preserves_stale_adj_close(self):
+        """AC-2b: flag OFF freeze CẢ vòng reset (stale vẫn nguyên dù factor partial)."""
+        price = self._price('VNM', '2024-09-23', Decimal('100000'))
+        price.adj_close = Decimal('999')
+        price.is_adjusted = True
+        price.save(update_fields=['adj_close', 'is_adjusted'])
+        # factor partial ⇒ nếu guard đặt sau vòng reset, stale sẽ bị xoá.
+        self._event('VNM', '2024-09-24', 'unparsed-x', status='unparsed')
+        compute_adj_factors('VNM')
+        self.assertEqual(apply_adjustments('VNM'), 0)
+        price.refresh_from_db()
+        self.assertEqual(price.adj_close, Decimal('999.00'))
+        self.assertTrue(price.is_adjusted)
 
     def test_invalid_factor_guard(self):
         self._price('VNM', '2024-09-23', Decimal('100000'))
@@ -93,6 +125,7 @@ class AdjustmentTests(TestCase):
         factor = compute_adj_factors('VNM')[0]
         self.assertEqual(factor.prev_close, Decimal('100000.00'))
 
+    @patch.dict(os.environ, {'PRICE_ADJUSTMENT_WRITES_ENABLED': '1'})
     def test_recompute_clears_stale_factor_and_adj_close(self):
         price = self._price('VNM', '2024-09-23', Decimal('100000'))
         self._event('VNM', '2024-09-24', 'e1', cash='1000')

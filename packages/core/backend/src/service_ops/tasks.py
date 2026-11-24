@@ -1414,3 +1414,50 @@ def test_system_broker_connection_task(self, provider: str):
         cred.is_verified = False
     cred.save(update_fields=['last_check', 'is_verified', 'last_verified_at', 'updated_at'])
     return {**result, 'latency_ms': latency_ms}
+
+@shared_task(bind=True)
+def import_cafef_ohlc_task(self, run_id, exchange, year, dry_run=False):
+    """Import CafeF OHLC vao bang doi chieu; cap nhat BackfillExecutionRun."""
+    from market_data.cafef.importer import run_import
+
+    from .models import BackfillExecutionRun
+
+    run = BackfillExecutionRun.objects.filter(run_id=run_id).first()
+    if run is None:
+        return {'error': 'run not found', 'run_id': run_id}
+    run_log = run.service_run_log
+
+    run.status = 'running'
+    run.save(update_fields=['status'])
+    if run_log:
+        run_log.status = 'running'
+        run_log.save(update_fields=['status'])
+
+    try:
+        result = run_import(exchange, year, dry_run=dry_run)
+        run.refresh_from_db()
+        if run.status == 'aborted':
+            return {**result, 'aborted': True}
+        run.status = 'success'
+        run.inserted_rows = result.get('inserted', 0)
+        run.updated_rows = result.get('updated', 0)
+        run.summary = {**(run.summary or {}), **result}
+        run.finished_at = timezone.now()
+        run.save(update_fields=['status', 'inserted_rows', 'updated_rows', 'summary', 'finished_at'])
+        if run_log:
+            run_log.status = 'success'
+            run_log.output_summary = result
+            run_log.finished_at = timezone.now()
+            run_log.save(update_fields=['status', 'output_summary', 'finished_at'])
+        return result
+    except Exception as exc:  # noqa: BLE001 - task phai luu evidence loi
+        run.status = 'failed'
+        run.error_summary = str(exc)[:2000]
+        run.finished_at = timezone.now()
+        run.save(update_fields=['status', 'error_summary', 'finished_at'])
+        if run_log:
+            run_log.status = 'failed'
+            run_log.error_detail = str(exc)[:2000]
+            run_log.finished_at = timezone.now()
+            run_log.save(update_fields=['status', 'error_detail', 'finished_at'])
+        raise

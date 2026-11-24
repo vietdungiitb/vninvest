@@ -58,7 +58,7 @@ class DataOpsInventoryView(SOCBaseView):
         from django.db import connection
         from django.db.models import Count, Max, Min
 
-        from market_data.models import DailyPrice, StockProfile
+        from market_data.models import CafefDailyPrice, DailyPrice, StockProfile
         from market_serving.models import SymbolSnapshot
 
         from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
@@ -171,7 +171,18 @@ class DataOpsInventoryView(SOCBaseView):
             total=Count('id'), symbols=Count('symbol', distinct=True),
             earliest=Min('session_date'), latest=Max('session_date'),
         )
+        cafef_agg = CafefDailyPrice.objects.aggregate(
+            total=Count('id'), symbols=Count('symbol', distinct=True),
+            earliest=Min('date'), latest=Max('date'),
+        )
         data_types = [
+            {
+                'name': 'CafefDailyPrice', 'label': 'Giá ngày CafeF (đối chiếu)',
+                'total_rows': cafef_agg['total'] or 0,
+                'symbols': cafef_agg['symbols'] or 0,
+                'earliest_date': cafef_agg['earliest'].isoformat() if cafef_agg['earliest'] else None,
+                'latest_date': cafef_agg['latest'].isoformat() if cafef_agg['latest'] else None,
+            },
             {
                 'name': 'DailyPrice', 'label': 'Giá ngày (OHLCV)',
                 'total_rows': dp_agg['total_rows'] or 0,

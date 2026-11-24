@@ -1,3 +1,35 @@
+## Entry 617: P0 — tắt ghi adj_close nhân đôi + pin vnbroker 3.9.0
+
+- **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-adjustment-p0` · Claim `price-adjustment-p0`.
+- **Thay đổi**: `market_data/corporate_actions/adjustment.py` — guard `PRICE_ADJUSTMENT_WRITES_ENABLED` (default `'0'`) **ở đầu `apply_adjustments`**, freeze cả vòng reset lẫn vòng ghi; flag `'1'` giữ nguyên path cũ cho test F1. Docstring ghi rõ `close` từ VCI/KBS đã là giá điều chỉnh. Test: AC-1, AC-2b (stale `adj_close` không bị reset khi OFF), F1 chạy flag ON, expectation OFF đổi. `requirements.txt:38` pin `vnbroker==3.9.0` (commit có trailer `Claim-Deny-List:` theo ủy quyền owner).
+- **Gate chạy thật**: RED 2 fail → GREEN **9/9** trên VPS `14.225.255.47`, DB riêng `vnsaas_core` (kết nối tạm vào `vnsaas-staging_data`, đã ngắt). `pre-push-gate` **36 PASS / 0 FAIL**; đã push branch.
+- **Audit code độc lập**: **AGREE + reservation** — R1 (chưa test stale reset) đã đóng bằng `test_writes_disabled_preserves_stale_adj_close`; R3 (ledger Entry) đóng bằng Entry này; env neutralize mọi test qua `setUp`.
+- **Không làm**: không ghi đè `DailyPrice`, không bulk CafeF (ToS chờ ký trước P2), UI default giữ provider-adjusted tới P3. Evidence: `docs/evidence/widget-news-events/p0-gates.md`.
+
+## Entry 616: Chốt 5 điều kiện SSOT + PLAN P0 (chỉ tài liệu, không code)
+
+- **Date**: 2026-11-24 · **Type**: decision + plan + audit độc lập (3 vòng, verdict cuối PASS).
+- **Tài liệu**: `docs/DECISION_SSOT_OWNER_ITEMS_20261124.md` (5 mục §5 chốt),
+  `docs/PLAN_PRICE_ADJUSTMENT_P0_20261124.md` (P0: flag `PRICE_ADJUSTMENT_WRITES_ENABLED=False`,
+  guard ở đầu hàm `adjustment.py:83` — freeze cả reset; dual-mode flag ON cho test F1).
+- **Gate tự chạy**: `node packages/web/scripts/check-multi-agent.mjs` → **0 lỗi, exit 0** (đường dẫn
+  đúng; `node scripts/check-multi-agent.mjs` MODULE_NOT_FOUND). Các gate BE cần VPS/DB ⇒ ghi CHƯA CHẠY.
+- **Audit**: vòng 1 NEED_REVISION (O-1..O-6: guard nhầm chỗ `:97`, path gate sai, "11 assertion",
+  CHƯA ĐO mâu thuẫn, drift chưa phân loại, pytest-full thiếu evidence) → vòng 2 NEED_REVISION
+  (N-1 path experiment-env, N-2 AC-4, N-3 CHƯA ĐO, N-4 intra-series) → vòng 3 **PASS**.
+- **Chốt quan trọng**: P2 scope ban đầu chỉ 2022/3 sàn (98,6%); CHƯA ĐO chỉ chặn mở rộng; ToS
+  defer sang P2; UI default giữ provider-adjusted tới P3; threshold drift 0,5% phải phân loại
+  rebase trước khi alert. P0 không phụ thuộc version-bump vnbroker.
+- **Không có code nào bị thay đổi** ở vninvest lẫn vnbroker. Owner còn ký ToS (P2) + UI default (P3).
+
+## Entry 615: Audit độc lập đề xuất SSOT giá qua vnbroker (chỉ research, không code)
+
+- **Date**: 2026-11-24 · **Type**: audit/đề xuất kiến trúc · **Branch**: vninvest `feat/cafef-ref` (không sửa), vnbroker `feat/cafef-reference` (không sửa).
+- **Verdict**: AGREE hướng CafeF làm SSOT giá lịch sử trong vnbroker, NEED_REVISION 3 điểm kỹ thuật. Evidence: `docs/AUDIT_PROPOSAL_VNBROKER_SSOT_20261124.md`.
+- **Phát hiện then chốt (đo lại, không tin đề xuất)**: dữ liệu 2011 chỉ có ở `Symbol=ALL` (66.363 dòng/280 mã) — truy vấn 1 mã `TPB` trống tới hết 2017; trong ALL 2011 riêng TPB cũng **0 dòng**. ⇒ đổi default `2018 → 2011` vô dụng ở mức per-symbol; cần coverage gate theo mã/năm. Độ phủ 98,6% chỉ đúng 2022 (2011 ~45%, 2015 ~40%, 2018 ~30% số mã). Parse ALL: 20,1 s/66k dòng (2011), 34–40 s/101k dòng (2022) — đề xuất ghi "~20 s" chỉ đúng năm thấp.
+- **Khác với đề xuất gốc**: giữ `CafefDailyPrice` làm staging thay vì xoá; không đặt `reconcile` trên đường ghi (chỉ monitoring); dual-write + feature flag + backup theo `(exchange,year)` trước cutover.
+- **Gate**: không chạy (không đổi code). Lệnh tái lập số liệu nằm trong evidence doc §5.
+
 ## Entry 614: Badge ENTERPRISE parity — widget server-tier export (PR #516)
 
 - **Date**: 2026-11-22 · **Type**: widget repack + host wiring + E2E.
