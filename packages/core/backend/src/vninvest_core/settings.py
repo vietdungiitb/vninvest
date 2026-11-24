@@ -908,6 +908,19 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# M3 (chuyển đổi giá): tạm dừng các writer DailyPrice/SymbolSnapshot trong cửa sổ
+# persist (S3c–S5) để tránh ghi đè dữ liệu đã chuyển. Pacing仍需 giữ ở ingest CafeF.
+if os.environ.get('PRICE_MIGRATION_PAUSED', '0') == '1':
+    for _paused_key in (
+        'daily-backfill-prices-1700',
+        'deep-history-bootstrap-weekly',
+        'pre5y-history-backfill-weekly',
+        'sync-corporate-actions-nightly',
+        'detect-market-anomaly-alerts-5m',
+    ):
+        CELERY_BEAT_SCHEDULE.pop(_paused_key, None)
+    del _paused_key
+
 # BL-15: resolve log format safely (unknown values fall back, never crash boot).
 _LOG_FORMAT = os.environ.get('LOG_FORMAT', '').strip().lower()
 if _LOG_FORMAT not in ('json', 'text'):

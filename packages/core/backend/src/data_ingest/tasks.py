@@ -719,6 +719,11 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
             objs_to_upsert.append(DailyPrice(symbol=row_symbol, date=row_date, **next_values))
             continue
 
+        # M3 guard: KHÔNG ghi đè dòng đã chuẩn hóa từ CafeF (price_source='cafef').
+        if existing.get('price_source') == 'cafef':
+            skipped_existing += 1
+            continue
+
         if all(existing[field_name] == next_value for field_name, next_value in next_values.items()):
             skipped_existing += 1
             continue
@@ -780,7 +785,7 @@ def _fetch_and_upsert_bucket(
             existing_rows_by_date = {
                 row['date']: row
                 for row in DailyPrice.objects.filter(symbol=symbol, date__in=history_dates).values(
-                    'date', 'open', 'high', 'low', 'close', 'volume', 'source'
+                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source'
                 )
             }
             objs, symbol_inserted, symbol_updated, symbol_skipped = _classify_daily_price_rows(
@@ -2103,6 +2108,11 @@ def backfill_daily_prices(
     trigger: str = 'beat_schedule',
     celery_task_id: str | None = None,
 ):
+    # M3 pause: chặn MỌI callsite (beat + on-demand) trong cửa sổ persist.
+    if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
+        logger.warning('backfill_daily_prices skipped: PRICE_MIGRATION_PAUSED=1')
+        return {'skipped': True, 'reason': 'price_migration_paused'}
+
     try:
         return _backfill_daily_prices_impl(
             self,

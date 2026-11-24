@@ -1,3 +1,10 @@
+## Entry 630: M3 — guard ingest + pause writer jobs
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-guard` · Claim `price-mig-guard`.
+- **Thay đổi**: `data_ingest/tasks.py` skip upsert khi `price_source='cafef'` (+ query thêm field); `backfill_daily_prices` guard đầu hàm khi `PRICE_MIGRATION_PAUSED=1` (chặn mọi callsite beat + on-demand); `vninvest_core/settings.py` pop 5 beat job khi flag bật (`ingest-daily-prices-1705` disabled sẵn — không pause).
+- **Gate**: RED 1 fail → GREEN **7/7** (4 guard + 3 pause) trên VPS; regression 50 test có 1 fail pre-existing đã chứng minh bằng HEAD sạch (`test_warm_intraday_universe...`), không phải do M3. Chưa ghi dữ liệu, chưa đổi consumer.
+- Evidence: `docs/evidence/widget-news-events/m3-guard.md`.
+
 ## Entry 629: M2 — schema price_source + adj_factor + CONCURRENTLY
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-schema` · Claim `price-mig-schema` (mở lại sau merge PR #524/#526).
