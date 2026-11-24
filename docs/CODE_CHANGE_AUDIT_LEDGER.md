@@ -1,3 +1,10 @@
+## Entry 629: M2 — schema price_source + adj_factor + CONCURRENTLY
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-schema` · Claim `price-mig-schema` (mở lại sau merge PR #524/#526).
+- **Thay đổi**: `models.py` + migration `0012_dailyprice_price_source_adj_factor` (do makemigrations sinh — không tự đặt số): AddField `adj_factor`(20,10 null), `price_source`(default `vnbroker_legacy`) + index `market_data_dailyprice_source_idx` tạo `CREATE INDEX CONCURRENTLY` với `Migration.atomic=False`.
+- **Bẫy đã sửa**: trùng số 0011 (chờ merge PR #524/#526 xong rồi sinh 0012); `CONCURRENTLY cannot run inside transaction` (thêm `Migration.atomic = False`).
+- **Gate**: `makemigrations --check` sạch; test 3/3 OK; `migrate market_data 0012` OK; index tồn tại; 4,58M dòng `price_source='vnbroker_legacy'`; 0 dòng `adj_factor` (chưa persist). Evidence: `docs/evidence/widget-news-events/m2-schema.md`.
+
 ## Entry 628: M1 - dry-run diff 2022 (360.329 cặp khớp)
 
 - **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-mig-diff` (worktree `wt/price-mig-diff`) · Claim `price-mig-diff`.
