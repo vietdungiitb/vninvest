@@ -33,5 +33,12 @@ Branch `feat/price-mig-bulk` (worktree `wt/price-mig-bulk`) · Plan `PLAN_PRICE_
 `HOSE 2016`, `HOSE 2018` (504 Gateway Timeout), `HOSE 2026` (400 Bad Request), `HNX 2012` (503/504), `UPCOM 2011/2014/2015` (504), `HNX/UPCOM nhiều năm sau phiên timeout` — dừng bulk để tránh rate-limit. Cần retry pacing ≥5 s ở M1+, không tự suy diễn dữ liệu thiếu.
 
 ## Ghi chú
-- `change_pct` từ bulk vnbroker là **NULL** (frame vnbroker 3.9.0 không có cột này dù local parser có) — để M1 xử lý / retry bằng local XLSX cho cột này.
+- `change_pct` từ bulk vnbroker là **NULL** (frame vnbroker 3.9.0 không có cột này dù local parser có) — để M1 xử lý / retry bằng local XLSX cho cột này. **AC M1 bổ sung**: retry local `fetch_xlsx` + `normalize_row` để lấy cột `Thay đổi`, nếu không M1 diff `change_pct` vô nghĩa và M4 persist NULL.
 - Chưa đụng `DailyPrice`; chưa chạy S2–S7.
+
+## Đính chính sau audit M0 (O1/O2)
+- **O1**: bản đầu `_fetch_rows()` chỉ được định nghĩa, chưa nối vào `preview_import`/`run_import`. Đã rewire cả 2 hỏi qua `_fetch_rows`; test mới `test_cafef_importer_source.py` chặn hàm chết (mock `vnbroker.Vnbroker().reference('cafef').bulk_year` phải được gọi). **5/5 OK** (3 source + 2 change_pct).
+- **O2 giải trình mismatch**: dữ liệu 2.308.756 dòng được tạo bằng cách copy code importer đã sửa (có `_fetch_rows`) vào container staging `vninvest-core-api` rồi chạy `manage.py shell` — tức bulk dùng `vnbroker bulk_year` thật, **không phải local fetcher**. Commit `a58529b73` bị thiếu phần rewire do thao tác copy thủ công; đã sửa ở commit sau. `change_pct=NULL` là do frame vnbroker không có cột, không phải do local parser — nhất quán với code đã sửa.
+- **R1**: lệnh tái tạo (chạy trên VPS): `pg_dump ... -Fc -f before_20261124.dump` + `sha256sum`; bulk = `docker exec -w /app/src vninvest-core-api python /tmp/m0_bulk.py` / `m0_bulk_all.py` / `m0_rest.py` / `m0_upcom.py` (script nằm `/tmp` trên VPS, log `/tmp/m0_*.log`). Số liệu nhất quán nội bộ nhưng **không có script trong repo** — ghi rõ để owner xác nhận.
+- **R2**: bảng coverage thiếu 2026 (HOSE 2026 lỗi 400); ma trận năm×sàn chỉ đầy đủ 2022; `TPB 2011 → coverage='missing'` chưa có test riêng (có `_classify_coverage` trong vnbroker); "0 reject ngày" chưa assert trong evidence. Disk 55G < 80G đã chốt — ghi CHƯA CÓ CHỐT OWNER riêng, xin xác nhận.
+- **R3**: test `test_cafef_change_pct.py` chỉ assert change_pct; golden giá/ngày được assert ở `test_cafef_parser.py:40-44` (từ bản C2). Pacing ≥1 s là thao tác vận hành (mỗi request bulk mất 27–112 s tự nhiên), không có `time.sleep` trong code.

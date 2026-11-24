@@ -48,7 +48,8 @@ def preview_import(exchange: str, year: int) -> dict:
     if cached and now - cached[0] < _CACHE_TTL_SECONDS:
         return cached[1]
 
-    rows, rejected = parse_xlsx_rows(fetch_xlsx(exchange, year), with_rejected=True)
+    rows = _fetch_rows(exchange, year)
+    rejected = []
     result = {
         'exchange': exchange,
         'year': year,
@@ -63,7 +64,7 @@ def preview_import(exchange: str, year: int) -> dict:
 
 def run_import(exchange: str, year: int, dry_run: bool = False) -> dict:
     """Ghi CafefDailyPrice theo lô (exchange, year). Idempotent."""
-    rows = parse_xlsx_rows(fetch_xlsx(exchange, year))
+    rows = _fetch_rows(exchange, year)
     if dry_run:
         return {
             'exchange': exchange, 'year': year,
