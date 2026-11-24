@@ -1,79 +1,72 @@
-# Đề xuất — Đưa CafeF vào vnbroker làm nguồn SSOT duy nhất cho giá lịch sử
+# Đề xuất (REVISION 1) — vnbroker làm SSOT giá lịch sử
 
-> Ngày: 2026-11-24 · Yêu cầu owner: "dữ liệu chỉ đi qua một nguồn SSOT là vnbroker thay vì rời rạc".
-> Tài liệu là **đề xuất kiến trúc**, không sửa code ở vninvest lẫn vnbroker.
+> Ngày: 2026-11-24 · Verdict audit: AGREE hướng, **NEED_REVISION** 3 điểm O-1/O-2/O-3 (+O-4/O-5 minor).
+> Audit: `docs/AUDIT_PROPOSAL_VNBROKER_SSOT_20261124.md` (Entry 615).
+> **Chỉ đề xuất — không sửa code ở cả 2 repo.** Bản gốc đã bị thay bởi revision này.
 
-## 1. Trạng thái hiện tại (đã đọc code thật)
+## 0. Tiếp nhận phản biện (tự kiểm chứng lại)
 
-### vnbroker (repo riêng, branch `feat/cafef-reference`, **in-progress của agent khác**)
-- `vnbroker/common/client.py:268` — facade `Vnbroker.reference(name="cafef")`.
-- `vnbroker/reference/cafef.py:22-71` — `CafefReference.history(symbol, start, end, interval)` trả frame có `close_raw` + `close_adjusted`; **mặc định `start='2018-01-01'` (`:59`)**; `:73 reconcile()` so sánh provider frame với giá điều chỉnh CafeF.
-- `vnbroker/explorer/kbs/quote.py`, `vci/quote.py` — route `adjusted=False` sang CafeF, trả **6 cột tier-1** (`time,open,high,low,close,volume`), `attrs source/data_origin='cafef'`.
-- `vnbroker/api/company.py:184` — `corporate_actions()` vẫn chỉ VCI.
-- CafeF **không** vào `ProviderRegistry`/AUTO pool (chủ đích — tránh sai kỳ vọng cho intraday).
+| Objection | Tự đo của tôi | Kết luận |
+|---|---|---|
+| **O-1** per-symbol coverage | XLSX ALL HOSE: TPB **0 dòng** 2011, **0** 2015, **177** 2018; VIC/VNM/FPT/ACB 248–252 dòng mọi năm | ❌ Phát biểu "CafeF có từ 2011" chỉ đúng ở mức dataset. Đổi default 2018→2011 mà không có coverage gate sẽ trả rỗng im lặng cho TPB |
+| **O-2** độ phủ | Giao `CafeF(HOSE) ∩ DailyPrice`: 2011 **39,3%**, 2015 **39,5%**, 2018 **29,4%**, 2020 **28,1%**, 2022 **27,2%** (HOSE-only); 2022 sau gộp 3 sàn **98,6%** | ❌ Con số 1,4% DB-only chỉ đúng 2022/3 sàn. Phải có bảng năm × sàn |
+| **O-3** bước nhảy | TPB 04/01/2022: CafeF raw 42.750 / adj 17.940; DB `close≈16.723`, `adj_close≈5.159` → ×2,56 / ×3,5 | ❌ Đề xuất gốc thiếu dual-write/flag/snapshot |
+| O-4 reconcile | CafeF tự rebase (hệ số TPB 2019 0,2545 → 2026 1,0) | ✅ correctness = luôn fetch chuỗi mới; reconcile chỉ monitoring |
+| O-5 tài sản hiện có | `feat/cafef-ref` đã có C1–C3 + UI COC | ✅ giữ `CafefDailyPrice` làm staging, không xoá ngay |
+| Parse time | 2011 (66k) 20,1 s; 2022 (101k) 34–40 s | ✅ con số "~20 s" chỉ đúng năm thấp |
 
-### vninvest (repo này)
-- `market_data/vnbroker_adapter.py:748-769` — `fetch_daily_history` chép `row['close']` provider (**:763**) vào `DailyPrice.close`; không truyền `adjusted`.
-- `data_ingest/tasks.py:653-704` — upsert `DailyPrice`, `source='vnbroker_<provider>'` (**:703**).
-- `corporate_actions/adjustment.py:100` — tự nhân `adj_close = close × Π factor` ⇒ double-adjust (audit `AUDIT_PRICE_ADJUSTMENT_VNINVEST_20261124.md`).
-- `market_data/cafef/{fetcher,parser,importer}.py` (branch `feat/cafef-ref`) — **đang tự fetch/parse CafeF ngay trong vninvest**, tức là nguồn thứ 2 rời rạc.
+## 1. Nguyên tắc thiết kế đã sửa
 
-## 2. Khoảng trống so với mục tiêu SSOT
+1. **Không coi CafeF phủ toàn bộ lịch sử.** Mọi đường đọc phải có **coverage gate theo `(symbol, year, exchange)`**; trả frame rỗng kèm cờ `coverage='missing'`, không nuốt.
+2. **Không big-bang.** P0 → P1 → P2 → P3, mỗi bước có tiêu chí dừng.
+3. **Correctness đến từ fetch lại chuỗi adjusted mới**, không từ reconcile hay tự nhân factor.
+4. **Giữ nguyên** `CafefDailyPrice` + UI COC hiện có làm staging/đối chiếu trong giai đoạn chuyển tiếp.
+5. Test bắt buộc assert **ngày**, không chỉ giá (bài học nến 1970 của vnbroker).
 
-| # | Khoảng trống | Bằng chứng | Hệ quả |
-|---|---|---|---|
-| G1 | CafeF vẫn là "reference opt-in", vninvest tự parse riêng | `vnbroker/reference/cafef.py:22-27`; vninvest `market_data/cafef/*` | 2 bộ parse/unit/date-format, dễ phân kỳ |
-| G2 | Route `adjusted=False` chỉ trả 6 cột, **mất `close_adjusted`** | plan `PLAN_CAFEF_REFERENCE...md:85-92` (AC-5/5b) | Không điền được cả 2 cột `close`/`adj_close` trong 1 lần gọi |
-| G3 | `CafefReference.history` chỉ 1 mã/lần, default 2018 | `cafef.py:36-60` | Không backfill toàn thị trường; tiền đề "CafeF chỉ đến 2018" sai (đo thực có từ 2011) |
-| G4 | Không có cột provenance/basis trong frame tier-1 (chỉ có `attrs`) | plan AC-5b `:85` | vninvest không biết chắc dòng nào raw/adjusted để lưu |
-| G5 | Corporate event tự tính factor trong vninvest; vnbroker chỉ có `reconcile` thụ động | `adjustment.py:100`; `cafef.py:73` | Không có vòng "sự kiện mới → re-fetch chuỗi adjusted" |
+## 2. Lộ trình triển khai (theo audit §3, có bổ sung)
 
-## 3. Đề xuất trên vnbroker (SSOT)
+### P0 — ngay trên vninvest (độc lập vnbroker, rủi ro thấp)
+- Đặt flag `PRICE_ADJUSTMENT_WRITES_ENABLED=False` (mặc định tắt) tại `market_data/corporate_actions/adjustment.py:100` ⇒ **ngừng ghi `adj_close` nhân đôi**.
+- Giữ `DailyPrice.close` nguyên, đính kèm doc/flag semantics = "provider-adjusted".
+- Dùng `CafefDailyPrice` hiện có để **đối chiếu**, chưa ghi đè `DailyPrice`.
+- Tiêu chí dừng: mọi test corporate action cũ liên quan `adj_close` phải được cập nhật kỳ vọng (không giữ assertion cũ).
 
-### 3.1 API mới duy nhất cho giá lịch sử
-```
-Vnbroker.daily_bars(
-    symbol: str | "ALL", start: str, end: str,
-    exchange: str = "HOSE",
-    basis: "raw" | "adjusted" | "both" = "both",
-) -> CanonicalPriceFrame
-```
-Frame **một định dạng** (khác tier-1 để tránh nhầm):
-`time, open_raw, high_raw, low_raw, close_raw, close_adjusted, volume, value, put_through_volume, put_through_value, source='cafef', price_basis, fetched_at`, tz `Asia/Ho_Chi_Minh`.
+### P1 — vnbroker (sau khi merge `feat/cafef-reference`)
+- Thêm wrapper mỏng `daily_bars(symbol|"ALL", start, end, exchange, basis='raw'|'adjusted'|'both')` trên `CafefReference.history` + `parse_records`; `bulk_year(exchange, year)` dùng XLSX export.
+- **Giữ nguyên** route `adjusted=False` 6 cột (không vỡ 31 test hiện có).
+- Default `start` đổi 2018→2011 **chỉ khi** trả kèm `coverage` metadata; không đổi mù quáng.
+- Frame canonical: `time, open_raw/high_raw/low_raw, close_raw, close_adjusted, volume, value, put_through_*, source='cafef', price_basis, coverage, fetched_at`, tz `Asia/Ho_Chi_Minh`.
 
-- `basis='both'` lấy thẳng 2 cột từ CafeF `GiaDongCua`/`GiaDieuChinh` (×1000 / ×1e9).
-- `basis='raw'` / `'adjusted'` chỉ lọc cột — **cùng một code path**.
-- Route `adjusted=False` hiện tại của KBS/VCI gọi lại `daily_bars(basis='raw')` ⇒ bỏ được nhánh helper trùng (giữ `attrs` để tương thích).
+### P2 — vninvest sau khi pin version vnbroker mới
+- `vnbroker_adapter.py:748-769` gọi `daily_bars(basis='both')` **sau feature flag**.
+- **Dual-write**: `close_raw` / `close_adjusted` / `price_source='cafef'` cạnh `close` cũ; chưa đổi cột `close` hiển thị.
+- Dry-run diff **TPB/VNM/VCB × 2011/2015/2022**; kiểm per-symbol coverage ≥ ngưỡng (đề xuất 95% cho năm/sàn đã có dữ liệu).
+- Tiêu chí dừng: nếu coverage < ngưỡng hoặc bước nhảy giá vượt ngưỡng chốt ⇒ không apply.
 
-### 3.2 Mở rộng CafeF reference cho backfill
-- `CafefReference.history(symbol="ALL", exchange=...)` / `bulk_year(exchange, year)` dùng **XLSX export 1 năm** (đã đo: 4,47 MB / 101.756 dòng HOSE 2022, 3 s tải, ~20 s parse; gộp 3 sàn phủ 98,6% DB 2022).
-- Đổi default `start` từ `2018-01-01` (`cafef.py:59`) sang năm sớm nhất có dữ liệu (**2011**, đã probe).
-- Giữ JSON pagination làm fallback cho 1 mã/ngày ngắn.
+### P3 — cutover (quyết định owner)
+- Đổi UI default raw hay adjusted; giữ VCI/KBS làm **drift monitoring**; dọn local fetcher/parser sau **2 tuần parity**.
+- Snapshot toàn bộ `DailyPrice` trước apply; rollback theo `(exchange, year)`.
 
-### 3.3 Reconcile chủ động
-- `Vnbroker.reconcile_prices(symbol, start, end)` → `ReconcileReport` (tỷ lệ `provider_adjusted / cafef_adjusted`, mean/std, `flagged_dates`, verdict rebase).
-- Khi có sự kiện mới, vninvest gọi hàm này; nếu verdict "rebase" ⇒ re-fetch `daily_bars(basis='both')` cho mã đó. **Không tự nhân factor.**
+## 3. Bảng độ phủ bắt buộc (đo thêm trước P2)
 
-### 3.4 Vai trò các provider sau khi chuẩn hóa
-| Provider | Vai trò trong vnbroker |
-|---|---|
-| **CafeF** | SSOT cho **daily OHLC raw + adjusted**, turnover, put-through (từ 2011) |
-| VCI | corporate actions, listing, realtime/gap-chart, cross-check |
-| KBS | realtime, cross-check; không còn là nguồn giá lịch sử canonical |
-| AUTO pool | giữ nguyên (CafeF **không** vào pool — tránh sai kỳ vọng intraday) |
+| Năm | CafeF HOSE pairs | DB pairs | Giao (HOSE-only) | Gộp 3 sàn |
+|---|---|---|---|---|
+| 2011 | 66.363 | 147.586 | 39,3% | CHƯA ĐO |
+| 2015 | 74.064 | 175.418 | 39,5% | CHƯA ĐO |
+| 2018 | 93.323 | 305.274 | 29,4% | CHƯA ĐO |
+| 2020 | 100.646 | 345.079 | 28,1% | CHƯA ĐO |
+| 2022 | 101.756 | 365.459 | 27,2% | **98,6%** (399.315 pairs) |
 
-## 4. Đề xuất trên vninvest (sau khi vnbroker merge)
+Policy phần thiếu: giữ giá cũ + `price_source='unmapped_cafef'`, liệt kê riêng cho owner. PER-SYMBOL gate: `TPB 2011 → coverage='missing'`.
 
-1. Xoá fetch/parse CafeF khỏi vninvest (`market_data/cafef/fetcher.py`, `parser.py`, `importer.py`); giữ lại model `CafefDailyPrice` làm bảng đệm hoặc thay bằng cột mới.
-2. `vnbroker_adapter.py:748-769` gọi `Vnbroker.daily_bars(..., basis='both')` thay vì tự lấy `close` provider.
-3. `data_ingest/tasks.py` map: `close ← close_raw`, `adj_close ← close_adjusted`, thêm `price_source`, `is_adjusted=True`.
-4. `corporate_actions/adjustment.py:100` **ngừng ghi `adj_close`**; giữ `AdjFactor` cho overlay + kiểm chéo.
-5. Migration: backfill qua `daily_bars(basis='both', symbol='ALL')` → dry-run diff → apply theo `(exchange, year)`, backup/rollback.
+## 4. Vai trò provider sau chuẩn hóa
+- **CafeF**: SSOT daily raw + adjusted (có coverage gate).
+- VCI: corporate actions, listing, realtime, drift monitoring.
+- KBS: realtime, drift monitoring.
+- CafeF vẫn **không** vào AUTO provider pool.
 
-## 5. Điều kiện / rủi ro
-- vnbroker đang có claim `cafef-reference` **in-progress** ⇒ không đụng branch đó; đề xuất này là slice tiếp theo sau merge.
-- Cần owner chốt: ToS/rate-limit, bump version vnbroker, default UI hiển thị raw hay adjusted, 1,4% `(symbol,date)` CafeF không phủ.
-- Test bắt buộc assert **ngày**, không chỉ giá (bài học B-1 của vnbroker: nến 1970 vẫn xanh nếu chỉ assert close).
+## 5. Điều kiện owner chốt
+ToS/rate-limit ~228 MB · UI default raw/adjusted · **ngưỡng phủ theo năm × sàn** · thứ tự version-bump & merge 2 repo · tiêu chí dừng khi bước nhảy giá vượt ngưỡng.
 
 ## 6. Kết luận
-SSOT đúng là **vnbroker**, nhưng không phải bằng cách đăng ký CafeF vào provider pool — mà bằng cách đưa CafeF thành nguồn giá lịch sử canonical **bên trong vnbroker**, phơi một API `daily_bars(basis='both')` duy nhất. vninvest chỉ gọi API đó và ngừng tự tính `adj_close`. Đây là slice P0 riêng, cần plan + audit độc lập ở cả 2 repo trước khi code.
+Đề xuất gốc sai ở 3 chỗ đã sửa. Hướng vẫn đúng: CafeF là nguồn giá lịch sử trong vnbroker, nhưng triển khai theo P0–P3, có coverage gate, dual-write/flag, không đụng work-in-progress, reconcile chỉ monitoring.
