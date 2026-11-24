@@ -8,7 +8,14 @@ from vninvest_core.admin_ui import (
     percent_vi,
 )
 
-from .models import AdjFactor, CorporateAction, DailyPrice, StockProfile, VnbrokerRuntimeConfig
+from .models import (
+    AdjFactor,
+    CafefDailyPrice,
+    CorporateAction,
+    DailyPrice,
+    StockProfile,
+    VnbrokerRuntimeConfig,
+)
 
 
 @admin.register(StockProfile)
@@ -27,6 +34,18 @@ class StockProfileAdmin(VNAdminMixin, admin.ModelAdmin):
     @admin.display(description='Số cổ phiếu lưu hành')
     def outstanding_shares_display(self, obj):
         return decimal_vi(obj.outstanding_shares, decimals=0)
+
+
+@admin.register(CafefDailyPrice)
+class CafefDailyPriceAdmin(VNAdminMixin, admin.ModelAdmin):
+    """Bảng đối chiếu CafeF — read-only từ góc nhìn vận hành."""
+
+    list_display = ('symbol', 'date', 'close_raw', 'close_adjusted', 'volume', 'source')
+    list_filter = ('source', 'date')
+    search_fields = ('symbol',)
+    readonly_fields = ('imported_at',)
+    date_hierarchy = 'date'
+    ordering = ('-date', 'symbol')
 
 
 @admin.register(DailyPrice)
