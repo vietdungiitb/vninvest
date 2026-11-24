@@ -8,6 +8,7 @@ import { SocDataInventorySection } from "./SocDataInventorySection.js";
 import { SocDataOpsOperationsSection } from "./SocDataOpsOperationsSection.js";
 import { SocDataOpsMonitorSection } from "./SocDataOpsMonitorSection.js";
 import { SocDataOpsConfigSection } from "./SocDataOpsConfigSection.js";
+import { SocCafefSection } from "./SocCafefSection.js";
 import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
 import styles from "./soc.module.css";
 
@@ -17,6 +18,7 @@ const DATAOPS_SUB_TABS = [
   { key: "monitor", icon: "Radio" },
   { key: "scheduler", icon: "Clock" },
   { key: "config", icon: "Settings" },
+  { key: "cafef", icon: "Database" },
 ];
 
 const HERO_METRIC_DEFS = [
@@ -89,6 +91,11 @@ function DataOpsContent() {
         title = t("soc.dataops.subtab.config");
         subtitle = t("soc.dataops.config_section_desc", { defaultValue: "Chỉnh sửa tệp cấu hình runtime và vết kiểm toán." });
         content = createElement(SocDataOpsConfigSection);
+        break;
+      case "cafef":
+        title = t("soc.dataops.subtab.cafef", { defaultValue: "CafeF đối chiếu" });
+        subtitle = t("soc.dataops.cafef_section_desc", { defaultValue: "Backfill OHLC CafeF vào bảng đối chiếu." });
+        content = createElement(SocCafefSection);
         break;
       default:
         return createElement("p", { className: styles.emptyState }, t("soc.dataops.subtab_not_found"));

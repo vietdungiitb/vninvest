@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from .views import dataops, matrix, scheduler
+from .views import dataops, dataops_cafef, matrix, scheduler
 
 app_name = 'operator_scraping'
 
@@ -38,4 +38,9 @@ urlpatterns = [
     path('dataops/backfill/runs/', dataops.BackfillRunListView.as_view(), name='backfill_run_list'),
     path('dataops/backfill/runs/<str:run_id>/', dataops.BackfillRunDetailView.as_view(), name='backfill_run_detail'),
     path('dataops/backfill/run-now/', dataops.BackfillRunNowView.as_view(), name='backfill_run_now'),
+    # === CafeF OHLC cross-check import ===
+    path('dataops/cafef/preview/', dataops_cafef.CafefPreviewView.as_view(), name='cafef_preview'),
+    path('dataops/cafef/run/', dataops_cafef.CafefRunView.as_view(), name='cafef_run'),
+    path('dataops/cafef/run/<str:run_id>/abort/', dataops_cafef.CafefAbortView.as_view(), name='cafef_abort'),
+    path('dataops/cafef/run/<str:run_id>/status/', dataops_cafef.CafefStatusView.as_view(), name='cafef_status'),
 ]

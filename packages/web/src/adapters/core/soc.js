@@ -462,6 +462,25 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return corePost(`/operator/scraping/dataops/planner/run/${encodeURIComponent(runId)}/abort/`);
     },
 
+    // CafeF OHLC đối chiếu — chỉ đọc/ghi bảng CafefDailyPrice
+    previewCafefImport(payload) {
+      return corePost("/operator/scraping/dataops/cafef/preview/", payload);
+    },
+
+    runCafefImport(payload) {
+      return corePost("/operator/scraping/dataops/cafef/run/", payload);
+    },
+
+    abortCafefImport(runId) {
+      if (!runId) throw new Error("runId is required for abortCafefImport");
+      return corePost(`/operator/scraping/dataops/cafef/run/${encodeURIComponent(runId)}/abort/`);
+    },
+
+    getCafefImportStatus(runId) {
+      if (!runId) throw new Error("runId is required for getCafefImportStatus");
+      return coreGet(`/operator/scraping/dataops/cafef/run/${encodeURIComponent(runId)}/status/`);
+    },
+
     getSocDataOpsRuntimeConfig() {
       return coreGet("/operator/scraping/dataops/runtime-config/");
     },
