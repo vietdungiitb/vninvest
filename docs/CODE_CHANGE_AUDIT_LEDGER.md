@@ -1,3 +1,45 @@
+## Entry 623: REV.2.1 — lọc 2 writer trộn WhaleAlertCanonical + chốt window/tz/cache (2026-11-24)
+
+- **Date**: 2026-11-24 · **Type**: decision tinh chỉnh (doc-only, 0 dòng source) · **Lessons áp dụng**: L-V01, L-V02, L-V04, L-T01, L-T02, L-F04, L-F07 (checklist đã tick trong doc). Mọi điểm review tự mở code verify (log §6) — có thật cả.
+- **P0-N1 (mới, nặng nhất)**: `WhaleAlertCanonical` có **2 writer chạy song song mỗi 300s** (`vninvest_core/settings.py:855-874`): per-tick `tasks.py:285` (`whale_tick:`) và aggregate `tasks.py:149` (`tick_session:`) → `materializers.py:925-928` ghi vào cùng bảng với `matched_value = min(5B, ...)` `:811`, `executed_at` = giờ chạy task `:813`. Chốt: builder lọc cứng `alert__source_ref__startswith='whale_tick:'`; `session_facts_engine.py:93-101` cũng kiểm tra row `tick_session:`; G0 mở rộng query phân bố `source_ref`.
+- **P1-1**: widget gọi bare URL (`VNInvestClient.ts:1029`) không `from/to` ⇒ chốt default = **phiên gần nhất có data** (`MAX(session_date)`), không cộng 365 ngày; khi có `from/to` suy `session_date__gte/lte` ăn index `(symbol, session_date, side)` (`models.py:101-104`), không migration. Empty state: `revision:0`, `updated_at:null`, summary 8 số 0.
+- **P1-2**: `USE_TZ=True` (`settings.py:354-356`) ⇒ `.isoformat()` trả `+00:00`; mọi `ts/updated_at` ở D3/D4 dùng `dj_timezone.localtime(...).isoformat()`.
+- **P1-3**: sửa ví dụ `buy_value` thành `2940000000` + invariant `buy_value == whale_buy+shark_buy+small_buy`; `min_value` sàn cứng 500M (`<500M → 400 MIN_VALUE_BELOW_FLOOR`); `_build_empty_cvd_payload()` (`views.py:91-105`) phải mang đủ field mới.
+- **P1-4**: **bỏ mục #8** (`order_flow_engine.py:231-237` invalidate cache app khác) — chỉ kẹp `revision` vào cache key `market_serving/views.py:386`; key đổi tự miss, không stale, không phá ranh giới app. Bảng phạm vi còn **12 file**.
+- **P2**: bổ sung `L-F04` vào danh sách lessons; audit doc §F Q2 sửa cận dưới 500M + §G trỏ Entry 622/623.
+- **Gate**: doc-only ⇒ `tsc`/build/test/BE pytest và G0 (3 query trên VPS) **CHƯA CHẠY**; `check-lessons` 60/60 + `check-multi-agent` 0 lỗi đã chạy ở REV.2 (không đổi lesson/file gate ở REV.2.1).
+
+## Entry 622: REV.2 decision Whale/CVD — sửa 4 P0 + 5 P1 theo review độc lập (2026-11-24)
+
+- **Date**: 2026-11-24 · **Type**: decision revision (doc-only, 0 dòng source) · **Lessons áp dụng**: L-V01, L-V02, L-V04, L-T01, L-T02, L-F07 (checklist đã tick trong doc).
+- **Tài liệu**: `docs/DECISION_WHALE_CVD_API_CONTRACT_20261124.md` ghi đè REV.1; `docs/AUDIT_BE_REQUEST_WHALE_CVD_REALTIME_2026-11-24.md` §F cập nhật D1/D5. Reviewer verdict REV.1 = NEED_REVISION; **mọi P0/P1/P2 đều tự verify trực tiếp và có thật** (log §6 trong doc) — không tin mùi review.
+- **P0-1**: REV.1 trả `summary` 2 field ⇒ widget `isWhaleFeedResponse()` (`VNInvestClient.ts:238-244,1030`) đẩy raw vào `WhalePanel.tsx:31-36` đọc `whale_buy/shark_buy/small_buy...` (`lib/types/vninvest.ts:72-81`) ⇒ NaN. Sửa: đủ **8 field**, summary tính theo window `from..to` không theo page.
+- **P0-2**: đổi nguồn `whale_orders` từ raw `IntradayTick` sang `WhaleAlertCanonical` (per-tick, `matched_value`/`order_id`, 365 ngày `signals.py:35`) — REV.1 nói canonical "suy ratio" là SAI (`tasks.py:453-454` là OrderFlowEvent). Chốt `min_value=500M` (`order_flow_engine.py:31`), `small=[500M,1B)`; sửa bug `tasks.py:281` ép UNKNOWN→sell bằng filter ở `order_flow_engine.py:244-256`; ví dụ 2,94B → `shark`.
+- **P0-3**: CVD thêm `unit:"vnd"` (`session_facts_engine.py:122-127` cộng VND), scope `market:read` (`views.py:358-359` thiếu), fix `else:sell` `:124-127`, cache key kẹp `computed_at` + invalidate prefix `core:cvd_series:v2:*` (`order_flow_engine.py:41,231-237`), strict window (`views.py:273-275`), không paginate.
+- **P0-4**: WS bổ sung `consumers.py:174-200` + `ws_ticket.py:78-93` + protocol subscribe `events[]`; control `not_provisioned` chỉ cho event opt-in; machine PAT `ws:realtime`, human session ticket không bị chặn (`views_ws_ticket.py:44-45`).
+- **P1/P2**: bỏ `409 revision_changed` (REV.1 gán sai helper cho `pagination.py:35-59`); giữ limit whale default 50/max 1000 (`market.js:584-587`); CORS test `override_settings(DYNAMIC=False)` + env VPS; thêm `@extend_schema` + `core-route-manifest.json`; sửa citation `native_views.ts` → `nativeShapes.ts:120`; bảng phạm vi 13 file.
+- **G0 CHƯA CHẠY**: probe DB staging đơn vị `price` (fixture `18.20` nghìn đồng vs `50000` VND) + tỷ lệ `side='UNKNOWN'` trước khi code. `tsc`/build/test/BE pytest **CHƯA CHẠY**. Gate đã chạy (REV.2): `node scripts/check-lessons.mjs` **60/60 lesson, sạch** · `node packages/web/scripts/check-multi-agent.mjs` **0 lỗi**. Entry 623 ghi REV.2.1.
+
+## Entry 621: Chốt 5 quyết định contract Whale/CVD (backend owner, 2026-11-24)
+
+- **Date**: 2026-11-24 · **Type**: decision (doc-only, 0 dòng source) · **Vai trò**: người viết code backend `vninvest`, chốt thay Owner — không đẩy Q1–Q5 lại cho widget team.
+- **Tài liệu**: `docs/DECISION_WHALE_CVD_API_CONTRACT_20261124.md` (mới); `docs/AUDIT_BE_REQUEST_WHALE_CVD_REALTIME_2026-11-24.md` cập nhật §F/§G từ "câu hỏi" sang "đã chốt".
+- **D1 nguồn/SLA**: SSOT aggressor = `market_data/models.py:285-316` `IntradayTick.side`; hydrate hot 300s / warm 900s (`market_serving/realtime_prefetch.py:43-44`) ⇒ **bỏ SLA `<1s`**, thay freshness đo được; WS `whale_order`/`orderflow_delta` trả control event `not_provisioned`; REST orderflow trả `501`; retention **7 ngày** (`service_ops/domain_configs/signals.py:34`), không hứa 30.
+- **D2 enum**: `{small,shark,whale}` (khớp widget `src/lib/types/vninvest.ts:59`), ngưỡng `small<1B<=shark<5B<=whale`; đổi `normal→small` ở `signal_intelligence/views.py:354-360`, bỏ `large`.
+- **D3 whale**: giữ URL `/core/v1/realtime/whale-feed/{symbol}/` (widget `VNInvestClient.ts:258`), payload flat gồm `whale_orders[]` từ `IntradayTick`, 1 builder chung với `/core/v1/whale-feed`; `buyer_broker/seller_broker=null`, không bịa.
+- **D4 CVD**: KHÔNG xây endpoint tick-based; mở rộng `/core/v1/session-facts/{symbol}/cvd/` (`views.py:416-424`) thêm `delta/revision/updated_at/source:'whale_aggregate'/trade_count:null`, window `{5m,15m,30m,1h}` (`views.py:273-275`), route orderflow mới chỉ mount 501.
+- **D5 contract chung**: giữ `+07:00`; cursor base64 `{v,ts,id}` + 409 `revision_changed`; limit 200/1000; status 501/200-empty/400/409; allow-list `charts.edusuccess.vn` (ticket P0-B6 tắt dynamic allow riêng); WS event mới ticket-only scope `ws:realtime`.
+- **Gate**: doc-only ⇒ `tsc`/build/test/BE pytest **CHƯA CHẠY** (chưa sửa code); `node packages/web/scripts/check-multi-agent.mjs` **0 lỗi**.
+
+## Entry 620: Audit + phản biện request Whale/CVD realtime từ widget team (2026-11-24)
+
+- **Date**: 2026-11-24 · **Type**: audit/phản biện (doc-only, 0 dòng source) · **Repo**: `vninvest`.
+- **Đối tượng**: `vninvestcharts-widget@origin/dev@13e4da81` `docs/requests/BE_REQUEST_WHALE_CVD_REALTIME_2026-11-24.md` (tạo ở `72ac0bdb`, không đổi tới HEAD). **File này KHÔNG có trên `vninvest@dev` local** — chỉ có ở repo widget.
+- **Tài liệu**: `docs/AUDIT_BE_REQUEST_WHALE_CVD_REALTIME_2026-11-24.md` (mới) — bản đồ 17 file, luồng trace, 13 CONTRADICTIONS, 13 findings, 5 câu hỏi Owner.
+- **Verdict**: **chưa implement được** — blocker ở quyết định, không thiếu code. 5 phát hiện P0/P1 chính: (1) `whale_orders[{ts,price,volume,matched_value,side,size_class}]` **đã có** ở `signal_intelligence/views.py:1036-1058` (`/core/v1/whale-feed`) — request định tạo hợp đồng whale thứ 4, vi phạm SSOT; (2) `size_class` 3 enum lệch: request `:39` `{whale,shark,large,small}` / BE `views.py:354-360` `{whale,shark,normal}` / widget `src/lib/types/vninvest.ts:59` `{small,shark,whale}`, kèm 3 bộ ngưỡng 500M/1B-5B/1M; (3) aggressor thật duy nhất `market_data/models.py:285-310` `IntradayTick.side`, whale side là suy aggregate + detect batch ⇒ SLA WS `<1s` chưa có nguồn (Q-B4 mở tại `docs/BACKEND_VNINVEST_ENTERPRISE_DEMO_SPEC_2026-11-12.md:225`); (4) route `/core/v1/orderflow/{symbol}/cvd/` **KHÔNG TỒN TẠI** — endpoint thật `market_serving/urls.py:23` → `views.py:416-424` đã có `buy_volume/sell_volume`; (5) UTC `Z` / 501 `not_provisioned` / limit 200-1000 xung đột với `views.py:418` (`+07:00`), `views.py:378-406` (200-rỗng), `native_views.py:349` (default 50/max 200).
+- **Bổ sung**: CORS `charts.edusuccess.vn` đã được phép mặc định qua `settings.py:462` + `identity_access/apps.py:4-10` (allow-all trên `/core/v1/*`) — yêu cầu "cấp CORS" sai bản chất; WS nhận raw PAT qua query (`consumers.py:129-132`) ⇒ cần Security chốt. Scope tổng thể lệch quyết định PM: vninvest là backend demo/reference, không phải data product (`..._SPEC_...:31-34`).
+- **Gate**: doc-only ⇒ `tsc`/`build`/`test`/BE pytest **CHƯA CHẠY**. Gate chạy thật: `git status` sạch trước audit · `git log --all --diff-filter=A` (2 repo) · `git diff --stat 72ac0bdb 13e4da81 -- <doc>` rỗng · `git rev-parse` các ref.
+
 ## Entry 619: Owner waiver ToS — cho phep keo thật CafeF / deploy (2026-11-24)
 
 - Owner chỉ đạo "làm luôn đi, ký gì nữa" ⇒ waiver gate ToS/rate-limit ghi tại `docs/DECISION_SSOT_OWNER_ITEMS_20261124.md` §5b. Pacing ≥1 s/req vẫn giữ. Gate UI default P3 không đổi.
