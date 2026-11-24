@@ -317,3 +317,88 @@ class RealtimeCampaignRoutesTest(TestCase):
         self.assertIn('meta', payload)
         self.assertEqual(payload['filters']['symbols'], ['VCI'])
         self.assertEqual(payload['filters']['scope'], 'custom')
+
+
+class WhaleFeedContractTests(TestCase):
+    """REV.2.1 whale contract: per-tick only, 8-field summary, honest empty/501."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='whale-contract-user',
+            email='whale-contract@test.local',
+            password='pass123',
+        )
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _whale(self, *, matched_value, prefix='whale_tick:', symbol='VIC', side='buy'):
+        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+        session_date = timezone.localdate()
+        alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol=symbol,
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='whale contract fixture',
+            value=str(matched_value),
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=session_date,
+            triggered_at=timezone.now(),
+            source_ref=f'{prefix}{symbol}:fixture:{matched_value}',
+        )
+        return WhaleAlertCanonical.objects.create(
+            alert=alert,
+            symbol=symbol,
+            session_date=session_date,
+            side=WhaleAlertCanonical.SideChoices.BUY if side == 'buy' else WhaleAlertCanonical.SideChoices.SELL,
+            price='24500.00',
+            volume=max(1, matched_value // 24500),
+            matched_value=matched_value,
+            executed_at=timezone.now(),
+        )
+
+    def test_aggregate_tick_session_rows_are_not_returned(self):
+        self._whale(matched_value=2_940_000_000)
+        self._whale(matched_value=5_000_000_000, prefix='tick_session:')
+
+        response = self.client.get('/core/v1/realtime/whale-feed/VIC/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        orders = response.json()['whale_orders']
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0]['matched_value'], 2_940_000_000)
+        self.assertEqual(orders[0]['size_class'], 'shark')
+
+    def test_summary_has_eight_fields_and_invariant(self):
+        self._whale(matched_value=600_000_000)
+
+        response = self.client.get('/core/v1/realtime/whale-feed/VIC/')
+
+        payload = response.json()
+        self.assertEqual(payload['whale_orders'][0]['size_class'], 'small')
+        summary = payload['summary']
+        for key in ('buy_value', 'sell_value', 'whale_buy', 'whale_sell',
+                    'shark_buy', 'shark_sell', 'small_buy', 'small_sell'):
+            self.assertIn(key, summary)
+        self.assertEqual(summary['buy_value'], summary['whale_buy'] + summary['shark_buy'] + summary['small_buy'])
+        self.assertEqual(summary['sell_value'], summary['whale_sell'] + summary['shark_sell'] + summary['small_sell'])
+
+    def test_min_value_floor_and_empty_state(self):
+        response = self.client.get('/core/v1/realtime/whale-feed/ZZZ/?min_value=100000000')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'MIN_VALUE_BELOW_FLOOR')
+
+        empty = self.client.get('/core/v1/realtime/whale-feed/ZZZ/').json()
+        self.assertEqual(empty['whale_orders'], [])
+        self.assertEqual(empty['revision'], 0)
+        self.assertIsNone(empty['updated_at'])
+
+    def test_orderflow_aggressor_routes_are_not_provisioned(self):
+        for path in ('/core/v1/orderflow/VIC/cvd/', '/core/v1/orderflow/VIC/trades/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, status.HTTP_501_NOT_IMPLEMENTED)
+            self.assertEqual(response.json()['reason'], 'not_provisioned')
