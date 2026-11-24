@@ -1,7 +1,8 @@
 # Plan — Lấy toàn bộ OHLC từ CafeF làm nguồn ĐỐI CHIẾU (2026-11-24)
 
-> Trạng thái: **REVISION 2 — chờ audit vòng 3 (cuối). KHÔNG sửa code.**
-> Audit v1/v2: `docs/evidence/widget-news-events/AUDIT_PLAN_CAFEF_V{1,2}_20261124.md`.
+> Trạng thái: **AGREE (audit v3) — plan được phê duyệt, chờ owner cho phép triển khai. Chưa sửa code.**
+> Audit v1/v2/v3: `docs/evidence/widget-news-events/AUDIT_PLAN_CAFEF_V{1,2,3}_20261124.md`.
+> Reservation trước C2: owner chốt ToS/rate-limit + `openpyxl` (deny-list); đo perf thật trước khi PASS.
 > Nguồn gốc: `docs/evidence/widget-news-events/TPB_OLD_BARS_ADJUSTMENT_REVERIFY_20261124.md`.
 
 ## 0. Bằng chứng endpoint (auditor tự đo lại)
