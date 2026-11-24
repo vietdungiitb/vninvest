@@ -441,13 +441,26 @@ def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
             'ts': last.executed_at.isoformat(), 'id': str(last.pk),
         }).encode('ascii')).decode('ascii')
 
+    # Keep the legacy `alerts[]` list served by the old view (max 50, same shape).
+    from signal_intelligence.models import UnifiedAlert
+    alert_rows = UnifiedAlert.objects.filter(symbol=symbol).order_by('-triggered_at')[:alert_limit]
+    alerts = [{
+        'id': str(a.alert_id),
+        'alert_type': a.alert_type,
+        'severity': a.severity,
+        'title': a.title,
+        'value': str(a.value) if a.value is not None else None,
+        'direction': a.direction,
+        'triggered_at': a.triggered_at.isoformat(),
+    } for a in alert_rows]
+
     updated_at = max((row.executed_at for row in all_rows), default=None)
     return {
         'symbol': symbol,
         'revision': int(updated_at.timestamp()) if updated_at is not None else 0,
         'updated_at': _whale_local_iso(updated_at),
         'whale_orders': orders,
-        'alerts': [],
+        'alerts': alerts,
         'summary': summary,
         'next_cursor': next_cursor,
         'source': 'whale_alert_canonical',

@@ -68,8 +68,9 @@ DB riêng `whale_cvd_r2` + `whale_cvd_r1`, cleanup DROP FORCE + remove worktree 
 | `python -m py_compile` 5 file BE | exit 0 |
 | `node scripts/check-lessons.mjs` | 60/60, sạch |
 | `node packages/web/scripts/check-multi-agent.mjs` | 0 lỗi, PASS |
-| `node scripts/pre-push-gate.mjs` | (cập nhật sau khi chạy) |
-| `npx tsc --noEmit` (web) | (cập nhật sau khi chạy) |
+| `node scripts/pre-push-gate.mjs` | **36 PASS / 0 SKIP / 0 FAIL** — cho phép push |
+| `npx tsc --noEmit` (web) | exit 0 |
+| `npm test -- --runTestsByPath src/adapters/core/__tests__/route-contract.test.js` | **1 suite / 4 test PASS** (manifest 540 route khớp) |
 
 ### CHƯA CHẠY / thuộc coordinator
 

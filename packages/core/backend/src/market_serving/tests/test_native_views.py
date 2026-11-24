@@ -372,6 +372,8 @@ class WhaleFeedContractTests(TestCase):
         self.assertEqual(len(orders), 1)
         self.assertEqual(orders[0]['matched_value'], 2_940_000_000)
         self.assertEqual(orders[0]['size_class'], 'shark')
+        # Regression guard: legacy alerts[] list must survive the new builder.
+        self.assertEqual(len(response.json()['alerts']), 2)
 
     def test_summary_has_eight_fields_and_invariant(self):
         self._whale(matched_value=600_000_000)

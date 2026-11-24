@@ -108,6 +108,7 @@ def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trad
         'revision': 0,
         'updated_at': None,
         'trade_count': None,
+        'delta': 0,
     }
 
 
@@ -422,8 +423,12 @@ class SessionFactsCvdView(APIView):
             empty_payload['_source'] = 'no-data'
             return Response(empty_payload)
 
+        top_level_delta = sum(
+            int(row['buy_volume']) - int(row['sell_volume']) for row in bucket_rows
+        )
         data = {
             'symbol': symbol,
+            'delta': top_level_delta,
             'session_date': facts.session_date.isoformat(),
             'window': window,
             'bucket_minutes': bucket_minutes,

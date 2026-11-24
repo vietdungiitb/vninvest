@@ -433,6 +433,7 @@ class SessionFactsCvdContractTests(TestCase):
         self.assertIsNone(bucket['trade_count'])
         self.assertEqual(payload['revision'], int(self.facts.computed_at.timestamp()))
         self.assertTrue(payload['updated_at'].endswith('+07:00'))
+        self.assertEqual(payload['delta'], sum(b['delta'] for b in payload['cvd_series']))
 
     def test_window_1m_is_rejected(self):
         response = self.client.get('/core/v1/session-facts/HPG/cvd/?window=1m')
@@ -449,6 +450,7 @@ class SessionFactsCvdContractTests(TestCase):
         self.assertEqual(payload['source'], 'whale_aggregate')
         self.assertEqual(payload['revision'], 0)
         self.assertIsNone(payload['updated_at'])
+        self.assertEqual(payload['delta'], 0)
 
     def test_market_read_scope_is_enforced(self):
         from rest_framework.exceptions import PermissionDenied
