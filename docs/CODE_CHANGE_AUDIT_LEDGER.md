@@ -1,3 +1,11 @@
+## Entry 620: M0 — backup + bulk CafeF 3 sàn 2011–2026 (2,3 triệu dòng)
+
+- **Date**: 2026-11-24 · **Type**: feat · **Branch**: `feat/price-mig-bulk` (worktree `wt/price-mig-bulk`) · Claim `price-mig-bulk`.
+- **Thay đổi**: `cafef/contract.py` parse `change_pct` từ `'+1,65 (+4,01%)'`; `models.py` + migration `0011_cafef_change_pct` (makemigrations); `cafef/importer.py` nguồn = `Vnbroker().reference('cafef').bulk_year()` (fallback local XLSX), `_fetch_rows_with_rejected`, update guard `if field in row`.
+- **Chạy thật VPS**: backup 99 MB sha256 `6c5a7e05…c19691`; bulk **2.308.756 dòng** (2022 đủ 3 sàn 399.315); 7 lô lỗi 504/400/503 CafeF ghi rõ, không suy diễn. Gate disk 55G < 80G — giải trình.
+- **Audit 4 vòng**: v1 hàm chết/evidence mismatch → v2 KeyError change_pct/rejected tautology → v3 test xanh giả → v4 **PASS** (test đi thật UPDATE: `updated==1`, `change_pct` giữ, `bulk_update` gọi 1 lần). 7/7 test OK trên DB riêng; gate 36/36.
+- **Reservation cho M1**: `change_pct` NULL từ frame vnbroker ⇒ retry local XLSX; script bulk chỉ ở `/tmp` VPS; thiếu 2026 (CafeF 400). Chưa đụng `DailyPrice`. Evidence: `docs/evidence/widget-news-events/m0-bulk-coverage.md`.
+
 ## Entry 619: Owner waiver ToS — cho phep keo thật CafeF / deploy (2026-11-24)
 
 - Owner chỉ đạo "làm luôn đi, ký gì nữa" ⇒ waiver gate ToS/rate-limit ghi tại `docs/DECISION_SSOT_OWNER_ITEMS_20261124.md` §5b. Pacing ≥1 s/req vẫn giữ. Gate UI default P3 không đổi.
