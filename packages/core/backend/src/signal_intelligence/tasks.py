@@ -278,6 +278,8 @@ def _bulk_write_whale_canonical(whale_df, symbol: str, session_date) -> int:
         if hasattr(executed_at, 'to_pydatetime'):
             executed_at = executed_at.to_pydatetime()
         side_raw      = str(row.get('side') or 'UNKNOWN').upper()
+        if side_raw not in ('BUY', 'SELL'):
+            continue  # UN aggressor: never coerce UNKNOWN into `sell`
         side          = 'buy' if side_raw == 'BUY' else 'sell'
         matched_value = int(round(float(row.get('value') or 0)))
         price         = float(row.get('price') or 0)

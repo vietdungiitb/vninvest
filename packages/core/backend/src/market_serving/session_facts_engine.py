@@ -93,9 +93,16 @@ def _floor_bucket(dt: datetime, bucket_minutes: int) -> datetime:
 def _load_session_rows(symbol: str, session_date: date) -> list[dict]:
     from signal_intelligence.models import WhaleAlertCanonical
 
+    # G0 2026-11-24: WhaleAlertCanonical also holds session aggregates
+    # (`tick_session:`) whose matched_value is clamped at 5B. Including them
+    # double-counts CVD. Only per-tick rows are aggressor observations.
     return list(
         WhaleAlertCanonical.objects
-        .filter(symbol=symbol.upper(), session_date=session_date)
+        .filter(
+            symbol=symbol.upper(),
+            session_date=session_date,
+            alert__source_ref__startswith='whale_tick:',
+        )
         .values('side', 'matched_value', 'executed_at')
         .order_by('executed_at')
     )
@@ -123,8 +130,9 @@ def _compute_session_facts_from_rows(
         side = str(row.get('side') or '').strip().lower()
         if side == 'buy':
             buckets[bucket_key]['buy'] += value
-        else:
+        elif side == 'sell':
             buckets[bucket_key]['sell'] += value
+        # UNKNOWN/other sides are not aggressor evidence — skip (Rule 15).
         buckets[bucket_key]['total'] += value
         if value >= _WHALE_THRESHOLD_VND:
             buckets[bucket_key]['whale'] += value
