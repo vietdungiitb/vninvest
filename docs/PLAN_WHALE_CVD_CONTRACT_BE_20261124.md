@@ -41,7 +41,7 @@
 
 ## 4. SCOPE / LIMIT / non-goals / rollback
 
-- **SCOPE (14 path)** theo decision doc §5 (sửa từ nhãn "12/13 file" — auditor vòng 1 objection 5):
+- **SCOPE (14 nhóm / 20 path cụ thể)** theo decision doc §5 (sửa từ nhãn "12/13 file" — auditor vòng 1 objection 5; reconcile R3 re-audit vòng 2):
   1. `packages/core/backend/src/signal_intelligence/order_flow_engine.py` (:244-256)
   2. `packages/core/backend/src/signal_intelligence/tasks.py` (:280-285)
   3. `packages/core/backend/src/signal_intelligence/views.py` (:354-360, :1010-1058)

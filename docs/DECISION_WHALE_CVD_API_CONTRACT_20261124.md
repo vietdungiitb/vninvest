@@ -115,14 +115,14 @@
 
 | Mục | Chốt | Bằng chứng |
 |---|---|---|
-| Múi giờ | Response giữ `+07:00`; input chấp nhận `Z`/`+00:00`/`+07:00` rồi normalize | `views.py:418`, `native_views.py:360`, `tests/test_session_facts_api.py:377` |
+| Múi giờ | Response giữ `+07:00` cho **2 route mới** (`/realtime/whale-feed/{symbol}/`, `/session-facts/{symbol}/cvd/`); input chấp nhận `Z`/`+00:00`/`+07:00` rồi normalize. **Carve-out (REV.2.2):** alias `/core/v1/whale-feed` giữ nguyên `.isoformat()` → `+00:00` (`signal_intelligence/views.py:1038`) + envelope + serializer 2 field (`:107-109`) + `?session_date=`, không đụng để khỏi phá consumer/test cũ | `views.py:418`, `native_views.py:360`, `tests/test_session_facts_api.py:377`, `signal_intelligence/views.py:1038,107-109,1051-1058` |
 | `revision` | Whale: `MAX(executed_at)` epoch s · CVD: `int(computed_at.timestamp())`; empty = `0`; `updated_at` = `dj_timezone.localtime(...).isoformat()` (empty = `null`) | `signal_intelligence/models.py:95`, `market_serving/models.py:101`, `settings.py:354-356` |
 | Cursor | Whale keyset `{executed_at, pk}` base64; `next_cursor:null` = hết; **không có 409** | `pagination.py:35-59` (chỉ DRF cursor), `native_views.py:1091-1161` |
 | `limit` | Whale default 50 / max 1000; CVD không paginate | `native_views.py:349`, `market.js:584-587` |
 | Bucket rỗng | Bỏ hẳn bucket (không 0, không null) | request `:81` cấm gán 0 giả |
 | Status | `501` chưa provision · `200`+`[]`+`data_status` rỗng · `400` params sai | `views.py:378-406` |
 | CORS | Thêm `https://charts.edusuccess.vn` vào `CORS_ALLOWED_ORIGINS` **trong `/opt/vninvest/compose.staging.env`** (production đọc 100% env: `settings.py:452-459`; default localhost chỉ khi DEBUG `:446-451`). Test phải `@override_settings(CORS_API_DYNAMIC_ALLOW=False)` nếu không `OPTIONS 200` PASS giả vì dynamic allow `:462` + `apps.py:4-10` | — |
-| WS auth & protocol | Subscribe: `{action:"subscribe", symbols:[...], events?:["whale_order","orderflow_delta"]}` (`consumers.py:174-200` hiện chỉ có `symbols`). Chỉ gửi `not_provisioned` cho event được **opt-in**, không gửi bừa làm lỗi `ticker_update`. Event mới chỉ cho connection mint bằng **ticket**; machine PAT cần scope `ws:realtime` (`views_ws_ticket.py:44-45`), **human session ticket vẫn dùng bình thường** (`ws_ticket.py:78-93`) — không chặn nhầm. Cần `auth_method: "ticket"|"token"` trong kết quả `resolve_user_from_ws_query()` để phân biệt | — |
+| WS auth & protocol | Subscribe: `{action:"subscribe", symbols:[...], events?:["whale_order","orderflow_delta"]}` (`consumers.py:174-200` hiện chỉ có `symbols`). Chỉ gửi `not_provisioned` cho event được **opt-in**, không gửi bừa làm lỗi `ticker_update`. Event mới chỉ cho connection mint bằng **ticket**; machine PAT cần scope `ws:realtime` (`views_ws_ticket.py:44-45`), **human session ticket vẫn dùng bình thường** (`ws_ticket.py:78-93`) — không chặn nhầm. **Additive (REV.2.2):** thêm hàm mới `resolve_ws_identity() → {user, auth_method:"ticket"|"token"}`, **giữ nguyên** `resolve_user_from_ws_query() → User|None` (`ws_ticket.py:78-93`) để không hỏng `tests/test_ws_ticket.py:60-63,74-76` + `test_ws_ticket_machine_scope.py:87,96`. Consumer dùng hàm mới | — |
 | Scope/throttle | Whale `market:read` (`native_views.py:345-346`), CVD thêm `market:read`, alias `/core/v1/whale-feed` giữ `signals:read` (`views.py:1025`); assert 403/429 | — |
 | SLA | Bỏ `<1s`/p95; thay freshness đo được + probe staging | `realtime_prefetch.py:32-34,43-44` |
 
@@ -145,7 +145,9 @@
 | 9 | `signal_intelligence/consumers.py:174-200` + `identity_access/ws_ticket.py:78-93` | `events[]`, control `not_provisioned`, `auth_method` | consumer test opt-in, không spam |
 | 10 | `/opt/vninvest/compose.staging.env` (VPS) + test CORS | allow-list domain; test `override_settings(DYNAMIC=False)` | preflight 200 thật |
 | 11 | `packages/web/src/adapters/core/__tests__/core-route-manifest.json` | cập nhật route mới | manifest gate |
-| 12 | `packages/core/backend/src/market_serving/tests/test_native_views.py`, `tests/test_session_facts_api.py`, `tests/test_signal_intelligence_api_routes.py` | test mới | đỏ trước, xanh sau |
+| 12 | `packages/core/backend/src/market_serving/tests/test_native_views.py`, `packages/core/backend/tests/test_session_facts_api.py`, `packages/core/backend/tests/test_signal_intelligence_api_routes.py`, `packages/core/backend/tests/test_whale_ws_events.py` (mới), `packages/core/backend/tests/test_whale_cors.py` (mới) | test mới (4 file test + 1 sửa) | đỏ trước, xanh sau |
+
+> **Doc-sync REV.2.2 (đóng R1/R2/R3 của re-audit vòng 2):** 3 reservation đã sửa ở các dòng trên; bảng §5 và `PLAN:44` khớp nhau ở mức **14/nhóm — 20 path cụ thể** (mục 13 gộp 5 path, mục 14 gộp 4 path). Chi tiết path đầy đủ xem `docs/PLAN_WHALE_CVD_CONTRACT_BE_20261124.md` §4; decision doc giữ bảng rút gọn.
 
 **G0 — probe bắt buộc TRƯỚC khi code (CHƯA CHẠY):** trên VPS `14.225.255.47` (repo `/opt/vninvest`, env `compose.staging.env`) chạy 1 lô query read-only:
 1. `market_data_intraday_tick`: phân bố `price` theo `source` (biệt `18.20` nghìn đồng vs `50000` VND — `test_native_views.py:36-52` vs `test_order_flow_dark_value.py:52`) + tỷ lệ `side='UNKNOWN'`. Nếu có nguồn lưu nghìn đồng, normalize về VND trước khi nhân — nếu không, mọi classification sai 1000×.

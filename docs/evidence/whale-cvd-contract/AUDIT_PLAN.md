@@ -24,3 +24,19 @@
 ### Gate chuyển bước
 
 `NEED_REVISION` ⇒ sửa plan + claim, re-audit vòng 2 (tối đa 3 vòng) rồi mới code. Không có objection nào yêu cầu migration hay đụng deny-list.
+
+---
+
+## RE-AUDIT VÒNG 2 — @ `6bfa12861`, tree sạch
+
+**VERDICT: `AGREE`** — 5 objection vòng 1 đóng hết; diff 8 file toàn docs, 0 dòng runtime → không có regression để check.
+
+**Reservation (doc-sync, có owner + step):**
+
+| ID | Nội dung | Owner | Đóng ở |
+|---|---|---|---|
+| R1 | `DECISION:125` vẫn ghi `auth_method` trong `resolve_user_from_ws_query()` — phải sync sang additive `resolve_ws_identity()` (giữ hàm cũ) | backend owner / issuer decision | trước S1, verify S4 |
+| R2 | `DECISION:31,94,118` blanket `+07:00` — cần carve-out alias `/core/v1/whale-feed` như `PLAN:24` | issuer decision | trước S1, verify S2 |
+| R3 | `DECISION §5` bảng 12 row / 3 test file chưa khớp `PLAN:44` "14 path" (thực ra 20 path cụ thể do gộp bullet) | agent `whale-cvd-contract-be` | S1, reconcile khi viết `gates.md` |
+
+**Gate B4→B5:** AGREE ⇒ cho phép code. R1/R2/R3 phải đóng trong S1; không có blocker kiến trúc.
