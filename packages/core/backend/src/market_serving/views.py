@@ -376,7 +376,9 @@ class SessionFactsCvdView(APIView):
 
         window = str(request.query_params.get('window', '15m')).strip().lower()
         if window not in _WINDOW_TO_BUCKET_MINUTES:
-            raise ValidationError({'detail': 'window không được hỗ trợ.', 'code': 'UNSUPPORTED_WINDOW'})
+            return Response({'code': 'UNSUPPORTED_WINDOW',
+                             'detail': 'window chỉ nhận 5m | 15m | 30m | 1h.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window]
         requested_trade_date = _parse_trade_date_param(request)
 
