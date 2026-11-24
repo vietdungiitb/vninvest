@@ -82,6 +82,16 @@ class DailyPrice(models.Model):
         max_digits=18, decimal_places=2, null=True, blank=True,
         verbose_name='Giá đóng cửa đã điều chỉnh',
     )
+    # M2 — SSOT hệ số điều chỉnh: O/H/L adjusted = O/H/L × adj_factor.
+    adj_factor = models.DecimalField(
+        max_digits=20, decimal_places=10, null=True, blank=True,
+        verbose_name='Hệ số điều chỉnh (adj_close/close)',
+    )
+    # Nguồn đã chuẩn hóa (cafef) để guard ingest không ghi đè (tasks.py:792-798).
+    price_source = models.CharField(
+        max_length=32, default='vnbroker_legacy',
+        verbose_name='Nguồn giá đã chuẩn hóa',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
