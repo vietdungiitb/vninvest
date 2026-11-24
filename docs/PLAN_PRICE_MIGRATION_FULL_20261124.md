@@ -1,6 +1,6 @@
-# BÁO CÁO PHƯƠNG ÁN CHUYỂN ĐỔI DỮ LIỆU GIÁ — REVISION 1 (2026-11-24)
+# BÁO CÁO PHƯƠNG ÁN CHUYỂN ĐỔI DỮ LIỆU GIÁ — REVISION 2 (2026-11-24)
 
-> Trạng thái: owner ủy quyền chốt toàn bộ §7 (thay mặt). Audit v1 **REQUEST CHANGES** (6 P0) → đã sửa trong bản này → chờ audit v2.
+> Trạng thái: owner ủy quyền chốt toàn bộ §7 (thay mặt). Audit v1 **REQUEST CHANGES** (6 P0) → v2 (2 objection) → v3 **AGREE**. Đủ điều kiện lập plan triển khai chi tiết.
 > Audit v1: `docs/evidence/widget-news-events/AUDIT_PLAN_PRICE_MIGRATION_FULL_V1_20261124.md`.
 > Không code trong tài liệu này.
 
@@ -42,7 +42,7 @@
 **P0-2 NAV**: `PortfolioEquityCurve/_nav_series` (`portfolio_analytics_views.py:489-546`) phải đổi từ `quantity_hiện_tại × close_365d` sang **chuỗi quantity theo thời gian** (từ `Transaction`/`LedgerEntry`) hoặc ít nhất dùng `adj_close` cho cả entry/exit — không nhân số lượng sau chia với giá thô trước chia.
 
 ## 4. Fan-out (bổ sung P1-1)
-Thêm vào 🔴: **4 beat job đang chạy** — `daily-backfill-prices-1700` (17:05, `settings.py:778-783`, `backfill_daily_prices` 365 ngày VCI+KBS — **job nightly chính, phải pause**), `deep-history-bootstrap-weekly` (CN 03:00 `:811-816`), `pre5y-history-backfill-weekly` (CN 04:00 `:821-830`), `sync-all-corporate-actions` (18:30 `:789-794`); **`ingest-daily-prices-1705` (`settings.py:836-842`) có `enabled: False` — KHÔNG cần pause** (ghi rõ tránh nhầm). + 4 on-demand (`promotion_fast_path.py:99`, `global_symbol_planner.py:143`, `backfill_service.py:56`, `data_ingest/views.py:157`) — pause hết trong S3c–S5. `/bars/` metadata `adjusted` (`stock_mgmt_native_views.py:4398-4418`) đang check `AdjFactor.PARTIAL` ⇒ đổi sang `price_source=='cafef'` nhưng **giữ nhánh `_corporate_actions_enabled()`** (`:4398-4415`) làm flag bao ngoài. Anomaly-alert 5m (`signal_intelligence/materializers.py:508`) pause khi recompute snapshot. RVOL (`market_serving/native_views.py:427`) + whale fallback (`portfolio_analytics_views.py:2853-2870`) đối chiếu volume basis mới. `StockChartView` (`market_data/views.py:184-252`) là **dead code chưa mount** — không sửa, ghi rõ.
+Thêm vào 🔴: **4 beat job đang chạy** — `daily-backfill-prices-1700` (17:05, `settings.py:778-783`, `backfill_daily_prices` 365 ngày VCI+KBS — **job nightly chính, phải pause**), `deep-history-bootstrap-weekly` (CN 03:00 `:811-816`), `pre5y-history-backfill-weekly` (CN 04:00 `:821-830`), `sync-corporate-actions-nightly` (18:30 `:789-794`, task `sync_all_corporate_actions`); **`ingest-daily-prices-1705` (`settings.py:836-842`) có `enabled: False` — KHÔNG cần pause** (ghi rõ tránh nhầm). + 4 on-demand (`promotion_fast_path.py:99`, `global_symbol_planner.py:143`, `backfill_service.py:56`, `data_ingest/views.py:157`) — pause hết trong S3c–S5. `/bars/` metadata `adjusted` (`stock_mgmt_native_views.py:4398-4418`) đang check `AdjFactor.PARTIAL` ⇒ đổi sang `price_source=='cafef'` nhưng **giữ nhánh `_corporate_actions_enabled()`** (`:4398-4415`) làm flag bao ngoài. Anomaly-alert 5m (`signal_intelligence/materializers.py:508`) pause khi recompute snapshot. RVOL (`market_serving/native_views.py:427`) + whale fallback (`portfolio_analytics_views.py:2853-2870`) đối chiếu volume basis mới. `StockChartView` (`market_data/views.py:184-252`) là **dead code chưa mount** — không sửa, ghi rõ.
 
 ## 5. Thứ tự triển khai (sửa P0-3 — 9 bước)
 
@@ -53,7 +53,7 @@ Thêm vào 🔴: **4 beat job đang chạy** — `daily-backfill-prices-1700` (1
 | **S2 Dry-run diff** | Diff `(symbol,date)` mọi field; phân loại DB-only 3 nhóm; kiểm tra CafeF có trả chỉ số | nhảy=warn; lệch unit/ngày=halt; drift phân loại theo §0.5 |
 | **S3a Schema migration** | Thêm `price_source` + **`adj_factor`** (SSOT hệ số, §3) + index `CREATE INDEX CONCURRENTLY` trên bảng 4,58M | migration chạy xong, không lock dài |
 | **S3b Guard + Pause** | **Điểm guard thật là `data_ingest/tasks.py:792-798`** (upsert `update_fields`), KHÔNG phải `vnbroker_adapter.py:763` (chỉ dựng row OHLCV — để nguyên). Thêm skip `(symbol,date)` có `price_source='cafef'` tại upsert; **pause 4 beat đang chạy (§4) + 4 on-demand + anomaly-alert 5m**; `adjustment.py` giữ flag tắt | chạy nightly giả lập → 0 row cafef bị đổi |
-| **S3c Persist** | Ghi mọi field từ `CafefDailyPrice`; **INSERT cả CafeF-only** (~38.986 dòng/2022); DB-only: giữ `close` cũ + **set `adj_close=NULL`** + cờ; **KHÔNG UPDATE in-place khi đang có traffic** — ghi cột mới rồi cutover bằng flag 1 lần | assert `updated_count == dry_run_matched_count` + checksum mẫu (không dùng "row count trước=after"); VACUUM ANALYZE giữa lô |
+| **S3c Persist** | **Lưu inserted_keys** của mọi dòng CafeF-only INSERT vào file/bảng staging (bắt buộc cho rollback S6); Ghi mọi field từ `CafefDailyPrice`; **INSERT cả CafeF-only** (~38.986 dòng/2022); DB-only: giữ `close` cũ + **set `adj_close=NULL`** + cờ; **KHÔNG UPDATE in-place khi đang có traffic** — ghi cột mới rồi cutover bằng flag 1 lần | assert `updated_count == dry_run_matched_count` + checksum mẫu (không dùng "row count trước=after"); VACUUM ANALYZE giữa lô |
 | **S4 Invalidate** | Xoá cache §4.2; rebuild coverage/inventory | cache key mới trả số mới |
 | **S5 Recompute + Deploy consumer** | Chạy materializer SymbolSnapshot + pre-open (§4 bổ sung); deploy BE+FE §4 trong cùng release; gắn `price_basis`; **resume beat** | E2E: chart TPB adjusted=17.940 toggle raw=42.750; không trộn basis |
 | **S6 Verify + Monitor** | 20 mã × 5 năm đối chiếu; drift 2 tuần; rollback **chọn lọc `WHERE date<=cutover`** từ bảng old_* + **DELETE các dòng CafeF-only vừa INSERT** (theo `inserted_keys` lưu ở S3c, ~38.986 dòng/2022) — KHÔNG restore pg_dump đè dữ liệu mới | parity report; rollback sẵn trong 2 tuần |
@@ -68,4 +68,4 @@ Thêm vào 🔴: **4 beat job đang chạy** — `daily-backfill-prices-1700` (1
 Disk (gate 80GB + VACUUM) · rollback chọn lọc · trộn basis (maintenance window) · NAV quantity time-series · `is_adjusted` semantics · benchmark chỉ số chưa xác minh.
 
 ## 8. Kết luận
-REVISION 1 đóng 6 P0: T+1/rebase, OHLC ratio + NAV, thứ tự schema→guard→persist, field/volume, DB-only dọn adj_close + CafeF-only INSERT + tiêu chí không false-green, đường fetch vnbroker + số liệu gộp 3 sàn. Chờ audit v2 trước khi lập plan triển khai chi tiết.
+REVISION 1 đóng 6 P0: T+1/rebase, OHLC ratio + NAV, thứ tự schema→guard→persist, field/volume, DB-only dọn adj_close + CafeF-only INSERT + tiêu chí không false-green, đường fetch vnbroker + số liệu gộp 3 sàn. Audit v3 **AGREE** — chuyển sang lập plan triển khai chi tiết (3 reservation nhỏ hấp thụ ở bản triển khai).
