@@ -326,17 +326,6 @@ class RealtimeBreadthView(APIView):
         })
 
 
-@extend_schema(
-    summary='RealtimeWhaleFeedView',
-    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
-    responses={
-        200: OpenApiTypes.OBJECT,
-        400: OpenApiTypes.OBJECT,
-        401: OpenApiTypes.OBJECT,
-        403: OpenApiTypes.OBJECT,
-        404: OpenApiTypes.OBJECT,
-    },
-)
 # ── Whale feed contract REV.2.1 ─────────────────────────────────────────────
 # Only per-tick rows belong in whale_orders[]. WhaleAlertCanonical also receives
 # session aggregates (`tick_session:` from detect_and_store_global_whale_alerts →
@@ -468,6 +457,17 @@ def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
     }
 
 
+@extend_schema(
+    summary='RealtimeWhaleFeedView',
+    description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+)
 class RealtimeWhaleFeedView(APIView):
     """GET /core/v1/realtime/whale-feed/<symbol>/ — per-tick whale feed."""
     permission_classes = [permissions.IsAuthenticated]
