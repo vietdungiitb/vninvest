@@ -1,3 +1,10 @@
+## Entry 633: M5a — BE read contracts cho adjusted price
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.
+- **Thay đổi**: `DailyPriceSerializer` + `_serialize_price_point` + `_aggregate_daily_rows` (W/M lấy field phiên cuối) + `_ohlcv_bar_from_daily`/`_aggregate_daily_to_ohlcv_bars` (cùng flag `CORPORATE_ACTIONS_ENABLED`) trả `adj_close`/`adj_factor`/`price_source`. Chưa đổi consumer, chưa scale nến.
+- **Gate**: RED 6 lỗi → GREEN **6/6**; full `market_data` 264 test với **1 fail pre-existing** (đã chứng minh bằng HEAD sạch: `test_stock_management_technicals_bulk...`). Golden TPB 2022 `42750/17940/0.4196491228` đối chiếu DB thật.
+- Evidence: `docs/evidence/widget-news-events/m5a-read-contracts.md`.
+
 ## Entry 632: M4 — APPLY thật HOSE 2022 (đối chiếu DB, Res-1 đóng)
 
 - **Date**: 2026-11-25 · **Type**: ops + fix · **Branch**: `feat/price-mig-persist`.

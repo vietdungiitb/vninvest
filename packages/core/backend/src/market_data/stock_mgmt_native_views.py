@@ -981,21 +981,33 @@ def _interval_for_timeframe(timeframe):
     }[timeframe]
 
 
-def _serialize_price_point(point_dt, open_price, high_price, low_price, close_price, volume):
-    return {
+def _serialize_price_point(point_dt, open_price, high_price, low_price, close_price, volume,
+                           adj_close=None, adj_factor=None, price_source=None):
+    point = {
         'date': point_dt.isoformat(),
         'open': _to_float(open_price),
         'high': _to_float(high_price),
         'low': _to_float(low_price),
         'close': _to_float(close_price),
         'volume': _to_float(volume),
+        # M5a: field điều chỉnh để FE scale O/H/L/C theo adj_factor.
+        # Intraday không có các field này ⇒ None (FE fallback hành vi cũ).
+        'adj_close': _to_float(adj_close) if adj_close is not None else None,
+        'adj_factor': _to_float(adj_factor) if adj_factor is not None else None,
+        'price_source': price_source,
     }
+    return point
 
 
 def _aggregate_daily_rows(rows, timeframe):
     if timeframe == 'D':
         return [
-            _serialize_price_point(datetime.combine(row.date, time.min), row.open, row.high, row.low, row.close, row.volume)
+            _serialize_price_point(
+                datetime.combine(row.date, time.min), row.open, row.high, row.low, row.close, row.volume,
+                adj_close=getattr(row, 'adj_close', None),
+                adj_factor=getattr(row, 'adj_factor', None),
+                price_source=getattr(row, 'price_source', None),
+            )
             for row in rows
         ]
 
@@ -1018,6 +1030,10 @@ def _aggregate_daily_rows(rows, timeframe):
                 'low': row.low,
                 'close': row.close,
                 'volume': _to_int(row.volume) or 0,
+                # Reservation 5: mang field điều chỉnh từ phiên cuối bucket.
+                'adj_close': getattr(row, 'adj_close', None),
+                'adj_factor': getattr(row, 'adj_factor', None),
+                'price_source': getattr(row, 'price_source', None),
             }
             buckets.append(current_bucket)
             continue
@@ -1027,6 +1043,10 @@ def _aggregate_daily_rows(rows, timeframe):
         current_bucket['low'] = min(current_bucket['low'], row.low)
         current_bucket['close'] = row.close
         current_bucket['volume'] += _to_int(row.volume) or 0
+        # Mỗi phiên mới là phiên cuối hiện tại ⇒ cập nhật field điều chỉnh.
+        current_bucket['adj_close'] = getattr(row, 'adj_close', None)
+        current_bucket['adj_factor'] = getattr(row, 'adj_factor', None)
+        current_bucket['price_source'] = getattr(row, 'price_source', None)
 
     return [
         _serialize_price_point(
@@ -1036,6 +1056,9 @@ def _aggregate_daily_rows(rows, timeframe):
             bucket['low'],
             bucket['close'],
             bucket['volume'],
+            adj_close=bucket['adj_close'],
+            adj_factor=bucket['adj_factor'],
+            price_source=bucket['price_source'],
         )
         for bucket in buckets
     ]
@@ -4070,6 +4093,8 @@ def _ohlcv_bar_from_daily(row):
     }
     if _corporate_actions_enabled():
         bar['adj_close'] = _to_float(row.adj_close)
+        bar['adj_factor'] = _to_float(getattr(row, 'adj_factor', None)) if getattr(row, 'adj_factor', None) is not None else None
+        bar['price_source'] = getattr(row, 'price_source', None)
     return bar
 
 
@@ -4090,6 +4115,8 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
                 'low': row.low,
                 'close': row.close,
                 'adj_close': row.adj_close,
+                'adj_factor': getattr(row, 'adj_factor', None),
+                'price_source': getattr(row, 'price_source', None),
                 'volume': _to_int(row.volume) or 0,
             }
             buckets.append(current)
@@ -4098,6 +4125,8 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
             current['low'] = min(current['low'], row.low)
             current['close'] = row.close
             current['adj_close'] = row.adj_close
+            current['adj_factor'] = getattr(row, 'adj_factor', None)
+            current['price_source'] = getattr(row, 'price_source', None)
             current['volume'] += _to_int(row.volume) or 0
     result = []
     for b in buckets:
@@ -4112,6 +4141,8 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
         }
         if _corporate_actions_enabled():
             bar['adj_close'] = _to_float(b['adj_close'])
+            bar['adj_factor'] = _to_float(b['adj_factor']) if b['adj_factor'] is not None else None
+            bar['price_source'] = b['price_source']
         result.append(bar)
     return result
 

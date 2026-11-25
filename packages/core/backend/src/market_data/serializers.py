@@ -22,5 +22,6 @@ class DailyPriceSerializer(serializers.ModelSerializer):
         fields = [
             'symbol', 'date', 'open', 'high', 'low', 'close',
             'volume', 'value', 'change_pct', 'source', 'is_adjusted',
+            'adj_close', 'adj_factor', 'price_source',
         ]
         read_only_fields = fields
