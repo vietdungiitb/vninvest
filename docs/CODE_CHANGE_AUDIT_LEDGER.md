@@ -1,3 +1,11 @@
+## Entry 641: M4 apply toàn bộ + cutover runtime
+
+- **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-readiness` (docs).
+- **Apply**: 3 worker song song, mỗi lô process riêng. Verify DB cuối: `cafef=1.904.487`, 100% có `adj_factor`, `bad_cafef=0`, `bad_unmapped=0`; 4 mismatch đúng lỗi nguồn CafeF đã loại. 5 lô có 0 dòng nguồn ⇒ không cần apply.
+- **Hạ tầng**: core-api 512MB→4GB, DB 2GB→12GB, BATCH 2000→500; image `cutover` giữ code; compose truyền 2 flag (commit trailer `Claim-Deny-List:`).
+- **Cutover**: `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, migration `advisory/0024` + `user_workspace/0031`, deploy FE dist, `cache.clear()`. E2E API `/chart` 200 + adjusted_display=true + TPB `17940`; Visual E2E **CHƯA CHẠY** (màn hình login, không có credentials).
+- Evidence: `docs/evidence/widget-news-events/m4-apply-all-and-cutover.md`.
+
 ## Entry 640: Whale/CVD full timeframe — re-audit 2 vòng, fix P0/P1, handoff widget
 
 - **Date**: 2026-11-25 · **Type**: feat + fix · **Branch**: `feat/whale-cvd-full-tf` (base `origin/dev`) · Claim `whale-cvd-full-tf`.
