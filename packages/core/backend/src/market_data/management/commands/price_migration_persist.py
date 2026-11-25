@@ -6,6 +6,7 @@ Mặc định DRY-RUN (chỉ đếm). --apply bắt buộc PRICE_MIGRATION_PAUSE
 import json
 import os
 from collections import Counter
+from datetime import date
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -54,16 +55,22 @@ class Command(BaseCommand):
             raise CommandError(
                 f'no symbols for exchange={opts["exchange"]} — refused to process all exchanges')
 
+        # M6c hotfix: date__year sinh EXTRACT(YEAR FROM date) ⇒ Seq Scan toàn
+        # bảng (EXPLAIN cost 153014, đo 2026-11-25). Dùng range để ăn index
+        # `market_data_dailyprice_date_e5322378` / cafef tương ứng.
+        date_from = date(year, 1, 1)
+        date_to = date(year, 12, 31)
+
         # Pass 1: chỉ id + price_source cho legacy; id cho cafef (O(n) nhỏ).
         legacy = {}
         for r in self._paged(
-            DailyPrice.objects.filter(date__year=year, symbol__in=symbols),
+            DailyPrice.objects.filter(date__range=(date_from, date_to), symbol__in=symbols),
             ('id', 'symbol', 'date', 'price_source')
         ):
             legacy[(r['symbol'], r['date'])] = (r['id'], r['price_source'])
         cafef = {}
         for r in self._paged(
-            CafefDailyPrice.objects.filter(date__year=year, symbol__in=symbols),
+            CafefDailyPrice.objects.filter(date__range=(date_from, date_to), symbol__in=symbols),
             ('id', 'symbol', 'date')
         ):
             cafef[(r['symbol'], r['date'])] = r['id']
