@@ -1,0 +1,15 @@
+{
+  "exchange": "HOSE",
+  "year": 2022,
+  "dry_run": true,
+  "matched": 360329,
+  "db_only": 5130,
+  "cafef_only": 38986,
+  "counts": {
+    "update": 360329,
+    "keep_unmapped": 5130,
+    "insert": 38986
+  },
+  "inserted_keys_count": 38986,
+  "assert_updated_equals_matched": true
+}

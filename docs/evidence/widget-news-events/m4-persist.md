@@ -13,8 +13,10 @@ Branch `feat/price-mig-persist` · base dev `47effe783` (sau PR #528/M3) · Entr
 | matched / update | 360.329 |
 | db_only / keep_unmapped | 5.130 (dọn adj_close hỏng) |
 | cafef_only / insert | 38.986 |
-| assert_updated_equals_matched | **True** (không dùng tiêu chí false-green "row count trước=after") |
+| assert_updated_equals_matched | **True — NHƯNG LÀ TAUTOLOGY** (`counts['update'] = len(matched)` ngay từ đầu), **không chứng minh write nào**. Audit Res-1: đây chính là tiêu chí false-green bị cấm — phải thay bằng đối chiếu DB SAU apply (số row `price_source='cafef'` + checksum 20 mã) trước khi bật `--apply`. |
 | inserted_keys_count | 38.986 |
+
+**Lệnh tái tạo (Res-2)**: trên VPS, `docker exec -w /app/src vninvest-core-api python manage.py price_migration_persist --exchange HOSE --year 2022 --out /tmp/m4_dryrun.json --inserted-keys-out /tmp/m4_keys.txt`; report copy về `docs/evidence/widget-news-events/m4-dryrun-2022.json`. Số trùng M1 vì cùng filter `date__year` — **chưa phải bằng chứng độc lập**, cần fingerprint riêng.
 
 ## Bẫy đã sửa
 - OOM 137 (giữ cả 2 bảng + model instances) → streaming theo lô.
@@ -22,6 +24,10 @@ Branch `feat/price-mig-persist` · base dev `47effe783` (sau PR #528/M3) · Entr
 
 ## Chưa làm / chờ
 - Audit thiết kế persist trước khi apply thật.
-- R3 từ M3: guard chỉ chặn `price_source='cafef'`; dòng `unmapped_cafef` cần mở rộng guard ở M4 apply (đã ghi phương án: update `.get('price_source') in ('cafef','unmapped_cafef')`).
+- R3 từ M3: guard chỉ chặn `price_source='cafef'`; dòng `unmapped_cafef` cần mở rộng guard ở M4 apply (`data_ingest/tasks.py:722-725` → `.get('price_source') in ('cafef','unmapped_cafef')`). **Bắt buộc trước apply.**
+- **Res-3 (MAJOR, apply)**: `--exchange` bắt buộc nhưng **không lọc** — `DailyPrice`/`CafefDailyPrice` không có field exchange (`models.py:63-94,110-139`). Chạy `--exchange HOSE` vẫn xử lý cả 3 sàn; chạy 3 exchange ⇒ ghi đè 3 lần. Phải giải nghĩa exchange từ bảng `StockProfile.exchange` (market_data/models.py) hoặc bỏ tham số cho M4/year-based. Chưa làm.
+- **Res-4 (apply)**: N+1 ~360k query/năm (`price_migration_persist.py:106-107,131-133`); thiếu `VACUUM ANALYZE` + gate đĩa mỗi lô (plan:49) và checksum 20 mã (plan:50). Chưa làm.
 - Backup S0 (`before_20261124.dump`) sẵn; rollback chọn lọc theo `inserted_keys` chưa implement (S6).
 - Chưa đổi consumer (M5), chưa bulk 3 sàn các năm sâu.
+
+⇒ **Giữ claim `in-progress`** — chỉ nghiệm thu phần dry-run/thiết kế. Chưa bật `--apply`.
