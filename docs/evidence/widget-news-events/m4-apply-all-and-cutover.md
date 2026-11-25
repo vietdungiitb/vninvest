@@ -39,5 +39,8 @@ Sự cố đã xử lý (không phải lỗi dữ liệu):
 - API-level (Django `APIRequestFactory`, `/chart` TPB): `status=200`, `adjusted_display=true`, 955 points, `first_point.adj_close=10280`/`adj_factor=0.4195918367`/`price_source=cafef`; `effective_close(TPB 2022-01-04)=17940.0`.
 - Visual Playwright: trang `/stocks/TPB` chuyển về màn hình đăng nhập (`/tmp/m5c_chart_e2e.png`, đã mở ảnh kiểm tra) ⇒ **CHƯA CHẠY** phần chart trực quan vì không có credentials staging; không đoán mật khẩu theo `STAGING_VPS_RUNBOOK.md:46`.
 
-## 5. Rollback (sẵn)
+## 5. Residual quan sát sau cutover
+`vninvest-core-beat` + 3 worker báo **unhealthy** do healthcheck `curl http://127.0.0.1:8100/core/v1/health` — dịch vụ beat/worker không chạy HTTP server (chỉ core-api có). Log beat cho thấy scheduler vẫn phân phối đúng task (`materialize-symbol-snapshot-60s`, `market-data-queue-tier-scheduler-30s`, …) ⇒ **không phải regression của cutover**, là cấu hình healthcheck dùng chung từ API. Không sửa trong scope này.
+
+## 6. Rollback (sẵn)
 Backup S0 `before_20261124.dump` (99 MB, sha256 `6c5a7e05…c19691`) + `inserted_keys` từ report từng lô. Để rollback: tắt `PRICE_ADJUSTED_DISPLAY`, đặt lại `PRICE_MIGRATION_PAUSED=1`, khôi phục compose/env từ `/tmp/*.bak-cutover`, restore DB nếu có owner sign-off.
