@@ -1,11 +1,12 @@
 # PLAN M5 — Cutover consumer sau khi đổi basis giá (2026-11-25)
 
-> Trạng thái: **REVISION 1 — sửa 3 objection audit; chờ audit vòng 2. Chưa code.**
+> Trạng thái: **REVISION 2 — sửa 5 objection (v1:3 + v2:2); chờ audit vòng 3. Chưa code.**
 > Nền tảng: `PLAN_PRICE_MIGRATION_FULL_20261124.md` REVISION 2 (AGREE sau 3 vòng audit) §5/S5-S6.
 > Đã xong: M0 bulk · M1 diff · M2 schema · M3 guard · M4 apply HOSE 2022 (91.808 dòng).
 
 ## 1. Nguyên tắc
-1. **Không trộn basis** trong cùng cửa sổ indicator — mọi consumer 🔴 đổi trong cùng maintenance window.
+0. **SCOPE (Objection v2-2)**: mới chỉ **2% dữ liệu** có `adj_factor` (HOSE 2022 = 91.808 / 4,58M). Không đổi default toàn cục. Dùng flag `PRICE_ADJUSTED_DISPLAY` (mặc định `off`) + scope `year=2022, exchange=HOSE` cho pilot. Với mọi `(symbol,date)` ngoài scope ⇒ **fallback sang hành vi cũ** (đọc `close` như hiện nay) — tránh nhảy basis liên năm (`PLAN_FULL:12` cấm cắt 2019). Mở rộng sau khi apply M4 toàn bộ 3 sàn × các năm.
+1. **Không trộn basis** trong cùng cửa sổ indicator — mọi consumer 🔴 đổi trong cùng maintenance window **của scope pilot**.
 2. UI default theo owner đã chốt: **Adjusted** cho chart/technical/screener/backtest/52w (toggle Raw); **Raw** cho bảng phiên/tham chiếu/trần/sàn/realtime/sổ.
 3. `close` đã là **giá thô** (từ M4), `adj_close` = giá đã điều chỉnh, `adj_factor = adj_close/close` là SSOT hệ số. **Quyết định đúng sau audit (Objection 1)**: scale **CẢ O/H/L/C** ở **host adapter `chartAdapter.js:42-53`** bằng `adj_factor` — widget `OHLCVBar` (`engcore/index.d.ts:767-779`) chỉ có 6 field, không có prop đổi sang adjusted, Pine đọc `t['close']` (`index.cjs:303`). Host truyền `close = adj_close`, `open/high/low = raw × factor` ⇒ nến widget là adjusted theo default owner. Nhánh Raw (bảng phiên) đọc trực tiếp `close` thô, **không qua chartAdapter**. Không sửa widget (out of scope).
 4. Record cũ (`AdvisoryRecord`, `ScreenerRunHistory`) **không chạy lại** — gắn `price_basis`; backtest ép cùng basis entry/exit.
@@ -13,8 +14,8 @@
 ## 2. Fan-out consumer (từ research §4.1 — phải đổi)
 | Nhóm | file:line | Hành động |
 |---|---|---|
-| `/chart/` | `stock_mgmt_native_views.py:1935-1947`, `_aggregate_daily_rows :995-1041`, technicals `:1522` | **Phải thêm `adj_close`/`adj_factor` vào `.values()`/points** rồi host adapter scale O/H/L/C (Objection 1). Không có câu "indicator dùng adjusted mà nến raw" — vô nghĩa với contract hiện tại. |
-| `/bars/` | `:4068/:4072`, metadata `:4398-4418` | trả cả `close`(raw)+`adj_close`; metadata `adjusted` đọc `price_source`, **giữ nhánh `_corporate_actions_enabled()`** |
+| `/chart/` | `stock_mgmt_native_views.py:1935-1947`, `_serialize_price_point :984-992`, `_aggregate_daily_rows :995-1041`, technicals `:1522` | **Thêm `adj_close`/`adj_factor` VÀ `price_source` vào `.values()`/points** (Objection v1-1 + v2-1). `_serialize_price_point` hiện chỉ có OHLCV — phải mở rộng. FE cần cờ `price_source` để lọc dòng `unmapped_cafef` (O3); nếu `adj_factor=NULL` ⇒ **fallback = bỏ qua dòng khỏi cửa sổ adjusted** (không thay raw close). Host adapter scale O/H/L/C. |
+| `/bars/` | `:4068/:4072`, metadata `:4398-4418` | trả cả `close`(raw)+`adj_close` **khi `CORPORATE_ACTIONS_ENABLED=true`** (mặc định false — `stock_mgmt_native_views.py:4056-4058,4071-4072`; phải bật flag khi pilot); metadata `adjusted` đọc `price_source`, **giữ nhánh `_corporate_actions_enabled()`** |
 | `/stocks/<sym>/` | `:1781-1818` | 52w H/L + % change dùng adjusted |
 | `technicals/bulk` | `:1515`, cache `:1499` | indicator dùng adjusted; invalidate cache |
 | `daily-prices` | `market_data/views.py:147-181` + serializer `:19-26` | **thêm `adj_close`, `adj_factor`, `price_source`** vào serializer |
