@@ -1,3 +1,10 @@
+## Entry 637: M4 apply — lô HOSE 2021
+
+- **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-guard-unmapped`.
+- **Dry-run**: `matched=87947`, `db_only=3002`, `cafef_only=0`, `insert=0`.
+- **Apply thật** (`PRICE_MIGRATION_PAUSED=1`, backup S0 sẵn): exit 0; verify DB `cafef=87947`, `unmapped_cafef=3002`, `adj_factor=87947` — khớp `expected_cafef_rows`. Tổng HOSE 2021+2022 = **179.755 dòng**.
+- Chưa HNX/UPCOM/các năm khác; flag vẫn off. Evidence: `docs/evidence/widget-news-events/m4-apply-2021-hose.md`.
+
 ## Entry 636: M6a — guard ingest chặn ghi đè `unmapped_cafef`
 
 - **Date**: 2026-11-25 · **Type**: fix · **Branch**: `feat/price-mig-guard-unmapped` · Claim `price-mig-guard-unmapped`.
