@@ -1,3 +1,17 @@
+## Entry 632: M4 — APPLY thật HOSE 2022 (đối chiếu DB, Res-1 đóng)
+
+- **Date**: 2026-11-25 · **Type**: ops + fix · **Branch**: `feat/price-mig-persist`.
+- **Chạy thật**: `--apply` với `PRICE_MIGRATION_PAUSED=1`, backup S0 sẵn; staging DB HOSE 2022: `cafef` 0→**91.808**, `unmapped_cafef` 0→298 (adj_close hỏng dọn NULL), `adj_factor` 0→**91.808**. `checksum_ok=true` đối chiếu DB thật — **Res-1 tautology đóng**.
+- **Fix code**: `NameError: opts is not defined` trong `_write_inserts` (lọt qua 4 test vì test chỉ phủ pure `persist.py`); bỏ `VACUUM ANALYZE` khỏi command (pgbouncer `/dev/shm` 64MB ⇒ lỗi shared memory sau khi đã commit dữ liệu).
+- **Phạm vi**: chỉ HOSE 2022. Chưa HNX/UPCOM/các năm khác, chưa đổi consumer (M5), chưa rollback S6. Evidence: `docs/evidence/widget-news-events/m4-apply-20261125.md`.
+
+## Entry 631: M4 — persist planner + dry-run 2022 (CHƯA apply)
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-persist` · Claim `price-mig-persist`.
+- **Thay đổi**: `cafef/persist.py` (classify_row 3 nhánh, adj_factor SSOT, DB-only reset adj_close) + command `price_migration_persist` (dry-run mặc định, `--apply` cần `PRICE_MIGRATION_PAUSED=1`, streaming lô 2000, lưu inserted_keys). Sửa OOM 137 bằng streaming.
+- **Dry-run thật 2022**: matched 360.329 · db_only 5.130 · cafef_only 38.986 · assert_updated_equals_matched **True**. Test 4/4. **KHÔNG ghi DB.**
+- **Chưa apply** — chờ audit thiết kế + mở rộng guard `unmapped_cafef` (R3 từ M3). Gate ledger `--next-entry` = 631 (Entry 626/386 trùng có sẵn — không đụng). Evidence: `docs/evidence/widget-news-events/m4-persist.md`.
+
 ## Entry 630: M3 — guard ingest + pause writer jobs
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-guard` · Claim `price-mig-guard`.
