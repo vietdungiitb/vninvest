@@ -28,10 +28,10 @@ Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–640. Claims: `price-mig-*
 3. ~~R3~~ — **đã đóng M6b**: NAV quantity theo ngày từ `LedgerEntry` (baseline trước cửa sổ đã fix).
 4. ~~R-B~~ — **đã đóng M6b**: `subscribePriceBasis()` reactive. (Chưa component test nhánh skip realtime — residual nhẹ.)
 5. ~~Guard ingest cho `unmapped_cafef`~~ — **đã đóng M6a** (#535).
-6. **Apply M4 các lô còn lại đang chạy** (3 worker song song, mỗi lô process riêng). Đã apply: HOSE 2011/2012/2013/2014/2017/2020/2021/2022/2023, HNX 2011. Bỏ qua 7 lỗi nguồn CafeF (HOSE 2016/2018/2026, HNX 2012, UPCOM 2011/2014/2015).
-7. Ops window: invalidate cache bulk-technicals/SOC inventory, recompute `SymbolSnapshot` + coverage, resume 5 beat job, E2E Playwright chụp ảnh mở xem. Backup S0 + rollback chọn lọc theo `inserted_keys` sẵn.
+6. ~~Apply M4 các lô còn lại~~ — **XONG**: `1.904.487` dòng `cafef`, 100% có `adj_factor`, `bad_cafef=0`. 5 lô có 0 dòng nguồn (HNX 2023–2026, UPCOM 2026) không cần apply; 4 lô lỗi nguồn CafeF (HNX 2012, UPCOM 2011/2014/2015) giữ `vnbroker_legacy`. Evidence `m4-apply-all-and-cutover.md`.
+7. ~~Ops window~~ — **XONG**: image `cutover`, compose truyền flag, `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, migration `advisory/0024` + `user_workspace/0031`, FE dist deployed, `cache.clear()`. E2E API `/chart` 200 + `adjusted_display=true` + TPB `17940`. **Visual E2E CHƯA CHẠY** (trang chuyển về login, không có credentials; không đoán mật khẩu). Backup S0 + `inserted_keys` sẵn.
 
 ## Next steps / owner
-- Owner chốt R1 định nghĩa xử lý `unmapped_cafef` → implement + test → re-audit.
-- Owner quyết thời điểm mở ops window cutover (sau khi đóng R1–R3, R-B và apply M4 toàn 3 sàn).
-- Không tự bật `PRICE_ADJUSTED_DISPLAY` / không tự resume beat.
+- Còn lại: **visual E2E** trên staging cần credentials đăng nhập — owner cung cấp tài khoản test, sau đó chụp chart TPB 2022 + mở ảnh kiểm tra (L-V05).
+- Theo dõi sau cutover: beat/5 job đã resume (`PRICE_MIGRATION_PAUSED=0`), `SymbolSnapshot` tự recompute ~60s; nếu chỉ số bất thường → rollback chọn lọc theo `inserted_keys` hoặc S0 (cần owner sign-off).
+- 4 lô lỗi nguồn CafeF + 5 lô 0 dòng nguồn vẫn giữ nguyên; chỉ xử lý khi CafeF cung cấp lại dữ liệu.
