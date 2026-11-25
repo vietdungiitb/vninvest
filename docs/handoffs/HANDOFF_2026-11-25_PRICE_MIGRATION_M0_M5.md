@@ -15,16 +15,18 @@
 | M5a BE read contract | #530 | `m5a-read-contracts.md` — serializer/points/bars trả 3 field; 7/7; golden TPB `42750/17940/0.4196491228` |
 | M5b domain consumers | #531 | `m5b-domain-consumers.md` — NAV 85500→35880, advisory/screener adjusted; 8/8; 826 test có 7 fail+15 error pre-existing (đối chứng HEAD) |
 | M5c FE chart | #532 | `m5c-fe-cutover.md` + `m5c-gate-logs.txt` — scale O/H/L/C, lọc unmapped, skip realtime, R-A đóng; FE 3/3, tsc/build exit 0, BE 15 test OK |
+| M6a guard unmapped | #535 | `m6a-guard-unmapped.md` — ingest skip `price_source in ('cafef','unmapped_cafef')`; RED→GREEN 5/5, regression 52 test OK |
 
-Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–635. Claims: `price-mig-*`/`price-mig-cutover` đã `done`.
+Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–636. Claims: `price-mig-*`, `price-mig-cutover`, `price-mig-guard-unmapped` đều `done`.
 
 ## Gate CHƯA đóng — KHÔNG bật flag khi chưa xong
 1. **R1** (`pricing.py` fallback raw cho `unmapped_cafef` thay vì loại khỏi cửa sổ adjusted — plan `PLAN_PRICE_MIGRATION_CUTOVER_20261125.md:45`).
 2. **R2** `price_basis` trên `AdvisoryRecord`/`ScreenerRunHistory` chưa gắn.
 3. **R3** NAV quantity time-series (Transaction/LedgerEntry) chưa dùng — đã dùng `adj_close` nên nhất quán basis.
 4. **R-B** `getPriceBasis()` chưa reactive (stale ~5s); chưa test component nhánh skip realtime.
-5. Apply M4 cho HNX/UPCOM + các năm khác (hiện mới ~2% dữ liệu).
-6. Ops window: invalidate cache bulk-technicals/SOC inventory, recompute `SymbolSnapshot` + coverage, resume 5 beat job, E2E Playwright chụp ảnh mở xem. Backup S0 + rollback chọn lọc theo `inserted_keys` sẵn.
+5. ~~Guard ingest cho `unmapped_cafef`~~ — **đã đóng M6a** (#535).
+6. Apply M4 cho HNX/UPCOM + các năm khác (hiện mới ~2% dữ liệu).
+7. Ops window: invalidate cache bulk-technicals/SOC inventory, recompute `SymbolSnapshot` + coverage, resume 5 beat job, E2E Playwright chụp ảnh mở xem. Backup S0 + rollback chọn lọc theo `inserted_keys` sẵn.
 
 ## Next steps / owner
 - Owner chốt R1 định nghĩa xử lý `unmapped_cafef` → implement + test → re-audit.
