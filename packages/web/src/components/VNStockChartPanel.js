@@ -252,7 +252,12 @@ export default function VNStockChartPanel({
     };
   }, [activeTimeframe]);
 
-  const nextBar = useMemo(() => buildBarFromQuote(quote), [quote, buildBarFromQuote]);
+  // M5c: khi history đã scale sang adjusted, nến cuối từ quote realtime là
+  // raw ⇒ trộn basis ngay đầu indicator. Bỏ qua nến realtime trong mode này.
+  const nextBar = useMemo(() => {
+    if (adapter?.getPriceBasis?.() === 'adjusted') return null;
+    return buildBarFromQuote(quote);
+  }, [quote, buildBarFromQuote, adapter]);
   useEffect(() => {
     if (nextBar) {
       adapter.pushRealtimeBar(nextBar);

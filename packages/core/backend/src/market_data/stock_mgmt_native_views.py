@@ -19,6 +19,8 @@ from uuid import UUID
 
 from django.db import DatabaseError, connection
 from django.db.models import Q
+
+from market_data.pricing import pilot_adjusted_enabled
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
@@ -1968,6 +1970,8 @@ class StockManagementChartView(APIView):
             'end_date': end_date.isoformat(),
             'points': points,
             'technical': _compute_chart_technical_payload(points),
+            # M5c: FE cần biết mode để scale nến / bỏ nến realtime raw.
+            'adjusted_display': pilot_adjusted_enabled(),
         }
         return envelope(payload)
 
