@@ -58,6 +58,8 @@ _SERIES_WINDOWS_BY_LABEL = {
     '15m': 15,
     '30m': 30,
     '1h': 60,
+    '4h': 240,
+    '1D': 1440,
 }
 
 
@@ -84,8 +86,14 @@ def _percentile(sample: list[float], q: float) -> float:
 
 
 def _floor_bucket(dt: datetime, bucket_minutes: int) -> datetime:
-    """Làm tròn xuống theo bucket_minutes."""
+    """Làm tròn xuống theo bucket_minutes (hỗ trợ 5m..1D)."""
     dt = dt.replace(second=0, microsecond=0)
+    if bucket_minutes >= 1440:  # 1D
+        return dt.replace(hour=0, minute=0)
+    if bucket_minutes >= 240:  # 4h
+        return dt.replace(hour=(dt.hour // (bucket_minutes // 60)) * (bucket_minutes // 60), minute=0)
+    if bucket_minutes >= 60:  # 1h
+        return dt.replace(minute=0)
     floored_minute = (dt.minute // bucket_minutes) * bucket_minutes
     return dt.replace(minute=floored_minute)
 

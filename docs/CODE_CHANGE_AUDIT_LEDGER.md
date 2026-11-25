@@ -1,3 +1,12 @@
+## Entry 640: Whale/CVD full timeframe — re-audit 2 vòng, fix P0/P1, handoff widget
+
+- **Date**: 2026-11-25 · **Type**: feat + fix · **Branch**: `feat/whale-cvd-full-tf` (base `origin/dev`) · Claim `whale-cvd-full-tf`.
+- **Thay đổi BE**: `market_serving/native_views.py` `build_whale_buckets()` `:492` + `?window=4h|1D|1W` canonical/alias/400 `:628`; bulk price query `:563`, `net==0 → neutral` `:573`. `market_data/stock_mgmt_native_views.py` `_compute_daily_weekly_cvd_series` `:1070`, localtime `:1095`, `dt_timezone.utc` `:2246`, schema `cvd_series` `:292`. `session_facts_engine.py` +`4h`/`1D`; `views.py` `:378-386` +`4h`/`1D`/`1d`. Test mới `market_data/tests/test_whale_cvd_full_tf.py` (5 test).
+- **Thay đổi FE**: `useStockDetailPageModel.js:171-200` fetch dark-money + clear-on-symbol `:176`; `StockDetailPage.tsx:146-181` override whale/CVD, **fix price close `:155`** (`matched_value: s.price ?? …` vì panel ưu tiên field này tại `VNStockChartPanel.js:364`); +3 component test.
+- **Re-audit độc lập**: 2 subagent (BE + FE/docs). BE: 1 P0 (`timezone.utc` → 500 chắc chắn) + 2 P1 + 6 P2 — **đã fix toàn bộ**. FE/docs: 3 P1 + 10 P2 — đã fix F-01/F-02/F-04/F-08..F-13; F-03/F-05 ghi residual có kiểm soát. Chi tiết: `docs/AUDIT_WHALE_CVD_FULL_TF_REAUDIT_20261125.md`.
+- **Gates (coordinator tự chạy, log `docs/evidence/whale-cvd-full-tf/gates.md`)**: `py_compile` OK; BE **9/9** trên VPS `vninvest-core-api` → `vninvest-core-db:5432` (đã restore container); `tsc --noEmit` 0 lỗi; `vitest run src/features/stock-detail` **16/16**; `npm run build` ✓.
+- **Residual**: R-03 (render whale bucket `count=0`) + R-04 (CVD 4h wiring/`enableCVD` chưa bật) → widget team, handoff `docs/handoffs/HANDOFF_2026-11-25_WHALE_CVD_WIDGET.md`. `package-lock.json` đã revert (deny-list), không commit. Không migration DB.
+
 ## Entry 639: M6c hotfix — query plan price_migration_persist
 
 - **Date**: 2026-11-25 · **Type**: fix · **Branch**: `feat/price-mig-perf` · Claim `price-mig-perf`.

@@ -8,7 +8,7 @@ const mockLoadBlocking = vi.fn();
 const mockRefreshAdvisoryData = vi.fn();
 const mockSetSelectedSession = vi.fn();
 
-const h2 = vi.hoisted(() => ({ bubbleProps: {} as Record<string, any> }));
+const h2 = vi.hoisted(() => ({ bubbleProps: {} as Record<string, any>, chartProps: {} as Record<string, any> }));
 
 let mockModelReturn = {};
 
@@ -31,7 +31,10 @@ vi.mock("../../../components/workstation/hooks/index.js", () => ({
 }));
 
 vi.mock("../../../components/VNStockChartPanel.js", () => ({
-  default: () => createElement("div", { "data-testid": "chart-panel" }, "chart"),
+  default: (props: any) => {
+    h2.chartProps = props;
+    return createElement("div", { "data-testid": "chart-panel" }, "chart");
+  },
 }));
 
 vi.mock("../../../components/WhaleBubbleChart.jsx", () => ({
@@ -208,5 +211,21 @@ describe("StockDetailPage", () => {
     mockModelReturn = baseModel({ selectedSession: { tradeDate: "2026-11-20", timestamp: 1763596800000 } });
     renderPage("TPB");
     expect(h2.bubbleProps.tradeDate).toBe("2026-11-20");
+  });
+
+  it("(whale-cvd-full-tf) daily: whale marker price la close, khong phai VND", () => {
+    mockModelReturn = baseModel({
+      darkMoneyData: {
+        whale_signals: [{ time: 1764000000, price: 18200, value: 900000000, direction: "buy" }],
+        cvd_series: [{ bucket_ts: "2026-11-25T00:00:00+00:00", cvd: 900000000 }],
+        dark_flow_series: [{ strength: 5, signal_type: "neutral" }],
+      },
+    });
+    renderPage("TPB");
+    const signal = h2.chartProps.whaleSignals?.[0];
+    expect(signal?.price).toBe(18200);
+    // VNStockChartPanel uu tien `matched_value` khi tinh truc gia — phai la close.
+    expect(signal?.matched_value).toBe(18200);
+    expect(h2.chartProps.orderFlowData?.cvd_series).toHaveLength(1);
   });
 });
