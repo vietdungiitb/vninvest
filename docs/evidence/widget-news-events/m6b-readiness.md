@@ -12,7 +12,8 @@
 | **R-B** | `chartAdapter` thêm `subscribePriceBasis()` + notify khi basis đổi; `VNStockChartPanel` dùng state reactive thay vì đọc method trong `useMemo`. |
 
 ## 2. Gate
-- BE: `market_data.tests.test_m6b_pricing_skip`, `test_m6b_readiness`, `user_workspace.tests.test_m5b_nav_adjusted`, `test_m5b_consumers` ⇒ **13 test OK**.
+- BE: `market_data.tests.test_m6b_pricing_skip`, `test_m6b_readiness`, `user_workspace.tests.test_m5b_nav_adjusted`, `test_m5b_consumers`, `user_workspace.tests.test_m6b_r3_quantity` ⇒ **15 test OK**.
+- **Audit NEED_REVISION → đã sửa**: O1 `pilot_adjusted_enabled` chưa import trong `portfolio_analytics_views.py` ⇒ **NameError 500** mọi lần tạo `ScreenerRunHistory` (dù flag off) — đã import. O2 `_ledger_quantity_deltas` không cộng baseline entry trước cửa sổ ⇒ qty=0 cho vị thế cũ — thêm `_advance_quantity()` cộng mọi delta `date <= day` (kể cả trước cửa sổ + ngày không có price row); test R3 mới cover đúng baseline `1000 × 100` và SELL trong cửa sổ `(1000-200) × 110`.
 - FE: `vitest run …chartAdapter.adjusted.component.test.ts` ⇒ **4/4 PASS** (thêm test R-B notify); `npx tsc --noEmit` exit 0; `npm run build` exit 0 (chunk warning có sẵn).
 - Container core-api lúc đầu OOM exit 137 do limit **512 MB** — đã `docker update --memory 2g` trước khi chạy lại.
 

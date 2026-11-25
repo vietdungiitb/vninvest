@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from market_data.pricing import effective_close
+from market_data.pricing import effective_close, pilot_adjusted_enabled
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -505,13 +505,14 @@ class PortfolioEquityCurveView(APIView):
             date_price_map[day][p.symbol] = eff
         # R3: quantity theo ngày từ LedgerEntry (fallback holdings hiện tại).
         deltas = _ledger_quantity_deltas(portfolio, portfolio.tenant, symbols)
+        delta_days = sorted(deltas) if deltas is not None else []
         running = defaultdict(Decimal)
+        pointer = 0
         curve = []
         for day in sorted(date_price_map.keys()):
             day_prices = date_price_map[day]
             if deltas is not None:
-                for sym, delta in deltas[day].items():
-                    running[sym] += delta
+                pointer = _advance_quantity(deltas, delta_days, pointer, running, day)
                 qty_of = lambda sym: running[sym]
             else:
                 qty_of = lambda sym: holdings[sym]['quantity']
@@ -565,6 +566,16 @@ def _ledger_quantity_deltas(portfolio, tenant, symbols):
     return deltas
 
 
+def _advance_quantity(deltas, delta_days, pointer, running, day):
+    """R3 (fix O2): cộng MỌI delta có ngày <= day, kể cả trước cửa sổ giá
+    (baseline) và rơi vào ngày không có price row. Trả pointer mới."""
+    while pointer < len(delta_days) and delta_days[pointer] <= day:
+        for sym, delta in deltas[delta_days[pointer]].items():
+            running[sym] += delta
+        pointer += 1
+    return pointer
+
+
 def _nav_series(holdings, symbols, date_from, portfolio=None, tenant=None):
     """`[{date, nav_float}]` — NAV danh mục theo ngày, dùng cho chỉ số.
 
@@ -585,15 +596,17 @@ def _nav_series(holdings, symbols, date_from, portfolio=None, tenant=None):
             continue
         date_price_map.setdefault(p.date, {})[p.symbol] = eff
     deltas = _ledger_quantity_deltas(portfolio, tenant, symbols) if portfolio is not None else None
+    delta_days = sorted(deltas) if deltas is not None else []
     running = defaultdict(Decimal)
+    pointer = 0
     series = []
     for day in sorted(date_price_map):
         day_prices = date_price_map[day]
+        if deltas is not None:
+            pointer = _advance_quantity(deltas, delta_days, pointer, running, day)
         if any(sym not in day_prices for sym in holdings):
             continue
         if deltas is not None:
-            for sym, delta in deltas[day].items():
-                running[sym] += delta
             qty_of = lambda sym: running[sym]
         else:
             qty_of = lambda sym: holdings[sym]['quantity']

@@ -8,6 +8,7 @@ adjusted (tránh nhảy basis TPB 42750 vs 17940).
 """
 import os
 from decimal import Decimal, InvalidOperation
+from typing import Optional
 
 PILOT_FLAG = 'PRICE_ADJUSTED_DISPLAY'
 
@@ -25,7 +26,7 @@ def _dec(value):
         return None
 
 
-def effective_close(row, *, enabled=None) -> Decimal:
+def effective_close(row, *, enabled=None) -> Optional[Decimal]:
     """Trả close hiệu dụng (Decimal) cho một DailyPrice.
 
     - flag on + `unmapped_cafef` ⇒ **None** (R1: loại khỏi cửa sổ adjusted,
