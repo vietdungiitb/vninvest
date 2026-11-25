@@ -174,12 +174,10 @@ class Command(BaseCommand):
             with transaction.atomic():
                 DailyPrice.objects.bulk_create(objs, batch_size=BATCH)
 
-        if opts['apply']:
-            # Res-4: VACUUM ANALYZE sau khi ghi lô lớn; gate đĩa tối thiểu 20 GB.
-            from django.db import connection
-
-            with connection.cursor() as cur:
-                cur.execute('VACUUM ANALYZE market_data_dailyprice')
+        if True:  # _write_inserts chỉ được gọi khi --apply
+            # Res-4: gate đĩa tối thiểu 20 GB. VACUUM ANALYZE phải chạy RIÊNG
+            # ngoài command này — pgbouncer /dev/shm chỉ 64MB ⇒ VACUUM lỗi
+            # "could not resize shared memory segment" (đo 2026-11-25).
             stat = os.statvfs('/')
             free_gb = stat.f_bavail * stat.f_frsize / (1024 ** 3)
             if free_gb < 20:

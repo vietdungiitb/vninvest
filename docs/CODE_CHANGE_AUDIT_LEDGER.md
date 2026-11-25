@@ -1,3 +1,10 @@
+## Entry 632: M4 — APPLY thật HOSE 2022 (đối chiếu DB, Res-1 đóng)
+
+- **Date**: 2026-11-25 · **Type**: ops + fix · **Branch**: `feat/price-mig-persist`.
+- **Chạy thật**: `--apply` với `PRICE_MIGRATION_PAUSED=1`, backup S0 sẵn; staging DB HOSE 2022: `cafef` 0→**91.808**, `unmapped_cafef` 0→298 (adj_close hỏng dọn NULL), `adj_factor` 0→**91.808**. `checksum_ok=true` đối chiếu DB thật — **Res-1 tautology đóng**.
+- **Fix code**: `NameError: opts is not defined` trong `_write_inserts` (lọt qua 4 test vì test chỉ phủ pure `persist.py`); bỏ `VACUUM ANALYZE` khỏi command (pgbouncer `/dev/shm` 64MB ⇒ lỗi shared memory sau khi đã commit dữ liệu).
+- **Phạm vi**: chỉ HOSE 2022. Chưa HNX/UPCOM/các năm khác, chưa đổi consumer (M5), chưa rollback S6. Evidence: `docs/evidence/widget-news-events/m4-apply-20261125.md`.
+
 ## Entry 631: M4 — persist planner + dry-run 2022 (CHƯA apply)
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-persist` · Claim `price-mig-persist`.
