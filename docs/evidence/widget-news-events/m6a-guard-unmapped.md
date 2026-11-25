@@ -13,9 +13,17 @@ if existing.get('price_source') in ('cafef', 'unmapped_cafef'):
 Test mới `data_ingest/tests/test_price_source_guard.py::test_unmapped_cafef_row_is_also_skipped`.
 
 ## 2. Gate
-- RED: 1 fail (`[<DailyPrice: TPB 2022-01-04 close=1.5>] != []`) → GREEN **5/5**.
+Lệnh tái tạo (trên VPS, sau `docker cp` code worktree vào container):
+```
+docker exec -e CORPORATE_ACTIONS_ENABLED=false -w /app/src vninvest-core-api \
+  python manage.py test data_ingest.tests.test_price_source_guard -v 1
+docker exec -e CORPORATE_ACTIONS_ENABLED=false \
+  -e DATABASE_URL='postgresql://vninvest:***@172.19.0.7:5432/vninvest_core' \
+  -w /app/src vninvest-core-api python manage.py test data_ingest -v 1 --noinput
+```
+- RED: 1 fail (`[<DailyPrice: TPB 2022-01-04 close=1.5>] != []`) → GREEN **5/5** (`Ran 5 tests … OK`).
 - Lưu ý: container staging có `tasks.py` cũ (chưa deploy M3) — phải copy code worktree vào container trước khi chạy, nếu không cả test `'cafef'` cũ cũng fail (đã kiểm chứng).
-- Regression `data_ingest`: **52 test OK** (exit 1 chỉ do teardown `test_vninvest_core is being accessed by other users`, pre-existing).
+- Regression `data_ingest`: `Ran 52 tests in 7.130s` / **OK** (exit 1 chỉ do teardown `test_vninvest_core is being accessed by other users`, pre-existing — đối chiếu `m3-guard.md:15`).
 
 ## 3. Phạm vi
 Chưa resume beat, chưa bật `PRICE_ADJUSTED_DISPLAY`, chưa apply M4 cho sàn/năm khác. Guard chỉ là điều kiện cần trước ops window.

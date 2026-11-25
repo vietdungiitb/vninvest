@@ -1,4 +1,5 @@
-"""M3 — guard: nightly ingest KHÔNG ghi đè dòng price_source='cafef' (TDD)."""
+"""M3/M6a — guard: nightly ingest KHÔNG ghi đè dòng đã xử lý migration giá
+(price_source='cafef' hoặc 'unmapped_cafef'). TDD."""
 import os
 from datetime import date
 from decimal import Decimal
