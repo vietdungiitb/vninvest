@@ -39,23 +39,37 @@ function extractPoints(payload) {
   return Array.isArray(points) ? points : [];
 }
 
-function mapToBar(p, i) {
+function mapToBar(p, i, adjusted = false) {
   const date = new Date(p.timestamp ?? p.time ?? p.date);
+  // M5c: BE trả close thô + adj_close/adj_factor. Widget OHLCVBar chỉ có
+  // 6 field và không tự render adjusted ⇒ host scale CẢ O/H/L/C trước khi
+  // truyền widget. Chỉ scale khi đủ điều kiện (cafef + có factor + adj_close).
+  const useAdjusted = adjusted
+    && p.price_source === 'cafef'
+    && p.adj_factor != null
+    && p.adj_close != null;
+  const factor = useAdjusted ? Number(p.adj_factor) : 1;
+  const close = useAdjusted ? Number(p.adj_close) : Number(p.close ?? 0);
   return {
     date,
-    open: Number(p.open ?? p.close ?? 0),
-    high: Number(p.high ?? p.close ?? 0),
-    low: Number(p.low ?? p.close ?? 0),
-    close: Number(p.close ?? 0),
+    open: Number(p.open ?? p.close ?? 0) * factor,
+    high: Number(p.high ?? p.close ?? 0) * factor,
+    low: Number(p.low ?? p.close ?? 0) * factor,
+    close,
     volume: Number(p.volume ?? 0),
     index: i,
     dataIndex: i,
   };
 }
 
-function parseBars(payload) {
-  return extractPoints(payload)
-    .map((p, i) => mapToBar(p, i))
+export function parseBars(payload, state) {
+  const adjusted = payload?.adjusted_display === true;
+  if (state) state.priceBasis = adjusted ? 'adjusted' : 'raw';
+  const points = extractPoints(payload).filter(
+    (p) => !adjusted || p.price_source !== 'unmapped_cafef'
+  );
+  return points
+    .map((p, i) => mapToBar(p, i, adjusted))
     .filter((b) => !isNaN(b.date.getTime()))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
@@ -69,8 +83,15 @@ export function createChartStockDataAdapter({ env = {} }) {
     clearTokens: () => authTokenStorage.clearTokens(),
   });
 
+  // M5c: trạng thái basis của payload gần nhất; đọc qua getPriceBasis().
+  const priceBasisState = { priceBasis: 'raw' };
+
   const adapter = {
     label: 'core-api-adapter',
+
+    getPriceBasis() {
+      return priceBasisState.priceBasis;
+    },
 
     getSourceSemantics() {
       return {
@@ -99,7 +120,7 @@ export function createChartStockDataAdapter({ env = {} }) {
       });
       const fromTs = from.getTime();
       const toTs = to.getTime();
-      return parseBars(payload).filter((bar) => bar.date.getTime() >= fromTs && bar.date.getTime() <= toTs);
+      return parseBars(payload, priceBasisState).filter((bar) => bar.date.getTime() >= fromTs && bar.date.getTime() <= toTs);
     },
 
     async fetchBarsBefore(symbol, timeframe, before, limit, chartId) {
@@ -110,7 +131,7 @@ export function createChartStockDataAdapter({ env = {} }) {
         days,
       });
       const beforeTs = before.getTime();
-      return parseBars(payload)
+      return parseBars(payload, priceBasisState)
         .filter((bar) => bar.date.getTime() < beforeTs)
         .slice(-safeLimit);
     },

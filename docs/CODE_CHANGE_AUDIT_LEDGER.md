@@ -1,3 +1,9 @@
+## Entry 635: M5c — FE chart cutover + payload flag (CHƯA bật runtime)
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.
+- **Thay đổi**: `/chart` trả `adjusted_display`; `chartAdapter` scale O/H/L/C + lọc `unmapped_cafef` + `getPriceBasis()`; `VNStockChartPanel` bỏ nến realtime raw khi adjusted. Test FE 2/2, tsc/build exit 0; BE 15 test OK.
+- **Chưa bật flag / chưa invalidate / chưa resume beat**: R1/R2/R3 từ audit M5b là gate bắt buộc. Cutover runtime là ops window riêng. Evidence: `docs/evidence/widget-news-events/m5c-fe-cutover.md`.
+
 ## Entry 634: M5b — BE domain consumer dùng adjusted price
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.
