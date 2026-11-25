@@ -57,7 +57,18 @@ Tests       16 passed (16)
 ```
 npm run build
 ```
-Kết quả: `✓ built in 49.64s` (exit 0). Cảnh báo chunk >1000 kB là pre-existing (`RightSidebarDockHost` 1.994 MB), không liên quan slice này.
+Kết quả: ✓ built (exit 0, chạy lại sau rebase: `✓ built in 45.36s`). Cảnh báo chunk >1000 kB là pre-existing (`RightSidebarDockHost` 1.994 MB), không liên quan slice này.
 
-## Ghi chú rebase
-Sau khi rebase `origin/dev`, coordinator chạy lại toàn bộ gate ở trên và cập nhật kết quả vào file này nếu có thay đổi.
+## Re-run sau rebase `origin/dev` (bắt buộc)
+Lệnh trên chạy lại toàn bộ sau khi rebase từ `07c0df94c` sang `origin/dev` = `a0fe2b00b`:
+- `py_compile` 5 file BE: exit **0**.
+- `npx tsc --noEmit`: exit **0**.
+- `npx vitest run src/features/stock-detail`: **2 files / 16 tests passed**, exit **0**.
+- `npm run build`: exit **0** (`✓ built in 45.36s`).
+- `node packages/web/scripts/check-multi-agent.mjs`: exit **0** (in cảnh báo `! CLAIMS.md … không tồn tại trong worktree này` từ claim của agent khác — gate vẫn trả 0; không phải lỗi của slice này).
+- `git diff --stat 4a8f79d94..HEAD`: **không có file BE/FE nào của slice này thay đổi** (chỉ docs + file `price_migration_persist.py` từ `dev`) ⇒ kết quả BE **9/9** trên VPS trước rebase vẫn áp dụng cho code hiện tại. Không chạy lại VPS overlay vì code BE của slice không đổi.
+
+## Gate KHÔNG xanh — pre-existing trên `origin/dev`
+`node docs/audit-uiux/scripts/check-ledger-entry.mjs` → **FAIL**: `Entry 626 xuất hiện 2 lần, baseline cho phép 0` (exit **1**). Đã kiểm chứng bằng `git show origin/dev:docs/CODE_CHANGE_AUDIT_LEDGER.md | Select-String '^## Entry 626'` → **2 dòng** ngay trên `origin/dev`, tức lỗi có sẵn trước slice này. Hai block mang evidence khác nhau (main commit `9c45bd13c` / `dev=0111b729f` và main commit `1dd9554c5` / `dev=c029a9c12`) nên **không xoá bản nào** — việc gộp/đánh số lại là của coordinator/owner. Slice này chỉ thêm Entry **640** (`--next-entry` trước khi thêm = 640, sau = 641); không tự sửa entry của agent khác.
+
+**Kết luận gates của slice:** mọi gate do slice này chạy đều xanh; 1 gate ledger FAIL là nợ pre-existing của `dev`, được ghi rõ ở đây và trong audit — không báo PASS cho gate này.

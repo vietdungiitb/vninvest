@@ -115,6 +115,7 @@ BE **đã implement** aggregation per bucket cho 4h/1D/1W (`market_serving/nativ
 
 ## 4. Việc vninvest (tôi) làm — TRẠNG THÁI (2026-11-25)
 
+- **Commit giao contract:** `13f621458` (`feat(whale-cvd): full timeframe 4h/1D/1W + re-audit fixes`) trên `feat/whale-cvd-full-tf`, sau rebase `origin/dev` = `a0fe2b00b`. Commit khai claim: `49b78c1c9`; commit đóng claim được push ngay sau. Entry ledger **640** (637/639 đã bị Dev chiếm sau rebase).
 - ✅ BE: rebase onto dev (`feat/whale-cvd-full-tf`); implement `build_whale_buckets()` + `?window=` param trong `RealtimeWhaleFeedView`; fix dark-money helper (F-01 per-tick filter, F-02 side strict, F-07 delta/cvd/unit, UTC timezone, price+ts in whale_signals); schema `cvd_series` added.
 - ✅ FE: adapter wiring (`getDarkMoneyHistory`, `getSessionFactsCvd`); `useStockDetailPageModel` darkMoneyData; `StockDetailPage` override daily/weekly (whaleSignals + orderFlowData + darkFlow).
 - ✅ Tests (coordinator tự chạy, log tại `docs/evidence/whale-cvd-full-tf/gates.md`): `py_compile` OK; BE **9/9** trên VPS Postgres (`vninvest-core-api` → `vninvest-core-db:5432`); `tsc --noEmit` 0 lỗi; `vitest run src/features/stock-detail` **16/16** (3 test mới chạm dark-money path); `npm run build` ✓.

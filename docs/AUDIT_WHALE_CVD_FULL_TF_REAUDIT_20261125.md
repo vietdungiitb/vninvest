@@ -88,3 +88,9 @@ B1 đọc docs → B2 `git diff`/`git status` → B3 grep symbols → B4 đọc 
 
 ## 8. Đánh giá tổng thể
 **AGREE với residual có kiểm soát.** Không còn P0/P1 mở trong repo `vninvest`; 9 BE test + 16 FE test xanh. Residual R-03/R-04 nằm hoàn toàn trong repo widget và đã có handoff riêng `docs/handoffs/HANDOFF_2026-11-25_WHALE_CVD_WIDGET.md`. Không migration DB. Người duyệt: Owner BE/Coordinator.
+
+## 9. Re-audit sau rebase `origin/dev` (2026-11-25)
+- Rebase `07c0df94c` → `a0fe2b00b` (`origin/dev`); conflict duy nhất ở `docs/CODE_CHANGE_AUDIT_LEDGER.md` (cả 2 nhánh cùng prepend entry đầu file) đã resolve bằng cách giữ Entry 639/637 của Dev và đặt Entry của slice này thành **640**. `git rev-list --left-right --count origin/dev...HEAD` = `0 2` (2 commit: claim + code).
+- `git diff --stat 4a8f79d94..HEAD` chứng minh **không có file BE/FE của slice đổi do rebase** (chỉ docs + `price_migration_persist.py` của Dev) ⇒ BE 9/9 trên VPS vẫn áp dụng; không tự suy ra kết quả mới.
+- Re-run trực tiếp: `py_compile` exit 0 · `tsc --noEmit` exit 0 · `vitest run src/features/stock-detail` **16/16** exit 0 · `npm run build` exit 0 · `check-multi-agent` exit 0. Chi tiết: `docs/evidence/whale-cvd-full-tf/gates.md`.
+- **Gate pre-existing FAIL (không phải của slice):** `check-ledger-entry.mjs` báo `Entry 626 xuất hiện 2 lần`; đã verify `origin/dev` cũng có 2 block 626 với evidence khác nhau (`9c45bd13c` / `0111b729f` và `1dd9554c5` / `c029a9c12`). Không xoá/sửa entry của agent khác; ghi nợ cho coordinator. **Không báo gate này PASS.**
