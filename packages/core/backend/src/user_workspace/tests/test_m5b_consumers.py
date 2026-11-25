@@ -50,3 +50,11 @@ class M5bScreenerAdjustedTests(SimpleTestCase):
     def test_flag_on_sma20_adjusted(self):
         tech = _screener_build_technical('TPB', Decimal('100'), 1000, self._history())
         self.assertEqual(tech['sma20'], 50.0)
+
+    @patch.dict('os.environ', {'PRICE_ADJUSTED_DISPLAY': 'true'})
+    def test_flag_on_derived_indicators_use_scaled_close(self):
+        # R4: quote 100 × factor 0.5 = 50, sma đã adjust = 50. Nếu quote
+        # không được scale ⇒ price_vs_sma = 100% thay vì 0% (trộn basis).
+        tech = _screener_build_technical('TPB', Decimal('100'), 1000, self._history(n=51))
+        self.assertEqual(tech['price_vs_sma20_pct'], 0.0)
+        self.assertEqual(tech['price_vs_sma50_pct'], 0.0)

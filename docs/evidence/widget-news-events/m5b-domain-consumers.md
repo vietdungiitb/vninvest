@@ -13,12 +13,14 @@
 
 ## 2. Gate
 - **M5b1 NAV**: RED `85500.0 != 35880.0` → GREEN. 44 test (mới + `NavSeriesTests` + `test_review_findings_wave2`) OK.
-- **M5b2 advisory/screener**: RED 2 fail → GREEN **7/7**.
+- **M5b2 advisory/screener**: RED 2 fail → GREEN **8/8** (sau khi thêm R4: assert `price_vs_sma20_pct`/`price_vs_sma50_pct` = 0% với 51 phiên — nếu quote không scale sẽ ra 100%).
 - **Regression lớn**: `advisory` + `user_workspace` = **826 test**, 7 fail + 15 error. **Đều pre-existing**: swap về HEAD (git show) chạy subset `test_ledger_migration_backfill` + `test_schema_not_polluted_by_migration_tests` + `test_capability_matrix_pav` ⇒ cùng 7 fail + 14 error (lỗi migration/schema ledger, không liên quan pricing). Không sửa trong slice này.
 - Test chạy qua `docker exec -e DATABASE_URL=...@172.19.0.7:5432/...` (pgbouncer không route DB `test_*`).
 
-## 3. Chưa làm / gate trước khi bật flag
-- `PRICE_ADJUSTED_DISPLAY` vẫn **off** staging — chưa đổi runtime production.
-- `price_basis` trên `AdvisoryRecord` / `ScreenerRunHistory` **chưa gắn** — phải thêm trước khi bật flag pilot để record cũ/không cùng basis không bị trộn.
+## 3. Gate BẮT BUỘC trước khi bật flag (auditor M5b reservation)
+- **R1**: `pricing.py` hiện fallback **raw** cho dòng `unmapped_cafef`/factor NULL; plan `PLAN_PRICE_MIGRATION_CUTOVER_20261125.md:45` yêu cầu **loại dòng đó khỏi cửa sổ adjusted**. Flag off nên hiện vô hại — phải owner chốt định nghĩa + đổi helper/consumer cho phù hợp trước khi bật flag.
+- **R2**: `price_basis` trên `AdvisoryRecord` / `ScreenerRunHistory` **chưa gắn** (plan `:12,:36`) — phải thêm trước khi bật flag.
+- **R3**: `_nav_series` vẫn dùng quantity hiện tại (đã nhất quán adjusted qua `adj_close` nhưng chưa đúng literal "chuỗi quantity theo Transaction/LedgerEntry", plan `:24,:46`).
+- Flag `PRICE_ADJUSTED_DISPLAY` vẫn **off** staging — chưa đổi runtime production.
 - Snapshot recompute / invalidate cache / resume beat / FE chartAdapter — thuộc M5c.
 - Chưa apply M4 cho HNX/UPCOM và các năm khác — scope pilot vẫn ~2% dữ liệu.
