@@ -10,9 +10,11 @@ Branch `feat/price-mig-persist` · base dev `47effe783` (sau PR #528/M3) · Entr
 ## Dry-run thật 2022 (staging, KHÔNG ghi DB)
 | Chỉ số | Giá trị |
 |---|---|
-| matched / update | 360.329 |
-| db_only / keep_unmapped | 5.130 (dọn adj_close hỏng) |
-| cafef_only / insert | 38.986 |
+| matched / update (HOSE-only, sau Res-3) | **91.808** |
+| db_only / keep_unmapped (HOSE) | 298 |
+| cafef_only / insert (HOSE) | 0 |
+
+⚠ Số cũ 360.329/5.130/38.986 trong `m1-diff.md` là **cả 3 sàn** — dry-run M4 ban đầu không lọc exchange dù có tham số (`--exchange HOSE` vẫn xử lý tất cả). Auditor Res-3 bắt đúng; đã sửa bằng `StockProfile.exchange` filter. Report cũ `m4-dryrun-2022.json` giữ làm by-chứng lỗi, report mới là `m4-dryrun-2022-hose.json`.
 | assert_updated_equals_matched | **True — NHƯNG LÀ TAUTOLOGY** (`counts['update'] = len(matched)` ngay từ đầu), **không chứng minh write nào**. Audit Res-1: đây chính là tiêu chí false-green bị cấm — phải thay bằng đối chiếu DB SAU apply (số row `price_source='cafef'` + checksum 20 mã) trước khi bật `--apply`. |
 | inserted_keys_count | 38.986 |
 
@@ -25,8 +27,9 @@ Branch `feat/price-mig-persist` · base dev `47effe783` (sau PR #528/M3) · Entr
 ## Chưa làm / chờ
 - Audit thiết kế persist trước khi apply thật.
 - R3 từ M3: guard chỉ chặn `price_source='cafef'`; dòng `unmapped_cafef` cần mở rộng guard ở M4 apply (`data_ingest/tasks.py:722-725` → `.get('price_source') in ('cafef','unmapped_cafef')`). **Bắt buộc trước apply.**
-- **Res-3 (MAJOR, apply)**: `--exchange` bắt buộc nhưng **không lọc** — `DailyPrice`/`CafefDailyPrice` không có field exchange (`models.py:63-94,110-139`). Chạy `--exchange HOSE` vẫn xử lý cả 3 sàn; chạy 3 exchange ⇒ ghi đè 3 lần. Phải giải nghĩa exchange từ bảng `StockProfile.exchange` (market_data/models.py) hoặc bỏ tham số cho M4/year-based. Chưa làm.
-- **Res-4 (apply)**: N+1 ~360k query/năm (`price_migration_persist.py:106-107,131-133`); thiếu `VACUUM ANALYZE` + gate đĩa mỗi lô (plan:49) và checksum 20 mã (plan:50). Chưa làm.
+- **Res-3 ĐÃ ĐÓNG**: lọc symbol theo `StockProfile.exchange` (`price_migration_persist.py:52-57`) — HOSE giờ 91.808 cặp thay vì 360.329 (cả 3 sàn); nếu không có symbol ⇒ `CommandError` fail-closed.
+- **Res-4 ĐÃ ĐÓNG**: thay N+1 bằng batch query `symbol__in/date__in` theo lô (`:96-116,127-147`); `VACUUM ANALYZE market_data_dailyprice` + gate đĩa 20 GB sau apply (`:151-159`); `verify_after_apply.expected_cafef_rows` + 20 symbol checksum trong report (`:90-95`).
+- **Res-1 vẫn là nợ apply**: `assert_updated_equals_matched` là tautology — phải đối chiếu DB thật sau apply (report đã ghi `verify_after_apply.note`). Chưa apply nên chưa đóng được.
 - Backup S0 (`before_20261124.dump`) sẵn; rollback chọn lọc theo `inserted_keys` chưa implement (S6).
 - Chưa đổi consumer (M5), chưa bulk 3 sàn các năm sâu.
 

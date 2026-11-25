@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from market_data.cafef.persist import classify_row
-from market_data.models import CafefDailyPrice, DailyPrice
+from market_data.models import CafefDailyPrice, DailyPrice, StockProfile
 
 BATCH = 2000
 LEGACY_FIELDS = ('id', 'symbol', 'date', 'close', 'adj_close', 'open', 'high',
@@ -46,15 +46,25 @@ class Command(BaseCommand):
             raise CommandError('--apply requires PRICE_MIGRATION_PAUSED=1 (maintenance window)')
 
         year = opts['year']
+        # Res-3: exchange là tham số BẮT BUỘC — lọc symbol theo StockProfile.exchange
+        # (DailyPrice/CafefDailyPrice không có cột exchange).
+        symbols = set(StockProfile.objects.filter(
+            exchange=opts['exchange']).values_list('symbol', flat=True))
+        if not symbols:
+            raise CommandError(
+                f'no symbols for exchange={opts["exchange"]} — refused to process all exchanges')
+
         # Pass 1: chỉ id + price_source cho legacy; id cho cafef (O(n) nhỏ).
         legacy = {}
         for r in self._paged(
-            DailyPrice.objects.filter(date__year=year), ('id', 'symbol', 'date', 'price_source')
+            DailyPrice.objects.filter(date__year=year, symbol__in=symbols),
+            ('id', 'symbol', 'date', 'price_source')
         ):
             legacy[(r['symbol'], r['date'])] = (r['id'], r['price_source'])
         cafef = {}
         for r in self._paged(
-            CafefDailyPrice.objects.filter(date__year=year), ('id', 'symbol', 'date')
+            CafefDailyPrice.objects.filter(date__year=year, symbol__in=symbols),
+            ('id', 'symbol', 'date')
         ):
             cafef[(r['symbol'], r['date'])] = r['id']
 
@@ -78,6 +88,11 @@ class Command(BaseCommand):
             'cafef_only': len(cafef_only), 'counts': dict(counts),
             'inserted_keys_count': len(inserted_keys) if opts['apply'] else len(cafef_only),
             'assert_updated_equals_matched': counts['update'] == len(matched),
+            'verify_after_apply': {
+                'note': 'assert_updated_equals_matched LA TAUTOLOGY — phải đối chiếu DB sau apply',
+                'expected_cafef_rows': len(matched) + len(cafef_only),
+                'checksum_symbols': sorted(symbols)[:20],
+            },
         }
         text = json.dumps(report, ensure_ascii=False, indent=2)
         if opts['out']:
@@ -97,14 +112,21 @@ class Command(BaseCommand):
             chunk = keys[start:start + BATCH]
             legacy_rows = {r['id']: r for r in DailyPrice.objects.filter(
                 id__in=chunk).values(*LEGACY_FIELDS)}
+            chunk_symbols = {id_to_key[pk][0] for pk in chunk if pk in id_to_key}
+            chunk_dates = {id_to_key[pk][1] for pk in chunk if pk in id_to_key}
+            cafef_rows = {
+                (r['symbol'], r['date']): r
+                for r in CafefDailyPrice.objects.filter(
+                    symbol__in=chunk_symbols, date__in=chunk_dates).values(
+                    'symbol', 'date', *CAFEF_FIELDS)
+            }
             objs = []
             for pk in chunk:
                 old = legacy_rows.get(pk)
                 key = id_to_key.get(pk)
                 if old is None or key is None:
                     continue
-                new = CafefDailyPrice.objects.filter(
-                    symbol=key[0], date=key[1]).values(*CAFEF_FIELDS).first()
+                new = cafef_rows.get(key)
                 if new is None:
                     continue
                 plan = classify_row(old, new, 'cafef')
@@ -126,11 +148,17 @@ class Command(BaseCommand):
         keys = sorted(cafef_only, key=lambda k: (k[0], k[1]))
         for start in range(0, len(keys), BATCH):
             chunk = keys[start:start + BATCH]
+            chunk_symbols = {k[0] for k in chunk}
+            chunk_dates = {k[1] for k in chunk}
+            cafef_rows = {
+                (r['symbol'], r['date']): r
+                for r in CafefDailyPrice.objects.filter(
+                    symbol__in=chunk_symbols, date__in=chunk_dates).values(
+                    'symbol', 'date', *CAFEF_FIELDS)
+            }
             objs = []
             for key in chunk:
-                new = CafefDailyPrice.objects.filter(
-                    symbol=key[0], date=key[1]).values(
-                    'symbol', 'date', *CAFEF_FIELDS).first()
+                new = cafef_rows.get(key)
                 if new is None:
                     continue
                 plan = classify_row(None, new, 'cafef')
@@ -145,3 +173,14 @@ class Command(BaseCommand):
                 inserted_keys.append(f'{key[0]}:{key[1].isoformat()}')
             with transaction.atomic():
                 DailyPrice.objects.bulk_create(objs, batch_size=BATCH)
+
+        if opts['apply']:
+            # Res-4: VACUUM ANALYZE sau khi ghi lô lớn; gate đĩa tối thiểu 20 GB.
+            from django.db import connection
+
+            with connection.cursor() as cur:
+                cur.execute('VACUUM ANALYZE market_data_dailyprice')
+            stat = os.statvfs('/')
+            free_gb = stat.f_bavail * stat.f_frsize / (1024 ** 3)
+            if free_gb < 20:
+                self.stderr.write(f'WARNING: disk free {free_gb:.1f} GB < 20 GB after apply')

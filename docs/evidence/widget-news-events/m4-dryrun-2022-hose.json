@@ -1,0 +1,41 @@
+{
+  "exchange": "HOSE",
+  "year": 2022,
+  "dry_run": true,
+  "matched": 91808,
+  "db_only": 298,
+  "cafef_only": 0,
+  "counts": {
+    "update": 91808,
+    "keep_unmapped": 298,
+    "insert": 0
+  },
+  "inserted_keys_count": 0,
+  "assert_updated_equals_matched": true,
+  "verify_after_apply": {
+    "note": "assert_updated_equals_matched LA TAUTOLOGY — phải đối chiếu DB sau apply",
+    "expected_cafef_rows": 91808,
+    "checksum_symbols": [
+      "AAA",
+      "AAM",
+      "AAN",
+      "AAT",
+      "ABR",
+      "ABS",
+      "ABT",
+      "ACB",
+      "ACC",
+      "ACG",
+      "ACL",
+      "ADG",
+      "ADP",
+      "ADS",
+      "AFX",
+      "AGG",
+      "AGR",
+      "ANT",
+      "ANV",
+      "APG"
+    ]
+  }
+}
