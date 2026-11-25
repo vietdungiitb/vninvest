@@ -17,16 +17,18 @@
 | M5c FE chart | #532 | `m5c-fe-cutover.md` + `m5c-gate-logs.txt` — scale O/H/L/C, lọc unmapped, skip realtime, R-A đóng; FE 3/3, tsc/build exit 0, BE 15 test OK |
 | M6a guard unmapped | #535 | `m6a-guard-unmapped.md` — ingest skip `price_source in ('cafef','unmapped_cafef')`; RED→GREEN 5/5, regression 52 test OK |
 | Apply HOSE 2021 | #538 | `m4-apply-2021-hose.md` — dry-run 87.947/3.002/0 → apply exit 0, DB `cafef=87.947`, `adj_factor=87.947`. Tổng HOSE 2021+2022 **179.755 dòng** |
+| Query plan hotfix | #540 | `m6c-query-plan.md` — `date__year` → `date__range`, 744s → 33,9s (EXPLAIN chứng minh Seq Scan) |
+| M6b readiness | #542 | `m6b-readiness.md` + `docs/ops/PRICE_MIGRATION_CUTOVER_RUNBOOK.md` — R1/R2/R3/R-B đóng, audit O1/O2 đã fix, 15 BE + 4 FE test OK, 2 migration |
 
-Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–637. Claims: `price-mig-*`, `price-mig-cutover`, `price-mig-guard-unmapped` đều `done`.
+Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–640. Claims: `price-mig-*`, `price-mig-cutover`, `price-mig-guard-unmapped` đều `done`.
 
 ## Gate CHƯA đóng — KHÔNG bật flag khi chưa xong
-1. **R1** (`pricing.py` fallback raw cho `unmapped_cafef` thay vì loại khỏi cửa sổ adjusted — plan `PLAN_PRICE_MIGRATION_CUTOVER_20261125.md:45`).
-2. **R2** `price_basis` trên `AdvisoryRecord`/`ScreenerRunHistory` chưa gắn.
-3. **R3** NAV quantity time-series (Transaction/LedgerEntry) chưa dùng — đã dùng `adj_close` nên nhất quán basis.
-4. **R-B** `getPriceBasis()` chưa reactive (stale ~5s); chưa test component nhánh skip realtime.
+1. ~~R1~~ — **đã đóng M6b** (#542): `unmapped_cafef` bị loại khỏi cửa sổ adjusted.
+2. ~~R2~~ — **đã đóng M6b**: `price_basis` trên cả 2 record + migration `advisory/0024`, `user_workspace/0031`.
+3. ~~R3~~ — **đã đóng M6b**: NAV quantity theo ngày từ `LedgerEntry` (baseline trước cửa sổ đã fix).
+4. ~~R-B~~ — **đã đóng M6b**: `subscribePriceBasis()` reactive. (Chưa component test nhánh skip realtime — residual nhẹ.)
 5. ~~Guard ingest cho `unmapped_cafef`~~ — **đã đóng M6a** (#535).
-6. Apply M4 cho HNX/UPCOM + các năm khác (đã xong HOSE 2021+2022 = 179.755 dòng; phần còn lại chưa apply).
+6. **Apply M4 các lô còn lại đang chạy** (3 worker song song, mỗi lô process riêng). Đã apply: HOSE 2011/2012/2013/2014/2017/2020/2021/2022/2023, HNX 2011. Bỏ qua 7 lỗi nguồn CafeF (HOSE 2016/2018/2026, HNX 2012, UPCOM 2011/2014/2015).
 7. Ops window: invalidate cache bulk-technicals/SOC inventory, recompute `SymbolSnapshot` + coverage, resume 5 beat job, E2E Playwright chụp ảnh mở xem. Backup S0 + rollback chọn lọc theo `inserted_keys` sẵn.
 
 ## Next steps / owner
