@@ -1126,6 +1126,10 @@ class ScreenerRunHistory(models.Model):
         verbose_name='Rule',
     )
     rule_name = models.CharField(max_length=100, verbose_name='Tên rule lúc chạy')
+    # M6b R2: basis giá dùng khi quét — 'raw' (mặc định) hoặc 'adjusted'.
+    price_basis = models.CharField(
+        max_length=16, default='raw', db_index=True, verbose_name='Basis giá dùng khi quét'
+    )
     run_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời gian chạy')
     matched_count = models.IntegerField(verbose_name='Số mã khớp')
     total_scanned = models.IntegerField(verbose_name='Tổng quét')

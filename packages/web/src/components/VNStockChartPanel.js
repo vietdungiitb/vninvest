@@ -231,6 +231,11 @@ export default function VNStockChartPanel({
 
   const quote = realtimeFeed?.quotesBySymbol?.[symbol] ?? null;
 
+  // R-B: basis là state reactive (subscribe từ adapter), không đọc method trong
+  // useMemo — tránh cửa sổ stale ~5s sau fetch khi payload chuyển sang adjusted.
+  const [priceBasis, setPriceBasis] = useState(adapter?.getPriceBasis?.() ?? 'raw');
+  useEffect(() => adapter?.subscribePriceBasis?.(setPriceBasis), [adapter]);
+
   const buildBarFromQuote = useCallback((q) => {
     if (!q || !q.current_price) return null;
     const tf = (activeTimeframe || '').toLowerCase();
@@ -255,9 +260,9 @@ export default function VNStockChartPanel({
   // M5c: khi history đã scale sang adjusted, nến cuối từ quote realtime là
   // raw ⇒ trộn basis ngay đầu indicator. Bỏ qua nến realtime trong mode này.
   const nextBar = useMemo(() => {
-    if (adapter?.getPriceBasis?.() === 'adjusted') return null;
+    if (priceBasis === 'adjusted') return null;
     return buildBarFromQuote(quote);
-  }, [quote, buildBarFromQuote, adapter]);
+  }, [quote, buildBarFromQuote, priceBasis]);
   useEffect(() => {
     if (nextBar) {
       adapter.pushRealtimeBar(nextBar);

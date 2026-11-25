@@ -76,7 +76,13 @@ export function parseBars(payload, state) {
   const basisAdjusted = Boolean(adjusted && newest
     && newest.price_source === 'cafef'
     && newest.adj_factor != null && newest.adj_close != null);
-  if (state) state.priceBasis = basisAdjusted ? 'adjusted' : 'raw';
+  if (state) {
+    const next = basisAdjusted ? 'adjusted' : 'raw';
+    if (state.priceBasis !== next) {
+      state.priceBasis = next;
+      if (typeof state._notify === 'function') state._notify(next);
+    }
+  }
   return sorted
     .map((p, i) => mapToBar(p, i, adjusted))
     .filter((b) => !isNaN(b.date.getTime()));
@@ -91,14 +97,24 @@ export function createChartStockDataAdapter({ env = {} }) {
     clearTokens: () => authTokenStorage.clearTokens(),
   });
 
-  // M5c: trạng thái basis của payload gần nhất; đọc qua getPriceBasis().
-  const priceBasisState = { priceBasis: 'raw' };
+  // M5c/M6b: trạng thái basis của payload gần nhất + listener reactive (R-B).
+  const basisListeners = new Set();
+  const priceBasisState = {
+    priceBasis: 'raw',
+    _notify(next) { basisListeners.forEach((cb) => cb(next)); },
+  };
 
   const adapter = {
     label: 'core-api-adapter',
 
     getPriceBasis() {
       return priceBasisState.priceBasis;
+    },
+
+    subscribePriceBasis(cb) {
+      if (typeof cb !== 'function') return () => {};
+      basisListeners.add(cb);
+      return () => basisListeners.delete(cb);
     },
 
     getSourceSemantics() {

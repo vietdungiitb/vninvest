@@ -4,7 +4,13 @@
 - **Bug**: `StockManagementDarkMoneyHistoryView.get` dùng `DailyPrice` ở nhánh daily (`stock_mgmt_native_views.py:2152`) nhưng F-03 import muộn tại `:2238` ⇒ `UnboundLocalError`. Test cũ chỉ dùng `interval=1h` ⇒ sót.
 - **Fix**: bind import ở đầu method. RED `UnboundLocalError` → GREEN; regression `market_data` 259 test, 1 fail pre-existing.
 - Hotfix 3 dòng bị sót trên working tree từ PR #540/Entry 640 — owner yêu cầu commit. Evidence: `docs/evidence/widget-news-events/dailyprice-unbound-hotfix.md`.
+## Entry 641: M4 apply toàn bộ + cutover runtime
 
+- **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-readiness` (docs).
+- **Apply**: 3 worker song song, mỗi lô process riêng. Verify DB cuối: `cafef=1.904.487`, 100% có `adj_factor`, `bad_cafef=0`, `bad_unmapped=0`; 4 mismatch đúng lỗi nguồn CafeF đã loại. 5 lô có 0 dòng nguồn ⇒ không cần apply.
+- **Hạ tầng**: core-api 512MB→4GB, DB 2GB→12GB, BATCH 2000→500; image `cutover` giữ code; compose truyền 2 flag (commit trailer `Claim-Deny-List:`).
+- **Cutover**: `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, migration `advisory/0024` + `user_workspace/0031`, deploy FE dist, `cache.clear()`. E2E API `/chart` 200 + adjusted_display=true + TPB `17940`; Visual E2E **CHƯA CHẠY** (màn hình login, không có credentials).
+- Evidence: `docs/evidence/widget-news-events/m4-apply-all-and-cutover.md`.
 ## Entry 640: Whale/CVD full timeframe — re-audit 2 vòng, fix P0/P1, handoff widget
 
 - **Date**: 2026-11-25 · **Type**: feat + fix · **Branch**: `feat/whale-cvd-full-tf` (base `origin/dev`) · Claim `whale-cvd-full-tf`.
@@ -20,6 +26,15 @@
 - **Phản chứng**: `EXTRACT(YEAR FROM date)` ⇒ Seq Scan cost 153014 dù có index date. Driver cũ: 744s/lô + OOM exit 137 ở lô sau.
 - **Fix**: `date__year` → `date__range=(date(year,1,1), date(year,12,31))`. Đo thật dry-run HOSE 2012: **33,9s** (~22× nhanh hơn). Chạy mỗi lô bằng process riêng để tránh OOM.
 - Evidence: `docs/evidence/widget-news-events/m6c-query-plan.md`.
+
+## Entry 638: M6b — pilot readiness R1/R2/R3/R-B
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-readiness` · Claim `price-mig-readiness`.
+- **R1**: `pricing.py` trả None cho `unmapped_cafef` khi flag on ⇒ consumer loại khỏi cửa sổ adjusted (không thay raw).
+- **R2**: `price_basis` trên `AdvisoryRecord`/`ScreenerRunHistory` + migration `advisory/0024`, `user_workspace/0031` (makemigrations sinh).
+- **R3**: quantity theo ngày từ `LedgerEntry` cho NAV equity curve + `_nav_series` (fix O2 baseline).
+- **R-B**: `subscribePriceBasis()` reactive, FE panel dùng state.
+- **Gate**: BE **15 test OK**; FE 4/4, tsc/build exit 0. Audit NEED_REVISION O1/O2 đã đóng. Flag vẫn off. Evidence: `docs/evidence/widget-news-events/m6b-readiness.md`.
 
 ## Entry 637: M4 apply — lô HOSE 2021
 
