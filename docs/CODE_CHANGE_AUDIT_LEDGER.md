@@ -5,6 +5,28 @@
 
 ---
 
+## Entry 42: Khôi phục plugin `.opencode-plugins` trên `main` (OpenCode 2.x)
+
+- **Date**: 2026-11-25
+- **Claim / nhánh**: `opencode-plugin-v2` · `fix/opencode-plugin-v2` (worktree riêng, base `main`) — repo này **KHÔNG CÓ** `docs/CLAIMS.md` (`git cat-file -e HEAD:docs/CLAIMS.md` → 128), claim ghi tại handoff + entry này.
+- **Plan / audit**: `docs/PLAN_FIX_OPENCODE_PLUGIN_V2_20261125.md` (audit v1 NEED_REVISION → v2 AGREE) · `docs/AUDIT_OPENCODE_PLUGIN_V2_PORT_20261125.md`
+- **Root cause**: `opencode.jsonc:4` dùng key V1 `plugin` + thiếu `./` → server 2.4.0 resolve thành npm spec, log `NpmInstallFailedError … .opencode-plugins\package.json ENOENT` (03:55:50Z); code hook V1 (`@opencode-ai/plugin`) + thiếu `package.json`. Bản fix V2 đã có trên `dev` (Entry 405, dòng 2185-2192, commit `cc15400f7` → `4aa075876` → `70a50feea`) nhưng chưa vào `main` (`git merge-base --is-ancestor cc15400f7 HEAD` → 1).
+- **Files touched (3 + docs)**:
+  - `opencode.jsonc:4` → `"plugins": ["./.opencode-plugins"]`
+  - `.opencode-plugins/vninvest-hooks.ts:1-173` → `Plugin.define` từ `@opencode/plugin`, `ctx.tool.hook("execute.before")` `:113`, `ctx.permission.hook("evaluate")` `:139`, `isLegacyCandidate` relativize `:85,144,161` (không chặn nhầm `packages/core/backend/`)
+  - `.opencode-plugins/package.json:7` (NEW) → `@opencode/plugin 2.1.4`
+  - `.opencode-plugins/index.ts` **giữ nguyên** byte-for-byte (hash khớp `dev:`)
+  - docs: plan, audit, handoff, entry này
+- **Validation**:
+  - Red: log server `03:55:50Z` `failed to load plugin target=.opencode-plugins` — đúng báo cáo `Plugin failed`.
+  - Green: log server `04:02:18.517Z` `loading plugin …/.opencode-plugins entrypoint=…/index.ts`, **0** failed-to-load cho vninvest (lỗi `ponytail` global không liên quan); `opencode plugin list` → `vninvest-hooks local`.
+  - `git hash-object` 4/4 khớp `git rev-parse dev:<path>` (copy byte-for-byte, không cherry-pick để tránh conflict `docs/CLAIMS.md`).
+  - Functional guard: extract `isLegacyCandidate` từ source thật → 5/5 PASS (legacy deny, `packages/core/backend` allow).
+- **CHƯA CHẠY**: `node scripts/check-multi-agent.mjs` (file KHÔNG TỒN TẠI trên repo này); `npx tsc --noEmit` + `npm run build` + i18n scan + FE test (worktree không có `node_modules`; scope không đụng FE, không npm install khi chưa hỏi).
+- **Residual**: pin `@opencode/plugin 2.1.4` trong khi local CLI 2.4.0 / npm latest 2.4.1 — giữ bản đã audit trên `dev`, smoke-test PASS, không blocker. Handoff phải landing trên `main` trước khi đóng phiên.
+
+---
+
 ## Entry 40: SOC DataOps Maintenance — Build Verification (A)
 
 - **Date**: 2026-09-10 (AGENTS.md goal — maintenance sau migration `vninvestcharts-widget`)
