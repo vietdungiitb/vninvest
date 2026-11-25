@@ -1,4 +1,5 @@
-"""M3 — guard: nightly ingest KHÔNG ghi đè dòng price_source='cafef' (TDD)."""
+"""M3/M6a — guard: nightly ingest KHÔNG ghi đè dòng đã xử lý migration giá
+(price_source='cafef' hoặc 'unmapped_cafef'). TDD."""
 import os
 from datetime import date
 from decimal import Decimal
@@ -27,6 +28,14 @@ class PriceSourceGuardTests(SimpleTestCase):
     def test_cafef_row_is_skipped(self):
         objs, ins, upd, skipped = _classify_daily_price_rows(
             _existing('cafef'), [dict(r) for r in HISTORY], 'VCI')
+        self.assertEqual(objs, [])
+        self.assertEqual((ins, upd, skipped), (0, 0, 1))
+
+    def test_unmapped_cafef_row_is_also_skipped(self):
+        """M6a: 298 dòng HOSE 2022 bị đánh dấu unmapped_cafef (adj_close hỏng
+        đã dọn NULL) cũng KHÔNG được provider ghi đè khi beat chạy lại."""
+        objs, ins, upd, skipped = _classify_daily_price_rows(
+            _existing('unmapped_cafef'), [dict(r) for r in HISTORY], 'VCI')
         self.assertEqual(objs, [])
         self.assertEqual((ins, upd, skipped), (0, 0, 1))
 
