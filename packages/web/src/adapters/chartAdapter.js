@@ -64,14 +64,22 @@ function mapToBar(p, i, adjusted = false) {
 
 export function parseBars(payload, state) {
   const adjusted = payload?.adjusted_display === true;
-  if (state) state.priceBasis = adjusted ? 'adjusted' : 'raw';
   const points = extractPoints(payload).filter(
     (p) => !adjusted || p.price_source !== 'unmapped_cafef'
   );
-  return points
+  const sorted = points.sort((a, b) =>
+    new Date(a.timestamp ?? a.time ?? a.date).getTime()
+    - new Date(b.timestamp ?? b.time ?? b.date).getTime());
+  // R-A: basis phải derive từ dữ liệu thực của CHÍNH MÃ này, không phải flag
+  // global — nếu không, mã legacy (~98%) cũng bị bỏ nến realtime.
+  const newest = sorted[sorted.length - 1];
+  const basisAdjusted = Boolean(adjusted && newest
+    && newest.price_source === 'cafef'
+    && newest.adj_factor != null && newest.adj_close != null);
+  if (state) state.priceBasis = basisAdjusted ? 'adjusted' : 'raw';
+  return sorted
     .map((p, i) => mapToBar(p, i, adjusted))
-    .filter((b) => !isNaN(b.date.getTime()))
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
+    .filter((b) => !isNaN(b.date.getTime()));
 }
 
 export function createChartStockDataAdapter({ env = {} }) {

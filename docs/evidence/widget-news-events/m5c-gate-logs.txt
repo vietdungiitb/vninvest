@@ -1,0 +1,31 @@
+# M5c gate logs (chạy 2026-11-25, worktree price-mig-cutover, packages/web)
+
+## FE unit test (lệnh + output thật)
+$ npx vitest run src/adapters/__tests__/chartAdapter.adjusted.component.test.ts
+ RUN  v4.1.9 D:/Mujoco Projects/wt/price-mig-cutover/packages/web
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Duration  5.67s (transform 377ms, setup 0ms, import 515ms, tests 15ms)
+
+## Type-check
+$ npx tsc --noEmit
+exit 0 (không có output)
+
+## Build
+$ npm run build
+✓ built in 31.18s
+warning: chunk >1000 kB (pre-existing): RightSidebarDockHost / echarts / i18n
+exit 0
+
+## BE regression (staging VPS, docker exec)
+$ docker exec -e CORPORATE_ACTIONS_ENABLED=false -e DATABASE_URL=...@172.19.0.7:5432/vninvest_core \
+    -w /app/src vninvest-core-api python manage.py test \
+    market_data.tests.test_m5_serializer market_data.tests.test_m5_chart_points \
+    user_workspace.tests.test_m5b_nav_adjusted user_workspace.tests.test_m5b_consumers
+Ran 15 tests in 0.032s
+OK
+
+## Flag
+$ docker exec -e PRICE_ADJUSTED_DISPLAY=true ... python -c 'from market_data.pricing import pilot_adjusted_enabled; print(...)'
+True
+(mặc định không inject ⇒ False)

@@ -12,12 +12,14 @@
 | `packages/web/src/adapters/__tests__/chartAdapter.adjusted.component.test.ts` (mới) | 2 test: flag off giữ raw; flag on scale O/H/L/C + bỏ `unmapped_cafef` + legacy fallback raw. |
 
 ## 2. Gate
-- FE: `npx vitest run …chartAdapter.adjusted.component.test.ts` ⇒ **2/2 PASS**; `npx tsc --noEmit` ⇒ exit 0; `npm run build` ⇒ exit 0 (chỉ chunk-size warning có sẵn).
+- FE: `npx vitest run …chartAdapter.adjusted.component.test.ts` ⇒ **3/3 PASS**; `npx tsc --noEmit` ⇒ exit 0; `npm run build` ⇒ exit 0 (chỉ chunk-size warning có sẵn). Log thật lưu `m5c-gate-logs.txt` (đóng R-C).
+- **R-A đã đóng**: `parseBars` derive `priceBasis` từ **phiên mới nhất thực sự được scale** (`price_source='cafef'` + có factor/adj_close), không còn đọc flag global ⇒ mã legacy (~98%) giữ `raw` và vẫn push nến realtime. Test `R-A: mã legacy có flag on nhưng basis vẫn raw`.
 - BE: copy view vào container, chạy 15 test (M5a 7 + M5b 8) ⇒ **OK**; `pilot_adjusted_enabled()` với env `true` ⇒ `True`, mặc định `False`.
 - Test FE nằm trong `src/**/*.component.test.*` theo `vitest.config.ts` (include pattern).
 
 ## 3. Chưa làm — gate runtime (BẮT BUỘC trước khi bật flag)
 - R1/R2/R3 từ audit M5b (`docs/evidence/widget-news-events/m5b-domain-consumers.md`) **chưa đóng**: fallback raw cho `unmapped_cafef`, `price_basis` trên AdvisoryRecord/ScreenerRunHistory, NAV quantity time-series.
+- **R-B (chưa đóng)**: `getPriceBasis()` đọc qua method trong `useMemo` nên không reactive — có cửa sổ stale tới ~5s sau fetch. Phải đưa basis thành state/dependency trước khi bật flag. Chưa có test component cho nhánh skip realtime.
 - Chưa bật `PRICE_ADJUSTED_DISPLAY=1` staging; chưa invalidate cache bulk-technicals/SOC inventory; chưa recompute `SymbolSnapshot` + coverage; chưa resume 5 beat job; chưa E2E Playwright chụp ảnh mở xem.
 - Chưa apply M4 cho HNX/UPCOM/các năm khác — scope pilot vẫn ~2% data.
 ⇒ Cutover runtime là một **ops window riêng**, chỉ mở sau khi đóng R1/R2/R3 và có backup/rollback sẵn.
