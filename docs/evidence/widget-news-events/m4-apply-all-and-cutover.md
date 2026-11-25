@@ -37,7 +37,7 @@ Sự cố đã xử lý (không phải lỗi dữ liệu):
 
 ## 4. E2E
 - API-level (Django `APIRequestFactory`, `/chart` TPB): `status=200`, `adjusted_display=true`, 955 points, `first_point.adj_close=10280`/`adj_factor=0.4195918367`/`price_source=cafef`; `effective_close(TPB 2022-01-04)=17940.0`.
-- Visual Playwright: trang `/stocks/TPB` chuyển về màn hình đăng nhập (`/tmp/m5c_chart_e2e.png`, đã mở ảnh kiểm tra) ⇒ **CHƯA CHẠY** phần chart trực quan vì không có credentials staging; không đoán mật khẩu theo `STAGING_VPS_RUNBOOK.md:46`.
+- **Visual Playwright ĐÃ CHẠY** (owner cung cấp tài khoản test): đăng nhập `admin`, vào `/stocks/TPB`, đợi widget render xong (~25s), screenshot `/tmp/m5c_chart_e2e_final.png` **đã mở ảnh kiểm tra** — chart hiển thị 2.145 nến, EMA20/EMA50/Bollinger/volume, không có pageerror. Console có 1 lỗi 404 tại `/core/v1/advisory/latest/TPB/` (endpoint advisory cũ, outside scope). Widget hiển thị nhãn "Chưa điều chỉnh" vì host map `adj_close` vào `close` trước khi truyền widget (thiết kế M5c: widget không tự render adjusted) — nến lịch sử vẫn lấy field điều chỉnh từ payload.
 
 ## 5. Residual quan sát sau cutover
 `vninvest-core-beat` + 3 worker báo **unhealthy** do healthcheck `curl http://127.0.0.1:8100/core/v1/health` — dịch vụ beat/worker không chạy HTTP server (chỉ core-api có). Log beat cho thấy scheduler vẫn phân phối đúng task (`materialize-symbol-snapshot-60s`, `market-data-queue-tier-scheduler-30s`, …) ⇒ **không phải regression của cutover**, là cấu hình healthcheck dùng chung từ API. Không sửa trong scope này.
