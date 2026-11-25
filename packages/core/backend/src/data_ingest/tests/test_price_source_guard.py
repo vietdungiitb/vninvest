@@ -30,6 +30,14 @@ class PriceSourceGuardTests(SimpleTestCase):
         self.assertEqual(objs, [])
         self.assertEqual((ins, upd, skipped), (0, 0, 1))
 
+    def test_unmapped_cafef_row_is_also_skipped(self):
+        """M6a: 298 dòng HOSE 2022 bị đánh dấu unmapped_cafef (adj_close hỏng
+        đã dọn NULL) cũng KHÔNG được provider ghi đè khi beat chạy lại."""
+        objs, ins, upd, skipped = _classify_daily_price_rows(
+            _existing('unmapped_cafef'), [dict(r) for r in HISTORY], 'VCI')
+        self.assertEqual(objs, [])
+        self.assertEqual((ins, upd, skipped), (0, 0, 1))
+
     def test_legacy_row_still_updated(self):
         objs, ins, upd, skipped = _classify_daily_price_rows(
             _existing('vnbroker_legacy'), [dict(r) for r in HISTORY], 'VCI')

@@ -719,8 +719,11 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
             objs_to_upsert.append(DailyPrice(symbol=row_symbol, date=row_date, **next_values))
             continue
 
-        # M3 guard: KHÔNG ghi đè dòng đã chuẩn hóa từ CafeF (price_source='cafef').
-        if existing.get('price_source') == 'cafef':
+        # M3/M6a guard: KHÔNG ghi đè dòng đã xử lý bởi migration giá.
+        # - 'cafef': đã chuẩn hóa xong (có adj_factor).
+        # - 'unmapped_cafef': CafeF không có dữ liệu, adj_close hỏng đã dọn NULL;
+        #   provider ghi đè sẽ trả lại giá đã điều chỉnh (double-adjust).
+        if existing.get('price_source') in ('cafef', 'unmapped_cafef'):
             skipped_existing += 1
             continue
 

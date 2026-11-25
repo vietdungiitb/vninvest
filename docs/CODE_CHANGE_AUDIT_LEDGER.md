@@ -1,3 +1,10 @@
+## Entry 636: M6a — guard ingest chặn ghi đè `unmapped_cafef`
+
+- **Date**: 2026-11-25 · **Type**: fix · **Branch**: `feat/price-mig-guard-unmapped` · Claim `price-mig-guard-unmapped`.
+- **Thay đổi**: `data_ingest/tasks.py` skip upsert khi `price_source in ('cafef','unmapped_cafef')` — chặn provider ghi đè 298 dòng HOSE 2022 đã dọn `adj_close` hỏng.
+- **Gate**: RED 1 fail → GREEN **5/5**; regression `data_ingest` **52 test OK** (exit 1 do teardown DB-in-use pre-existing). Chưa resume beat, chưa bật flag.
+- Evidence: `docs/evidence/widget-news-events/m6a-guard-unmapped.md`.
+
 ## Entry 635: M5c — FE chart cutover + payload flag (CHƯA bật runtime)
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.
