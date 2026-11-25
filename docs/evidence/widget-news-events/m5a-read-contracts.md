@@ -8,11 +8,11 @@
 |---|---|
 | `market_data/serializers.py:19-26` | `DailyPriceSerializer` thêm `adj_close`, `adj_factor`, `price_source`. |
 | `stock_mgmt_native_views.py:984-999` | `_serialize_price_point` nhận 3 tham số optional; trả thêm 3 key (intraday ⇒ `None`). |
-| `:995-1045` | `_aggregate_daily_rows` D: truyền field từ row; W/M: mang field từ **phiên cuối bucket** (reservation 5). |
-| `:4061-4074` | `_ohlcv_bar_from_daily`: thêm `adj_factor`, `price_source` khi `CORPORATE_ACTIONS_ENABLED=true`. |
-| `:4076-4125` | `_aggregate_daily_to_ohlcv_bars`: mang field từ phiên cuối, expose cùng flag. |
+| `:1002-1062` | `_aggregate_daily_rows` D: truyền field từ row; W/M: mang field từ **phiên cuối bucket** (reservation 5). |
+| `:4084-4098` | `_ohlcv_bar_from_daily`: thêm `adj_factor`, `price_source` khi `CORPORATE_ACTIONS_ENABLED=true`. |
+| `:4101-4147` | `_aggregate_daily_to_ohlcv_bars`: mang field từ phiên cuối, expose cùng flag. |
 
-`/bars` metadata `adjusted` giữ nguyên nhánh `_corporate_actions_enabled()` (`:4398-4417`) — không đổi logic.
+`/bars` metadata `adjusted` giữ nguyên nhánh `_corporate_actions_enabled()` (`:4079-4081`, `:4429-4460`) — không đổi logic.
 
 ## 2. Golden value đối chiếu DB staging (lệnh tái tạo)
 ```
@@ -28,7 +28,7 @@ Output dán thật:
 Khớp golden plan: `close=42750`, `adj_close=17940`.
 
 ## 3. Gate
-- **RED → GREEN**: 6 test mới (`test_m5_serializer.py` 2 + `test_m5_chart_points.py` 4). RED: `TypeError: unexpected keyword argument 'adj_close'` + `KeyError: 'adj_close'`. GREEN: 6/6.
+- **RED → GREEN**: 7 test (`test_m5_serializer.py` 2 + `test_m5_chart_points.py` 5). RED: `TypeError: unexpected keyword argument 'adj_close'` + `KeyError: 'adj_close'`. GREEN: **7/7** sau khi thêm test `_aggregate_daily_to_ohlcv_bars` W/M (đóng reservation auditor: 6 test cũ chỉ phủ `_ohlcv_bar_from_daily`). Dùng `@patch.dict('os.environ', ...)` thay set/pop tay để tránh env contamination.
 - **Full suite `market_data`**: 264 test, **1 fail** — `test_stock_management_technicals_bulk_returns_compatible_technical_payload` (`rsi_14` None). **Pre-existing**: chạy lại với `stock_mgmt_native_views.py` nguyên HEAD (git show) vẫn fail ⇒ không phải do M5a. Ghi nhận, không sửa trong slice này.
 - Container staging có sẵn `CORPORATE_ACTIONS_ENABLED=true` ⇒ 1 test cũ `test_weekly_bar_flag_off_keeps_old_contract` fail do env contamination; chạy lại với `-e CORPORATE_ACTIONS_ENABLED=false` ⇒ pass. Không phải lỗi code.
 - Test DB Django không chạy qua pgbouncer (`/dev/shm` 64MB + DB `test_*` không được pgbouncer route); dùng `docker exec -e DATABASE_URL=...@172.19.0.7:5432/...`.

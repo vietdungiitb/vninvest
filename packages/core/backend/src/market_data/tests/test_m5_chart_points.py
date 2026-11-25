@@ -1,11 +1,13 @@
 """M5a — /chart points phải mang field điều chỉnh cho FE scale (TDD)."""
 from datetime import date
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase
 
 from market_data.stock_mgmt_native_views import (
     _aggregate_daily_rows,
+    _aggregate_daily_to_ohlcv_bars,
     _ohlcv_bar_from_daily,
     _serialize_price_point,
 )
@@ -50,14 +52,22 @@ class M5ChartPointTests(SimpleTestCase):
         self.assertEqual(points[0]['adj_factor'], 0.4195)
         self.assertEqual(points[0]['price_source'], 'cafef')
 
-    @override_settings()
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'true'})
     def test_bars_daily_exposes_factor_and_source_when_flag_on(self):
-        import os
-        os.environ['CORPORATE_ACTIONS_ENABLED'] = 'true'
-        try:
-            bar = _ohlcv_bar_from_daily(_row('2022-06-13'))
-            self.assertEqual(bar['adj_close'], 17940.0)
-            self.assertEqual(bar['adj_factor'], 0.4199)
-            self.assertEqual(bar['price_source'], 'cafef')
-        finally:
-            os.environ.pop('CORPORATE_ACTIONS_ENABLED', None)
+        bar = _ohlcv_bar_from_daily(_row('2022-06-13'))
+        self.assertEqual(bar['adj_close'], 17940.0)
+        self.assertEqual(bar['adj_factor'], 0.4199)
+        self.assertEqual(bar['price_source'], 'cafef')
+
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'true'})
+    def test_bars_weekly_carries_last_session_adjustment(self):
+        rows = [
+            _row('2022-06-13', close='42750', adj_close='17940', factor='0.4199'),
+            _row('2022-06-17', close='43100', adj_close='18080', factor='0.4195'),
+        ]
+        bars = _aggregate_daily_to_ohlcv_bars(rows, 'W')
+        self.assertEqual(len(bars), 1)
+        self.assertEqual(bars[0]['close'], 43100.0)
+        self.assertEqual(bars[0]['adj_close'], 18080.0)
+        self.assertEqual(bars[0]['adj_factor'], 0.4195)
+        self.assertEqual(bars[0]['price_source'], 'cafef')
