@@ -29,9 +29,9 @@ Ledger: `docs/CODE_CHANGE_AUDIT_LEDGER.md` Entry 627–640. Claims: `price-mig-*
 4. ~~R-B~~ — **đã đóng M6b**: `subscribePriceBasis()` reactive. (Chưa component test nhánh skip realtime — residual nhẹ.)
 5. ~~Guard ingest cho `unmapped_cafef`~~ — **đã đóng M6a** (#535).
 6. ~~Apply M4 các lô còn lại~~ — **XONG**: `1.904.487` dòng `cafef`, 100% có `adj_factor`, `bad_cafef=0`. 5 lô có 0 dòng nguồn (HNX 2023–2026, UPCOM 2026) không cần apply; 4 lô lỗi nguồn CafeF (HNX 2012, UPCOM 2011/2014/2015) giữ `vnbroker_legacy`. Evidence `m4-apply-all-and-cutover.md`.
-7. ~~Ops window~~ — **XONG**: image `cutover`, compose truyền flag, `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, migration `advisory/0024` + `user_workspace/0031`, FE dist deployed, `cache.clear()`. E2E API `/chart` 200 + `adjusted_display=true` + TPB `17940`. **Visual E2E CHƯA CHẠY** (trang chuyển về login, không có credentials; không đoán mật khẩu). Backup S0 + `inserted_keys` sẵn.
+7. ~~Ops window~~ — **XONG**: image `cutover`, compose truyền flag, `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, migration `advisory/0024` + `user_workspace/0031`, FE dist deployed, `cache.clear()`. E2E API `/chart` 200 + `adjusted_display=true` + TPB `17940`. **Visual E2E ĐÃ CHẠY** với credentials owner: chart TPB render 2.145 nến + indicators, ảnh đã mở kiểm tra (`/tmp/m5c_chart_e2e_final.png`). Backup S0 + `inserted_keys` sẵn.
 
 ## Next steps / owner
-- Còn lại: **visual E2E** trên staging cần credentials đăng nhập — owner cung cấp tài khoản test, sau đó chụp chart TPB 2022 + mở ảnh kiểm tra (L-V05).
+- Residual: widget hiển thị nhãn "Chưa điều chỉnh" (host map `adj_close` vào `close` theo thiết kế M5c); 404 tại `/core/v1/advisory/latest/TPB/` — outside scope. Không còn hạng mục bắt buộc.
 - Theo dõi sau cutover: beat/5 job đã resume (`PRICE_MIGRATION_PAUSED=0`), `SymbolSnapshot` tự recompute ~60s; nếu chỉ số bất thường → rollback chọn lọc theo `inserted_keys` hoặc S0 (cần owner sign-off).
 - 4 lô lỗi nguồn CafeF + 5 lô 0 dòng nguồn vẫn giữ nguyên; chỉ xử lý khi CafeF cung cấp lại dữ liệu.
