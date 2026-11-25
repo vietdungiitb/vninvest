@@ -4,8 +4,10 @@ Advisory helpers for packages/core backend.
 Includes prompt config parser & validator, and lookback window context builders.
 """
 import logging
+from decimal import Decimal
 
 from market_data.models import DailyPrice
+from market_data.pricing import effective_ohlc
 from market_serving.models import SessionFacts
 
 logger = logging.getLogger(__name__)
@@ -226,13 +228,14 @@ def build_ohlcv_lookback_context(symbol: str, limit: int = 20) -> str:
     context += "| Ngày | Giá mở cửa | Giá cao nhất | Giá thấp nhất | Giá đóng cửa | Khối lượng khớp |\n"
     context += "| --- | --- | --- | --- | --- | --- |\n"
     for p in prices:
-        # Check high/low/open/close fields
-        p_open = getattr(p, 'open_price', None) or getattr(p, 'open', 0.0)
-        p_high = getattr(p, 'high_price', None) or getattr(p, 'high', 0.0)
-        p_low = getattr(p, 'low_price', None) or getattr(p, 'low', 0.0)
-        p_close = getattr(p, 'close_price', None) or getattr(p, 'close', 0.0)
+        # M5b2: giá hiệu dụng theo pilot flag (adj_close/O×factor cho dòng cafef).
+        p_open, p_high, p_low, p_close = effective_ohlc(p)
+        p_open = p_open if p_open is not None else Decimal('0')
+        p_high = p_high if p_high is not None else Decimal('0')
+        p_low = p_low if p_low is not None else Decimal('0')
+        p_close = p_close if p_close is not None else Decimal('0')
         p_vol = getattr(p, 'volume', 0)
-        
+
         context += f"| {p.date} | {float(p_open):,.0f} | {float(p_high):,.0f} | {float(p_low):,.0f} | {float(p_close):,.0f} | {int(p_vol):,} |\n"
     return context
 
