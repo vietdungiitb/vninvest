@@ -52,4 +52,18 @@ describe('M5c chartAdapter adjusted basis', () => {
     expect(bars[0].close).toBe(105);
     expect(state.priceBasis).toBe('raw');
   });
+
+  it('R-B: notify listener khi basis doi', () => {
+    const seen: string[] = [];
+    const state = { priceBasis: 'raw', _notify: (v: string) => seen.push(v) };
+    parseBars({
+      points: [{
+        date: '2022-01-04', open: 100, high: 100, low: 100, close: 100,
+        adj_close: 50, adj_factor: 0.5, price_source: 'cafef', volume: 100,
+      }],
+      adjusted_display: true,
+    }, state);
+    expect(state.priceBasis).toBe('adjusted');
+    expect(seen).toEqual(['adjusted']);
+  });
 });

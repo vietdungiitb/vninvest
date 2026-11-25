@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
+from market_data.pricing import pilot_adjusted_enabled
 from ops_audit.models import AuditEvent
 
 from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
@@ -710,6 +711,7 @@ class AdvisoryRefreshView(APIView):
                 user=request.user,
                 status='pending',
                 ai_model=effective_context['ai_model'],
+                price_basis='adjusted' if pilot_adjusted_enabled() else 'raw',
                 advisory_text='',
                 context_snapshot=context_snapshot,
                 tokens_used=0,

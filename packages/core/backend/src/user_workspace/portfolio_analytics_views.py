@@ -8,10 +8,11 @@ All views require IsAuthenticated and are scoped to (request.user, request.tenan
 Holdings come from `user_workspace.ledger` (weighted average, D-06) and are
 cached per tenant+portfolio+transaction fingerprint.
 """
+from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from market_data.pricing import effective_close
+from market_data.pricing import effective_close, pilot_adjusted_enabled
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -498,10 +499,23 @@ class PortfolioEquityCurveView(APIView):
             day = p.date
             if day not in date_price_map:
                 date_price_map[day] = {}
-            date_price_map[day][p.symbol] = effective_close(p)
+            eff = effective_close(p)
+            if eff is None:  # R1: dòng unmapped_cafef bị loại khỏi cửa sổ adjusted
+                continue
+            date_price_map[day][p.symbol] = eff
+        # R3: quantity theo ngày từ LedgerEntry (fallback holdings hiện tại).
+        deltas = _ledger_quantity_deltas(portfolio, portfolio.tenant, symbols)
+        delta_days = sorted(deltas) if deltas is not None else []
+        running = defaultdict(Decimal)
+        pointer = 0
         curve = []
         for day in sorted(date_price_map.keys()):
             day_prices = date_price_map[day]
+            if deltas is not None:
+                pointer = _advance_quantity(deltas, delta_days, pointer, running, day)
+                qty_of = lambda sym: running[sym]
+            else:
+                qty_of = lambda sym: holdings[sym]['quantity']
             # LED-03 AC4: mã không có giá trong ngày ⇒ bỏ qua và **báo**,
             # không lấy `avg_cost` làm giá. Lấy giá vốn tạo ra một đường cong
             # trông rất thuyết phục nhưng hoàn toàn bịa — và vì `PortfolioSummaryView`
@@ -509,8 +523,8 @@ class PortfolioEquityCurveView(APIView):
             missing = sorted(
                 sym for sym in holdings if sym not in day_prices)
             nav = sum(
-                day_prices[sym] * h['quantity']
-                for sym, h in holdings.items() if sym in day_prices
+                day_prices[sym] * qty_of(sym)
+                for sym in holdings if sym in day_prices
             )
             curve.append({
                 'date': day.isoformat(),
@@ -521,7 +535,48 @@ class PortfolioEquityCurveView(APIView):
         return envelope({'portfolio_id': portfolio_id, 'curve': curve})
 
 
-def _nav_series(holdings, symbols, date_from):
+def _ledger_quantity_deltas(portfolio, tenant, symbols):
+    """R3: `{date: {symbol: delta_qty}}` từ LedgerEntry (append-only).
+
+    BUY/SPLIT/BONUS cộng, SELL trừ; DIVIDEND/FEE/TAX không đổi số lượng.
+    Trả `None` khi portfolio chưa có LedgerEntry ⇒ caller fallback holdings hiện tại.
+    """
+    from collections import defaultdict
+
+    from user_workspace.models import LedgerEntry
+
+    entries = list(
+        LedgerEntry.objects.filter(portfolio=portfolio, symbol__in=list(symbols))
+        .order_by('trade_date')
+        .values('symbol', 'entry_type', 'trade_date', 'quantity')
+    )
+    if not entries:
+        return None
+    deltas = defaultdict(lambda: defaultdict(Decimal))
+    for item in entries:
+        kind = item['entry_type']
+        qty = Decimal(item['quantity'] or 0)
+        delta = Decimal(0)
+        if kind in ('BUY', 'SPLIT', 'BONUS'):
+            delta = qty
+        elif kind == 'SELL':
+            delta = -qty
+        if delta:
+            deltas[item['trade_date']][item['symbol']] += delta
+    return deltas
+
+
+def _advance_quantity(deltas, delta_days, pointer, running, day):
+    """R3 (fix O2): cộng MỌI delta có ngày <= day, kể cả trước cửa sổ giá
+    (baseline) và rơi vào ngày không có price row. Trả pointer mới."""
+    while pointer < len(delta_days) and delta_days[pointer] <= day:
+        for sym, delta in deltas[delta_days[pointer]].items():
+            running[sym] += delta
+        pointer += 1
+    return pointer
+
+
+def _nav_series(holdings, symbols, date_from, portfolio=None, tenant=None):
     """`[{date, nav_float}]` — NAV danh mục theo ngày, dùng cho chỉ số.
 
     Ngày thiếu giá cho **một số** mã ⇒ bỏ qua ngày đó. Lấy giá vốn thay cho giá
@@ -536,15 +591,28 @@ def _nav_series(holdings, symbols, date_from):
     )
     date_price_map: dict[date, dict[str, Decimal]] = {}
     for p in prices:
-        date_price_map.setdefault(p.date, {})[p.symbol] = effective_close(p)
+        eff = effective_close(p)
+        if eff is None:  # R1: bỏ dòng unmapped_cafef
+            continue
+        date_price_map.setdefault(p.date, {})[p.symbol] = eff
+    deltas = _ledger_quantity_deltas(portfolio, tenant, symbols) if portfolio is not None else None
+    delta_days = sorted(deltas) if deltas is not None else []
+    running = defaultdict(Decimal)
+    pointer = 0
     series = []
     for day in sorted(date_price_map):
         day_prices = date_price_map[day]
+        if deltas is not None:
+            pointer = _advance_quantity(deltas, delta_days, pointer, running, day)
         if any(sym not in day_prices for sym in holdings):
             continue
+        if deltas is not None:
+            qty_of = lambda sym: running[sym]
+        else:
+            qty_of = lambda sym: holdings[sym]['quantity']
         series.append({
             'date': day,
-            'nav': float(sum(day_prices[sym] * h['quantity'] for sym, h in holdings.items())),
+            'nav': float(sum(day_prices[sym] * qty_of(sym) for sym in holdings)),
         })
     return series
 
@@ -611,7 +679,8 @@ class PortfolioMetricsView(APIView):
             })
 
         symbols = list(holdings)
-        series = _nav_series(holdings, symbols, date.today() - timedelta(days=365))
+        series = _nav_series(holdings, symbols, date.today() - timedelta(days=365),
+                             portfolio=portfolio, tenant=portfolio.tenant)
         navs = [row['nav'] for row in series]
         daily_returns = [(c - p) / p for p, c in zip(navs, navs[1:]) if p]
 
@@ -3907,6 +3976,7 @@ class PortfolioScreenerRuleRunView(APIView):
                     tenant=tenant_for_history,
                     rule=rule,
                     rule_name=rule.name,
+                    price_basis='adjusted' if pilot_adjusted_enabled() else 'raw',
                     matched_count=len(history_source),
                     total_scanned=total_scanned,
                     window_days=window_days,

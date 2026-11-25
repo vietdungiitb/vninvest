@@ -14,6 +14,15 @@
 - **Fix**: `date__year` → `date__range=(date(year,1,1), date(year,12,31))`. Đo thật dry-run HOSE 2012: **33,9s** (~22× nhanh hơn). Chạy mỗi lô bằng process riêng để tránh OOM.
 - Evidence: `docs/evidence/widget-news-events/m6c-query-plan.md`.
 
+## Entry 638: M6b — pilot readiness R1/R2/R3/R-B
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-readiness` · Claim `price-mig-readiness`.
+- **R1**: `pricing.py` trả None cho `unmapped_cafef` khi flag on ⇒ consumer loại khỏi cửa sổ adjusted (không thay raw).
+- **R2**: `price_basis` trên `AdvisoryRecord`/`ScreenerRunHistory` + migration `advisory/0024`, `user_workspace/0031` (makemigrations sinh).
+- **R3**: quantity theo ngày từ `LedgerEntry` cho NAV equity curve + `_nav_series` (fix O2 baseline).
+- **R-B**: `subscribePriceBasis()` reactive, FE panel dùng state.
+- **Gate**: BE **15 test OK**; FE 4/4, tsc/build exit 0. Audit NEED_REVISION O1/O2 đã đóng. Flag vẫn off. Evidence: `docs/evidence/widget-news-events/m6b-readiness.md`.
+
 ## Entry 637: M4 apply — lô HOSE 2021
 
 - **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-guard-unmapped`.

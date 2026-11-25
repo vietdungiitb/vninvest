@@ -229,7 +229,10 @@ def build_ohlcv_lookback_context(symbol: str, limit: int = 20) -> str:
     context += "| --- | --- | --- | --- | --- | --- |\n"
     for p in prices:
         # M5b2: giá hiệu dụng theo pilot flag (adj_close/O×factor cho dòng cafef).
-        p_open, p_high, p_low, p_close = effective_ohlc(p)
+        eff = effective_ohlc(p)
+        if eff is None:  # R1: bỏ dòng unmapped_cafef khỏi lookback adjusted
+            continue
+        p_open, p_high, p_low, p_close = eff
         p_open = p_open if p_open is not None else Decimal('0')
         p_high = p_high if p_high is not None else Decimal('0')
         p_low = p_low if p_low is not None else Decimal('0')
