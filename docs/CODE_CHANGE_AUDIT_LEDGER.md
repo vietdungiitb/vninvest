@@ -1,3 +1,10 @@
+## Entry 639: M6c hotfix — query plan price_migration_persist
+
+- **Date**: 2026-11-25 · **Type**: fix · **Branch**: `feat/price-mig-perf` · Claim `price-mig-perf`.
+- **Phản chứng**: `EXTRACT(YEAR FROM date)` ⇒ Seq Scan cost 153014 dù có index date. Driver cũ: 744s/lô + OOM exit 137 ở lô sau.
+- **Fix**: `date__year` → `date__range=(date(year,1,1), date(year,12,31))`. Đo thật dry-run HOSE 2012: **33,9s** (~22× nhanh hơn). Chạy mỗi lô bằng process riêng để tránh OOM.
+- Evidence: `docs/evidence/widget-news-events/m6c-query-plan.md`.
+
 ## Entry 637: M4 apply — lô HOSE 2021
 
 - **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-guard-unmapped`.
