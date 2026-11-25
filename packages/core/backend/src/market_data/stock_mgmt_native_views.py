@@ -2102,6 +2102,9 @@ class StockManagementDarkMoneyHistoryView(APIView):
     )
     def get(self, request, symbol):
         from signal_intelligence.models import UnifiedAlert
+        # Bind DailyPrice at method scope: later F-03 block also imports it,
+        # which otherwise makes THIS early daily/weekly query UnboundLocalError.
+        from market_data.models import DailyPrice
 
         symbol = str(symbol or '').strip().upper()
         if not _symbol_exists_for_stock_chart(symbol):

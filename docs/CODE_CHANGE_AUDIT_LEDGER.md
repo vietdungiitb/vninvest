@@ -1,3 +1,10 @@
+## Entry 642: Hotfix DailyPrice — UnboundLocalError dark-money-history
+
+- **Date**: 2026-11-25 · **Type**: fix · **Branch**: `fix/dailyprice-unbound` · Claim `dailyprice-unbound`.
+- **Bug**: `StockManagementDarkMoneyHistoryView.get` dùng `DailyPrice` ở nhánh daily (`stock_mgmt_native_views.py:2152`) nhưng F-03 import muộn tại `:2238` ⇒ `UnboundLocalError`. Test cũ chỉ dùng `interval=1h` ⇒ sót.
+- **Fix**: bind import ở đầu method. RED `UnboundLocalError` → GREEN; regression `market_data` 259 test, 1 fail pre-existing.
+- Hotfix 3 dòng bị sót trên working tree từ PR #540/Entry 640 — owner yêu cầu commit. Evidence: `docs/evidence/widget-news-events/dailyprice-unbound-hotfix.md`.
+
 ## Entry 640: Whale/CVD full timeframe — re-audit 2 vòng, fix P0/P1, handoff widget
 
 - **Date**: 2026-11-25 · **Type**: feat + fix · **Branch**: `feat/whale-cvd-full-tf` (base `origin/dev`) · Claim `whale-cvd-full-tf`.

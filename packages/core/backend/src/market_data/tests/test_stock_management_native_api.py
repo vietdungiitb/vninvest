@@ -288,6 +288,22 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(payload['interval'], '30m')
         self.assertEqual(len(payload['points']), 1)
 
+    def test_stock_dark_money_history_daily_interval_has_no_unbound_local(self):
+        """Hotfix DailyPrice: interval 1D dùng DailyPrice trước block F-03 import
+        muộn — nếu thiếu import method-scope sẽ raise UnboundLocalError."""
+        DailyPrice.objects.create(
+            symbol='TPB', date=timezone.localdate(),
+            open=Decimal('18000'), high=Decimal('18300'), low=Decimal('17800'),
+            close=Decimal('18200'), volume=1000, source='core',
+        )
+        response = self.client.get(
+            '/core/v1/stock-management/stocks/TPB/dark-money-history/'
+            '?interval=1D&period=1M')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = unwrapped_json(response)
+        self.assertEqual(payload['interval'], '1D')
+        self.assertTrue(payload['candles'])
+
     def test_stock_dark_money_history_returns_native_envelope(self):
         now = timezone.now().replace(second=0, microsecond=0)
         IntradayBar.objects.create(
