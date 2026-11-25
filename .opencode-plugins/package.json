@@ -1,0 +1,9 @@
+{
+  "name": "vninvest-opencode-plugins",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "VNInvest OpenCode local plugins (V2 API, server 2.x)",
+  "dependencies": {
+    "@opencode/plugin": "2.1.4"
+  }
+}
