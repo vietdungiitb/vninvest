@@ -1,3 +1,10 @@
+## Entry 634: M5b — BE domain consumer dùng adjusted price
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.
+- **Thay đổi**: thêm `market_data/pricing.py` (`effective_close`/`effective_ohlc`, flag `PRICE_ADJUSTED_DISPLAY` mặc định off); NAV equity curve dùng adj_close (sửa nhảy giả ngày chia `85500→35880`); advisory + screener dùng OHLC hiệu dụng, quote realtime scale theo factor mới nhất.
+- **Gate**: NAV RED→GREEN (44 test); advisory/screener RED→GREEN (7/7). Regression 826 test có 7 fail + 15 error **pre-existing** — chứng minh bằng swap HEAD sạch (cùng 7 fail + 14 error trong subset migration/schema). Chưa bật flag, chưa đổi FE.
+- **Chưa làm**: `price_basis` trên AdvisoryRecord/ScreenerRunHistory, snapshot recompute, invalidate cache, resume beat, FE — gate trước khi bật flag pilot. Evidence: `docs/evidence/widget-news-events/m5b-domain-consumers.md`.
+
 ## Entry 633: M5a — BE read contracts cho adjusted price
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-cutover` · Claim `price-mig-cutover`.

@@ -11,6 +11,8 @@ cached per tenant+portfolio+transaction fingerprint.
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from market_data.pricing import effective_close
+
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
@@ -489,13 +491,14 @@ class PortfolioEquityCurveView(APIView):
             DailyPrice.objects.filter(symbol__in=symbols, date__gte=date_from)
             .order_by('date', 'symbol')
         )
-        # Build date → symbol → close map
+        # Build date → symbol → close map. M5b1: dùng giá hiệu dụng theo
+        # pilot flag (adj_close cho dòng cafef) để NAV không nhảy giả ngày chia.
         date_price_map: dict[date, dict[str, Decimal]] = {}
         for p in prices:
             day = p.date
             if day not in date_price_map:
                 date_price_map[day] = {}
-            date_price_map[day][p.symbol] = Decimal(str(p.close))
+            date_price_map[day][p.symbol] = effective_close(p)
         curve = []
         for day in sorted(date_price_map.keys()):
             day_prices = date_price_map[day]
@@ -533,7 +536,7 @@ def _nav_series(holdings, symbols, date_from):
     )
     date_price_map: dict[date, dict[str, Decimal]] = {}
     for p in prices:
-        date_price_map.setdefault(p.date, {})[p.symbol] = Decimal(str(p.close))
+        date_price_map.setdefault(p.date, {})[p.symbol] = effective_close(p)
     series = []
     for day in sorted(date_price_map):
         day_prices = date_price_map[day]

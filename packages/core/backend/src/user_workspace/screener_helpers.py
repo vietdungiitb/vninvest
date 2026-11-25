@@ -1,5 +1,7 @@
 import json
 
+from market_data.pricing import effective_ohlc, pilot_adjusted_enabled
+
 # F-BE-06: bound scan-cache payload (memcached default 1MB/item; a full
 # 1200-symbol matched list with AI advisory reaches ~2.4MB and the write
 # silently fails). Tunable via Django settings SCREENER_SCAN_CACHE_MAX_BYTES /
@@ -378,15 +380,29 @@ def _screener_build_technical(symbol, close, volume, history_list, financials=No
             (derived from cached vnbroker financials via _compute_fundamental_metrics).
             When provided it takes precedence over deriving from `financials`.
     """
-    closes = [float(p.close) for p in history_list]
+    # M5b2: pilot flag bật ⇒ dùng giá hiệu dụng cho toàn bộ cửa sổ indicator.
+    enabled = pilot_adjusted_enabled()
+    effective = [effective_ohlc(p, enabled=enabled) for p in history_list]
+    as_float = lambda v: float(v) if v is not None else 0.0
+    closes = [as_float(item[3]) for item in effective]
     volumes = [float(p.volume) for p in history_list]
-    highs = [float(p.high) for p in history_list]
-    lows = [float(p.low) for p in history_list]
+    highs = [as_float(item[1]) for item in effective]
+    lows = [as_float(item[2]) for item in effective]
 
     if close is not None:
-        closes.append(float(close))
-        highs.append(float(close))
-        lows.append(float(close))
+        current = float(close)
+        # Realtime quote là giá thô; scale bằng adj_factor mới nhất để không
+        # trộn basis với lịch sử đã điều chỉnh (reservation 2 của plan M5).
+        if enabled and history_list:
+            latest = history_list[-1]
+            factor = getattr(latest, 'adj_factor', None)
+            if (getattr(latest, 'price_source', None) == 'cafef'
+                    and factor is not None and getattr(latest, 'adj_close', None) is not None):
+                current *= float(factor)
+        close = current
+        closes.append(current)
+        highs.append(current)
+        lows.append(current)
     if volume is not None:
         volumes.append(float(volume))
 
