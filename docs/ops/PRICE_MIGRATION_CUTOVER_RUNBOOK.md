@@ -26,9 +26,9 @@ SELECT count(*) FROM market_data_dailyprice WHERE price_source='cafef' AND adj_f
 ## 3. Cutover (respect flag)
 1. Giữ `PRICE_MIGRATION_PAUSED=1` tới khi xong bước 4.
 2. Invalidate cache: bulk-technicals (300s), SOC inventory (3600s), screener scan cache, corporate actions cache.
-3. Recompute `SymbolSnapshot` + pre-open + `refresh_global_symbol_coverage`.
-4. Bật `PRICE_ADJUSTED_DISPLAY=1` cho scope pilot (flag global — đã derive basis theo dữ liệu thực ở BE/FE).
-5. Resume 5 beat job + anomaly 5m: bỏ `PRICE_MIGRATION_PAUSED` khỏi compose env, `docker compose up -d --force-recreate`.
+3. `SymbolSnapshot` tự được beat `materialize_symbol_snapshot` recompute trong ~60s sau khi resume — không cần gọi thủ công (`materializers.py:25-35`).
+4. Deploy code mới trước khi bật flag: `bash scripts/deploy-staging.sh` (pull dev + build + migrate 0024/0031). `CORPORATE_ACTIONS_ENABLED=true` đã có trong `compose.staging.env:111`.
+5. Bật `PRICE_ADJUSTED_DISPLAY=1` (thêm vào `compose.staging.env`), bỏ `PRICE_MIGRATION_PAUSED=1` (dòng 112) để resume 5 beat job + anomaly 5m, rồi `docker compose up -d --force-recreate` core-api + worker + beat.
 6. E2E Playwright staging: mở chart TPB 2022, assert nến adjusted (`42750 → 17940`), chụp ảnh + **mở ảnh xem** (L-V05), assert indicator không trộn basis.
 
 ## 4. Rollback chọn lọc
