@@ -278,7 +278,7 @@ class SessionFactsDetailView(generics.RetrieveAPIView):
 # ── CVD Series endpoint ───────────────────────────────────
 
 _WINDOW_TO_BUCKET_MINUTES: dict[str, int] = {
-    '5m': 5, '15m': 15, '30m': 30, '1h': 60,
+    '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240, '1D': 1440, '1d': 1440,
 }
 _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
 
@@ -375,12 +375,15 @@ class SessionFactsCvdView(APIView):
         if not symbol:
             raise ValidationError({'detail': 'Symbol không hợp lệ.', 'code': 'invalid_symbol'})
 
-        window = str(request.query_params.get('window', '15m')).strip().lower()
-        if window not in _WINDOW_TO_BUCKET_MINUTES:
+        raw_window = str(request.query_params.get('window', '15m')).strip()
+        window_lc = raw_window.lower()
+        _WINDOW_CANONICAL = {'5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1D'}
+        if window_lc not in _WINDOW_CANONICAL:
             return Response({'code': 'UNSUPPORTED_WINDOW',
-                             'detail': 'window chỉ nhận 5m | 15m | 30m | 1h.'},
+                             'detail': 'window chi nhan 5m | 15m | 30m | 1h | 4h | 1D.'},
                             status=status.HTTP_400_BAD_REQUEST)
-        bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window]
+        window = _WINDOW_CANONICAL[window_lc]
+        bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window_lc]
         requested_trade_date = _parse_trade_date_param(request)
 
         facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)

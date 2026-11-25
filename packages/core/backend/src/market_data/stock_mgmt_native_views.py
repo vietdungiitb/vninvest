@@ -284,11 +284,12 @@ _STOCK_DARK_MONEY_HISTORY_SCHEMA = {
         'candles': {'type': 'array', 'items': {'type': 'object'}},
         'dark_flow_series': {'type': 'array', 'items': {'type': 'object'}},
         'whale_signals': {'type': 'array', 'items': {'type': 'object'}},
+        'cvd_series': {'type': 'array', 'items': {'type': 'object'}},
         'moving_averages': {'type': 'object'},
         'smfi': {'type': 'number'},
         'strategy_table': {'type': 'array', 'items': {'type': 'object'}},
     },
-    'required': ['ok', 'symbol', 'period', 'interval', 'candles', 'dark_flow_series', 'whale_signals', 'moving_averages', 'smfi', 'strategy_table'],
+    'required': ['ok', 'symbol', 'period', 'interval', 'candles', 'dark_flow_series', 'whale_signals', 'cvd_series', 'moving_averages', 'smfi', 'strategy_table'],
 }
 
 _STOCK_NEWS_STUB_SCHEMA = {
@@ -1064,6 +1065,99 @@ def _aggregate_daily_rows(rows, timeframe):
         )
         for bucket in buckets
     ]
+
+
+def _compute_daily_weekly_cvd_series(symbol, start_date, end_date, interval):
+    """Compute cumulative CVD series for daily/weekly timeframes from WhaleAlertCanonical."""
+    from signal_intelligence.models import WhaleAlertCanonical
+
+    # F-01: chi lay per-tick row (source_ref bat dau 'whale_tick:'), floor 500M.
+    rows = list(
+        WhaleAlertCanonical.objects.filter(
+            symbol=symbol,
+            executed_at__date__range=(start_date, end_date),
+            alert__source_ref__startswith='whale_tick:',
+            matched_value__gte=500000000,
+        ).values('side', 'matched_value', 'executed_at')
+    )
+
+    is_weekly = (interval == '1W')
+
+    buckets = {}
+    for row in rows:
+        executed_at = row.get('executed_at')
+        if executed_at is None:
+            continue
+        if executed_at.tzinfo is None:
+            executed_at = timezone.make_aware(executed_at, timezone=timezone.get_current_timezone())
+        # DB date__range duoc danh gia theo TIME_ZONE (Asia/Ho_Chi_Minh) => phai localtime
+        # truoc khi lay .date() de khong lech 1 ngay cho tick ngoai gio.
+        d = timezone.localtime(executed_at).date()
+        if is_weekly:
+            key = d.isocalendar()[:2]
+        else:
+            key = ('d', d.isoformat())
+        bucket = buckets.get(key)
+        if bucket is None:
+            bucket = {'buy': 0.0, 'sell': 0.0, 'max_date': d, 'has_data': False}
+            buckets[key] = bucket
+        if d > bucket['max_date']:
+            bucket['max_date'] = d
+        value = float(row.get('matched_value') or 0)
+        side = str(row.get('side') or '').strip().lower()
+        # F-02: side strict — UNKNOWN/side khac khong cong vao sell.
+        if side == 'buy':
+            bucket['buy'] += value
+            bucket['has_data'] = True
+        elif side == 'sell':
+            bucket['sell'] += value
+            bucket['has_data'] = True
+        else:
+            continue
+
+    # F-06: fill empty buckets tu lich candle (DailyPrice) de truc lien tuc, khong gap.
+    try:
+        from market_data.models import DailyPrice
+        candle_dates = list(
+            DailyPrice.objects.filter(symbol=symbol, date__range=(start_date, end_date))
+            .values_list('date', flat=True)
+        )
+    except Exception:
+        candle_dates = []
+    for cd in candle_dates:
+        if is_weekly:
+            key = cd.isocalendar()[:2]
+        else:
+            key = ('d', cd.isoformat())
+        if key not in buckets:
+            buckets[key] = {'buy': 0.0, 'sell': 0.0, 'max_date': cd, 'has_data': False}
+        else:
+            if cd > buckets[key]['max_date']:
+                buckets[key]['max_date'] = cd
+
+    if not buckets:
+        return []
+
+    ordered = sorted(buckets.values(), key=lambda b: b['max_date'])
+
+    series = []
+    cumulative = 0.0
+    for bucket in ordered:
+        delta = bucket['buy'] - bucket['sell']
+        cumulative += delta
+        # F-04: UTC midnight de align voi bar xScale (bar date-only -> UTC midnight).
+        bucket_dt = datetime.combine(bucket['max_date'], time.min).replace(tzinfo=dt_timezone.utc)
+        # F-07: them delta, cvd, unit cho parity D4.
+        series.append({
+            'bucket_ts': bucket_dt.isoformat(),
+            'cumulative_cvd': round(cumulative, 2),
+            'cvd': round(cumulative, 2),
+            'delta': round(delta, 2),
+            'buy_value': round(bucket['buy'], 2),
+            'sell_value': round(bucket['sell'], 2),
+            'unit': 'vnd',
+        })
+    return series
 
 
 def _get_table_column_names(model):
@@ -2083,6 +2177,11 @@ class StockManagementDarkMoneyHistoryView(APIView):
             ).order_by('triggered_at', 'pk')
         )
 
+        if is_intraday:
+            cvd_series = []
+        else:
+            cvd_series = _compute_daily_weekly_cvd_series(symbol, start_date, end_date, interval)
+
         grouped = defaultdict(lambda: {
             'strength_sum': 0.0,
             'confidence_sum': 0.0,
@@ -2125,14 +2224,36 @@ class StockManagementDarkMoneyHistoryView(APIView):
                 elif alert.direction == UnifiedAlert.DirectionChoices.SELL:
                     bucket['whale_sell_value'] += alert_value
                 if len(whale_signals) < 100:
+                    # F-03/F-04: daily/weekly can price = close that ngay (tu DailyPrice),
+                    # time = unix seconds (dong nhat voi intraday). intraday giu bucket_key.
+                    if is_intraday:
+                        marker_time = bucket_key
+                        marker_ts = bucket_key if isinstance(bucket_key, int) else None
+                        marker_price = None
+                    else:
+                        try:
+                            from market_data.models import DailyPrice
+                            dp = DailyPrice.objects.filter(symbol=symbol, date=local_dt.date()).first()
+                            marker_price = float(dp.close) if dp is not None else None
+                        except Exception:
+                            marker_price = None
+                        # Widget parses `time` via new Date(...) -> giu ISO date string (widget-compatible).
+                        marker_time = local_dt.date().isoformat()
+                        # Them `ts` unix (seconds) de audit/FE co the dung neu can (F-04).
+                        marker_ts = int(timezone.make_aware(
+                            datetime.combine(local_dt.date(), time.min),
+                            timezone=timezone.get_current_timezone(),
+                        ).astimezone(dt_timezone.utc).timestamp())
                     whale_signals.append(
                         {
-                            'time': bucket_key,
+                            'time': marker_time,
+                            'ts': marker_ts,
                             'signal_type': signal_type,
                             'direction': alert.direction,
                             'confidence': round(confidence, 4),
                             'strength': round(strength, 2),
                             'value': round(alert_value, 2),
+                            'price': marker_price,
                         }
                     )
 
@@ -2175,6 +2296,7 @@ class StockManagementDarkMoneyHistoryView(APIView):
                 'candles': candles,
                 'dark_flow_series': dark_flow_series,
                 'whale_signals': whale_signals,
+                'cvd_series': cvd_series,
                 'moving_averages': moving_averages,
                 'smfi': smfi,
                 'strategy_table': _build_dark_money_strategy_table(latest_strength, latest_signal_type),

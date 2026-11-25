@@ -77,6 +77,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     whaleFeed: [],
     whaleFeedMeta: { next_cursor: null, has_more: false },
   });
+  const [darkMoneyData, setDarkMoneyData] = useState(null);
 
   const mountedRef = useRef(true);
   const realtimeTimeoutRef = useRef(null);
@@ -166,6 +167,37 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     loadBlocking();
   }, [env, symbol, activeTimeframe, loadBlocking]);
+
+  // 1b. Dark-money history for daily/weekly chart timeframes (whale markers + CVD series).
+  useEffect(() => {
+    if (!symbol) return;
+    // F-04: doi symbol ma giu timeframe phai xoa marker/CVD cua ma cu ngay,
+    // tranh flash du lieu sai ma trong luc fetch dark-money moi.
+    setDarkMoneyData(null);
+    const tf = String(activeTimeframe || "").toLowerCase();
+    const isDailyOrWeekly = tf === "d" || tf === "1d" || tf === "1w";
+    if (!isDailyOrWeekly) {
+      setDarkMoneyData(null);
+      return;
+    }
+    const adapter = getAdapter(env);
+    if (typeof adapter?.getDarkMoneyHistory !== "function") {
+      setDarkMoneyData(null);
+      return;
+    }
+    let active = true;
+    adapter
+      .getDarkMoneyHistory(symbol, { interval: activeTimeframe, period: activePeriod || "3M" })
+      .then((res) => {
+        if (active) setDarkMoneyData(res || null);
+      })
+      .catch(() => {
+        if (active) setDarkMoneyData(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [env, symbol, activeTimeframe, activePeriod]);
 
   // 2. Deferred Lane: AI Advisory and Whale Feed matching the currently selected session date.
   // Dependencies: symbol, selectedSession. T1.2: session_date passed, limit 50, normalize items (T1.4).
@@ -492,6 +524,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     refreshAdvisoryData,
     loadBlocking,
     loadMoreWhaleFeed,
+    darkMoneyData,
     ...modelState,
   };
 }

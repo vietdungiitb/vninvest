@@ -7,6 +7,7 @@ const mockGetStockOrderFlow = vi.fn();
 const mockGetSessionFactsCvd = vi.fn();
 const mockGetWhaleAnalyticsSnapshot = vi.fn();
 const mockGetWhaleFeedAggregate = vi.fn();
+const mockGetDarkMoneyHistory = vi.fn();
 const mockGetAdvisoryLatest = vi.fn();
 const mockRefreshAdvisory = vi.fn();
 const mockGetStockProfile = vi.fn();
@@ -20,6 +21,7 @@ vi.mock("../../../adapters/coreApiAdapter.js", () => ({
     getSessionFactsCvd: (...args) => mockGetSessionFactsCvd(...args),
     getWhaleAnalyticsSnapshot: (...args) => mockGetWhaleAnalyticsSnapshot(...args),
     getWhaleFeedAggregate: (...args) => mockGetWhaleFeedAggregate(...args),
+    getDarkMoneyHistory: (...args) => mockGetDarkMoneyHistory(...args),
     getAdvisoryLatest: (...args) => mockGetAdvisoryLatest(...args),
     refreshAdvisory: (...args) => mockRefreshAdvisory(...args),
     getStockProfile: (...args) => mockGetStockProfile(...args),
@@ -40,6 +42,12 @@ function setupMocks() {
   mockGetSessionFactsCvd.mockResolvedValue({ symbol: "TPB", window: "1h", cvd_series: [{ bucket_ts: "2026-05-27T09:00:00+07:00", cumulative_cvd: 400 }] });
   mockGetWhaleAnalyticsSnapshot.mockResolvedValue({ symbol: "TPB", flow_series: { cvd: [] } });
   mockGetWhaleFeedAggregate.mockResolvedValue({ results: [{ ts: "2026-08-06T09:00:00+07:00", matched_value: 1000000000, side: "buy", volume: 1000 }], next_cursor: null, has_more: false });
+  mockGetDarkMoneyHistory.mockResolvedValue({
+    symbol: "TPB",
+    interval: "1D",
+    cvd_series: [{ bucket_ts: "2026-11-25T00:00:00+00:00", delta: 800000000, cvd: 800000000, unit: "vnd" }],
+    whale_signals: [{ time: 1764000000, price: 18200, value: 900000000, direction: "buy" }],
+  });
   mockGetAdvisoryLatest.mockResolvedValue(null);
   mockRefreshAdvisory.mockResolvedValue({ task_id: "task-1" });
   mockGetStockProfile.mockResolvedValue({ symbol: "TPB", overview: {} });
@@ -224,6 +232,29 @@ describe("useStockDetailPageModel", () => {
     expect(result.current.whaleFeed).toHaveLength(2);
     expect(result.current.whaleFeed[1].price).toBe(2000000000);
     expect(result.current.whaleFeedMeta.has_more).toBe(false);
+  });
+
+  it("(whale-cvd-full-tf) daily timeframe fetch dark-money va expose cvd_series/whale_signals", async () => {
+    const { result } = renderHook(() => useStockDetailPageModel({ env: stableEnv, initialSymbol: "TPB" }));
+    await waitFor(() => expect(result.current.darkMoneyData).toBeTruthy());
+    expect(mockGetDarkMoneyHistory).toHaveBeenCalledWith(
+      "TPB",
+      expect.objectContaining({ interval: "1D" }),
+    );
+    expect(result.current.darkMoneyData.cvd_series).toHaveLength(1);
+    expect(result.current.darkMoneyData.whale_signals[0].price).toBe(18200);
+  });
+
+  it("(whale-cvd-full-tf) doi symbol xoa dark-money cu truoc khi fetch ma khac", async () => {
+    const { result } = renderHook(() => useStockDetailPageModel({ env: stableEnv, initialSymbol: "TPB" }));
+    await waitFor(() => expect(result.current.darkMoneyData).toBeTruthy());
+    // Giu promise cua ma moi pending de kiem tra trang thai "da xoa, chua co data moi".
+    mockGetDarkMoneyHistory.mockImplementationOnce(() => new Promise(() => {}));
+    await act(async () => {
+      result.current.setSymbol("ABC");
+    });
+    expect(mockGetDarkMoneyHistory).toHaveBeenCalledWith("ABC", expect.objectContaining({ interval: "1D" }));
+    expect(result.current.darkMoneyData).toBeNull();
   });
 });
 

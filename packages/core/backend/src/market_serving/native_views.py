@@ -14,6 +14,7 @@ import json
 import logging
 from datetime import date, datetime, time, timedelta
 
+from django.db import DatabaseError
 from django.db.models import Avg, Max, Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.openapi import OpenApiTypes
@@ -470,6 +471,122 @@ def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
     }
 
 
+_WHALE_BUCKET_WINDOWS = {
+    '4h': 240,
+    '1D': 1440,
+    '1W': 10080,
+}
+
+
+def _whale_bucket_key(dt_value, window):
+    if window == '4h':
+        return dt_value.replace(hour=(dt_value.hour // 4) * 4, minute=0, second=0, microsecond=0)
+    if window == '1W':
+        # Monday 00:00 of the ISO week
+        monday = dt_value.date() - timedelta(days=dt_value.weekday())
+        return datetime.combine(monday, time.min, tzinfo=dt_value.tzinfo)
+    # 1D
+    return datetime.combine(dt_value.date(), time.min, tzinfo=dt_value.tzinfo)
+
+
+def build_whale_buckets(symbol, window, from_dt=None, to_dt=None, min_value=_WHALE_MIN_VALUE_FLOOR):
+    """Aggregate per-tick WhaleAlertCanonical into buckets for 4h/1D/1W.
+
+    Returns list of dicts: {bucket_ts (ISO +07:00), ts (unix), price, net_value, dominance, size_class, count}.
+    Bucket rong duoc fill tu DailyPrice (count=0, dominance='neutral') de truc lien tuc.
+    Luu y: window=4h/1W chi tao 1 bucket moc/ngay (00:00 / Monday); widget team can fill
+    cac bucket 4h trung gian tu truc candle (xem handoff R-03).
+    """
+    from signal_intelligence.models import WhaleAlertCanonical
+    from market_data.models import DailyPrice
+
+    symbol = symbol.upper()
+    if window not in _WHALE_BUCKET_WINDOWS:
+        return []
+
+    qs = WhaleAlertCanonical.objects.filter(
+        symbol=symbol,
+        alert__source_ref__startswith=_WHALE_TICK_SOURCE_PREFIX,
+        matched_value__gte=min_value,
+    )
+    if from_dt is not None:
+        qs = qs.filter(executed_at__gte=from_dt)
+    if to_dt is not None:
+        qs = qs.filter(executed_at__lte=to_dt)
+
+    rows = list(qs.values('side', 'matched_value', 'executed_at', 'price'))
+    buckets = {}  # key datetime -> {buy, sell, count, max_date}
+    for row in rows:
+        executed_at = row.get('executed_at')
+        if executed_at is None:
+            continue
+        if executed_at.tzinfo is None:
+            executed_at = timezone.make_aware(executed_at, timezone=timezone.get_current_timezone())
+        executed_at = timezone.localtime(executed_at)
+        key = _whale_bucket_key(executed_at, window)
+        bucket = buckets.get(key)
+        if bucket is None:
+            bucket = {'buy': 0, 'sell': 0, 'count': 0, 'date': executed_at.date()}
+            buckets[key] = bucket
+        value = int(row.get('matched_value') or 0)
+        side = str(row.get('side') or '').strip().lower()
+        if side == 'buy':
+            bucket['buy'] += value
+        elif side == 'sell':
+            bucket['sell'] += value
+        bucket['count'] += 1
+        if executed_at.date() > bucket['date']:
+            bucket['date'] = executed_at.date()
+
+    # R-03: fill empty buckets tu lich candle (DailyPrice) de truc lien tuc, khong gap.
+    # DailyPrice co `date`, KHONG co `executed_at` — chi query `date__range`.
+    d_from = from_dt.date() if from_dt is not None else (timezone.localdate() - timedelta(days=365))
+    d_to = to_dt.date() if to_dt is not None else timezone.localdate()
+    try:
+        candle_dates = list(
+            DailyPrice.objects.filter(symbol=symbol, date__range=(d_from, d_to))
+            .values_list('date', flat=True)
+        )
+    except DatabaseError:
+        candle_dates = []
+    for cd in candle_dates:
+        key_dt = datetime.combine(cd, time.min)
+        key_dt = timezone.make_aware(key_dt, timezone.get_current_timezone()) if timezone.is_naive(key_dt) else key_dt
+        key = _whale_bucket_key(key_dt, window)
+        if key not in buckets:
+            buckets[key] = {'buy': 0, 'sell': 0, 'count': 0, 'date': cd}
+
+    # price = close cua ngay (DailyPrice) cho bucket — 1 query bulk, khong N+1.
+    price_map = {}
+    bucket_dates = {b['date'] for b in buckets.values()}
+    try:
+        for dp in DailyPrice.objects.filter(symbol=symbol, date__in=bucket_dates):
+            price_map[dp.date] = float(dp.close)
+    except DatabaseError:
+        pass
+
+    ordered = sorted(buckets.items(), key=lambda kv: kv[0])
+    result = []
+    for key_dt, bucket in ordered:
+        net = bucket['buy'] - bucket['sell']
+        # F-09: net = 0 (ke ca bucket rong count=0) phai la neutral, khong phai 'mua'.
+        dominance = 'neutral' if net == 0 else ('buy' if net > 0 else 'sell')
+        size_class = _whale_size_class(abs(net)) if abs(net) >= _WHALE_MIN_VALUE_FLOOR else 'small'
+        price = price_map.get(bucket['date'])
+        if price is None:
+            price = 0.0
+        result.append({
+            'bucket_ts': key_dt.isoformat(),
+            'ts': int(key_dt.timestamp()),
+            'price': price,
+            'net_value': net,
+            'dominance': dominance,
+            'size_class': size_class,
+            'count': bucket['count'],
+        })
+    return result
+
+
 @extend_schema(
     summary='RealtimeWhaleFeedView',
     description='Declared so drf-spectacular stops reporting an unguessable serializer. Payload shape is verified by the envelope invariant tests.',
@@ -507,6 +624,32 @@ class RealtimeWhaleFeedView(APIView):
             limit = max(1, min(int(request.query_params.get('limit', 50)), 1000))
         except (TypeError, ValueError):
             limit = 50
+
+        raw_window = str(request.query_params.get('window') or '').strip()
+        if raw_window:
+            # F-02: canonical hoa window (lower-case + alias 1d/1w), dong nhat voi
+            # CVD endpoint; window khong hop le tra 400 thay vi fallback am thay shape.
+            _WHALE_WINDOW_CANONICAL = {'4h': '4h', '1d': '1D', '1w': '1W'}
+            canonical = _WHALE_WINDOW_CANONICAL.get(raw_window.lower())
+            if canonical is None or canonical not in _WHALE_BUCKET_WINDOWS:
+                return Response({
+                    'code': 'UNSUPPORTED_WINDOW',
+                    'detail': 'window chi nhan 4h | 1D | 1W.',
+                }, status=status.HTTP_400_BAD_REQUEST)
+            buckets = build_whale_buckets(
+                symbol,
+                canonical,
+                from_dt=_parse_iso_param(request.query_params.get('from')),
+                to_dt=_parse_iso_param(request.query_params.get('to')),
+                min_value=min_value,
+            )
+            return Response({
+                'symbol': symbol.upper(),
+                'window': canonical,
+                'whale_buckets': buckets,
+                'source': 'whale_alert_canonical',
+                'data_quality': 'provider_side_from_tick',
+            })
 
         payload = build_whale_feed_payload(
             symbol,

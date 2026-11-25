@@ -120,6 +120,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
     advisoryFallbackFlags,
     whaleFeed,
     whaleFeedMeta,
+    darkMoneyData,
     loadMoreWhaleFeed,
     news,
     financials,
@@ -136,6 +137,51 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
   const handleSessionChange = useCallback((session: unknown) => {
     setSelectedSession(session);
   }, [setSelectedSession]);
+
+  const isDailyOrWeeklyChart = useMemo(() => {
+    const tf = String(activeTimeframe || "").toLowerCase();
+    return tf === "d" || tf === "1d" || tf === "1w";
+  }, [activeTimeframe]);
+
+  const chartWhaleSignals = useMemo(() => {
+    if (!isDailyOrWeeklyChart || !darkMoneyData?.whale_signals) return whaleFeed;
+    return (darkMoneyData.whale_signals || []).map((s: any) => ({
+      ts: s.time ?? s.ts ?? null,
+      price: s.price ?? s.value ?? null,
+      volume: s.volume ?? 0,
+      // R-02b: VNStockChartPanel doc price tu `matched_value` truoc tien.
+      // Neu giu s.value (VND) o day thi marker daily/weekly ve sai truc gia
+      // (~1e9 thay vi ~1e4) du da co `price: s.price` o tren.
+      matched_value: s.price ?? s.value ?? s.matched_value ?? null,
+      value: s.value ?? s.price ?? null,
+      side: s.direction || s.side || "buy",
+      size_class: "shark",
+    }));
+  }, [isDailyOrWeeklyChart, darkMoneyData, whaleFeed]);
+
+  const chartOrderFlowData = useMemo(() => {
+    if (!isDailyOrWeeklyChart || !darkMoneyData?.cvd_series) return orderFlowData;
+    const base = orderFlowData ? { ...orderFlowData } : {};
+    base.cvd_series = darkMoneyData.cvd_series;
+    base._cvd_source = "dark-money-daily";
+    const latestDarkFlow = Array.isArray(darkMoneyData?.dark_flow_series)
+      ? darkMoneyData.dark_flow_series[darkMoneyData.dark_flow_series.length - 1]
+      : null;
+    if (latestDarkFlow) {
+      const df = {
+        strength: latestDarkFlow.strength ?? null,
+        signal_type: latestDarkFlow.signal_type ?? null,
+        signal_count: latestDarkFlow.signal_count ?? null,
+        whale_buy_value: latestDarkFlow.whale_buy_value ?? null,
+        whale_sell_value: latestDarkFlow.whale_sell_value ?? null,
+      };
+      base.dark_flow = df;
+      base.darkFlow = df;
+      base.darkFlowStrength = df.strength;
+      base.dark_flow_strength = df.strength;
+    }
+    return base;
+  }, [isDailyOrWeeklyChart, darkMoneyData, orderFlowData]);
 
   // S6: Load watchlists, resolve default, sync isWatched state.
   useEffect(() => {
@@ -288,8 +334,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
         onTimeframeChange: setActiveTimeframe,
         onVisibleRangeChange: handleVisibleRangeChange,
         onSessionChange: handleSessionChange,
-        orderFlowData,
-        whaleSignals: whaleFeed,
+        orderFlowData: chartOrderFlowData,
+        whaleSignals: chartWhaleSignals,
         workspaceId: `stock-${symbol}`,
         // P34.4-staging: license offline (vni1.*) do Owner cap theo tenant qua
         // build-arg VITE_VNINVEST_LICENSE_KEY (secret nam tren VPS, khong vao repo).
