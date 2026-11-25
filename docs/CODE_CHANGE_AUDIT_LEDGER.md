@@ -1,3 +1,10 @@
+## Entry 631: M4 — persist planner + dry-run 2022 (CHƯA apply)
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-persist` · Claim `price-mig-persist`.
+- **Thay đổi**: `cafef/persist.py` (classify_row 3 nhánh, adj_factor SSOT, DB-only reset adj_close) + command `price_migration_persist` (dry-run mặc định, `--apply` cần `PRICE_MIGRATION_PAUSED=1`, streaming lô 2000, lưu inserted_keys). Sửa OOM 137 bằng streaming.
+- **Dry-run thật 2022**: matched 360.329 · db_only 5.130 · cafef_only 38.986 · assert_updated_equals_matched **True**. Test 4/4. **KHÔNG ghi DB.**
+- **Chưa apply** — chờ audit thiết kế + mở rộng guard `unmapped_cafef` (R3 từ M3). Gate ledger `--next-entry` = 631 (Entry 626/386 trùng có sẵn — không đụng). Evidence: `docs/evidence/widget-news-events/m4-persist.md`.
+
 ## Entry 630: M3 — guard ingest + pause writer jobs
 
 - **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-guard` · Claim `price-mig-guard`.
