@@ -382,7 +382,12 @@ def _screener_build_technical(symbol, close, volume, history_list, financials=No
     """
     # M5b2: pilot flag bật ⇒ dùng giá hiệu dụng cho toàn bộ cửa sổ indicator.
     enabled = pilot_adjusted_enabled()
-    effective = [effective_ohlc(p, enabled=enabled) for p in history_list]
+    # R1: loại dòng unmapped_cafef khỏi cửa sổ indicator (giữ history_list
+    # và effective cùng chỉ các dòng còn lại để volumes vẫn khớp).
+    pairs = [(p, effective_ohlc(p, enabled=enabled)) for p in history_list]
+    pairs = [(p, e) for p, e in pairs if e is not None]
+    history_list = [p for p, _ in pairs]
+    effective = [e for _, e in pairs]
     as_float = lambda v: float(v) if v is not None else 0.0
     closes = [as_float(item[3]) for item in effective]
     volumes = [float(p.volume) for p in history_list]

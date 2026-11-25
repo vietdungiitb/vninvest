@@ -114,6 +114,10 @@ class AdvisoryRecord(models.Model):
         db_index=True,
     )
     ai_model = models.CharField(max_length=64, blank=True, default='', verbose_name='AI model dùng')
+    # M6b R2: basis giá dùng khi generate — 'raw' (mặc định) hoặc 'adjusted'.
+    price_basis = models.CharField(
+        max_length=16, default='raw', db_index=True, verbose_name='Basis giá dùng khi generate'
+    )
     advisory_text = models.TextField(blank=True, default='', verbose_name='Nội dung advisory')
     structured_output = models.JSONField(default=dict, blank=True, verbose_name='Structured output (signal/confidence/summary/rationale)')
     context_snapshot = models.JSONField(default=dict, blank=True, verbose_name='Context snapshot khi generate')

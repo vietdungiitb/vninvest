@@ -38,7 +38,8 @@ class M5bNavAdjustedTests(TestCase):
         self.assertEqual(series[0]['nav'], float(Decimal('17940') * 2))
 
     @patch.dict('os.environ', {'PRICE_ADJUSTED_DISPLAY': 'true'})
-    def test_flag_on_row_without_factor_falls_back_to_raw(self):
+    def test_flag_on_unmapped_row_is_skipped_not_raw(self):
+        """R1: dòng unmapped_cafef bị LOẠI, không thay raw 42750 vào cửa sổ adjusted."""
         DailyPrice.objects.all().delete()
         DailyPrice.objects.create(
             symbol='TPB', date=self.day,
@@ -47,5 +48,4 @@ class M5bNavAdjustedTests(TestCase):
             adj_close=None, adj_factor=None,
             price_source='unmapped_cafef', source='cafef',
         )
-        series = self._series()
-        self.assertEqual(series[0]['nav'], float(Decimal('42750') * 2))
+        self.assertEqual(self._series(), [])

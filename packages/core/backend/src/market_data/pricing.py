@@ -28,13 +28,17 @@ def _dec(value):
 def effective_close(row, *, enabled=None) -> Decimal:
     """Trả close hiệu dụng (Decimal) cho một DailyPrice.
 
-    - flag off / không phải cafef / adj_factor NULL / adj_close NULL ⇒ raw close.
-    - flag on + cafef + có factor ⇒ adj_close.
+    - flag on + `unmapped_cafef` ⇒ **None** (R1: loại khỏi cửa sổ adjusted,
+      KHÔNG thay raw close vào — tránh nhảy basis 42750 vs 17940).
+    - flag off / legacy / cafef thiếu factor ⇒ raw close (hành vi cũ).
     """
     if enabled is None:
         enabled = pilot_adjusted_enabled()
+    source = getattr(row, 'price_source', None)
+    if enabled and source == 'unmapped_cafef':
+        return None
     raw = _dec(getattr(row, 'close', None))
-    if enabled and getattr(row, 'price_source', None) == 'cafef':
+    if enabled and source == 'cafef':
         factor = _dec(getattr(row, 'adj_factor', None))
         adj_close = _dec(getattr(row, 'adj_close', None))
         if factor is not None and adj_close is not None:
@@ -52,8 +56,11 @@ def effective_ohlc(row, *, enabled=None):
     """
     if enabled is None:
         enabled = pilot_adjusted_enabled()
+    source = getattr(row, 'price_source', None)
+    if enabled and source == 'unmapped_cafef':
+        return None
     o, h, l, c = (_dec(getattr(row, key, None)) for key in ('open', 'high', 'low', 'close'))
-    if enabled and getattr(row, 'price_source', None) == 'cafef':
+    if enabled and source == 'cafef':
         factor = _dec(getattr(row, 'adj_factor', None))
         adj_close = _dec(getattr(row, 'adj_close', None))
         if factor is not None and adj_close is not None:

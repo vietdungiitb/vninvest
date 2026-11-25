@@ -1,3 +1,12 @@
+## Entry 638: M6b — pilot readiness R1/R2/R3/R-B
+
+- **Date**: 2026-11-25 · **Type**: feat · **Branch**: `feat/price-mig-readiness` · Claim `price-mig-readiness`.
+- **R1**: `pricing.py` trả None cho `unmapped_cafef` khi flag on ⇒ consumer loại khỏi cửa sổ adjusted (không thay raw).
+- **R2**: `price_basis` trên `AdvisoryRecord`/`ScreenerRunHistory` + migration `advisory/0024`, `user_workspace/0031` (makemigrations sinh).
+- **R3**: quantity theo ngày từ `LedgerEntry` cho NAV equity curve + `_nav_series`.
+- **R-B**: `subscribePriceBasis()` reactive, FE panel dùng state.
+- **Gate**: BE 13 test OK; FE 4/4, tsc/build exit 0. Flag vẫn off. Evidence: `docs/evidence/widget-news-events/m6b-readiness.md`.
+
 ## Entry 637: M4 apply — lô HOSE 2021
 
 - **Date**: 2026-11-25 · **Type**: ops · **Branch**: `feat/price-mig-guard-unmapped`.
