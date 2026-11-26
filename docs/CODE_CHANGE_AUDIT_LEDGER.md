@@ -6,6 +6,13 @@
 - **Gates slice**: BE **10/10 OK** + regression **21/21 OK** tren VPS · FE **11/11** · tsc **0** · deploy health 200. Chi tiet `docs/evidence/broker-config-r1/gates.md` + `PR_REVIEW_AND_CLOSE.md`.
 - **Handoff**: `docs/handoffs/HANDOFF_2026-11-26_BROKER_CONFIG_R1.md` cap nhat trang thai MERGED; cherry-pick sang `main` theo handoff rule trong PR dong phien. Residual: cert SNI `docker.edusuccess.vn` tra `CN=erp.edusuccess.vn` (ticket infra), F3, S3-S5, 3 claim stale can dong.
 - **Cleanup**: DROP `test_broker_config_r1_test`, dong SSH tunnel 8081, remove worktree `vninvest-r1-merge`. Khong migration, khong deny-list, khong live trading.
+## Entry 659: S5 drift sentinel — verdict → observe/rebase/alert
+
+- **Date**: 2026-11-26 · **Branch**: `feat/price-rebase-s5` từ `dev@948975407`.
+- `market_data/cafef/drift.py`: `adjusted_confirmed→observe`, `rebase_suspected→rebase`, verdict khác/lỗi provider → `alert` (fail-closed, 0 UPDATE).
+- Task `reconcile_cafef_drift` + beat `reconcile-cafef-drift-2000` (20:00) trong paused-keys; hệ số beat 48.
+- **Gates/E2E**: TDD 5/5 (local), `manage.py check` 0 issues, `E2E_DRIFT= {'observe':0,'rebase':1,'alert':0}`, `rebase_enqueued=1`. Evidence `docs/evidence/price-rebase-s5/E2E_20261126.md`.
+- **Residual**: S3b backfill/dọn 433.373 dòng + Playwright browser E2E **CHƯA LÀM**.
 ## Entry 658: S2 schema vintage + coverage guard (E2E staging)
 
 - **Date**: 2026-11-26 · **Branch**: `feat/price-rebase-s2` từ `dev@dbedee1f9` (staging đã dọn + deploy lại trước slice).

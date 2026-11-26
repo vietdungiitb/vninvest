@@ -3606,6 +3606,51 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
 
 
 @shared_task(bind=True)
+def reconcile_cafef_drift(self, symbols: list[str] | None = None,
+                          _scheduler_job_key: str | None = None) -> dict:
+    """S5 — so sánh adjusted của provider với CafeF; rebase có kiểm soát."""
+    import pandas as pd
+    from vnbroker import Vnbroker
+
+    from market_data.cafef.drift import classify_drift
+    from market_data.models import DailyPrice, StockProfile
+
+    if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
+        return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
+    if symbols is None:
+        symbols = list(
+            DailyPrice.objects.filter(price_source='cafef', adj_close__isnull=False)
+            .values_list('symbol', flat=True).distinct()[:100]
+        )
+    exchanges = dict(
+        StockProfile.objects.filter(symbol__in=symbols).values_list('symbol', 'exchange')
+    )
+    counts = {'observe': 0, 'rebase': 0, 'alert': 0}
+    for symbol in symbols:
+        rows = list(
+            DailyPrice.objects.filter(symbol=symbol, price_source='cafef')
+            .order_by('date').values('date', 'close')[:120]
+        )
+        if len(rows) < 2:
+            continue
+        frame = pd.DataFrame({
+            'time': pd.to_datetime([r['date'] for r in rows]),
+            'close': [float(r['close']) for r in rows],
+        })
+        try:
+            report = Vnbroker().reconcile_prices(
+                frame, symbol=symbol, exchange=exchanges.get(symbol, 'HOSE'),
+            )
+            action = classify_drift(getattr(report, 'verdict', None))
+        except Exception:
+            action = 'alert'
+        counts[action] += 1
+        if action == 'rebase':
+            rebase_symbol_from_cafef.delay(symbol, trigger='drift_sentinel')
+    return counts
+
+
+@shared_task(bind=True)
 def rebase_cafef_all_symbols(self, _scheduler_job_key: str | None = None) -> dict:
     """Nightly orchestrator — chỉ dispatch symbol có dòng cafef."""
     from market_data.models import DailyPrice
