@@ -1,3 +1,11 @@
+## Entry 657: Chot phien broker-config-r1 — PR #560 MERGED + E2E sau merge + handoff
+
+- **Date**: 2026-11-26 · **Type**: session-close/docs · Branch `docs/broker-config-r1-close` · agent `broker-config-r1`.
+- **PR**: #560 `feat/broker-config-r1` -> `dev` **MERGED** @ `ad69124ee` (merge-commit, `2026-11-26T12:56:53Z`). Rebase 3 lan do `dev` tien truoc (`afbf4eb91`, `42beb6a4f`); moi lan push pre-push **36 PASS / 0 FAIL**. Review GitHub: 1 comment Copilot (quota), **khong co human approval** — ghi that.`gh pr view 560` la nguon su that, khong suy dien.
+- **E2E sau merge**: deploy `dev` @ `ad69124ee` tren VPS; `PLAYWRIGHT_BASE_URL=http://127.0.0.1:8081 npx playwright test tests/visual/broker-config-r1.spec.ts --project=chromium` → **2 passed / 29.4s**, 4 GET broker 200, khong POST khi form rong. Anh `docs/evidence/broker-config-r1/e2e/broker-tabs-r2.png` da mo xem (3 tab DNSE/SSI/TCBS, khong con textarea JSON).
+- **Gates slice**: BE **10/10 OK** + regression **21/21 OK** tren VPS · FE **11/11** · tsc **0** · deploy health 200. Chi tiet `docs/evidence/broker-config-r1/gates.md` + `PR_REVIEW_AND_CLOSE.md`.
+- **Handoff**: `docs/handoffs/HANDOFF_2026-11-26_BROKER_CONFIG_R1.md` cap nhat trang thai MERGED; cherry-pick sang `main` theo handoff rule trong PR dong phien. Residual: cert SNI `docker.edusuccess.vn` tra `CN=erp.edusuccess.vn` (ticket infra), F3, S3-S5, 3 claim stale can dong.
+- **Cleanup**: DROP `test_broker_config_r1_test`, dong SSH tunnel 8081, remove worktree `vninvest-r1-merge`. Khong migration, khong deny-list, khong live trading.
 ## Entry 655: Broker Config R2 — 3 tab credential, moi broker schema rieng (E2E that)
 
 - **Date**: 2026-11-26 · **Type**: feat/fix · Branch `feat/broker-config-r1` · claim `broker-config-r1`.
