@@ -47,6 +47,8 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
       CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
+      PRICE_MIGRATION_PAUSED: ${PRICE_MIGRATION_PAUSED:-0}
+      PRICE_ADJUSTED_DISPLAY: ${PRICE_ADJUSTED_DISPLAY:-false}
 
   # ══════════════════════════════════════════════════════════════════════
   # WORKERS — cùng bộ biến. `entrypoint.sh` KHÔNG chạy `migrate` cho
@@ -62,6 +64,8 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
       CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
+      PRICE_MIGRATION_PAUSED: ${PRICE_MIGRATION_PAUSED:-0}
+      PRICE_ADJUSTED_DISPLAY: ${PRICE_ADJUSTED_DISPLAY:-false}
 
   core-worker-realtime-prefetch:
     environment:
@@ -71,6 +75,8 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
       CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
+      PRICE_MIGRATION_PAUSED: ${PRICE_MIGRATION_PAUSED:-0}
+      PRICE_ADJUSTED_DISPLAY: ${PRICE_ADJUSTED_DISPLAY:-false}
 
   core-worker-realtime-stream:
     environment:
@@ -80,6 +86,8 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
       CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
+      PRICE_MIGRATION_PAUSED: ${PRICE_MIGRATION_PAUSED:-0}
+      PRICE_ADJUSTED_DISPLAY: ${PRICE_ADJUSTED_DISPLAY:-false}
 
   core-beat:
     environment:
@@ -89,6 +97,8 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY must be set - models.py:883 raises when empty}
       CORE_AD_SIGNING_SECRET: ${CORE_AD_SIGNING_SECRET:?CORE_AD_SIGNING_SECRET must be set - env_validation.py W0-6}
       CORPORATE_ACTIONS_ENABLED: ${CORPORATE_ACTIONS_ENABLED:-false}
+      PRICE_MIGRATION_PAUSED: ${PRICE_MIGRATION_PAUSED:-0}
+      PRICE_ADJUSTED_DISPLAY: ${PRICE_ADJUSTED_DISPLAY:-false}
 
   # ══════════════════════════════════════════════════════════════════════
   # FRONTEND — 2 việc:
