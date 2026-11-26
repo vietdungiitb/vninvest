@@ -30,27 +30,32 @@ describe('M5c chartAdapter adjusted basis', () => {
     expect(state.priceBasis).toBe('raw');
   });
 
-  it('flag on: scale O/H/L/C, bỏ dòng unmapped_cafef', () => {
-    const state = { priceBasis: 'init' };
+  it('flag on: scale O/H/L/C, bỏ unmapped_cafef và bỏ legacy khi có cafef', () => {
+    const state = { priceBasis: 'init' } as { priceBasis: string; basisNote?: string };
     const bars = parseBars({ points: rows, adjusted_display: true }, state);
-    expect(bars).toHaveLength(3);
+    // Mixed-source series must not be rendered with one label: keep the
+    // consistent adjusted subset only.
+    expect(bars).toHaveLength(2);
     expect(bars[0].close).toBeCloseTo(17940, 2);
     expect(bars[0].open).toBeCloseTo(43000 * 0.4196491228, 2);
     expect(bars[0].high).toBeCloseTo(43500 * 0.4196491228, 2);
     expect(bars[0].low).toBeCloseTo(42000 * 0.4196491228, 2);
-    expect(bars[1].close).toBe(105); // legacy fallback raw
+    expect(bars[1].close).toBeCloseTo(17630, 2);
     expect(state.priceBasis).toBe('adjusted');
+    expect(state.basisNote).toBe('mixed_sources_dropped_legacy');
   });
 
-  it('R-A: mã legacy có flag on nhưng basis vẫn raw', () => {
-    const state = { priceBasis: 'init' };
+  it('R-A: mã 100% legacy có flag on → fallback có nhãn, không trắng màn hình', () => {
+    const state = { priceBasis: 'init' } as { priceBasis: string; basisNote?: string };
     const legacy = [{
       date: '2022-01-06', open: 100, high: 110, low: 90, close: 105,
       adj_close: null, adj_factor: null, price_source: 'vnbroker_legacy', volume: 800,
     }];
     const bars = parseBars({ points: legacy, adjusted_display: true }, state);
+    expect(bars).toHaveLength(1);
     expect(bars[0].close).toBe(105);
-    expect(state.priceBasis).toBe('raw');
+    expect(state.priceBasis).toBe('provider_adjusted_fallback');
+    expect(state.basisNote).toBe('no_cafef_source');
   });
 
   it('R-B: notify listener khi basis doi', () => {

@@ -3488,6 +3488,96 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# S4 — CafeF full-history rebase (single SSOT cho adjusted price).
+# ---------------------------------------------------------------------------
+@shared_task(bind=True)
+def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
+                             trigger: str = 'manual', ex_date: date | None = None) -> dict:
+    """Re-fetch TOÀN chuỗi adjusted và ghi lại sau khi qua 3 bất biến an toàn."""
+    if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
+        return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1', 'symbol': symbol}
+
+    from types import SimpleNamespace
+
+    from vnbroker import Vnbroker
+
+    from market_data.cafef.rebase import build_series, validate_rebase
+    from market_data.models import DailyPrice
+
+    end = now().date()
+    try:
+        frame = Vnbroker().daily_bars(
+            symbol.upper(), '2011-01-01', end.isoformat(),
+            exchange=exchange, basis='both',
+        )
+    except Exception as exc:  # CafeF may 404/503 on long per-symbol ranges
+        return {
+            'status': 'fetch_error', 'reason': str(exc)[:300],
+            'symbol': symbol, 'trigger': trigger,
+        }
+    if frame is None or getattr(frame, 'empty', True):
+        return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
+
+    new_rows = []
+    for _, row in frame.iterrows():
+        close_raw = Decimal(str(row.get('close_raw')))
+        adj_close = Decimal(str(row.get('close_adjusted')))
+        if close_raw <= 0:
+            continue
+        new_rows.append(SimpleNamespace(
+            date=row['date'].date() if hasattr(row['date'], 'date') else date.fromisoformat(str(row['date'])[:10]),
+            close=close_raw, adj_close=adj_close, adj_factor=adj_close / close_raw,
+        ))
+    new_series = build_series(new_rows)
+
+    old_rows = list(
+        DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
+        .order_by('date')
+    )
+    old_series = build_series(old_rows)
+    allowed, reason = validate_rebase(old_series, new_series, ex_date=ex_date)
+    if not allowed:
+        return {
+            'status': 'halted_data_error', 'reason': reason,
+            'symbol': symbol, 'trigger': trigger,
+        }
+
+    by_date = {row.date: row for row in new_rows}
+    updated = 0
+    for old in old_rows:
+        fresh = by_date.get(old.date)
+        if fresh is None:
+            continue
+        old.adj_close = fresh.adj_close
+        old.adj_factor = fresh.adj_factor
+        updated += 1
+    if updated:
+        DailyPrice.objects.bulk_update(old_rows, ['adj_close', 'adj_factor'], batch_size=500)
+    return {
+        'status': 'applied', 'symbol': symbol, 'trigger': trigger,
+        'rows_updated': updated, 'dates_scanned': len(new_series),
+    }
+
+
+@shared_task(bind=True)
+def rebase_cafef_all_symbols(self, _scheduler_job_key: str | None = None) -> dict:
+    """Nightly orchestrator — chỉ dispatch symbol có dòng cafef."""
+    from market_data.models import DailyPrice
+
+    if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
+        return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
+    symbols = list(
+        DailyPrice.objects.filter(price_source='cafef')
+        .values_list('symbol', flat=True).distinct()
+    )
+    queued = 0
+    for symbol in symbols:
+        rebase_symbol_from_cafef.delay(symbol, trigger='nightly')
+        queued += 1
+    return {'queued': queued}
+
+
+# ---------------------------------------------------------------------------
 # Corporate Actions Pipeline — incremental nightly sync (flag-gated).
 # ---------------------------------------------------------------------------
 @shared_task(bind=True)

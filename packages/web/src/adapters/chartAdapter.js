@@ -70,20 +70,35 @@ export function parseBars(payload, state) {
   const sorted = points.sort((a, b) =>
     new Date(a.timestamp ?? a.time ?? a.date).getTime()
     - new Date(b.timestamp ?? b.time ?? b.date).getTime());
-  // R-A: basis phải derive từ dữ liệu thực của CHÍNH MÃ này, không phải flag
-  // global — nếu không, mã legacy (~98%) cũng bị bỏ nến realtime.
-  const newest = sorted[sorted.length - 1];
-  const basisAdjusted = Boolean(adjusted && newest
-    && newest.price_source === 'cafef'
-    && newest.adj_factor != null && newest.adj_close != null);
-  if (state) {
-    const next = basisAdjusted ? 'adjusted' : 'raw';
-    if (state.priceBasis !== next) {
-      state.priceBasis = next;
-      if (typeof state._notify === 'function') state._notify(next);
+
+  // S6: never render one chart with mixed adjustment bases. If the series has
+  // any CafeF row, keep only the consistent adjusted subset; a 100% legacy
+  // series stays visible but is labelled as provider-adjusted fallback.
+  let basis = 'raw';
+  let note;
+  let visible = sorted;
+  if (adjusted) {
+    const cafefRows = sorted.filter((p) => p.price_source === 'cafef'
+      && p.adj_factor != null && p.adj_close != null);
+    if (cafefRows.length > 0) {
+      basis = 'adjusted';
+      if (cafefRows.length < sorted.length) {
+        visible = cafefRows;
+        note = 'mixed_sources_dropped_legacy';
+      }
+    } else {
+      basis = 'provider_adjusted_fallback';
+      note = 'no_cafef_source';
     }
   }
-  return sorted
+  if (state) {
+    if (state.priceBasis !== basis) {
+      state.priceBasis = basis;
+      if (typeof state._notify === 'function') state._notify(basis);
+    }
+    state.basisNote = note;
+  }
+  return visible
     .map((p, i) => mapToBar(p, i, adjusted))
     .filter((b) => !isNaN(b.date.getTime()));
 }

@@ -4210,6 +4210,52 @@ def _corporate_actions_enabled() -> bool:
     return os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes')
 
 
+def _has_cafef_adjustment(row) -> bool:
+    """Only CafeF rows carry a trustworthy adjusted series.
+
+    vnbroker_legacy rows may hold a stale double-adjusted `adj_close` from the
+    retired engine; exposing it makes consumers silently render wrong prices.
+    """
+    return (
+        getattr(row, 'price_source', None) == 'cafef'
+        and getattr(row, 'adj_factor', None) is not None
+        and getattr(row, 'adj_close', None) is not None
+    )
+
+
+def _bars_adjustment_metadata(bars, partial_dates):
+    """Honest `adjusted` flag for the bars contract (S6).
+
+    `adjusted=True` only when EVERY bar carries a CafeF adjustment. A mixed
+    series must never be labelled adjusted, otherwise FE renders one chart with
+    two bases.
+    """
+    if partial_dates:
+        dates = ', '.join(day.isoformat() for day in partial_dates)
+        return {
+            'adjusted': False,
+            'note': f'Bars chưa điều chỉnh: sự kiện chưa parse được tại ex_date {dates}.',
+        }
+    if not bars:
+        return {'adjusted': False, 'note': 'Chưa có hệ số điều chỉnh cho mã này.'}
+    sources = {bar.get('price_source') for bar in bars}
+    all_adjusted = (
+        sources == {'cafef'}
+        and all(
+            bar.get('adj_close') is not None and bar.get('adj_factor') is not None
+            for bar in bars
+        )
+    )
+    if all_adjusted:
+        return {'adjusted': True, 'note': None}
+    if 'cafef' in sources:
+        return {
+            'adjusted': False,
+            'note': 'mixed_sources_partial_adjustment_basis',
+        }
+    return {'adjusted': False, 'note': 'Chưa có hệ số điều chỉnh cho mã này.'}
+
+
 def _ohlcv_bar_from_daily(row):
     dt = datetime.combine(row.date, time.min).replace(tzinfo=dt_timezone.utc)
     bar = {
@@ -4221,42 +4267,54 @@ def _ohlcv_bar_from_daily(row):
         'volume': _to_int(row.volume) or 0,
     }
     if _corporate_actions_enabled():
-        bar['adj_close'] = _to_float(row.adj_close)
-        bar['adj_factor'] = _to_float(getattr(row, 'adj_factor', None)) if getattr(row, 'adj_factor', None) is not None else None
         bar['price_source'] = getattr(row, 'price_source', None)
+        if _has_cafef_adjustment(row):
+            bar['adj_close'] = _to_float(row.adj_close)
+            bar['adj_factor'] = _to_float(row.adj_factor)
     return bar
 
 
-def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
-    """Aggregate DailyPrice rows into W or M OHLCV bars. Returns list of bar dicts."""
+def _aggregate_daily_to_ohlcv_bars(rows, timeframe, adjusted=False):
+    """Aggregate DailyPrice rows into W or M OHLCV bars.
+
+    S6: when ``adjusted`` is on, scale O/H/L/C of EVERY day before grouping —
+    otherwise an ex-date inside the week leaves the pre-ex-date wick unscaled.
+    """
     if not rows:
         return []
     buckets = []
     current = None
     for row in rows:
+        use_adj = adjusted and _has_cafef_adjustment(row)
+        factor = float(row.adj_factor) if use_adj else 1.0
+        o = (_to_float(row.open) or 0) * factor
+        h = (_to_float(row.high) or 0) * factor
+        l = (_to_float(row.low) or 0) * factor
+        c = _to_float(row.adj_close) if use_adj else _to_float(row.close)
+        c = c if c is not None else (_to_float(row.close) or 0)
         key = row.date.isocalendar()[:2] if timeframe == 'W' else (row.date.year, row.date.month)
         if current is None or current['key'] != key:
             current = {
                 'key': key,
                 'date': row.date,
-                'open': row.open,
-                'high': row.high,
-                'low': row.low,
-                'close': row.close,
-                'adj_close': row.adj_close,
-                'adj_factor': getattr(row, 'adj_factor', None),
-                'price_source': getattr(row, 'price_source', None),
+                'open': o,
+                'high': h,
+                'low': l,
+                'close': c,
                 'volume': _to_int(row.volume) or 0,
             }
             buckets.append(current)
         else:
-            current['high'] = max(current['high'], row.high)
-            current['low'] = min(current['low'], row.low)
-            current['close'] = row.close
-            current['adj_close'] = row.adj_close
-            current['adj_factor'] = getattr(row, 'adj_factor', None)
-            current['price_source'] = getattr(row, 'price_source', None)
+            current['high'] = max(current['high'], h)
+            current['low'] = min(current['low'], l)
+            current['close'] = c
             current['volume'] += _to_int(row.volume) or 0
+        # Metadata follows the source, not the display flag; a later legacy row
+        # clears it so a mixed bucket never advertises a partial adjustment.
+        has_source_adj = _has_cafef_adjustment(row)
+        current['adj_close'] = row.adj_close if has_source_adj else None
+        current['adj_factor'] = row.adj_factor if has_source_adj else None
+        current['price_source'] = getattr(row, 'price_source', None)
     result = []
     for b in buckets:
         dt = datetime.combine(b['date'], time.min).replace(tzinfo=dt_timezone.utc)
@@ -4269,9 +4327,10 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe):
             'volume': b['volume'],
         }
         if _corporate_actions_enabled():
-            bar['adj_close'] = _to_float(b['adj_close'])
-            bar['adj_factor'] = _to_float(b['adj_factor']) if b['adj_factor'] is not None else None
             bar['price_source'] = b['price_source']
+            if b['adj_close'] is not None and b['adj_factor'] is not None:
+                bar['adj_close'] = _to_float(b['adj_close'])
+                bar['adj_factor'] = _to_float(b['adj_factor'])
         result.append(bar)
     return result
 
@@ -4313,7 +4372,7 @@ def _fetch_ohlcv_bars_before(symbol, timeframe, before_dt, limit):
             .filter(symbol=symbol, date__range=(start_date, before_dt.date() - timedelta(days=1)))
             .order_by('date')
         )
-        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe, adjusted=pilot_adjusted_enabled())
         has_more_before = len(all_bars) > limit
         bars = all_bars[-limit:] if all_bars else []
         has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gte=before_dt.date()).exists()
@@ -4353,7 +4412,7 @@ def _fetch_ohlcv_bars_after(symbol, timeframe, after_dt, limit):
             .filter(symbol=symbol, date__range=(after_dt.date() + timedelta(days=1), end_date))
             .order_by('date')
         )
-        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        all_bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe, adjusted=pilot_adjusted_enabled())
         has_more_after = len(all_bars) > limit
         bars = all_bars[:limit]
         has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lte=after_dt.date()).exists()
@@ -4391,7 +4450,7 @@ def _fetch_ohlcv_bars_window(symbol, timeframe, from_dt, to_dt):
             .filter(symbol=symbol, date__range=(from_dt.date(), to_dt.date()))
             .order_by('date')
         )
-        bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe)
+        bars = _aggregate_daily_to_ohlcv_bars(daily_rows, timeframe, adjusted=pilot_adjusted_enabled())
         has_more_before = DailyPrice.objects.filter(symbol=symbol, date__lt=from_dt.date()).exists()
         has_more_after = DailyPrice.objects.filter(symbol=symbol, date__gt=to_dt.date()).exists()
     return bars, has_more_before, has_more_after
@@ -4561,20 +4620,14 @@ class StockManagementOHLCVBarsView(APIView):
                 .order_by('ex_date')
                 .values_list('ex_date', flat=True)
             )
-            has_adjusted = any(bar.get('adj_close') is not None for bar in bars)
-            if partial_dates:
-                adjusted = False
-                dates = ', '.join(day.isoformat() for day in partial_dates)
-                adjustment_note = f'Bars chưa điều chỉnh: sự kiện chưa parse được tại ex_date {dates}.'
-            elif has_adjusted:
-                adjusted = True
-                adjustment_note = None
-            else:
-                adjusted = False
-                adjustment_note = 'Chưa có hệ số điều chỉnh cho mã này.'
+            meta = _bars_adjustment_metadata(bars, partial_dates)
         else:
-            adjusted = False
-            adjustment_note = 'Bars chua dieu chinh co tuc (corporate actions).'
+            meta = {
+                'adjusted': False,
+                'note': 'Bars chua dieu chinh co tuc (corporate actions).',
+            }
+        adjusted = meta['adjusted']
+        adjustment_note = meta['note']
 
         return envelope({
             'symbol': symbol,
