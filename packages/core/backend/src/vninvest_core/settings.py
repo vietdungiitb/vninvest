@@ -801,6 +801,14 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('rebase-cafef-nightly-1900', 'enrichment_offhours')},
     },
 
+    # === S5: drift sentinel 20:00 ICT (sau rebase 19:00) ===
+    'reconcile-cafef-drift-2000': {
+        'task': 'data_ingest.tasks.reconcile_cafef_drift',
+        'schedule': crontab(hour=20, minute=0),
+        'kwargs': {'_scheduler_job_key': 'reconcile-cafef-drift-2000'},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('reconcile-cafef-drift-2000', 'enrichment_offhours')},
+    },
+
     # === DNSE intraday tape backfill 90 ngày — Chủ nhật 01:00 ICT (Sat 18:00 UTC) ===
     # Orchestrator: resolve VN100, presence-check, queue missing (symbol, date) slots.
     # Subtasks chạy queue manual_on_demand; orchestrator chạy enrichment_offhours.
@@ -925,6 +933,7 @@ if os.environ.get('PRICE_MIGRATION_PAUSED', '0') == '1':
         'pre5y-history-backfill-weekly',
         'sync-corporate-actions-nightly',
         'rebase-cafef-nightly-1900',
+        'reconcile-cafef-drift-2000',
         'detect-market-anomaly-alerts-5m',
     ):
         CELERY_BEAT_SCHEDULE.pop(_paused_key, None)
