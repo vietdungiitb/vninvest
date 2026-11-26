@@ -17,10 +17,11 @@ def _record(day, close, adj):
 
 
 class RebaseBulkFetch(SimpleTestCase):
+    @patch('market_data.models.PriceRebaseRun.objects')
     @patch('market_data.models.DailyPrice.objects.bulk_update')
     @patch('market_data.models.DailyPrice.objects.filter')
     @patch('vnbroker.reference.client.bulk_year')
-    def test_bulk_year_feed_produces_applied_rebase(self, mock_bulk, mock_filter, mock_update):
+    def test_bulk_year_feed_produces_applied_rebase(self, mock_bulk, mock_filter, mock_update, mock_audit):
         mock_bulk.return_value = [
             _record('2022-01-04', 42750.0, 17940.0),
             _record('2022-01-05', 42000.0, 17640.0),

@@ -48,7 +48,8 @@ class RebaseSafetyGate(SimpleTestCase):
         from unittest.mock import patch
 
         from data_ingest.tasks import rebase_symbol_from_cafef
-        with patch('vnbroker.reference.client.bulk_year') as mock_bulk:
+        with patch('vnbroker.reference.client.bulk_year') as mock_bulk, \
+                patch('market_data.models.PriceRebaseRun.objects'):
             mock_bulk.side_effect = RuntimeError('HTTP 503')
             result = rebase_symbol_from_cafef.run('TPB', exchange='HOSE', trigger='e2e')
         self.assertEqual(result['status'], 'fetch_error')

@@ -6,6 +6,14 @@
 - **Gates slice**: BE **10/10 OK** + regression **21/21 OK** tren VPS · FE **11/11** · tsc **0** · deploy health 200. Chi tiet `docs/evidence/broker-config-r1/gates.md` + `PR_REVIEW_AND_CLOSE.md`.
 - **Handoff**: `docs/handoffs/HANDOFF_2026-11-26_BROKER_CONFIG_R1.md` cap nhat trang thai MERGED; cherry-pick sang `main` theo handoff rule trong PR dong phien. Residual: cert SNI `docker.edusuccess.vn` tra `CN=erp.edusuccess.vn` (ticket infra), F3, S3-S5, 3 claim stale can dong.
 - **Cleanup**: DROP `test_broker_config_r1_test`, dong SSH tunnel 8081, remove worktree `vninvest-r1-merge`. Khong migration, khong deny-list, khong live trading.
+## Entry 658: S2 schema vintage + coverage guard (E2E staging)
+
+- **Date**: 2026-11-26 · **Branch**: `feat/price-rebase-s2` từ `dev@dbedee1f9` (staging đã dọn + deploy lại trước slice).
+- **Migration** `market_data/0013_s2_vintage.py` do `makemigrations` sinh: `DailyPrice.adj_as_of`, `adj_version`, model `PriceRebaseRun`. `makemigrations --check` sạch; apply trên VPS OK.
+- **Guard** `market_data/cafef/coverage.py`: `matched<=0` ⇒ `cafef_rows_empty`; tỉ lệ matched/legacy <0.5 ⇒ `below_50pct` (có `--allow-low-coverage`). Wire vào `price_migration_persist`.
+- **Rebase task** ghi `adj_as_of=now()`, `adj_version=F+1` và bản ghi `PriceRebaseRun` (applied/halted/failed), `finished_at`.
+- **Gates/E2E**: TDD 4/4 (local) + 7/7 (staging DB); dry-run `UPCOM 2026` → `CommandError: coverage_guard:cafef_rows_empty`; probe thật → `status=applied`, audit `applied/5`, `adj_as_of` có giá trị, `adj_version=1`, cleanup=0. Evidence `docs/evidence/price-rebase-s2/E2E_20261126.md`.
+- **Residual**: S3b backfill/dọn 433.373 dòng, S5 drift sentinel, Playwright browser E2E **CHƯA LÀM**.
 ## Entry 655: Broker Config R2 — 3 tab credential, moi broker schema rieng (E2E that)
 
 - **Date**: 2026-11-26 · **Type**: feat/fix · Branch `feat/broker-config-r1` · claim `broker-config-r1`.
