@@ -1,3 +1,14 @@
+## Entry 643: Re-audit toàn phiên — đính chính doc + flag compose lên dev
+
+- **Date**: 2026-11-26 · **Type**: docs/ops · **Branch**: `docs/session-reaudit`.
+- **Đính chính Entry 641**: dòng "Visual E2E **CHƯA CHẠY**" đã **sai** — owner cung cấp credentials, visual E2E đã chạy với tài khoản test: chart TPB render 2.145 nến, ảnh đã mở kiểm tra (`m4-apply-all-and-cutover.md:40`, commit `ba26f3094` trên `origin/dev`). Không sửa Entry cũ (append-only).
+- **Đính chính Entry 635**: FE gate là **3/3**, không phải 2/2 (`m5c-fe-cutover.md:15`, `m5c-gate-logs.txt:7`).
+- **O-02 đóng**: thay đổi `docker-compose.staging.yml` truyền `PRICE_ADJUSTED_DISPLAY`/`PRICE_MIGRATION_PAUSED` cho 5 core service trước đó chỉ có ở VPS local commit `8792430b0` → đã port sang `origin/dev` qua PR **#553** (commit `b87ac7a30`, trailer `Claim-Deny-List:`). Fresh clone giữ được flag.
+- **G-01**: `CLAIMS.md` claim `price-mig-cutover` trỏ evidence ghosts `m5-cutover.md` → sửa thành `m5a/m5b/m5c*.md`; runbook checkboxes 0.9–0.11 chuyển `[x]`.
+- **Bằng chứng bổ sung**: ảnh E2E + script verify DB được copy vào `docs/evidence/widget-news-events/` để tái tạo độc lập.
+- **Residual đã owner dùng thực tế (không blockers)**: 4 lô lỗi nguồn CafeF + 5 lô 0 dòng; healthcheck beat/worker `:8100`; nhãn widget "Chưa điều chỉnh"; 404 `/core/v1/advisory/latest/TPB/`; runtime-only image `cutover` + BATCH 500 + memory limits.
+- Re-audit độc lập: NEED_REVISION → O-01/O-02 đã đóng; G-01/R-01 đã xử lý. Handoff new: `docs/handoffs/HANDOFF_2026-11-26_PRICE_MIGRATION_CLOSEOUT.md`.
+
 ## Entry 642: Hotfix DailyPrice — UnboundLocalError dark-money-history
 
 - **Date**: 2026-11-25 · **Type**: fix · **Branch**: `fix/dailyprice-unbound` · Claim `dailyprice-unbound`.
