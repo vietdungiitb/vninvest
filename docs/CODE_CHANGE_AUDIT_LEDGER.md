@@ -1,3 +1,13 @@
+## Entry 646: Chốt phiên CVD 1D history cho widget (BE) — DONE
+
+- **Date**: 2026-11-26 · **Type**: session-close/docs · **Branch**: `docs/cvd1d-session-close` · **Claim**: `cvd1d-session-close`.
+- **Scope**: toàn bộ slice BE tiếp nhận BE Request widget: A1 `window=1D&period=...`, test, audit 2 vòng, deploy staging, curl proof, đóng claim. **Không sửa** code widget/FE; **không migration**; **không dependency**; **không deploy production**.
+- **Gate (đều chạy thật, có lệnh tái tạo trong evidence)**: fail-before `c166374d0` `Ran 11 tests … FAILED (failures=4, errors=1)` → pass-after `665767ce0` `Ran 45 tests … OK` trên VPS staging DB tạm (exit 1 do teardown `ObjectInUse` — đã ghi rõ; DB/worktree đã dọn). `manage.py check` 0 · `py_compile` 0 · `pre-push-gate` 36 PASS/0 FAIL · `check-multi-agent` exit 0. B3 plan `NEED_REVISION → AGREE`; B8 re-audit `NEED_REVISION → AGREE` 0 blocker/0 major.
+- **Merge/deploy**: PR #556 MERGED `309e466fd` → `dev`; PR #557 (deploy evidence) MERGED `38ec04ff`; PR #558 (đóng claim deploy) MERGED `1c6bafb45`; `deploy-staging.sh` exit 0, health 200 local + public, 0 crash-loop; curl proof `period=3M` → `bucket_count=61`, cumulative `-816,720,000 → -216,130,000`, `period=999M` → 400 `UNSUPPORTED_PERIOD`; PAT tạm đã xoá (verify 0).
+- **Evidence**: `docs/PLAN_CVD_1D_HISTORY_BE_20261126.md` · `docs/evidence/cvd-1d-history/{AUDIT_PLAN,FAIL_BEFORE,PASS_AFTER,RE_AUDIT,STAGING_DEPLOY_PROOF}.md` · handoff `docs/handoffs/HANDOFF_2026-11-26_CVD_1D_HISTORY_BE.md` (mục 6 chốt phiên). Ledger Entry 644 (code) + 645 (deploy) + Entry 646 này.
+- **Claim/worktree**: `cvd-1d-history-be`, `cvd1d-deploy-proof`, `cvd1d-session-close` → **done**; worktree/junction `cvd-1d-*`/`cvd1d-*` đã remove, DB tạm DROP, file `/tmp/*cvd1d*` trên VPS đã xoá, stale remote refs đã prune.
+- **BE work còn lại**: **KHÔNG**. Chỉ còn widget/Owner confirm D-2 (cap 2600 bucket cho 10Y) + D-4 (`date_from` sau cap là khoảng truy vấn), rồi widget tự slice truyền `period:"3M"` + E2E `pts>=2`/`maxX-minX>0`.
+
 ## Entry 645: Deploy staging + curl proof PR #556 (CVD 1D history)
 
 - **Date**: 2026-11-26 · **Type**: ops/evidence · **Branch**: `docs/cvd1d-deploy-proof` · **Claim**: `cvd1d-deploy-proof`.
