@@ -1,3 +1,5 @@
+
+
 ## Entry 647: S0 cấp cứu blackout staging + S1 CafeF reference 4 bug
 
 - **Date**: 2026-11-26 · **Type**: ops (S0) + code (S1 ở repo `vnbroker`) · **Branch**: `feat/price-rebase-s0s1` / `feat/cafef-reference-fix`.

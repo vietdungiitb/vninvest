@@ -86,10 +86,10 @@ interface BrokerAudit {
 
 const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
   getSocBrokerConfig: () => Promise<{ config?: BrokerConfig }>;
-  applySocBrokerConfig: (config: BrokerConfig, reason: string) => Promise<{ ok?: boolean; change_summary?: string[] }>;
+  applySocBrokerConfig: (config: BrokerConfig, reason: string) => Promise<{ ok?: boolean; change_summary?: string[]; warnings?: string[] }>;
   previewSocBrokerConfig: (config: BrokerConfig) => Promise<{
     before?: Record<string, unknown>; after?: Record<string, unknown>;
-    change_summary?: string[]; validation_errors?: string[];
+    change_summary?: string[]; validation_errors?: string[]; warnings?: string[];
   }>;
   getSocBrokerAudit: (limit?: number) => Promise<{ audits?: BrokerAudit[] }>;
   getSocBrokerHealth: () => Promise<BrokerHealth>;
@@ -144,6 +144,7 @@ export function SocBrokerPanel() {
   const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [config, setConfig] = useState<BrokerConfig>({});
   const [reason, setReason] = useState("");
   const [health, setHealth] = useState<BrokerHealth>({});
@@ -219,6 +220,7 @@ export function SocBrokerPanel() {
   async function handlePreview() {
     try {
       const res = await socBrokerAdapter.previewSocBrokerConfig(config);
+      setWarnings(res.warnings || []);
       setPreview({
         before: res.before || null,
         after: res.after || null,
@@ -248,10 +250,10 @@ export function SocBrokerPanel() {
     try {
       const res = await socBrokerAdapter.applySocBrokerConfig(config, reason);
       setPreview(null);
+      setWarnings(res.warnings || []);
       toast.success(t("soc.broker.apply_ok"));
       setReason("");
       await reload();
-      void res;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("soc.broker.apply_fail"));
     } finally {
@@ -345,6 +347,10 @@ export function SocBrokerPanel() {
       e("p", { className: styles.metricLabel }, t("soc.broker.subtitle")),
     ),
     error ? e("p", { className: styles.inlineError }, error) : null,
+    warnings.length
+      ? e("p", { className: styles.inlineError, style: { color: "var(--soc-status-warn)" } },
+          `${t("brokerWave4.ops.needsVerify")}: ${warnings.join("; ")}`)
+      : null,
 
     e("div", { className: styles.sectionCard },
       e("h3", { className: styles.sectionCardTitle }, t("soc.broker.config_title")),
