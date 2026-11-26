@@ -6,11 +6,11 @@
 - [x] Backup S0 `/opt/backups/price-migration-20261124/before_20261124.dump` (99 MB, sha256 `6c5a7e05…c19691`).
 - [x] M3 pause flag + M6a guard `price_source in ('cafef','unmapped_cafef')`.
 - [x] M6b R1/R2/R3/R-B code xong (PR #542).
-- [ ] Driver apply M4 **tất cả lô** HOSE/HNX/UPCOM 2011–2026 (trừ 7 lô lỗi nguồn CafeF đã ghi) xong, mọi `status=applied`.
-- [ ] Đối chiếu DB cuối: số dòng `cafef` theo (sàn, năm) khớp tổng `expected_cafef_rows` từ report.
-- [ ] Disk ≥20 GB, DB container memory ≥8 GB, core-api ≥2 GB.
+- [x] Driver apply M4 **tất cả lô** HOSE/HNX/UPCOM 2011–2026 xong — `m4-apply-all-and-cutover.md:14-24`; 4 lô lỗi nguồn giữ `vnbroker_legacy`, 5 lô có 0 dòng nguồn.
+- [x] Đối chiếu DB cuối: `cafef=1.904.487`, `bad_cafef=0`, `bad_unmapped=0` — `m4-apply-all-and-cutover.md:26-43`.
+- [x] Disk ≥20 GB, DB container memory 12 GB, core-api 4 GB — Entry 641.
 
-## 1. Apply (đang chạy)
+## 1. Apply (đã xong)
 Driver: `/tmp/m4_driver_vps.py` trên VPS. Mỗi lô `docker exec` riêng, pacing 1s, `--apply` với `PRICE_MIGRATION_PAUSED=1`, report `/tmp/m4_<EXCHANGE>_<YEAR>.json`, kết quả `/tmp/m4_host_results.json`. Retry lỗi bằng cách xoá entry `error` khỏi results rồi chạy lại (command upsert idempotent).
 
 ## 2. Verify DB cuối
