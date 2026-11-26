@@ -62,7 +62,8 @@ Giữ nguyên: `unit: "vnd"`, `bucket_count`, `cvd_series[]`, `symbol`, `window`
 - History: `core:cvd_series:v3:{symbol}:{window}:{period}:{start}:{end}:{revision}`; TTL 30s.
 - **R1/R2 đã chốt lúc implement:** `revision = int(max(computed_at).timestamp())` (int Unix, cùng kiểu legacy `views.py:406`), `updated_at = localtime(max(computed_at))`; `end_date = localdate()`, `start_date = end_date - timedelta(days=period_days)` (inclusive 2 đầu, cùng `stock_mgmt_native_views.py:2119-2120`). `date_from`/`date_to` là **khoảng truy vấn**, không phải ngày đầu bucket sau cap 2600.
 - **D-1 (chọn A1)** · **D-2 max bucket 10Y = 2600** (≈10 năm × 260 phiên): nếu vượt, giữ **cuối** 2600
-  bucket, tính lại cumulative từ delta của phần giữ lại, `date_from` = ngày đầu còn lại. Bảo toàn AC-3/AC-4.
+  bucket, tính lại cumulative từ delta của phần giữ lại. `date_from`/`date_to` **vẫn là khoảng truy vấn**
+  theo R2 ở trên, không đổi thành ngày đầu bucket còn giữ. Bảo toàn AC-3/AC-4.
   Con số này là quyết định BE, cần Owner confirm (ghi trong handoff).
 - **D-3 index:** KHÔNG thêm migration — composite index đã tồn tại (`models.py:143`).
 - **D-4 deploy staging:** BE chỉ commit riêng + chạy test VPS; deploy/staging do Owner chốt.

@@ -55,3 +55,14 @@ by other users` — do `settings.py:236` `CORE_DB_CONN_MAX_AGE=60` giữ connect
 cho lần chạy pass-after: thêm `-e CORE_DB_CONN_MAX_AGE=0` và `DROP DATABASE ... WITH (FORCE)` cho cả
 `cvd1d_verify` lẫn `test_cvd1d_verify`. Kết quả test ở trên **không** bị sự cố này làm sai (test đã chạy
 xong trước teardown).
+
+## Cập nhật artifact (audit trail)
+
+Sau commit fail-before `c166374d0`, bản test đổi 3 chỗ trước pass-after:
+1. T-10 `date_from`: `today-2599` → `today-3650` (chốt R2: `date_from` là khoảng truy vấn).
+2. Fixture anchor: `localdate()` → `now().date()` để hết flaky theo giờ +07 (legacy dùng UTC date).
+3. Thêm T-12 patch clock ở biên UTC date = local date − 1.
+
+T-10 đã đỏ ở `bucket_count` **trước** dòng `date_from`, T-02/T-03/T-05/T-09 cũng đỏ ở assert
+kiểu/history ⇒ 3 dòng đổi đó **không làm sai** kết luận fail-before 5/11. Ghi rõ để artifact đỏ/xanh
+không bị hiểu nhầm là cùng bản byte-for-byte.

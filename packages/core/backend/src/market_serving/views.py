@@ -481,6 +481,7 @@ class SessionFactsCvdView(APIView):
                 'history': True,
                 'date_from': start_date.isoformat(),
                 'date_to': end_date.isoformat(),
+                'revision': revision,  # helper chung tra 0 cứng; day la revision that cua khoang
             })
             empty['_source'] = 'no-data'
             return Response(empty)

@@ -64,7 +64,10 @@ class Cvd1dHistoryApiTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='cvd1d-history-user', password='pass')
         self.client.force_authenticate(user=self.user)
-        self.today = timezone.localdate()
+        # Legacy chọn session bằng now().date() (UTC, views.py:81); history dùng localdate()
+        # (views.py:403). Anchor fixture vào UTC date để T-01/T-04 không flaky theo giờ +07.
+        self.today = timezone.now().date()
+        self.local_today = timezone.localdate()
         self.d0 = self.today - dt.timedelta(days=2)
         self.d1 = self.today - dt.timedelta(days=1)
         self.d2 = self.today
@@ -97,8 +100,8 @@ class Cvd1dHistoryApiTests(TestCase):
         payload = resp.data
         self.assertTrue(payload['history'])
         self.assertEqual(payload['period'], '3M')
-        self.assertEqual(payload['date_from'], (self.today - dt.timedelta(days=90)).isoformat())
-        self.assertEqual(payload['date_to'], self.today.isoformat())
+        self.assertEqual(payload['date_from'], (self.local_today - dt.timedelta(days=90)).isoformat())
+        self.assertEqual(payload['date_to'], self.local_today.isoformat())
         self.assertGreaterEqual(payload['bucket_count'], 2)
         stamps = [dt.datetime.fromisoformat(b['bucket_ts']) for b in payload['cvd_series']]
         self.assertEqual(stamps, sorted(stamps))
@@ -211,9 +214,9 @@ class Cvd1dHistoryApiTests(TestCase):
         payload = resp.data
         self.assertEqual(payload['bucket_count'], 2600)
         self.assertLessEqual(payload['bucket_count'], 2600)
-        # date_from/date_to là khoảng truy vấn (R2), không phải ngày đầu bucket còn giữ sau cap.
-        self.assertEqual(payload['date_from'], (self.today - dt.timedelta(days=3650)).isoformat())
-        self.assertEqual(payload['date_to'], self.today.isoformat())
+        # date_from/date_to là khoảng truy vấn theo localdate (R2), không phải ngày đầu bucket sau cap.
+        self.assertEqual(payload['date_from'], (self.local_today - dt.timedelta(days=3650)).isoformat())
+        self.assertEqual(payload['date_to'], self.local_today.isoformat())
         running = 0
         for bucket in payload['cvd_series']:
             running += bucket['buy_volume'] - bucket['sell_volume']
@@ -232,3 +235,24 @@ class Cvd1dHistoryApiTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['bucket_count'], 1)
         self.assertNotIn('history', resp.data)
+
+    # ── T-12 UT cố định: UTC date = local date - 1 (00:00-06:59 +07) ──
+    def test_t12_utc_local_midnight_boundary_is_stable(self):
+        symbol = 'CVDBND'
+        fixed_utc = dt.datetime(2026, 11, 26, 20, 0, tzinfo=dt.timezone.utc)  # = 03:00+07 ngày 27
+        fixed_local_date = dt.date(2026, 11, 27)
+        day_before = fixed_utc.date() - dt.timedelta(days=1)
+        _add_1d_session(symbol, day_before, 100_000_000, 0)       # +100M
+        _add_1d_session(symbol, fixed_utc.date(), 900_000_000, 100_000_000)  # +800M
+
+        with patch.object(timezone, 'now', return_value=fixed_utc), \
+             patch.object(timezone, 'localdate', return_value=fixed_local_date):
+            legacy = self.client.get('/core/v1/session-facts/CVDBND/cvd/?window=1D').data
+            history = self.client.get('/core/v1/session-facts/CVDBND/cvd/?window=1D&period=3M').data
+
+        self.assertEqual(legacy['session_date'], fixed_utc.date().isoformat())
+        self.assertNotIn('history', legacy)
+        self.assertEqual(history['date_to'], fixed_local_date.isoformat())
+        self.assertEqual(history['date_from'], (fixed_local_date - dt.timedelta(days=90)).isoformat())
+        self.assertEqual(history['cvd_series'][-1]['delta'], legacy['cvd_series'][0]['delta'])
+        self.assertEqual(history['cvd_series'][-1]['bucket_ts'], legacy['cvd_series'][0]['bucket_ts'])
