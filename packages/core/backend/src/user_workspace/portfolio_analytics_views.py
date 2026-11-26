@@ -589,13 +589,18 @@ def _nav_series(holdings, symbols, date_from, portfolio=None, tenant=None):
         DailyPrice.objects.filter(symbol__in=symbols, date__gte=date_from)
         .order_by('date', 'symbol')
     )
+    deltas = _ledger_quantity_deltas(portfolio, tenant, symbols) if portfolio is not None else None
     date_price_map: dict[date, dict[str, Decimal]] = {}
     for p in prices:
-        eff = effective_close(p)
+        if deltas is not None:
+            # S6: Q(t) already reflects SPLIT/BONUS; adj_close also divides by
+            # that factor. Multiplying both double-counts the corporate action.
+            eff = Decimal(str(p.close)) if p.close is not None else None
+        else:
+            eff = effective_close(p)
         if eff is None:  # R1: bỏ dòng unmapped_cafef
             continue
         date_price_map.setdefault(p.date, {})[p.symbol] = eff
-    deltas = _ledger_quantity_deltas(portfolio, tenant, symbols) if portfolio is not None else None
     delta_days = sorted(deltas) if deltas is not None else []
     running = defaultdict(Decimal)
     pointer = 0

@@ -468,6 +468,7 @@ class OHLCVBarsCorporateActionsTestCase(TestCase):
             symbol='VNM', date=today, open=Decimal('100000'), high=Decimal('100000'),
             low=Decimal('100000'), close=Decimal('100000'), volume=1000,
             adj_close=Decimal('97550'), is_adjusted=True,
+            price_source='cafef', adj_factor=Decimal('0.9755'),
         )
 
     def setUp(self):
@@ -523,6 +524,7 @@ class OHLCVBarsWeeklyAdjustedTestCase(TestCase):
                 open=Decimal('70.00'), high=Decimal('71.00'),
                 low=Decimal('69.00'), close=Decimal(str(70 + i)),
                 adj_close=Decimal(str(60 + i)), volume=1000,
+                price_source='cafef', adj_factor=Decimal('0.9'),
             )
 
     def setUp(self):
@@ -540,6 +542,7 @@ class OHLCVBarsWeeklyAdjustedTestCase(TestCase):
         self.assertEqual(bars[0]['adj_close'], 66.0)
         self.assertEqual(bars[0]['close'], 76.0)
 
+    @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
     def test_weekly_bar_flag_off_keeps_old_contract(self):
         # A-02: khóa hồi quy — flag tắt thì W/M KHÔNG được lộ adj_close.
         resp = self.client.get(_URL.format(symbol='HPG'), {
