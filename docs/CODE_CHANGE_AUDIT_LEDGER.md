@@ -1,4 +1,11 @@
-## Entry 646: Chốt phiên CVD 1D history cho widget (BE) — DONE
+## Entry 647: S0 cấp cứu blackout staging + S1 CafeF reference 4 bug
+
+- **Date**: 2026-11-26 · **Type**: ops (S0) + code (S1 ở repo `vnbroker`) · **Branch**: `feat/price-rebase-s0s1` / `feat/cafef-reference-fix`.
+- **S0**: baseline `PRICE_ADJUSTED_DISPLAY=1`, `unmapped_cafef=1.553.342`; backup env `/tmp/compose.staging.env.s0.bak`; set flag `0`; `bash scripts/deploy-staging.sh` sạch từ Git (`e7b67b151`) — API healthy, 0 container chết; verify container `DISPLAY=0`. Evidence `docs/evidence/price-rebase-s0s1/S0.md`.
+- **S1** (repo vnbroker @ `91ff3ca`): 4 bug CafeF reference — clamp `EndDate<=today` + `bulk_range`, cache TTL + `use_cache=False` bypass read/write, `reconcile_prices(exchange=...)`, frame có `date`/`change_pct`. Fail-before 4/4 đỏ → **378 unit PASS · 3 skipped · 4 contract PASS**; version `3.10.0`, `version-sync OK`. Evidence `vnbroker/docs/evidence/S1_CAFEF_REFERENCE_FIX_20261126.md`.
+- **BLOCKER**: không có credential PyPI (local + VPS) ⇒ **không tag/publish 3.10.0**; `vninvest` pin vẫn `3.9.0`; S2–S7 chưa bắt đầu.
+- **Gates**: `pytest -m unit` 378/0 · contract 4/4 · version-sync OK · `git diff --numstat` khớp. **CHƯA CHẠY**: full pytest (bị huỷ khi server restart), E2E/Playwright, migration, S2–S7.
+## Entry 646: Chốt phiên CVD 1D history cho widget (BE) - DONE
 
 - **Date**: 2026-11-26 · **Type**: session-close/docs · **Branch**: `docs/cvd1d-session-close` · **Claim**: `cvd1d-session-close`.
 - **Scope**: toàn bộ slice BE tiếp nhận BE Request widget: A1 `window=1D&period=...`, test, audit 2 vòng, deploy staging, curl proof, đóng claim. **Không sửa** code widget/FE; **không migration**; **không dependency**; **không deploy production**.
