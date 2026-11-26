@@ -4,8 +4,10 @@
   **Không sửa** code widget / FE adapter trong slice này.
 - **Branch:** `feat/cvd-1d-history-be` · **Commits:** `47b3f23c6` (claim) → `c166374d0` (test fail-before)
   → `5bee4ea2f` (A1) → `665767ce0` (fix O-1/M-4) · **Base:** `origin/dev @ ce1e08138`.
-- **Trạng thái:** code + test **done**, re-audit **AGREE** (0 blocker/0 major), PR **đang mở** — merge/deploy
-  chờ Owner. Claim `in-progress → done`; ledger `Entry 644`.
+- **Trạng thái (final 2026-11-26):** **DONE / phiên đã chốt.** Code + test xong, re-audit `AGREE`
+  (0 blocker/0 major), PR #556 **MERGED** (`309e466fd`), deploy staging xong, curl proof xong.
+  Claims `cvd-1d-history-be` / `cvd1d-deploy-proof` đều `done`; ledger **Entry 644/645/646**.
+  Không còn công việc BE nào trong slice này — chỉ còn confirm D-2/D-4 từ widget/Owner.
 
 ## 1. Hợp đồng endpoint (đã implement)
 
@@ -78,3 +80,18 @@ không phải đổi code (đã ghi trong `AUDIT_PLAN.md` §CONTRADICTIONS).
   `UNSUPPORTED_PERIOD`. Bằng chứng đầy đủ: `docs/evidence/cvd-1d-history/STAGING_DEPLOY_PROOF.md`.
 - **Widget team giờ có thể chạy slice riêng** (`period:"3M"`) — D-1/A1 đã lên staging. Vẫn confirm D-2
   (cap 2600) và D-4 (ngữ nghĩa `date_from` sau cap) trước khi ship.
+
+## 6. Chốt phiên (2026-11-26)
+
+| # | Hạng mục | Trạng thái |
+|---|---|---|
+| 1 | Nhật ký | Ledger Entry **644** (code), **645** (deploy proof), **646** (chốt phiên) |
+| 2 | Handoff | File này nằm trên `origin/dev` (merged qua PR #557) — phiên sau chỉ cần đọc 1 file |
+| 3 | Claim | `cvd-1d-history-be`, `cvd1d-deploy-proof`, `cvd1d-session-close` → **`done`** |
+| 4 | PR | #556 (code) · #557 (deploy evidence) · #558 (đóng claim deploy) + PR chốt phiên này → **MERGED** |
+| 5 | Worktree/junction/DB tạm | Các worktree `cvd-1d-*`/`cvd1d-*` đã remove; junction `node_modules` đã xoá trước khi remove; DB `cvd1d_verify` + `test_cvd1d_verify` DROP; file `/tmp/*cvd1d*` trên VPS đã xoá |
+| 6 | staging | `deploy-staging.sh --verify` xanh, health 200 local + public, 0 crash-loop |
+| 7 | BE work còn lại | **KHÔNG** — mọi AC-1..AC-11 đã đạt, A1 đã lên staging, proof có số thật |
+
+**Owner/widget team chỉ còn:** confirm D-2 (cap 2600) + D-4 (`date_from` sau cap), rồi widget tự slice
+truyền `period:"3M"` + E2E đổi assertion. Không cần mở thêm ticket BE cho slice này.
