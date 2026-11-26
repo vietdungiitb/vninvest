@@ -3510,7 +3510,8 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 @shared_task(bind=True)
 def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
-                             trigger: str = 'manual', ex_date: date | None = None) -> dict:
+                             trigger: str = 'manual', ex_date: date | None = None,
+                             from_year: int = 2011, date_from: str | None = None) -> dict:
     """Re-fetch TOÀN chuỗi adjusted và ghi lại sau khi qua 3 bất biến an toàn."""
     if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1', 'symbol': symbol}
@@ -3523,35 +3524,38 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
     from market_data.models import DailyPrice
 
     end = now().date()
+    # S4b: CafeF per-symbol full-range endpoint returns 400/503. The ALL export
+    # (one XLSX per exchange/year) is the reliable feed; filter by symbol here.
+    from vnbroker.reference.client import bulk_year
+
+    new_rows = []
     try:
-        frame = Vnbroker().daily_bars(
-            symbol.upper(), '2011-01-01', end.isoformat(),
-            exchange=exchange, basis='both',
-        )
-    except Exception as exc:  # CafeF may 404/503 on long per-symbol ranges
+        for year in range(from_year, end.year + 1):
+            for record in bulk_year(exchange, year, use_cache=False):
+                if str(record.get('symbol', '')).upper() != symbol.upper():
+                    continue
+                close_raw = Decimal(str(record.get('close_raw')))
+                adj_close = Decimal(str(record.get('close_adjusted')))
+                if close_raw <= 0 or adj_close <= 0:
+                    continue
+                raw_date = str(record.get('date'))[:10]
+                new_rows.append(SimpleNamespace(
+                    date=date.fromisoformat(raw_date),
+                    close=close_raw, adj_close=adj_close, adj_factor=adj_close / close_raw,
+                ))
+    except Exception as exc:  # CafeF may 400/503 on the ALL export too
         return {
             'status': 'fetch_error', 'reason': str(exc)[:300],
             'symbol': symbol, 'trigger': trigger,
         }
-    if frame is None or getattr(frame, 'empty', True):
+    if not new_rows:
         return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
-
-    new_rows = []
-    for _, row in frame.iterrows():
-        close_raw = Decimal(str(row.get('close_raw')))
-        adj_close = Decimal(str(row.get('close_adjusted')))
-        if close_raw <= 0:
-            continue
-        new_rows.append(SimpleNamespace(
-            date=row['date'].date() if hasattr(row['date'], 'date') else date.fromisoformat(str(row['date'])[:10]),
-            close=close_raw, adj_close=adj_close, adj_factor=adj_close / close_raw,
-        ))
     new_series = build_series(new_rows)
 
-    old_rows = list(
-        DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
-        .order_by('date')
-    )
+    old_qs = DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
+    if date_from:
+        old_qs = old_qs.filter(date__gte=date_from)
+    old_rows = list(old_qs.order_by('date'))
     old_series = build_series(old_rows)
     allowed, reason = validate_rebase(old_series, new_series, ex_date=ex_date)
     if not allowed:
