@@ -107,3 +107,50 @@ Việc phải làm, theo thứ tự:
 4. Closeout M-3/M-5: add `PASS_AFTER.md`, append ledger Entry 644, viết `docs/handoffs/HANDOFF_2026-11-26_CVD_1D_HISTORY_BE.md`, rồi đổi claim `done` → PR.
 
 Code history (A1) đã sẵn sàng về mặt chức năng; khi O-1 được fix và xanh ở cả 2 khung giờ, auditor có thể chuyển verdict sang **PASS/AGREE mà không cần vòng audit thứ 3** (các reservation R1/R2 đã được implement đúng tại `views.py:403-417`).
+
+---
+
+## ROUND 2 (sau fix `665767ce0`)
+
+- **Ngày:** 2026-11-26 · **HEAD:** `665767ce0be6dce2f95d7dd147dd563768e4e6ab` · branch `feat/cvd-1d-history-be`.
+- **Diff kiểm toán:** `git diff 5bee4ea2f..665767ce0` (6 file, +198/−7) + đọc trực tiếp file working-tree. Lưu ý: `PASS_AFTER.md` tại commit `665767ce0` **vẫn là bản 44 tests**; bản **working tree đang modified** (` M`) mới là bản `45 tests` — tôi đọc bản working tree theo yêu cầu.
+- **Phương pháp:** tự mở diff/file, không tin tóm tắt; `python -c` tái tạo hành vi patch clock; `git diff --numstat`, `git diff --check`, `git ls-files --eol`, `git show --stat`. Không sửa code/plan/CLAIMS/ledger; **không commit**. Round 1 ở trên được **giữ nguyên** làm lịch sử.
+
+### VERDICT ROUND 2
+
+**`AGREE`** (+ 2 reservation) — **0 blocker**, **0 major**, **2 reservation minor** (M-2 ngữ nghĩa hợp đồng với widget team; M-5 artifacts closeout — theo yêu cầu **không đòi** trong vòng này).
+
+**Trả lời câu hỏi đóng claim/bàn giao:** **CÓ** — 0 blocker + 0 major mới ⇒ đủ điều kiện đóng claim + bàn giao widget team. Hai reservation dưới đây là việc closeout/hợp đồng, **không chặn**.
+
+### 1. Trạng thái O-1 / M-2 / M-3 / M-4
+
+| ID | Mức round 1 | Trạng thái round 2 | Bằng chứng tự đọc |
+|---|---|---|---|
+| **O-1** | MAJOR | **RESOLVED** | Fixture anchor đổi tại `tests/...:67-68` (`self.today = timezone.now().date()` UTC, `self.local_today = timezone.localdate()`); kỳ vọng history dùng `local_today` tại `:100-101` (T-02) và `:215-216` (T-10); T-12 tại `:239-258` khoá biên. `views.py:81` **không đổi**. |
+| **M-2** | MINOR | **RESOLVED** (tài liệu) + reservation hợp đồng | Plan `:64-65` sửa thành *"`date_from`/`date_to` **vẫn là khoảng truy vấn** theo R2… không đổi thành ngày đầu bucket còn giữ"* ⇒ hết tự mâu thuẫn với `:63`. Code `views.py:533` + test `:215` nhất quán. Reservation: vẫn cần widget team xác nhận ngữ nghĩa `date_from` sau cap (plan `:66` đã ghi "cần Owner confirm, ghi trong handoff"). |
+| **M-3** | MINOR | **RESOLVED** | `FAIL_BEFORE.md:59-68` append mục "Cập nhật artifact (audit trail)", liệt kê đúng 3 dòng đổi (T-10 `2599→3650`, anchor `localdate→now().date()`, thêm T-12) + giải thích T-10 đỏ ở `bucket_count` trước dòng `date_from` ⇒ red evidence không bị sai. |
+| **M-4** | MINOR | **RESOLVED** | `views.py:485` thêm `'revision': revision` **trong nhánh history empty** (ngay sau `empty.update({…})` `:479-484`); helper chung `_build_empty_cvd_payload` `:113-134` vẫn nguyên vẹn ⇒ legacy empty không đổi. |
+| **M-5** | MINOR | **KHÔNG ĐÒI (closeout)** | `PASS_AFTER.md` đã được commit tại `665767ce0` (working tree cập nhật tiếp bản 45 tests). Ledger Entry 644 + `docs/handoffs/HANDOFF_2026-11-26_CVD_1D_HISTORY_BE.md` vẫn là việc closeout — theo yêu cầu không đòi trong vòng này, không tính vào blocker/major. |
+
+### 2. O-1 có thật sự hết không — kiểm chứng chi tiết
+
+- **Anchor fixture:** `tests/...:67` `self.today = timezone.now().date()` → khớp đúng mốc legacy `views.py:81`. `d0/d1/d2` (`:68-70`) suy từ UTC date, nên `T-01` (`:83-91`) và `T-04` (`:122-126`) luôn so legacy với đúng session dù chạy lúc 03:00 +07.
+- **Kỳ vọng history tách riêng:** T-02 `:100-101` và T-10 `:215-216` dùng `self.local_today` → khớp `views.py:403` (`end_date = dj_timezone.localdate()`). Các test còn lại (T-03/T-07/T-09) dùng fixture UTC date nhưng nằm trong khoảng 90/3650 ngày của history ⇒ không lệch.
+- **T-12 đúng khung biên:** `tests/...:242-243` `fixed_utc = 2026-11-26 20:00Z`, `fixed_local_date = 2026-11-27`. Tái tạo: `python -c "…localtime(datetime(2026,11,26,20,0,tzinfo=utc))…"` → **`2026-11-27T03:00:00+07:00`**, tức UTC date `26` ≠ local date `27` — đúng khung 00:00–06:59 +07 (7h/24) đã nêu ở round 1. `:248-249` patch cả `timezone.now` lẫn `timezone.localdate`; vì `views.py` import `dj_timezone` **là chính module `django.utils.timezone`**, patch object làm cả hai alias đổi theo. Tái tạo: `patch.object(tz,'now',…)` → `dj_timezone.now().date()=2026-11-26`, `dj_timezone.localdate()=2026-11-27`, `boundary=True`, và `patch` restore sạch.
+- **Assertion là giá trị thật, không rỗng/None vô nghĩa:** `:253` `legacy.session_date == '2026-11-26'` (UTC), `:254` legacy **không** có `history`, `:255-256` `history.date_to == '2026-11-27'`, `date_from == '2026-08-29'`, `:257` parity `delta` (800M) giữa bucket cuối history và bucket legacy, `:258` parity `bucket_ts` (`07:00+07:00`). Nếu ai đổi history sang `now().date()` hoặc fixture anchor về `localdate()`, T-12 đỏ. **O-1 RESOLVED.**
+- **Trung thực evidence:** `PASS_AFTER.md:31-40` ghi rõ khung biên được **mô phỏng bằng patch clock trong T-12**, **không** đổi đồng hồ VPS rồi chạy 2 lần; chỉ khung thường (08:xx +07) chạy thật. `:12-17` log `Ran 45 tests in 1.878s / OK` + `TEST_EXIT=1` (teardown) + `CLEANUP_DONE`; `:25-26` suy 33 regression từ `45−12` nhưng **ghi rõ là suy**, không bịa đo riêng. `:42-49` vẫn ghi thẳng `ObjectInUse` và 2 lệnh kiểm chứng cleanup.
+
+### 3. Legacy vẫn +0/−0, không đụng `views.py:81`
+
+- `git diff --numstat 47b3f23c6..665767ce0 -- packages/core/backend/src/market_serving/views.py` → **`187 0`** (round 1: `186 0`; +1 chính là dòng `revision` ở `:485`). **Không có dòng nào bị xoá/sửa.**
+- Đọc trực tiếp `views.py:81`: vẫn là `today = dj_timezone.now().date()` — đúng nguyên vẹn. Nhánh legacy `:575-654`, cache key v2 `:592-593`, helper `:113-134` đều không đổi.
+- `git diff --check 47b3f23c6..665767ce0` sạch; `git ls-files --eol` → `i/lf w/lf` cho test/evidence; `git show --stat 665767ce0` → chỉ 6 file đã khai (plan, 4 evidence, views.py, test), **0 migration, 0 file deny-list**.
+
+### 4. Reservation (không chặn)
+
+- **R1 (M-2):** chốt với widget team `date_from` sau cap 2600 là *khoảng truy vấn* (R2, hiện tại) hay *ngày đầu bucket còn giữ*; ghi kết quả vào handoff `docs/handoffs/HANDOFF_2026-11-26_CVD_1D_HISTORY_BE.md`. Plan đã nhất quán theo R2 nên không sửa thêm.
+- **R2 (M-5):** lúc closeout add bản working-tree của `PASS_AFTER.md`, append ledger Entry 644, viết handoff, rồi đổi claim `done` → PR. (Theo yêu cầu round 2, KHÔNG đòi và KHÔNG đụng CLAIMS/ledger trong phiên audit này.)
+
+### 5. Kết luận round 2
+
+**`AGREE` (+reservation)** — O-1 đã được sửa đúng instant/khung biên và bằng assertion giá trị thật; M-2/M-3/M-4 RESOLVED; legacy giữ nguyên `+187/−0` (so với base, chỉ additions) và `views.py:81` nguyên vẹn. **0 blocker + 0 major ⇒ đủ điều kiện đóng claim + bàn giao widget team**, với 2 reservation closeout nêu trên. Không cần vòng audit thứ 3.

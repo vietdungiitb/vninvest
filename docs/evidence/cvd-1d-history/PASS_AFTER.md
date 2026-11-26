@@ -1,6 +1,7 @@
 # PASS-AFTER + REGRESSION — CVD 1D history (BE `cvd-1d-history-be`)
 
-- **Ngày:** 2026-11-26 · **Commit:** `5bee4ea2f` trên `feat/cvd-1d-history-be`
+- **Ngày:** 2026-11-26 · **Commit cuối cùng đã chạy:** `665767ce0` trên `feat/cvd-1d-history-be`
+  (lần chạy trước tại `5bee4ea2f`: 44 tests OK — giữ ở đây làm lịch sử).
 - **Môi trường:** VPS staging `14.225.255.47`, image `vninvest-core-api:staging`, DB tạm `cvd1d_verify`,
   worktree VPS `/tmp/wt-cvd1d`.
 - **Lệnh:** xem `FAIL_BEFORE.md` (cùng lệnh, thêm `-e CORE_DB_CONN_MAX_AGE=0`, 3 test labels).
@@ -8,21 +9,35 @@
 ## Kết quả thật
 
 ```
-Ran 44 tests in 2.031s
+=== BE TEST 665767ce0 ===
+Ran 45 tests in 1.878s
 OK
+TEST_EXIT=1        # teardown ObjectInUse, xem mục bên dưới
+CLEANUP_DONE db=cvd1d_verify wt=/tmp/wt-cvd1d
 ```
 
 | Nhóm | Số test | Kết quả |
 |---|---|---|
-| `tests.test_cvd_1d_history_api` (T-01..T-11, slice mới) | 11 | **OK** |
-| `tests.test_session_facts_api` (regression legacy/range/scope) | ? | **OK** (gộp trong 44) |
-| `tests.test_market_serving_api_routes` (regression route + envelope) | ? | **OK** (gộp trong 44) |
+| `tests.test_cvd_1d_history_api` (T-01..T-12, slice mới) | 12 | **OK** |
+| `tests.test_session_facts_api` (regression legacy/range/scope) | ? | **OK** (gộp trong 45) |
+| `tests.test_market_serving_api_routes` (regression route + envelope) | ? | **OK** (gộp trong 45) |
 
-> Tổng 44 = 11 mới + 33 regression. Không tách số từng file vì lệnh chạy gộp; chỉ khẳng định tổng và
-> `OK` — không suy ra con số từng nhóm (L-T02).
+> Tổng 45 = 12 mới + 33 regression (số regression suy từ `45−12` tại artifact `665767ce0`, không đo
+> riêng từng file — ghi rõ để tránh bịa số, L-T02). Lần trước: `Ran 44 tests … OK` tại `5bee4ea2f`.
 
-Fail-before tại commit `c166374d0`: `Ran 11 tests`, `FAILED (failures=4, errors=1)` → sau fix **11/11 OK**.
-Bằng chứng: `docs/evidence/cvd-1d-history/FAIL_BEFORE.md`.
+Fail-before tại commit `c166374d0`: `Ran 11 tests`, `FAILED (failures=4, errors=1)` → sau fix **12/12 OK**
+(T-12 được thêm để khoá biên UTC/local). Bằng chứng: `docs/evidence/cvd-1d-history/FAIL_BEFORE.md`.
+
+### O-1 (re-audit) đã xử lý
+
+- Fixture anchor đổi từ `timezone.localdate()` → `timezone.now().date()` (UTC) để khớp path legacy
+  `views.py:81`; history expectations dùng `localdate()` riêng (`views.py:403`). Không sửa logic legacy.
+- **T-12** patch `timezone.now()`/`localdate()` về instant `2026-11-26T20:00Z` (= `03:00+07` ngày 27),
+  tức khung 00:00–06:59+07 mà re-audit nêu — assert legacy trả session UTC, history trả `date_to`
+  local, parity bucket cuối đúng. Chạy cùng VPS `665767ce0` → OK.
+- **Trung thực:** khung biên được **mô phỏng bằng patch clock trong T-12**, không phải đổi đồng hồ VPS
+  rồi chạy lại 2 lần. Khung thường (08:xx+07) được chạy thật. M-4 (`revision=0` ở history empty) cũng
+  đã set lại `revision` thật trong cùng commit `665767ce0`.
 
 ## Sự cố teardown (môi trường, KHÔNG phải test fail)
 
