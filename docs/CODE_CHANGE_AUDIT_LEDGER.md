@@ -1,3 +1,14 @@
+## Entry 644: CVD 1D history cho widget (BE A1) — period multi-session, cache v3
+
+- **Date**: 2026-11-26 · **Type**: feature/BE · **Branch**: `feat/cvd-1d-history-be` · **Claim**: `cvd-1d-history-be`.
+- **Nguồn**: BE Request widget `BE_REQUEST_CVD_1D_HISTORY_2026-11-26.md` (nội dung do widget team gửi; SHA `32b2e98a`/`30f7ef4e` **KHÔNG XÁC MINH** trên `origin` sau fetch và GitHub raw 404).
+- **Phạm vi**: `packages/core/backend/src/market_serving/views.py` (chỉ thêm — diff legacy `187/0`); test mới `packages/core/backend/tests/test_cvd_1d_history_api.py` (T-01..T-12); `docs/PLAN_CVD_1D_HISTORY_BE_20261126.md`; `docs/evidence/cvd-1d-history/{AUDIT_PLAN,FAIL_BEFORE,PASS_AFTER,RE_AUDIT}.md`; `docs/handoffs/HANDOFF_2026-11-26_CVD_1D_HISTORY_BE.md`.
+- **Hợp đồng**: `window=1D` + `period=1M|3M|6M|1Y|10Y` (SSOT `_DARK_MONEY_PERIOD_DAYS`) ⇒ history đa session; `trade_date` thắng `period`; `400 UNSUPPORTED_PERIOD`; additive `period/history/date_from/date_to`; `cumulative_cvd[i] = Σ delta[0..i]` (**không** cộng dồn cumulative per-session); zero-fill từ `DailyPrice` delta=0, `bucket_ts` 07:00+07:00; cap 2600 bucket cho 10Y; cache v3 `core:cvd_series:v3:{symbol}:{window}:{period}:{start}:{end}:{revision}`; **legacy v2 giữ nguyên 100%**. Không migration — composite index đã có (`market_serving/models.py:143`).
+- **Gate**: fail-before `c166374d0` → `Ran 11 tests … FAILED (failures=4, errors=1)`; pass-after `665767ce0` → `Ran 45 tests … OK` trên VPS staging `14.225.255.47`, DB tạm `cvd1d_verify` (tiến trình exit 1 do teardown `ObjectInUse` — đã ghi rõ, không phải test fail; DB/worktree đã dọn, verify `0 cvd1d*` + worktree `NONE`). `manage.py check` exit 0 · `py_compile` exit 0 · `pre-push-gate` 36 PASS/0 FAIL · `check-multi-agent` exit 0. B3 round1 `NEED_REVISION` (O1/O2/O3) → round2 `AGREE`; B8 round1 `NEED_REVISION` (O-1 test flaky UTC/local) → round2 `AGREE`, **0 blocker/0 major**.
+- **Lessons**: [L-001, L-002, L-M02, L-003, L-007, L-B01, L-V01, L-V02, L-V04, L-V03, L-T01, L-T02].
+- **Còn nợ / reservation**: widget team chốt ngữ nghĩa `date_from` sau cap 10Y (hiện là **khoảng truy vấn** `localdate()-3650`, không phải ngày đầu bucket còn giữ); deploy staging do Owner chốt. Slice này **không sửa FE/widget**.
+- **Next**: widget slice riêng truyền `period:"3M"` (`useMarketFlowFeed.ts:86-92` + `sessionFactsCvd.ts`); E2E đổi assertion sang `pts>=2` và `maxX-minX>0`; Owner deploy staging + curl proof `?window=1D&period=3M` → `bucket_count>=2`.
+
 ## Entry 643: Re-audit toàn phiên — đính chính doc + flag compose lên dev
 
 - **Date**: 2026-11-26 · **Type**: docs/ops · **Branch**: `docs/session-reaudit`.
