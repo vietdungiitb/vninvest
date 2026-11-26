@@ -44,6 +44,16 @@ class RebaseSafetyGate(SimpleTestCase):
         self.assertFalse(ok)
         self.assertEqual(reason, 'factor_out_of_bounds')
 
+    def test_fetch_error_is_reported_not_raised(self):
+        from unittest.mock import patch
+
+        from data_ingest.tasks import rebase_symbol_from_cafef
+        with patch('vnbroker.Vnbroker') as mock_vn:
+            mock_vn.return_value.daily_bars.side_effect = RuntimeError('HTTP 503')
+            result = rebase_symbol_from_cafef.run('TPB', exchange='HOSE', trigger='e2e')
+        self.assertEqual(result['status'], 'fetch_error')
+        self.assertIn('503', result['reason'])
+
     def test_beat_entry_and_task_are_registered(self):
         from django.conf import settings
 

@@ -3505,10 +3505,16 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
     from market_data.models import DailyPrice
 
     end = now().date()
-    frame = Vnbroker().daily_bars(
-        symbol.upper(), '2011-01-01', end.isoformat(),
-        exchange=exchange, basis='both',
-    )
+    try:
+        frame = Vnbroker().daily_bars(
+            symbol.upper(), '2011-01-01', end.isoformat(),
+            exchange=exchange, basis='both',
+        )
+    except Exception as exc:  # CafeF may 404/503 on long per-symbol ranges
+        return {
+            'status': 'fetch_error', 'reason': str(exc)[:300],
+            'symbol': symbol, 'trigger': trigger,
+        }
     if frame is None or getattr(frame, 'empty', True):
         return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
 
