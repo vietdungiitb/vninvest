@@ -55,6 +55,21 @@ class BrokerConfigR1Tests(TestCase):
         self.assertEqual(resp.json().get('error_code'), 'invalid_secrets_schema')
         self.assertIn('client_id', resp.json().get('missing_keys', []))
 
+    def test_ssi_requires_client_id_api_key_api_secret(self):
+        resp = self.client.post(f'{BASE}/credentials/',
+                                {'provider': 'ssi', 'secrets': {'api_key': 'k'},
+                                 'allowed_purposes': ['snapshot']}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json().get('error_code'), 'invalid_secrets_schema')
+        self.assertCountEqual(resp.json().get('missing_keys', []), ['client_id', 'api_secret'])
+
+    def test_tcbs_requires_only_api_key(self):
+        resp = self.client.post(f'{BASE}/credentials/',
+                                {'provider': 'tcbs', 'secrets': {'api_key': 'k'},
+                                 'allowed_purposes': ['snapshot']}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['credential']['provider'], 'tcbs')
+
     def test_purpose_change_keeps_verification(self):
         cred = self._cred()
         resp = self.client.post(f'{BASE}/credentials/',

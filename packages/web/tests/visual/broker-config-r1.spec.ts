@@ -35,20 +35,30 @@ test('broker tab: i18n service và credential form chặn secrets rỗng', async
   await expect(page.getByText('soc.broker.table_caption')).toHaveCount(0);
   await expect(page.getByText('soc.broker.no_queues')).toHaveCount(0);
 
-  // AC2/AC3: textarea rỗng, placeholder đúng schema
-  const secrets = page.getByRole('textbox', { name: 'JSON credential' });
-  await expect(secrets).toHaveValue('');
-  await expect(secrets).toHaveAttribute('placeholder', /client_id/);
-  await expect(secrets).toHaveAttribute('placeholder', /client_secret/);
+  // R2: 3 tab, mỗi broker một form riêng — KHÔNG còn textarea JSON
+  await expect(page.getByRole('tab', { name: 'DNSE' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'SSI' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'TCBS' })).toBeVisible();
+  await expect(page.locator('textarea')).toHaveCount(0);
+  await expect(page.getByLabel('Client ID')).toHaveValue('');
+  await expect(page.getByLabel('Client Secret')).toHaveValue('');
 
-  // AC2: bấm Lưu với secrets rỗng ⇒ KHÔNG có POST credentials và hiện lỗi i18n
+  await page.getByRole('tab', { name: 'SSI' }).click();
+  await expect(page.getByLabel('API Key')).toBeVisible();
+  await expect(page.getByLabel('API Secret')).toBeVisible();
+  await page.getByRole('tab', { name: 'TCBS' }).click();
+  await expect(page.getByLabel('API Key')).toBeVisible();
+  await expect(page.getByLabel('Client ID')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'DNSE' }).click();
+
+  // AC2: bấm Lưu với form rỗng ⇒ KHÔNG có POST credentials và hiện lỗi i18n
   const posts: string[] = [];
   page.on('request', (req) => {
     if (req.method() === 'POST' && req.url().includes('/operator/soc/broker/credentials/')) posts.push(req.url());
   });
   await page.getByRole('button', { name: 'Lưu credential' }).click();
-  await expect(page.getByText(/Nhập thông tin secrets trước khi lưu/)).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Nhập đủ/)).toBeVisible({ timeout: 10000 });
   expect(posts).toHaveLength(0);
 
-  await page.screenshot({ path: 'docs/evidence/broker-config-r1/e2e/broker-tab-r1.png', fullPage: true });
+  await page.screenshot({ path: 'docs/evidence/broker-config-r1/e2e/broker-tabs-r2.png', fullPage: true });
 });

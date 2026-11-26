@@ -88,41 +88,38 @@ describe("SocBrokerPanel R1 — i18n + credential contract", () => {
     expect(screen.queryByText("soc.broker.col_provider")).toBeNull();
   });
 
-  it("AC2/AC3: secrets textarea starts empty with client_id schema placeholder", async () => {
+  it("AC2/R2: no JSON textarea — 3 tabs with labeled fields per broker", async () => {
     renderPanel();
-    await waitFor(() => {
-      expect(document.querySelector("textarea")).toBeTruthy();
-    });
-    const textarea = document.querySelector("textarea") as HTMLTextAreaElement;
-    expect(textarea.value).toBe("");
-    expect(textarea.placeholder).toContain("client_id");
-    expect(textarea.placeholder).toContain("client_secret");
+    await waitFor(() => expect(screen.getByRole("tab", { name: "DNSE" })).toBeTruthy());
+    expect(document.querySelector("textarea")).toBeNull();
+    expect((screen.getByLabelText("Client ID") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Client Secret") as HTMLInputElement).value).toBe("");
+
+    fireEvent.click(screen.getByRole("tab", { name: "SSI" }));
+    expect(screen.getByLabelText("Client ID")).toBeTruthy();
+    expect(screen.getByLabelText("API Key")).toBeTruthy();
+    expect(screen.getByLabelText("API Secret")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: "TCBS" }));
+    expect(screen.queryByLabelText("Client ID")).toBeNull();
+    expect(screen.getByLabelText("API Key")).toBeTruthy();
   });
 
-  it("AC2: empty secrets does not call POST and shows translated error", async () => {
+  it("AC2: empty fields do not call POST and show translated error", async () => {
     renderPanel();
-    await waitFor(() => {
-      expect(screen.getByText("Danh sách nhà môi giới")).toBeTruthy();
-    });
+    await waitFor(() => expect(screen.getByRole("tab", { name: "DNSE" })).toBeTruthy());
     fireEvent.click(await screen.findByRole("button", { name: "Lưu credential" }));
     await waitFor(() => {
-      expect(screen.getByText(/secrets/i)).toBeTruthy();
+      expect(screen.getByText(/Nhập đủ/)).toBeTruthy();
     });
     expect(adapterMocks.saveSocBrokerCredential).not.toHaveBeenCalled();
   });
 
-  it("AC3: wrong schema does not call POST; valid schema calls POST with provider/secrets/purposes", async () => {
+  it("AC3: filling DNSE fields calls POST with per-provider secrets shape", async () => {
     renderPanel();
-    await waitFor(() => {
-      expect(document.querySelector("textarea")).toBeTruthy();
-    });
-    const textarea = await screen.findByRole("textbox", { name: "JSON credential" }) as HTMLTextAreaElement;
-    fireEvent.change(textarea, { target: { value: '{"api_key":"x","api_secret":"y"}' } });
-    fireEvent.click(await screen.findByRole("button", { name: "Lưu credential" }));
-    await waitFor(() => expect(screen.getByText(/client_id/)).toBeTruthy());
-    expect(adapterMocks.saveSocBrokerCredential).not.toHaveBeenCalled();
-
-    fireEvent.change(textarea, { target: { value: '{"client_id":"id","client_secret":"secret"}' } });
+    await waitFor(() => expect(screen.getByLabelText("Client ID")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Client ID"), { target: { value: "id" } });
+    fireEvent.change(screen.getByLabelText("Client Secret"), { target: { value: "secret" } });
     fireEvent.click(await screen.findByRole("button", { name: "Lưu credential" }));
     await waitFor(() => expect(adapterMocks.saveSocBrokerCredential).toHaveBeenCalled());
     expect(adapterMocks.saveSocBrokerCredential).toHaveBeenCalledWith(

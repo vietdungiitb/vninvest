@@ -54,9 +54,12 @@ BROKER_SHARED_QUEUE = 'celery'
 
 #: R1 — schema secrets tối thiểu theo provider (khớp `user_workspace/broker/dnse.py:67-70`).
 CREDENTIAL_REQUIRED_KEYS = {
+    # DNSE LightSpeed: vnbroker user_workspace/broker/dnse.py:67-70
     'dnse': ('client_id', 'client_secret'),
-    'ssi': ('client_id', 'client_secret'),
-    'tcbs': ('client_id', 'client_secret'),
+    # SSI: vnbroker/broker/ssi/client.py:71-86 + money.py:228-233 (client_id cần cho balance/positions)
+    'ssi': ('client_id', 'api_key', 'api_secret'),
+    # TCBS: vnbroker/broker/tcbs/client.py:73-87 (chỉ api_key)
+    'tcbs': ('api_key',),
 }
 #: R1 — 2 key được `broker_runtime.py:190,217` đọc nhưng không nằm trong BrokerSystemConfig.
 RESERVED_CONFIG_KEYS = ('tenant_kill_switches', 'provider_kill_switches')

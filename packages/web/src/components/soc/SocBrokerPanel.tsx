@@ -102,26 +102,37 @@ const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
 const PROVIDERS = ["dnse", "ssi", "tcbs"];
 const PURPOSES = ["backfill", "snapshot", "signal"];
 
-/** R1: schema secrets theo provider — vnbroker DNSE đọc client_id/client_secret (user_workspace/broker/dnse.py:67-70). */
-const CREDENTIAL_KEYS: Record<string, string[]> = {
-  dnse: ["client_id", "client_secret"],
-  ssi: ["client_id", "client_secret"],
-  tcbs: ["client_id", "client_secret"],
+/** R2: mỗi broker một biểu mẫu riêng — schema lấy từ vnbroker 3.9.0 (đã probe runtime). */
+interface CredField { key: string; labelKey: string; helpKey: string; secret?: boolean }
+const CREDENTIAL_FIELDS: Record<string, CredField[]> = {
+  dnse: [
+    { key: "client_id", labelKey: "soc.broker.field_client_id", helpKey: "soc.broker.help_dnse_client_id" },
+    { key: "client_secret", labelKey: "soc.broker.field_client_secret", helpKey: "soc.broker.help_dnse_secret", secret: true },
+  ],
+  ssi: [
+    { key: "client_id", labelKey: "soc.broker.field_client_id", helpKey: "soc.broker.help_ssi_client_id" },
+    { key: "api_key", labelKey: "soc.broker.field_api_key", helpKey: "soc.broker.help_ssi_api_key" },
+    { key: "api_secret", labelKey: "soc.broker.field_api_secret", helpKey: "soc.broker.help_ssi_secret", secret: true },
+  ],
+  tcbs: [
+    { key: "api_key", labelKey: "soc.broker.field_api_key", helpKey: "soc.broker.help_tcbs_api_key", secret: true },
+  ],
 };
-const CREDENTIAL_PLACEHOLDER = '{\n  "client_id": "…",\n  "client_secret": "…"\n}';
+const requiredKeys = (provider: string) => (CREDENTIAL_FIELDS[provider] || CREDENTIAL_FIELDS.dnse).map((f) => f.key);
 
-/** Map error_code từ BE sang key i18n — tránh đổ nguyên JSON thô lên banner. */
+/** Map error_code từ BE sang key i18n — tránh đổ nguyên JSON/path thô lên banner. */
 const CREDENTIAL_ERROR_KEYS: Record<string, string> = {
   secrets_required: "soc.broker.cred_required",
   invalid_secrets_schema: "soc.broker.cred_schema_invalid",
 };
 
-function readCredentialError(err: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const payload = (err as { payload?: { error?: string; error_code?: string } } | null)?.payload;
+function readCredentialError(err: unknown, t: (key: string, options?: Record<string, unknown>) => string,
+                            provider: string): string {
+  const payload = (err as { payload?: { error?: string; error_code?: string; missing_keys?: string[] } } | null)?.payload;
   const code = payload?.error_code || payload?.error || "";
   const key = CREDENTIAL_ERROR_KEYS[code];
-  if (key) return t(key, { keys: (CREDENTIAL_KEYS.dnse || []).join(" / ") });
-  return err instanceof Error ? err.message : t("soc.broker.apply_fail");
+  if (key) return t(key, { keys: (payload?.missing_keys || requiredKeys(provider)).join(" / ") });
+  return t("soc.broker.cred_generic_error");
 }
 
 /** Nhan hien thi cho muc dich su dung (gia tri BE la tieng Anh). */
@@ -157,7 +168,8 @@ export function SocBrokerPanel() {
   const [applying, setApplying] = useState(false);
   const [loadedKill, setLoadedKill] = useState(false);
   const [credProvider, setCredProvider] = useState("dnse");
-  const [credSecrets, setCredSecrets] = useState("");
+  const [credDrafts, setCredDrafts] = useState<Record<string, Record<string, string>>>({});
+  const [showSecret, setShowSecret] = useState(false);
   const [credPurposes, setCredPurposes] = useState<string[]>(["backfill"]);
   const [testing, setTesting] = useState("");
 
@@ -262,36 +274,29 @@ export function SocBrokerPanel() {
   }
 
   async function handleSaveCred() {
-    const raw = credSecrets.trim();
-    if (!raw) {
-      setError(t("soc.broker.cred_required"));
-      return;
+    const draft = credDrafts[credProvider] || {};
+    const secrets: Record<string, unknown> = {};
+    for (const field of CREDENTIAL_FIELDS[credProvider] || CREDENTIAL_FIELDS.dnse) {
+      secrets[field.key] = String(draft[field.key] || "").trim();
     }
-    let secrets: Record<string, unknown>;
-    try {
-      secrets = JSON.parse(raw);
-    } catch {
-      setError(t("soc.broker.cred_json_invalid"));
-      return;
-    }
-    if (!secrets || typeof secrets !== "object" || Array.isArray(secrets) || Object.keys(secrets).length === 0) {
-      setError(t("soc.broker.cred_required"));
-      return;
-    }
-    const required = CREDENTIAL_KEYS[credProvider] || CREDENTIAL_KEYS.dnse;
-    const missing = required.filter((key) => !String(secrets[key] ?? "").trim());
+    const missing = Object.keys(secrets).filter((key) => !secrets[key]);
     if (missing.length) {
-      setError(t("soc.broker.cred_schema_invalid", { keys: required.join(" / ") }));
+      setError(t("soc.broker.cred_required", { keys: missing.join(" / ") }));
       return;
     }
     try {
       await socBrokerAdapter.saveSocBrokerCredential(credProvider, secrets, credPurposes);
       toast.success(t("soc.broker.cred_saved"));
-      setCredSecrets("");
+      setCredDrafts((cur) => ({ ...cur, [credProvider]: {} }));
       await reload();
     } catch (err: unknown) {
-      setError(readCredentialError(err, t));
+      setError(readCredentialError(err, t, credProvider));
     }
+  }
+
+  function switchCredTab(provider: string) {
+    setCredProvider(provider);
+    setShowSecret(false);
   }
 
   async function handleDeleteCred(provider: string) {
@@ -529,18 +534,40 @@ export function SocBrokerPanel() {
         }, t("soc.broker.cred_delete")),
       )),
       e("div", { className: styles.metricCard },
-        e("label", { className: styles.metricLabel }, t("soc.broker.cred_provider") + " ",
-          e("select", {
-            value: credProvider,
-            onChange: (ev: { target: { value: string } }) => setCredProvider(ev.target.value),
-          }, PROVIDERS.map((p) => e("option", { key: p, value: p }, p.toUpperCase())))),
-        e("textarea", {
-          value: credSecrets,
-          onChange: (ev: { target: { value: string } }) => setCredSecrets(ev.target.value),
-          className: styles.configEditor, rows: 3,
-          placeholder: CREDENTIAL_PLACEHOLDER,
-          "aria-label": t("soc.broker.cred_secrets"),
+        e("div", { role: "tablist", "aria-label": t("soc.broker.cred_provider") },
+          PROVIDERS.map((p) => e("button", {
+            key: p, type: "button", role: "tab", className: styles.actionBtn,
+            "aria-selected": credProvider === p,
+            style: credProvider === p
+              ? { border: "1px solid var(--soc-status-warn)", color: "var(--soc-status-warn)" }
+              : undefined,
+            onClick: () => switchCredTab(p),
+          }, p.toUpperCase()))),
+        (CREDENTIAL_FIELDS[credProvider] || []).map((field) => {
+          const draft = credDrafts[credProvider] || {};
+          const isSecret = !!field.secret;
+          const inputType = isSecret && !showSecret ? "password" : "text";
+          return e("div", { key: field.key, className: styles.metricLabel },
+            e("label", { htmlFor: `cred-${field.key}` }, t(field.labelKey)),
+            e("input", {
+              id: `cred-${field.key}`, type: inputType, value: draft[field.key] || "",
+              onChange: (ev: { target: { value: string } }) => setCredDrafts((cur) => ({
+                ...cur, [credProvider]: { ...(cur[credProvider] || {}), [field.key]: ev.target.value },
+              })),
+              className: styles.searchInput, autoComplete: "off",
+            }),
+            e("small", { className: styles.metricLabel }, t(field.helpKey)),
+            isSecret
+              ? e("button", { type: "button", className: styles.actionBtn,
+                  onClick: () => setShowSecret((v) => !v) },
+                  t(showSecret ? "soc.broker.hide_secret" : "soc.broker.show_secret"))
+              : null,
+          );
         }),
+        credProvider !== "dnse"
+          ? e("p", { className: styles.metricLabel, style: { color: "var(--soc-status-warn)" } },
+              t("soc.broker.cred_unsupported_note"))
+          : null,
         e("div", { className: styles.metricLabel }, t("soc.broker.purposes") + ": ",
           PURPOSES.map((pu) => e("label", { key: pu },
             e("input", {
