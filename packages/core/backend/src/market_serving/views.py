@@ -412,7 +412,7 @@ class SessionFactsCvdView(APIView):
         )
         revision = int(revision_dt.timestamp()) if revision_dt is not None else 0
         cache_key = (
-            f'core:cvd_series:v3:{symbol}:{window}:{period}:'
+            f'core:cvd_series:v4:{symbol}:{window}:{period}:'
             f'{start_date.isoformat()}:{end_date.isoformat()}:{revision}'
         )
 
@@ -447,10 +447,17 @@ class SessionFactsCvdView(APIView):
                 'pk': row.pk,
             })
 
+        # coverage_from = ngày có bucket thật sớm nhất; KHÔNG zero-fill prefix trước ngày đó
+        # (nếu không có bucket thật nào thì trả rỗng, fail-closed — không vẽ đường 0 giả).
+        first_real_date = min(
+            (row.session_facts.session_date for row in rows),
+            default=None,
+        )
+
         # DailyPrice có date nhưng không có whale bucket ⇒ bucket delta=0, không fabricate alert.
-        # Bucket 1D thật được floor trên UTC midnight rồi chiếu localtime (07:00+07:00).
+        # Chỉ fillGap sau first_real_date; bucket 1D thật floor UTC midnight rồi chiếu localtime (07:00+07:00).
         for candle_day in _cvd_history_candle_dates(symbol, start_date, end_date):
-            if candle_day in by_date:
+            if candle_day in by_date or (first_real_date is not None and candle_day < first_real_date):
                 continue
             by_date[candle_day] = [{
                 'session_date': candle_day,
@@ -479,6 +486,7 @@ class SessionFactsCvdView(APIView):
             empty.update({
                 'period': period,
                 'history': True,
+                'coverage_from': first_real_date.isoformat() if first_real_date else None,
                 'date_from': start_date.isoformat(),
                 'date_to': end_date.isoformat(),
                 'revision': revision,  # helper chung tra 0 cứng; day la revision that cua khoang
@@ -531,6 +539,7 @@ class SessionFactsCvdView(APIView):
             'bucket_count': len(buckets),
             'period': period,
             'history': True,
+            'coverage_from': first_real_date.isoformat() if first_real_date else None,
             'date_from': start_date.isoformat(),
             'date_to': end_date.isoformat(),
         }

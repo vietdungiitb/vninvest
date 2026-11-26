@@ -171,22 +171,31 @@ class Cvd1dHistoryApiTests(TestCase):
         gate.assert_called_once()
 
     # ── T-09 zero-day fill từ DailyPrice ────────────────────────
-    def test_t09_missing_whale_day_is_zero_filled_from_daily_price(self):
-        fill_day = self.today - dt.timedelta(days=3)
+    def test_t09_missing_whale_day_is_zero_filled_from_daily_price_in_gap(self):
+        # Gap nằm GIỮA các ngày có bucket thật: xoá session d1 rồi tạo DailyPrice d1.
+        # Prefix trước first_real_date phải bị cắt, không được zero-fill thành đường 0 giả.
+        self.f1.buckets.filter(window='1D').delete()
+        self.f1.delete()
+        fill_day = self.d1
         DailyPrice.objects.create(
             symbol=SYMBOL, date=fill_day,
             open=Decimal('10000'), high=Decimal('10100'), low=Decimal('9900'),
             close=Decimal('10000'), volume=1000, value=10_000_000,
         )
         payload = self._get('window=1D&period=3M').data
-        first = payload['cvd_series'][0]
+        self.assertEqual(payload['coverage_from'], self.d0.isoformat())
+        self.assertEqual(payload['bucket_count'], 3)
+        series = payload['cvd_series']
+        self.assertEqual(series[0]['bucket_ts'], dt.datetime.combine(
+            self.d0, dt.time(hour=7), tzinfo=dt.timezone(dt.timedelta(hours=7))
+        ).isoformat())
         expected_ts = dt.datetime.combine(
             fill_day, dt.time(hour=7), tzinfo=dt.timezone(dt.timedelta(hours=7))
         ).isoformat()
-        self.assertEqual(first['bucket_ts'], expected_ts)
-        self.assertEqual(first['delta'], 0)
-        self.assertEqual(first['cumulative_cvd'], 0.0)
-        self.assertEqual(payload['cvd_series'][1]['cumulative_cvd'], -300_000_000.0)
+        self.assertEqual(series[1]['bucket_ts'], expected_ts)
+        self.assertEqual(series[1]['delta'], 0)
+        self.assertEqual(series[1]['cumulative_cvd'], -300_000_000.0)
+        self.assertEqual(series[2]['cumulative_cvd'], 500_000_000.0)
 
     # ── T-10 bounded 10Y response ───────────────────────────────
     def test_t10_10y_is_bounded_and_still_monotonic(self):
