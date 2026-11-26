@@ -16,6 +16,14 @@
 
 
 
+## Entry 656: S6 consumer contract + S4 CafeF rebase safety gate (E2E)
+
+- **Date**: 2026-11-26 · **Branch**: `feat/price-rebase-core` → PR #562 merge `dev@42beb6a4f`; deploy staging sau khi server restart ngắt lần đầu.
+- **S6**: `/bars/` chỉ phơi `adj_close/adj_factor` cho dòng `price_source='cafef'`; `_bars_adjustment_metadata` trả `adjusted=True` chỉ khi mọi bar cùng basis; W/M scale O/H/L từng ngày trước khi gộp; NAV có `LedgerEntry` dùng raw `close` (không nhân đúp split); `chartAdapter` bỏ legacy khi có cafef, gán `provider_adjusted_fallback` cho mã 100% legacy.
+- **S4**: `market_data/cafef/rebase.py` validate 3 bất biến (raw ≤0,5%, return parity, factor 0.01–1.05, coverage ≥95%); task `rebase_symbol_from_cafef` + `rebase_cafef_all_symbols`, beat `rebase-cafef-nightly-1900` (19:00); fetch lỗi/validation fail ⇒ **0 UPDATE**.
+- **Gates**: TDD fail-before từng slice — FE 4/4 + 41 adapters; BE bars 41/41, NAV 5/5, rebase 6/6; pre-push-gate PASS sau regenerate system-design (beatEntries 47). Full market_data 301 test: 1 fail `rsi_14` baseline.
+- **E2E (image deploy)**: `E2E_LEGACY_HAS_ADJ=False`; mixed meta `adjusted=False`; beat 47; rebase trả `fetch_error` (CafeF 503) thay vì crash/ghi sai.
+- **Residual**: fetch toàn lịch sử per-symbol CafeF trả 400/503 ⇒ chưa rebase được dữ liệu thật; cần `bulk_year` ALL-export theo năm. S2 schema vintage, S3b backfill/dọn, S5 drift sentinel, Playwright browser E2E **CHƯA LÀM**. Evidence: `docs/evidence/price-rebase-core/E2E_20261126.md`.
 ## Entry 647: S0 cấp cứu blackout staging + S1 CafeF reference 4 bug
 
 - **Date**: 2026-11-26 · **Type**: ops (S0) + code (S1 ở repo `vnbroker`) · **Branch**: `feat/price-rebase-s0s1` / `feat/cafef-reference-fix`.
