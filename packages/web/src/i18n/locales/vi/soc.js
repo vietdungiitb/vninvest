@@ -993,6 +993,11 @@ export const soc = {
       col_perf: 'Độ trễ · Thành công',
     },
     broker: {
+      table_caption: 'Danh sách nhà môi giới hệ thống và trạng thái cấu hình',
+      col_provider: 'Nhà môi giới',
+      no_queues: 'Không có hàng đợi nào.',
+      cred_required: 'Nhập thông tin secrets trước khi lưu.',
+      cred_schema_invalid: 'Secrets phải có {keys} (không dùng api_key/api_secret).',
       purpose_backfill: 'Bù dữ liệu',
       purpose_snapshot: 'Chụp snapshot',
       purpose_signal: 'Tín hiệu',

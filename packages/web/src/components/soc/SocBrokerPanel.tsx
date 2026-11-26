@@ -102,6 +102,28 @@ const socBrokerAdapter = defaultCoreApiAdapter as unknown as {
 const PROVIDERS = ["dnse", "ssi", "tcbs"];
 const PURPOSES = ["backfill", "snapshot", "signal"];
 
+/** R1: schema secrets theo provider — vnbroker DNSE đọc client_id/client_secret (user_workspace/broker/dnse.py:67-70). */
+const CREDENTIAL_KEYS: Record<string, string[]> = {
+  dnse: ["client_id", "client_secret"],
+  ssi: ["client_id", "client_secret"],
+  tcbs: ["client_id", "client_secret"],
+};
+const CREDENTIAL_PLACEHOLDER = '{\n  "client_id": "…",\n  "client_secret": "…"\n}';
+
+/** Map error_code từ BE sang key i18n — tránh đổ nguyên JSON thô lên banner. */
+const CREDENTIAL_ERROR_KEYS: Record<string, string> = {
+  secrets_required: "soc.broker.cred_required",
+  invalid_secrets_schema: "soc.broker.cred_schema_invalid",
+};
+
+function readCredentialError(err: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const payload = (err as { payload?: { error?: string; error_code?: string } } | null)?.payload;
+  const code = payload?.error_code || payload?.error || "";
+  const key = CREDENTIAL_ERROR_KEYS[code];
+  if (key) return t(key, { keys: (CREDENTIAL_KEYS.dnse || []).join(" / ") });
+  return err instanceof Error ? err.message : t("soc.broker.apply_fail");
+}
+
 /** Nhan hien thi cho muc dich su dung (gia tri BE la tieng Anh). */
 const PURPOSE_LABELS: Record<string, string> = {
   backfill: "soc.broker.purpose_backfill",
@@ -134,7 +156,7 @@ export function SocBrokerPanel() {
   const [applying, setApplying] = useState(false);
   const [loadedKill, setLoadedKill] = useState(false);
   const [credProvider, setCredProvider] = useState("dnse");
-  const [credSecrets, setCredSecrets] = useState("{}");
+  const [credSecrets, setCredSecrets] = useState("");
   const [credPurposes, setCredPurposes] = useState<string[]>(["backfill"]);
   const [testing, setTesting] = useState("");
 
@@ -238,20 +260,35 @@ export function SocBrokerPanel() {
   }
 
   async function handleSaveCred() {
+    const raw = credSecrets.trim();
+    if (!raw) {
+      setError(t("soc.broker.cred_required"));
+      return;
+    }
     let secrets: Record<string, unknown>;
     try {
-      secrets = JSON.parse(credSecrets);
+      secrets = JSON.parse(raw);
     } catch {
       setError(t("soc.broker.cred_json_invalid"));
+      return;
+    }
+    if (!secrets || typeof secrets !== "object" || Array.isArray(secrets) || Object.keys(secrets).length === 0) {
+      setError(t("soc.broker.cred_required"));
+      return;
+    }
+    const required = CREDENTIAL_KEYS[credProvider] || CREDENTIAL_KEYS.dnse;
+    const missing = required.filter((key) => !String(secrets[key] ?? "").trim());
+    if (missing.length) {
+      setError(t("soc.broker.cred_schema_invalid", { keys: required.join(" / ") }));
       return;
     }
     try {
       await socBrokerAdapter.saveSocBrokerCredential(credProvider, secrets, credPurposes);
       toast.success(t("soc.broker.cred_saved"));
-      setCredSecrets("{}");
+      setCredSecrets("");
       await reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("soc.broker.apply_fail"));
+      setError(readCredentialError(err, t));
     }
   }
 
@@ -495,7 +532,7 @@ export function SocBrokerPanel() {
           value: credSecrets,
           onChange: (ev: { target: { value: string } }) => setCredSecrets(ev.target.value),
           className: styles.configEditor, rows: 3,
-          placeholder: '{\n  "api_key": "…",\n  "api_secret": "…"\n}',
+          placeholder: CREDENTIAL_PLACEHOLDER,
           "aria-label": t("soc.broker.cred_secrets"),
         }),
         e("div", { className: styles.metricLabel }, t("soc.broker.purposes") + ": ",

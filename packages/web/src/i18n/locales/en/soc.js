@@ -993,6 +993,11 @@ export const soc = {
       col_perf: 'Latency · Success',
     },
     broker: {
+      table_caption: 'System broker registry and configuration status',
+      col_provider: 'Broker',
+      no_queues: 'No queues reported.',
+      cred_required: 'Enter secrets before saving.',
+      cred_schema_invalid: 'Secrets must include {keys} (not api_key/api_secret).',
       purpose_backfill: 'Backfill',
       purpose_snapshot: 'Snapshot',
       purpose_signal: 'Signal',

@@ -52,6 +52,15 @@ LANE_WINDOW_HOURS = 24
 #: Queue mac dinh cua Celery — broker sync `.delay()` ha xuong day (khong route rieng).
 BROKER_SHARED_QUEUE = 'celery'
 
+#: R1 — schema secrets tối thiểu theo provider (khớp `user_workspace/broker/dnse.py:67-70`).
+CREDENTIAL_REQUIRED_KEYS = {
+    'dnse': ('client_id', 'client_secret'),
+    'ssi': ('client_id', 'client_secret'),
+    'tcbs': ('client_id', 'client_secret'),
+}
+#: R1 — 2 key được `broker_runtime.py:190,217` đọc nhưng không nằm trong BrokerSystemConfig.
+RESERVED_CONFIG_KEYS = ('tenant_kill_switches', 'provider_kill_switches')
+
 
 def _credential_expiry(is_verified: bool, last_verified_at) -> tuple[bool, str]:
     """Expiry derived tu field co san (O-3). Khong them field, khong migration.
@@ -183,6 +192,71 @@ def _current_payload() -> dict:
     return get_default_broker_system_config().to_dict()
 
 
+def _credential_schema_errors(provider: str, secrets: dict) -> list[str]:
+    """Trả tên key bắt buộc bị thiếu — FE dùng để sửa placeholder/schema."""
+    required = CREDENTIAL_REQUIRED_KEYS.get(str(provider or '').strip().lower(), ())
+    return [key for key in required if not str(secrets.get(key, '') or '').strip()]
+
+
+def _raw_purpose_errors(payload: dict) -> list[str]:
+    """Validate purpose TRƯỚC khi from_dict() lọc thầm lặng (domain_configs/broker.py:94)."""
+    errors: list[str] = []
+    entries = payload.get('entries') or {}
+    if not isinstance(entries, dict):
+        return errors
+    for provider, raw in entries.items():
+        purposes = (raw or {}).get('purpose_allowlist') or []
+        if not isinstance(purposes, list):
+            errors.append(f'{provider}: purpose_allowlist phải là list')
+            continue
+        unknown = [str(p) for p in purposes if p not in VALID_PURPOSES]
+        if unknown:
+            errors.append(f'{provider}: purpose không hợp lệ: {unknown}')
+    return errors
+
+
+def _config_consistency(payload: dict) -> tuple[list[str], list[str]]:
+    """Cross-check purpose ↔ credential ↔ enabled.
+
+    Có credential nhưng purpose không khớp ⇒ lỗi (400).
+    Chưa có credential ⇒ chỉ warning (staging đang 0 credential; không block Apply).
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    entries = payload.get('entries') or {}
+    if not isinstance(entries, dict):
+        return errors, warnings
+    try:
+        from identity_access.models import SystemBrokerCredential
+        creds = {c.provider: c for c in SystemBrokerCredential.objects.all()}
+    except Exception:
+        logger.warning('broker config: cannot read credentials for cross-check')
+        return errors, warnings
+    for provider, raw in entries.items():
+        if not (raw or {}).get('enabled'):
+            continue
+        for purpose in (raw or {}).get('purpose_allowlist') or []:
+            cred = creds.get(provider)
+            if cred is None:
+                warnings.append(f'{provider}: chưa có credential hệ thống cho purpose {purpose}')
+            elif purpose not in (cred.allowed_purposes or []):
+                errors.append(
+                    f'{provider}: credential hiện tại không cho phép purpose {purpose} '
+                    f'(đang cho phép: {", ".join(cred.allowed_purposes or []) or "none"})'
+                )
+    return errors, warnings
+
+
+def _with_reserved_keys(payload: dict, after: dict) -> dict:
+    """Giữ 2 key runtime lạ — không để Apply xoá chúng (D5)."""
+    merged = dict(after or {})
+    if isinstance(payload, dict):
+        for key in RESERVED_CONFIG_KEYS:
+            if key in payload:
+                merged[key] = payload[key]
+    return merged
+
+
 def _diff_summary(before: dict, after: dict, prefix: str = '') -> list[str]:
     changes: list[str] = []
     keys = sorted(set((before or {}).keys()) | set((after or {}).keys()))
@@ -261,13 +335,20 @@ class BrokerConfigView(SOCBaseView, ConfigApplyMixin):
         data = request.data if isinstance(request.data, dict) else {}
         payload = data.get('config_payload') or {}
         change_reason = str(data.get('change_reason', '') or '')
+        # Validate payload THÔ trước khi from_dict() lọc purpose lạ (R1 AC8).
+        errors = _raw_purpose_errors(payload)
+        consistency_errors, warnings = _config_consistency(payload)
+        errors.extend(consistency_errors)
+        if errors:
+            return Response({'ok': False, 'validation_errors': errors, 'warnings': warnings},
+                            status=status.HTTP_400_BAD_REQUEST)
         cfg = BrokerSystemConfig.from_dict(payload)
         errors = cfg.validate()
         if errors:
             return Response({'ok': False, 'validation_errors': errors},
                             status=status.HTTP_400_BAD_REQUEST)
         before = _current_payload()
-        after = cfg.to_dict()
+        after = _with_reserved_keys(payload, cfg.to_dict())
         summary_lines = _diff_summary(before, after)
         service = _get_or_create_service()
         ServiceConfig.objects.create(
@@ -306,15 +387,19 @@ class BrokerConfigPreviewView(SOCBaseView):
     def post(self, request):
         data = request.data if isinstance(request.data, dict) else {}
         payload = data.get('config_payload') or {}
+        errors = _raw_purpose_errors(payload)
+        consistency_errors, warnings = _config_consistency(payload)
+        errors.extend(consistency_errors)
         cfg = BrokerSystemConfig.from_dict(payload)
-        errors = cfg.validate()
+        errors.extend(cfg.validate())
         before = _current_payload()
-        after = cfg.to_dict()
+        after = _with_reserved_keys(payload, cfg.to_dict())
         return envelope({
             'before': before,
             'after': after,
             'change_summary': _diff_summary(before, after),
             'validation_errors': errors,
+            'warnings': warnings,
         })
 
 
@@ -453,8 +538,17 @@ class BrokerCredentialsView(SOCBaseView):
             return Response({'ok': False, 'error': 'provider phải là dnse/ssi/tcbs'},
                             status=status.HTTP_400_BAD_REQUEST)
         if not isinstance(secrets, dict) or not secrets:
-            return Response({'ok': False, 'error': 'secrets là bắt buộc'},
+            return Response({'ok': False, 'error': 'secrets_required',
+                             'error_code': 'secrets_required'},
                             status=status.HTTP_400_BAD_REQUEST)
+        missing = _credential_schema_errors(provider, secrets)
+        if missing:
+            return Response({
+                'ok': False,
+                'error': f'Secrets phải có: {", ".join(missing)}',
+                'error_code': 'invalid_secrets_schema',
+                'missing_keys': missing,
+            }, status=status.HTTP_400_BAD_REQUEST)
         unknown = [p for p in purposes if p not in VALID_PURPOSES]
         if unknown:
             return Response({'ok': False, 'error': f'purpose không hợp lệ: {unknown}'},
@@ -462,10 +556,16 @@ class BrokerCredentialsView(SOCBaseView):
         cred, created = SystemBrokerCredential.objects.get_or_create(provider=provider)
         before = {'provider': provider, 'allowed_purposes': cred.allowed_purposes or [],
                   'preview': cred.masked_preview() if cred.secrets_cipher else {}}
-        cred.set_secrets({k: str(v) for k, v in secrets.items()})
+        # R1 AC6: so sánh PLAINTEXT trước khi ghi — đổi mỗi purposes thì GIỮ verify,
+        # rotate secret mới reset. Không so ciphertext/masked (models.py:1000-1013).
+        old_secrets = cred.get_secrets()
+        normalized = {k: str(v) for k, v in secrets.items()}
+        secrets_changed = old_secrets != normalized
+        cred.set_secrets(normalized)
         cred.allowed_purposes = purposes
-        cred.is_verified = False
-        cred.last_verified_at = None
+        if secrets_changed:
+            cred.is_verified = False
+            cred.last_verified_at = None
         cred.updated_by = getattr(request.user, 'username', 'staff')
         cred.save()
         after = {'provider': provider, 'allowed_purposes': purposes,
@@ -476,7 +576,7 @@ class BrokerCredentialsView(SOCBaseView):
             f"(purposes: {','.join(purposes) or 'none'})")
         return envelope({'ok': True, 'credential': {
             'provider': provider, 'allowed_purposes': purposes,
-            'is_verified': False, 'preview': cred.masked_preview()}})
+            'is_verified': bool(cred.is_verified), 'preview': cred.masked_preview()}})
 
 
 @extend_schema(
