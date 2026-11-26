@@ -211,7 +211,8 @@ class Cvd1dHistoryApiTests(TestCase):
         payload = resp.data
         self.assertEqual(payload['bucket_count'], 2600)
         self.assertLessEqual(payload['bucket_count'], 2600)
-        self.assertEqual(payload['date_from'], (self.today - dt.timedelta(days=2599)).isoformat())
+        # date_from/date_to là khoảng truy vấn (R2), không phải ngày đầu bucket còn giữ sau cap.
+        self.assertEqual(payload['date_from'], (self.today - dt.timedelta(days=3650)).isoformat())
         self.assertEqual(payload['date_to'], self.today.isoformat())
         running = 0
         for bucket in payload['cvd_series']:

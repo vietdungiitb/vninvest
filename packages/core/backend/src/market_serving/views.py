@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime, time, timedelta, timezone as dt_timezone
 
 from django.core.cache import cache
+from django.db.models import Max
 from django.utils import timezone as dj_timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
@@ -48,6 +50,26 @@ def _parse_trade_date_param(request):
             },
         })
     return parsed_trade_date
+
+
+def _parse_cvd_history_period(value):
+    """SSOT: `_DARK_MONEY_PERIOD_DAYS`. Import tại function scope để tránh import vòng."""
+    from market_data.stock_mgmt_native_views import _DARK_MONEY_PERIOD_DAYS
+
+    raw = str(value or '').strip().upper()
+    if raw not in _DARK_MONEY_PERIOD_DAYS:
+        return None, None
+    return raw, int(_DARK_MONEY_PERIOD_DAYS[raw])
+
+
+def _cvd_history_candle_dates(symbol: str, start_date, end_date) -> list:
+    """Import DailyPrice tại function scope — tránh UnboundLocalError kiểu hotfix :2105-2107."""
+    from market_data.models import DailyPrice
+
+    return list(
+        DailyPrice.objects.filter(symbol=symbol, date__range=(start_date, end_date))
+        .values_list('date', flat=True)
+    )
 
 
 def _get_materialized_session_facts(symbol: str, trade_date=None) -> SessionFacts | None:
@@ -281,6 +303,8 @@ _WINDOW_TO_BUCKET_MINUTES: dict[str, int] = {
     '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240, '1D': 1440, '1d': 1440,
 }
 _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
+# A1 history (window=1D + period). Giới hạn response cho 10Y (~3650 ngày lịch).
+_CVD_HISTORY_MAX_BUCKETS = 2600
 
 
 @extend_schema(
@@ -317,9 +341,18 @@ _CVD_SERIES_CACHE_TTL = 30   # seconds — same as SessionFacts
             description='Ngày phiên cần lấy theo định dạng YYYY-MM-DD. Nếu truyền, endpoint khóa đúng selected session; nếu chưa có dữ liệu thì trả payload rỗng.',
             required=False,
         ),
+        OpenApiParameter(
+            name='period',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Chỉ có nghĩa với window=1D: 1M | 3M | 6M | 1Y | 10Y. Trả history multi-session; trade_date thắng period.',
+            required=False,
+            enum=['1M', '3M', '6M', '1Y', '10Y'],
+        ),
     ],
     responses={
         200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
     },
     examples=[
@@ -365,6 +398,147 @@ class SessionFactsCvdView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [MarketDataThrottle]
 
+    def _get_cvd_history(self, symbol, window, bucket_minutes, period, days):
+        """A1: history đa-session cho window=1D — KHÔNG đụng path legacy."""
+        end_date = dj_timezone.localdate()
+        start_date = end_date - timedelta(days=days)
+
+        # R1: revision là int Unix (cùng kiểu legacy), lấy max(computed_at) trong khoảng.
+        # R2: start/end là khoảng truy vấn: localdate() và localdate()-period_days (inclusive).
+        revision_dt = (
+            SessionFacts.objects
+            .filter(symbol=symbol, session_date__range=(start_date, end_date))
+            .aggregate(Max('computed_at'))['computed_at__max']
+        )
+        revision = int(revision_dt.timestamp()) if revision_dt is not None else 0
+        cache_key = (
+            f'core:cvd_series:v3:{symbol}:{window}:{period}:'
+            f'{start_date.isoformat()}:{end_date.isoformat()}:{revision}'
+        )
+
+        try:
+            cached = cache.get(cache_key)
+        except Exception as e:
+            logger.warning('SessionFactsCvd history cache get failed: %s', e)
+            cached = None
+        if cached is not None:
+            return Response({**cached, '_source': 'cache-hit'})
+
+        rows = list(
+            SessionFactsBucket.objects
+            .filter(
+                session_facts__symbol=symbol,
+                window='1D',
+                session_facts__session_date__range=(start_date, end_date),
+            )
+            .select_related('session_facts')
+            .order_by('bucket_ts', 'pk')
+        )
+
+        by_date = {}
+        for row in rows:
+            by_date.setdefault(row.session_facts.session_date, []).append({
+                'session_date': row.session_facts.session_date,
+                'bucket_ts': row.bucket_ts,
+                'buy_volume': int(row.buy_volume or 0),
+                'sell_volume': int(row.sell_volume or 0),
+                'buy_strength': row.buy_strength,
+                'institutional_strength': row.institutional_strength,
+                'pk': row.pk,
+            })
+
+        # DailyPrice có date nhưng không có whale bucket ⇒ bucket delta=0, không fabricate alert.
+        # Bucket 1D thật được floor trên UTC midnight rồi chiếu localtime (07:00+07:00).
+        for candle_day in _cvd_history_candle_dates(symbol, start_date, end_date):
+            if candle_day in by_date:
+                continue
+            by_date[candle_day] = [{
+                'session_date': candle_day,
+                'bucket_ts': dj_timezone.localtime(
+                    datetime.combine(candle_day, time.min, tzinfo=dt_timezone.utc)
+                ),
+                'buy_volume': 0,
+                'sell_volume': 0,
+                'buy_strength': 0.0,
+                'institutional_strength': 0.0,
+                'pk': 0,
+            }]
+
+        buckets = []
+        for day in sorted(by_date):
+            buckets.extend(sorted(by_date[day], key=lambda b: (b['bucket_ts'], b['pk'])))
+        if len(buckets) > _CVD_HISTORY_MAX_BUCKETS:
+            buckets = buckets[-_CVD_HISTORY_MAX_BUCKETS:]
+
+        if not buckets:
+            empty = _build_empty_cvd_payload(
+                symbol, window, bucket_minutes, None,
+                f'Không có dữ liệu CVD history cho {symbol} ở window {window}.',
+                session_date=end_date, code='missing_cvd_buckets',
+            )
+            empty.update({
+                'period': period,
+                'history': True,
+                'date_from': start_date.isoformat(),
+                'date_to': end_date.isoformat(),
+            })
+            empty['_source'] = 'no-data'
+            return Response(empty)
+
+        # Invariant: cumulative = Σ delta; KHÔNG cộng dồn cumulative_cvd của từng session.
+        running = 0
+        cumulative = []
+        for bucket in buckets:
+            delta = bucket['buy_volume'] - bucket['sell_volume']
+            running += delta
+            cumulative.append(float(running))
+
+        latest_facts = (
+            SessionFacts.objects
+            .filter(symbol=symbol, session_date__range=(start_date, end_date))
+            .order_by('-session_date', '-pk')
+            .first()
+        )
+        data = {
+            'symbol': symbol,
+            'delta': sum(b['buy_volume'] - b['sell_volume'] for b in buckets),
+            'session_date': buckets[-1]['session_date'].isoformat(),
+            'window': window,
+            'bucket_minutes': bucket_minutes,
+            'cvd_normalized': latest_facts.cvd_normalized if latest_facts else 0.0,
+            'delta_strength_pct': _delta_strength_pct_from_facts(latest_facts) if latest_facts else 0.0,
+            'whale_net_flow': latest_facts.whale_net_flow if latest_facts else 0,
+            'unit': 'vnd',
+            'source': 'whale_aggregate',
+            'data_quality': 'derived_from_whale_alerts',
+            'revision': revision,
+            'updated_at': dj_timezone.localtime(revision_dt).isoformat() if revision_dt is not None else None,
+            'trade_count': None,
+            'cvd_series': [
+                {
+                    'bucket_ts': dj_timezone.localtime(b['bucket_ts']).isoformat(),
+                    'cumulative_cvd': cum,
+                    'buy_strength': b['buy_strength'],
+                    'institutional_strength': b['institutional_strength'],
+                    'buy_volume': b['buy_volume'],
+                    'sell_volume': b['sell_volume'],
+                    'delta': b['buy_volume'] - b['sell_volume'],
+                    'trade_count': None,
+                }
+                for b, cum in zip(buckets, cumulative)
+            ],
+            'bucket_count': len(buckets),
+            'period': period,
+            'history': True,
+            'date_from': start_date.isoformat(),
+            'date_to': end_date.isoformat(),
+        }
+        try:
+            cache.set(cache_key, data, timeout=_CVD_SERIES_CACHE_TTL)
+        except Exception as e:
+            logger.warning('SessionFactsCvd history cache set failed: %s', e)
+        return Response({**data, '_source': 'db-read'})
+
     def get(self, request, symbol: str):
         from identity_access.permissions import require_pat_scopes_or_human_session
         from rest_framework.exceptions import ValidationError
@@ -385,6 +559,18 @@ class SessionFactsCvdView(APIView):
         window = _WINDOW_CANONICAL[window_lc]
         bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window_lc]
         requested_trade_date = _parse_trade_date_param(request)
+
+        # history chỉ có nghĩa với window=1D; trade_date thắng period (kể cả period sai).
+        raw_period = str(request.query_params.get('period') or '').strip()
+        if window == '1D' and requested_trade_date is None and raw_period:
+            period, days = _parse_cvd_history_period(raw_period)
+            if period is None:
+                return Response(
+                    {'code': 'UNSUPPORTED_PERIOD',
+                     'detail': 'period chỉ nhận 1M | 3M | 6M | 1Y | 10Y.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return self._get_cvd_history(symbol, window, bucket_minutes, period, days)
 
         facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
         if facts is None:
