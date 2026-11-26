@@ -793,6 +793,14 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('sync-corporate-actions-nightly', 'enrichment_offhours')},
     },
 
+    # === S4: CafeF full-history rebase 19:00 ICT (sau CA sync 18:30) ===
+    'rebase-cafef-nightly-1900': {
+        'task': 'data_ingest.tasks.rebase_cafef_all_symbols',
+        'schedule': crontab(hour=19, minute=0),
+        'kwargs': {'_scheduler_job_key': 'rebase-cafef-nightly-1900'},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('rebase-cafef-nightly-1900', 'enrichment_offhours')},
+    },
+
     # === DNSE intraday tape backfill 90 ngày — Chủ nhật 01:00 ICT (Sat 18:00 UTC) ===
     # Orchestrator: resolve VN100, presence-check, queue missing (symbol, date) slots.
     # Subtasks chạy queue manual_on_demand; orchestrator chạy enrichment_offhours.
@@ -916,6 +924,7 @@ if os.environ.get('PRICE_MIGRATION_PAUSED', '0') == '1':
         'deep-history-bootstrap-weekly',
         'pre5y-history-backfill-weekly',
         'sync-corporate-actions-nightly',
+        'rebase-cafef-nightly-1900',
         'detect-market-anomaly-alerts-5m',
     ):
         CELERY_BEAT_SCHEDULE.pop(_paused_key, None)
