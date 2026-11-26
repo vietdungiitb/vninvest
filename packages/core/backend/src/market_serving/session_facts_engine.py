@@ -311,7 +311,12 @@ def compute_session_facts(
     )
 
 
-def compute_session_facts_for_all_active(session_date: date | None = None, symbol: str | None = None) -> dict:
+def compute_session_facts_for_all_active(
+    session_date: date | None = None,
+    symbol: str | None = None,
+    *,
+    refresh_coverage: bool = True,
+) -> dict:
     """
     Tính và upsert SessionFacts cho tất cả symbol có whale data trong ngày.
 
@@ -401,7 +406,7 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
     # refresh GlobalSymbolCoverage → coverage session_facts mãi missing dù facts đã có.
     # Refresh theo symbol đã upsert (fail-open từng symbol, không chặn kết quả chính).
     coverage_refreshed = 0
-    if upserted_symbols:
+    if refresh_coverage and upserted_symbols:
         try:
             from market_data.global_symbol_coverage import (
                 refresh_global_symbol_coverage,

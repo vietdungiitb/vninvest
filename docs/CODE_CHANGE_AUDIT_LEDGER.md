@@ -1,3 +1,14 @@
+## Entry 660: BE CVD Realtime backfill + coverage_from + intraday history SSOT
+
+- **Date**: 2026-11-26 · **Type**: feat/fix · **Branch**: `feat/cvd-realtime-backfill-ssot` · **Claim**: `cvd-realtime-backfill-ssot`.
+- **Root cause**: `SessionFactsBucket(window='1D')` chi co 2 ngay (25-26/11) dù `WhaleAlertCanonical` (`whale_tick:`) co 47+ ngay (2026-05-22..11-26); `_get_cvd_history` zero-fill 59 ngay truoc ngay co du lieu dau tien va khong tra `coverage_from`, khien widget ve duong thang 0 gia.
+- **Changes**:
+  - `session_facts_engine.py`: them `refresh_coverage: bool = True` vao `compute_session_facts_for_all_active` de backfill nhieu ngay chi refresh coverage 1 lan cuoi.
+  - `management/commands/backfill_session_facts_buckets.py`: command idempotent backfill toan bo `SessionFacts` + `SessionFactsBucket` (`5m..1D`) tu `WhaleAlertCanonical` (`whale_tick:`).
+  - `views.py` (`SessionFactsCvdView`): them `coverage_from`; khong zero-fill truoc `coverage_from`; tra `cvd_series=[]` khi khong co bucket that; ho tro `period` đa-phiên cho ca `5m..4h` (`cache v4`).
+  - `tests/test_cvd_1d_history_api.py`: cap nhat T-09 + them T-13..T-15.
+- **Gates**: Khong migration, khong deny-list. BE test + backfill + live API verify chay tren staging VPS (`14.225.255.47`).
+
 ## Entry 657: Chot phien broker-config-r1 — PR #560 MERGED + E2E sau merge + handoff
 
 - **Date**: 2026-11-26 · **Type**: session-close/docs · Branch `docs/broker-config-r1-close` · agent `broker-config-r1`.

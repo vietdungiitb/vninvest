@@ -170,23 +170,37 @@ class Cvd1dHistoryApiTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         gate.assert_called_once()
 
-    # ── T-09 zero-day fill từ DailyPrice ────────────────────────
-    def test_t09_missing_whale_day_is_zero_filled_from_daily_price(self):
-        fill_day = self.today - dt.timedelta(days=3)
+    # ── T-09 zero-day fill từ DailyPrice (chỉ từ coverage_from trở đi) ──
+    def test_t09_missing_whale_day_is_zero_filled_only_from_coverage_from(self):
+        before_coverage = self.d0 - dt.timedelta(days=1)
         DailyPrice.objects.create(
-            symbol=SYMBOL, date=fill_day,
+            symbol=SYMBOL, date=before_coverage,
+            open=Decimal('10000'), high=Decimal('10100'), low=Decimal('9900'),
+            close=Decimal('10000'), volume=1000, value=10_000_000,
+        )
+        # Xoá phiên giữa d1 để kiểm tra fill khoảng trống nằm SAU coverage_from.
+        self.f1.delete()
+        DailyPrice.objects.create(
+            symbol=SYMBOL, date=self.d1,
             open=Decimal('10000'), high=Decimal('10100'), low=Decimal('9900'),
             close=Decimal('10000'), volume=1000, value=10_000_000,
         )
         payload = self._get('window=1D&period=3M').data
+        self.assertEqual(payload['coverage_from'], self.d0.isoformat())
+        self.assertEqual(len(payload['cvd_series']), 3)
+        # Ngày trước coverage_from KHÔNG được bịa thành 0.0.
         first = payload['cvd_series'][0]
-        expected_ts = dt.datetime.combine(
-            fill_day, dt.time(hour=7), tzinfo=dt.timezone(dt.timedelta(hours=7))
-        ).isoformat()
-        self.assertEqual(first['bucket_ts'], expected_ts)
-        self.assertEqual(first['delta'], 0)
-        self.assertEqual(first['cumulative_cvd'], 0.0)
-        self.assertEqual(payload['cvd_series'][1]['cumulative_cvd'], -300_000_000.0)
+        self.assertEqual(first['bucket_ts'], dt.datetime.combine(
+            self.d0, dt.time(hour=7), tzinfo=dt.timezone(dt.timedelta(hours=7))
+        ).isoformat())
+        self.assertEqual(first['delta'], -300_000_000)
+        self.assertEqual(first['cumulative_cvd'], -300_000_000.0)
+        # Ngày giữa d1 (sau coverage_from) giữ delta=0 và mang cumulative phẳng -300M.
+        mid = payload['cvd_series'][1]
+        self.assertEqual(mid['delta'], 0)
+        self.assertEqual(mid['cumulative_cvd'], -300_000_000.0)
+        # Ngày cuối d2 cộng tiếp +800M -> +500M.
+        self.assertEqual(payload['cvd_series'][2]['cumulative_cvd'], 500_000_000.0)
 
     # ── T-10 bounded 10Y response ───────────────────────────────
     def test_t10_10y_is_bounded_and_still_monotonic(self):
@@ -256,3 +270,93 @@ class Cvd1dHistoryApiTests(TestCase):
         self.assertEqual(history['date_from'], (fixed_local_date - dt.timedelta(days=90)).isoformat())
         self.assertEqual(history['cvd_series'][-1]['delta'], legacy['cvd_series'][0]['delta'])
         self.assertEqual(history['cvd_series'][-1]['bucket_ts'], legacy['cvd_series'][0]['bucket_ts'])
+
+    # ── T-13 không có bucket thật -> trả rỗng, KHÔNG fill 0 giả ──
+    def test_t13_no_real_buckets_returns_empty_not_zero_filled(self):
+        DailyPrice.objects.create(
+            symbol='NOFLOW', date=self.d0,
+            open=Decimal('10000'), high=Decimal('10100'), low=Decimal('9900'),
+            close=Decimal('10000'), volume=1000, value=10_000_000,
+        )
+        resp = self.client.get('/core/v1/session-facts/NOFLOW/cvd/?window=1D&period=3M')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['cvd_series'], [])
+        self.assertIsNone(resp.data['coverage_from'])
+        self.assertEqual(resp.data['data_status'], 'missing_cvd_buckets')
+
+    # ── T-14 intraday period trả history nhiều phiên + cumulative chạy ──
+    def test_t14_intraday_period_returns_multi_session_history(self):
+        hcm = dt.timezone(dt.timedelta(hours=7))
+        SessionFactsBucket.objects.create(
+            session_facts=self.f0, symbol=SYMBOL, session_date=self.d0,
+            window='15m', bucket_minutes=15,
+            bucket_ts=dt.datetime.combine(self.d0, dt.time(hour=10), tzinfo=hcm),
+            cumulative_cvd=200_000_000.0, buy_strength=65.0, institutional_strength=55.0,
+            buy_volume=300_000_000, sell_volume=100_000_000,
+        )
+        SessionFactsBucket.objects.create(
+            session_facts=self.f2, symbol=SYMBOL, session_date=self.d2,
+            window='15m', bucket_minutes=15,
+            bucket_ts=dt.datetime.combine(self.d2, dt.time(hour=9, minute=15), tzinfo=hcm),
+            cumulative_cvd=-500_000_000.0, buy_strength=40.0, institutional_strength=50.0,
+            buy_volume=100_000_000, sell_volume=600_000_000,
+        )
+        resp = self._get('window=15m&period=1M')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        payload = resp.data
+        self.assertTrue(payload['history'])
+        self.assertEqual(payload['coverage_from'], self.d0.isoformat())
+        self.assertEqual(payload['bucket_count'], 2)
+        self.assertEqual(payload['cvd_series'][0]['cumulative_cvd'], 200_000_000.0)
+        self.assertEqual(payload['cvd_series'][1]['cumulative_cvd'], -300_000_000.0)
+
+    # ── T-15 management command backfill idempotent cho mọi window ──
+    def test_t15_backfill_command_materializes_historical_buckets(self):
+        from django.core.management import call_command
+        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+
+        sym = 'BFHIST'
+        day1 = self.d0 - dt.timedelta(days=5)
+        day2 = self.d0 - dt.timedelta(days=4)
+        hcm = dt.timezone(dt.timedelta(hours=7))
+
+        for idx, (day, hour, side, val) in enumerate([
+            (day1, 9, 'buy', 400_000_000),
+            (day1, 14, 'sell', 150_000_000),
+            (day2, 10, 'sell', 500_000_000),
+        ]):
+            ts = dt.datetime.combine(day, dt.time(hour=hour), tzinfo=hcm)
+            alert = UnifiedAlert.objects.create(
+                alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+                symbol=sym,
+                severity=UnifiedAlert.SeverityChoices.HIGH,
+                title=f'Whale {sym} {idx}',
+                value=Decimal(val),
+                direction=UnifiedAlert.DirectionChoices.BUY if side == 'buy' else UnifiedAlert.DirectionChoices.SELL,
+                session_date=day,
+                triggered_at=ts,
+                source_ref=f'whale_tick:bf:{idx}',
+            )
+            WhaleAlertCanonical.objects.create(
+                alert=alert,
+                symbol=sym,
+                session_date=day,
+                side=side,
+                price=Decimal('50000'),
+                volume=val // 50000,
+                matched_value=val,
+                executed_at=ts,
+            )
+
+        call_command('backfill_session_facts_buckets', symbol=sym)
+        for win in ('5m', '15m', '30m', '1h', '4h', '1D'):
+            self.assertGreaterEqual(
+                SessionFactsBucket.objects.filter(symbol=sym, window=win).count(),
+                2,
+                msg=f'Missing backfilled buckets for window {win}',
+            )
+
+        # Idempotent re-run
+        before_count = SessionFactsBucket.objects.filter(symbol=sym).count()
+        call_command('backfill_session_facts_buckets', symbol=sym)
+        self.assertEqual(SessionFactsBucket.objects.filter(symbol=sym).count(), before_count)
