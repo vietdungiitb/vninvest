@@ -35,7 +35,9 @@ google-api-python-client>=2.0,<3.0
 # Breaking (3.7.0+): 400/401/403/404/422 ra ProviderAuthError/ProviderNotFoundError/
 # ProviderBadRequestError — KHÔNG còn là ConnectionError. Adapter bắt Exception rộng
 # nên không cần sửa. Chi tiết: docs/VERIFY_VNBROKER_371_ROUND2_20261011.md
-vnbroker==3.9.0
+# 3.9.0 -> 3.10.0: CafeF reference bug fixes (EndDate clamp, TTL cache,
+# reconcile exchange, date/change_pct). PyPI v3.10.0 live 2026-11-26.
+vnbroker==3.10.0
 
 # Stripe Billing Integration
 stripe>=7.0,<8.0
