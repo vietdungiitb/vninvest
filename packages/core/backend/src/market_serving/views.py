@@ -131,6 +131,7 @@ def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trad
         'updated_at': None,
         'trade_count': None,
         'delta': 0,
+        'coverage_from': None,
     }
 
 
@@ -399,7 +400,7 @@ class SessionFactsCvdView(APIView):
     throttle_classes = [MarketDataThrottle]
 
     def _get_cvd_history(self, symbol, window, bucket_minutes, period, days):
-        """A1: history đa-session cho window=1D — KHÔNG đụng path legacy."""
+        """A1: history đa-session cho window=1D và các khung intraday (5m..4h) — KHÔNG đụng path legacy."""
         end_date = dj_timezone.localdate()
         start_date = end_date - timedelta(days=days)
 
@@ -412,7 +413,7 @@ class SessionFactsCvdView(APIView):
         )
         revision = int(revision_dt.timestamp()) if revision_dt is not None else 0
         cache_key = (
-            f'core:cvd_series:v3:{symbol}:{window}:{period}:'
+            f'core:cvd_series:v4:{symbol}:{window}:{period}:'
             f'{start_date.isoformat()}:{end_date.isoformat()}:{revision}'
         )
 
@@ -428,7 +429,7 @@ class SessionFactsCvdView(APIView):
             SessionFactsBucket.objects
             .filter(
                 session_facts__symbol=symbol,
-                window='1D',
+                window=window,
                 session_facts__session_date__range=(start_date, end_date),
             )
             .select_related('session_facts')
@@ -447,30 +448,7 @@ class SessionFactsCvdView(APIView):
                 'pk': row.pk,
             })
 
-        # DailyPrice có date nhưng không có whale bucket ⇒ bucket delta=0, không fabricate alert.
-        # Bucket 1D thật được floor trên UTC midnight rồi chiếu localtime (07:00+07:00).
-        for candle_day in _cvd_history_candle_dates(symbol, start_date, end_date):
-            if candle_day in by_date:
-                continue
-            by_date[candle_day] = [{
-                'session_date': candle_day,
-                'bucket_ts': dj_timezone.localtime(
-                    datetime.combine(candle_day, time.min, tzinfo=dt_timezone.utc)
-                ),
-                'buy_volume': 0,
-                'sell_volume': 0,
-                'buy_strength': 0.0,
-                'institutional_strength': 0.0,
-                'pk': 0,
-            }]
-
-        buckets = []
-        for day in sorted(by_date):
-            buckets.extend(sorted(by_date[day], key=lambda b: (b['bucket_ts'], b['pk'])))
-        if len(buckets) > _CVD_HISTORY_MAX_BUCKETS:
-            buckets = buckets[-_CVD_HISTORY_MAX_BUCKETS:]
-
-        if not buckets:
+        if not by_date:
             empty = _build_empty_cvd_payload(
                 symbol, window, bucket_minutes, None,
                 f'Không có dữ liệu CVD history cho {symbol} ở window {window}.',
@@ -482,9 +460,36 @@ class SessionFactsCvdView(APIView):
                 'date_from': start_date.isoformat(),
                 'date_to': end_date.isoformat(),
                 'revision': revision,  # helper chung tra 0 cứng; day la revision that cua khoang
+                'coverage_from': None,
             })
             empty['_source'] = 'no-data'
             return Response(empty)
+
+        coverage_from = min(by_date.keys())
+
+        # DailyPrice có date nhưng không có whale bucket ⇒ chỉ fill từ coverage_from trở đi
+        # (giữ nguyên Rule 15: không bịa dải 0 giả trước ngày đầu tiên có dữ liệu thật).
+        if window == '1D':
+            for candle_day in _cvd_history_candle_dates(symbol, coverage_from, end_date):
+                if candle_day < coverage_from or candle_day in by_date:
+                    continue
+                by_date[candle_day] = [{
+                    'session_date': candle_day,
+                    'bucket_ts': dj_timezone.localtime(
+                        datetime.combine(candle_day, time.min, tzinfo=dt_timezone.utc)
+                    ),
+                    'buy_volume': 0,
+                    'sell_volume': 0,
+                    'buy_strength': 0.0,
+                    'institutional_strength': 0.0,
+                    'pk': 0,
+                }]
+
+        buckets = []
+        for day in sorted(by_date):
+            buckets.extend(sorted(by_date[day], key=lambda b: (b['bucket_ts'], b['pk'])))
+        if len(buckets) > _CVD_HISTORY_MAX_BUCKETS:
+            buckets = buckets[-_CVD_HISTORY_MAX_BUCKETS:]
 
         # Invariant: cumulative = Σ delta; KHÔNG cộng dồn cumulative_cvd của từng session.
         running = 0
@@ -515,6 +520,7 @@ class SessionFactsCvdView(APIView):
             'revision': revision,
             'updated_at': dj_timezone.localtime(revision_dt).isoformat() if revision_dt is not None else None,
             'trade_count': None,
+            'coverage_from': coverage_from.isoformat(),
             'cvd_series': [
                 {
                     'bucket_ts': dj_timezone.localtime(b['bucket_ts']).isoformat(),
@@ -561,17 +567,20 @@ class SessionFactsCvdView(APIView):
         bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window_lc]
         requested_trade_date = _parse_trade_date_param(request)
 
-        # history chỉ có nghĩa với window=1D; trade_date thắng period (kể cả period sai).
+        # Multi-session history: 1D yêu cầu period hợp lệ (400 nếu sai), còn 5m..4h dùng khi period hợp lệ (giữ T-11).
         raw_period = str(request.query_params.get('period') or '').strip()
-        if window == '1D' and requested_trade_date is None and raw_period:
+        if requested_trade_date is None and raw_period:
             period, days = _parse_cvd_history_period(raw_period)
-            if period is None:
-                return Response(
-                    {'code': 'UNSUPPORTED_PERIOD',
-                     'detail': 'period chỉ nhận 1M | 3M | 6M | 1Y | 10Y.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            return self._get_cvd_history(symbol, window, bucket_minutes, period, days)
+            if window == '1D':
+                if period is None:
+                    return Response(
+                        {'code': 'UNSUPPORTED_PERIOD',
+                         'detail': 'period chỉ nhận 1M | 3M | 6M | 1Y | 10Y.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                return self._get_cvd_history(symbol, window, bucket_minutes, period, days)
+            if period is not None:
+                return self._get_cvd_history(symbol, window, bucket_minutes, period, days)
 
         facts = _get_materialized_session_facts(symbol, trade_date=requested_trade_date)
         if facts is None:
