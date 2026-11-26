@@ -1,3 +1,13 @@
+## Entry 645: Deploy staging + curl proof PR #556 (CVD 1D history)
+
+- **Date**: 2026-11-26 · **Type**: ops/evidence · **Branch**: `docs/cvd1d-deploy-proof` · **Claim**: `cvd1d-deploy-proof`.
+- PR #556 **MERGED** @ `309e466fd` (`--merge`, không squash). GitHub chặn tự approve ⇒ review dạng comment rồi merge.
+- `bash scripts/deploy-staging.sh` trên VPS `14.225.255.47`: `DEPLOY_EXIT=0`, build image xong, API healthy, 0 container chết, worker/beat ổn định.
+  VPS `dev` diverge (1 local commit `8792430b0` đã có patch tương đương trên upstream — `git cherry` trả `-`) ⇒ stash 4 file hotfix + backup `pricing.py` cũ, `git reset --hard origin/dev`, deploy xanh rồi drop stash.
+- Curl thật qua nginx (PAT `market:read` tạm, header `X-Tenant-ID`, đã xoá — verify 0 PAT còn lại): legacy `bucket_count=1`; `?window=1D&period=3M` → **61 bucket**, `history=true`, `date_from=2026-08-28`, `date_to=2026-11-26`, 59 zero-fill + 2 whale, cumulative `-816,720,000 → -216,130,000`; `period=999M` → 400 `UNSUPPORTED_PERIOD`.
+- Bằng chứng: `docs/evidence/cvd-1d-history/STAGING_DEPLOY_PROOF.md`; handoff cập nhật mục 5. Doc-only, không code/migration/dependency, không deploy production.
+- **Next**: widget team chạy slice truyền `period:"3M"`; confirm D-2 cap 2600 + D-4 ngữ nghĩa `date_from` sau cap.
+
 ## Entry 644: CVD 1D history cho widget (BE A1) — period multi-session, cache v3
 
 - **Date**: 2026-11-26 · **Type**: feature/BE · **Branch**: `feat/cvd-1d-history-be` · **Claim**: `cvd-1d-history-be`.

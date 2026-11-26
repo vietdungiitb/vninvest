@@ -63,7 +63,18 @@ không phải đổi code (đã ghi trong `AUDIT_PLAN.md` §CONTRADICTIONS).
    + adapter `sessionFactsCvd.ts`), E2E đổi assertion từ HTTP-only sang `pts>=2` và `maxX-minX>0`,
    visual proof 1D trên price pane, tier parity enterprise.
 2. **Widget team / Owner:** confirm D-1/D-2/D-4 (đặc biệt ngữ nghĩa `date_from` sau cap).
-3. **Owner:** merge PR `feat/cvd-1d-history-be` → `dev`, deploy staging theo runbook, curl proof
-   `?window=1D&period=3M` ⇒ `bucket_count>=2` + `bucket_ts` tăng dần; sau merge chạy
-   `pwsh -File scripts/agent-cleanup.ps1 -Branch feat/cvd-1d-history-be -Execute`.
+3. **Owner:** ~~merge PR + deploy staging + curl proof~~ **ĐÃ XONG 2026-11-26** — xem mục 5.
+   Còn lại: chạy `pwsh -File scripts/agent-cleanup.ps1 -Branch feat/cvd-1d-history-be -Execute`.
 4. **Không làm trong slice này:** không đụng FE/widget, không migration, không deploy production.
+
+## 5. Deploy staging + curl proof — ĐÃ XONG 2026-11-26
+
+- PR #556 **MERGED** @ `309e466fd` (review dạng comment vì GitHub chặn tự approve; merge `--merge`).
+- `bash scripts/deploy-staging.sh` trên VPS `14.225.255.47`: `DEPLOY_EXIT=0`, API healthy, 0 container
+  chết, worker/beat ổn định. `https://docker.edusuccess.vn/`.
+- Curl thật với PAT tạm (đã xoá sau proof): legacy `bucket_count=1`; history `?window=1D&period=3M`
+  → `bucket_count=61`, `history=true`, `date_from=2026-08-28`, `date_to=2026-11-26`, 59 bucket zero-fill
+  + 2 bucket whale, cumulative chạy `−816,720,000 → −216,130,000`; `period=999M` → 400
+  `UNSUPPORTED_PERIOD`. Bằng chứng đầy đủ: `docs/evidence/cvd-1d-history/STAGING_DEPLOY_PROOF.md`.
+- **Widget team giờ có thể chạy slice riêng** (`period:"3M"`) — D-1/A1 đã lên staging. Vẫn confirm D-2
+  (cap 2600) và D-4 (ngữ nghĩa `date_from` sau cap) trước khi ship.
