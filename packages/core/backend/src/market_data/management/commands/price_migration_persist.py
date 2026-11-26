@@ -11,6 +11,7 @@ from datetime import date
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from market_data.cafef.coverage import validate_coverage
 from market_data.cafef.persist import classify_row
 from market_data.models import CafefDailyPrice, DailyPrice, StockProfile
 
@@ -32,6 +33,7 @@ class Command(BaseCommand):
         parser.add_argument('--apply', action='store_true')
         parser.add_argument('--out', default='')
         parser.add_argument('--inserted-keys-out', default='')
+        parser.add_argument('--allow-low-coverage', action='store_true')
 
     def _paged(self, qs, fields):
         last = 0
@@ -79,6 +81,14 @@ class Command(BaseCommand):
         matched = legacy_keys & cafef_keys
         db_only = legacy_keys - cafef_keys
         cafef_only = cafef_keys - legacy_keys
+
+        # S2: a batch without a usable CafeF source must never re-label rows.
+        try:
+            validate_coverage(
+                len(matched), len(legacy_keys), opts['allow_low_coverage']
+            )
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
 
         counts = Counter({'update': len(matched), 'keep_unmapped': len(db_only),
                           'insert': len(cafef_only)})

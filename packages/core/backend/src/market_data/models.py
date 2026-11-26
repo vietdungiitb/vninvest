@@ -87,6 +87,9 @@ class DailyPrice(models.Model):
         max_digits=20, decimal_places=10, null=True, blank=True,
         verbose_name='Hệ số điều chỉnh (adj_close/close)',
     )
+    # S2 — vintage của chuỗi adjusted (truy vết sau mỗi rebase).
+    adj_as_of = models.DateTimeField(null=True, blank=True, verbose_name='Thời điểm vintage adjusted')
+    adj_version = models.PositiveIntegerField(default=0, verbose_name='Phiên bản điều chỉnh')
     # Nguồn đã chuẩn hóa (cafef) để guard ingest không ghi đè (tasks.py:792-798).
     price_source = models.CharField(
         max_length=32, default='vnbroker_legacy',
@@ -602,3 +605,42 @@ class VnbrokerProviderHealth(models.Model):
 
     def __str__(self) -> str:
         return f'{self.provider} ({self.status}/{self.circuit_state})'
+
+
+class PriceRebaseRun(models.Model):
+    """Audit trail cho mỗi lần rebase chuỗi adjusted (S2)."""
+
+    class Trigger(models.TextChoices):
+        CORPORATE_ACTION = 'corporate_action', 'Corporate action'
+        DRIFT_SENTINEL = 'drift_sentinel', 'Drift sentinel'
+        NIGHTLY = 'nightly', 'Nightly'
+        MANUAL = 'manual', 'Manual'
+
+    class Status(models.TextChoices):
+        APPLIED = 'applied', 'Applied'
+        NOOP = 'noop', 'No-op'
+        HALTED_DATA_ERROR = 'halted_data_error', 'Halted (data error)'
+        FAILED = 'failed', 'Failed'
+
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    trigger = models.CharField(max_length=24, choices=Trigger.choices, verbose_name='Nguồn kích hoạt')
+    status = models.CharField(max_length=24, choices=Status.choices, verbose_name='Trạng thái')
+    ex_date = models.DateField(null=True, blank=True, verbose_name='Ngày quyền')
+    rows_scanned = models.PositiveIntegerField(default=0, verbose_name='Số ngày quét')
+    rows_updated = models.PositiveIntegerField(default=0, verbose_name='Số ngày ghi')
+    max_factor_delta = models.DecimalField(
+        max_digits=18, decimal_places=10, null=True, blank=True,
+        verbose_name='Đổi hệ số lớn nhất',
+    )
+    detail = models.TextField(blank=True, default='', verbose_name='Chi tiết')
+    started_at = models.DateTimeField(default=timezone.now, verbose_name='Bắt đầu')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc')
+
+    class Meta:
+        verbose_name = 'Lần rebase giá điều chỉnh'
+        verbose_name_plural = 'Lần rebase giá điều chỉnh'
+        ordering = ['-started_at']
+        indexes = [models.Index(fields=['symbol', 'started_at'])]
+
+    def __str__(self) -> str:
+        return f'{self.symbol} {self.status} {self.started_at.isoformat()}'

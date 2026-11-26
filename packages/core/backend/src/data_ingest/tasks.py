@@ -19,7 +19,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
 from django.db import connection
-from django.db.models import Max
+from django.db.models import F, Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
@@ -3521,8 +3521,12 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
     from vnbroker import Vnbroker
 
     from market_data.cafef.rebase import build_series, validate_rebase
-    from market_data.models import DailyPrice
+    from market_data.models import DailyPrice, PriceRebaseRun
 
+    audit = PriceRebaseRun.objects.create(
+        symbol=symbol.upper(), trigger=trigger[:24],
+        status=PriceRebaseRun.Status.FAILED, ex_date=ex_date,
+    )
     end = now().date()
     # S4b: CafeF per-symbol full-range endpoint returns 400/503. The ALL export
     # (one XLSX per exchange/year) is the reliable feed; filter by symbol here.
@@ -3544,11 +3548,19 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
                     close=close_raw, adj_close=adj_close, adj_factor=adj_close / close_raw,
                 ))
     except Exception as exc:  # CafeF may 400/503 on the ALL export too
+        PriceRebaseRun.objects.filter(pk=audit.pk).update(
+            status=PriceRebaseRun.Status.FAILED,
+            detail=str(exc)[:300], finished_at=now(),
+        )
         return {
             'status': 'fetch_error', 'reason': str(exc)[:300],
             'symbol': symbol, 'trigger': trigger,
         }
     if not new_rows:
+        PriceRebaseRun.objects.filter(pk=audit.pk).update(
+            status=PriceRebaseRun.Status.NOOP, detail='no rows from CafeF',
+            finished_at=now(),
+        )
         return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
     new_series = build_series(new_rows)
 
@@ -3559,6 +3571,10 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
     old_series = build_series(old_rows)
     allowed, reason = validate_rebase(old_series, new_series, ex_date=ex_date)
     if not allowed:
+        PriceRebaseRun.objects.filter(pk=audit.pk).update(
+            status=PriceRebaseRun.Status.HALTED_DATA_ERROR,
+            detail=reason, rows_scanned=len(new_series), finished_at=now(),
+        )
         return {
             'status': 'halted_data_error', 'reason': reason,
             'symbol': symbol, 'trigger': trigger,
@@ -3572,9 +3588,17 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             continue
         old.adj_close = fresh.adj_close
         old.adj_factor = fresh.adj_factor
+        old.adj_as_of = now()
+        old.adj_version = F('adj_version') + 1
         updated += 1
     if updated:
-        DailyPrice.objects.bulk_update(old_rows, ['adj_close', 'adj_factor'], batch_size=500)
+        DailyPrice.objects.bulk_update(
+            old_rows, ['adj_close', 'adj_factor', 'adj_as_of', 'adj_version'], batch_size=500,
+        )
+    PriceRebaseRun.objects.filter(pk=audit.pk).update(
+        status=PriceRebaseRun.Status.APPLIED,
+        rows_scanned=len(new_series), rows_updated=updated, finished_at=now(),
+    )
     return {
         'status': 'applied', 'symbol': symbol, 'trigger': trigger,
         'rows_updated': updated, 'dates_scanned': len(new_series),
