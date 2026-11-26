@@ -1,7 +1,8 @@
 # HANDOFF — Broker Config R1/R2 (2026-11-26)
 
 - **Branch:** `feat/broker-config-r1` · PR **#560** → `dev` · agent `broker-config-r1`.
-- **Trạng thái:** R1 + R2 xong, gate xanh, **E2E staging có ảnh thật**; chờ merge PR.
+- **Trạng thái (chốt phiên 2026-11-26):** **PR #560 ĐÃ MERGED** vào `dev` tại merge-commit `ad69124ee` (`2026-11-26T12:56:53Z`). R1 + R2 xong, gate xanh, E2E staging chạy lại **sau merge** → 2 passed. Chỉ có comment review của Copilot (quota), không có human approval — ghi đúng trong `docs/evidence/broker-config-r1/PR_REVIEW_AND_CLOSE.md`.
+- **Deploy sau merge:** VPS `dev` @ `ad69124ee`; E2E trên bản chung 2 passed; test DB đã DROP, tunnel đã đóng, worktree merge đã remove.
 - **Evidence:** `docs/AUDIT_BROKER_MANAGEMENT_PAGE_20261126.md` · `docs/PLAN_BROKER_CONFIG_S1_20261126.md` REV1 · `docs/evidence/broker-config-r1/PLAN_REVIEW.md` (NEED_REVISION→sửa) · `docs/evidence/broker-config-r1/gates.md` · ảnh `docs/evidence/broker-config-r1/e2e/broker-tab-r1.png` + `broker-tabs-r2.png`.
 
 ## Kết quả R1
@@ -28,8 +29,9 @@ BE **10/10 OK** + regression **21/21 OK** trên VPS · FE **11/11** · tsc **0**
 - **Hạ tầng (ngoài slice):** cert public `docker.edusuccess.vn` đang trả `CN=erp.edusuccess.vn` ⇒ SNI sai; E2E chạy qua SSH tunnel. Cần ACME/nginx-proxy sửa.
 - **Race deploy:** phiên khác deploy `dev` xen kẽ; sau merge PR cần deploy `dev` và chạy lại E2E một lần để chốt baseline chung.
 
-## Next
-1. Merge PR #560 (merge-commit, không squash). Nếu GitHub báo conflicting do `dev` tiến tiếp, rebase branch lên `origin/dev` rồi push lại (đã làm 2 lần trong phiên).
-2. Deploy `dev`, chạy lại E2E script trong `gates.md`.
-3. Coordinator đóng 3 claim stale (`vet-finish`, `cafef-ref`, `vnbroker-console`); handoff cherry-pick sang `main` sau merge.
-4. Dọn staging: test DB `test_broker_config_r1_test` cần DROP sau lần test cuối; SSH tunnel PID 27404 cần đóng.
+## Next (cho phiên kế tiếp)
+1. **Đã xong:** merge PR #560 · deploy `dev` @ `ad69124ee` · E2E sau merge 2 passed · DROP test DB · đóng tunnel · remove worktree.
+2. Owner/coordinator: xử lý ticket hạ tầng cert SNI `docker.edusuccess.vn` → `CN=erp.edusuccess.vn`.
+3. Coordinator đóng 3 claim stale (`vet-finish`, `cafef-ref`, `vnbroker-console`) — không phải slice này tự sửa.
+4. Làm tiếp F3 / S3–S5 nếu owner ưu tiên; plan gốc ở `docs/PLAN_BROKER_CONFIG_S1_20261126.md`.
+5. Main tree của session cũ còn branch stale + 2 file uncommitted của phiên khác — coordinator dọn, không tự discard.
