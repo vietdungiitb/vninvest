@@ -1,3 +1,21 @@
+## Entry 655: Broker Config R2 — 3 tab credential, moi broker schema rieng (E2E that)
+
+- **Date**: 2026-11-26 · **Type**: feat/fix · Branch `feat/broker-config-r1` · claim `broker-config-r1`.
+- **Code**: bo textarea JSON; 3 tab DNSE (`client_id/client_secret`), SSI (`client_id/api_key/api_secret`), TCBS (`api_key`) — schema doc tu vnbroker 3.10.0 probe runtime (`vnbroker/broker/ssi/client.py:71-86`, `vnbroker/broker/tcbs/client.py:73-87`, `user_workspace/broker/dnse.py:67-70`); BE `CREDENTIAL_REQUIRED_KEYS` cap nhat theo provider; field co nhan, hien/an gia tri, helper VI/EN, nhan "chua co duong chay" cho SSI/TCBS.
+- **Gates**: BE **10/10 OK** tren VPS (core-db truc tiep) · FE **11/11** · tsc **0** · E2E staging **2 passed** (4 GET 200, khong POST khi form rong) · anh `docs/evidence/broker-config-r1/e2e/broker-tabs-r2.png` da mo xem. Chi tiet: `docs/evidence/broker-config-r1/gates.md`.
+- **Infra**: cert public `docker.edusuccess.vn` dang tra `CN=erp.edusuccess.vn` (SNI sai) ⇒ E2E chay qua SSH tunnel `127.0.0.1:8081`; ticket infra rieng, khong nam trong slice.
+## Entry 654: Broker Config R1 — schema credential + cross-consistency + runtime wiring (E2E thật)
+
+- **Date**: 2026-11-26 · **Type**: feat/fix · **Branch**: `feat/broker-config-r1` · Claim `broker-config-r1` · commits `fafd51501` (claim) + `321981221` (code).
+- **Goc**: audit doc lap `docs/AUDIT_BROKER_MANAGEMENT_PAGE_20261126.md` (D1-D6) · plan REV1 `docs/PLAN_BROKER_CONFIG_S1_20261126.md` · reviewer doc lap `docs/evidence/broker-config-r1/PLAN_REVIEW.md` (NEED_REVISION -> da sua) + re-audit cuoi (AGREE kem reservation).
+- **Code**: `SocBrokerPanel.tsx` bo default `{}`, placeholder `client_id/client_secret`, validate truoc POST, map error_code sang i18n, hien `warnings` tu preview/apply; them 3 key VI/EN; `service_ops/views/broker.py` them schema key theo provider, validate purpose tho truoc `from_dict()`, cross-check purpose<->credential (thieu = warning, sai = 400), giu 2 reserved kill-switch key khi apply, **giu is_verified khi chi doi purposes** (so plaintext truoc set_secrets); `data_ingest/tasks.py` provider_for_purpose('backfill') fail-closed ve DNSE. Khong migration, khong deny-list, khong live trading.
+- **Gates that**: BE R1 **8/8 OK** + regression **21/21 OK** tren VPS (core-db truc tiep, --keepdb) · FE vitest **11/11** · tsc **0** · pre-push **36 PASS / 0 FAIL** · E2E staging **2 passed** (4 GET 200, khong POST khi secrets rong) · anh `docs/evidence/broker-config-r1/e2e/broker-tab-r1.png` da mo xem. Chi tiet: `docs/evidence/broker-config-r1/gates.md`.
+- **Race moi truong**: phien khac deploy `dev` giua chung => VPS HEAD quay `e7b67b151` va FE ra raw key; da deploy lai branch, verify HEAD `321981221` + asset `cred_required=2`, chay lai E2E xanh.
+- **Residual**: F3 (chieu nguoc doi credential purposes khong cross-check), F4 (error message technical cho code la), S3-S5 (poll job, redesign 4 buoc, expected_updated_at) — ghi trong `docs/handoffs/HANDOFF_2026-11-26_BROKER_CONFIG_R1.md` de owner quyet dinh defer.
+- **Lessons**: `[L-V01, L-V02, L-T02, L-F03, L-F10, L-G01, L-G02]` — fail-before 4 do/4 xanh; khong tin gate chat-only; t on dinh identity cho t; normalize-eol --fix truoc commit.
+
+
+
 ## Entry 647: S0 cấp cứu blackout staging + S1 CafeF reference 4 bug
 
 - **Date**: 2026-11-26 · **Type**: ops (S0) + code (S1 ở repo `vnbroker`) · **Branch**: `feat/price-rebase-s0s1` / `feat/cafef-reference-fix`.

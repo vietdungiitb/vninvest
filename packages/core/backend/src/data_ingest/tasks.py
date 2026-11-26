@@ -2477,6 +2477,24 @@ _DNSE_TASK_RATE_LIMIT = '20/m'
 _DNSE_BACKFILL_COUNTDOWN_SECS = int(getattr(django_settings, 'DNSE_BACKFILL_COUNTDOWN_SECS', 3))
 
 
+def _resolve_system_backfill_provider() -> str:
+    """D1: lấy provider từ registry nhưng CHỈ DNSE có tape intraday.
+
+    Mọi giá trị khác (hoặc config thiếu/lỗi) ⇒ log warning + fail-closed về DNSE —
+    không để UI nói SSI/TCBS mà runtime vẫn gọi DNSE qua fallback admin.
+    """
+    try:
+        from service_ops.broker_runtime import provider_for_purpose
+        provider = str(provider_for_purpose('backfill') or '').strip().lower()
+    except Exception as exc:
+        logger.warning('backfill provider resolve failed (%s) — fall back to dnse', type(exc).__name__)
+        return 'dnse'
+    if provider != 'dnse':
+        logger.warning('backfill provider=%s has no tape consumer — fall back to dnse', provider or 'unknown')
+        return 'dnse'
+    return 'dnse'
+
+
 @shared_task(
     bind=True,
     name='data_ingest.tasks.backfill_intraday_tick_system',
@@ -2512,7 +2530,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     )
 
     api_key = api_secret = None
-    system_secrets = get_system_broker_secrets('dnse', 'backfill')
+    system_secrets = get_system_broker_secrets(_resolve_system_backfill_provider(), 'backfill')
     if system_secrets:
         api_key = system_secrets.get('client_id')
         api_secret = system_secrets.get('client_secret')
