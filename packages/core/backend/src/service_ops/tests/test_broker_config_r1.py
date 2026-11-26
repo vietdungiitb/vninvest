@@ -68,7 +68,7 @@ class BrokerConfigR1Tests(TestCase):
                                 {'provider': 'tcbs', 'secrets': {'api_key': 'k'},
                                  'allowed_purposes': ['snapshot']}, format='json')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['credential']['provider'], 'tcbs')
+        self.assertEqual(unwrapped_json(resp)['credential']['provider'], 'tcbs')
 
     def test_purpose_change_keeps_verification(self):
         cred = self._cred()

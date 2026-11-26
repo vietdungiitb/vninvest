@@ -1,31 +1,35 @@
-# HANDOFF — Broker Config R1 (2026-11-26)
+# HANDOFF — Broker Config R1/R2 (2026-11-26)
 
-- **Branch:** `feat/broker-config-r1` · commits `fafd51501` (claim) → `321981221` (code) · agent `broker-config-r1`.
-- **Trạng thái:** code xong, gate xanh, **E2E staging có ảnh thật**; chờ owner chấp nhận residual và merge PR.
-- **Nguồn:** `docs/AUDIT_BROKER_MANAGEMENT_PAGE_20261126.md` (audit độc lập) · `docs/PLAN_BROKER_CONFIG_S1_20261126.md` REV1 · `docs/evidence/broker-config-r1/PLAN_REVIEW.md` (NEED_REVISION→đã sửa) · `docs/evidence/broker-config-r1/gates.md` · ảnh `docs/evidence/broker-config-r1/e2e/broker-tab-r1.png`.
+- **Branch:** `feat/broker-config-r1` · PR **#560** → `dev` · agent `broker-config-r1`.
+- **Trạng thái:** R1 + R2 xong, gate xanh, **E2E staging có ảnh thật**; chờ merge PR.
+- **Evidence:** `docs/AUDIT_BROKER_MANAGEMENT_PAGE_20261126.md` · `docs/PLAN_BROKER_CONFIG_S1_20261126.md` REV1 · `docs/evidence/broker-config-r1/PLAN_REVIEW.md` (NEED_REVISION→sửa) · `docs/evidence/broker-config-r1/gates.md` · ảnh `docs/evidence/broker-config-r1/e2e/broker-tab-r1.png` + `broker-tabs-r2.png`.
 
-## Kết quả
+## Kết quả R1
+3 key i18n VI/EN · bỏ default `{}` · validate + map lỗi i18n · cross-check purpose↔credential (thiếu = warning hiển thị FE, sai = 400) · `provider_for_purpose('backfill')` fail-closed DNSE · giữ verify khi chỉ đổi purposes · giữ reserved kill-switch key · validate purpose thô.
 
-- **AC1–AC3:** 3 key i18n thiếu được thêm VI/EN; textarea mặc định `""`; placeholder `client_id/client_secret`; bấm Lưu rỗng chặn FE, **không POST**, banner i18n. E2E xác nhận bằng Network + ảnh.
-- **AC4:** cross-check purpose↔credential tại `service_ops/views/broker.py:201-252` (gọi preview `:390` + apply `:339`); có credential sai purpose ⇒ 400; **thiếu credential ⇒ warning**, nay FE hiển thị qua `warnings` (`SocBrokerPanel.tsx` state + banner màu `--soc-status-warn`).
-- **AC5:** `data_ingest/tasks.py:2480-2495` `provider_for_purpose('backfill')`, chỉ nhận `dnse`, khác ⇒ log + fallback DNSE; không import cycle.
-- **AC6:** `broker.py:561-566` so plaintext `get_secrets()` trước `set_secrets()` — đổi purpose giữ verify, rotate reset.
-- **AC7:** `_with_reserved_keys` merge `tenant_kill_switches`/`provider_kill_switches` tại view apply/preview, không để Apply xoá key runtime.
-- **AC8:** validate purpose thô trước `from_dict()` lọc thầm lặng.
+## Kết quả R2 (theo yêu cầu owner)
+**Bỏ textarea JSON.** Khu "Credentials hệ thống" giờ có **3 tab DNSE / SSI / TCBS**, mỗi tab chỉ hiện đúng field mình cần:
 
-## Bằng chứng
+| Tab | Trường bắt buộc | Nguồn schema |
+|---|---|---|
+| DNSE | `client_id`, `client_secret` | `user_workspace/broker/dnse.py:67-70` |
+| SSI | `client_id`, `api_key`, `api_secret` | `vnbroker/broker/ssi/client.py:71-86`, `money.py:228-233` |
+| TCBS | `api_key` | `vnbroker/broker/tcbs/client.py:73-87` |
 
-BE R1 **8/8 OK** + regression **21/21 OK** trên VPS (`core-db` trực tiếp, `--keepdb`) · FE **11/11** · `tsc` 0 · pre-push **36 PASS / 0 FAIL** · E2E staging **2 passed** (4 GET 200, không POST khi rỗng) · ảnh đã mở xem. Chi tiết lệnh trong `docs/evidence/broker-config-r1/gates.md`.
+Mỗi field có nhãn + helper tiếng Việt; secret dùng `type=password` với nút "Hiện giá trị / Ẩn giá trị". BE `CREDENTIAL_REQUIRED_KEYS` cập nhật theo từng provider. SSI/TCBS hiện nhãn "chưa có đường chạy/kiểm tra kết nối" (D2) — vẫn lưu được credential nhưng không hứa năng lực chưa có. Schema đã probe lại sau khi `dev` bump `vnbroker 3.10.0` — không đổi.
 
-## Residual (owner quyết định defer hay làm tiếp)
+## Gates
+BE **10/10 OK** + regression **21/21 OK** trên VPS · FE **11/11** · tsc **0** · pre-push **36 PASS / 0 FAIL** · deploy verify HEAD `b70c7a6c1` · E2E staging **2 passed** (4 GET 200, không POST khi form rỗng) · ảnh đã mở xem. Chi tiết trong `gates.md`.
 
-1. **F1 (P1, đã fix trong R1 nhưng chưa E2E lại):** warning hiển thị qua state mới; E2E ảnh được chụp trước khi fix warning. Cần chạy lại E2E nếu muốn ảnh bao gồm banner warning.
-2. **F3 (P2):** chiều ngược lại — đổi credential purposes sang `snapshot` trong khi registry vẫn `dnse/backfill` ⇒ `get_system_broker_secrets` trả `None`, task abort; POST `/credentials/` chưa cross-check ngược.
-3. **F4 (P2):** `readCredentialError` fallback trả `err.message` cho error_code lạ (vẫn không phải JSON thô, nhưng technical).
-4. **S3–S5 chưa làm:** poll job `test-connection`, redesign 4 bước, optimistic concurrency `expected_updated_at`. D3 không enforce rpm/retry theo quyết định chuyên gia.
+## Residual / owner
+- **F3 (P2):** chiều ngược (đổi credential purposes trong khi registry vẫn `backfill`) chưa cross-check.
+- **F4 (P2):** fallback lỗi FE là i18n chung, không còn JSON thô.
+- **S3–S5:** poll job `test-connection`, redesign 4 bước, `expected_updated_at` — defer.
+- **Hạ tầng (ngoài slice):** cert public `docker.edusuccess.vn` đang trả `CN=erp.edusuccess.vn` ⇒ SNI sai; E2E chạy qua SSH tunnel. Cần ACME/nginx-proxy sửa.
+- **Race deploy:** phiên khác deploy `dev` xen kẽ; sau merge PR cần deploy `dev` và chạy lại E2E một lần để chốt baseline chung.
 
-## Next / owner
-
-- Merge PR từ `feat/broker-config-r1` (merge-commit, không squash). Nếu cần cherry-pick handoff sang `main`, làm sau merge theo handoff rule.
-- Coordinator: đóng 3 claim stale (`vet-finish`, `cafef-ref`, `vnbroker-console`) — không phải slice này sửa. Ledger Entry **654** đã chuẩn bị bởi coordinator vì Entry 643–653 đang dở của phiên khác.
-- Dọn staging: test DB đã DROP; user `e2e_broker` đã xoá; VPS đang checkout branch R1 — sau merge deploy lại `dev`.
+## Next
+1. Merge PR #560 (merge-commit, không squash). Nếu GitHub báo conflicting do `dev` tiến tiếp, rebase branch lên `origin/dev` rồi push lại (đã làm 2 lần trong phiên).
+2. Deploy `dev`, chạy lại E2E script trong `gates.md`.
+3. Coordinator đóng 3 claim stale (`vet-finish`, `cafef-ref`, `vnbroker-console`); handoff cherry-pick sang `main` sau merge.
+4. Dọn staging: test DB `test_broker_config_r1_test` cần DROP sau lần test cuối; SSH tunnel PID 27404 cần đóng.

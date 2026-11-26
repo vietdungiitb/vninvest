@@ -1,3 +1,9 @@
+## Entry 655: Broker Config R2 — 3 tab credential, moi broker schema rieng (E2E that)
+
+- **Date**: 2026-11-26 · **Type**: feat/fix · Branch `feat/broker-config-r1` · claim `broker-config-r1`.
+- **Code**: bo textarea JSON; 3 tab DNSE (`client_id/client_secret`), SSI (`client_id/api_key/api_secret`), TCBS (`api_key`) — schema doc tu vnbroker 3.10.0 probe runtime (`vnbroker/broker/ssi/client.py:71-86`, `vnbroker/broker/tcbs/client.py:73-87`, `user_workspace/broker/dnse.py:67-70`); BE `CREDENTIAL_REQUIRED_KEYS` cap nhat theo provider; field co nhan, hien/an gia tri, helper VI/EN, nhan "chua co duong chay" cho SSI/TCBS.
+- **Gates**: BE **10/10 OK** tren VPS (core-db truc tiep) · FE **11/11** · tsc **0** · E2E staging **2 passed** (4 GET 200, khong POST khi form rong) · anh `docs/evidence/broker-config-r1/e2e/broker-tabs-r2.png` da mo xem. Chi tiet: `docs/evidence/broker-config-r1/gates.md`.
+- **Infra**: cert public `docker.edusuccess.vn` dang tra `CN=erp.edusuccess.vn` (SNI sai) ⇒ E2E chay qua SSH tunnel `127.0.0.1:8081`; ticket infra rieng, khong nam trong slice.
 ## Entry 654: Broker Config R1 — schema credential + cross-consistency + runtime wiring (E2E thật)
 
 - **Date**: 2026-11-26 · **Type**: feat/fix · **Branch**: `feat/broker-config-r1` · Claim `broker-config-r1` · commits `fafd51501` (claim) + `321981221` (code).
