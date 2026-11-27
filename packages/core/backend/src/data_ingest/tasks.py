@@ -3588,12 +3588,31 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             if index < len(years) - 1:
                 time.sleep(3)  # nhịp giữa các năm — tránh burst ALL-export
     except Exception as exc:  # CafeF may 400/503 on the ALL export too
+        # Fallback có nhãn — KHÔNG trộn basis, KHÔNG giả là CafeF.
+        from market_data.cafef.fallback import apply_provider_fallback
+
+        fallback = apply_provider_fallback(symbol, from_year=from_year)
+        if fallback.get('status') == 'applied_fallback':
+            PriceRebaseRun.objects.filter(pk=audit.pk).update(
+                status=PriceRebaseRun.Status.APPLIED_FALLBACK,
+                detail=f"cafef_fetch_error;provider={fallback.get('provider')};{str(exc)[:120]}",
+                rows_updated=fallback.get('rows_updated', 0), finished_at=now(),
+            )
+            return {
+                'status': 'applied_fallback', 'symbol': symbol,
+                'trigger': trigger, 'provider': fallback.get('provider'),
+                'rows_updated': fallback.get('rows_updated', 0),
+            }
+        reason = str(exc)[:300]  # root cause CafeF vẫn là reason chính
+        detail = f"{reason[:120]};fallback={fallback.get('status')}:{fallback.get('reason', '')}"[:300]
         PriceRebaseRun.objects.filter(pk=audit.pk).update(
             status=PriceRebaseRun.Status.FAILED,
-            detail=str(exc)[:300], finished_at=now(),
+            detail=detail, finished_at=now(),
         )
         return {
-            'status': 'fetch_error', 'reason': str(exc)[:300],
+            'status': 'fetch_error', 'reason': reason,
+            'fallback_status': fallback.get('status'),
+            'fallback_reason': fallback.get('reason'),
             'symbol': symbol, 'trigger': trigger,
         }
     if not new_rows:

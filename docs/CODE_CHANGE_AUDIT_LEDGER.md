@@ -1,3 +1,10 @@
+## Entry 666: Fallback CafeF dài hạn — provider-adjusted có nhãn
+
+- **Date**: 2026-11-27 · **Type**: feat/fix · **Branch** `feat/cafef-fallback` · Claim `cafef-fallback` (in-progress).
+- **Root cause**: VPS CafeF 503 liên tục; KBS/VCI `adjusted=False` cũng route sang CafeF ⇒ không có raw khi CafeF chết. Không có auto-fallback nào trước đó.
+- **Changes**: `market_data/cafef/fallback.py` (new: fetch KBS `adjusted=True`, `validate_fallback` fail-closed, `apply_provider_fallback` ghi `adj_close`/`adj_factor=1`/`price_source='vnbroker_fallback'`/audit); `data_ingest/tasks.py` rebase gọi fallback khi `fetch_error`, trả `applied_fallback`; `models.py` thêm `Status.APPLIED_FALLBACK`; migration `0014_alter_pricerebaserun_status.py` do `makemigrations` sinh. **Không sửa FE** — `chartAdapter.js:90` đã có nhãn `provider_adjusted_fallback`.
+- **Gates**: TDD đỏ → **32 passed** (6 file), `manage.py check` 0 issues. Deploy + E2E fallback 1 mã trên staging **CHƯA CHẠY** (chờ PR).
+- **Evidence**: `docs/evidence/price-integrity/CAFEF_FALLBACK_IMPL_20261127.md`.
 ## Entry 665: Probe CafeF lần 2 — VPS VẪN 503, local vẫn 200
 
 - **Date**: 2026-11-27 · **Type**: measurement/docs-only · **Branch** `feat/cafef-probe-r2` · Claim `cafef-probe-r2`.
