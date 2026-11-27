@@ -38,7 +38,9 @@ django/.../compiler.py:2174   cursor.close()
 |---|---|
 | Unit 4 file | **22 passed** |
 | `pre-push-gate` | Lần đầu `1 FAIL / 35 PASS` tại `hook-mode` (`node:fs:2413` sau 8 case PASS); chạy riêng `node tools/opencode-global/verify-hook-mode.mjs` → **PASS**, chạy lại `pre-push-gate` → **36 PASS / 0 FAIL**. Ghi là flake transient, không bỏ qua. |
-| Chạy lại `check_price_integrity` trên staging sau deploy | **CHƯA CHẠY** (chờ PR merge + deploy) |
+| Chạy lại `check_price_integrity` trên staging sau deploy | **ĐÃ CHẠY** — PR #570 merge `7d91adf0a`, deploy xong; lệnh `python manage.py check_price_integrity --since 2026-01-01 --json` trả `{"ok": true, "violations": [], "counts": {...all 0...}, "rows": 281221, "cafef_rows": 0}` + `price_integrity: ok` (exit 0) |
+
+**Giải thích thêm:** `cafef_rows=0` cho thấy 2026 vẫn chưa có dòng `price_source='cafef'` (backfill còn block bởi CafeF bulk 503) — đúng với `CAFEF_BLOCK_WATCH_20261127.md`. Lần này không bật `--min-coverage` nên `coverage_below_min` không được tính; `PRICE_ADJUSTED_DISPLAY` vẫn `0` nên consumer đọc raw close, không blank chart. |
 
 ## Bài học cần ghi
 
