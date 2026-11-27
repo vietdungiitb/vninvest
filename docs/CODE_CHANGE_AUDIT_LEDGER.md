@@ -1,3 +1,10 @@
+## Entry 667: Fix fallback E2E — validate_fallback nhận ORM object
+
+- **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-orm-fix` · Claim `fallback-orm-fix` (in-progress).
+- **Fail-before**: sau PR #573, E2E fallback AAH trên staging trả `AttributeError: 'DailyPrice' object has no attribute 'get'` tại `fallback.py:48` — unit test dùng dict nên không bắt được.
+- **Fix**: `_field()` chấp nhận dict lẫn ORM object; test fail-before → **8 passed**.
+- **E2E khác**: TPB bị guard `cafef_rows_present` chặn đúng (0 UPDATE); 537 mã không có dòng cafef là nhóm fallback an toàn.
+- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR merge + deploy). Evidence: `docs/evidence/price-integrity/FALLBACK_ORM_FIX_20261127.md`.
 ## Entry 666: Fallback CafeF dài hạn — provider-adjusted có nhãn
 
 - **Date**: 2026-11-27 · **Type**: feat/fix · **Branch** `feat/cafef-fallback` · Claim `cafef-fallback` (in-progress).

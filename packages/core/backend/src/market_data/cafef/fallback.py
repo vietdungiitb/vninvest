@@ -41,18 +41,25 @@ def fetch_provider_series(symbol: str, start: date, end: date,
     return rows
 
 
-def validate_fallback(old_rows: list[dict], new_rows: list[dict]) -> tuple[bool, str]:
+def _field(row: Any, name: str, default: Any = None) -> Any:
+    """Chấp nhận cả dict lẫn ORM model — caller truyền DailyPrice object."""
+    if isinstance(row, dict):
+        return row.get(name, default)
+    return getattr(row, name, default)
+
+
+def validate_fallback(old_rows: list[Any], new_rows: list[Any]) -> tuple[bool, str]:
     """Fail-closed: không trộn basis, coverage đủ, thứ tự ngày hợp lệ."""
     if not old_rows or not new_rows:
         return False, 'insufficient_coverage'
-    if any(str(r.get('price_source', '')).lower() == 'cafef' for r in old_rows):
+    if any(str(_field(r, 'price_source', '')).lower() == 'cafef' for r in old_rows):
         return False, 'cafef_rows_present'
     if len(new_rows) / len(old_rows) < MIN_COVERAGE:
         return False, 'insufficient_coverage'
-    days = [r['date'] for r in new_rows]
+    days = [_field(r, 'date') for r in new_rows]
     if days != sorted(days):
         return False, 'unsorted_series'
-    if any(Decimal(str(r['close'])) <= 0 for r in new_rows):
+    if any(Decimal(str(_field(r, 'close'))) <= 0 for r in new_rows):
         return False, 'nonpositive_price'
     return True, 'ok'
 

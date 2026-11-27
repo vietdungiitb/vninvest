@@ -1,6 +1,7 @@
 """Fallback provider-adjusted khi CafeF mất kết nối — fail-before tests."""
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
@@ -46,6 +47,13 @@ def test_validate_fallback_rejects_cafef_rows_to_avoid_mixing():
     old = [{'date': date(2026, 1, 5), 'price_source': 'cafef'}]
     new = [{'date': date(2026, 1, 5), 'close': 1}]
     assert validate_fallback(old, new) == (False, 'cafef_rows_present')
+
+
+def test_validate_fallback_accepts_orm_like_rows():
+    # E2E 2026-11-27: apply_provider_fallback truyen DailyPrice object, khong phai dict.
+    old = [SimpleNamespace(date=date(2026, 1, 5), price_source='vnbroker_legacy')]
+    new = [{'date': date(2026, 1, 5), 'close': Decimal('13934.04')}]
+    assert validate_fallback(old, new) == (True, 'ok')
 
 
 def test_validate_fallback_rejects_low_coverage():
