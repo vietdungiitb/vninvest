@@ -11,6 +11,18 @@ from market_data.models import CafefDailyPrice
 from .fetcher import fetch_xlsx
 from .parser import parse_xlsx_rows
 
+MODEL_FIELDS = (
+    'symbol', 'date', 'close_raw', 'close_adjusted', 'open_raw',
+    'high_raw', 'low_raw', 'volume', 'value', 'change_pct', 'source',
+)
+
+
+def normalize_row(row: dict) -> dict:
+    """vnbroker 3.10 frame carries widget-only fields; ORM accepts only these."""
+    out = {k: row[k] for k in MODEL_FIELDS if k in row and k != 'source'}
+    out['source'] = row.get('source') or 'cafef'
+    return out
+
 
 def _fetch_rows(exchange: str, year: int) -> list[dict]:
     """Nguồn duy nhất = vnbroker 3.9.0 bulk_year; fallback local khi chưa pin.
@@ -102,14 +114,13 @@ def run_import(exchange: str, year: int, dry_run: bool = False) -> dict:
     for row in rows:
         key = (row['symbol'], row['date'])
         obj = existing.get(key)
+        cleaned = normalize_row(row)
         if obj is None:
-            to_create.append(CafefDailyPrice(**row))
+            to_create.append(CafefDailyPrice(**cleaned))
             continue
         for field in _UPDATABLE:
-            # vnbroker bulk_year frame không có cột change_pct — giữ giá trị cũ,
-            # KHÔNG xoá bằng None, và KHÔNG crash (O1' audit M0 v2).
-            if field in row:
-                setattr(obj, field, row[field])
+            if field in cleaned and cleaned[field] is not None:
+                setattr(obj, field, cleaned[field])
         to_update.append(obj)
 
     with transaction.atomic():

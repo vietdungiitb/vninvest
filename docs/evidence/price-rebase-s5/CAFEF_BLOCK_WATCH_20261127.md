@@ -9,9 +9,15 @@
 - Dòng 2026 trên staging hiện **0 dòng `price_source='cafef'`**; `PRICE_ADJUSTED_DISPLAY=0` nên chart vẫn đọc raw, chưa blank. Nếu bật flag khi chưa backfill → `chartAdapter` lọc unmapped → blank.
 - Đã dọn 433.373 dòng `adj_close` tàn dư (có bảng rollback `market_data_legacy_adj_backup_20261126`).
 
+## Kết quả kiểm tra 2026-11-27
+
+- Probe đơn lẻ từ container VPS: `HOSE ALL 2026` → **200 / 3.735.439 bytes / PK**; `TPB 2026` → **200 / 12.232 bytes / PK**. ⇒ IP không bị chặn cứng.
+- Tuy nhiên `bulk_year('HOSE', 2026, end_date=2026-11-27, use_cache=False)` → **"failed after 3 attempts"** (503) khi chạy ngay sau đó; `run_import` fallback sang local `fetcher.fetch_xlsx` cũng 503 (EndDate `12/31/2026` — lỗi đã biết). Kết luận: **bị rate-limit theo tần suất**, chưa tải được toàn bộ dữ liệu để backfill.
+- Phát hiện và sửa lỗi đi kèm: `market_data/cafef/importer.py` gọi `CafefDailyPrice(**row)` với frame vnbroker 3.10 (có `time/open/high/low/close/put_through_*/price_basis/coverage/fetched_at`) ⇒ `TypeError`. Đã thêm `normalize_row()` lọc field model; TDD 1/1. Đây là blocker đã cảnh báo từ trước, giờ mới lộ ra khi thật sự chạy import 2026.
+
 ## Việc phải làm hôm nay (checklist)
 
-- [ ] 1. Probe lại từ VPS: status/bytes của `PriceHistoryExport.ashx` (HOSE ALL 2026) và `PriceHistory.ashx` (TPB 2026). Ghi kết quả vào file này.
+- [x] 1. Probe lại từ VPS: 200/3.735.439 bytes (ALL), 200/12.232 bytes (TPB) — ghi ở trên. Bulk vẫn 503 ⇒ chuyển tiếp mục 2.
 - [ ] 2. Nếu VPS **vẫn bị block**: chọn một trong hai đường:
   - (a) fetch từ **local IP** rồi đẩy dữ liệu theo lô vào `CafefDailyPrice`/`DailyPrice` (đã fetch thật được 88.879 dòng HOSE 2026); hoặc
   - (b) implement fallback `VCI.quote.history(adjusted=True)` ghi `price_source='vnbroker_fallback'` (thiết kế tại `CAFEF_FALLBACK_ANALYSIS_20261127.md`).
