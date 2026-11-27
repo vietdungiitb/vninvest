@@ -96,6 +96,8 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
             ['intraday_ticks', 'intraday_bars'],
         )
 
+        tick_count = IntradayTick.objects.filter(symbol=_SYMBOL).count()
+        self.assertEqual(tick_count, 3, 'batch 2 phai duoc luu 1 tick moi vao DB')
         bar = IntradayBar.objects.get(symbol=_SYMBOL, timeframe='1H', datetime=_floor_intraday_bucket(self.t10, '1H'))
         self.assertEqual(bar.volume, 501000, 'batch 2 phai cong don, khong duoc ghi de 1000')
 
