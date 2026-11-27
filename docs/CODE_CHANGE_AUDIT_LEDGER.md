@@ -1,3 +1,9 @@
+## Entry 665: Probe CafeF lần 2 — VPS VẪN 503, local vẫn 200
+
+- **Date**: 2026-11-27 · **Type**: measurement/docs-only · **Branch** `feat/cafef-probe-r2` · Claim `cafef-probe-r2`.
+- **Đo thật**: từ container staging `SINGLE ALL/TPB 503 / 2446 bytes HTML`, `bulk_year(... HOSE 2026)` → `failed after 3 attempts`, `DB cafef_2026=0`; từ local cùng params → `200 / 3.735.439 bytes PK` (ALL) và `200 / 12.232 bytes PK` (TPB).
+- **Kết luận**: VPS vẫn bị rate-limit/cooldown (không còn giả định "request đơn lẻ 200 là hết block"). Backfill 2011–2026 **chưa làm được từ staging**; path dự phòng là fetch local rồi đẩy lô. `PRICE_ADJUSTED_DISPLAY=0` nên chart đọc raw, không blank; rủi ro là adjusted stale.
+- **Gates**: không đổi code; `pre-push-gate` chạy lại trước push. Evidence: `docs/evidence/price-integrity/CAFEF_PROBE_20261127_R2.md`.
 ## Entry 664: Fix check_price_integrity trên staging — keyset pagination thay named cursor
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/integrity-cursor` · Claim `integrity-cursor`.
