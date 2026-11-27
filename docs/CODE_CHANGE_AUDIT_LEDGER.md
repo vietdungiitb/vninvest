@@ -3,20 +3,20 @@
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-empty-fix` · Claim `fallback-empty-fix` (in-progress).
 - **Fail-before**: E2E AAH `no_data` dù provider KBS có 223 dòng — nhánh `if not new_rows` không gọi fallback (chỉ nhánh exception gọi).
 - **Fix**: nhánh empty cũng gọi `apply_provider_fallback`, trả `applied_fallback` hoặc `no_data` + `fallback_status`/`reason`. TDD **9 passed**.
-- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR). Evidence: `docs/evidence/price-integrity/FALLBACK_EMPTY_FIX_20261127.md`.
+- **E2E THÀNH CÔNG**: PR #576 merge `6dd274a97`, AAH `applied_fallback` / 222 dòng / `vnbroker_fallback`, gate `ok=true` 0 violation. Evidence tổng: `docs/evidence/price-integrity/FALLBACK_E2E_CLOSE_20261127.md`.
 ## Entry 668: Fix coverage scope cho fallback — old_rows theo from_year
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-scope-fix` · Claim `fallback-scope-fix` (in-progress).
 - **Fail-before**: E2E AAH `insufficient_coverage` dù KBS trả 223 dòng / DB có 222 dòng 2026 — vì `old_rows` lấy toàn bộ lịch sử mã.
 - **Fix**: scope `old_qs.filter(date__gte=date(from_year,1,1))`; guard `cafef_rows_present` vẫn toàn chuỗi. TDD 1 test mới đỏ → **9 passed**.
-- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR). Evidence: `docs/evidence/price-integrity/FALLBACK_SCOPE_FIX_20261127.md`.
+- **E2E SAU**: PR #575 merge + deploy; phát hiện tiếp lỗi empty response → Entry 669.
 ## Entry 667: Fix fallback E2E — validate_fallback nhận ORM object
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-orm-fix` · Claim `fallback-orm-fix` (in-progress).
 - **Fail-before**: sau PR #573, E2E fallback AAH trên staging trả `AttributeError: 'DailyPrice' object has no attribute 'get'` tại `fallback.py:48` — unit test dùng dict nên không bắt được.
 - **Fix**: `_field()` chấp nhận dict lẫn ORM object; test fail-before → **8 passed**.
 - **E2E khác**: TPB bị guard `cafef_rows_present` chặn đúng (0 UPDATE); 537 mã không có dòng cafef là nhóm fallback an toàn.
-- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR merge + deploy). Evidence: `docs/evidence/price-integrity/FALLBACK_ORM_FIX_20261127.md`.
+- **E2E SAU**: PR #574 merge + deploy; phát hiện tiếp lỗi coverage scope → Entry 668.
 ## Entry 666: Fallback CafeF dài hạn — provider-adjusted có nhãn
 
 - **Date**: 2026-11-27 · **Type**: feat/fix · **Branch** `feat/cafef-fallback` · Claim `cafef-fallback` (in-progress).
