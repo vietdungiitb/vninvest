@@ -1,3 +1,10 @@
+## Entry 677: Quyết định Owner bổ sung — Anchor A + DNSE Tier 2 (DOC-ONLY)
+
+- **Date**: 2026-11-27 · **Type**: docs/decision · **Branch** `docs/ssot-decisions-rev2` · Claim `ssot-decisions-rev2`.
+- **D-08**: chọn Anchor A — thống nhất toàn chuỗi `<=T0` từ 1 nguồn VCI/KBS, `base_as_of=T0`, `adj_basis='anchor_provider'`; CafeF giữ trong `CafefDailyPrice` chỉ đối chiếu; mục tiêu 0 vết nối lệch basis 2025/2026.
+- **D-09**: Owner cấp `DNSE_API_KEY`/`DNSE_API_SECRET` nhưng DNSE rate-limit nặng ⇒ Tier 2 dự phòng, cap 1–2 worker, budget riêng, **cấm deep backfill** (DNSE `history()` pagination 1–1000 tại `explorer/dnse/quote.py:443-458`). Thêm 418 vào `_FAILOVER_MARKERS` (`dnse/quote.py:125-142`) và `RateLimitError`; cap 1 worker cho tới khi đo `safe_rps_dnse` trên VPS. Secret chỉ inject qua env, không commit.
+- **CHƯA XÁC MINH**: mức độ rate-limit DNSE chưa đo; D-07 mở rộng phải ramp thận trọng.
+- **Evidence**: `docs/evidence/price-integrity/SSOT_DECISIONS_REV2_20261127.md`. Không code/secret/migration/flag.
 ## Entry 676: SSOT adj_close Rev.2 — sửa audit NEED_REVISION (D-01..D-07)
 
 - **Date**: 2026-11-27 · **Type**: docs/design-revision · **Branch** `docs/ssot-adjustment-rev2` · Claim `ssot-adjustment-rev2` (in-progress).
