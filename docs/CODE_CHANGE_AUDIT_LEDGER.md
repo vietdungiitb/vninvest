@@ -1,3 +1,12 @@
+## Entry 678: Kế hoạch + 3 vòng audit độc lập cho Market Data Integrity / Market CVD / Whale SSOT (DOC-ONLY)
+
+- Ngày 2026-11-27 · Agent `mdi-plan-1127` · Branch `docs/mdi-plan-1127` (rebase `origin/dev d446515b2`).
+- Phạm vi: `docs/PLAN_MARKET_DATA_INTEGRITY_1127.md` (REV.3, 196 dòng) + `docs/evidence/market-data-integrity/{AUDIT_PLAN_1127.md, AUDIT_PLAN_1127_R2.md, AUDIT_PLAN_1127_R3.md, CONSENSUS_1127.md}`.
+- Kết quả B3 3 vòng: NEED_REVISION (12 objections, 2 P0) → NEED_REVISION (11/12) → **AGREE**. Mô phỏng có control xác nhận M04 fixture 2 bucket `buy_strength 62.727 → 50.0` (đỏ thật trên code cũ).
+- Đính chính: F-02 đã hết lỗi code (`6e50418a9`); migration head `0014` (không đặt `0013`); cache key CVD thiếu `metric`; `WhaleAlertCanonical` không có `session_phase`; ngưỡng whale `200M` vs `500M`.
+- Owner chốt 2026-11-27: S0 commit + PR; mở khóa `S1 → S2 → S3 → S5`, S4 khóa thi hành staging, S6 cuối; Q2 = KHÔNG ghi staging; Q3 theo G-2 (`seq_in_key` nếu provider không có trade ID); Q4..Q9 đồng ý; Q9 giữ default `metric=whale`.
+- Gates: `check-multi-agent` exit 0; `preflight --staged` OK; 2 commit (claim + 5 file doc, 614 dòng mới). **CHƯA CHẠY**: pytest/build/makemigrations/probe staging (doc-only).
+
 ## Entry 677: Quyết định Owner bổ sung — Anchor A + DNSE Tier 2 (DOC-ONLY)
 
 - **Date**: 2026-11-27 · **Type**: docs/decision · **Branch** `docs/ssot-decisions-rev2` · Claim `ssot-decisions-rev2`.
