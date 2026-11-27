@@ -75,7 +75,12 @@ def apply_provider_fallback(symbol: str, from_year: int = 2011,
     symbol = symbol.upper()
     if DailyPrice.objects.filter(symbol=symbol, price_source='cafef').exists():
         return {'status': 'halted_data_error', 'reason': 'cafef_rows_present'}
-    old_rows = list(DailyPrice.objects.filter(symbol=symbol).exclude(price_source='cafef'))
+    old_qs = DailyPrice.objects.filter(symbol=symbol).exclude(price_source='cafef')
+    # Coverage phải so trên CÙNG khoảng ngày với fetch — nếu không, mã có
+    # nhiều năm legacy sẽ luôn trả insufficient_coverage dù provider đầy đủ.
+    if from_year:
+        old_qs = old_qs.filter(date__gte=date(from_year, 1, 1))
+    old_rows = list(old_qs)
     if not old_rows:
         return {'status': 'no_data', 'symbol': symbol}
     try:
