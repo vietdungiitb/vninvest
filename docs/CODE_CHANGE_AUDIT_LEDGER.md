@@ -1,3 +1,9 @@
+## Entry 660: OPEN — theo dõi CafeF block VPS IP, phải kiểm tra/tính lại 2026-11-27
+
+- **Date**: 2026-11-27 · **Type**: docs/tracking · **Trạng thái**: **OPEN**, owner yêu cầu "quay lại sau trong ngày".
+- CafeF từ IP VPS vẫn có khả năng 400/503 (đã đo 2026-11-26); local IP trả 200. Không có auto-fallback sang VCI/KBS; job rebase trả `fetch_error` và không ghi `adj_close`.
+- Việc hôm nay: probe lại từ VPS; nếu vẫn block → fetch local rồi đẩy lô hoặc implement fallback có nhãn `vnbroker_fallback`; **tính lại** `adj_close` tới khi `status='applied'`; backfill 2011–2026; chỉ bật lại `PRICE_ADJUSTED_DISPLAY=1` sau parity.
+- Tiêu chí đóng + lệnh tái tạo: `docs/evidence/price-rebase-s5/CAFEF_BLOCK_WATCH_20261127.md`. Liên quan `CAFEF_FALLBACK_ANALYSIS_20261127.md`.
 ## Entry 657: Chot phien broker-config-r1 — PR #560 MERGED + E2E sau merge + handoff
 
 - **Date**: 2026-11-26 · **Type**: session-close/docs · Branch `docs/broker-config-r1-close` · agent `broker-config-r1`.
