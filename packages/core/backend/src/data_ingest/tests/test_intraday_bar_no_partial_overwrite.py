@@ -1,0 +1,114 @@
+"""S1 / REQ-BE-M01 — fail-before: khong duoc ghi de cụt IntradayBar bang batch partial.
+
+Given bucket 1H da co 500.000 cp tu batch 1; When batch 2 them 1.000 cp luc 10:45
+roi chay _hydrate_intraday_symbols; Then volume phai la 501.000 (khong giam ve 1.000).
+
+Fail-before tren code cu: assertion 501000 that 1000 -> DO.
+"""
+from __future__ import annotations
+
+from datetime import datetime, time
+from decimal import Decimal
+from unittest.mock import patch
+
+import pytz
+from django.test import TestCase
+from django.utils import timezone
+
+from data_ingest.tasks import _hydrate_intraday_symbols, _floor_intraday_bucket
+from market_data.models import IntradayBar, IntradayTick
+
+
+_VN_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
+_SYMBOL = 'VIC'
+
+
+def _local(day: object, hour: int, minute: int) -> datetime:
+    return timezone.make_aware(datetime.combine(day, time(hour, minute)), _VN_TZ)
+
+
+def _raw_trade(ts: datetime, volume: int, price: str = '100000') -> dict:
+    return {
+        'timestamp': ts.isoformat(),
+        'price': price,
+        'volume': volume,
+        'side': 'BUY',
+        'match_type': 'NormalMatch',
+    }
+
+
+class IntradayBarNoPartialOverwriteTests(TestCase):
+    def setUp(self) -> None:
+        self.day = datetime(2026, 11, 25).date()
+        self.t10 = _local(self.day, 10, 0)
+        self.t1030 = _local(self.day, 10, 30)
+        self.t1045 = _local(self.day, 10, 45)
+        # Batch 1 da luu trong DB: 250.000 + 250.000 = 500.000 cp.
+        for ts in (self.t10, self.t1030):
+            IntradayTick.objects.create(
+                symbol=_SYMBOL,
+                timestamp=ts,
+                price=Decimal('100000'),
+                volume=250000,
+                side='BUY',
+                match_type='NormalMatch',
+                source='vnbroker_intraday',
+            )
+        IntradayBar.objects.create(
+            symbol=_SYMBOL,
+            datetime=_floor_intraday_bucket(self.t10, '1H'),
+            timeframe='1H',
+            open=Decimal('100000'),
+            high=Decimal('100000'),
+            low=Decimal('100000'),
+            close=Decimal('100000'),
+            volume=500000,
+            source='vnbroker_intraday',
+        )
+        # Control: bucket khong bi batch 2 anh huong.
+        IntradayBar.objects.create(
+            symbol=_SYMBOL,
+            datetime=_floor_intraday_bucket(_local(self.day, 9, 0), '1H'),
+            timeframe='1H',
+            open=Decimal('99000'),
+            high=Decimal('99000'),
+            low=Decimal('99000'),
+            close=Decimal('99000'),
+            volume=100000,
+            source='vnbroker_intraday',
+        )
+
+    @patch('data_ingest.tasks._fetch_tape_with_timeout')
+    def test_batch2_must_accumulate_not_overwrite(self, mock_fetch) -> None:
+        # Lan 1: batch cu (da co trong DB) — khong doi bar.
+        mock_fetch.return_value = {
+            'trades': [_raw_trade(self.t10, 250000), _raw_trade(self.t1030, 250000)],
+            'source': 'vnbroker',
+        }
+        _hydrate_intraday_symbols(
+            [{'symbol': _SYMBOL, 'page_size': 50}],
+            ['intraday_ticks', 'intraday_bars'],
+        )
+        # Lan 2: batch moi 1.000 cp luc 10:45.
+        mock_fetch.return_value = {'trades': [_raw_trade(self.t1045, 1000)], 'source': 'vnbroker'}
+        _hydrate_intraday_symbols(
+            [{'symbol': _SYMBOL, 'page_size': 50}],
+            ['intraday_ticks', 'intraday_bars'],
+        )
+
+        bar = IntradayBar.objects.get(symbol=_SYMBOL, timeframe='1H', datetime=_floor_intraday_bucket(self.t10, '1H'))
+        self.assertEqual(bar.volume, 501000, 'batch 2 phai cong don, khong duoc ghi de 1000')
+
+    @patch('data_ingest.tasks._fetch_tape_with_timeout')
+    def test_unaffected_bucket_keeps_volume(self, mock_fetch) -> None:
+        mock_fetch.return_value = {'trades': [_raw_trade(self.t1045, 1000)], 'source': 'vnbroker'}
+        _hydrate_intraday_symbols(
+            [{'symbol': _SYMBOL, 'page_size': 50}],
+            ['intraday_ticks', 'intraday_bars'],
+        )
+        control = IntradayBar.objects.get(
+            symbol=_SYMBOL,
+            timeframe='1H',
+            datetime=_floor_intraday_bucket(_local(self.day, 9, 0), '1H'),
+        )
+        self.assertEqual(control.volume, 100000, 'bucket khong anh huong phai giu nguyen')
