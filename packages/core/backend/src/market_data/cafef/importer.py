@@ -3,6 +3,7 @@
 KHÔNG ghi vào DailyPrice — bảng này chỉ phục vụ đối chiếu (plan AGREE).
 """
 import time
+from datetime import date, datetime
 
 from django.db import transaction
 
@@ -24,37 +25,53 @@ def normalize_row(row: dict) -> dict:
     return out
 
 
+def fetch_year_paced(exchange: str, year: int, base_delay: int = 10,
+                     attempts: int = 4, max_delay: int = 120):
+    """Fetch ALL-export with exponential backoff — CafeF rate-limits by IP burst.
+
+    Single small windows also return 503 during cooldown, so pacing (not just
+    smaller payloads) is the mitigation. Long sleeps belong in a Celery job,
+    never in a request path.
+    """
+    from vnbroker import Vnbroker
+
+    reference = Vnbroker(show_log=False).reference('cafef')
+    today = datetime.now().date()
+    end_date = date(year, 12, 31) if year < today.year else today
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            return reference.bulk_year(
+                exchange, year, end_date=end_date, use_cache=False,
+            )
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(min(base_delay * (2 ** attempt), max_delay))
+    raise last_error
+
+
 def _fetch_rows(exchange: str, year: int) -> list[dict]:
     """Nguồn duy nhất = vnbroker 3.9.0 bulk_year; fallback local khi chưa pin.
 
     vnbroker.bulk_year tra list dict da normalize (co close_raw/close_adjusted/...),
     khong can parse XLSX lai o vninvest.
     """
-    from vnbroker import Vnbroker
-
-    client = Vnbroker(show_log=False)
-    reference = client.reference('cafef')
-    if hasattr(reference, 'bulk_year'):
-        try:
-            frame = reference.bulk_year(exchange, year)
-            if frame is not None and not getattr(frame, 'empty', True):
-                return frame.to_dict('records')
-        except Exception:  # một số năm CafeF trả lỗi ⇒ fallback local XLSX
-            pass
-    return parse_xlsx_rows(fetch_xlsx(exchange, year))
+    frame = fetch_year_paced(exchange, year)
+    if frame is not None and not getattr(frame, 'empty', True):
+        return frame.to_dict('records')
+    return []
 
 
 def _fetch_rows_with_rejected(exchange: str, year: int):
     """Trả (rows, rejected) — local path đếm được rejected, vnbroker path trả []."""
     try:
-        from vnbroker import Vnbroker
-        ref = Vnbroker(show_log=False).reference('cafef')
-        frame = ref.bulk_year(exchange, year)
+        frame = fetch_year_paced(exchange, year)
         if frame is not None and not getattr(frame, 'empty', True):
             return frame.to_dict('records'), []
     except Exception:
         pass
-    return parse_xlsx_rows(fetch_xlsx(exchange, year), with_rejected=True)
+    return [], []
 
 _CACHE_TTL_SECONDS = 600
 _preview_cache = {}

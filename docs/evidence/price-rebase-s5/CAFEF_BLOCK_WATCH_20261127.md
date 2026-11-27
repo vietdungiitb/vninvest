@@ -15,6 +15,13 @@
 - Tuy nhiên `bulk_year('HOSE', 2026, end_date=2026-11-27, use_cache=False)` → **"failed after 3 attempts"** (503) khi chạy ngay sau đó; `run_import` fallback sang local `fetcher.fetch_xlsx` cũng 503 (EndDate `12/31/2026` — lỗi đã biết). Kết luận: **bị rate-limit theo tần suất**, chưa tải được toàn bộ dữ liệu để backfill.
 - Phát hiện và sửa lỗi đi kèm: `market_data/cafef/importer.py` gọi `CafefDailyPrice(**row)` với frame vnbroker 3.10 (có `time/open/high/low/close/put_through_*/price_basis/coverage/fetched_at`) ⇒ `TypeError`. Đã thêm `normalize_row()` lọc field model; TDD 1/1. Đây là blocker đã cảnh báo từ trước, giờ mới lộ ra khi thật sự chạy import 2026.
 
+## Rải rác để tránh rate-limit (trả lời owner)
+
+- **Có thể rải rác**, nhưng thử nghiệm 2026-11-27 cho thấy **cửa sổ 1 tháng cũng trả 503** ngay sau một request đơn lẻ 200 ⇒ IP đang trong **cooldown theo tần suất**, không phải do payload lớn. Vì vậy chỉ chia nhỏ là chưa đủ, phải có **backoff**.
+- Đã implement `market_data/cafef/importer.py::fetch_year_paced`: thử `reference.bulk_year`, nếu lỗi thì `sleep(min(10 * 2^attempt, 120))`, tối đa 4 lần (tổng chờ tối đa ~210s); dùng `end_date` clamp theo hôm nay, `use_cache=False`. `_fetch_rows`/`_fetch_rows_with_rejected` đã dùng helper này. TDD **3/3** (`test_cafef_paced_fetch` + `test_cafef_importer_normalize`).
+- ⚠ Sleep dài **không được chạy trong request path** — cần gọi từ Celery job/ops script. Chưa có job wrapper riêng; residual.
+- Chưa chạy import thật sau khi có backoff (IP vẫn đang 503 khi thử).
+
 ## Việc phải làm hôm nay (checklist)
 
 - [x] 1. Probe lại từ VPS: 200/3.735.439 bytes (ALL), 200/12.232 bytes (TPB) — ghi ở trên. Bulk vẫn 503 ⇒ chuyển tiếp mục 2.
