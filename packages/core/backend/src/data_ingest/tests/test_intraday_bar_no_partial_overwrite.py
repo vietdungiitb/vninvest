@@ -167,6 +167,13 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
         ])
         print('DIAG warm bar_counts=', result.get('bar_counts'))
         print('DIAG bars=', sorted((b.timeframe, str(b.datetime), b.volume) for b in IntradayBar.objects.filter(symbol='ACB')))
+        from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
+        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES
+        rows = list(IntradayTick.objects.filter(symbol='ACB').values('timestamp', 'price', 'volume', 'source').order_by('timestamp'))
+        affected = {(tf, _floor_intraday_bucket(r['timestamp'], tf)) for r in rows for tf in _INTRADAY_BAR_TIMEFRAMES}
+        payloads = recompute_bar_payloads_from_ticks('ACB', rows, affected, _floor_intraday_bucket, _INTRADAY_BAR_TIMEFRAMES)
+        print('DIAG db_affected=', sorted(k[0] + '@' + str(k[1]) for k in affected))
+        print('DIAG db_payloads=', sorted(k[0] + '@' + str(k[1]) for k in payloads))
         self.assertTrue(True)
 
     @patch('data_ingest.tasks._fetch_tape_with_timeout')
