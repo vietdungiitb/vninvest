@@ -519,6 +519,9 @@ def _hydrate_intraday_symbols(
                     for trade in normalized_trades
                     for timeframe in _INTRADAY_BAR_TIMEFRAMES
                 }
+                logger.warning('DIAG S1 tape_ts=%s affected=%s',
+                               [str(t['timestamp']) for t in normalized_trades],
+                               sorted(f'{k[0]}@{k[1].isoformat()}' for k in affected_keys))
                 bar_payloads: dict[tuple[str, datetime], dict] = {}
                 if affected_keys:
                     bucket_starts = [key[1] for key in affected_keys]
