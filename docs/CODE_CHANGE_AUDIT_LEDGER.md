@@ -1,3 +1,11 @@
+## Entry 679: Phase 0 SSOT — STOP do coverage 74,39% < 95%
+
+- **Date**: 2026-11-27 · **Type**: docs/measurement · **Branch** `feat/ssot-phase0` · Claim `ssot-phase0` (in-progress).
+- **B3/B4**: audit subagent NEED_REVISION (3 objection: active không định nghĩa, benchmark sai thông số, thiếu rights/DNSE waiver) → Rev.2 **PASS**.
+- **Probe thật staging**: `ACTIVE=1400`, `WITH2026=1835`, `DENOM=1351`, `COVERED=1005`, `RATIO=0.7439`, `STOP=True`. 963 mã 2026 toàn `unmapped_cafef` nằm ngoài tập `covered` theo định nghĩa đã audit.
+- **Quyết định**: dừng đúng STOP condition, **không tự đổi định nghĩa**; benchmark/rights/DNSE ghi `CHƯA CHẠY`; không ghi DB/flag/migration.
+- **Cần Owner**: giữ định nghĩa → xử lý 963 mã `unmapped_cafef`, hoặc mở plan v3 (có audit lại) để định nghĩa lại `covered`.
+- **Evidence**: `docs/evidence/price-integrity/../ssot-implementation/PHASE0_EVIDENCE_20261127.md`.
 ## Entry 678: SSOT Phase 1 — kế hoạch + audit 3 vòng + vnbroker bulk failover
 
 - **Date**: 2026-11-27 · **Type**: docs/plan + code (repo sibling) · **Branch** `feat/ssot-phase1` (cả 2 repo) · Claim `ssot-phase1`.
