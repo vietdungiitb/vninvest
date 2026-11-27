@@ -1,3 +1,10 @@
+## Entry 670: Phân tích hiển thị chart khi thiếu lịch sử CafeF
+
+- **Date**: 2026-11-27 · **Type**: docs/analysis · **Branch** `docs/chart-gap-analysis` · Claim `chart-gap-analysis`.
+- **Trace**: `/chart/` BE không fill ngày (`stock_mgmt_native_views.py:2053-2056`); FE lọc `unmapped_cafef` khi flag=1 (`chartAdapter.js:67-69`) và giữ riêng dòng `cafef` nếu có (`:80-92`).
+- **Số liệu staging**: 1834 mã có dòng 2026; 963 mã toàn `unmapped_cafef`; TPB cafef dừng 2025-12-31 + 223 dòng 2026 bị bỏ khi flag=1; A32 187 dòng không cafef vẫn hiện.
+- **Kết luận**: flag=0 không blank nhưng nhãn basis chưa trung thực; flag=1 khi chưa parity gây đứt đuôi chuỗi. Giữ `PRICE_ADJUSTED_DISPLAY=0` tới khi parity/fallback đầy đủ. Hành vi fill nến của widget package **CHƯA XÁC MINH**.
+- **Evidence**: `docs/evidence/price-integrity/CHART_GAP_ANALYSIS_20261127.md`.
 ## Entry 669: Fix fallback khi CafeF trả rỗng (no_data)
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-empty-fix` · Claim `fallback-empty-fix` (in-progress).
