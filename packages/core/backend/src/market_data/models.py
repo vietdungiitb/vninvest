@@ -618,6 +618,7 @@ class PriceRebaseRun(models.Model):
 
     class Status(models.TextChoices):
         APPLIED = 'applied', 'Applied'
+        APPLIED_FALLBACK = 'applied_fallback', 'Applied (provider fallback)'
         NOOP = 'noop', 'No-op'
         HALTED_DATA_ERROR = 'halted_data_error', 'Halted (data error)'
         FAILED = 'failed', 'Failed'
