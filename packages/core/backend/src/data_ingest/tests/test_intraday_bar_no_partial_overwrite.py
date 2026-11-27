@@ -98,6 +98,10 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
 
         tick_count = IntradayTick.objects.filter(symbol=_SYMBOL).count()
         self.assertEqual(tick_count, 3, 'batch 2 phai duoc luu 1 tick moi vao DB')
+        minute_bar = IntradayBar.objects.get(
+            symbol=_SYMBOL, timeframe='1m', datetime=_floor_intraday_bucket(self.t1045, '1m')
+        )
+        self.assertEqual(minute_bar.volume, 1000, 'recompute phai tao bar 1m cho tick 10:45')
         bar = IntradayBar.objects.get(symbol=_SYMBOL, timeframe='1H', datetime=_floor_intraday_bucket(self.t10, '1H'))
         self.assertEqual(bar.volume, 501000, 'batch 2 phai cong don, khong duoc ghi de 1000')
 
