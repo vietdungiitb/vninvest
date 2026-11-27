@@ -1,3 +1,10 @@
+## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
+
+- **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
+- vnbroker `v3.11.0` đã tag/release/PyPI verify (`docs/.../vnbroker/docs/evidence/ssot-phase1/RELEASE_311_20261127.md`): workflow OIDC OK, wheel 643.696 bytes, upload 16:53:01Z.
+- `packages/core/backend/requirements.txt:40` pin 3.10.0 → 3.11.0. File shared — owner GO-AHEAD decision 3 (ghi trailer trong commit).
+- Mục đích: staging/install thực sự dùng bản có 418/429 failover + per-symbol requeue từ Phase 1.
+- **CHƯA CHẠY**: deploy + verify `vnbroker.__version__` trên staging (sau merge).
 ## Entry 679: Phase 0 SSOT — STOP do coverage 74,39% < 95%
 
 - **Date**: 2026-11-27 · **Type**: docs/measurement · **Branch** `feat/ssot-phase0` · Claim `ssot-phase0` (in-progress).
