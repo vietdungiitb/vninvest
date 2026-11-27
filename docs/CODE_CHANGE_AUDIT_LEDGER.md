@@ -1,14 +1,35 @@
-## Entry 671: Whale BE contract cho bubble chart — buy/sell fields, window 1h, floor động
+## Entry 674: Whale BE contract cho bubble chart — buy/sell fields, window 1h, floor động
 
-- **Date**: 2026-11-27 · **Type**: feat · **Branch** `feat/whale-be-fields-1127` · Claim `whale-be-fields-1127` (in-progress).
-- **Source**: plan liên repo `PLAN_WHALE_BUBBLE_UX_2026-11-27.md` (AGREE sau 3 vòng audit) + audit `vninvestcharts-widget/docs/AUDIT_UX_GOCHARTING_PARITY_2026-11-27.md`.
+- **Date**: 2026-11-27 · **Type**: feat · **Branch** `feat/whale-be-fields-1127` · Claim `whale-be-fields-1127` (done).
+- **Source**: plan liên repo `PLAN_WHALE_BUBBLE_UX_2026-11-27.md` (AGREE sau 3 vòng audit) + audit UX `vninvestcharts-widget/docs/AUDIT_UX_GOCHARTING_PARITY_2026-11-27.md`.
 - **Root cause**: `native_views.py:337` dùng 1 constant cho cả default 500M lẫn floor; `:571-586` bỏ `buy/sell` khi serialize bucket; `:474-478` thiếu window `1h`; `limit` chỉ cắt response không cắt query (`:418`,`:517`).
-- **Changes**: tách `VNI_WHALE_DEFAULT_MIN_VALUE=500M` / `VNI_WHALE_MIN_VALUE_FLOOR=50K` / `VNI_WHALE_MAX_MIN_VALUE=100B` / `VNI_WHALE_TICK_QUERY_CAP=200K`; bucket trả `buy_value`/`sell_value`/`data_quality`; thêm window `1h` (anchor theo giờ); cap query newest-first rồi reverse; `400 MIN_VALUE_BELOW_FLOOR` / `MIN_VALUE_ABOVE_CEILING`. Không migration, không deny-list, không đổi response shape cũ (chỉ thêm field).
-- **Tests**: 5 test method mới trong `test_whale_cvd_full_tf.py` viết trước khi implement (AC-01..05). `python -m py_compile` exit 0.
-- **Gates**: `pwsh -File scripts/agent-sync.ps1` exit 0 (rebase + 0 trùng migration + check-multi-agent PASS); `python -m py_compile` exit 0. **CHƯA CHẠY**: pytest BE (`CORE_DATABASE_URL` + `DJANGO_DEBUG` không có trong session; phải chạy trên VPS DB riêng theo AGENTS.md / L-B01) — lệnh tái tạo: `CORE_DATABASE_URL=... DJANGO_DEBUG=1 python manage.py test market_data.tests.test_whale_cvd_full_tf`.
-- **Evidence**: `docs/evidence/whale-bubble-ux/PLAN_AUDIT.md`, `S1_GATES.md`.
+- **Changes**: tách `VNI_WHALE_DEFAULT_MIN_VALUE=500M` / `VNI_WHALE_MIN_VALUE_FLOOR=50K` / `VNI_WHALE_MAX_MIN_VALUE=100B` / `VNI_WHALE_TICK_QUERY_CAP=200K`; bucket trả `buy_value`/`sell_value`/`data_quality`; thêm window `1h`; cap query newest-first rồi reverse; `400 MIN_VALUE_BELOW_FLOOR` / `MIN_VALUE_ABOVE_CEILING`. Không migration, không deny-list.
+- **Tests**: 5 test method mới trong `test_whale_cvd_full_tf.py`; `python -m py_compile` exit 0. **CHƯA CHẠY** tại commit code: pytest BE (thiếu `CORE_DATABASE_URL`/`DJANGO_DEBUG`); lên VPS DB riêng ở S4.
+- **Evidence**: `docs/evidence/whale-bubble-ux/PLAN_AUDIT.md`, `S1_GATES.md`. **Merge conflict PR #579** resolved by coordinator: entry renumbered 671 → 674 để trùng Entry 671 (price-model-review) trên `dev`.
 - **Lessons áp dụng**: L-001 L-002 L-003 L-B01 L-B02 L-V01.
 
+## Entry 673: Báo cáo nghiên cứu kiến trúc vnbroker + vninvest — luồng dữ liệu giá
+
+- **Date**: 2026-11-27 · **Type**: docs/research-only · **Branch** `docs/architecture-research-20261127` · Claim `architecture-research-20261127`.
+- **Yêu cầu owner**: nghiên cứu, lập báo cáo, **KHÔNG code**. Scope: vnbroker 3.10.0 (registry/pool/router/health/bulk/CafeF) + vninvest (ingest/models/pricing/cafef/corporate actions/beat/FE contract) + số liệu staging thật.
+- **5 finding P0/P1**: (1) `DailyPrice.close` chứa adjusted nhưng coi là raw (`tasks.py:665-711`); (2) `adj_close` 2026 chỉ 222/~281k, bật flag cắt chuỗi; (3) CafeF là raw độc quyền, bulk 503/rỗng; (4) hai lớp bulk song song không chia rate-limit (`bulk_router.py:150` vs `tasks.py:1809`); (5) 22.470 corporate action nhưng `apply_adjustments` trả 0 (`adjustment.py:93-94`).
+- **Kiến trúc mục tiêu**: `adj_close` canonical, `close` reference; VCI/KBS adjusted, CafeF_reference; một bulk engine + Redis rate limiter; freshness SLO; lộ trình 0–5 phụ thuộc owner chốt A/B.
+- **Gates**: `pre-push-gate` 36 PASS; full BE suite **CHƯA CHẠY** (no Postgres local); fill `adj_close` **CHƯA LÀM**.
+- **Evidence**: `docs/evidence/price-integrity/ARCHITECTURE_RESEARCH_20261127.md` (+ plan/audit). Không đổi source/data/flag.
+## Entry 672: Đính chính — giá tham chiếu/trần/sàn dùng GIÁ ĐÃ ĐIỀU CHỈNH
+
+- **Date**: 2026-11-27 · **Type**: docs/correction · **Branch** `docs/exdate-reference-fix` · Claim `exdate-reference-fix`.
+- **Bằng chứng FPT ex-date 2026-11-27**: VCI raw prev-close `44500`, adjusted `43498.75`, cổ tức `1000 VND`; `SymbolSnapshot` `reference_price=43500`, `ceiling=46500`, `floor=40500` ⇒ **44500 − 1000 = 43500**. Giá tham chiếu ngày ex-date là giá đã điều chỉnh.
+- **Đính chính**: nhận định "trần/sàn nên dùng raw" (từ nhánh chưa merge `docs/raw-usage-scan`) là **SAI**. `market_serving/vnbroker_materializer.py:101-109` đang đúng chỉ vì cột `close` đã chứa giá adjusted legacy — hệ thống **đúng nhờ dữ liệu sai**.
+- **Nguyên tắc**: mọi consumer hiển thị/tham chiếu dùng `DailyPrice.adj_close`; `close` chỉ tham khảo. Blockers: 2026 có 222 dòng `adj_close` non-null / tổng 2026 ~281k — cần fill có backup hoặc backfill CafeF trước khi đổi consumer.
+- **Evidence**: `docs/evidence/price-integrity/EXDATE_REFERENCE_20261127.md`. Không đổi code/data trong slice này.
+## Entry 671: Đánh giá mô hình raw/adjusted — CafeF là nguồn raw độc quyền
+
+- **Date**: 2026-11-27 · **Type**: docs/architecture review · **Branch** `docs/price-model-review` · Claim `price-model-review`.
+- **Kết luận**: "raw giống mọi nguồn" chỉ đúng vì VCI/KBS `adjusted=False` đều route CafeF (`vci/quote.py:578-585`, `kbs/quote.py:438-445`) — không phải raw chung tự nhiên; adjusted VCI 13934.04 vs KBS 13949 cho thấy khác nhau thật. DB `close` đang chứa giá adjusted (`pricing.py:41-49`, staging TPB `close=13934.04`, `adj_close=NULL`) ⇒ chưa đúng mô hình "hiển thị = adjusted".
+- **Sự kiện công ty**: hạ tầng rebase có sẵn nhưng `apply_adjustments` trả 0 UPDATE (`adjustment.py:93-94`, `PRICE_ADJUSTMENT_WRITES_ENABLED` unset); `compute_adj_factors._prev_close` đọc cột `close` đã adjusted ⇒ không bật writes khi chưa có raw thật.
+- **Hướng đi cần owner chốt**: A) provider-adjusted làm canonical (đang làm) hoặc B) raw SSOT độc lập CafeF + bật writes (blocker credentials). Không trộn basis, không bật flag trước parity.
+- **Evidence**: `docs/evidence/price-integrity/PRICE_MODEL_REVIEW_20261127.md`.
 ## Entry 670: Phân tích hiển thị chart khi thiếu lịch sử CafeF
 
 - **Date**: 2026-11-27 · **Type**: docs/analysis · **Branch** `docs/chart-gap-analysis` · Claim `chart-gap-analysis`.
@@ -16,7 +37,6 @@
 - **Số liệu staging**: 1834 mã có dòng 2026; 963 mã toàn `unmapped_cafef`; TPB cafef dừng 2025-12-31 + 223 dòng 2026 bị bỏ khi flag=1; A32 187 dòng không cafef vẫn hiện.
 - **Kết luận**: flag=0 không blank nhưng nhãn basis chưa trung thực; flag=1 khi chưa parity gây đứt đuôi chuỗi. Giữ `PRICE_ADJUSTED_DISPLAY=0` tới khi parity/fallback đầy đủ. Hành vi fill nến của widget package **CHƯA XÁC MINH**.
 - **Evidence**: `docs/evidence/price-integrity/CHART_GAP_ANALYSIS_20261127.md`.
-
 ## Entry 669: Fix fallback khi CafeF trả rỗng (no_data)
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-empty-fix` · Claim `fallback-empty-fix` (in-progress).
