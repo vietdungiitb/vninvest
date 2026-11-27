@@ -52,7 +52,7 @@ cùng gọi một hàm `audit_rows`:
 |---|---|
 | Unit gate 8 file | **35 passed** |
 | `manage.py check` | **0 issues** |
-| Deploy staging + chạy `check_price_integrity` thật | **CHƯA CHẠY** (chờ PR merge) |
+| Deploy staging + chạy `check_price_integrity` thật | **ĐÃ CHẠY 2026-11-27**: `dev@7d91adf0a`, `{"ok":true,"violations":[],"rows":281221,"cafef_rows":0}`, exit 0. `cafef_rows=0` phản ánh backfill 2026 chưa xong; flag vẫn `0`. Chi tiết `CURSOR_FIX_20261127.md` |
 | Backfill 2011–2026 | **CHƯA XONG** — CafeF bulk vẫn 503 từ IP VPS (xem `../price-rebase-s5/CAFEF_BLOCK_WATCH_20261127.md`) |
 | Fallback VCI/KBS có nhãn | **CHƯA IMPLEMENT** (thiết kế tại `CAFEF_FALLBACK_ANALYSIS_20261127.md`) |
 
