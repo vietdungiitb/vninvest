@@ -201,6 +201,30 @@ vninvest (1 caller)
 7. **Idempotent merge**: khóa `(symbol, date, basis)`; retry chỉ lỗi tạm; ghi `sources_used` per symbol để trace.
 8. **Chỉ số đo bắt buộc**: symbols/s, p50/p95 latency, error rate per provider, cooldown events — so sánh trước/sau khi đổi.
 
+### 6.4 Tái dùng cơ chế rate-limit ĐÃ CÓ của `vnbroker` (không phát minh lại)
+
+Owner nhắc đúng: `vnbroker` đã có cả đo lẫn giới hạn rate.
+
+| Thành phần hiện có | file:line | Trạng thái / cách dùng |
+|---|---|---|
+| `TokenBucketRateLimiter` | `core/utils/rate_limiter.py:21-84` | Thread-safe; `acquire()` `:38`, `wait(timeout)` `:51`; `MIN_CAPACITY=1` `:10`, `DEFAULT_MAX_WAIT=30s` `:15` |
+| `configure_rate_limiter(rate, capacity)` | `core/utils/client.py:38-48` | Module-level, **mặc định TẮT** (`:34-35`); `wait()` chỉ gọi ở `:249-251` |
+| Hàm **đo** rate-limit | `tests/examples/vci_perf_benchmark.py:45,92-159,166-177` | Đếm `throttled_responses` (429) + `success_rate` theo từng mức concurrency |
+| Profile tự điều chỉnh | `core/performance_profiles.py:9-74` | `benchmark_max_speed` VCI start 10 / KBS 8; `production_stable` 6/4; `market_hours` 4/3 (tránh 429 giờ mở cửa) |
+| Adaptive controller | `core/adaptive_controller.py:157,190,218,247-266` | `compute`/`adjust`/`cap_to`; `GlobalPressure.record_batch` theo error rate |
+| Cooldown | `core/source_router.py:37-60`, `core/health_router.py:35-40` | Provider 429/fail vào cooldown, bị loại khỏi pool tạm thời |
+| 429 không retry | `base.py:237-238`, `common/data.py:30` | Đúng: retry ngay chỉ đốt quota ⇒ phải **failover sang provider khác** |
+
+**Vấn đề:** `configure_rate_limiter` chưa bao giờ được gọi bởi explorer VCI/KBS (grep chỉ thấy định nghĩa ở `core/utils/client.py`) ⇒ token bucket hiện **vô hiệu** với đường bulk; profile adaptive cũng nằm riêng với `BulkRouter` (`max_workers=len(selected)` ở `bulk_router.py:150`).
+
+**Đề xuất (tái dùng code cũ, bổ sung phần còn thiếu):**
+1. Biến `TokenBucketRateLimiter` thành **per-provider**, khởi tạo từ rate đo được bởi `vci_perf_benchmark.py`; default theo `performance_profiles.py` (`market_hours` trong 09:00–15:30 ICT).
+2. Đặt bucket ở **Redis** (hoặc ít nhất shared-process) để mọi worker/api instance cùng tuân một ngân sách — thay cho `_throttle` process-local của CafeF (`reference/client.py:188-192`).
+3. Nối `AdaptiveController` vào `BulkRouter`: `max_workers = Σ min(profile_start, bucket_rate)` thay vì `len(selected)`.
+4. **Requeue trong cùng batch**: `bulk_router.py:158` hiện chỉ ghi lỗi per-provider; khi provider dính 429/cooldown, chuyển ngay symbol còn lại sang provider khỏe khác trong cùng đợt ⇒ "vẫn tải đủ dữ liệu" như owner yêu cầu.
+5. `vninvest` bỏ delay cứng (`tasks.py:83-87`) và sharding tự làm (`:1809-1816`), gọi một `Bulk.history` duy nhất.
+6. Định kỳ chạy lại benchmark 429 để cập nhật rate profile; lưu kết quả vào `ProviderSampleCheck`-like record để có bằng chứng.
+
 ---
 
 ## 7. Luồng dữ liệu mục tiêu (end-to-end)
