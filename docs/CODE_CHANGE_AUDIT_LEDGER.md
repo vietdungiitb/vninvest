@@ -1,3 +1,13 @@
+## Entry 674: Whale BE contract cho bubble chart — buy/sell fields, window 1h, floor động
+
+- **Date**: 2026-11-27 · **Type**: feat · **Branch** `feat/whale-be-fields-1127` · Claim `whale-be-fields-1127` (done).
+- **Source**: plan liên repo `PLAN_WHALE_BUBBLE_UX_2026-11-27.md` (AGREE sau 3 vòng audit) + audit UX `vninvestcharts-widget/docs/AUDIT_UX_GOCHARTING_PARITY_2026-11-27.md`.
+- **Root cause**: `native_views.py:337` dùng 1 constant cho cả default 500M lẫn floor; `:571-586` bỏ `buy/sell` khi serialize bucket; `:474-478` thiếu window `1h`; `limit` chỉ cắt response không cắt query (`:418`,`:517`).
+- **Changes**: tách `VNI_WHALE_DEFAULT_MIN_VALUE=500M` / `VNI_WHALE_MIN_VALUE_FLOOR=50K` / `VNI_WHALE_MAX_MIN_VALUE=100B` / `VNI_WHALE_TICK_QUERY_CAP=200K`; bucket trả `buy_value`/`sell_value`/`data_quality`; thêm window `1h`; cap query newest-first rồi reverse; `400 MIN_VALUE_BELOW_FLOOR` / `MIN_VALUE_ABOVE_CEILING`. Không migration, không deny-list.
+- **Tests**: 5 test method mới trong `test_whale_cvd_full_tf.py`; `python -m py_compile` exit 0. **CHƯA CHẠY** tại commit code: pytest BE (thiếu `CORE_DATABASE_URL`/`DJANGO_DEBUG`); lên VPS DB riêng ở S4.
+- **Evidence**: `docs/evidence/whale-bubble-ux/PLAN_AUDIT.md`, `S1_GATES.md`. **Merge conflict PR #579** resolved by coordinator: entry renumbered 671 → 674 để trùng Entry 671 (price-model-review) trên `dev`.
+- **Lessons áp dụng**: L-001 L-002 L-003 L-B01 L-B02 L-V01.
+
 ## Entry 673: Báo cáo nghiên cứu kiến trúc vnbroker + vninvest — luồng dữ liệu giá
 
 - **Date**: 2026-11-27 · **Type**: docs/research-only · **Branch** `docs/architecture-research-20261127` · Claim `architecture-research-20261127`.
