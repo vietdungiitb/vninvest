@@ -139,6 +139,38 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
         self.assertEqual(payloads[hour_key]['volume'], 501000)
 
     @patch('data_ingest.tasks._fetch_tape_with_timeout')
+    def test_diagnostic_payload_keys(self, mock_fetch) -> None:
+        from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
+        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES
+
+        second = self.t10 + timedelta(minutes=1)
+        mock_fetch.return_value = {
+            'trades': [_raw_trade(self.t10, 100, '10.0'), _raw_trade(second, 120, '10.5')],
+            'source': 'VCI',
+        }
+        IntradayBar.objects.all().delete()
+        result = _hydrate_intraday_symbols(
+            [{'symbol': _SYMBOL, 'page_size': 50}], ['intraday_ticks', 'intraday_bars']
+        )
+        rows = list(
+            IntradayTick.objects.filter(symbol=_SYMBOL)
+            .values('timestamp', 'price', 'volume', 'source')
+            .order_by('timestamp')
+        )
+        affected = {
+            (tf, _floor_intraday_bucket(r['timestamp'], tf))
+            for r in rows
+            for tf in _INTRADAY_BAR_TIMEFRAMES
+        }
+        payloads = recompute_bar_payloads_from_ticks(
+            _SYMBOL, rows, affected, _floor_intraday_bucket, _INTRADAY_BAR_TIMEFRAMES
+        )
+        print('DIAG affected=', sorted(str(k[0]) + '@' + str(k[1]) for k in affected))
+        print('DIAG payloads=', sorted(str(k[0]) + '@' + str(k[1]) for k in payloads))
+        print('DIAG bar_counts=', result['bar_counts'])
+        self.assertTrue(True)
+
+    @patch('data_ingest.tasks._fetch_tape_with_timeout')
     def test_unaffected_bucket_keeps_volume(self, mock_fetch) -> None:
         mock_fetch.return_value = {'trades': [_raw_trade(self.t1045, 1000)], 'source': 'vnbroker'}
         _hydrate_intraday_symbols(
