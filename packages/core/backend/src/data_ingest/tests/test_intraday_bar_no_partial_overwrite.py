@@ -7,24 +7,27 @@ Fail-before tren code cu: assertion 501000 that 1000 -> DO.
 """
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
-import pytz
 from django.test import TestCase
-from django.utils import timezone
 
 from data_ingest.tasks import _hydrate_intraday_symbols, _floor_intraday_bucket
 from market_data.models import IntradayBar, IntradayTick
 
 
-_VN_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
 _SYMBOL = 'VIC'
 
 
 def _local(day: object, hour: int, minute: int) -> datetime:
-    return timezone.make_aware(datetime.combine(day, time(hour, minute)), _VN_TZ)
+    """ICT (UTC+7) represented as a fixed-offset UTC datetime.
+
+    Khong dung pytz.timezone(...).localize qua django make_aware: pytz chua
+    localized co offset LMT+7:07, lam bucket key lech 7 phut so voi tick doc tu DB.
+    """
+    return datetime.combine(day, time(hour, minute)).replace(tzinfo=dt_timezone.utc) - timedelta(hours=7)
 
 
 def _raw_trade(ts: datetime, volume: int, price: str = '100000') -> dict:
