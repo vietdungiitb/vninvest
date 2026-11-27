@@ -1,3 +1,10 @@
+## Entry 672: Đính chính — giá tham chiếu/trần/sàn dùng GIÁ ĐÃ ĐIỀU CHỈNH
+
+- **Date**: 2026-11-27 · **Type**: docs/correction · **Branch** `docs/exdate-reference-fix` · Claim `exdate-reference-fix`.
+- **Bằng chứng FPT ex-date 2026-11-27**: VCI raw prev-close `44500`, adjusted `43498.75`, cổ tức `1000 VND`; `SymbolSnapshot` `reference_price=43500`, `ceiling=46500`, `floor=40500` ⇒ **44500 − 1000 = 43500**. Giá tham chiếu ngày ex-date là giá đã điều chỉnh.
+- **Đính chính**: nhận định "trần/sàn nên dùng raw" (từ nhánh chưa merge `docs/raw-usage-scan`) là **SAI**. `market_serving/vnbroker_materializer.py:101-109` đang đúng chỉ vì cột `close` đã chứa giá adjusted legacy — hệ thống **đúng nhờ dữ liệu sai**.
+- **Nguyên tắc**: mọi consumer hiển thị/tham chiếu dùng `DailyPrice.adj_close`; `close` chỉ tham khảo. Blockers: 2026 có 222 dòng `adj_close` non-null / tổng 2026 ~281k — cần fill có backup hoặc backfill CafeF trước khi đổi consumer.
+- **Evidence**: `docs/evidence/price-integrity/EXDATE_REFERENCE_20261127.md`. Không đổi code/data trong slice này.
 ## Entry 671: Đánh giá mô hình raw/adjusted — CafeF là nguồn raw độc quyền
 
 - **Date**: 2026-11-27 · **Type**: docs/architecture review · **Branch** `docs/price-model-review` · Claim `price-model-review`.
