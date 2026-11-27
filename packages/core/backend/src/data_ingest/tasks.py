@@ -510,7 +510,36 @@ def _hydrate_intraday_symbols(
 
             if 'intraday_bars' in target_dataset_set:
                 bar_counts['planned_items'] += 1
-                bar_payloads = _build_intraday_bar_payloads(symbol, normalized_trades)
+                # S1 / REQ-BE-M01: khong dung batch partial de ghi de OHLCV cua bar.
+                # Xac dinh tap bucket bi anh huong, roi tinh lai tu TOAN BO tick trong DB.
+                # Truyen chinh _floor_intraday_bucket de dam bao cung quy uoc multiples
+                # giot cho khung 2H/4H voi synthesize_intraday_bars_from_ticks (G-3a).
+                affected_keys = {
+                    (timeframe, _floor_intraday_bucket(trade['timestamp'], timeframe))
+                    for trade in normalized_trades
+                    for timeframe in _INTRADAY_BAR_TIMEFRAMES
+                }
+                bar_payloads: dict[tuple[str, datetime], dict] = {}
+                if affected_keys:
+                    bucket_starts = [key[1] for key in affected_keys]
+                    # 4H la khung lon nhat — mo rong range de lay du tick cua moi bucket.
+                    range_start = min(bucket_starts)
+                    range_end = max(bucket_starts) + timedelta(hours=4)
+                    db_tick_rows = list(
+                        IntradayTick.objects.filter(
+                            symbol=symbol,
+                            timestamp__gte=range_start,
+                            timestamp__lt=range_end,
+                        ).values('timestamp', 'price', 'volume', 'source').order_by('timestamp')
+                    )
+                    from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
+                    bar_payloads = recompute_bar_payloads_from_ticks(
+                        symbol,
+                        db_tick_rows,
+                        affected_keys,
+                        _floor_intraday_bucket,
+                        _INTRADAY_BAR_TIMEFRAMES,
+                    )
                 existing_bars_by_key = {
                     (row['timeframe'], row['datetime']): row
                     for row in IntradayBar.objects.filter(
