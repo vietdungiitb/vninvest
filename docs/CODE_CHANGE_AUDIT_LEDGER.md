@@ -1,3 +1,10 @@
+## Entry 674: Thiết kế SSOT adj_close trọn vẹn trên vnbroker + vninvest — DOC-ONLY
+
+- **Date**: 2026-11-27 · **Type**: docs/design · **Branch** `docs/ssot-adjustment-design` · Claim `ssot-adjustment-design` (in-progress).
+- **Owner chốt**: raw chỉ tham khảo; `adj_close` là SSOT; CafeF chỉ đối chiếu; có event thì tự tính lại TOÀN chuỗi adj_close; provider chỉ lấy mẫu để khẳng định công thức; bulk song song nhanh nhất.
+- **Nội dung**: 7 bất biến I1-I7; RACI 2 repo; contract `DailyPrice` + 3 bảng mới; công thức `f=(P-cash)/P × 1/(1+ratio)` với ví dụ FPT 44500→43500; giao thức sample 24 mã×5 ngày/≤0.5%/≥95% fail-closed; bulk VCI 8 slot / KBS 4 slot + Redis token bucket + adaptive worker + circuit breaker; lộ trình 0-6.
+- **Đo thật bulk**: VCI 8 worker 8 mã/1,39s; KBS 4 worker 8 mã/0,94s (8 worker bão hòa); `BulkRouter` hiện `max_workers=len(selected)=2` là nút thắt.
+- **Gates**: `pre-push-gate` chạy sau commit; **không code/migrate/đổi flag**. Evidence: `docs/evidence/price-integrity/SSOT_ADJUSTMENT_DESIGN_20261127.md`.
 ## Entry 673: Báo cáo nghiên cứu kiến trúc vnbroker + vninvest — luồng dữ liệu giá
 
 - **Date**: 2026-11-27 · **Type**: docs/research-only · **Branch** `docs/architecture-research-20261127` · Claim `architecture-research-20261127`.
