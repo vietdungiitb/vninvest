@@ -138,36 +138,35 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
         hour_key = ('1H', _floor_intraday_bucket(self.t1045, '1H'))
         self.assertEqual(payloads[hour_key]['volume'], 501000)
 
-    @patch('data_ingest.tasks._fetch_tape_with_timeout')
-    def test_diagnostic_payload_keys(self, mock_fetch) -> None:
-        from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
-        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES
+    @patch('data_ingest.tasks.fetch_intraday_tape')
+    def test_diagnostic_warm_path(self, mock_fetch) -> None:
+        from django.utils import timezone as dj_tz
 
-        second = self.t10 + timedelta(minutes=1)
-        mock_fetch.return_value = {
-            'trades': [_raw_trade(self.t10, 100, '10.0'), _raw_trade(second, 120, '10.5')],
-            'source': 'VCI',
-        }
-        IntradayBar.objects.all().delete()
-        result = _hydrate_intraday_symbols(
-            [{'symbol': _SYMBOL, 'page_size': 50}], ['intraday_ticks', 'intraday_bars']
+        from data_ingest.tasks import warm_intraday_universe
+
+        first = dj_tz.now().astimezone(dj_tz.get_current_timezone()).replace(second=0, microsecond=0)
+        if first.minute >= 58:
+            first = first - timedelta(minutes=10)
+        second = first + timedelta(minutes=1)
+        IntradayTick.objects.create(
+            symbol='ACB', timestamp=first, price=Decimal('10.00'), volume=100,
+            side='BUY', match_type='NormalMatch', source='vnbroker_intraday',
         )
-        rows = list(
-            IntradayTick.objects.filter(symbol=_SYMBOL)
-            .values('timestamp', 'price', 'volume', 'source')
-            .order_by('timestamp')
-        )
-        affected = {
-            (tf, _floor_intraday_bucket(r['timestamp'], tf))
-            for r in rows
-            for tf in _INTRADAY_BAR_TIMEFRAMES
-        }
-        payloads = recompute_bar_payloads_from_ticks(
-            _SYMBOL, rows, affected, _floor_intraday_bucket, _INTRADAY_BAR_TIMEFRAMES
-        )
-        print('DIAG affected=', sorted(str(k[0]) + '@' + str(k[1]) for k in affected))
-        print('DIAG payloads=', sorted(str(k[0]) + '@' + str(k[1]) for k in payloads))
-        print('DIAG bar_counts=', result['bar_counts'])
+
+        def _side(symbol, page_size=50):
+            if symbol == 'ACB':
+                return {'trades': [_raw_trade(first, 100, '10.0'), _raw_trade(second, 120, '10.5')],
+                        'source': 'VCI', 'stale': False}
+            return {'trades': [], 'source': 'VCI', 'stale': False}
+
+        mock_fetch.side_effect = _side
+        result = warm_intraday_universe.run(plan_items=[
+            {'symbol': 'ACB', 'dataset': 'intraday_ticks'},
+            {'symbol': 'ACB', 'dataset': 'intraday_bars'},
+            {'symbol': 'FPT', 'dataset': 'intraday_ticks'},
+        ])
+        print('DIAG warm bar_counts=', result.get('bar_counts'))
+        print('DIAG bars=', sorted((b.timeframe, str(b.datetime), b.volume) for b in IntradayBar.objects.filter(symbol='ACB')))
         self.assertTrue(True)
 
     @patch('data_ingest.tasks._fetch_tape_with_timeout')
