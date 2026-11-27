@@ -148,3 +148,122 @@ class WhaleCvdFullTimeframeTests(TestCase):
         res_per_tick = call({})
         self.assertEqual(res_per_tick.status_code, 200)
         self.assertIn('whale_orders', res_per_tick.data)
+
+    def test_whale_buckets_exposes_buy_and_sell_values(self):
+        """AC-01: bucket phai co buy_value/sell_value, net = buy - sell."""
+        from market_serving.native_views import build_whale_buckets
+
+        self._canonical(self._alert('whale_tick:b1', 'buy', self.now), 'buy', self.now, 600000000)
+        self._canonical(
+            self._alert('whale_tick:s1', 'sell', self.now + timedelta(minutes=1)),
+            'sell', self.now + timedelta(minutes=1), 200000000,
+        )
+        buckets = build_whale_buckets(self.symbol, '1D', min_value=50000)
+        self.assertEqual(len(buckets), 1)
+        self.assertEqual(buckets[0]['buy_value'], 600000000)
+        self.assertEqual(buckets[0]['sell_value'], 200000000)
+        self.assertEqual(buckets[0]['net_value'], 400000000)
+        self.assertEqual(buckets[0]['dominance'], 'buy')
+
+    def test_whale_buckets_window_1h(self):
+        """AC-04: ?window=1h hop le, bucket anchor theo gio."""
+        from market_serving.native_views import build_whale_buckets
+
+        self._canonical(self._alert('whale_tick:h1', 'buy', self.now), 'buy', self.now, 100000000)
+        buckets = build_whale_buckets(self.symbol, '1h', min_value=50000)
+        self.assertEqual(len(buckets), 1)
+        self.assertEqual(buckets[0]['bucket_ts'][11:13], '09')
+
+    def test_whale_feed_default_min_value_stays_500m(self):
+        """AC-03: khong truyen min_value => van loc 500M cho caller cu."""
+        from market_serving.native_views import build_whale_feed_payload
+
+        self._canonical(self._alert('whale_tick:small', 'buy', self.now), 'buy', self.now, 499999999)
+        self._canonical(
+            self._alert('whale_tick:big', 'buy', self.now + timedelta(minutes=1)),
+            'buy', self.now + timedelta(minutes=1), 900000000,
+        )
+        payload = build_whale_feed_payload(self.symbol)
+        self.assertEqual(len(payload['whale_orders']), 1)
+        self.assertEqual(payload['whale_orders'][0]['matched_value'], 900000000)
+
+    def test_whale_feed_min_value_floor_and_ceiling(self):
+        """AC-02: duoi floor va tren ceiling tra 400; gia tri hop le duoc chap nhan."""
+        from django.contrib.auth import get_user_model
+        from rest_framework.test import APIRequestFactory, force_authenticate
+
+        from market_serving.native_views import RealtimeWhaleFeedView
+
+        factory = APIRequestFactory()
+        user = get_user_model().objects.create_user(username='wf-floor-tester')
+        view = RealtimeWhaleFeedView.as_view()
+
+        def call(query):
+            req = factory.get(f'/core/v1/realtime/whale-feed/{self.symbol}/', query)
+            force_authenticate(req, user=user)
+            return view(req, symbol=self.symbol)
+
+        low = call({'min_value': '100'})
+        self.assertEqual(low.status_code, 400)
+        self.assertEqual(low.data['code'], 'MIN_VALUE_BELOW_FLOOR')
+
+        high = call({'min_value': '200000000000'})
+        self.assertEqual(high.status_code, 400)
+        self.assertEqual(high.data['code'], 'MIN_VALUE_ABOVE_CEILING')
+
+        self._canonical(self._alert('whale_tick:mid', 'buy', self.now), 'buy', self.now, 100000000)
+        ok = call({'min_value': '100000000', 'window': '1D'})
+        self.assertEqual(ok.status_code, 200)
+        bucket = ok.data['whale_buckets'][0]
+        self.assertEqual(bucket['buy_value'], 100000000)
+        self.assertEqual(bucket['sell_value'], 0)
+
+    def test_whale_feed_query_cap_keeps_newest(self):
+        """AC-05: cap lay tick moi nhat, khong phai cu nhat; bao truncated."""
+        from unittest.mock import patch
+
+        from django.contrib.auth import get_user_model
+        from rest_framework.test import APIRequestFactory, force_authenticate
+
+        from market_serving import native_views
+
+        for i in range(3):
+            ts = self.now + timedelta(minutes=i)
+            self._canonical(self._alert(f'whale_tick:cap{i}', 'buy', ts), 'buy', ts, 100000000 + i)
+
+        factory = APIRequestFactory()
+        user = get_user_model().objects.create_user(username='wf-cap-tester')
+        req = factory.get(f'/core/v1/realtime/whale-feed/{self.symbol}/', {})
+        force_authenticate(req, user=user)
+        with patch.object(native_views, '_WHALE_TICK_QUERY_CAP', 2):
+            res = native_views.RealtimeWhaleFeedView.as_view()(req, symbol=self.symbol)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['data_quality'], 'truncated')
+        self.assertEqual(len(res.data['whale_orders']), 2)
+        self.assertEqual(
+            sorted(o['matched_value'] for o in res.data['whale_orders']),
+            [100000001, 100000002],
+        )
+
+    def test_whale_bucket_cap_reports_truncated_envelope(self):
+        """M1: bucket path cap phai bao truncated ca o top-level envelope."""
+        from unittest.mock import patch
+
+        from django.contrib.auth import get_user_model
+        from rest_framework.test import APIRequestFactory, force_authenticate
+
+        from market_serving import native_views
+
+        for i in range(3):
+            ts = self.now + timedelta(minutes=i)
+            self._canonical(self._alert(f'whale_tick:bcap{i}', 'buy', ts), 'buy', ts, 100000000 + i)
+
+        factory = APIRequestFactory()
+        user = get_user_model().objects.create_user(username='wf-bcap-tester')
+        req = factory.get(f'/core/v1/realtime/whale-feed/{self.symbol}/', {'window': '1D'})
+        force_authenticate(req, user=user)
+        with patch.object(native_views, '_WHALE_TICK_QUERY_CAP', 2):
+            res = native_views.RealtimeWhaleFeedView.as_view()(req, symbol=self.symbol)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['data_quality'], 'truncated')
+        self.assertEqual(res.data['whale_buckets'][0]['data_quality'], 'truncated')

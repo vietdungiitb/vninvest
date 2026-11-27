@@ -1,10 +1,21 @@
-## Entry 674: Thiết kế SSOT adj_close trọn vẹn trên vnbroker + vninvest — DOC-ONLY
+## Entry 675: Thiết kế SSOT adj_close trọn vẹn trên vnbroker + vninvest — DOC-ONLY
 
 - **Date**: 2026-11-27 · **Type**: docs/design · **Branch** `docs/ssot-adjustment-design` · Claim `ssot-adjustment-design` (in-progress).
 - **Owner chốt**: raw chỉ tham khảo; `adj_close` là SSOT; CafeF chỉ đối chiếu; có event thì tự tính lại TOÀN chuỗi adj_close; provider chỉ lấy mẫu để khẳng định công thức; bulk song song nhanh nhất.
 - **Nội dung**: 7 bất biến I1-I7; RACI 2 repo; contract `DailyPrice` + 3 bảng mới; công thức `f=(P-cash)/P × 1/(1+ratio)` với ví dụ FPT 44500→43500; giao thức sample 24 mã×5 ngày/≤0.5%/≥95% fail-closed; bulk VCI 8 slot / KBS 4 slot + Redis token bucket + adaptive worker + circuit breaker; lộ trình 0-6. Bổ sung §6.4: tái dùng `TokenBucketRateLimiter` (`core/utils/rate_limiter.py:21-84`, hiện module-level mặc định TẮT ở `core/utils/client.py:34-35`), hàm đo 429 `tests/examples/vci_perf_benchmark.py:45,166-177`, profile `performance_profiles.py:9-74`, và requery symbol trong cùng batch khi provider dính 429 (`bulk_router.py:158`).
 - **Đo thật bulk**: VCI 8 worker 8 mã/1,39s; KBS 4 worker 8 mã/0,94s (8 worker bão hòa); `BulkRouter` hiện `max_workers=len(selected)=2` là nút thắt.
 - **Gates**: `pre-push-gate` chạy sau commit; **không code/migrate/đổi flag**. Evidence: `docs/evidence/price-integrity/SSOT_ADJUSTMENT_DESIGN_20261127.md`.
+## Entry 674: Whale BE contract cho bubble chart — buy/sell fields, window 1h, floor động
+
+- **Date**: 2026-11-27 · **Type**: feat · **Branch** `feat/whale-be-fields-1127` · Claim `whale-be-fields-1127` (done).
+- **Source**: plan liên repo `PLAN_WHALE_BUBBLE_UX_2026-11-27.md` (AGREE sau 3 vòng audit) + audit UX `vninvestcharts-widget/docs/AUDIT_UX_GOCHARTING_PARITY_2026-11-27.md`.
+- **Root cause**: `native_views.py:337` dùng 1 constant cho cả default 500M lẫn floor; `:571-586` bỏ `buy/sell` khi serialize bucket; `:474-478` thiếu window `1h`; `limit` chỉ cắt response không cắt query (`:418`,`:517`).
+- **Changes**: tách `VNI_WHALE_DEFAULT_MIN_VALUE=500M` / `VNI_WHALE_MIN_VALUE_FLOOR=50K` / `VNI_WHALE_MAX_MIN_VALUE=100B` / `VNI_WHALE_TICK_QUERY_CAP=200K`; bucket trả `buy_value`/`sell_value`/`data_quality`; thêm window `1h`; cap query newest-first rồi reverse; `400 MIN_VALUE_BELOW_FLOOR` / `MIN_VALUE_ABOVE_CEILING`. Không migration, không deny-list.
+- **Tests**: 5 test method mới trong `test_whale_cvd_full_tf.py`; `python -m py_compile` exit 0. **CHƯA CHẠY** tại commit code: pytest BE (thiếu `CORE_DATABASE_URL`/`DJANGO_DEBUG`); lên VPS DB riêng ở S4. Lệnh tái tạo: `CORE_DATABASE_URL=... DJANGO_DEBUG=1 python manage.py test market_data.tests.test_whale_cvd_full_tf`.
+- **Gates tại commit code**: `pwsh -File scripts/agent-sync.ps1` exit 0 (rebase + 0 trùng migration + check-multi-agent PASS); `python -m py_compile` exit 0. Re-audit độc lập S1: AGREE, 0 blocker/0 major.
+- **Evidence**: `docs/evidence/whale-bubble-ux/PLAN_AUDIT.md`, `S1_GATES.md`. **Merge conflict PR #579** resolved by coordinator: entry renumbered 671 → 674 để **tránh** trùng Entry 671 (price-model-review) trên `dev`. Re-audit conflict `NEED_REVISION` → fix tại commit này (khôi phục gate + lệnh tái tạo pytest).
+- **Lessons áp dụng**: L-001 L-002 L-003 L-B01 L-B02 L-V01.
+
 ## Entry 673: Báo cáo nghiên cứu kiến trúc vnbroker + vninvest — luồng dữ liệu giá
 
 - **Date**: 2026-11-27 · **Type**: docs/research-only · **Branch** `docs/architecture-research-20261127` · Claim `architecture-research-20261127`.
