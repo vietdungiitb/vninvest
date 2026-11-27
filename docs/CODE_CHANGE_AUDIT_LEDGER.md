@@ -1,3 +1,11 @@
+## Entry 676: SSOT adj_close Rev.2 — sửa audit NEED_REVISION (D-01..D-07)
+
+- **Date**: 2026-11-27 · **Type**: docs/design-revision · **Branch** `docs/ssot-adjustment-rev2` · Claim `ssot-adjustment-rev2` (in-progress).
+- **Trigger**: audit độc lập verdict **NEED_REVISION** cho Rev.1 (Entry 675): 2 P0 (mô hình `base_close` gây double-adjust + ingest T+0 không ghi `adj_close`; chẩn đoán sai 4 lớp của `vnbroker`) + 2 P1 (schema thừa 3 bảng, sample check sai đơn vị).
+- **Tự kiểm chứng**: `bulk_router.py:150,153,329-365` 1 future/provider rồi `parallel=True` (VCI `max_concurrency=24` `:407`, KBS worker adaptive `:194-266`); `async_client.py:106` bucket async **đang BẬT**, `:314` vẫn retry 429; grep `418` = **0**; `vci/quote.py:439`/`kbs/quote.py:261` nuốt lỗi per-symbol; `pyproject.toml:40-55` không có redis; `vnbroker_materializer.py:89,103` bug ngày nghỉ.
+- **Rev.2 khóa**: D-01 Anchor+forward self-compute với `base_as_of` per-row; D-02 công thức Sở gồm Rights + fail-closed PARTIAL; D-03 schema tối giản (bác 3 bảng mới); D-04 sample 1 mã + return-ratio 2 tầng; D-05 work-queue per-symbol + limiter sync/async hợp nhất + 418/429 failover trong cùng batch, Redis chỉ inject từ vninvest; D-06 consumer bỏ điều kiện cafef + fix ngày nghỉ; D-07 benchmark VPS ≥100 mã.
+- **Sửa sổ**: claim `ssot-adjustment-design` ghi Entry 674 → đã sửa thành 675 (674 thuộc whale). Rev.2 không code/migrate/đổi flag.
+- **Evidence**: `docs/evidence/price-integrity/SSOT_ADJUSTMENT_DESIGN_REV2_20261127.md`.
 ## Entry 675: Thiết kế SSOT adj_close trọn vẹn trên vnbroker + vninvest — DOC-ONLY
 
 - **Date**: 2026-11-27 · **Type**: docs/design · **Branch** `docs/ssot-adjustment-design` · Claim `ssot-adjustment-design` (in-progress).
