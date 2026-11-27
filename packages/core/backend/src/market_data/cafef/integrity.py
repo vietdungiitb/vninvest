@@ -126,8 +126,13 @@ def assert_integrity(rows: Iterable[dict], min_coverage: Decimal | None = None) 
 
 
 def collect_rows(since: str | None = None, symbol: str | None = None,
-                 limit: int | None = None) -> list[dict]:
-    """Adapter DB — tách riêng để phần kiểm tra ở trên thuần tuý."""
+                 limit: int | None = None, batch: int = 5000) -> list[dict]:
+    """Adapter DB — keyset pagination, KHÔNG dùng server-side named cursor.
+
+    `.iterator()` tạo cursor có tên; trên staging (pool transaction) psycopg2
+    trả `InvalidCursorName: _django_curs_... does not exist`. Keyset theo `id`
+    dùng client-side slice, chạy được mọi cấu hình pool.
+    """
     from market_data.models import DailyPrice
 
     qs = DailyPrice.objects.all()
@@ -135,16 +140,18 @@ def collect_rows(since: str | None = None, symbol: str | None = None,
         qs = qs.filter(date__gte=since)
     if symbol:
         qs = qs.filter(symbol=symbol.upper())
-    if limit:
-        qs = qs[:limit]
-    return [
-        {
-            'symbol': row.symbol,
-            'date': row.date,
-            'price_source': row.price_source,
-            'close': row.close,
-            'adj_close': row.adj_close,
-            'adj_factor': row.adj_factor,
-        }
-        for row in qs.iterator(chunk_size=5000)
-    ]
+    qs = qs.order_by('id')
+
+    fields = ('id', 'symbol', 'date', 'price_source', 'close', 'adj_close', 'adj_factor')
+    out: list[dict] = []
+    last_id = 0
+    while True:
+        chunk = list(qs.filter(id__gt=last_id).values(*fields)[:batch])
+        if not chunk:
+            break
+        for row in chunk:
+            out.append({key: row[key] for key in fields if key != 'id'})
+        last_id = chunk[-1]['id']
+        if limit is not None and len(out) >= limit:
+            return out[:limit]
+    return out

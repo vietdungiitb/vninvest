@@ -1,3 +1,11 @@
+## Entry 664: Fix check_price_integrity trên staging — keyset pagination thay named cursor
+
+- **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/integrity-cursor` · Claim `integrity-cursor`.
+- **Fail-before (staging thật)**: sau PR #569 deploy `92ff56a17`, `python manage.py check_price_integrity --since 2026-01-01 --json` trả `psycopg2.errors.InvalidCursorName: cursor "_django_curs_..._sync_1" does not exist`; traceback `check_price_integrity.py:25 → integrity.py:149 (qs.iterator) → django/compiler.py:2174 (cursor.close())`.
+- **Root cause**: `.iterator(chunk_size=...)` tạo server-side named cursor; pool transaction trên staging không giữ cursor giữa các fetch. Không phải lỗi dữ liệu hay logic audit.
+- **Fix**: `collect_rows()` dùng keyset pagination theo `id` (`filter(id__gt=last_id).values(...)[:batch]`), giữ `since`/`symbol`/`limit`, thêm `batch=5000`.
+- **Gates**: TDD đỏ 2 (`iterator` bị cấm) → **22 passed** (4 file); `pre-push-gate` chạy sau commit. Chạy lại command trên staging **CHƯA CHẠY** (chờ PR merge + deploy).
+- **Evidence**: `docs/evidence/price-integrity/CURSOR_FIX_20261127.md`.
 ## Entry 663: Follow-up price-integrity — audit plan/re-audit + bỏ trùng Entry 626
 
 - **Date**: 2026-11-27 · **Type**: docs/process (0 dòng source) · **Branch** `feat/price-integrity` · Claim `price-integrity` (reopen → done).
