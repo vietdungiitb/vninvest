@@ -809,6 +809,14 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('reconcile-cafef-drift-2000', 'enrichment_offhours')},
     },
 
+    # === S7: price integrity audit 21:00 ICT (sau drift 20:00) ===
+    'audit-price-integrity-2100': {
+        'task': 'data_ingest.tasks.audit_price_integrity_nightly',
+        'schedule': crontab(hour=21, minute=0),
+        'kwargs': {'_scheduler_job_key': 'audit-price-integrity-2100'},
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('audit-price-integrity-2100', 'enrichment_offhours')},
+    },
+
     # === DNSE intraday tape backfill 90 ngày — Chủ nhật 01:00 ICT (Sat 18:00 UTC) ===
     # Orchestrator: resolve VN100, presence-check, queue missing (symbol, date) slots.
     # Subtasks chạy queue manual_on_demand; orchestrator chạy enrichment_offhours.

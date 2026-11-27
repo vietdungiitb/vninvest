@@ -3506,6 +3506,43 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# S7 — Durable price integrity: paced import + nightly SSOT audit.
+# ---------------------------------------------------------------------------
+@shared_task(bind=True)
+def import_cafef_year_paced(self, exchange: str = 'HOSE', year: int | None = None,
+                            dry_run: bool = False) -> dict:
+    """Import CafeF có backoff trong nền, rồi audit trước khi báo applied.
+
+    Sleep dài KHÔNG nằm ở request path; task này chạy queue offhours.
+    """
+    from market_data.cafef.importer import run_import
+    from market_data.cafef.integrity import audit_rows, collect_rows
+
+    year = year or now().year
+    imported = run_import(exchange, year, dry_run=dry_run)
+    if dry_run:
+        return {'status': 'dry_run', 'import': imported}
+    report = audit_rows(collect_rows(since=f'{year}-01-01'))
+    return {
+        'status': 'applied' if report['ok'] else 'integrity_blocked',
+        'import': imported,
+        'violations': report['violations'],
+        'rows_audited': report['rows'],
+    }
+
+
+@shared_task(bind=True)
+def audit_price_integrity_nightly(self, _scheduler_job_key: str | None = None) -> dict:
+    """Beat 21:00 — phát hiện sớm basis trộn / hệ số hỏng, không sửa dữ liệu."""
+    from market_data.cafef.integrity import audit_rows, collect_rows
+
+    report = audit_rows(collect_rows(since=f'{now().year}-01-01'))
+    if not report['ok']:
+        logger.warning('[price_integrity] violations=%s', report['violations'])
+    return report
+
+
+# ---------------------------------------------------------------------------
 # S4 — CafeF full-history rebase (single SSOT cho adjusted price).
 # ---------------------------------------------------------------------------
 @shared_task(bind=True)
@@ -3528,14 +3565,15 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
         status=PriceRebaseRun.Status.FAILED, ex_date=ex_date,
     )
     end = now().date()
-    # S4b: CafeF per-symbol full-range endpoint returns 400/503. The ALL export
-    # (one XLSX per exchange/year) is the reliable feed; filter by symbol here.
-    from vnbroker.reference.client import bulk_year
+    # S4b/S7: ALL export là nguồn tin cậy; fetch_year_paced thêm backoff theo
+    # IP burst và pace giữa các năm — không đốt quota như vòng lặp bulk_year cũ.
+    from market_data.cafef.importer import fetch_year_paced
 
     new_rows = []
     try:
-        for year in range(from_year, end.year + 1):
-            for record in bulk_year(exchange, year, use_cache=False):
+        years = list(range(from_year, end.year + 1))
+        for index, year in enumerate(years):
+            for record in fetch_year_paced(exchange, year):
                 if str(record.get('symbol', '')).upper() != symbol.upper():
                     continue
                 close_raw = Decimal(str(record.get('close_raw')))
@@ -3547,6 +3585,8 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
                     date=date.fromisoformat(raw_date),
                     close=close_raw, adj_close=adj_close, adj_factor=adj_close / close_raw,
                 ))
+            if index < len(years) - 1:
+                time.sleep(3)  # nhịp giữa các năm — tránh burst ALL-export
     except Exception as exc:  # CafeF may 400/503 on the ALL export too
         PriceRebaseRun.objects.filter(pk=audit.pk).update(
             status=PriceRebaseRun.Status.FAILED,
@@ -3563,6 +3603,28 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
         )
         return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
     new_series = build_series(new_rows)
+
+    # S7: fail-closed — dữ liệu vào phải thoải mọi bất biến trước khi ghi.
+    from market_data.cafef.integrity import PriceIntegrityError, assert_integrity
+
+    try:
+        assert_integrity([
+            {
+                'symbol': symbol, 'price_source': 'cafef',
+                'close': row.close, 'adj_close': row.adj_close,
+                'adj_factor': row.adj_factor,
+            }
+            for row in new_rows
+        ])
+    except PriceIntegrityError as exc:
+        PriceRebaseRun.objects.filter(pk=audit.pk).update(
+            status=PriceRebaseRun.Status.HALTED_DATA_ERROR,
+            detail=str(exc)[:300], rows_scanned=len(new_series), finished_at=now(),
+        )
+        return {
+            'status': 'halted_data_error', 'reason': str(exc),
+            'symbol': symbol, 'trigger': trigger,
+        }
 
     old_qs = DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
     if date_from:

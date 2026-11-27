@@ -1,3 +1,16 @@
+## Entry 661: Durable price-integrity gates — SSOT audit + paced import + nightly beat
+
+- **Date**: 2026-11-27 · **Type**: feat/fix/docs · **Branch**: `feat/price-integrity` · **Claim**: `price-integrity` (in-progress).
+- **Root cause**: 4 loi du lieu lap lai — 433.373 dong `adj_close` tan du (basis tron), import crash do frame vnbroker 3.10 field widget-only, CafeF 503 theo IP burst (ca cua so 1 thang), rebase khong co gate truoc `bulk_update`.
+- **Changes**:
+  - `market_data/cafef/integrity.py` (new): 7 violation code SSOT, `audit_rows`/`assert_integrity`/`collect_rows`.
+  - `market_data/cafef/importer.py`: `normalize_row()` + `fetch_year_paced()` (backoff, env `CAFEF_BACKOFF_BASE`); `_fetch_rows` dung paced.
+  - `data_ingest/tasks.py`: them `import_cafef_year_paced`, `audit_price_integrity_nightly`; rebase dung paced + nhịp 3s/giữa năm + `assert_integrity` fail-closed.
+  - `vninvest_core/settings.py`: beat `audit-price-integrity-2100`.
+  - `market_data/management/commands/check_price_integrity.py` (new): ops/CI gate, exit 1 khi có violation.
+  - `backend/conftest.py` (new): `CAFEF_BACKOFF_BASE=0` cho test, tránh sleep 70s.
+- **Gates**: TDD đỏ 3 collection errors → **32 passed** (7 file) + `manage.py check` 0 issues. Deploy staging + chạy command thật **CHƯA CHẠY** (chờ PR). Backfill 2011–2026 vẫn block bởi CafeF 503; fallback VCI/KBS có nhãn chưa implement.
+- **Evidence**: `docs/evidence/price-integrity/DURABLE_GATES_20261127.md`.
 ## Entry 660: BE CVD Realtime backfill + coverage_from + intraday history SSOT
 
 - **Date**: 2026-11-26 · **Type**: feat/fix · **Branch**: `feat/cvd-realtime-backfill-ssot` · **Claim**: `cvd-realtime-backfill-ssot`.
