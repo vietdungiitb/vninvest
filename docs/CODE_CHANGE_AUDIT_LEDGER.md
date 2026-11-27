@@ -1,3 +1,11 @@
+## Entry 678: SSOT Phase 1 — kế hoạch + audit 3 vòng + vnbroker bulk failover
+
+- **Date**: 2026-11-27 · **Type**: docs/plan + code (repo sibling) · **Branch** `feat/ssot-phase1` (cả 2 repo) · Claim `ssot-phase1`.
+- **B1-B4**: skill `workflow-dev-loop` nạp; `agent-sync` OK; audit subagent read-only 3 vòng: NEED_REVISION (6 objections) → NEED_REVISION (2) → **AGREE** (3 reservation đã áp dụng: dùng `get_profile`, lệnh PowerShell, đồng bộ audit refs). Biên bản: `docs/evidence/ssot-implementation/{AUDIT_PLAN_PHASE1,AUDIT_PLAN_PHASE1_V2,CONSENSUS_PHASE1_20261127}.md`.
+- **Kế hoạch**: `docs/PLAN_SSOT_IMPLEMENTATION_20261127.md` — chương trình 6 Phase + AC1-AC7 cho Phase 1 + baseline có lệnh tái hiện.
+- **Code vnbroker** (PR #8, repo sibling): 418/429 → `RateLimitError` giữ `retry_after`; async không retry 429; VCI/KBS/DNSE không nuốt rate-limit; `BulkRouter.fetch_history` requeue symbol trong cùng batch; shared per-provider limiter (sync+async) + `set_provider_limiter` inject; `api/bulk` đếm `dropped_frames`, bỏ frame vô chủ thay `"unknown"`.
+- **Gates**: vnbroker TDD đỏ 4 → **8 passed**; full **2356 passed / 30 skipped / 1 deselected** (DNSE env); ruff clean; **B8 re-audit AGREE**. `mypy` 956 errors pre-existing; publish 3.11.0 **CHƯA CHẠY**.
+- **CHƯA LÀM**: Phase 0 benchmark VPS, Phase 2-5 (migration/anchor/service/consumer/cutover).
 ## Entry 677: Quyết định Owner bổ sung — Anchor A + DNSE Tier 2 (DOC-ONLY)
 
 - **Date**: 2026-11-27 · **Type**: docs/decision · **Branch** `docs/ssot-decisions-rev2` · Claim `ssot-decisions-rev2`.
