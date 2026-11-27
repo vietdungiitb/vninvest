@@ -1,3 +1,10 @@
+## Entry 671: Đánh giá mô hình raw/adjusted — CafeF là nguồn raw độc quyền
+
+- **Date**: 2026-11-27 · **Type**: docs/architecture review · **Branch** `docs/price-model-review` · Claim `price-model-review`.
+- **Kết luận**: "raw giống mọi nguồn" chỉ đúng vì VCI/KBS `adjusted=False` đều route CafeF (`vci/quote.py:578-585`, `kbs/quote.py:438-445`) — không phải raw chung tự nhiên; adjusted VCI 13934.04 vs KBS 13949 cho thấy khác nhau thật. DB `close` đang chứa giá adjusted (`pricing.py:41-49`, staging TPB `close=13934.04`, `adj_close=NULL`) ⇒ chưa đúng mô hình "hiển thị = adjusted".
+- **Sự kiện công ty**: hạ tầng rebase có sẵn nhưng `apply_adjustments` trả 0 UPDATE (`adjustment.py:93-94`, `PRICE_ADJUSTMENT_WRITES_ENABLED` unset); `compute_adj_factors._prev_close` đọc cột `close` đã adjusted ⇒ không bật writes khi chưa có raw thật.
+- **Hướng đi cần owner chốt**: A) provider-adjusted làm canonical (đang làm) hoặc B) raw SSOT độc lập CafeF + bật writes (blocker credentials). Không trộn basis, không bật flag trước parity.
+- **Evidence**: `docs/evidence/price-integrity/PRICE_MODEL_REVIEW_20261127.md`.
 ## Entry 670: Phân tích hiển thị chart khi thiếu lịch sử CafeF
 
 - **Date**: 2026-11-27 · **Type**: docs/analysis · **Branch** `docs/chart-gap-analysis` · Claim `chart-gap-analysis`.
