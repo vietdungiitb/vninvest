@@ -16,6 +16,7 @@ một chỗ, chạy lại được ở write-path, ops/CI và beat**.
 | Rebase trộn basis `cafef` + legacy trong cùng mã | `integrity.py:21` (`mixed_basis_symbol`) | phát hiện theo symbol |
 | Import crash `CafefDailyPrice(**row)` do field widget-only | `market_data/cafef/importer.py` `normalize_row()` | lọc 11 field model, bỏ `time/open/.../fetched_at` |
 | CafeF 503 theo IP burst (cả cửa sổ 1 tháng vẫn 503) | `importer.py` `fetch_year_paced()` | backoff `min(base × 2^n, 120)`, 4 lần; `use_cache=False`, clamp `end_date` |
+| Fallback XLSX gửi `EndDate=12/31` cho năm hiện tại → 503 thật (đã đo) | `market_data/cafef/fetcher.py` `resolve_end()` | clamp về `date.today()`; TDD 3/3 |
 | 16 năm ALL-export gọi liên tục trong rebase | `data_ingest/tasks.py::rebase_symbol_from_cafef` | dùng `fetch_year_paced` + nhịp 3s giữa các năm |
 | Sleep dài chạy ở request path | `data_ingest/tasks.py::import_cafef_year_paced` | task Celery queue offhours; `CAFEF_BACKOFF_BASE=0` chỉ trong test (`backend/conftest.py`) |
 | Không phát hiện sớm violations | `settings.py` `audit-price-integrity-2100` + `tasks.py::audit_price_integrity_nightly` | beat 21:00 sau drift 20:00, log warning, không sửa dữ liệu |
@@ -37,8 +38,8 @@ cùng gọi một hàm `audit_rows`:
 
 - Đỏ: 3 file test mới import `fetch_year_paced` / `normalize_row` / integrity
   → `ImportError` (3 collection errors).
-- Sau khi implement: **32 passed** (7 file: 14 integrity + 1 normalize + 4 paced +
-  3 command + 3 task + 1 S4 bulk-fetch + 6 S4 safety), `manage.py check` →
+- Sau khi implement: **35 passed** (8 file: 14 integrity + 1 normalize + 4 paced +
+  3 fetcher-end-date + 3 command + 3 task + 1 S4 bulk-fetch + 6 S4 safety), `manage.py check` →
   `System check identified no issues (0 silenced)`.
 - Bẫy đã sửa trong lúc chạy: thay `bulk_year` bằng reference-method làm mất patch
   target của test S4 (`vnbroker.reference.client.bulk_year`) và backoff 70s chạy
@@ -49,7 +50,7 @@ cùng gọi một hàm `audit_rows`:
 
 | Hạng mục | Kết quả |
 |---|---|
-| Unit gate 7 file | **32 passed** |
+| Unit gate 8 file | **35 passed** |
 | `manage.py check` | **0 issues** |
 | Deploy staging + chạy `check_price_integrity` thật | **CHƯA CHẠY** (chờ PR merge) |
 | Backfill 2011–2026 | **CHƯA XONG** — CafeF bulk vẫn 503 từ IP VPS (xem `../price-rebase-s5/CAFEF_BLOCK_WATCH_20261127.md`) |
