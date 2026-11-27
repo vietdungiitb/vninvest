@@ -37,7 +37,7 @@ google-api-python-client>=2.0,<3.0
 # nên không cần sửa. Chi tiết: docs/VERIFY_VNBROKER_371_ROUND2_20261011.md
 # 3.9.0 -> 3.10.0: CafeF reference bug fixes (EndDate clamp, TTL cache,
 # reconcile exchange, date/change_pct). PyPI v3.10.0 live 2026-11-26.
-vnbroker==3.10.0
+vnbroker==3.11.0
 
 # Stripe Billing Integration
 stripe>=7.0,<8.0
