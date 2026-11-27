@@ -1,3 +1,11 @@
+## Entry 673: Báo cáo nghiên cứu kiến trúc vnbroker + vninvest — luồng dữ liệu giá
+
+- **Date**: 2026-11-27 · **Type**: docs/research-only · **Branch** `docs/architecture-research-20261127` · Claim `architecture-research-20261127`.
+- **Yêu cầu owner**: nghiên cứu, lập báo cáo, **KHÔNG code**. Scope: vnbroker 3.10.0 (registry/pool/router/health/bulk/CafeF) + vninvest (ingest/models/pricing/cafef/corporate actions/beat/FE contract) + số liệu staging thật.
+- **5 finding P0/P1**: (1) `DailyPrice.close` chứa adjusted nhưng coi là raw (`tasks.py:665-711`); (2) `adj_close` 2026 chỉ 222/~281k, bật flag cắt chuỗi; (3) CafeF là raw độc quyền, bulk 503/rỗng; (4) hai lớp bulk song song không chia rate-limit (`bulk_router.py:150` vs `tasks.py:1809`); (5) 22.470 corporate action nhưng `apply_adjustments` trả 0 (`adjustment.py:93-94`).
+- **Kiến trúc mục tiêu**: `adj_close` canonical, `close` reference; VCI/KBS adjusted, CafeF_reference; một bulk engine + Redis rate limiter; freshness SLO; lộ trình 0–5 phụ thuộc owner chốt A/B.
+- **Gates**: `pre-push-gate` 36 PASS; full BE suite **CHƯA CHẠY** (no Postgres local); fill `adj_close` **CHƯA LÀM**.
+- **Evidence**: `docs/evidence/price-integrity/ARCHITECTURE_RESEARCH_20261127.md` (+ plan/audit). Không đổi source/data/flag.
 ## Entry 672: Đính chính — giá tham chiếu/trần/sàn dùng GIÁ ĐÃ ĐIỀU CHỈNH
 
 - **Date**: 2026-11-27 · **Type**: docs/correction · **Branch** `docs/exdate-reference-fix` · Claim `exdate-reference-fix`.
