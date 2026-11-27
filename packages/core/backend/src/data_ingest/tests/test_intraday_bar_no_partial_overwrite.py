@@ -105,6 +105,36 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
         bar = IntradayBar.objects.get(symbol=_SYMBOL, timeframe='1H', datetime=_floor_intraday_bucket(self.t10, '1H'))
         self.assertEqual(bar.volume, 501000, 'batch 2 phai cong don, khong duoc ghi de 1000')
 
+    def test_helper_aggregates_all_db_ticks_for_bucket(self) -> None:
+        from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
+        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES
+
+        IntradayTick.objects.create(
+            symbol=_SYMBOL,
+            timestamp=self.t1045,
+            price=Decimal('100000'),
+            volume=1000,
+            side='BUY',
+            match_type='NormalMatch',
+            source='vnbroker_intraday',
+        )
+        rows = list(
+            IntradayTick.objects.filter(symbol=_SYMBOL)
+            .values('timestamp', 'price', 'volume', 'source')
+            .order_by('timestamp')
+        )
+        self.assertEqual(len(rows), 3)
+        affected = {
+            (timeframe, _floor_intraday_bucket(row['timestamp'], timeframe))
+            for row in rows
+            for timeframe in _INTRADAY_BAR_TIMEFRAMES
+        }
+        payloads = recompute_bar_payloads_from_ticks(
+            _SYMBOL, rows, affected, _floor_intraday_bucket, _INTRADAY_BAR_TIMEFRAMES
+        )
+        hour_key = ('1H', _floor_intraday_bucket(self.t1045, '1H'))
+        self.assertEqual(payloads[hour_key]['volume'], 501000)
+
     @patch('data_ingest.tasks._fetch_tape_with_timeout')
     def test_unaffected_bucket_keeps_volume(self, mock_fetch) -> None:
         mock_fetch.return_value = {'trades': [_raw_trade(self.t1045, 1000)], 'source': 'vnbroker'}
