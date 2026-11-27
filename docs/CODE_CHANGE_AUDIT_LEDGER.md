@@ -1,3 +1,12 @@
+## Entry 681: S1 P0 REQ-BE-M01 — chặn ghi đè cụt IntradayBar (recompute từ toàn bộ tick DB)
+
+- Ngày 2026-11-28 · Agent `m01-bar-overwrite` · Branch `feat/m01-bar-overwrite` (rebase `origin/dev a570cb432`).
+- Phạm vi: `packages/core/backend/src/data_ingest/tasks.py` (`_hydrate_intraday_symbols:511+`), helper mới `intraday_bar_recompute.py`, test mới `tests/test_intraday_bar_no_partial_overwrite.py`, evidence `docs/evidence/market-data-integrity/{s1-gates.md,S1_REAUDIT.md}`, `docs/CLAIMS.md`.
+- Fix: thay batch partial bằng recompute OHLCV từ toàn bộ `IntradayTick` DB cho bucket bị ảnh hưởng; **G-3a** chuẩn hóa tape timestamp về UTC trước khi floor 2H/4H (tránh lệch `22:00+07 = 15:00 UTC` so với DB `16:00 UTC`).
+- Fail-before thật trên VPS (DB tạm, §12.3): `AssertionError: 1000 != 501000`, `TEST_EXIT=1`; pass-after `Ran 4 tests ... OK`, `TEST_EXIT=0`. Regression `data_ingest` 56 test — 1 fail `'warm' != FRESH` **có sẵn trên base** (`origin/dev` cũng fail), không phải regression.
+- Re-audit độc lập: **AGREE**, 0 blocker/0 major; reservations R1-S1-01/02/03/04 ghi thành nợ trong `s1-gates.md`, R1-S1-05 đóng ở Entry này.
+- Gates: `check-multi-agent` exit 0; `pre-push-gate` 36 PASS/0 FAIL; `makemigrations --check` = No changes detected; `check-lessons` exit 0. Không migration, không đụng staging ghi. **CHƯA CHẠY**: full BE suite các app khác, deploy staging.
+
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
