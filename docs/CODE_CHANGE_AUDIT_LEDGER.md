@@ -1,3 +1,9 @@
+## Entry 668: Fix coverage scope cho fallback — old_rows theo from_year
+
+- **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-scope-fix` · Claim `fallback-scope-fix` (in-progress).
+- **Fail-before**: E2E AAH `insufficient_coverage` dù KBS trả 223 dòng / DB có 222 dòng 2026 — vì `old_rows` lấy toàn bộ lịch sử mã.
+- **Fix**: scope `old_qs.filter(date__gte=date(from_year,1,1))`; guard `cafef_rows_present` vẫn toàn chuỗi. TDD 1 test mới đỏ → **9 passed**.
+- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR). Evidence: `docs/evidence/price-integrity/FALLBACK_SCOPE_FIX_20261127.md`.
 ## Entry 667: Fix fallback E2E — validate_fallback nhận ORM object
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-orm-fix` · Claim `fallback-orm-fix` (in-progress).
