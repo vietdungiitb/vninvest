@@ -1,3 +1,23 @@
+## Entry 663: Follow-up price-integrity — audit plan/re-audit + bỏ trùng Entry 626
+
+- **Date**: 2026-11-27 · **Type**: docs/process (0 dòng source) · **Branch** `feat/price-integrity` · Claim `price-integrity` (reopen → done).
+- **Fail-before**: `pwsh -File scripts/agent-sync.ps1` đỏ tại `check-ledger-entry` — Entry 626 xuất hiện 2 lần (dòng 238/247); phản chứng `git show origin/dev:docs/CODE_CHANGE_AUDIT_LEDGER.md` cũng ra **2** ⇒ duplicate có sẵn trên `dev`, không do slice này.
+- **Fix**: bản thứ hai (handoff commit `1dd9554c5`) đổi số **626→662**, giữ nguyên nội dung + thêm 1 dòng note giải thích; `check-ledger-entry` chuyển PASS (`max=662`, `--next-entry=663`).
+- **Audit**: `docs/evidence/price-integrity/PLAN_FOLLOWUP_20261127.md` + `AUDIT_PLAN_FOLLOWUP_20261127.md`; verdict **AGREE** kèm reservation R1 (solo ⇒ không có auditor độc lập thật, không tự gắn nhãn PASS độc lập), R2 (chỉ deploy staging sau CI xanh + merge), R3 (đổi số entry cũ có note giải thích).
+- **Lessons**: `docs/LESSONS/verification.md` (L-V01/V02/V04) + `docs/LESSONS/multi-agent.md` (L-002/L-003/L-007); checklist đã tick trong plan.
+## Entry 661: Durable price-integrity gates — SSOT audit + paced import + nightly beat
+
+- **Date**: 2026-11-27 · **Type**: feat/fix/docs · **Branch**: `feat/price-integrity` · **Claim**: `price-integrity` (in-progress).
+- **Root cause**: 4 loi du lieu lap lai — 433.373 dong `adj_close` tan du (basis tron), import crash do frame vnbroker 3.10 field widget-only, CafeF 503 theo IP burst (ca cua so 1 thang), rebase khong co gate truoc `bulk_update`.
+- **Changes**:
+  - `market_data/cafef/integrity.py` (new): 7 violation code SSOT, `audit_rows`/`assert_integrity`/`collect_rows`.
+  - `market_data/cafef/importer.py`: `normalize_row()` + `fetch_year_paced()` (backoff, env `CAFEF_BACKOFF_BASE`); `_fetch_rows` dung paced.
+  - `data_ingest/tasks.py`: them `import_cafef_year_paced`, `audit_price_integrity_nightly`; rebase dung paced + nhịp 3s/giữa năm + `assert_integrity` fail-closed.
+  - `vninvest_core/settings.py`: beat `audit-price-integrity-2100`.
+  - `market_data/management/commands/check_price_integrity.py` (new): ops/CI gate, exit 1 khi có violation.
+  - `backend/conftest.py` (new): `CAFEF_BACKOFF_BASE=0` cho test, tránh sleep 70s.
+- **Gates**: TDD đỏ 3 collection errors → **32 passed** (7 file) + `manage.py check` 0 issues. Deploy staging + chạy command thật **CHƯA CHẠY** (chờ PR). Backfill 2011–2026 vẫn block bởi CafeF 503; fallback VCI/KBS có nhãn chưa implement.
+- **Evidence**: `docs/evidence/price-integrity/DURABLE_GATES_20261127.md`.
 ## Entry 660: BE CVD Realtime backfill + coverage_from + intraday history SSOT
 
 - **Date**: 2026-11-26 · **Type**: feat/fix · **Branch**: `feat/cvd-realtime-backfill-ssot` · **Claim**: `cvd-realtime-backfill-ssot`.
@@ -231,9 +251,9 @@
 - **Còn lại:** ticket P0-B6 (dynamic CORS), widget team adaptation, full BE suite/E2E (ngoài scope slice). Không blocker code.
 - **Trạng thái:** claim `whale-cvd-contract-be` = `done`; slice `done`; **phiên chốt nghỉ**.
 
-## Entry 626: Chốt phiên nghỉ (2026-11-24) — final re-audit + handoff verified
+## Entry 662: Chốt phiên nghỉ (2026-11-24) — final re-audit + handoff verified
 
-- **Date**: 2026-11-24 · **Type**: closeout (doc-only, 0 dòng source).
+- **Date**: 2026-11-24 · **Type**: closeout (doc-only, 0 dòng source). **Đổi số 626→662 ngày 2026-11-27** để bỏ trùng với Entry 626 ở dòng 238 (duplicate có sẵn trên `dev`, chặn `agent-sync.ps1`/`check-ledger-entry`); nội dung giữ nguyên.
 - **Re-audit cuối:** code unchanged từ B8 PASS (`691587b3e`); gates chạy lại: `pre-push-gate` **36 PASS/0 FAIL** · `check-lessons` 60/60 · `tsc` exit 0 · BE contract **14/14 OK** · jest route-contract 4/4. CORS env staging verified live (HTTP/2 200 + allow-origin). Verdict vẫn **PASS**. `docs/evidence/whale-cvd-contract/AUDIT_CODE.md` append §FINAL RE-AUDIT.
 - **Handoff:** `docs/handoffs/HANDOFF_2026-11-24_WHALE_CVD_CONTRACT.md` đã trên `main` commit `1dd9554c5`; verify `git log --oneline -3 main -- docs/handoffs` dòng đầu = commit đó. `dev` = `c029a9c12`.
 - **Ops:** PR #525 merged (`c75012499`); staging deploy + `--verify` exit 0; CORS `charts.edusuccess.vn` verified.
