@@ -12,6 +12,7 @@ import base64
 import hashlib
 import json
 import logging
+import os
 from datetime import date, datetime, time, timedelta
 
 from django.db import DatabaseError
@@ -334,7 +335,13 @@ class RealtimeBreadthView(APIView):
 # executed_at is the Celery run time — including them would draw fake whale
 # bubbles and double-count the summary. G0 probe 2026-11-24: 6.290 such rows.
 _WHALE_TICK_SOURCE_PREFIX = 'whale_tick:'
-_WHALE_MIN_VALUE_FLOOR = 500_000_000
+# Whale bubble UX: default (caller khong truyen min_value) van 500M de giu
+# hop dong cu; floor/ceiling la clamp cho cac caller moi. Cap env la nut
+# overload thuc (khong doi contract).
+_WHALE_DEFAULT_MIN_VALUE = int(os.getenv('VNI_WHALE_DEFAULT_MIN_VALUE', '500000000'))
+_WHALE_MIN_VALUE_FLOOR = int(os.getenv('VNI_WHALE_MIN_VALUE_FLOOR', '50000'))
+_WHALE_MAX_MIN_VALUE = int(os.getenv('VNI_WHALE_MAX_MIN_VALUE', '100000000000'))
+_WHALE_TICK_QUERY_CAP = int(os.getenv('VNI_WHALE_TICK_QUERY_CAP', '200000'))
 _WHALE_SHARK_MIN = 1_000_000_000
 _WHALE_WHALE_MIN = 5_000_000_000
 _WHALE_SUMMARY_KEYS = (
@@ -376,7 +383,7 @@ def _parse_iso_param(raw):
 
 
 def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
-                             min_value=_WHALE_MIN_VALUE_FLOOR, limit=50,
+                             min_value=_WHALE_DEFAULT_MIN_VALUE, limit=50,
                              cursor=None, alert_limit=50) -> dict:
     """Contract SSOT for /core/v1/realtime/whale-feed/<symbol>/ (flat, +07:00)."""
     from signal_intelligence.models import WhaleAlertCanonical
@@ -415,7 +422,11 @@ def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
         except (KeyError, TypeError, ValueError, UnicodeDecodeError):
             pass  # opaque cursor: bad input means first page, never an error
 
-    all_rows = list(per_tick)
+    # Cap at QUERY level: limit chi chet response, khong chet query (bai hoc audit).
+    # per_tick da order_by('-executed_at') => slice giu tick MOI NHAT.
+    capped_rows = list(per_tick[:_WHALE_TICK_QUERY_CAP])
+    truncated = len(capped_rows) > _WHALE_TICK_QUERY_CAP
+    all_rows = capped_rows
     rows = all_rows[:limit]
     summary = _empty_whale_summary()
     for row in all_rows:
@@ -465,13 +476,14 @@ def build_whale_feed_payload(symbol, *, from_dt=None, to_dt=None,
         'summary': summary,
         'next_cursor': next_cursor,
         'source': 'whale_alert_canonical',
-        'data_quality': 'provider_side_from_tick',
+        'data_quality': 'truncated' if truncated else 'provider_side_from_tick',
         'freshness_by_tier': {'hot': '<=300s', 'warm': '<=900s', 'cold': 'backfill_only'},
         'retention_days': 365,
     }
 
 
 _WHALE_BUCKET_WINDOWS = {
+    '1h': 60,
     '4h': 240,
     '1D': 1440,
     '1W': 10080,
@@ -479,6 +491,8 @@ _WHALE_BUCKET_WINDOWS = {
 
 
 def _whale_bucket_key(dt_value, window):
+    if window == '1h':
+        return dt_value.replace(minute=0, second=0, microsecond=0)
     if window == '4h':
         return dt_value.replace(hour=(dt_value.hour // 4) * 4, minute=0, second=0, microsecond=0)
     if window == '1W':
@@ -489,7 +503,7 @@ def _whale_bucket_key(dt_value, window):
     return datetime.combine(dt_value.date(), time.min, tzinfo=dt_value.tzinfo)
 
 
-def build_whale_buckets(symbol, window, from_dt=None, to_dt=None, min_value=_WHALE_MIN_VALUE_FLOOR):
+def build_whale_buckets(symbol, window, from_dt=None, to_dt=None, min_value=_WHALE_DEFAULT_MIN_VALUE):
     """Aggregate per-tick WhaleAlertCanonical into buckets for 4h/1D/1W.
 
     Returns list of dicts: {bucket_ts (ISO +07:00), ts (unix), price, net_value, dominance, size_class, count}.
@@ -514,7 +528,12 @@ def build_whale_buckets(symbol, window, from_dt=None, to_dt=None, min_value=_WHA
     if to_dt is not None:
         qs = qs.filter(executed_at__lte=to_dt)
 
-    rows = list(qs.values('side', 'matched_value', 'executed_at', 'price'))
+    # Query-level cap, newest-first, then reverse into chronological order for bucketing.
+    capped = list(qs.order_by('-executed_at', '-pk').values(
+        'side', 'matched_value', 'executed_at', 'price',
+    )[:_WHALE_TICK_QUERY_CAP])
+    truncated = len(capped) > _WHALE_TICK_QUERY_CAP
+    rows = list(reversed(capped))
     buckets = {}  # key datetime -> {buy, sell, count, max_date}
     for row in rows:
         executed_at = row.get('executed_at')
@@ -579,10 +598,13 @@ def build_whale_buckets(symbol, window, from_dt=None, to_dt=None, min_value=_WHA
             'bucket_ts': key_dt.isoformat(),
             'ts': int(key_dt.timestamp()),
             'price': price,
+            'buy_value': bucket['buy'],
+            'sell_value': bucket['sell'],
             'net_value': net,
             'dominance': dominance,
             'size_class': size_class,
             'count': bucket['count'],
+            'data_quality': 'truncated' if truncated else 'provider_side_from_tick',
         })
     return result
 
@@ -615,10 +637,14 @@ class RealtimeWhaleFeedView(APIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             if min_value < _WHALE_MIN_VALUE_FLOOR:
                 return Response({'code': 'MIN_VALUE_BELOW_FLOOR',
-                                 'detail': 'min_value phải >= 500000000 VND.'},
+                                 'detail': f'min_value phải >= {_WHALE_MIN_VALUE_FLOOR} VND.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if min_value > _WHALE_MAX_MIN_VALUE:
+                return Response({'code': 'MIN_VALUE_ABOVE_CEILING',
+                                 'detail': f'min_value phải <= {_WHALE_MAX_MIN_VALUE} VND.'},
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
-            min_value = _WHALE_MIN_VALUE_FLOOR
+            min_value = _WHALE_DEFAULT_MIN_VALUE
 
         try:
             limit = max(1, min(int(request.query_params.get('limit', 50)), 1000))
@@ -629,12 +655,12 @@ class RealtimeWhaleFeedView(APIView):
         if raw_window:
             # F-02: canonical hoa window (lower-case + alias 1d/1w), dong nhat voi
             # CVD endpoint; window khong hop le tra 400 thay vi fallback am thay shape.
-            _WHALE_WINDOW_CANONICAL = {'4h': '4h', '1d': '1D', '1w': '1W'}
+            _WHALE_WINDOW_CANONICAL = {'1h': '1h', '4h': '4h', '1d': '1D', '1w': '1W'}
             canonical = _WHALE_WINDOW_CANONICAL.get(raw_window.lower())
             if canonical is None or canonical not in _WHALE_BUCKET_WINDOWS:
                 return Response({
                     'code': 'UNSUPPORTED_WINDOW',
-                    'detail': 'window chi nhan 4h | 1D | 1W.',
+                    'detail': 'window chi nhan 1h | 4h | 1D | 1W.',
                 }, status=status.HTTP_400_BAD_REQUEST)
             buckets = build_whale_buckets(
                 symbol,
@@ -648,7 +674,9 @@ class RealtimeWhaleFeedView(APIView):
                 'window': canonical,
                 'whale_buckets': buckets,
                 'source': 'whale_alert_canonical',
-                'data_quality': 'provider_side_from_tick',
+                'data_quality': 'truncated' if any(
+                    b.get('data_quality') == 'truncated' for b in buckets
+                ) else 'provider_side_from_tick',
             })
 
         payload = build_whale_feed_payload(

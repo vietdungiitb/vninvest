@@ -1,3 +1,14 @@
+## Entry 671: Whale BE contract cho bubble chart — buy/sell fields, window 1h, floor động
+
+- **Date**: 2026-11-27 · **Type**: feat · **Branch** `feat/whale-be-fields-1127` · Claim `whale-be-fields-1127` (in-progress).
+- **Source**: plan liên repo `PLAN_WHALE_BUBBLE_UX_2026-11-27.md` (AGREE sau 3 vòng audit) + audit `vninvestcharts-widget/docs/AUDIT_UX_GOCHARTING_PARITY_2026-11-27.md`.
+- **Root cause**: `native_views.py:337` dùng 1 constant cho cả default 500M lẫn floor; `:571-586` bỏ `buy/sell` khi serialize bucket; `:474-478` thiếu window `1h`; `limit` chỉ cắt response không cắt query (`:418`,`:517`).
+- **Changes**: tách `VNI_WHALE_DEFAULT_MIN_VALUE=500M` / `VNI_WHALE_MIN_VALUE_FLOOR=50K` / `VNI_WHALE_MAX_MIN_VALUE=100B` / `VNI_WHALE_TICK_QUERY_CAP=200K`; bucket trả `buy_value`/`sell_value`/`data_quality`; thêm window `1h` (anchor theo giờ); cap query newest-first rồi reverse; `400 MIN_VALUE_BELOW_FLOOR` / `MIN_VALUE_ABOVE_CEILING`. Không migration, không deny-list, không đổi response shape cũ (chỉ thêm field).
+- **Tests**: 5 test method mới trong `test_whale_cvd_full_tf.py` viết trước khi implement (AC-01..05). `python -m py_compile` exit 0.
+- **Gates**: `pwsh -File scripts/agent-sync.ps1` exit 0 (rebase + 0 trùng migration + check-multi-agent PASS); `python -m py_compile` exit 0. **CHƯA CHẠY**: pytest BE (`CORE_DATABASE_URL` + `DJANGO_DEBUG` không có trong session; phải chạy trên VPS DB riêng theo AGENTS.md / L-B01) — lệnh tái tạo: `CORE_DATABASE_URL=... DJANGO_DEBUG=1 python manage.py test market_data.tests.test_whale_cvd_full_tf`.
+- **Evidence**: `docs/evidence/whale-bubble-ux/PLAN_AUDIT.md`, `S1_GATES.md`.
+- **Lessons áp dụng**: L-001 L-002 L-003 L-B01 L-B02 L-V01.
+
 ## Entry 670: Phân tích hiển thị chart khi thiếu lịch sử CafeF
 
 - **Date**: 2026-11-27 · **Type**: docs/analysis · **Branch** `docs/chart-gap-analysis` · Claim `chart-gap-analysis`.
@@ -5,6 +16,7 @@
 - **Số liệu staging**: 1834 mã có dòng 2026; 963 mã toàn `unmapped_cafef`; TPB cafef dừng 2025-12-31 + 223 dòng 2026 bị bỏ khi flag=1; A32 187 dòng không cafef vẫn hiện.
 - **Kết luận**: flag=0 không blank nhưng nhãn basis chưa trung thực; flag=1 khi chưa parity gây đứt đuôi chuỗi. Giữ `PRICE_ADJUSTED_DISPLAY=0` tới khi parity/fallback đầy đủ. Hành vi fill nến của widget package **CHƯA XÁC MINH**.
 - **Evidence**: `docs/evidence/price-integrity/CHART_GAP_ANALYSIS_20261127.md`.
+
 ## Entry 669: Fix fallback khi CafeF trả rỗng (no_data)
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-empty-fix` · Claim `fallback-empty-fix` (in-progress).
