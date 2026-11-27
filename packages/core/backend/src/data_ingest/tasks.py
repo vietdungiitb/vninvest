@@ -514,14 +514,15 @@ def _hydrate_intraday_symbols(
                 # Xac dinh tap bucket bi anh huong, roi tinh lai tu TOAN BO tick trong DB.
                 # Truyen chinh _floor_intraday_bucket de dam bao cung quy uoc multiples
                 # giot cho khung 2H/4H voi synthesize_intraday_bars_from_ticks (G-3a).
-                affected_keys = {
-                    (timeframe, _floor_intraday_bucket(trade['timestamp'], timeframe))
-                    for trade in normalized_trades
-                    for timeframe in _INTRADAY_BAR_TIMEFRAMES
-                }
-                logger.warning('DIAG S1 tape_ts=%s affected=%s',
-                               [str(t['timestamp']) for t in normalized_trades],
-                               sorted(f'{k[0]}@{k[1].isoformat()}' for k in affected_keys))
+                # G-3a: floor phải ở UTC — tape mang tz +07, DB trả UTC. Floor ở +07
+                # cho khung 2H/4H ra biên KHÁC (22:00+07 = 15:00 UTC vs 16:00 UTC),
+                # lam mat bucket va lech synthesize path. Chuan hoa ve UTC truoc.
+                affected_keys = set()
+                for trade in normalized_trades:
+                    tape_ts = trade['timestamp']
+                    tape_ts = tape_ts.replace(tzinfo=UTC) if tape_ts.tzinfo is None else tape_ts.astimezone(UTC)
+                    for timeframe in _INTRADAY_BAR_TIMEFRAMES:
+                        affected_keys.add((timeframe, _floor_intraday_bucket(tape_ts, timeframe)))
                 bar_payloads: dict[tuple[str, datetime], dict] = {}
                 if affected_keys:
                     bucket_starts = [key[1] for key in affected_keys]

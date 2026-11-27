@@ -139,10 +139,11 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
         self.assertEqual(payloads[hour_key]['volume'], 501000)
 
     @patch('data_ingest.tasks.fetch_intraday_tape')
-    def test_diagnostic_warm_path(self, mock_fetch) -> None:
+    def test_warm_path_creates_all_timeframe_bars(self, mock_fetch) -> None:
+        """G-3a: tape +07 va DB UTC phai cho cung bucket cho ca 2H/4H."""
         from django.utils import timezone as dj_tz
 
-        from data_ingest.tasks import warm_intraday_universe
+        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES, warm_intraday_universe
 
         first = dj_tz.now().astimezone(dj_tz.get_current_timezone()).replace(second=0, microsecond=0)
         if first.minute >= 58:
@@ -165,16 +166,12 @@ class IntradayBarNoPartialOverwriteTests(TestCase):
             {'symbol': 'ACB', 'dataset': 'intraday_bars'},
             {'symbol': 'FPT', 'dataset': 'intraday_ticks'},
         ])
-        print('DIAG warm bar_counts=', result.get('bar_counts'))
-        print('DIAG bars=', sorted((b.timeframe, str(b.datetime), b.volume) for b in IntradayBar.objects.filter(symbol='ACB')))
-        from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
-        from data_ingest.tasks import _INTRADAY_BAR_TIMEFRAMES
-        rows = list(IntradayTick.objects.filter(symbol='ACB').values('timestamp', 'price', 'volume', 'source').order_by('timestamp'))
-        affected = {(tf, _floor_intraday_bucket(r['timestamp'], tf)) for r in rows for tf in _INTRADAY_BAR_TIMEFRAMES}
-        payloads = recompute_bar_payloads_from_ticks('ACB', rows, affected, _floor_intraday_bucket, _INTRADAY_BAR_TIMEFRAMES)
-        print('DIAG db_affected=', sorted(k[0] + '@' + str(k[1]) for k in affected))
-        print('DIAG db_payloads=', sorted(k[0] + '@' + str(k[1]) for k in payloads))
-        self.assertTrue(True)
+        self.assertGreaterEqual(result['bar_counts']['inserted'], 7)
+        for timeframe in _INTRADAY_BAR_TIMEFRAMES:
+            self.assertTrue(
+                IntradayBar.objects.filter(symbol='ACB', timeframe=timeframe).exists(),
+                f'thieu bar khung {timeframe} do floor khac múi giờ',
+            )
 
     @patch('data_ingest.tasks._fetch_tape_with_timeout')
     def test_unaffected_bucket_keeps_volume(self, mock_fetch) -> None:
