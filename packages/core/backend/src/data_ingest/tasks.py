@@ -3616,11 +3616,31 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             'symbol': symbol, 'trigger': trigger,
         }
     if not new_rows:
+        # CafeF có thể trả 200 nhưng rỗng — cũng là mất kết nối dữ liệu.
+        from market_data.cafef.fallback import apply_provider_fallback
+
+        fallback = apply_provider_fallback(symbol, from_year=from_year)
+        if fallback.get('status') == 'applied_fallback':
+            PriceRebaseRun.objects.filter(pk=audit.pk).update(
+                status=PriceRebaseRun.Status.APPLIED_FALLBACK,
+                detail=f"cafef_empty;provider={fallback.get('provider')}",
+                rows_updated=fallback.get('rows_updated', 0), finished_at=now(),
+            )
+            return {
+                'status': 'applied_fallback', 'symbol': symbol,
+                'trigger': trigger, 'provider': fallback.get('provider'),
+                'rows_updated': fallback.get('rows_updated', 0),
+            }
         PriceRebaseRun.objects.filter(pk=audit.pk).update(
-            status=PriceRebaseRun.Status.NOOP, detail='no rows from CafeF',
+            status=PriceRebaseRun.Status.NOOP,
+            detail=f"no rows from CafeF;fallback={fallback.get('status')}:{fallback.get('reason', '')}"[:300],
             finished_at=now(),
         )
-        return {'status': 'no_data', 'symbol': symbol, 'trigger': trigger}
+        return {
+            'status': 'no_data', 'symbol': symbol, 'trigger': trigger,
+            'fallback_status': fallback.get('status'),
+            'fallback_reason': fallback.get('reason'),
+        }
     new_series = build_series(new_rows)
 
     # S7: fail-closed — dữ liệu vào phải thoải mọi bất biến trước khi ghi.

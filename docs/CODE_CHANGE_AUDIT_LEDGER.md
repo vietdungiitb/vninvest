@@ -1,3 +1,9 @@
+## Entry 669: Fix fallback khi CafeF trả rỗng (no_data)
+
+- **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-empty-fix` · Claim `fallback-empty-fix` (in-progress).
+- **Fail-before**: E2E AAH `no_data` dù provider KBS có 223 dòng — nhánh `if not new_rows` không gọi fallback (chỉ nhánh exception gọi).
+- **Fix**: nhánh empty cũng gọi `apply_provider_fallback`, trả `applied_fallback` hoặc `no_data` + `fallback_status`/`reason`. TDD **9 passed**.
+- **CHƯA CHẠY**: E2E AAH sau fix (chờ PR). Evidence: `docs/evidence/price-integrity/FALLBACK_EMPTY_FIX_20261127.md`.
 ## Entry 668: Fix coverage scope cho fallback — old_rows theo from_year
 
 - **Date**: 2026-11-27 · **Type**: fix · **Branch** `feat/fallback-scope-fix` · Claim `fallback-scope-fix` (in-progress).
