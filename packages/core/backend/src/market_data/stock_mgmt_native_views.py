@@ -2064,8 +2064,9 @@ class StockManagementChartView(APIView):
             'end_date': end_date.isoformat(),
             'points': points,
             'technical': _compute_chart_technical_payload(points),
-            # M5c: FE cần biết mode để scale nến / bỏ nến realtime raw.
+            # M5c/F1: FE cần biết mode để scale nến / bỏ nến realtime raw.
             'adjusted_display': pilot_adjusted_enabled(),
+            'price_basis': 'adjusted' if pilot_adjusted_enabled() else 'raw',
         }
         return envelope(payload)
 
@@ -4217,14 +4218,11 @@ def _has_adjustment(row) -> bool:
     basis, adj_close stale) vẫn bị loại.
     """
     source = getattr(row, 'price_source', None)
-    basis = getattr(row, 'adj_basis', '') or ''
     return (
         getattr(row, 'adj_factor', None) is not None
         and getattr(row, 'adj_close', None) is not None
-        and (
-            source in ('cafef', 'vnbroker_fallback')
-            or basis in ('anchor_provider', 'self_computed', 'provider_fallback')
-        )
+        # legacy có thể mang adj_close stale từ engine cũ đã nghỉ hưu — vẫn chặn.
+        and source != 'vnbroker_legacy'
     )
 
 
@@ -4639,6 +4637,7 @@ class StockManagementOHLCVBarsView(APIView):
             'next_after': next_after,
             'snapshot_id': snapshot_id,
             'adjusted': adjusted,
+            'price_basis': 'adjusted' if adjusted else 'raw',
             'note': adjustment_note,
         })
 
