@@ -1,3 +1,10 @@
+## Entry 685: Handoff tạm dừng S0–S5 Market Data Integrity + chờ agent khác xong (DOC-ONLY)
+
+- Ngày 2026-11-28 · Agent `handoff-mdi-1128` · Branch `docs/handoff-market-data-integrity-1128` (base `origin/dev 4516ab819`).
+- File: `docs/handoffs/HANDOFF_2026-11-28_MARKET_DATA_INTEGRITY_S0_S5.md` — ghi trạng thái 5 PR (#586/#591/#596/#600/#609), 5 audit verdict, exit criteria, reservation R-1..R-6, và danh sách agent còn in-progress tren checkout chính (`broker-config-r1`).
+- Quyet dinh Owner truoc do: mở khóa S1→S2→S3→S5; S4/S6 vẫn khóa; Q2=KHONG ghi staging; Q9=giữ default metric=whale.
+- Khong code, khong migration, khong deploy, khong probe staging. Chi doc + claim + Entry nay.
+
 ## Entry 683: Audit luồng giá sau Anchor A — 8 findings, 3 P0
 
 - **Date**: 2026-11-28 · **Type**: docs/audit · **Branch** `docs/pipeline-audit-682` · Claim `pipeline-audit-682`.
