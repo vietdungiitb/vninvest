@@ -30,7 +30,7 @@ class SessionFactsMetricApiTests(TestCase):
             total_buy_volume=10_000_000, total_sell_volume=5_000_000,
             source=SessionFacts.SourceChoices.COMPUTED, stale=False,
         )
-        for tf, minutes in (('15m', 15), ('1h', 60)):
+        for tf, minutes in (('15m', 15), ('1h', 60), ('1D', 1440)):
             SessionFactsBucket.objects.create(
                 session_facts=facts, symbol='VIC', session_date=self.day,
                 window=tf, bucket_minutes=minutes,
