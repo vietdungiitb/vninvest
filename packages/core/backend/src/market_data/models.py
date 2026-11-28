@@ -334,6 +334,8 @@ class IntradayTick(models.Model):
     )
     match_type = models.CharField(max_length=50, blank=True, default='', verbose_name='Loại khớp lệnh')
     source = models.CharField(max_length=50, default='vnbroker', verbose_name='Nguồn dữ liệu')
+    # S3 / REQ-BE-M03: hash on định gồm seq_in_key (G-2) — chống nuốt lệnh trùng giây.
+    dedup_key = models.CharField(max_length=64, blank=True, default='', db_index=True, verbose_name='Khóa chống trùng tick')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -343,6 +345,15 @@ class IntradayTick(models.Model):
         indexes = [
             models.Index(fields=['symbol', 'timestamp']),
             models.Index(fields=['created_at']),
+        ]
+        constraints = [
+            # O1 (re-audit S3): constraint CHI ap dung cho row co key that —
+            # fixture/seed cu khong truyen key van co the tao nhieu row (dedup_key='').
+            models.UniqueConstraint(
+                fields=['dedup_key'],
+                name='uniq_intraday_tick_dedup_key',
+                condition=models.Q(dedup_key__gt=''),
+            ),
         ]
         ordering = ['-timestamp']
 

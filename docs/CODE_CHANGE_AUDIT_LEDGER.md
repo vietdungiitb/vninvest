@@ -1,3 +1,22 @@
+## Entry 694: S3 P0 REQ-BE-M03+G-2 — idempotency IntradayTick, dedup_key có seq_in_key
+
+- Ngày 2026-11-28 · Agent `m03-tick-dedup` · Branch `feat/m03-tick-dedup`.
+- G-2: DNSE không có trade id (probe staging) → `seq_in_key`; 2 lệnh lô lẻ cùng giây có key khác nhau. Backfill Python sha256 dùng chung thuật toán runtime. Constraint **partial** `WHERE dedup_key > ''`.
+- Migration đánh số lại **0016** (head dev là `0015_corporateaction...`) — tránh multiple leaf nodes.
+- Fail-before → pass-after **7/7** trên VPS; migration end-to-end 3 row trùng → 3 key, `min_len=64`, partial index xác nhận. Re-audit 2 vòng → `AGREE`.
+- Gates: `check-multi-agent` 0; `pre-push-gate` 36 PASS; `makemigrations --check` 0. Không ghi staging.
+
+<<<<<<< HEAD
+## Entry 683: S3 P0 REQ-BE-M03+G-2 — idempotency IntradayTick, dedup_key có seq_in_key
+
+- Ngày 2026-11-28 · Agent `m03-tick-dedup` · Branch `feat/m03-tick-dedup` (rebase `origin/dev 4959c58a7`).
+- Phạm vi: `market_data/tick_dedup.py` (mới), `market_data/models.py`, migration `0015_intradaytick_dedup_key_and_more.py`, `data_ingest/tasks.py` (3 write-path), test mới, `docs/system-design/**` (sync 152 migration + model catalog), evidence `s3-gates.md` + `S3_REAUDIT.md` + `S3_REAUDIT_R2.md`, `docs/CLAIMS.md`.
+- G-2: provider DNSE **không có trade id** (probe staging) → dùng `seq_in_key`: 2 lệnh lô lẻ cùng giây/giá vẫn có key khác nhau. Backfill Python **sha256 dùng chung thuật toán với runtime** (O2). Constraint **partial** `WHERE dedup_key > ''` (O1) → fixture cũ không vỡ. `assign_dedup_keys` sort ổn định (O3).
+- Fail-before (`ModuleNotFoundError` + test constraint behavior-level) → pass-after `Ran 7 tests ... OK` trên VPS DB tạm. Migration end-to-end: 3 row trùng → 3 key, `min_len=64`, partial index xác nhận, duplicate key bị từ chối.
+- Re-audit 2 vòng: v1 `NEED_REVISION` (1 blocker + 1 major) → đã sửa → v2 **`AGREE`**, 0 P0/P1. Residual R2 (tie-order provider trong cùng giây), R5 (full regression **CHƯA CHẠY** do image VPS thiếu module) ghi trong evidence.
+- Gates sau rebase: `check-multi-agent` exit 0; `pre-push-gate` **36 PASS / 0 FAIL**; `makemigrations --check` = No changes detected; `check-system-design --check` SACH. Không ghi staging (Q2 = KHÔNG).
+
+=======
 ## Entry 693: S2 P0 REQ-BE-M02+M04+Q6 - cách ly đấu giá, mẫu số & whale 500M
 
 - Ngày 2026-11-28 · Agent m02-auction-isolation · Branch feat/m02-auction-isolation.
@@ -87,6 +106,7 @@
 - **E2E Anchor A**: dry-run đúng 963/2.652.748; backup 2.652.748; apply bản đầu OOM exit 137 → partial write ~940k dòng → rollback `ROLLBACK_ROWS=2.652.748` (verify fallback=222); bản keyset halt `adj_close_present=885728` (0 UPDATE); tăng `CORE_API_MEM_LIMIT=512m→4g` (`Mem=4294967296`); **apply bản hardening đang chạy nền** (~52 phút, transaction còn active).
 - **Phase 3** (PR #599 plan PASS sau 2 vòng audit; PR #601 service): pure `compute_event_factor` với công thức `(P+I1*P_issue-D)/(P*(1+I1+I2))`, `PARTIAL_EVENT` fail-closed, `recompute_adjusted` idempotent; migration `base_as_of`/`adj_basis`/rights/`PriceRebaseRun` fields **CHƯA LÀM**; TDD **13 passed**.
 - Evidence: `docs/evidence/ssot-implementation/{ANCHOR_A_EVIDENCE_20261128,PLAN_PHASE3_20261128}.md`. Flag FE không đổi.
+>>>>>>> origin/dev
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).

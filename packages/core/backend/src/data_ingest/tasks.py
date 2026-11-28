@@ -480,28 +480,20 @@ def _hydrate_intraday_symbols(
 
             if 'intraday_ticks' in target_dataset_set:
                 tick_counts['planned_items'] += 1
+                from market_data.tick_dedup import assign_dedup_keys
+                keyed_trades = assign_dedup_keys(normalized_trades)
                 existing_tick_keys = {
-                    (
-                        row['timestamp'],
-                        row['price'],
-                        row['volume'],
-                        row['side'],
-                        row['match_type'],
-                    )
+                    row['dedup_key']
                     for row in IntradayTick.objects.filter(
                         symbol=symbol,
-                        timestamp__in=[trade['timestamp'] for trade in normalized_trades],
-                    ).values('timestamp', 'price', 'volume', 'side', 'match_type')
+                        timestamp__in=[trade['timestamp'] for trade in keyed_trades],
+                    ).values('dedup_key')
                 }
                 tick_objects = []
-                for trade in normalized_trades:
-                    tick_key = (
-                        trade['timestamp'],
-                        trade['price'],
-                        trade['volume'],
-                        trade['side'],
-                        trade['match_type'],
-                    )
+                for trade in keyed_trades:
+                    # G-2: dedup theo dedup_key (co seq_in_key), KHONG theo tuple thô
+                    # — neu khong se nuot 2-5 lenh lô lẻ cung giay/gia.
+                    tick_key = trade['dedup_key']
                     if tick_key in existing_tick_keys:
                         tick_counts['skipped_existing'] += 1
                         continue
@@ -2640,6 +2632,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     if not ticks:
         return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
 
+    from market_data.tick_dedup import assign_dedup_keys
     objs = [
         IntradayTick(
             symbol=symbol_upper,
@@ -2649,8 +2642,9 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
             side=t['side'].upper(),
             match_type=t.get('match_type', 'NormalMatch'),
             source=t.get('source', 'dnse_system'),
+            dedup_key=t['dedup_key'],
         )
-        for t in ticks
+        for t in assign_dedup_keys(ticks)
     ]
 
     created = 0
@@ -2753,6 +2747,7 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     if not ticks:
         return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
 
+    from market_data.tick_dedup import assign_dedup_keys
     objs = [
         IntradayTick(
             symbol=symbol_upper,
@@ -2762,8 +2757,9 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
             side=t['side'].upper(),
             match_type=t.get('match_type', 'NormalMatch'),
             source=t.get('source', 'dnse_user'),
+            dedup_key=t['dedup_key'],
         )
-        for t in ticks
+        for t in assign_dedup_keys(ticks)
     ]
 
     created = 0
