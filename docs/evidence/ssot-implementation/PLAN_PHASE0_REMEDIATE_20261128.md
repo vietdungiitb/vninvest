@@ -20,7 +20,7 @@ Không relabel riêng 2026. Chuyển **toàn chuỗi** của 963 mã về **mộ
 ## 3. AC
 - **AC1**: Given 2.652.748 dòng thuộc 963 mã / When `--apply` / Then 100% được gán basis fallback như §2; `close`/OHLC/volume **không đổi**.
 - **AC2**: Given bất kỳ dòng `adj_close IS NOT NULL` trước apply / When quét / Then `halt` (skip_count>0 ⇒ exit≠0, 0 UPDATE). Hiện probe = 0 dòng.
-- **AC3**: Given backup table `market_data_anchorA_backup_20261128` / When `--apply` / Then từ chối nếu bảng chưa tồn tại hoặc `COUNT(*) != 2.652.748`. Backup lưu **`id` + 6 cột** (`price_source`, `adj_close`, `adj_factor`, `is_adjusted`, `adj_as_of`, `adj_version`) snapshot TRƯỚC apply.
+- **AC3**: Given backup table `market_data_anchora_backup_20261128` (constant thực tế trong command; Postgres gập chữ hoa/thường của identifier không được quote nên tên lưu là chữ thường) / When `--apply` / Then từ chối nếu bảng chưa tồn tại hoặc `COUNT(*) != 2.652.748`. Backup lưu **`id` + 6 cột** (`price_source`, `adj_close`, `adj_factor`, `is_adjusted`, `adj_as_of`, `adj_version`) snapshot TRƯỚC apply.
 - **AC4**: Sau apply, `DailyPrice` 2026 `unmapped_cafef = 0`; đo lại coverage theo Phase 0 ≥0.95; `check_price_integrity` 0 violation.
 - **AC5**: `--rollback-sql` in lệnh khôi phục 6 cột từ backup theo `id`; test trên DB riêng.
 - **AC6**: Cập nhật `cafef/integrity.py` để `vnbroker_fallback` vào `foreign_adjusted` (để guard vẫn thấy basis lạ nếu trộn). Không đổi migration.
