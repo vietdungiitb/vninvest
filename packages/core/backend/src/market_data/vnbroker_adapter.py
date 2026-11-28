@@ -146,21 +146,19 @@ def _normalize_intraday_trade_rows(frame: pd.DataFrame, symbol_upper: str) -> li
         if pd.isna(timestamp):
             continue
 
-        match_type = str(row.get('match_type') or row.get('side') or '').strip().lower()
-        if match_type.startswith('buy'):
-            side = 'buy'
-        elif match_type.startswith('sell'):
-            side = 'sell'
-        else:
-            side = 'unknown'
+        from market_data.session_phase import normalize_tick_side, resolve_session_phase
 
+        match_type_raw = row.get('match_type')
+        ts_value = timestamp.to_pydatetime() if hasattr(timestamp, 'to_pydatetime') else timestamp
+        side, _phase = normalize_tick_side(row.get('side'), ts_value, match_type_raw)
         normalized_rows.append({
             'timestamp': timestamp.isoformat(),
             'time': timestamp.strftime('%H:%M:%S'),
             'price': float(row.get('price') or 0),
             'volume': int(row.get('volume') or 0),
             'side': side,
-            'match_type': row.get('match_type') or 'NormalMatch',
+            'match_type': match_type_raw or 'NormalMatch',
+            'session_phase': resolve_session_phase(ts_value, match_type_raw),
         })
 
     return normalized_rows
@@ -1100,20 +1098,17 @@ def fetch_intraday_tape_history(
             else:
                 utc_ts = ts.to_pydatetime().astimezone(_dt_timezone.utc)
 
-            side_raw = str(row.get('side') or '').strip().lower()
-            if side_raw in _DNSE_SIDE_BUY:
-                side = 'buy'
-            elif side_raw in _DNSE_SIDE_SELL:
-                side = 'sell'
-            else:
-                side = 'unknown'
+            from market_data.session_phase import normalize_tick_side, resolve_session_phase
 
+            raw_match = row.get('match_type')
+            side, _phase = normalize_tick_side(row.get('side'), utc_ts, raw_match)
             results.append({
                 'timestamp': utc_ts,
                 'price': float(row.get('price') or 0),
                 'volume': int(row.get('volume') or 0),
                 'side': side,
-                'match_type': 'NormalMatch',
+                'match_type': raw_match or resolve_session_phase(utc_ts, raw_match),
+                'session_phase': resolve_session_phase(utc_ts, raw_match),
                 'source': source,
             })
 

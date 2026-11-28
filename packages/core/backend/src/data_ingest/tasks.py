@@ -347,13 +347,16 @@ def _normalize_intraday_trade_row(symbol: str, trade: dict) -> dict | None:
     except (ArithmeticError, TypeError, ValueError):
         return None
 
+    from market_data.session_phase import normalize_tick_side, resolve_session_phase
+
+    side, _phase = normalize_tick_side(trade.get('side'), timestamp, trade.get('match_type'))
     return {
         'symbol': symbol,
         'timestamp': timestamp,
         'price': price,
         'volume': volume,
-        'side': _normalize_intraday_side(trade.get('side')),
-        'match_type': str(trade.get('match_type') or 'NormalMatch')[:50],
+        'side': side,
+        'match_type': str(trade.get('match_type') or resolve_session_phase(timestamp, trade.get('match_type')))[:50],
         'source': 'vnbroker_intraday',
     }
 

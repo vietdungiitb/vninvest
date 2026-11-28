@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 # ─── Hằng số ──────────────────────────────────────────────
 _BUCKET_MINUTES = 15          # độ rộng bucket mặc định (phút)
 _BASELINE_WINDOW = 20         # số bucket dùng để tính baseline median
-_WHALE_THRESHOLD_VND = 200_000_000   # 200 triệu VND → được coi là "whale bucket"
+_WHALE_THRESHOLD_VND = 500_000_000   # Q6: khớp order_flow_engine.WHALE_VALUE_MIN_VND
 _EPS = 1e-9
 _SERIES_WINDOWS_BY_LABEL = {
     '5m': 5,
@@ -138,12 +138,16 @@ def _compute_session_facts_from_rows(
         side = str(row.get('side') or '').strip().lower()
         if side == 'buy':
             buckets[bucket_key]['buy'] += value
+            buckets[bucket_key]['total'] += value
+            if value >= _WHALE_THRESHOLD_VND:
+                buckets[bucket_key]['whale'] += value
         elif side == 'sell':
             buckets[bucket_key]['sell'] += value
-        # UNKNOWN/other sides are not aggressor evidence — skip (Rule 15).
-        buckets[bucket_key]['total'] += value
-        if value >= _WHALE_THRESHOLD_VND:
-            buckets[bucket_key]['whale'] += value
+            buckets[bucket_key]['total'] += value
+            if value >= _WHALE_THRESHOLD_VND:
+                buckets[bucket_key]['whale'] += value
+        # REQ-BE-M04: UNKNOWN/other sides are not aggressor evidence — skip
+        # hoan toan khoi total LAN whale (auction value di vao auction_value o S5).
 
     if not buckets:
         return None
