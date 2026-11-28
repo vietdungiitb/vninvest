@@ -67,6 +67,7 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
     )
     cafef_rows = 0
     adjusted_rows = 0
+    managed_rows = 0
 
     for row in rows:
         source = str(row.get('price_source') or '').lower()
@@ -77,6 +78,10 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         has_adj = adj_close is not None
         if has_adj:
             adjusted_rows += 1
+        # F7: chỉ nguồn được quản lý mới nằm trong mẫu số coverage.
+        basis = str(row.get('adj_basis') or '')
+        if source in ('cafef', 'vnbroker_fallback') or basis:
+            managed_rows += 1
 
         if source == 'cafef':
             cafef_rows += 1
@@ -107,7 +112,7 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
     if min_coverage is not None and rows:
         # Sau Anchor A (D-08) CafeF chỉ là bảng đối chiếu — coverage phải đo
         # theo dòng CÓ adj_close, không phải theo price_source='cafef'.
-        if Decimal(adjusted_rows) / Decimal(len(rows)) < min_coverage:
+        if managed_rows and Decimal(adjusted_rows) / Decimal(managed_rows) < min_coverage:
             mark('coverage_below_min')
 
     violations = sorted(hit)
