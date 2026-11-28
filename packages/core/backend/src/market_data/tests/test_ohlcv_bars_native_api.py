@@ -543,12 +543,14 @@ class OHLCVBarsWeeklyAdjustedTestCase(TestCase):
         self.assertEqual(bars[0]['close'], 76.0)
 
     @patch.dict('os.environ', {'CORPORATE_ACTIONS_ENABLED': 'false'})
-    def test_weekly_bar_flag_off_keeps_old_contract(self):
-        # A-02: khóa hồi quy — flag tắt thì W/M KHÔNG được lộ adj_close.
+    def test_weekly_bar_exposes_adj_when_rows_have_adjustment(self):
+        # F1: metadata bây giờ đi theo DỮ LIỆU (adj_close/adj_factor), không
+        # còn bị flag CORPORATE_ACTIONS_ENABLED che. Flag vẫn giữ nguyên giá trị,
+        # chỉ không còn là cổng phát metadata.
         resp = self.client.get(_URL.format(symbol='HPG'), {
             'timeframe': 'W', 'from': '1704067200000', 'to': '1706486400000',
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         bars = unwrapped_json(resp)['bars']
         self.assertEqual(len(bars), 1)
-        self.assertNotIn('adj_close', bars[0])
+        self.assertIn('adj_close', bars[0])

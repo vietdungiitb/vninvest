@@ -93,6 +93,8 @@ export function parseBars(payload, state) {
       note = 'no_cafef_source';
     }
   }
+  // Basis do BE khai báo (SSOT) — FE không tự suy từ price_source nữa.
+  if (payload?.price_basis) basis = payload.price_basis;
   if (state) {
     if (state.priceBasis !== basis) {
       state.priceBasis = basis;
