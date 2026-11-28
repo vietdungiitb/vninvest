@@ -1,3 +1,12 @@
+## Entry 691: Kế hoạch + 3 vòng audit độc lập Market Data Integrity / CVD / Whale SSOT (DOC-ONLY)
+
+- Ngày 2026-11-27 · Agent mdi-plan-1127 · Branch docs/mdi-plan-1127.
+- Phạm vi: docs/PLAN_MARKET_DATA_INTEGRITY_1127.md REV.3 + docs/evidence/market-data-integrity/{AUDIT_PLAN_1127.md,R2,R3,CONSENSUS_1127.md}.
+- B3 3 vòng: NEED_REVISION (12 objections, 2 P0) → NEED_REVISION (11/12) → AGREE. Fixture M04 2 bucket buy_strength 62.727→50.0 đỏ thật.
+- Đính chính: F-02 đã hết lỗi code (6e50418a9); migration head 0014; cache key CVD thiếu metric; WhaleAlertCanonical không có session_phase; ngưỡng whale 200M vs 500M.
+- Owner chốt 2026-11-27: mở khóa S1→S2→S3→S5; S4 khóa staging; S6 cuối; Q2=KHÔNG ghi staging; Q9 giữ default metric=whale.
+- Gates: check-multi-agent exit 0; preflight OK; 2 commit (claim + 5 file doc). CHƯA CHẠY: pytest/build/probe (doc-only).
+
 ## Entry 690: BLOCKER — xoá close cạn 3 vòng audit, dừng implementation
 
 - Owner bac bo rename close→raw_close (Entry 688); nguyen tac: adj_close SSOT cho hien thi/tran san/he so/NAV; raw_close tu CafeF, thieu NULL.
