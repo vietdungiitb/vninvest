@@ -14,6 +14,18 @@ def _row(i, close, adj=None):
     )
 
 
+def test_target_symbols_clears_default_model_ordering():
+    from unittest.mock import patch
+
+    from market_data.management.commands.anchor_a_relabel import target_symbols
+
+    with patch('market_data.management.commands.anchor_a_relabel.DailyPrice.objects') as objs:
+        qs = objs.filter.return_value
+        qs.order_by.return_value.values_list.return_value.distinct.return_value = ['TPB']
+        assert target_symbols() == ['TPB']
+        qs.order_by.assert_called_once_with()  # clear Meta.ordering before distinct
+
+
 def test_plan_relabels_only_rows_without_existing_adjustment():
     rows = [_row(1, 100), _row(2, 50, adj=40)]
     updates, skips = build_relabel_plan(rows, now_value=date(2026, 11, 28))

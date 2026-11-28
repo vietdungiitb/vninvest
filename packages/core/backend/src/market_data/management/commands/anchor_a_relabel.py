@@ -26,7 +26,7 @@ def target_symbols():
     return list(
         DailyPrice.objects.filter(
             date__gte='2026-01-01', price_source='unmapped_cafef',
-        ).values_list('symbol', flat=True).distinct()
+        ).order_by().values_list('symbol', flat=True).distinct()
     )
 
 
