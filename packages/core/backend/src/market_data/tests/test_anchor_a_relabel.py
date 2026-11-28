@@ -14,6 +14,31 @@ def _row(i, close, adj=None):
     )
 
 
+def test_keyset_batches_do_not_materialize_whole_table():
+    from market_data.management.commands.anchor_a_relabel import iter_keyset_batches
+
+    class FakeQS:
+        def __init__(self, rows):
+            self.rows = rows
+            self.last = 0
+
+        def filter(self, **kwargs):
+            self.last = kwargs['id__gt']
+            return self
+
+        def order_by(self, *args):
+            return self
+
+        def __getitem__(self, sl):
+            return [r for r in self.rows if r.id > self.last][sl]
+
+    rows = [SimpleNamespace(id=i) for i in range(1, 8)]
+    batches = list(iter_keyset_batches(FakeQS(rows), batch=3))
+    assert [[r.id for r in b] for b in batches] == [
+        [1, 2, 3], [4, 5, 6], [7],
+    ]
+
+
 def test_target_symbols_clears_default_model_ordering():
     from unittest.mock import patch
 

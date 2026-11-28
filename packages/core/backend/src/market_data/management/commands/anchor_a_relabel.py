@@ -48,6 +48,17 @@ def build_relabel_plan(rows, now_value=None):
     return updates, skips
 
 
+def iter_keyset_batches(qs, batch: int = 5000):
+    """Duyệt theo id, không nạp toàn bảng vào RAM (apply 2,65M dòng)."""
+    last = 0
+    while True:
+        chunk = list(qs.filter(id__gt=last).order_by('id')[:batch])
+        if not chunk:
+            break
+        yield chunk
+        last = chunk[-1].id
+
+
 def _backup_exists():
     with connection.cursor() as cur:
         cur.execute(
@@ -117,14 +128,26 @@ class Command(BaseCommand):
                 raise CommandError(
                     f'backup rows={backed} != expected {EXPECTED_ROWS} — refuse to apply'
                 )
-            updates, skips = build_relabel_plan(list(qs))
-            if skips:
+            # Fail-closed TRƯỚC mọi ghi: có bất kỳ adj_close sẵn ⇒ halt.
+            preexisting = qs.filter(adj_close__isnull=False).count()
+            if preexisting:
                 raise CommandError(
-                    f'skip_count={skips} > 0 — halt, 0 UPDATE (adj_close already present)'
+                    f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE'
                 )
-            with transaction.atomic():
-                DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=2000)
-            self.stdout.write(self.style.SUCCESS(f'applied rows={len(updates)}'))
+            applied, skips = 0, 0
+            for chunk in iter_keyset_batches(qs, batch=5000):
+                updates, chunk_skips = build_relabel_plan(chunk)
+                skips += chunk_skips
+                if chunk_skips:
+                    raise CommandError(
+                        f'skip_count={skips} > 0 — halt immediately, 0 further UPDATE'
+                    )
+                with transaction.atomic():
+                    DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=1000)
+                applied += len(updates)
+            self.stdout.write(
+                self.style.SUCCESS(f'applied rows={applied} skips={skips}')
+            )
             return
 
         # default = dry-run, không ghi
