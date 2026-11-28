@@ -26,9 +26,14 @@ _AUCTION_PHASES = frozenset({ATO, ATC, PUT_THROUGH})
 
 
 def _to_ict(timestamp: datetime) -> datetime:
-    """Chuyển mọi timestamp (naive/aware) về giờ VN để so khung giờ market."""
+    """Chuyển mọi timestamp (naive/aware) về giờ VN để so khung giờ market.
+
+    F-01 (re-audit S2): naive PHẢI được hiểu là giờ VN — đúng quy ước
+    `vnbroker/core/utils/normalizer.py:89-92` và `explorer/dnse/quote.py:247-248`.
+    Coi naive là UTC sẽ cộng 7h: 14:45 VN → 21:45 ICT → phase UNKNOWN → lọt I-3.
+    """
     if timestamp.tzinfo is None:
-        return pytz.utc.localize(timestamp).astimezone(_VN_TZ)
+        return _VN_TZ.localize(timestamp)
     return timestamp.astimezone(_VN_TZ)
 
 
@@ -68,13 +73,18 @@ def normalize_tick_side(
     if phase in _AUCTION_PHASES:
         return UNKNOWN, phase
 
+    # F-02 (re-audit S2): aggressor CHỈ tồn tại ở CONTINUOUS. phase UNKNOWN
+    # (nghỉ trưa/sau 15h/ngày lễ) không duoc phep tra buy/sell.
+    if phase != CONTINUOUS:
+        return UNKNOWN, phase
+
     raw_side = str(side or '').strip().upper()
     if raw_side in ('BUY', 'SELL'):
-        return raw_side, phase if phase == CONTINUOUS else UNKNOWN
+        return raw_side, phase
     # Một số provider g aggressor vào match_type (legacy live path).
     raw_match = str(match_type or '').strip().lower()
     if raw_match.startswith('buy'):
-        return 'BUY', phase if phase == CONTINUOUS else UNKNOWN
+        return 'BUY', phase
     if raw_match.startswith('sell'):
-        return 'SELL', phase if phase == CONTINUOUS else UNKNOWN
+        return 'SELL', phase
     return UNKNOWN, phase

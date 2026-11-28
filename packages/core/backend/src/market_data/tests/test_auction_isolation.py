@@ -114,6 +114,23 @@ class AuctionIsolationNormalizationTests(TestCase):
         self.assertEqual(rows[0]['side'], 'unknown')
         self.assertNotEqual(str(rows[0].get('match_type') or '').lower(), 'normalmatch')
 
+    def test_naive_timestamp_is_vietnam_time(self) -> None:
+        """F-01: naive 14:45 = 14:45 VN (khong phai UTC -> 21:45)."""
+        from market_data.session_phase import normalize_tick_side
+
+        naive = datetime(2026, 11, 25, 14, 45, 18)
+        side, phase = normalize_tick_side('buy', naive, None)
+        self.assertEqual(phase, 'ATC')
+        self.assertEqual(side, 'UNKNOWN')
+
+    def test_unknown_phase_never_returns_aggressor(self) -> None:
+        """F-02: sau 15h / nghi trua khong duoc tra buy/sell."""
+        from market_data.session_phase import normalize_tick_side
+
+        side, phase = normalize_tick_side('buy', _ict(self.day, 15, 30), None)
+        self.assertEqual(phase, 'UNKNOWN')
+        self.assertEqual(side, 'UNKNOWN')
+
     def test_detect_whale_excludes_unknown_atc_tick(self) -> None:
         """Layer 2: du co tick 600M ATC da bi ep UNKNOWN, detect phai loai."""
         from signal_intelligence.order_flow_engine import detect_whale_ticks
