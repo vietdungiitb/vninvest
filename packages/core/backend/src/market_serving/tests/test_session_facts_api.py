@@ -66,10 +66,21 @@ class SessionFactsMetricApiTests(TestCase):
 
     def test_history_with_candle_day_without_buckets_returns_200(self) -> None:
         """N1 (re-audit S5 v2): fill candle-day phai co du field, khong KeyError/500."""
+        from datetime import timedelta
+
         from market_data.models import DailyPrice
 
+        # R1: dat bucket o day-2, DailyPrice o day-1 (sau coverage_from, khong co bucket)
+        # -> bat buoc di qua nhanh fill cua _get_cvd_history (views.py:489).
+        SessionFactsBucket.objects.all().delete()
+        facts = SessionFacts.objects.get(symbol='VIC', session_date=self.day)
+        facts.session_date = self.day - timedelta(days=2)
+        facts.save(update_fields=['session_date'])
+        SessionFactsBucket.objects.filter(session_facts=facts).update(
+            session_date=facts.session_date, window='1D'
+        )
         DailyPrice.objects.create(
-            symbol='VIC', date=self.day, open=100000, high=100000,
+            symbol='VIC', date=self.day - timedelta(days=1), open=100000, high=100000,
             low=100000, close=100000, volume=1000,
         )
         response = self.client.get(
