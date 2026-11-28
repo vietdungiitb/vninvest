@@ -53,7 +53,9 @@ class IntradayTickDedupTests(TestCase):
         created = IntradayTick.objects.bulk_create([IntradayTick(**row)], ignore_conflicts=True)
         after = IntradayTick.objects.filter(symbol='VIC').count()
         self.assertEqual(after, before, 'backfill x2 khong duoc tang row')
-        self.assertEqual(len(created), 0, 'phat hien conflict that, khong chi "khong tang"')
+        # Django 6 van tra object du ignore_conflicts (khong phan anh insert that),
+        # nen bang chung conflict that la test IntegrityError ben duoi + so row o tren.
+        self.assertEqual(len(created), 1)
 
     def test_duplicate_insert_without_ignore_conflicts_raises(self) -> None:
         row = assign_dedup_keys([_row(self.t)])[0]
