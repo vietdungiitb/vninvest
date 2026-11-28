@@ -247,6 +247,14 @@ def _compute_session_facts_from_rows(
 def _build_bucket_rows(rows: list[dict], market: dict | None = None) -> list[dict]:
     payload = []
     market_buckets = (market or {}).get('buckets') or {}
+    if not rows and market_buckets:
+        # S5: ngay khong co WhaleAlertCanonical van phai materialize market CVD.
+        rows = [{
+            'side': 'buy' if value > 0 else 'sell',
+            'matched_value': abs(value),
+            'executed_at': bucket_ts,
+        } for bucket_ts, values in market_buckets.items()
+            for value in (values['market_buy_value'], -values['market_sell_value'])]
     for window, bucket_minutes in _SERIES_WINDOWS_BY_LABEL.items():
         result = _compute_session_facts_from_rows(
             rows,
@@ -374,11 +382,12 @@ def compute_market_cvd_from_ticks(
                 buckets[key]['whale_buy_value' if side == 'BUY' else 'whale_sell_value'] += value
             total_buy += value if side == 'BUY' else 0
             total_sell += value if side == 'SELL' else 0
+            # trade_count chi dem lệnh CONTINUOUS (aggressor) — auction khong phai CVD trade.
+            buckets[key]['trade_count'] += 1
             total_count += 1
         else:
             buckets[key]['auction_value'] += value
             total_auction += value
-            total_count += 1
 
     total = total_buy + total_sell + total_auction
     return {
