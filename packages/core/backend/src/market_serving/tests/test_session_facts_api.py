@@ -76,8 +76,15 @@ class SessionFactsMetricApiTests(TestCase):
         facts = SessionFacts.objects.get(symbol='VIC', session_date=self.day)
         facts.session_date = self.day - timedelta(days=2)
         facts.save(update_fields=['session_date'])
-        SessionFactsBucket.objects.filter(session_facts=facts).update(
-            session_date=facts.session_date, window='1D'
+        SessionFactsBucket.objects.create(
+            session_facts=facts, symbol='VIC', session_date=facts.session_date,
+            window='1D', bucket_minutes=1440,
+            bucket_ts=timezone.make_aware(datetime.combine(facts.session_date, time(0, 0)), dt_timezone.utc),
+            cumulative_cvd=5_000_000, buy_strength=51.0, institutional_strength=48.0,
+            buy_volume=10_000_000, sell_volume=5_000_000,
+            market_buy_value=100_000_000, market_sell_value=90_000_000,
+            auction_value=10_000_000, trade_count=1842, cvd_source='full_tick',
+            coverage_ratio=0.992,
         )
         DailyPrice.objects.create(
             symbol='VIC', date=self.day - timedelta(days=1), open=100000, high=100000,
