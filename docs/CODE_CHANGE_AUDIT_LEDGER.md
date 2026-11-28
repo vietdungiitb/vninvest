@@ -1,3 +1,10 @@
+## Entry 683: Audit luồng giá sau Anchor A — 8 findings, 3 P0
+
+- **Date**: 2026-11-28 · **Type**: docs/audit · **Branch** `docs/pipeline-audit-682` · Claim `pipeline-audit-682`.
+- Auditor subagent read-only trên `origin/dev@394d4e04c`; **KHÔNG chạy test/gate** — mọi gate trong audit ghi `CHƯA CHẠY`.
+- **P0**: F1 consumer vẫn nhận adjusted qua `price_source==='cafef'` (`pricing.py:38-49`, `chartAdapter.js:47-52`); F2 ingest guard không skip `vnbroker_fallback` (`tasks.py:722-728`) ⇒ ghi đè close nhưng giữ adj cũ; F3 `base_as_of`/`adj_basis` có schema nhưng không ai ghi ⇒ recompute double-adjust (`adjustment.py:171-173`).
+- **P1**: F4 correction double-count + upsert không atomic; F5 reference price sai ngày nghỉ/per-symbol (`vnbroker_materializer.py:155-160` — phần hàm thứ nhất đã fix PR #606); F6 2 flag độc lập; F7 coverage scope + nightly không truyền `min_coverage`; **P2**: F8 nightly rebase/drift query cafef-only ⇒ no-op.
+- **Evidence**: `docs/evidence/ssot-implementation/AUDIT_PRICE_PIPELINE_20261128.md`. Thứ tự fix: F1+F2+F3 trước khi bật flag.
 ## Entry 682: Phase 3 schema + service wiring (2026-11-28)
 
 - PR #601: `compute_event_factor` (DIV/ISS/Rights, `PARTIAL_EVENT` fail-closed) + `recompute_adjusted` idempotent; TDD **13 passed**.
