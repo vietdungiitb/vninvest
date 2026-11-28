@@ -1,3 +1,9 @@
+## Entry 682: Phase 3 schema + service wiring (2026-11-28)
+
+- PR #601: `compute_event_factor` (DIV/ISS/Rights, `PARTIAL_EVENT` fail-closed) + `recompute_adjusted` idempotent; TDD **13 passed**.
+- PR #603: migration `0015` (do `makemigrations` sinh) thêm `base_as_of`/`adj_basis` vào `DailyPrice`, `rights_ratio_pct`/`rights_issue_price` vào `CorporateAction`, `events_hash`/`sample_verdict`/`sample_report` vào `PriceRebaseRun`; doc system-design regen 151→152; **32 passed**, SACH.
+- PR #604: `sync_corporate_actions` gọi `apply_adjustment_service`; `PARTIAL/INVALID` → `halted_partial/halted_invalid`, **0 UPDATE**; TDD **10 passed**.
+- **CHƯA LÀM**: sample provider thực tế (hiện ghi `PENDING_PROVIDER_SYNC`), bật flag, deploy migration lên staging, E2E recompute. `pre-push-gate` 36 PASS mỗi PR.
 ## Entry 681: Anchor A unblock + Phase 3 service thuần (2026-11-28)
 
 - **Anchor A** (PR #592-595, #597, #598): 963 mã / 2.652.748 dòng chuyển về 1 basis `vnbroker_fallback` theo D-08; backup ops `market_data_anchora_backup_20261128` (id + 6 cột); `relabel_all` all-or-nothing 1 transaction; guard non-cafef adj_close; `integrity.py` coverage tính theo `adj_close`, `vnbroker_fallback` vào `foreign_adjusted`. B3/B4 audit 2 vòng + B8 audit 3 vòng → **AGREE** với reservation (chưa chạy DB thật cho rollback integration). TDD **24 passed**; pre-push 36 PASS mỗi PR.
