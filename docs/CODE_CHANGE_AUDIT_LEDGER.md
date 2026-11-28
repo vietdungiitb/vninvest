@@ -1,3 +1,10 @@
+## Entry 690: BLOCKER — xoá close cạn 3 vòng audit, dừng implementation
+
+- Owner bac bo rename close→raw_close (Entry 688); nguyen tac: adj_close SSOT cho hien thi/tran san/he so/NAV; raw_close tu CafeF, thieu NULL.
+- Plan Rev.1 REJECT (5 objection), Rev.2 NEED_REVISION (4), Rev.3 NEED_REVISION (2). Objection cuoi: sot `native_views.py:583`, `adjustment.py:27,172,176,233`, `integrity.py:162`; va `pricing.effective_ohlc:64` van doc close + consumer ep None→0 (`advisory_helpers.py:239`, `screener_helpers.py:391`) + `adj_close_null` chua co trong VIOLATION_CODES.
+- **Dung theo quy tac 3 lan thu**, khong code/migrate. Branch `feat/drop-close-rev2` chi co claim + plan/audit, 0 dong source.
+- Staging khong doi: display=1, paused=0, integrity ok=true, `adj_basis` 3.671.729 dong.
+- Evidence: `docs/evidence/ssot-implementation/BLOCKER_DROP_CLOSE_20261128.md`.
 ## Entry 689: REJECT plan xoa DailyPrice.close — can Owner chot lai (2026-11-28)
 
 - Auditor subagent cho **REJECT** (5 objection P0/P1): gan `close=adj_close` pha contract test + FE raw fallback; doi `values('close')` sang adj pha raw semantics cua tran/san (`vnbroker_materializer.py:107,195-201,247`) va he so su kien (`adjustment.py:23-27,176,233`); `raw_close` chi phu ~50% khong co nguon thay; sot writer/admin/serializer/pricing raise; backup 4 cot khong co checksum/row-count; sot `advisory/views.py:969`, `portfolio_analytics_views.py:598`, `backfill_ceiling_floor.py`.
