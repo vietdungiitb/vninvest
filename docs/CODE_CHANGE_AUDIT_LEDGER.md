@@ -1,3 +1,8 @@
+## Entry 689: REJECT plan xoa DailyPrice.close — can Owner chot lai (2026-11-28)
+
+- Auditor subagent cho **REJECT** (5 objection P0/P1): gan `close=adj_close` pha contract test + FE raw fallback; doi `values('close')` sang adj pha raw semantics cua tran/san (`vnbroker_materializer.py:107,195-201,247`) va he so su kien (`adjustment.py:23-27,176,233`); `raw_close` chi phu ~50% khong co nguon thay; sot writer/admin/serializer/pricing raise; backup 4 cot khong co checksum/row-count; sot `advisory/views.py:969`, `portfolio_analytics_views.py:598`, `backfill_ceiling_floor.py`.
+- **Khong code, khong migrate**. 3 lua chon cho Owner: (1) RenameField close→raw_close (khong mat du lieu) — khuyen nghi; (2) them raw_close + backfill du 4,6M roi moi xoa close; (3) bo raw hoan toan (can dinh nghia lai tran/san + he so, rui ro cao).
+- Evidence: `docs/evidence/ssot-implementation/AUDIT_DROP_CLOSE_20261128.md`. Claim `drop-close-column` tra partial state.
 ## Entry 688: Chot contract — them raw_close, bo close, adj_close SSOT (2026-11-28)
 
 - Owner quyet dinh: them `DailyPrice.raw_close` (nullable) lam raw tham chieu duy nhat (nguon doi chieu CafeF `CafefDailyPrice.close_raw`); `adj_close` la gia SSOT tu VCI/KBS; `close` KHONG dung nua, set NULL o Phase B va xoa cot o Phase C.
