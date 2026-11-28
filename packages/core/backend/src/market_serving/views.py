@@ -120,6 +120,7 @@ def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trad
     resolved_session_date = session_date or trade_date or dj_timezone.localdate()
     return {
         'symbol': symbol,
+        'metric': 'whale',
         'session_date': resolved_session_date.isoformat(),
         'window': window,
         'bucket_minutes': bucket_minutes,

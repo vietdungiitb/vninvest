@@ -55,6 +55,11 @@ class MarketCvdSsotTests(TestCase):
         """F1 (re-audit S5): 5m khong duoc tim thay bucket cua 15m."""
         from market_serving.session_facts_engine import _aggregate_market_from_rows, _load_intraday_tick_values
 
+        IntradayTick.objects.create(
+            symbol='VIC', timestamp=self.ts + timedelta(minutes=7),
+            price=Decimal('100000'), volume=10, side='SELL',
+            match_type='Continuous', source='vnbroker_intraday',
+        )
         ticks = _load_intraday_tick_values('VIC', self.day)
         for minutes in (5, 15, 30, 60):
             result = _aggregate_market_from_rows(ticks, minutes)
