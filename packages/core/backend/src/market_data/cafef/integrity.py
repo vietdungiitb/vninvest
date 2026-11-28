@@ -13,10 +13,17 @@ from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
+from django.db.models import Q
+
 TOLERANCE = Decimal('0.005')
 MIN_FACTOR = Decimal('0.01')
 MAX_FACTOR = Decimal('1.05')
 DEFAULT_MIN_COVERAGE = Decimal('0.95')
+
+
+def anchor_basis_q() -> Q:
+    """F8: dòng thuộc basis CafeF/Anchor — KHÔNG gồm self_computed (T+0)."""
+    return Q(price_source='cafef') | Q(adj_basis='anchor_provider')
 
 VIOLATION_CODES = (
     'residual_adjusted_legacy',
