@@ -14,6 +14,20 @@ def _row(i, close, adj=None):
     )
 
 
+def test_cafef_rows_can_be_overridden_but_other_sources_cannot():
+    cafef = _row(10, 100, adj=80)
+    cafef.price_source = 'cafef'
+    legacy = _row(11, 50, adj=40)
+    legacy.price_source = 'vnbroker_legacy'
+    updates, skips = build_relabel_plan(
+        [cafef, legacy], now_value=date(2026, 11, 28),
+        allow_cafef_override=True,
+    )
+    assert [r.id for r in updates] == [10]
+    assert skips == 1
+    assert updates[0].adj_close == Decimal('100')  # CafeF basis bị thay bởi anchor
+
+
 def test_keyset_batches_do_not_materialize_whole_table():
     from market_data.management.commands.anchor_a_relabel import iter_keyset_batches
 
