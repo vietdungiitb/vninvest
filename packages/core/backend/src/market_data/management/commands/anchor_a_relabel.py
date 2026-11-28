@@ -66,11 +66,33 @@ def iter_keyset_batches(qs, batch: int = 5000):
         last = chunk[-1].id
 
 
+def relabel_all(qs, batch: int = 5000):
+    """All-or-nothing: mọi chunk nằm trong 1 transaction, skip ⇒ rollback toàn bộ."""
+    preexisting = qs.exclude(price_source='cafef').filter(
+        adj_close__isnull=False
+    ).count()
+    if preexisting:
+        raise CommandError(f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE')
+    applied, skips = 0, 0
+    with transaction.atomic():
+        for chunk in iter_keyset_batches(qs, batch=batch):
+            updates, chunk_skips = build_relabel_plan(chunk)
+            skips += chunk_skips
+            if chunk_skips:
+                raise CommandError(
+                    f'skip_count={skips} > 0 — rollback toàn bộ, 0 UPDATE'
+                )
+            DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=1000)
+            applied += len(updates)
+    return applied, skips
+
+
 def _backup_exists():
     with connection.cursor() as cur:
         cur.execute(
             "SELECT 1 FROM information_schema.tables "
-            "WHERE table_name = %s", [BACKUP_TABLE],
+            "WHERE table_name = %s AND table_schema = current_schema()",
+            [BACKUP_TABLE],
         )
         return cur.fetchone() is not None
 
@@ -128,6 +150,8 @@ class Command(BaseCommand):
             return
 
         if opts['apply']:
+            if opts['limit']:
+                raise CommandError('--limit chỉ dùng cho --dry-run, không cho --apply')
             if not _backup_exists():
                 raise CommandError(f'backup {BACKUP_TABLE} missing — refuse to apply')
             backed = _backup_count()
@@ -135,25 +159,7 @@ class Command(BaseCommand):
                 raise CommandError(
                     f'backup rows={backed} != expected {EXPECTED_ROWS} — refuse to apply'
                 )
-            # Fail-closed TRƯỚC mọi ghi: có bất kỳ adj_close sẵn ⇒ halt.
-            preexisting = qs.exclude(price_source='cafef').filter(
-                adj_close__isnull=False
-            ).count()
-            if preexisting:
-                raise CommandError(
-                    f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE'
-                )
-            applied, skips = 0, 0
-            for chunk in iter_keyset_batches(qs, batch=5000):
-                updates, chunk_skips = build_relabel_plan(chunk)
-                skips += chunk_skips
-                if chunk_skips:
-                    raise CommandError(
-                        f'skip_count={skips} > 0 — halt immediately, 0 further UPDATE'
-                    )
-                with transaction.atomic():
-                    DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=1000)
-                applied += len(updates)
+            applied, skips = relabel_all(qs)
             self.stdout.write(
                 self.style.SUCCESS(f'applied rows={applied} skips={skips}')
             )

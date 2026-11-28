@@ -3,6 +3,8 @@ from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+
 from market_data.management.commands.anchor_a_relabel import build_relabel_plan
 
 
@@ -12,6 +14,58 @@ def _row(i, close, adj=None):
         price_source='unmapped_cafef', adj_factor=None, is_adjusted=False,
         adj_as_of=None, adj_version=0,
     )
+
+
+def test_relabel_all_rolls_back_everything_on_late_skip(monkeypatch):
+    from contextlib import contextmanager
+
+    from django.core.management.base import CommandError
+
+    import market_data.management.commands.anchor_a_relabel as cmd
+
+    events = []
+
+    @contextmanager
+    def fake_atomic():
+        events.append('enter')
+        try:
+            yield
+        except Exception as exc:
+            events.append(('exit_error', type(exc).__name__))
+            raise
+        events.append('exit_ok')
+
+    class FakeQS:
+        def __init__(self, rows):
+            self.rows = rows
+            self.last = 0
+
+        def exclude(self, **kwargs):
+            return self
+
+        def filter(self, **kwargs):
+            if 'id__gt' in kwargs:
+                self.last = kwargs['id__gt']
+            return self
+
+        def order_by(self, *args):
+            return self
+
+        def count(self):
+            return 0  # pre-check: không có adj_close ngoài cafef
+
+        def __getitem__(self, sl):
+            return [r for r in self.rows if r.id > self.last][sl]
+
+    good = _row(1, 100)
+    bad = _row(2, 50, adj=40)
+    monkeypatch.setattr(cmd.transaction, 'atomic', fake_atomic)
+    monkeypatch.setattr(
+        cmd.DailyPrice.objects, 'bulk_update', lambda *a, **k: events.append('bulk'),
+    )
+    with pytest.raises(CommandError):
+        cmd.relabel_all(FakeQS([good, bad]), batch=1)
+    assert events == ['enter', 'bulk', ('exit_error', 'CommandError')]
 
 
 def test_cafef_rows_can_be_overridden_but_other_sources_cannot():
