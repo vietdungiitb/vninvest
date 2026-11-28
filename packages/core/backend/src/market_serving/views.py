@@ -494,6 +494,12 @@ class SessionFactsCvdView(APIView):
                     ),
                     'buy_volume': 0,
                     'sell_volume': 0,
+                    'market_buy_value': 0,
+                    'market_sell_value': 0,
+                    'auction_value': 0,
+                    'trade_count': 0,
+                    'cvd_source': 'whale_fallback_only',
+                    'coverage_ratio': 0.0,
                     'buy_strength': 0.0,
                     'institutional_strength': 0.0,
                     'pk': 0,
@@ -537,11 +543,14 @@ class SessionFactsCvdView(APIView):
             'metric': self._metric,
             'source': 'market_tick_aggregate' if self._metric == 'market' else 'whale_aggregate',
             'data_quality': 'verified' if self._metric == 'market' else 'derived_from_whale_alerts',
-            'cvd_source': 'full_tick' if self._metric == 'market' else 'whale_fallback_only',
-            'coverage_ratio': 0.0,
+            'cvd_source': (
+                buckets[0].get('cvd_source', 'whale_fallback_only') if buckets
+                else 'whale_fallback_only'
+            ),
+            'coverage_ratio': buckets[0].get('coverage_ratio', 0.0) if buckets else 0.0,
             'revision': revision,
             'updated_at': dj_timezone.localtime(revision_dt).isoformat() if revision_dt is not None else None,
-            'trade_count': None,
+            'trade_count': (buckets[0].get('trade_count') or None) if buckets else None,
             'coverage_from': coverage_from.isoformat(),
             'cvd_series': [
                 {

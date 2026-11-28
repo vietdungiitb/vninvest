@@ -254,18 +254,21 @@ def _build_bucket_rows(
     if tick_rows is not None:
         # F1: mac dinh 15m, se duoc thay theo tung window o duoi.
         market_buckets = _aggregate_market_from_rows(tick_rows, 15).get('buckets') or {}
-    if not rows and market_buckets:
-        # S5: ngay khong co WhaleAlertCanonical van phai materialize market CVD.
-        rows = [{
-            'side': 'buy' if value > 0 else 'sell',
-            'matched_value': abs(value),
-            'executed_at': bucket_ts,
-        } for bucket_ts, values in market_buckets.items()
-            for value in (values['market_buy_value'], -values['market_sell_value'])]
+    base_rows = rows
     for window, bucket_minutes in _SERIES_WINDOWS_BY_LABEL.items():
         if tick_rows is not None:
             window_market = _aggregate_market_from_rows(tick_rows, bucket_minutes)
             market_buckets = window_market.get('buckets') or {}
+        # N5 (re-audit S5 v2): synthetic rows phai dung bucket CUA WINDOW, khong 15m.
+        if not base_rows and market_buckets:
+            rows = [{
+                'side': 'buy' if value > 0 else 'sell',
+                'matched_value': abs(value),
+                'executed_at': bucket_ts,
+            } for bucket_ts, values in market_buckets.items()
+                for value in (values['market_buy_value'], -values['market_sell_value'])]
+        else:
+            rows = base_rows
         result = _compute_session_facts_from_rows(
             rows,
             bucket_minutes=bucket_minutes,
@@ -501,7 +504,7 @@ def compute_session_facts_for_all_active(
             )
 
             SessionFactsBucket.objects.filter(session_facts=facts_obj).delete()
-            market = compute_market_cvd_from_ticks(symbol, target_date)
+            market = _aggregate_market_from_rows(tick_rows, 15)
             bucket_rows = _build_bucket_rows(rows, market=market, tick_rows=tick_rows)
             if bucket_rows:
                 SessionFactsBucket.objects.bulk_create([

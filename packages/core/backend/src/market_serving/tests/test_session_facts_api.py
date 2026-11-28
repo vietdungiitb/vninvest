@@ -64,6 +64,26 @@ class SessionFactsMetricApiTests(TestCase):
         whale = self.client.get('/core/v1/session-facts/VIC/cvd/?window=1h&metric=whale').json()
         self.assertGreater(first['buy_volume'], whale['cvd_series'][0]['buy_volume'])
 
+    def test_history_with_candle_day_without_buckets_returns_200(self) -> None:
+        """N1 (re-audit S5 v2): fill candle-day phai co du field, khong KeyError/500."""
+        from market_data.models import DailyPrice
+
+        DailyPrice.objects.create(
+            symbol='VIC', date=self.day, open=100000, high=100000,
+            low=100000, close=100000, volume=1000,
+        )
+        response = self.client.get(
+            '/core/v1/session-facts/VIC/cvd/?window=1D&period=1M&metric=market'
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['metric'], 'market')
+        self.assertTrue(payload['history'])
+        for bucket in payload['cvd_series']:
+            self.assertIn('auction_volume', bucket)
+            self.assertIn('trade_count', bucket)
+            self.assertIn('cvd_source', bucket)
+
     def test_two_metrics_do_not_share_cache_entry(self) -> None:
         market = self.client.get('/core/v1/session-facts/VIC/cvd/?window=1h&metric=market').json()
         whale = self.client.get('/core/v1/session-facts/VIC/cvd/?window=1h&metric=whale').json()

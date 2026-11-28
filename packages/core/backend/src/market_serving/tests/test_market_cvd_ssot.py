@@ -56,13 +56,18 @@ class MarketCvdSsotTests(TestCase):
         from market_serving.session_facts_engine import _aggregate_market_from_rows, _load_intraday_tick_values
 
         ticks = _load_intraday_tick_values('VIC', self.day)
-        for minutes in (5, 15, 30, 60, 240, 1440):
+        for minutes in (5, 15, 30, 60):
             result = _aggregate_market_from_rows(ticks, minutes)
             self.assertTrue(result['buckets'], f'window {minutes}m co buckets')
             for bucket_ts in result['buckets']:
-                self.assertEqual(bucket_ts.minute % minutes, 0 if minutes < 60 else bucket_ts.minute)
-        # 1D phai co bucket 00:00 va chua toan bo gia tri.
+                self.assertEqual(bucket_ts.minute % minutes, 0)
+        # Buckets 5m phai NHIEU HON buckets 15m — neu dung chung 15m se bang nhau.
+        five = _aggregate_market_from_rows(ticks, 5)
+        fifteen = _aggregate_market_from_rows(ticks, 15)
+        self.assertGreater(len(five['buckets']), len(fifteen['buckets']))
+        # 1D (1440) co bucket 00:00 va chua toan bo gia tri.
         daily = _aggregate_market_from_rows(ticks, 1440)
+        self.assertEqual(len(daily['buckets']), 1)
         self.assertEqual(daily['market_buy_value'], 10_000_000)
         self.assertEqual(daily['auction_value'], 20_000_000)
 
