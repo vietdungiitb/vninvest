@@ -1,3 +1,10 @@
+## Entry 685: F3 vintage writer — code xong, E2E dang chay (2026-11-28)
+
+- **Date**: 2026-11-28 · **Type**: feat/data-ops · **Branch** `feat/f3-basis-writer` (PR #616) · Claim `f3-basis-writer`.
+- Plan audit 2 vòng: NEED_REVISION (4 objection: guard chặn dòng đã anchor, backup thiếu field, ingest không persist, AC4 mâu thuẫn) → Rev.2 **AGREE**; B8 code re-audit **PASS**.
+- `--backup-vintage`/`--set-vintage`/`--rollback-vintage-sql` với bảng riêng `market_data_vintage_backup_20261128` (3.671.729 dòng backup); ingest T+0 ghi 5 field; recompute `ex_date > (base_as_of or row.date)`.
+- TDD **40 passed**, `pre-push-gate` 36 PASS. `--set-vintage` **ĐANG CHẠY DETACHED** trên staging, pause=1.
+- Evidence: `docs/evidence/ssot-implementation/F3_EVIDENCE_20261128.md`. Flag display không đổi.
 ## Entry 684: Anchor A applied trên staging + integrity gate OK (2026-11-28)
 
 - **Data**: `vnbroker_fallback` 222 → **2.652.970** dòng; 963 mã / 2.652.748 dòng chuyển basis. Backup ops `market_data_anchora_backup_20261128` còn nguyên. Ghi nhận bất thường: log detach báo halt nhưng DB có dữ liệu đã commit — lấy DB làm nguồn sự thật.
