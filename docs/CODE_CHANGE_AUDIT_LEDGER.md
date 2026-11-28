@@ -1,3 +1,11 @@
+## Entry 692: S1 P0 REQ-BE-M01 - chặn ghi đè cụt IntradayBar (recompute từ toàn bộ tick DB)
+
+- Ngày 2026-11-28 · Agent m01-bar-overwrite · Branch feat/m01-bar-overwrite.
+- Sửa _hydrate_intraday_symbols: recompute OHLCV từ toàn bộ IntradayTick DB cho bucket bị ảnh hưởng; G-3a chuẩn hóa tape timestamp về UTC trước khi floor 2H/4H.
+- Fail-before VPS DB tạm: 1000 != 501000, TEST_EXIT=1; pass-after 4/4 OK. Regression data_ingest 56 test: 1 fail có sẵn trên origin/dev (coverage warm != FRESH).
+- Re-audit độc lập AGREE; reservations G-3b/path ticks-only ghi trong docs/evidence/market-data-integrity/s1-gates.md.
+- Gates: check-multi-agent exit 0; pre-push-gate 36 PASS/0 FAIL; makemigrations --check 0. Không migration, không ghi staging.
+
 ## Entry 691: Kế hoạch + 3 vòng audit độc lập Market Data Integrity / CVD / Whale SSOT (DOC-ONLY)
 
 - Ngày 2026-11-27 · Agent mdi-plan-1127 · Branch docs/mdi-plan-1127.
