@@ -18,9 +18,6 @@ from market_data.pricing import effective_close, effective_ohlc
 from market_data.stock_mgmt_native_views import (
     _aggregate_daily_to_ohlcv_bars,
     _build_price_change_map,
-    StockManagementDarkMoneyHistoryView,
-    StockManagementStockDetailView,
-    StockManagementWatchlistTechnicalsView,
 )
 from market_serving.materializers import materialize_pre_open_snapshots
 from market_serving.models import SymbolSnapshot
@@ -306,25 +303,23 @@ class AdjustedConsumersDbTests(TestCase):
 
     @patch.dict('os.environ', {'PRICE_ADJUSTED_DISPLAY': 'true'})
     def test_stock_mgmt_native_views_uses_effective_close_and_preserves_s6_guard(self):
+        from django.core.cache import cache
+        cache.clear()
         pm = _build_price_change_map(['TPB'])
         self.assertEqual(pm['TPB']['current_price'], 18200.0)
 
-        # Stock detail overview + watchlist technicals + dark money marker
+        # Stock detail overview + bulk technicals
         user = User.objects.create_user(username='retire-close-user', email='rc@test.local', password='pass123')
         client = APIClient()
         client.force_authenticate(user=user)
 
-        detail_resp = client.get('/core/v1/stock-management/stocks/TPB/')
+        detail_resp = client.get('/core/v1/stock-management/stocks/TPB/overview/')
         self.assertEqual(detail_resp.status_code, 200)
         detail_data = detail_resp.json().get('data', detail_resp.json())
         self.assertEqual(detail_data['current_price'], 18200.0)
         self.assertEqual(detail_data['reference_price'], 17940.0)
 
-        tech_resp = client.post(
-            '/core/v1/stock-management/stocks/watchlist/technicals/',
-            {'symbols': ['TPB']},
-            format='json',
-        )
+        tech_resp = client.get('/core/v1/market-data/technicals/bulk/?symbols=TPB')
         self.assertEqual(tech_resp.status_code, 200)
         tech_data = tech_resp.json().get('data', tech_resp.json())
         self.assertEqual(tech_data['results'][0]['price'], 18200.0)
