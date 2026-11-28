@@ -1,3 +1,11 @@
+## Entry 684: S5 P1 REQ-BE-M06/07/08 — Market CVD SSOT từ 100% IntradayTick
+
+- Ngày 2026-11-28 · Agent `m05-market-cvd` · Branch `feat/m05-market-cvd` (rebase `origin/dev 012fa38f0`).
+- Phạm vi: `market_serving/models.py` + migration `0008`, `session_facts_engine.py` (`compute_market_cvd_from_ticks`, `_aggregate_market_from_rows`, per-window `_build_bucket_rows`), `views.py` (`?metric=market|whale`, cache `v5`/`v3`, history metric-aware), `service_ops/domain_configs/signals.py` (retention 365), 2 test mới, `docs/system-design/**` (153 migration), evidence `s5-gates.md` + `S5_REAUDIT.md` + `S5_REAUDIT_R2.md` + `S5_REAUDIT_R3.md`, `docs/CLAIMS.md`.
+- Chạy TRƯỚC S4 theo G-1: 1 lần backfill sau S5 phục hồi đồng thời 3 bảng. Q5 giữ `compute_cvd_buckets_df` cho `OrderFlowEvent`; Q9 default `metric=whale`, `market` opt-in.
+- Fail-before `TypeError: unexpected keyword arguments` → pass-after cuối `Ran 8 tests ... OK` trên VPS DB tạm. Re-audit 3 vòng: v1 NEED_REVISION (F1 bucket 15m cứng + F2 history bỏ metric) → v2 NEED_REVISION (N1 KeyError 500 lịch sử) → v3 **AGREE**, 0 P0/P1.
+- Gates sau rebase: `check-multi-agent` exit 0; `pre-push-gate` 36 PASS/0 FAIL; `check-system-design --check` SACH; 153 migration. Không ghi staging (Q2=KHÔNG). **CHƯA CHẠY**: probe staging `?window=1D&period=1M`, deploy.
+
 ## Entry 683: Audit luồng giá sau Anchor A — 8 findings, 3 P0
 
 - **Date**: 2026-11-28 · **Type**: docs/audit · **Branch** `docs/pipeline-audit-682` · Claim `pipeline-audit-682`.
