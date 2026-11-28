@@ -23,6 +23,7 @@ from django.db.models import F, Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
+from market_data.cafef.integrity import anchor_basis_q
 from market_data.vnbroker_adapter import fetch_daily_history, fetch_intraday_tape
 
 logger = logging.getLogger(__name__)
@@ -3683,7 +3684,7 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             'symbol': symbol, 'trigger': trigger,
         }
 
-    old_qs = DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
+    old_qs = DailyPrice.objects.filter(symbol=symbol.upper()).filter(anchor_basis_q())
     if date_from:
         old_qs = old_qs.filter(date__gte=date_from)
     old_rows = list(old_qs.order_by('date'))
@@ -3738,7 +3739,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     if symbols is None:
         symbols = list(
-            DailyPrice.objects.filter(price_source='cafef', adj_close__isnull=False)
+            DailyPrice.objects.filter(anchor_basis_q(), adj_close__isnull=False)
             .values_list('symbol', flat=True).distinct()[:100]
         )
     exchanges = dict(
@@ -3747,7 +3748,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
     counts = {'observe': 0, 'rebase': 0, 'alert': 0}
     for symbol in symbols:
         rows = list(
-            DailyPrice.objects.filter(symbol=symbol, price_source='cafef')
+            DailyPrice.objects.filter(symbol=symbol).filter(anchor_basis_q())
             .order_by('date').values('date', 'close')[:120]
         )
         if len(rows) < 2:
@@ -3777,8 +3778,8 @@ def rebase_cafef_all_symbols(self, _scheduler_job_key: str | None = None) -> dic
     if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     symbols = list(
-        DailyPrice.objects.filter(price_source='cafef')
-        .values_list('symbol', flat=True).distinct()
+        DailyPrice.objects.filter(anchor_basis_q())
+        .order_by().values_list('symbol', flat=True).distinct()
     )
     queued = 0
     for symbol in symbols:

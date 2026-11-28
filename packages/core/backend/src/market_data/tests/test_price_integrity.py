@@ -85,6 +85,16 @@ def test_coverage_below_minimum_is_flagged():
     assert 'coverage_below_min' in report['violations']
 
 
+def test_anchor_basis_q_excludes_self_computed():
+    """F8: nightly CafeF chỉ lấy basis anchor, không lẫn row T+0."""
+    from market_data.cafef.integrity import anchor_basis_q
+
+    children = anchor_basis_q().children
+    assert ('price_source', 'cafef') in children
+    assert ('adj_basis', 'anchor_provider') in children
+    assert not any('self_computed' in str(c) for c in children)
+
+
 def test_coverage_counts_adjusted_rows_not_cafef_source():
     # Sau Anchor A không còn dòng price_source='cafef' — coverage phải tính
     # theo adj_close, nếu không min-coverage sẽ tự bắn violation.
