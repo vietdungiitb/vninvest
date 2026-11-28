@@ -12,6 +12,8 @@ from django.db import migrations, models
 
 
 def _norm_datetime(value):
+    if isinstance(value, str):
+        return value
     if value.tzinfo is None:
         value = value.replace(tzinfo=dt_timezone.utc)
     return value.astimezone(dt_timezone.utc).isoformat()
