@@ -1,3 +1,11 @@
+## Entry 693: S2 P0 REQ-BE-M02+M04+Q6 - cách ly đấu giá, mẫu số & whale 500M
+
+- Ngày 2026-11-28 · Agent m02-auction-isolation · Branch feat/m02-auction-isolation.
+- SSOT session_phase.py: match_type thật + fallback khung ICT (ATO 09:00-09:14:59, ATC 14:30:01-14:59:59) ở 3 write-path; auction ⇒ UNKNOWN trước detect_whale_ticks. M04: bỏ side lạ khỏi cả total và whale; delta_strength giữ nguyên control; ngưỡng 500M.
+- Fail-before VPS 6 đỏ → pass-after 13/13 OK; regression 4 app, mọi fail tái hiện trên origin/dev.
+- Re-audit AGREE; F-01 naive timestamp=VN + F-02 aggressor chỉ CONTINUOUS đã sửa.
+- Gates: check-multi-agent 0; pre-push-gate 36 PASS; makemigrations --check 0. Không migration, không ghi staging.
+
 ## Entry 692: S1 P0 REQ-BE-M01 - chặn ghi đè cụt IntradayBar (recompute từ toàn bộ tick DB)
 
 - Ngày 2026-11-28 · Agent m01-bar-overwrite · Branch feat/m01-bar-overwrite.
