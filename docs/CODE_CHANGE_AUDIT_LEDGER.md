@@ -1,3 +1,9 @@
+## Entry 686: Bat PRICE_ADJUSTED_DISPLAY=1 + verify payload (2026-11-28)
+
+- **Owner chot**: bat flag vi moi gia hien thi deu la adjusted. Staging `compose.staging.env`: `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, deploy exit 0, container verify `display=1 paused=0`.
+- **Verify payload `/chart/`** qua APIRequestFactory + testuser: AAH `adjusted_display=True`, `price_basis=adjusted`, 21 points (20 có adj); TPB cùng flag nhưng **0/21 có adj**, `price_source='vnbroker_legacy'` — chart vẫn có nến (FE dùng close), nhưng nhãn `adjusted` chưa phản ánh đúng metadata. De xuat fix nho: suy basis theo du lieu (`provider_adjusted_fallback` khi thieu adj) — slice rieng, chua lam.
+- F3 vintage can hoan tat: `vintage applied rows=3.671.729`, `WITH_BASIS=3.671.729`, integrity `ok=true` 0 violation.
+- Evidence: `docs/evidence/ssot-implementation/FLAG_ON_20261128.md`. Browser E2E van CHUA CHAY (baseline widget).
 ## Entry 685: F3 vintage writer — code xong, E2E dang chay (2026-11-28)
 
 - **Date**: 2026-11-28 · **Type**: feat/data-ops · **Branch** `feat/f3-basis-writer` (PR #616) · Claim `f3-basis-writer`.
