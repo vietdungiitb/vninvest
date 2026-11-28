@@ -29,6 +29,15 @@ class M6bPricingSkipTests(SimpleTestCase):
         self.assertEqual(effective_close(r), Decimal('42750'))
         self.assertEqual(effective_ohlc(r)[3], Decimal('42750'))
 
+    @patch.dict('os.environ', {'PRICE_ADJUSTED_DISPLAY': 'true'})
+    def test_any_source_with_adjustment_uses_adj_close(self):
+        """F1: sau Anchor A nguồn là vnbroker_fallback, không còn 'cafef'."""
+        r = row('vnbroker_fallback')
+        r.adj_close = Decimal('17940')
+        r.adj_factor = Decimal('0.4196491228')
+        self.assertEqual(effective_close(r), Decimal('17940'))
+        self.assertEqual(effective_ohlc(r)[3], Decimal('17940'))
+
     @patch.dict('os.environ', {'PRICE_ADJUSTED_DISPLAY': 'false'})
     def test_unmapped_row_keeps_raw_when_flag_off(self):
         self.assertEqual(effective_close(row()), Decimal('42750'))
