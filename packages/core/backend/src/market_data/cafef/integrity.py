@@ -13,10 +13,17 @@ from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
+from django.db.models import Q
+
 TOLERANCE = Decimal('0.005')
 MIN_FACTOR = Decimal('0.01')
 MAX_FACTOR = Decimal('1.05')
 DEFAULT_MIN_COVERAGE = Decimal('0.95')
+
+
+def anchor_basis_q() -> Q:
+    """F8: dòng thuộc basis CafeF/Anchor — KHÔNG gồm self_computed (T+0)."""
+    return Q(price_source='cafef') | Q(adj_basis='anchor_provider')
 
 VIOLATION_CODES = (
     'residual_adjusted_legacy',
@@ -66,6 +73,8 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         lambda: {'cafef': False, 'foreign_adjusted': False},
     )
     cafef_rows = 0
+    adjusted_rows = 0
+    managed_rows = 0
 
     for row in rows:
         source = str(row.get('price_source') or '').lower()
@@ -74,6 +83,12 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         adj_close = _dec(row.get('adj_close'))
         factor = _dec(row.get('adj_factor'))
         has_adj = adj_close is not None
+        if has_adj:
+            adjusted_rows += 1
+        # F7: chỉ nguồn được quản lý mới nằm trong mẫu số coverage.
+        basis = str(row.get('adj_basis') or '')
+        if source in ('cafef', 'vnbroker_fallback') or basis:
+            managed_rows += 1
 
         if source == 'cafef':
             cafef_rows += 1
@@ -102,7 +117,9 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
             mark('mixed_basis_symbol')
 
     if min_coverage is not None and rows:
-        if Decimal(cafef_rows) / Decimal(len(rows)) < min_coverage:
+        # Sau Anchor A (D-08) CafeF chỉ là bảng đối chiếu — coverage phải đo
+        # theo dòng CÓ adj_close, không phải theo price_source='cafef'.
+        if managed_rows and Decimal(adjusted_rows) / Decimal(managed_rows) < min_coverage:
             mark('coverage_below_min')
 
     violations = sorted(hit)

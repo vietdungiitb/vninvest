@@ -86,7 +86,6 @@ def fetch_realtime_tickers_from_vnbroker(symbols: list[str]) -> list[dict]:
     from market_data.vnbroker_adapter import fetch_realtime_price
     tickers = []
     today = date.today()
-    yesterday = today - timedelta(days=1)
 
     for symbol in symbols:
         try:
@@ -98,9 +97,13 @@ def fetch_realtime_tickers_from_vnbroker(symbols: list[str]) -> list[dict]:
             close = Decimal(str(live['close']))
             volume = int(live['volume'])
 
-            # Reference price: yesterday's canonical close from DB
+            # Reference price: phiên giao dịch GẦN NHẤT < hôm nay (không phải
+            # calendar yesterday — Thứ Hai/sau lễ sẽ lấy NULL ⇒ sai trần/sàn).
             from market_data.models import DailyPrice
-            yesterday_price = DailyPrice.objects.filter(symbol=symbol.upper(), date=yesterday).first()
+            yesterday_price = (
+                DailyPrice.objects.filter(symbol=symbol.upper(), date__lt=today)
+                .order_by('-date').first()
+            )
             ref_dec = yesterday_price.close if yesterday_price else close
 
             price_change = close - ref_dec

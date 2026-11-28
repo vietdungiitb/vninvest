@@ -39,11 +39,12 @@ def effective_close(row, *, enabled=None) -> Optional[Decimal]:
     if enabled and source == 'unmapped_cafef':
         return None
     raw = _dec(getattr(row, 'close', None))
-    if enabled and source == 'cafef':
-        factor = _dec(getattr(row, 'adj_factor', None))
-        adj_close = _dec(getattr(row, 'adj_close', None))
-        if factor is not None and adj_close is not None:
-            return adj_close
+    # F1: mọi nguồn có adj hợp lệ đều được dùng — không so literal 'cafef'
+    # (sau Anchor A nguồn là vnbroker_fallback).
+    factor = _dec(getattr(row, 'adj_factor', None))
+    adj_close = _dec(getattr(row, 'adj_close', None))
+    if enabled and factor is not None and adj_close is not None:
+        return adj_close
     if raw is None:
         raise ValueError('DailyPrice row has no close')
     return raw
@@ -61,14 +62,13 @@ def effective_ohlc(row, *, enabled=None):
     if enabled and source == 'unmapped_cafef':
         return None
     o, h, l, c = (_dec(getattr(row, key, None)) for key in ('open', 'high', 'low', 'close'))
-    if enabled and source == 'cafef':
-        factor = _dec(getattr(row, 'adj_factor', None))
-        adj_close = _dec(getattr(row, 'adj_close', None))
-        if factor is not None and adj_close is not None:
-            return (
-                o * factor if o is not None else None,
-                h * factor if h is not None else None,
-                l * factor if l is not None else None,
-                adj_close,
-            )
+    factor = _dec(getattr(row, 'adj_factor', None))
+    adj_close = _dec(getattr(row, 'adj_close', None))
+    if enabled and factor is not None and adj_close is not None:
+        return (
+            o * factor if o is not None else None,
+            h * factor if h is not None else None,
+            l * factor if l is not None else None,
+            adj_close,
+        )
     return (o, h, l, c)

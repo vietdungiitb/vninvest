@@ -14,6 +14,8 @@ from django.utils.timezone import now
 from market_data.models import DailyPrice
 
 BACKUP_TABLE = 'market_data_anchora_backup_20261128'
+VINTAGE_BACKUP_TABLE = 'market_data_vintage_backup_20261128'
+VINTAGE_FIELDS = ('base_as_of', 'adj_basis')
 FIELDS = (
     'price_source', 'adj_close', 'adj_factor',
     'is_adjusted', 'adj_as_of', 'adj_version',
@@ -55,6 +57,30 @@ def build_relabel_plan(rows, now_value=None, allow_cafef_override=True):
     return updates, skips
 
 
+def build_vintage_plan(rows, t0: date):
+    """F3: gán vintage cho dòng đã anchor — KHÔNG đổi giá."""
+    for row in rows:
+        row.base_as_of = t0
+        row.adj_basis = 'anchor_provider'
+    return list(rows)
+
+
+def _vintage_backup_exists() -> bool:
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = %s AND table_schema = current_schema()",
+            [VINTAGE_BACKUP_TABLE],
+        )
+        return cur.fetchone() is not None
+
+
+def _vintage_backup_count() -> int:
+    with connection.cursor() as cur:
+        cur.execute(f'SELECT COUNT(*) FROM {VINTAGE_BACKUP_TABLE}')
+        return cur.fetchone()[0]
+
+
 def iter_keyset_batches(qs, batch: int = 5000):
     """Duyệt theo id, không nạp toàn bảng vào RAM (apply 2,65M dòng)."""
     last = 0
@@ -66,11 +92,33 @@ def iter_keyset_batches(qs, batch: int = 5000):
         last = chunk[-1].id
 
 
+def relabel_all(qs, batch: int = 5000):
+    """All-or-nothing: mọi chunk nằm trong 1 transaction, skip ⇒ rollback toàn bộ."""
+    preexisting = qs.exclude(price_source='cafef').filter(
+        adj_close__isnull=False
+    ).count()
+    if preexisting:
+        raise CommandError(f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE')
+    applied, skips = 0, 0
+    with transaction.atomic():
+        for chunk in iter_keyset_batches(qs, batch=batch):
+            updates, chunk_skips = build_relabel_plan(chunk)
+            skips += chunk_skips
+            if chunk_skips:
+                raise CommandError(
+                    f'skip_count={skips} > 0 — rollback toàn bộ, 0 UPDATE'
+                )
+            DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=1000)
+            applied += len(updates)
+    return applied, skips
+
+
 def _backup_exists():
     with connection.cursor() as cur:
         cur.execute(
             "SELECT 1 FROM information_schema.tables "
-            "WHERE table_name = %s", [BACKUP_TABLE],
+            "WHERE table_name = %s AND table_schema = current_schema()",
+            [BACKUP_TABLE],
         )
         return cur.fetchone() is not None
 
@@ -89,6 +137,9 @@ class Command(BaseCommand):
         parser.add_argument('--backup', action='store_true')
         parser.add_argument('--apply', action='store_true')
         parser.add_argument('--rollback-sql', action='store_true')
+        parser.add_argument('--set-vintage', action='store_true')
+        parser.add_argument('--backup-vintage', action='store_true')
+        parser.add_argument('--rollback-vintage-sql', action='store_true')
         parser.add_argument('--limit', type=int, default=0,
                             help='Giới hạn symbol khi chạy thử trên DB riêng.')
 
@@ -113,6 +164,45 @@ class Command(BaseCommand):
             )
             return
 
+        vintage_qs = DailyPrice.objects.filter(
+            price_source__in=('vnbroker_fallback', 'cafef')
+        )
+        if opts.get('rollback_vintage_sql'):
+            self.stdout.write(
+                f'UPDATE market_data_dailyprice d SET '
+                f'base_as_of=b.base_as_of, adj_basis=b.adj_basis '
+                f'FROM {VINTAGE_BACKUP_TABLE} b WHERE d.id=b.id;'
+            )
+            return
+        if opts.get('backup_vintage'):
+            if _vintage_backup_exists():
+                raise CommandError(f'{VINTAGE_BACKUP_TABLE} already exists')
+            with connection.cursor() as cur:
+                cur.execute(
+                    f'CREATE TABLE {VINTAGE_BACKUP_TABLE} AS '
+                    f'SELECT d.id, d.base_as_of, d.adj_basis '
+                    f'FROM market_data_dailyprice d '
+                    f"WHERE d.price_source IN ('vnbroker_fallback','cafef')"
+                )
+            self.stdout.write(
+                self.style.SUCCESS(f'vintage backup rows={_vintage_backup_count()}')
+            )
+            return
+        if opts.get('set_vintage'):
+            if not _vintage_backup_exists():
+                raise CommandError(f'{VINTAGE_BACKUP_TABLE} missing — refuse to apply')
+            expected = vintage_qs.count()
+            if _vintage_backup_count() != expected:
+                raise CommandError('vintage backup count mismatch — refuse to apply')
+            applied = 0
+            with transaction.atomic():
+                for chunk in iter_keyset_batches(vintage_qs, batch=5000):
+                    rows = build_vintage_plan(chunk, now().date())
+                    DailyPrice.objects.bulk_update(rows, VINTAGE_FIELDS, batch_size=1000)
+                    applied += len(rows)
+            self.stdout.write(self.style.SUCCESS(f'vintage applied rows={applied}'))
+            return
+
         if opts['backup']:
             if _backup_exists():
                 raise CommandError(f'backup {BACKUP_TABLE} already exists — refuse to overwrite')
@@ -128,6 +218,8 @@ class Command(BaseCommand):
             return
 
         if opts['apply']:
+            if opts['limit']:
+                raise CommandError('--limit chỉ dùng cho --dry-run, không cho --apply')
             if not _backup_exists():
                 raise CommandError(f'backup {BACKUP_TABLE} missing — refuse to apply')
             backed = _backup_count()
@@ -135,25 +227,7 @@ class Command(BaseCommand):
                 raise CommandError(
                     f'backup rows={backed} != expected {EXPECTED_ROWS} — refuse to apply'
                 )
-            # Fail-closed TRƯỚC mọi ghi: có bất kỳ adj_close sẵn ⇒ halt.
-            preexisting = qs.exclude(price_source='cafef').filter(
-                adj_close__isnull=False
-            ).count()
-            if preexisting:
-                raise CommandError(
-                    f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE'
-                )
-            applied, skips = 0, 0
-            for chunk in iter_keyset_batches(qs, batch=5000):
-                updates, chunk_skips = build_relabel_plan(chunk)
-                skips += chunk_skips
-                if chunk_skips:
-                    raise CommandError(
-                        f'skip_count={skips} > 0 — halt immediately, 0 further UPDATE'
-                    )
-                with transaction.atomic():
-                    DailyPrice.objects.bulk_update(updates, FIELDS, batch_size=1000)
-                applied += len(updates)
+            applied, skips = relabel_all(qs)
             self.stdout.write(
                 self.style.SUCCESS(f'applied rows={applied} skips={skips}')
             )

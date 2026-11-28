@@ -260,7 +260,9 @@ export default function VNStockChartPanel({
   // M5c: khi history đã scale sang adjusted, nến cuối từ quote realtime là
   // raw ⇒ trộn basis ngay đầu indicator. Bỏ qua nến realtime trong mode này.
   const nextBar = useMemo(() => {
-    if (priceBasis === 'adjusted') return null;
+    // F1: 'provider_adjusted_fallback' cũng là basis đã điều chỉnh — không
+    // đẩy nến quote raw vào chart đã scale.
+    if (priceBasis !== 'raw') return null;
     return buildBarFromQuote(quote);
   }, [quote, buildBarFromQuote, priceBasis]);
   useEffect(() => {

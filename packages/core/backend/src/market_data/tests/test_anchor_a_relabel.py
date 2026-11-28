@@ -1,7 +1,11 @@
 """Anchor A relabel — fail-before tests (2026-11-28)."""
 from datetime import date
 from decimal import Decimal
+from io import StringIO
 from types import SimpleNamespace
+
+import pytest
+from django.core.management.base import CommandError
 
 from market_data.management.commands.anchor_a_relabel import build_relabel_plan
 
@@ -12,6 +16,81 @@ def _row(i, close, adj=None):
         price_source='unmapped_cafef', adj_factor=None, is_adjusted=False,
         adj_as_of=None, adj_version=0,
     )
+
+
+def test_relabel_all_rolls_back_everything_on_late_skip(monkeypatch):
+    from contextlib import contextmanager
+
+    from django.core.management.base import CommandError
+
+    import market_data.management.commands.anchor_a_relabel as cmd
+
+    events = []
+
+    @contextmanager
+    def fake_atomic():
+        events.append('enter')
+        try:
+            yield
+        except Exception as exc:
+            events.append(('exit_error', type(exc).__name__))
+            raise
+        events.append('exit_ok')
+
+    class FakeQS:
+        def __init__(self, rows):
+            self.rows = rows
+            self.last = 0
+
+        def exclude(self, **kwargs):
+            return self
+
+        def filter(self, **kwargs):
+            if 'id__gt' in kwargs:
+                self.last = kwargs['id__gt']
+            return self
+
+        def order_by(self, *args):
+            return self
+
+        def count(self):
+            return 0  # pre-check: không có adj_close ngoài cafef
+
+        def __getitem__(self, sl):
+            return [r for r in self.rows if r.id > self.last][sl]
+
+    good = _row(1, 100)
+    bad = _row(2, 50, adj=40)
+    monkeypatch.setattr(cmd.transaction, 'atomic', fake_atomic)
+    def fake_bulk(rows, fields, batch_size):
+        # F('adj_version') + 1 là CombinedExpression, không phải F thuần.
+        events.append((
+            'bulk', tuple(fields), batch_size,
+            'adj_version' in str(rows[0].adj_version),
+        ))
+
+    monkeypatch.setattr(cmd.DailyPrice.objects, 'bulk_update', fake_bulk)
+    with pytest.raises(CommandError):
+        cmd.relabel_all(FakeQS([good, bad]), batch=1)
+    assert events == [
+        'enter',
+        ('bulk', cmd.FIELDS, 1000, True),
+        ('exit_error', 'CommandError'),
+    ]
+
+
+def test_vintage_plan_sets_base_as_of_and_basis():
+    from market_data.management.commands.anchor_a_relabel import build_vintage_plan
+
+    rows = [_row(1, 100), _row(2, 50)]
+    out = build_vintage_plan(rows, date(2026, 11, 28))
+    assert len(out) == 2
+    for row in out:
+        assert row.base_as_of == date(2026, 11, 28)
+        assert row.adj_basis == 'anchor_provider'
+    assert out[0].close == Decimal('100')  # vintage KHÔNG đổi giá
+    assert out[0].adj_close is None
+    assert out[1].close == Decimal('50')
 
 
 def test_cafef_rows_can_be_overridden_but_other_sources_cannot():
@@ -86,3 +165,37 @@ def test_plan_preserves_raw_close_and_ohlc():
     assert skips == 0
     assert updates[0].close == Decimal('17.5')
     assert (updates[0].open, updates[0].high, updates[0].low) == (Decimal('18'), Decimal('19'), Decimal('17'))
+
+
+def _command():
+    import market_data.management.commands.anchor_a_relabel as cmd
+
+    instance = cmd.Command()
+    instance.stdout = StringIO()
+    return instance
+
+
+def test_rollback_sql_restores_exactly_six_fields(monkeypatch):
+    monkeypatch.setattr(
+        'market_data.management.commands.anchor_a_relabel.target_symbols',
+        lambda: [],
+    )
+    c = _command()
+    c.handle(dry_run=False, backup=False, apply=False,
+             rollback_sql=True, limit=0)
+    out = c.stdout.getvalue()
+    for field in ('price_source', 'adj_close', 'adj_factor',
+                  'is_adjusted', 'adj_as_of', 'adj_version'):
+        assert f'{field}=b.{field}' in out
+    assert 'WHERE d.id=b.id' in out
+
+
+def test_apply_refuses_limit_flag(monkeypatch):
+    monkeypatch.setattr(
+        'market_data.management.commands.anchor_a_relabel.target_symbols',
+        lambda: [],
+    )
+    c = _command()
+    with pytest.raises(CommandError):
+        c.handle(dry_run=False, backup=False, apply=True,
+                 rollback_sql=False, limit=10)
