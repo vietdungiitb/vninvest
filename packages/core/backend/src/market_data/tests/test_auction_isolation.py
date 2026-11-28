@@ -5,13 +5,13 @@ Fail-before tren code cu: cac assert side=='unknown' that 'buy' -> DO.
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
 import pandas as pd
 import pytz
 from django.test import TestCase
-from django.utils import timezone
 
 from data_ingest.tasks import _normalize_intraday_trade_row
 from market_data.vnbroker_adapter import _normalize_intraday_trade_rows
@@ -20,7 +20,7 @@ _VN = pytz.timezone('Asia/Ho_Chi_Minh')
 
 
 def _ict(day: object, hour: int, minute: int, second: int = 0) -> datetime:
-    return _VN.localize(datetime.combine(day, time(hour, minute, second))).astimezone(timezone.utc)
+    return _VN.localize(datetime.combine(day, time(hour, minute, second))).astimezone(dt_timezone.utc)
 
 
 class AuctionIsolationNormalizationTests(TestCase):
