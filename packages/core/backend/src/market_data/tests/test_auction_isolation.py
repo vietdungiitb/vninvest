@@ -40,6 +40,7 @@ class AuctionIsolationNormalizationTests(TestCase):
         }])
 
     def test_live_match_type_atc_forces_unknown(self) -> None:
+        """Control: code cu da ep UNKNOWN cho match_type='ATC' — giu nguyen sau fix."""
         rows = _normalize_intraday_trade_rows(
             self._frame(self.atc_ts, 'buy', 'ATC'), 'VIC'
         )
@@ -60,8 +61,9 @@ class AuctionIsolationNormalizationTests(TestCase):
         self.assertEqual(rows[0]['side'], 'unknown', 'ATO phai ep UNKNOWN')
 
     def test_positive_control_continuous_keeps_buy(self) -> None:
+        """Control duong tinh: khong co match_type, lay side thật tu `side` field."""
         rows = _normalize_intraday_trade_rows(
-            self._frame(self.continuous_ts, 'buy', 'NormalMatch'), 'VIC'
+            self._frame(self.continuous_ts, 'buy', None), 'VIC'
         )
         self.assertEqual(rows[0]['side'], 'buy', 'phiên CONTINUOUS giu aggressor thật')
 
