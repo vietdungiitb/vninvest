@@ -78,7 +78,7 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         if source == 'cafef':
             cafef_rows += 1
             per_symbol[symbol]['cafef'] = True
-        if source in ('vnbroker_legacy', 'unmapped_cafef') and has_adj:
+        if source in ('vnbroker_legacy', 'unmapped_cafef', 'vnbroker_fallback') and has_adj:
             per_symbol[symbol]['foreign_adjusted'] = True
 
         if source == 'vnbroker_legacy' and has_adj:
