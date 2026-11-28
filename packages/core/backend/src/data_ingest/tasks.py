@@ -701,13 +701,21 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
                 raise ValueError('empty symbol')
 
             source = f"vnbroker_{str(row.get('source') or normalized_provider).lower()}"
+            close_value = Decimal(str(row['close']))
+            # F3: T+0 — giá provider mới nhất chính là raw của ngày t;
+            # mọi sự kiện có ex_date > t chưa xảy ra ⇒ factor=1, vintage=t.
             next_values = {
                 'open': Decimal(str(row['open'])),
                 'high': Decimal(str(row['high'])),
                 'low': Decimal(str(row['low'])),
-                'close': Decimal(str(row['close'])),
+                'close': close_value,
                 'volume': int(row['volume']),
                 'source': source,
+                'adj_close': close_value,
+                'adj_factor': Decimal('1'),
+                'is_adjusted': True,
+                'base_as_of': row_date,
+                'adj_basis': 'self_computed',
             }
         except Exception as exc:
             logger.debug('DailyPrice parse error for %s row: %s', row.get('symbol') or 'unknown', exc)
@@ -794,7 +802,8 @@ def _fetch_and_upsert_bucket(
             existing_rows_by_date = {
                 row['date']: row
                 for row in DailyPrice.objects.filter(symbol=symbol, date__in=history_dates).values(
-                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source'
+                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source',
+                    'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
                 )
             }
             objs, symbol_inserted, symbol_updated, symbol_skipped = _classify_daily_price_rows(
@@ -807,7 +816,10 @@ def _fetch_and_upsert_bucket(
                 DailyPrice.objects.bulk_create(
                     objs,
                     update_conflicts=True,
-                    update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
+                    update_fields=[
+                        'open', 'high', 'low', 'close', 'volume', 'source',
+                        'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
+                    ],
                     unique_fields=['symbol', 'date'],
                 )
                 inserted += symbol_inserted

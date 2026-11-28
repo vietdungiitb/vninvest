@@ -116,9 +116,12 @@ def recompute_adjusted(rows: list[dict], events: list[dict]) -> list[dict]:
     ordered = sorted(events, key=lambda e: e['ex_date'])
     out = []
     for row in rows:
+        # D-01: mốc vintage của dòng — event đã phản ánh trong base_close thì
+        # KHÔNG được nhân thêm (fail-closed chống double-adjust).
+        vintage = row.get('base_as_of') or row['date']
         cumulative = ONE
         for event in ordered:
-            if event['ex_date'] > row['date']:
+            if event['ex_date'] > vintage:
                 cumulative = (
                     cumulative * Decimal(str(event['factor']))
                 ).quantize(Q10)
@@ -169,7 +172,12 @@ def apply_adjustment_service(symbol: str) -> dict:
         factors.append({'ex_date': ex_date, 'factor': compute_event_factor(payload, prev.close)})
 
     computed = recompute_adjusted(
-        [{'date': p.date, 'base_close': p.close} for p in prices], factors,
+        [
+            {'date': p.date, 'base_close': p.close,
+             'base_as_of': getattr(p, 'base_as_of', None)}
+            for p in prices
+        ],
+        factors,
     )
     updates = []
     for price, result in zip(prices, computed):

@@ -4218,11 +4218,13 @@ def _has_adjustment(row) -> bool:
     basis, adj_close stale) vẫn bị loại.
     """
     source = getattr(row, 'price_source', None)
+    basis = getattr(row, 'adj_basis', '') or ''
     return (
         getattr(row, 'adj_factor', None) is not None
         and getattr(row, 'adj_close', None) is not None
-        # legacy có thể mang adj_close stale từ engine cũ đã nghỉ hưu — vẫn chặn.
-        and source != 'vnbroker_legacy'
+        # legacy KHÔNG có basis mới bị chặn (adj_close stale của engine cũ).
+        # T+0 self_computed có basis rõ thì được phép.
+        and not (source == 'vnbroker_legacy' and not basis)
     )
 
 
