@@ -1,3 +1,12 @@
+## Entry 683: S3 P0 REQ-BE-M03+G-2 — idempotency IntradayTick, dedup_key có seq_in_key
+
+- Ngày 2026-11-28 · Agent `m03-tick-dedup` · Branch `feat/m03-tick-dedup` (rebase `origin/dev 4959c58a7`).
+- Phạm vi: `market_data/tick_dedup.py` (mới), `market_data/models.py`, migration `0015_intradaytick_dedup_key_and_more.py`, `data_ingest/tasks.py` (3 write-path), test mới, `docs/system-design/**` (sync 152 migration + model catalog), evidence `s3-gates.md` + `S3_REAUDIT.md` + `S3_REAUDIT_R2.md`, `docs/CLAIMS.md`.
+- G-2: provider DNSE **không có trade id** (probe staging) → dùng `seq_in_key`: 2 lệnh lô lẻ cùng giây/giá vẫn có key khác nhau. Backfill Python **sha256 dùng chung thuật toán với runtime** (O2). Constraint **partial** `WHERE dedup_key > ''` (O1) → fixture cũ không vỡ. `assign_dedup_keys` sort ổn định (O3).
+- Fail-before (`ModuleNotFoundError` + test constraint behavior-level) → pass-after `Ran 7 tests ... OK` trên VPS DB tạm. Migration end-to-end: 3 row trùng → 3 key, `min_len=64`, partial index xác nhận, duplicate key bị từ chối.
+- Re-audit 2 vòng: v1 `NEED_REVISION` (1 blocker + 1 major) → đã sửa → v2 **`AGREE`**, 0 P0/P1. Residual R2 (tie-order provider trong cùng giây), R5 (full regression **CHƯA CHẠY** do image VPS thiếu module) ghi trong evidence.
+- Gates sau rebase: `check-multi-agent` exit 0; `pre-push-gate` **36 PASS / 0 FAIL**; `makemigrations --check` = No changes detected; `check-system-design --check` SACH. Không ghi staging (Q2 = KHÔNG).
+
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
