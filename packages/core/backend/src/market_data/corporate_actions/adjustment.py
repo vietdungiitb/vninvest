@@ -84,6 +84,53 @@ def compute_adj_factors(symbol: str) -> list[AdjFactor]:
     return result
 
 
+def compute_event_factor(event: dict, prev_close: Decimal) -> Decimal:
+    """Hệ số Sở GDCK VN: (P + I1*P_issue - D) / (P*(1+I1+I2)).
+
+    Pure function — không DB. Event thiếu số/ambiguous ⇒ PARTIAL_EVENT,
+    fail-closed để caller giữ nguyên chuỗi cũ.
+    """
+    if event.get('parse_status') != 'structured' or event.get('ambiguous'):
+        raise ValueError('PARTIAL_EVENT')
+    cash = Decimal(str(event.get('cash') or 0))
+    stock_pct = Decimal(str(event.get('stock_ratio_pct') or 0))
+    rights_pct = Decimal(str(event.get('rights_ratio_pct') or 0))
+    issue_price = event.get('rights_issue_price')
+    if rights_pct and issue_price is None:
+        raise ValueError('PARTIAL_EVENT')
+    issue = Decimal(str(issue_price or 0))
+    prev = Decimal(str(prev_close))
+    i1 = rights_pct / Decimal(100)
+    i2 = stock_pct / Decimal(100)
+    denominator = prev * (ONE + i1 + i2)
+    if denominator <= 0 or prev <= 0:
+        raise ValueError('INVALID_FACTOR')
+    factor = ((prev + i1 * issue - cash) / denominator).quantize(Q10)
+    if not (Decimal('0.01') <= factor <= Decimal('1.05')):
+        raise ValueError('INVALID_FACTOR')
+    return factor
+
+
+def recompute_adjusted(rows: list[dict], events: list[dict]) -> list[dict]:
+    """Pure: adj_close(t) = base_close(t) * Π f(e) với e.ex_date > t."""
+    ordered = sorted(events, key=lambda e: e['ex_date'])
+    out = []
+    for row in rows:
+        cumulative = ONE
+        for event in ordered:
+            if event['ex_date'] > row['date']:
+                cumulative = (
+                    cumulative * Decimal(str(event['factor']))
+                ).quantize(Q10)
+        copy = dict(row)
+        copy['adj_close'] = (
+            Decimal(str(row['base_close'])) * cumulative
+        ).quantize(Q2)
+        copy['adj_factor'] = cumulative
+        out.append(copy)
+    return out
+
+
 def apply_adjustments(symbol: str) -> int:
     """Walk ex_date tăng, nhân dồn factor cho mọi ex_date > t; không ghi đè close thô.
 
