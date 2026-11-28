@@ -55,5 +55,19 @@
 2. Có chấp nhận phase B set `close=NULL` cho ~3,68M dòng sau backup không? (Thay đổi irreversibility cao.)
 3. Với ~0,93M dòng chưa có `adj_close`: bỏ khỏi hiển thị hay fetch bổ sung từ provider trước?
 
-## 7. Reservation
+## 7. Quyết định Owner 2026-11-28 — raw_close vs close
+
+**Owner chốt (câu 1)**: **thêm `DailyPrice.raw_close`**. Khi đó:
+
+| Trường | Vai trò mới | Hành động |
+|---|---|---|
+| `raw_close` (mới, nullable) | **Raw tham chiếu duy nhất** — lấy từ CafeF (`CafefDailyPrice.close_raw`) làm nguồn đối chiếu; raw như nhau mọi provider | Thêm migration, backfill có chọn lọc |
+| `adj_close` | **SSOT giá hiển thị** — dữ liệu adjusted trực tiếp từ VCI/KBS (`adjusted=True`), với `adj_basis`/`base_as_of` | Giữ, làm nguồn chuẩn duy nhất |
+| `close` (cũ) | **KHÔNG dùng nữa** — đang chứa giá adjusted bị gắn nhãn raw (sai tên) | Ghi deprecated → set NULL ở Phase B → **xoá cột ở Phase C** |
+
+Trả lời trực tiếp câu hỏi: **thêm `raw_close` thì bỏ `close`** — không giữ hai cột raw song song. `close` chỉ tồn tại tạm để rollback, không phải nguồn nào cả.
+
+**Hệ quả với O/H/L**: VCI/KBS trả cả OHLC đã adjusted. Khi `adj_factor != 1` do corporate action tự tính, **không được scale O/H/L bằng factor của raw** (sẽ double-adjust); phải dùng `base_as_of` làm mốc: O/H/L đã phản ánh sự kiện tới `base_as_of`, mọi factor mới chỉ áp dụng cho ngày trước ex-date. Đây là phần phải test kỹ ở Phase A/B.
+
+## 8. Reservation
 Tôi chưa đổi code/data. `PRICE_ADJUSTED_DISPLAY=1` đang bật; contract hiện tại vẫn trả `close` cho phần thiếu adj. Trung thực ghi nhật ký này trước khi đề xuất triển khai.
