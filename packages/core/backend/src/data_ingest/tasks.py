@@ -23,6 +23,7 @@ from django.db.models import F, Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
+from market_data.cafef.integrity import anchor_basis_q
 from market_data.vnbroker_adapter import fetch_daily_history, fetch_intraday_tape
 
 logger = logging.getLogger(__name__)
@@ -347,13 +348,16 @@ def _normalize_intraday_trade_row(symbol: str, trade: dict) -> dict | None:
     except (ArithmeticError, TypeError, ValueError):
         return None
 
+    from market_data.session_phase import normalize_tick_side, resolve_session_phase
+
+    side, _phase = normalize_tick_side(trade.get('side'), timestamp, trade.get('match_type'))
     return {
         'symbol': symbol,
         'timestamp': timestamp,
         'price': price,
         'volume': volume,
-        'side': _normalize_intraday_side(trade.get('side')),
-        'match_type': str(trade.get('match_type') or 'NormalMatch')[:50],
+        'side': side,
+        'match_type': str(trade.get('match_type') or resolve_session_phase(timestamp, trade.get('match_type')))[:50],
         'source': 'vnbroker_intraday',
     }
 
@@ -476,28 +480,20 @@ def _hydrate_intraday_symbols(
 
             if 'intraday_ticks' in target_dataset_set:
                 tick_counts['planned_items'] += 1
+                from market_data.tick_dedup import assign_dedup_keys
+                keyed_trades = assign_dedup_keys(normalized_trades)
                 existing_tick_keys = {
-                    (
-                        row['timestamp'],
-                        row['price'],
-                        row['volume'],
-                        row['side'],
-                        row['match_type'],
-                    )
+                    row['dedup_key']
                     for row in IntradayTick.objects.filter(
                         symbol=symbol,
-                        timestamp__in=[trade['timestamp'] for trade in normalized_trades],
-                    ).values('timestamp', 'price', 'volume', 'side', 'match_type')
+                        timestamp__in=[trade['timestamp'] for trade in keyed_trades],
+                    ).values('dedup_key')
                 }
                 tick_objects = []
-                for trade in normalized_trades:
-                    tick_key = (
-                        trade['timestamp'],
-                        trade['price'],
-                        trade['volume'],
-                        trade['side'],
-                        trade['match_type'],
-                    )
+                for trade in keyed_trades:
+                    # G-2: dedup theo dedup_key (co seq_in_key), KHONG theo tuple thô
+                    # — neu khong se nuot 2-5 lenh lô lẻ cung giay/gia.
+                    tick_key = trade['dedup_key']
                     if tick_key in existing_tick_keys:
                         tick_counts['skipped_existing'] += 1
                         continue
@@ -510,7 +506,40 @@ def _hydrate_intraday_symbols(
 
             if 'intraday_bars' in target_dataset_set:
                 bar_counts['planned_items'] += 1
-                bar_payloads = _build_intraday_bar_payloads(symbol, normalized_trades)
+                # S1 / REQ-BE-M01: khong dung batch partial de ghi de OHLCV cua bar.
+                # Xac dinh tap bucket bi anh huong, roi tinh lai tu TOAN BO tick trong DB.
+                # Truyen chinh _floor_intraday_bucket de dam bao cung quy uoc multiples
+                # giot cho khung 2H/4H voi synthesize_intraday_bars_from_ticks (G-3a).
+                # G-3a: floor phải ở UTC — tape mang tz +07, DB trả UTC. Floor ở +07
+                # cho khung 2H/4H ra biên KHÁC (22:00+07 = 15:00 UTC vs 16:00 UTC),
+                # lam mat bucket va lech synthesize path. Chuan hoa ve UTC truoc.
+                affected_keys = set()
+                for trade in normalized_trades:
+                    tape_ts = trade['timestamp']
+                    tape_ts = tape_ts.replace(tzinfo=UTC) if tape_ts.tzinfo is None else tape_ts.astimezone(UTC)
+                    for timeframe in _INTRADAY_BAR_TIMEFRAMES:
+                        affected_keys.add((timeframe, _floor_intraday_bucket(tape_ts, timeframe)))
+                bar_payloads: dict[tuple[str, datetime], dict] = {}
+                if affected_keys:
+                    bucket_starts = [key[1] for key in affected_keys]
+                    # 4H la khung lon nhat — mo rong range de lay du tick cua moi bucket.
+                    range_start = min(bucket_starts)
+                    range_end = max(bucket_starts) + timedelta(hours=4)
+                    db_tick_rows = list(
+                        IntradayTick.objects.filter(
+                            symbol=symbol,
+                            timestamp__gte=range_start,
+                            timestamp__lt=range_end,
+                        ).values('timestamp', 'price', 'volume', 'source').order_by('timestamp')
+                    )
+                    from data_ingest.intraday_bar_recompute import recompute_bar_payloads_from_ticks
+                    bar_payloads = recompute_bar_payloads_from_ticks(
+                        symbol,
+                        db_tick_rows,
+                        affected_keys,
+                        _floor_intraday_bucket,
+                        _INTRADAY_BAR_TIMEFRAMES,
+                    )
                 existing_bars_by_key = {
                     (row['timeframe'], row['datetime']): row
                     for row in IntradayBar.objects.filter(
@@ -701,13 +730,21 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
                 raise ValueError('empty symbol')
 
             source = f"vnbroker_{str(row.get('source') or normalized_provider).lower()}"
+            close_value = Decimal(str(row['close']))
+            # F3: T+0 — giá provider mới nhất chính là raw của ngày t;
+            # mọi sự kiện có ex_date > t chưa xảy ra ⇒ factor=1, vintage=t.
             next_values = {
                 'open': Decimal(str(row['open'])),
                 'high': Decimal(str(row['high'])),
                 'low': Decimal(str(row['low'])),
-                'close': Decimal(str(row['close'])),
+                'close': close_value,
                 'volume': int(row['volume']),
                 'source': source,
+                'adj_close': close_value,
+                'adj_factor': Decimal('1'),
+                'is_adjusted': True,
+                'base_as_of': row_date,
+                'adj_basis': 'self_computed',
             }
         except Exception as exc:
             logger.debug('DailyPrice parse error for %s row: %s', row.get('symbol') or 'unknown', exc)
@@ -723,7 +760,13 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
         # - 'cafef': đã chuẩn hóa xong (có adj_factor).
         # - 'unmapped_cafef': CafeF không có dữ liệu, adj_close hỏng đã dọn NULL;
         #   provider ghi đè sẽ trả lại giá đã điều chỉnh (double-adjust).
-        if existing.get('price_source') in ('cafef', 'unmapped_cafef'):
+        # F2: mọi dòng đã có adjusted (cafef/unmapped/fallback) hoặc đã mang
+        # hệ số điều chỉnh đều là dòng SSOT — provider KHÔNG được ghi đè close.
+        if (
+            existing.get('price_source') in ('cafef', 'unmapped_cafef', 'vnbroker_fallback')
+            or existing.get('adj_close') is not None
+            or existing.get('adj_factor') is not None
+        ):
             skipped_existing += 1
             continue
 
@@ -788,7 +831,8 @@ def _fetch_and_upsert_bucket(
             existing_rows_by_date = {
                 row['date']: row
                 for row in DailyPrice.objects.filter(symbol=symbol, date__in=history_dates).values(
-                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source'
+                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source',
+                    'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
                 )
             }
             objs, symbol_inserted, symbol_updated, symbol_skipped = _classify_daily_price_rows(
@@ -801,7 +845,10 @@ def _fetch_and_upsert_bucket(
                 DailyPrice.objects.bulk_create(
                     objs,
                     update_conflicts=True,
-                    update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
+                    update_fields=[
+                        'open', 'high', 'low', 'close', 'volume', 'source',
+                        'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
+                    ],
                     unique_fields=['symbol', 'date'],
                 )
                 inserted += symbol_inserted
@@ -2585,6 +2632,7 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     if not ticks:
         return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
 
+    from market_data.tick_dedup import assign_dedup_keys
     objs = [
         IntradayTick(
             symbol=symbol_upper,
@@ -2594,8 +2642,9 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
             side=t['side'].upper(),
             match_type=t.get('match_type', 'NormalMatch'),
             source=t.get('source', 'dnse_system'),
+            dedup_key=t['dedup_key'],
         )
-        for t in ticks
+        for t in assign_dedup_keys(ticks)
     ]
 
     created = 0
@@ -2698,6 +2747,7 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     if not ticks:
         return {'status': 'empty', 'symbol': symbol_upper, 'date': trade_date, 'ticks': 0}
 
+    from market_data.tick_dedup import assign_dedup_keys
     objs = [
         IntradayTick(
             symbol=symbol_upper,
@@ -2707,8 +2757,9 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
             side=t['side'].upper(),
             match_type=t.get('match_type', 'NormalMatch'),
             source=t.get('source', 'dnse_user'),
+            dedup_key=t['dedup_key'],
         )
-        for t in ticks
+        for t in assign_dedup_keys(ticks)
     ]
 
     created = 0
@@ -3665,7 +3716,7 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             'symbol': symbol, 'trigger': trigger,
         }
 
-    old_qs = DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
+    old_qs = DailyPrice.objects.filter(symbol=symbol.upper()).filter(anchor_basis_q())
     if date_from:
         old_qs = old_qs.filter(date__gte=date_from)
     old_rows = list(old_qs.order_by('date'))
@@ -3720,7 +3771,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     if symbols is None:
         symbols = list(
-            DailyPrice.objects.filter(price_source='cafef', adj_close__isnull=False)
+            DailyPrice.objects.filter(anchor_basis_q(), adj_close__isnull=False)
             .values_list('symbol', flat=True).distinct()[:100]
         )
     exchanges = dict(
@@ -3729,7 +3780,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
     counts = {'observe': 0, 'rebase': 0, 'alert': 0}
     for symbol in symbols:
         rows = list(
-            DailyPrice.objects.filter(symbol=symbol, price_source='cafef')
+            DailyPrice.objects.filter(symbol=symbol).filter(anchor_basis_q())
             .order_by('date').values('date', 'close')[:120]
         )
         if len(rows) < 2:
@@ -3759,8 +3810,8 @@ def rebase_cafef_all_symbols(self, _scheduler_job_key: str | None = None) -> dic
     if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     symbols = list(
-        DailyPrice.objects.filter(price_source='cafef')
-        .values_list('symbol', flat=True).distinct()
+        DailyPrice.objects.filter(anchor_basis_q())
+        .order_by().values_list('symbol', flat=True).distinct()
     )
     queued = 0
     for symbol in symbols:

@@ -79,6 +79,20 @@ def test_relabel_all_rolls_back_everything_on_late_skip(monkeypatch):
     ]
 
 
+def test_vintage_plan_sets_base_as_of_and_basis():
+    from market_data.management.commands.anchor_a_relabel import build_vintage_plan
+
+    rows = [_row(1, 100), _row(2, 50)]
+    out = build_vintage_plan(rows, date(2026, 11, 28))
+    assert len(out) == 2
+    for row in out:
+        assert row.base_as_of == date(2026, 11, 28)
+        assert row.adj_basis == 'anchor_provider'
+    assert out[0].close == Decimal('100')  # vintage KHÔNG đổi giá
+    assert out[0].adj_close is None
+    assert out[1].close == Decimal('50')
+
+
 def test_cafef_rows_can_be_overridden_but_other_sources_cannot():
     cafef = _row(10, 100, adj=80)
     cafef.price_source = 'cafef'

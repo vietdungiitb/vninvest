@@ -58,6 +58,17 @@ def test_recompute_applies_factor_only_to_dates_before_ex_date():
     assert out[1]['adj_close'] == out[1]['base_close']
 
 
+def test_recompute_skips_event_already_reflected_in_base_as_of():
+    rows = [{
+        'date': date(2026, 11, 26),
+        'base_as_of': date(2026, 11, 27),  # provider đã phản ánh event 27/11
+        'base_close': Decimal('43500'),
+    }]
+    events = [{'ex_date': date(2026, 11, 27), 'factor': Decimal('0.9775280899')}]
+    out = recompute_adjusted(rows, events)
+    assert out[0]['adj_close'] == Decimal('43500')  # KHÔNG nhân thêm
+
+
 def test_recompute_is_idempotent():
     rows = [{'date': date(2026, 11, 26), 'base_close': Decimal('44500')}]
     events = [{'ex_date': date(2026, 11, 27), 'factor': Decimal('0.9775280899')}]
