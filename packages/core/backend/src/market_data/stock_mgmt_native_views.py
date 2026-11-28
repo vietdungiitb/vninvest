@@ -4210,17 +4210,25 @@ def _corporate_actions_enabled() -> bool:
     return os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes')
 
 
-def _has_cafef_adjustment(row) -> bool:
-    """Only CafeF rows carry a trustworthy adjusted series.
+def _has_adjustment(row) -> bool:
+    """F1: adjusted hợp lệ ở mọi nguồn có basis rõ, không chỉ 'cafef'.
 
-    vnbroker_legacy rows may hold a stale double-adjusted `adj_close` from the
-    retired engine; exposing it makes consumers silently render wrong prices.
+    Sau Anchor A nguồn là 'vnbroker_fallback'; dòng legacy ô nhiễm (không có
+    basis, adj_close stale) vẫn bị loại.
     """
+    source = getattr(row, 'price_source', None)
+    basis = getattr(row, 'adj_basis', '') or ''
     return (
-        getattr(row, 'price_source', None) == 'cafef'
-        and getattr(row, 'adj_factor', None) is not None
+        getattr(row, 'adj_factor', None) is not None
         and getattr(row, 'adj_close', None) is not None
+        and (
+            source in ('cafef', 'vnbroker_fallback')
+            or basis in ('anchor_provider', 'self_computed', 'provider_fallback')
+        )
     )
+
+
+_has_cafef_adjustment = _has_adjustment  # backward-compatible alias cho test cũ
 
 
 def _bars_adjustment_metadata(bars, partial_dates):
@@ -4239,16 +4247,16 @@ def _bars_adjustment_metadata(bars, partial_dates):
     if not bars:
         return {'adjusted': False, 'note': 'Chưa có hệ số điều chỉnh cho mã này.'}
     sources = {bar.get('price_source') for bar in bars}
-    all_adjusted = (
-        sources == {'cafef'}
-        and all(
-            bar.get('adj_close') is not None and bar.get('adj_factor') is not None
-            for bar in bars
-        )
+    all_adjusted = all(
+        bar.get('adj_close') is not None and bar.get('adj_factor') is not None
+        for bar in bars
     )
     if all_adjusted:
         return {'adjusted': True, 'note': None}
-    if 'cafef' in sources:
+    if any(
+        bar.get('adj_close') is not None and bar.get('adj_factor') is not None
+        for bar in bars
+    ):
         return {
             'adjusted': False,
             'note': 'mixed_sources_partial_adjustment_basis',
@@ -4266,11 +4274,10 @@ def _ohlcv_bar_from_daily(row):
         'close': _to_float(row.close),
         'volume': _to_int(row.volume) or 0,
     }
-    if _corporate_actions_enabled():
-        bar['price_source'] = getattr(row, 'price_source', None)
-        if _has_cafef_adjustment(row):
-            bar['adj_close'] = _to_float(row.adj_close)
-            bar['adj_factor'] = _to_float(row.adj_factor)
+    bar['price_source'] = getattr(row, 'price_source', None)
+    if _has_adjustment(row):
+        bar['adj_close'] = _to_float(row.adj_close)
+        bar['adj_factor'] = _to_float(row.adj_factor)
     return bar
 
 
@@ -4326,11 +4333,10 @@ def _aggregate_daily_to_ohlcv_bars(rows, timeframe, adjusted=False):
             'close': _to_float(b['close']),
             'volume': b['volume'],
         }
-        if _corporate_actions_enabled():
-            bar['price_source'] = b['price_source']
-            if b['adj_close'] is not None and b['adj_factor'] is not None:
-                bar['adj_close'] = _to_float(b['adj_close'])
-                bar['adj_factor'] = _to_float(b['adj_factor'])
+        bar['price_source'] = b['price_source']
+        if b['adj_close'] is not None and b['adj_factor'] is not None:
+            bar['adj_close'] = _to_float(b['adj_close'])
+            bar['adj_factor'] = _to_float(b['adj_factor'])
         result.append(bar)
     return result
 
@@ -4614,18 +4620,12 @@ class StockManagementOHLCVBarsView(APIView):
             next_before = bars[0]['timestamp'] if bars else None
             next_after = bars[-1]['timestamp'] if bars else None
 
-        if _corporate_actions_enabled():
-            partial_dates = list(
-                AdjFactor.objects.filter(symbol=symbol, status=AdjFactor.Status.PARTIAL)
-                .order_by('ex_date')
-                .values_list('ex_date', flat=True)
-            )
-            meta = _bars_adjustment_metadata(bars, partial_dates)
-        else:
-            meta = {
-                'adjusted': False,
-                'note': 'Bars chua dieu chinh co tuc (corporate actions).',
-            }
+        partial_dates = list(
+            AdjFactor.objects.filter(symbol=symbol, status=AdjFactor.Status.PARTIAL)
+            .order_by('ex_date')
+            .values_list('ex_date', flat=True)
+        )
+        meta = _bars_adjustment_metadata(bars, partial_dates)
         adjusted = meta['adjusted']
         adjustment_note = meta['note']
 
