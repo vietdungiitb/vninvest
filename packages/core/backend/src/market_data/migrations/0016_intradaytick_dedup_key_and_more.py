@@ -70,7 +70,7 @@ def _backfill_dedup_key(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('market_data', '0014_alter_pricerebaserun_status'),
+        ('market_data', '0015_corporateaction_rights_issue_price_and_more'),
     ]
 
     operations = [

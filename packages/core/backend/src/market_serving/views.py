@@ -106,6 +106,12 @@ def _get_materialized_session_fact_buckets(facts: SessionFacts, window: str) -> 
             'institutional_strength',
             'buy_volume',
             'sell_volume',
+            'market_buy_value',
+            'market_sell_value',
+            'auction_value',
+            'trade_count',
+            'cvd_source',
+            'coverage_ratio',
         )
     )
 
@@ -114,6 +120,7 @@ def _build_empty_cvd_payload(symbol: str, window: str, bucket_minutes: int, trad
     resolved_session_date = session_date or trade_date or dj_timezone.localdate()
     return {
         'symbol': symbol,
+        'metric': 'whale',
         'session_date': resolved_session_date.isoformat(),
         'window': window,
         'bucket_minutes': bucket_minutes,
@@ -412,8 +419,10 @@ class SessionFactsCvdView(APIView):
             .aggregate(Max('computed_at'))['computed_at__max']
         )
         revision = int(revision_dt.timestamp()) if revision_dt is not None else 0
+        # S5 (O5 prior audit): cache key PHAI chua metric — neu khong ?metric=market
+        # va ?metric=whale tra cung 1 payload. Bump v4 -> v5 de invalidate.
         cache_key = (
-            f'core:cvd_series:v4:{symbol}:{window}:{period}:'
+            f'core:cvd_series:v5:{symbol}:{window}:{period}:{self._metric}:'
             f'{start_date.isoformat()}:{end_date.isoformat()}:{revision}'
         )
 
@@ -443,6 +452,12 @@ class SessionFactsCvdView(APIView):
                 'bucket_ts': row.bucket_ts,
                 'buy_volume': int(row.buy_volume or 0),
                 'sell_volume': int(row.sell_volume or 0),
+                'market_buy_value': int(row.market_buy_value or 0),
+                'market_sell_value': int(row.market_sell_value or 0),
+                'auction_value': int(row.auction_value or 0),
+                'trade_count': int(row.trade_count or 0),
+                'cvd_source': row.cvd_source,
+                'coverage_ratio': float(row.coverage_ratio or 0.0),
                 'buy_strength': row.buy_strength,
                 'institutional_strength': row.institutional_strength,
                 'pk': row.pk,
@@ -480,6 +495,12 @@ class SessionFactsCvdView(APIView):
                     ),
                     'buy_volume': 0,
                     'sell_volume': 0,
+                    'market_buy_value': 0,
+                    'market_sell_value': 0,
+                    'auction_value': 0,
+                    'trade_count': 0,
+                    'cvd_source': 'whale_fallback_only',
+                    'coverage_ratio': 0.0,
                     'buy_strength': 0.0,
                     'institutional_strength': 0.0,
                     'pk': 0,
@@ -495,7 +516,9 @@ class SessionFactsCvdView(APIView):
         running = 0
         cumulative = []
         for bucket in buckets:
-            delta = bucket['buy_volume'] - bucket['sell_volume']
+            buy = bucket['market_buy_value'] if self._metric == 'market' else bucket['buy_volume']
+            sell = bucket['market_sell_value'] if self._metric == 'market' else bucket['sell_volume']
+            delta = buy - sell
             running += delta
             cumulative.append(float(running))
 
@@ -507,7 +530,10 @@ class SessionFactsCvdView(APIView):
         )
         data = {
             'symbol': symbol,
-            'delta': sum(b['buy_volume'] - b['sell_volume'] for b in buckets),
+            'delta': sum(
+                (b['market_buy_value'] - b['market_sell_value']) if self._metric == 'market'
+                else (b['buy_volume'] - b['sell_volume']) for b in buckets
+            ),
             'session_date': buckets[-1]['session_date'].isoformat(),
             'window': window,
             'bucket_minutes': bucket_minutes,
@@ -515,11 +541,17 @@ class SessionFactsCvdView(APIView):
             'delta_strength_pct': _delta_strength_pct_from_facts(latest_facts) if latest_facts else 0.0,
             'whale_net_flow': latest_facts.whale_net_flow if latest_facts else 0,
             'unit': 'vnd',
-            'source': 'whale_aggregate',
-            'data_quality': 'derived_from_whale_alerts',
+            'metric': self._metric,
+            'source': 'market_tick_aggregate' if self._metric == 'market' else 'whale_aggregate',
+            'data_quality': 'verified' if self._metric == 'market' else 'derived_from_whale_alerts',
+            'cvd_source': (
+                buckets[0].get('cvd_source', 'whale_fallback_only') if buckets
+                else 'whale_fallback_only'
+            ),
+            'coverage_ratio': buckets[0].get('coverage_ratio', 0.0) if buckets else 0.0,
             'revision': revision,
             'updated_at': dj_timezone.localtime(revision_dt).isoformat() if revision_dt is not None else None,
-            'trade_count': None,
+            'trade_count': (buckets[0].get('trade_count') or None) if buckets else None,
             'coverage_from': coverage_from.isoformat(),
             'cvd_series': [
                 {
@@ -527,10 +559,15 @@ class SessionFactsCvdView(APIView):
                     'cumulative_cvd': cum,
                     'buy_strength': b['buy_strength'],
                     'institutional_strength': b['institutional_strength'],
-                    'buy_volume': b['buy_volume'],
-                    'sell_volume': b['sell_volume'],
-                    'delta': b['buy_volume'] - b['sell_volume'],
-                    'trade_count': None,
+                    'buy_volume': b['market_buy_value'] if self._metric == 'market' else b['buy_volume'],
+                    'sell_volume': b['market_sell_value'] if self._metric == 'market' else b['sell_volume'],
+                    'auction_volume': b['auction_value'],
+                    'delta': (
+                        (b['market_buy_value'] - b['market_sell_value']) if self._metric == 'market'
+                        else b['buy_volume'] - b['sell_volume']
+                    ),
+                    'trade_count': b['trade_count'] or None,
+                    'cvd_source': b['cvd_source'],
                 }
                 for b, cum in zip(buckets, cumulative)
             ],
@@ -565,6 +602,14 @@ class SessionFactsCvdView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
         window = _WINDOW_CANONICAL[window_lc]
         bucket_minutes = _WINDOW_TO_BUCKET_MINUTES[window_lc]
+        # S5 / Q9: default `whale` (bao ve caller cu), `market` la opt-in.
+        raw_metric = str(request.query_params.get('metric') or 'whale').strip().lower()
+        if raw_metric not in ('market', 'whale'):
+            return Response(
+                {'code': 'UNSUPPORTED_METRIC', 'detail': 'metric chi nhan market | whale.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self._metric = raw_metric
         requested_trade_date = _parse_trade_date_param(request)
 
         # Multi-session history: 1D yêu cầu period hợp lệ (400 nếu sai), còn 5m..4h dùng khi period hợp lệ (giữ T-11).
@@ -600,7 +645,10 @@ class SessionFactsCvdView(APIView):
         # REV.2.1: version the cache key with the materialization timestamp so a
         # recomputed SessionFacts can never be served with a stale series/revision.
         revision = int(facts.computed_at.timestamp())
-        cache_key = f'core:cvd_series:v2:{symbol}:{facts.session_date}:{bucket_minutes}:{revision}'
+        cache_key = (
+            f'core:cvd_series:v3:{symbol}:{facts.session_date}:'
+            f'{bucket_minutes}:{self._metric}:{revision}'
+        )
 
         try:
             cached = cache.get(cache_key)
@@ -635,21 +683,34 @@ class SessionFactsCvdView(APIView):
             'delta_strength_pct': _delta_strength_pct_from_facts(facts),
             'whale_net_flow': facts.whale_net_flow,
             'unit': 'vnd',
-            'source': 'whale_aggregate',
-            'data_quality': 'derived_from_whale_alerts',
+            'metric': self._metric,
+            'source': 'market_tick_aggregate' if self._metric == 'market' else 'whale_aggregate',
+            'data_quality': 'verified' if self._metric == 'market' else 'derived_from_whale_alerts',
+            'coverage_ratio': bucket_rows[0].get('coverage_ratio', 0.0) if bucket_rows else 0.0,
+            'cvd_source': bucket_rows[0].get('cvd_source', 'whale_fallback_only') if bucket_rows else 'whale_fallback_only',
             'revision': revision,
             'updated_at': dj_timezone.localtime(facts.computed_at).isoformat(),
-            'trade_count': None,  # no raw trade counter in the materialized source
+            'trade_count': bucket_rows[0].get('trade_count') if bucket_rows else None,
             'cvd_series': [
                 {
                     'bucket_ts': dj_timezone.localtime(bucket_row['bucket_ts']).isoformat(),
                     'cumulative_cvd': bucket_row['cumulative_cvd'],
                     'buy_strength': bucket_row['buy_strength'],
                     'institutional_strength': bucket_row['institutional_strength'],
-                    'buy_volume': bucket_row['buy_volume'],
-                    'sell_volume': bucket_row['sell_volume'],
-                    'delta': bucket_row['buy_volume'] - bucket_row['sell_volume'],
-                    'trade_count': None,
+                    'buy_volume': (
+                        bucket_row['market_buy_value'] if self._metric == 'market' else bucket_row['buy_volume']
+                    ),
+                    'sell_volume': (
+                        bucket_row['market_sell_value'] if self._metric == 'market' else bucket_row['sell_volume']
+                    ),
+                    'auction_volume': bucket_row['auction_value'],
+                    'delta': (
+                        (bucket_row['market_buy_value'] - bucket_row['market_sell_value'])
+                        if self._metric == 'market'
+                        else bucket_row['buy_volume'] - bucket_row['sell_volume']
+                    ),
+                    'trade_count': bucket_row['trade_count'],
+                    'cvd_source': bucket_row['cvd_source'],
                 }
                 for bucket_row in bucket_rows
             ],

@@ -1,3 +1,11 @@
+## Entry 695: S5 P1 REQ-BE-M06/07/08 — Market CVD SSOT từ 100% IntradayTick
+
+- Ngày 2026-11-28 · Agent `m05-market-cvd` · Branch `feat/m05-market-cvd`.
+- 8 field mới trên `SessionFactsBucket` (migration `0008`), `compute_market_cvd_from_ticks` + per-window aggregation; API `?metric=market|whale` additive, **default `whale` (Q9)**, cache `v5`/`v3` có metric; retention 365.
+- Chạy trước S4 theo G-1. Q5 giữ `compute_cvd_buckets_df` cho `OrderFlowEvent`.
+- Fail-before `TypeError` → pass-after **8/8** trên VPS DB tạm. Re-audit 3 vòng: F1 bucket 15m cứng, F2 history bỏ metric, N1 candle-day KeyError — đều sửa; v3 **AGREE**.
+- Gates sau rebase: `check-multi-agent` 0; `pre-push-gate` 36 PASS; `check-system-design --check` SACH. Không ghi staging (Q2=KHÔNG). CHƯA CHẠY: probe staging `?window=1D&period=1M`, deploy (Q8).
+
 ## Entry 694: S3 P0 REQ-BE-M03+G-2 — idempotency IntradayTick, dedup_key có seq_in_key
 
 - Ngày 2026-11-28 · Agent `m03-tick-dedup` · Branch `feat/m03-tick-dedup`.
