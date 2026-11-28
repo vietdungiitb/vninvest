@@ -26,6 +26,11 @@ def _norm_datetime(value: Any) -> str:
     return str(value)
 
 
+def _norm_price(value: Any) -> str:
+    """Chuan hoa gia de key on dinh giua float (provider) va Decimal (DB)."""
+    return format(Decimal(str(value or 0)).normalize(), 'f')
+
+
 def build_dedup_key(
     *,
     symbol: str,
@@ -41,7 +46,7 @@ def build_dedup_key(
     parts = [
         str(symbol).strip().upper(),
         _norm_datetime(timestamp),
-        str(Decimal(str(price))),
+        _norm_price(price),
         str(int(volume or 0)),
         str(side).strip().upper(),
         str(match_type or ''),
@@ -58,6 +63,10 @@ def assign_dedup_keys(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     khi goi. Khong mutate input; tra ve list dict moi.
     """
     materialized = [dict(row) for row in rows]
+    # O3 (re-audit S3): sort on dinh theo timestamp (Python sort on dinh giu
+    # thu tu provider khi cung timestamp), tranh seq_in_key doi khi provider
+    # tra lai cac page theo thu tu khac nhau giua 2 lan retry.
+    materialized.sort(key=lambda row: _norm_datetime(row.get('timestamp')))
     seen: dict[tuple, int] = defaultdict(int)
     for row in materialized:
         base = (

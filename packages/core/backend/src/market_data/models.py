@@ -334,7 +334,13 @@ class IntradayTick(models.Model):
             models.Index(fields=['created_at']),
         ]
         constraints = [
-            models.UniqueConstraint(fields=['dedup_key'], name='uniq_intraday_tick_dedup_key'),
+            # O1 (re-audit S3): constraint CHI ap dung cho row co key that —
+            # fixture/seed cu khong truyen key van co the tao nhieu row (dedup_key='').
+            models.UniqueConstraint(
+                fields=['dedup_key'],
+                name='uniq_intraday_tick_dedup_key',
+                condition=models.Q(dedup_key__gt=''),
+            ),
         ]
         ordering = ['-timestamp']
 
