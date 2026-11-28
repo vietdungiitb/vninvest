@@ -1,3 +1,10 @@
+## Entry 681: Anchor A — unblock Phase 0 cho 963 mã (code xong, apply dang chay)
+
+- **Date**: 2026-11-28 · **Type**: feat/data-ops · **Branch chain** `feat/phase0-remediate` → `anchor-a-symbols-fix` → `anchor-a-chunked` → `anchor-a-cafef-guard` (PR #592-595) · Claim `phase0-remediate`.
+- **B3/B4**: audit 2 vòng NEED_REVISION (5 objection) → PASS; plan Rev.2 theo Anchor A (Owner D-08) — toàn chuỗi 963 mã (2.652.748 dòng) về 1 basis `vnbroker_fallback`, CafeF giữ ở bảng đối chiếu.
+- **E2E**: dry-run đúng 963/2.652.748; backup 2.652.748 dòng; apply bản đầu OOM exit 137 (**0 ghi**); bản keyset halt đúng `adj_close_present=885728` (**0 UPDATE**); bản cafef-override có kiểm soát **đang chạy nền**.
+- **Gates**: TDD đỏ→**19 passed**; `pre-push-gate` 36 PASS mỗi PR; B8 audit code đang chạy song song.
+- **Evidence**: `docs/evidence/ssot-implementation/ANCHOR_A_EVIDENCE_20261128.md`. Flag FE không đổi (non-goal Phase 4).
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
