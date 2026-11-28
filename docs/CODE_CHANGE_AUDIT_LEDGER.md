@@ -1,3 +1,10 @@
+## Entry 687: Phan tich contract close nullable / adj_close canonical (2026-11-28)
+
+- **Owner nguyen tac**: `close` nen la None; `adj_close` la gia VCI/KBS; raw close chi tu CafeF de tham chieu.
+- **Hien trang**: `DailyPrice.close` NOT NULL (`models.py:74`), 4.608.523 dong co gia tri; `CafefDailyPrice.close_raw` 2.308.756 dong (phu ~50%); `adj_close` 3.678.498 dong.
+- **Phu thuoc**: nhieu consumer doc `close` (pricing.py:41-49, stock_mgmt_native_views.py, vnbroker_materializer.py:97-104, advisory/screener, rebase/integrity/persist/diff, adjustment.py:172/176/233, FE chartAdapter.js:55-58). Khong the set NULL truoc khi chuyen consumer.
+- **Lo trinh A-B-C**: (A) migration nullable + raw SSOT + consumer effective_close; (B) backfill adj + backup + set NULL co rollback; (C) FE bo fallback close. Can Owner chot 3 quyet dinh: raw SSOT, backup, xu ly ~0,93M dong thieu adj.
+- **Evidence**: `docs/evidence/ssot-implementation/CLOSE_NULL_CONTRACT_20261128.md`. Doc-only, khong doi code/data.
 ## Entry 686: Bat PRICE_ADJUSTED_DISPLAY=1 + verify payload (2026-11-28)
 
 - **Owner chot**: bat flag vi moi gia hien thi deu la adjusted. Staging `compose.staging.env`: `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, deploy exit 0, container verify `display=1 paused=0`.
