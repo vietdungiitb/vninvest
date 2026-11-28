@@ -34,11 +34,9 @@ class SessionFactsTotalDenominatorTests(SimpleTestCase):
         self.assertIsNotNone(clean)
         self.assertIsNotNone(polluted)
         # Gia tri tham chieu co control (auditor v3): old 62.727 → fixed 50.0.
-        self.assertNotEqual(
-            round(polluted['buy_strength'], 3),
-            round(clean['buy_strength'], 3),
-            'unknown phai lam doi buy_strength (bucket total bi pha)',
-        )
+        # Sau fix: ca 2 deu 50.0 (baseline sach). Truoc fix: polluted = 62.727
+        # (bị 50B unknown pha vao total_v) ⇒ assert duoi Day la fail-before that.
+        self.assertEqual(round(clean['buy_strength'], 3), 50.0)
         self.assertEqual(round(polluted['buy_strength'], 3), 50.0)
 
     def test_delta_strength_control_unchanged(self) -> None:

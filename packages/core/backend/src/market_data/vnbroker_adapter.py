@@ -156,7 +156,7 @@ def _normalize_intraday_trade_rows(frame: pd.DataFrame, symbol_upper: str) -> li
             'time': timestamp.strftime('%H:%M:%S'),
             'price': float(row.get('price') or 0),
             'volume': int(row.get('volume') or 0),
-            'side': side,
+            'side': side.lower(),
             'match_type': match_type_raw or 'NormalMatch',
             'session_phase': resolve_session_phase(ts_value, match_type_raw),
         })
@@ -1106,7 +1106,7 @@ def fetch_intraday_tape_history(
                 'timestamp': utc_ts,
                 'price': float(row.get('price') or 0),
                 'volume': int(row.get('volume') or 0),
-                'side': side,
+                'side': side.lower(),
                 'match_type': raw_match or resolve_session_phase(utc_ts, raw_match),
                 'session_phase': resolve_session_phase(utc_ts, raw_match),
                 'source': source,
