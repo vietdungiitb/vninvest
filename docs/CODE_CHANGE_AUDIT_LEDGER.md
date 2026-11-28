@@ -1,3 +1,9 @@
+## Entry 681: Anchor A unblock + Phase 3 service thuần (2026-11-28)
+
+- **Anchor A** (PR #592-595, #597, #598): 963 mã / 2.652.748 dòng chuyển về 1 basis `vnbroker_fallback` theo D-08; backup ops `market_data_anchora_backup_20261128` (id + 6 cột); `relabel_all` all-or-nothing 1 transaction; guard non-cafef adj_close; `integrity.py` coverage tính theo `adj_close`, `vnbroker_fallback` vào `foreign_adjusted`. B3/B4 audit 2 vòng + B8 audit 3 vòng → **AGREE** với reservation (chưa chạy DB thật cho rollback integration). TDD **24 passed**; pre-push 36 PASS mỗi PR.
+- **E2E Anchor A**: dry-run đúng 963/2.652.748; backup 2.652.748; apply bản đầu OOM exit 137 → partial write ~940k dòng → rollback `ROLLBACK_ROWS=2.652.748` (verify fallback=222); bản keyset halt `adj_close_present=885728` (0 UPDATE); tăng `CORE_API_MEM_LIMIT=512m→4g` (`Mem=4294967296`); **apply bản hardening đang chạy nền** (~52 phút, transaction còn active).
+- **Phase 3** (PR #599 plan PASS sau 2 vòng audit; PR #601 service): pure `compute_event_factor` với công thức `(P+I1*P_issue-D)/(P*(1+I1+I2))`, `PARTIAL_EVENT` fail-closed, `recompute_adjusted` idempotent; migration `base_as_of`/`adj_basis`/rights/`PriceRebaseRun` fields **CHƯA LÀM**; TDD **13 passed**.
+- Evidence: `docs/evidence/ssot-implementation/{ANCHOR_A_EVIDENCE_20261128,PLAN_PHASE3_20261128}.md`. Flag FE không đổi.
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
