@@ -1,3 +1,8 @@
+## Entry 688: Chot contract — them raw_close, bo close, adj_close SSOT (2026-11-28)
+
+- Owner quyet dinh: them `DailyPrice.raw_close` (nullable) lam raw tham chieu duy nhat (nguon doi chieu CafeF `CafefDailyPrice.close_raw`); `adj_close` la gia SSOT tu VCI/KBS; `close` KHONG dung nua, set NULL o Phase B va xoa cot o Phase C.
+- O/H/L tu provider da adjusted ⇒ khi corporate action tu tinh factor moi, khong scale O/H/L bang raw factor (double-adjust); dung `base_as_of` lam moc.
+- Chi tiet: `docs/evidence/ssot-implementation/CLOSE_NULL_CONTRACT_20261128.md` muc 7. Doc-only.
 ## Entry 687: Phan tich contract close nullable / adj_close canonical (2026-11-28)
 
 - **Owner nguyen tac**: `close` nen la None; `adj_close` la gia VCI/KBS; raw close chi tu CafeF de tham chieu.
