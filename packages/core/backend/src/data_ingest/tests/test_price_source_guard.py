@@ -62,6 +62,18 @@ class PriceSourceGuardTests(SimpleTestCase):
         self.assertEqual(len(objs), 1)
         self.assertEqual(upd, 1)
 
+    def test_new_row_carries_vintage_fields(self):
+        objs, ins, upd, skipped = _classify_daily_price_rows(
+            {}, [dict(r) for r in HISTORY], 'VCI')
+        self.assertEqual(len(objs), 1)
+        row = objs[0]
+        self.assertEqual(row.close, Decimal('1.5'))
+        self.assertEqual(row.adj_close, row.close)
+        self.assertEqual(row.adj_factor, Decimal('1'))
+        self.assertTrue(row.is_adjusted)
+        self.assertEqual(row.base_as_of, date(2022, 1, 4))
+        self.assertEqual(row.adj_basis, 'self_computed')
+
     def test_missing_row_still_inserted(self):
         objs, ins, upd, skipped = _classify_daily_price_rows(
             {}, [dict(r) for r in HISTORY], 'VCI')
