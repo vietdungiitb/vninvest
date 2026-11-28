@@ -60,7 +60,9 @@ class SessionFactsMetricApiTests(TestCase):
         self.assertEqual(first['auction_volume'], 10_000_000)
         self.assertEqual(first['trade_count'], 1842)
         self.assertEqual(first['cvd_source'], 'full_tick')
-        self.assertGreaterEqual(first['buy_volume'], payload['cvd_series'][0]['buy_volume'])
+        # Control that: market buy (100M) phai lon hon whale buy (10M) — khong so sanh chinh no.
+        whale = self.client.get('/core/v1/session-facts/VIC/cvd/?window=1h&metric=whale').json()
+        self.assertGreater(first['buy_volume'], whale['cvd_series'][0]['buy_volume'])
 
     def test_two_metrics_do_not_share_cache_entry(self) -> None:
         market = self.client.get('/core/v1/session-facts/VIC/cvd/?window=1h&metric=market').json()

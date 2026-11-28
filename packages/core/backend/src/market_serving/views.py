@@ -451,6 +451,12 @@ class SessionFactsCvdView(APIView):
                 'bucket_ts': row.bucket_ts,
                 'buy_volume': int(row.buy_volume or 0),
                 'sell_volume': int(row.sell_volume or 0),
+                'market_buy_value': int(row.market_buy_value or 0),
+                'market_sell_value': int(row.market_sell_value or 0),
+                'auction_value': int(row.auction_value or 0),
+                'trade_count': int(row.trade_count or 0),
+                'cvd_source': row.cvd_source,
+                'coverage_ratio': float(row.coverage_ratio or 0.0),
                 'buy_strength': row.buy_strength,
                 'institutional_strength': row.institutional_strength,
                 'pk': row.pk,
@@ -503,7 +509,9 @@ class SessionFactsCvdView(APIView):
         running = 0
         cumulative = []
         for bucket in buckets:
-            delta = bucket['buy_volume'] - bucket['sell_volume']
+            buy = bucket['market_buy_value'] if self._metric == 'market' else bucket['buy_volume']
+            sell = bucket['market_sell_value'] if self._metric == 'market' else bucket['sell_volume']
+            delta = buy - sell
             running += delta
             cumulative.append(float(running))
 
@@ -515,7 +523,10 @@ class SessionFactsCvdView(APIView):
         )
         data = {
             'symbol': symbol,
-            'delta': sum(b['buy_volume'] - b['sell_volume'] for b in buckets),
+            'delta': sum(
+                (b['market_buy_value'] - b['market_sell_value']) if self._metric == 'market'
+                else (b['buy_volume'] - b['sell_volume']) for b in buckets
+            ),
             'session_date': buckets[-1]['session_date'].isoformat(),
             'window': window,
             'bucket_minutes': bucket_minutes,
@@ -538,10 +549,15 @@ class SessionFactsCvdView(APIView):
                     'cumulative_cvd': cum,
                     'buy_strength': b['buy_strength'],
                     'institutional_strength': b['institutional_strength'],
-                    'buy_volume': b['buy_volume'],
-                    'sell_volume': b['sell_volume'],
-                    'delta': b['buy_volume'] - b['sell_volume'],
-                    'trade_count': None,
+                    'buy_volume': b['market_buy_value'] if self._metric == 'market' else b['buy_volume'],
+                    'sell_volume': b['market_sell_value'] if self._metric == 'market' else b['sell_volume'],
+                    'auction_volume': b['auction_value'],
+                    'delta': (
+                        (b['market_buy_value'] - b['market_sell_value']) if self._metric == 'market'
+                        else b['buy_volume'] - b['sell_volume']
+                    ),
+                    'trade_count': b['trade_count'] or None,
+                    'cvd_source': b['cvd_source'],
                 }
                 for b, cum in zip(buckets, cumulative)
             ],

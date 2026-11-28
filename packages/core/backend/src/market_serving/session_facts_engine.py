@@ -244,9 +244,16 @@ def _compute_session_facts_from_rows(
     return result
 
 
-def _build_bucket_rows(rows: list[dict], market: dict | None = None) -> list[dict]:
+def _build_bucket_rows(
+    rows: list[dict],
+    market: dict | None = None,
+    tick_rows: list[dict] | None = None,
+) -> list[dict]:
     payload = []
     market_buckets = (market or {}).get('buckets') or {}
+    if tick_rows is not None:
+        # F1: mac dinh 15m, se duoc thay theo tung window o duoi.
+        market_buckets = _aggregate_market_from_rows(tick_rows, 15).get('buckets') or {}
     if not rows and market_buckets:
         # S5: ngay khong co WhaleAlertCanonical van phai materialize market CVD.
         rows = [{
@@ -256,6 +263,9 @@ def _build_bucket_rows(rows: list[dict], market: dict | None = None) -> list[dic
         } for bucket_ts, values in market_buckets.items()
             for value in (values['market_buy_value'], -values['market_sell_value'])]
     for window, bucket_minutes in _SERIES_WINDOWS_BY_LABEL.items():
+        if tick_rows is not None:
+            window_market = _aggregate_market_from_rows(tick_rows, bucket_minutes)
+            market_buckets = window_market.get('buckets') or {}
         result = _compute_session_facts_from_rows(
             rows,
             bucket_minutes=bucket_minutes,
@@ -332,30 +342,24 @@ def compute_session_facts(
     )
 
 
-def compute_market_cvd_from_ticks(
-    symbol: str,
-    session_date: date,
-    bucket_minutes: int = 15,
-) -> dict:
-    """S5 / REQ-BE-M06 — Market CVD thật từ 100% IntradayTick.
-
-    Chi tick `CONTINUOUS` (aggressor BUY/SELL) duoc cong vao buy/sell; tick auction
-    (`side='UNKNOWN'`, match_type ATO/ATC/...) di rieng vao `auction_value`.
-    Khong vao hàm `compute_cvd_buckets_df` cu — hàm đó chia UNKNOWN 50/50 va
-    duoc OrderFlowEvent dung (Q5: giu nguyen).
-    """
-    from collections import defaultdict
-    from decimal import Decimal
-
+def _load_intraday_tick_values(symbol: str, session_date: date) -> list[dict]:
+    """Doc 1 lan tat ca IntradayTick cua (symbol, session) — dung cho moi window."""
     from market_data.models import IntradayTick
 
     start = datetime.combine(session_date, time.min)
     end = start + timedelta(days=1)
-    rows = list(
+    return list(
         IntradayTick.objects.filter(
             symbol=symbol.upper(), timestamp__gte=start, timestamp__lt=end,
         ).values('timestamp', 'price', 'volume', 'side', 'match_type').order_by('timestamp')
     )
+
+
+def _aggregate_market_from_rows(rows: list[dict], bucket_minutes: int) -> dict:
+    """F1 (re-audit S5): bucket phai theo `bucket_minutes` CUA WINDOW, khong co dinh 15m."""
+    from collections import defaultdict
+    from decimal import Decimal
+
     if not rows:
         return {
             'market_buy_value': 0, 'market_sell_value': 0, 'auction_value': 0,
@@ -403,6 +407,17 @@ def compute_market_cvd_from_ticks(
     }
 
 
+def compute_market_cvd_from_ticks(
+    symbol: str,
+    session_date: date,
+    bucket_minutes: int = 15,
+) -> dict:
+    """S5 / REQ-BE-M06 — Market CVD thật từ 100% IntradayTick (public wrapper)."""
+    return _aggregate_market_from_rows(
+        _load_intraday_tick_values(symbol, session_date), bucket_minutes
+    )
+
+
 def compute_session_facts_for_all_active(
     session_date: date | None = None,
     symbol: str | None = None,
@@ -446,7 +461,8 @@ def compute_session_facts_for_all_active(
     for symbol in symbols:
         try:
             rows = _load_session_rows(symbol, target_date)
-            market = compute_market_cvd_from_ticks(symbol, target_date)
+            tick_rows = _load_intraday_tick_values(symbol, target_date)
+            market = _aggregate_market_from_rows(tick_rows, 15)
             if not rows and market['trade_count'] == 0:
                 skipped += 1
                 continue
@@ -486,7 +502,7 @@ def compute_session_facts_for_all_active(
 
             SessionFactsBucket.objects.filter(session_facts=facts_obj).delete()
             market = compute_market_cvd_from_ticks(symbol, target_date)
-            bucket_rows = _build_bucket_rows(rows, market=market)
+            bucket_rows = _build_bucket_rows(rows, market=market, tick_rows=tick_rows)
             if bucket_rows:
                 SessionFactsBucket.objects.bulk_create([
                     SessionFactsBucket(

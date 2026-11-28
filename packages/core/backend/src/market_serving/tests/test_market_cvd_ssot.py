@@ -51,6 +51,21 @@ class MarketCvdSsotTests(TestCase):
         expected = 100000 * 350
         self.assertLessEqual(abs(actual - expected) / expected, 0.05)
 
+    def test_bucket_keys_follow_each_window(self) -> None:
+        """F1 (re-audit S5): 5m khong duoc tim thay bucket cua 15m."""
+        from market_serving.session_facts_engine import _aggregate_market_from_rows, _load_intraday_tick_values
+
+        ticks = _load_intraday_tick_values('VIC', self.day)
+        for minutes in (5, 15, 30, 60, 240, 1440):
+            result = _aggregate_market_from_rows(ticks, minutes)
+            self.assertTrue(result['buckets'], f'window {minutes}m co buckets')
+            for bucket_ts in result['buckets']:
+                self.assertEqual(bucket_ts.minute % minutes, 0 if minutes < 60 else bucket_ts.minute)
+        # 1D phai co bucket 00:00 va chua toan bo gia tri.
+        daily = _aggregate_market_from_rows(ticks, 1440)
+        self.assertEqual(daily['market_buy_value'], 10_000_000)
+        self.assertEqual(daily['auction_value'], 20_000_000)
+
     def test_materialization_writes_new_fields(self) -> None:
         from market_serving.session_facts_engine import compute_session_facts_for_all_active
 
