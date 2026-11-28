@@ -30,14 +30,21 @@ def target_symbols():
     )
 
 
-def build_relabel_plan(rows, now_value=None):
-    """Trả (rows_sẽ_ghi, skip_count). Row có adj_close sẵn KHÔNG bị đụng."""
+def build_relabel_plan(rows, now_value=None, allow_cafef_override=True):
+    """Trả (rows_sẽ_ghi, skip_count).
+
+    Theo Anchor A (D-08), dòng `cafef` có adj_close là basis CŨ cần bị ghi đè
+    bằng anchor provider. Nguồn khác có adj_close ⇒ halt (không biết nguồn gốc).
+    """
     updates, skips = [], 0
     stamp = now_value or now()
     for row in rows:
         if row.adj_close is not None:
-            skips += 1
-            continue
+            if allow_cafef_override and row.price_source == 'cafef':
+                pass  # overwrite có kiểm soát
+            else:
+                skips += 1
+                continue
         row.price_source = 'vnbroker_fallback'
         row.adj_close = row.close
         row.adj_factor = Decimal('1')
@@ -129,7 +136,9 @@ class Command(BaseCommand):
                     f'backup rows={backed} != expected {EXPECTED_ROWS} — refuse to apply'
                 )
             # Fail-closed TRƯỚC mọi ghi: có bất kỳ adj_close sẵn ⇒ halt.
-            preexisting = qs.filter(adj_close__isnull=False).count()
+            preexisting = qs.exclude(price_source='cafef').filter(
+                adj_close__isnull=False
+            ).count()
             if preexisting:
                 raise CommandError(
                     f'adj_close_present={preexisting} > 0 — halt, 0 UPDATE'
