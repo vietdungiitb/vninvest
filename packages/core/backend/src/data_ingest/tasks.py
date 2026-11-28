@@ -723,7 +723,13 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
         # - 'cafef': đã chuẩn hóa xong (có adj_factor).
         # - 'unmapped_cafef': CafeF không có dữ liệu, adj_close hỏng đã dọn NULL;
         #   provider ghi đè sẽ trả lại giá đã điều chỉnh (double-adjust).
-        if existing.get('price_source') in ('cafef', 'unmapped_cafef'):
+        # F2: mọi dòng đã có adjusted (cafef/unmapped/fallback) hoặc đã mang
+        # hệ số điều chỉnh đều là dòng SSOT — provider KHÔNG được ghi đè close.
+        if (
+            existing.get('price_source') in ('cafef', 'unmapped_cafef', 'vnbroker_fallback')
+            or existing.get('adj_close') is not None
+            or existing.get('adj_factor') is not None
+        ):
             skipped_existing += 1
             continue
 
