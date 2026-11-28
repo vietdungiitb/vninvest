@@ -44,8 +44,9 @@ function mapToBar(p, i, adjusted = false) {
   // M5c: BE trả close thô + adj_close/adj_factor. Widget OHLCVBar chỉ có
   // 6 field và không tự render adjusted ⇒ host scale CẢ O/H/L/C trước khi
   // truyền widget. Chỉ scale khi đủ điều kiện (cafef + có factor + adj_close).
+  // F1: mọi nguồn có adj_close/adj_factor đều dùng được — sau Anchor A
+  // price_source là 'vnbroker_fallback', không còn 'cafef'.
   const useAdjusted = adjusted
-    && p.price_source === 'cafef'
     && p.adj_factor != null
     && p.adj_close != null;
   const factor = useAdjusted ? Number(p.adj_factor) : 1;
@@ -78,12 +79,13 @@ export function parseBars(payload, state) {
   let note;
   let visible = sorted;
   if (adjusted) {
-    const cafefRows = sorted.filter((p) => p.price_source === 'cafef'
-      && p.adj_factor != null && p.adj_close != null);
-    if (cafefRows.length > 0) {
+    const adjustedRows = sorted.filter(
+      (p) => p.adj_factor != null && p.adj_close != null,
+    );
+    if (adjustedRows.length > 0) {
       basis = 'adjusted';
-      if (cafefRows.length < sorted.length) {
-        visible = cafefRows;
+      if (adjustedRows.length < sorted.length) {
+        visible = adjustedRows;
         note = 'mixed_sources_dropped_legacy';
       }
     } else {
