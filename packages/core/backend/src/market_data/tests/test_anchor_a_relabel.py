@@ -1,9 +1,11 @@
 """Anchor A relabel — fail-before tests (2026-11-28)."""
 from datetime import date
 from decimal import Decimal
+from io import StringIO
 from types import SimpleNamespace
 
 import pytest
+from django.core.management.base import CommandError
 
 from market_data.management.commands.anchor_a_relabel import build_relabel_plan
 
@@ -60,12 +62,21 @@ def test_relabel_all_rolls_back_everything_on_late_skip(monkeypatch):
     good = _row(1, 100)
     bad = _row(2, 50, adj=40)
     monkeypatch.setattr(cmd.transaction, 'atomic', fake_atomic)
-    monkeypatch.setattr(
-        cmd.DailyPrice.objects, 'bulk_update', lambda *a, **k: events.append('bulk'),
-    )
+    def fake_bulk(rows, fields, batch_size):
+        # F('adj_version') + 1 là CombinedExpression, không phải F thuần.
+        events.append((
+            'bulk', tuple(fields), batch_size,
+            'adj_version' in str(rows[0].adj_version),
+        ))
+
+    monkeypatch.setattr(cmd.DailyPrice.objects, 'bulk_update', fake_bulk)
     with pytest.raises(CommandError):
         cmd.relabel_all(FakeQS([good, bad]), batch=1)
-    assert events == ['enter', 'bulk', ('exit_error', 'CommandError')]
+    assert events == [
+        'enter',
+        ('bulk', cmd.FIELDS, 1000, True),
+        ('exit_error', 'CommandError'),
+    ]
 
 
 def test_cafef_rows_can_be_overridden_but_other_sources_cannot():
@@ -140,3 +151,37 @@ def test_plan_preserves_raw_close_and_ohlc():
     assert skips == 0
     assert updates[0].close == Decimal('17.5')
     assert (updates[0].open, updates[0].high, updates[0].low) == (Decimal('18'), Decimal('19'), Decimal('17'))
+
+
+def _command():
+    import market_data.management.commands.anchor_a_relabel as cmd
+
+    instance = cmd.Command()
+    instance.stdout = StringIO()
+    return instance
+
+
+def test_rollback_sql_restores_exactly_six_fields(monkeypatch):
+    monkeypatch.setattr(
+        'market_data.management.commands.anchor_a_relabel.target_symbols',
+        lambda: [],
+    )
+    c = _command()
+    c.handle(dry_run=False, backup=False, apply=False,
+             rollback_sql=True, limit=0)
+    out = c.stdout.getvalue()
+    for field in ('price_source', 'adj_close', 'adj_factor',
+                  'is_adjusted', 'adj_as_of', 'adj_version'):
+        assert f'{field}=b.{field}' in out
+    assert 'WHERE d.id=b.id' in out
+
+
+def test_apply_refuses_limit_flag(monkeypatch):
+    monkeypatch.setattr(
+        'market_data.management.commands.anchor_a_relabel.target_symbols',
+        lambda: [],
+    )
+    c = _command()
+    with pytest.raises(CommandError):
+        c.handle(dry_run=False, backup=False, apply=True,
+                 rollback_sql=False, limit=10)
