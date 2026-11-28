@@ -23,6 +23,7 @@ from django.db.models import F, Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 
+from market_data.cafef.integrity import anchor_basis_q
 from market_data.vnbroker_adapter import fetch_daily_history, fetch_intraday_tape
 
 logger = logging.getLogger(__name__)
@@ -734,13 +735,21 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
                 raise ValueError('empty symbol')
 
             source = f"vnbroker_{str(row.get('source') or normalized_provider).lower()}"
+            close_value = Decimal(str(row['close']))
+            # F3: T+0 — giá provider mới nhất chính là raw của ngày t;
+            # mọi sự kiện có ex_date > t chưa xảy ra ⇒ factor=1, vintage=t.
             next_values = {
                 'open': Decimal(str(row['open'])),
                 'high': Decimal(str(row['high'])),
                 'low': Decimal(str(row['low'])),
-                'close': Decimal(str(row['close'])),
+                'close': close_value,
                 'volume': int(row['volume']),
                 'source': source,
+                'adj_close': close_value,
+                'adj_factor': Decimal('1'),
+                'is_adjusted': True,
+                'base_as_of': row_date,
+                'adj_basis': 'self_computed',
             }
         except Exception as exc:
             logger.debug('DailyPrice parse error for %s row: %s', row.get('symbol') or 'unknown', exc)
@@ -756,7 +765,13 @@ def _classify_daily_price_rows(existing_rows_by_date: dict, history_rows: list[d
         # - 'cafef': đã chuẩn hóa xong (có adj_factor).
         # - 'unmapped_cafef': CafeF không có dữ liệu, adj_close hỏng đã dọn NULL;
         #   provider ghi đè sẽ trả lại giá đã điều chỉnh (double-adjust).
-        if existing.get('price_source') in ('cafef', 'unmapped_cafef'):
+        # F2: mọi dòng đã có adjusted (cafef/unmapped/fallback) hoặc đã mang
+        # hệ số điều chỉnh đều là dòng SSOT — provider KHÔNG được ghi đè close.
+        if (
+            existing.get('price_source') in ('cafef', 'unmapped_cafef', 'vnbroker_fallback')
+            or existing.get('adj_close') is not None
+            or existing.get('adj_factor') is not None
+        ):
             skipped_existing += 1
             continue
 
@@ -821,7 +836,8 @@ def _fetch_and_upsert_bucket(
             existing_rows_by_date = {
                 row['date']: row
                 for row in DailyPrice.objects.filter(symbol=symbol, date__in=history_dates).values(
-                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source'
+                    'date', 'open', 'high', 'low', 'close', 'volume', 'source', 'price_source',
+                    'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
                 )
             }
             objs, symbol_inserted, symbol_updated, symbol_skipped = _classify_daily_price_rows(
@@ -834,7 +850,10 @@ def _fetch_and_upsert_bucket(
                 DailyPrice.objects.bulk_create(
                     objs,
                     update_conflicts=True,
-                    update_fields=['open', 'high', 'low', 'close', 'volume', 'source'],
+                    update_fields=[
+                        'open', 'high', 'low', 'close', 'volume', 'source',
+                        'adj_close', 'adj_factor', 'is_adjusted', 'base_as_of', 'adj_basis',
+                    ],
                     unique_fields=['symbol', 'date'],
                 )
                 inserted += symbol_inserted
@@ -3698,7 +3717,7 @@ def rebase_symbol_from_cafef(self, symbol: str, exchange: str = 'HOSE',
             'symbol': symbol, 'trigger': trigger,
         }
 
-    old_qs = DailyPrice.objects.filter(symbol=symbol.upper(), price_source='cafef')
+    old_qs = DailyPrice.objects.filter(symbol=symbol.upper()).filter(anchor_basis_q())
     if date_from:
         old_qs = old_qs.filter(date__gte=date_from)
     old_rows = list(old_qs.order_by('date'))
@@ -3753,7 +3772,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     if symbols is None:
         symbols = list(
-            DailyPrice.objects.filter(price_source='cafef', adj_close__isnull=False)
+            DailyPrice.objects.filter(anchor_basis_q(), adj_close__isnull=False)
             .values_list('symbol', flat=True).distinct()[:100]
         )
     exchanges = dict(
@@ -3762,7 +3781,7 @@ def reconcile_cafef_drift(self, symbols: list[str] | None = None,
     counts = {'observe': 0, 'rebase': 0, 'alert': 0}
     for symbol in symbols:
         rows = list(
-            DailyPrice.objects.filter(symbol=symbol, price_source='cafef')
+            DailyPrice.objects.filter(symbol=symbol).filter(anchor_basis_q())
             .order_by('date').values('date', 'close')[:120]
         )
         if len(rows) < 2:
@@ -3792,8 +3811,8 @@ def rebase_cafef_all_symbols(self, _scheduler_job_key: str | None = None) -> dic
     if os.getenv('PRICE_MIGRATION_PAUSED', '0') == '1':
         return {'skipped': True, 'reason': 'PRICE_MIGRATION_PAUSED=1'}
     symbols = list(
-        DailyPrice.objects.filter(price_source='cafef')
-        .values_list('symbol', flat=True).distinct()
+        DailyPrice.objects.filter(anchor_basis_q())
+        .order_by().values_list('symbol', flat=True).distinct()
     )
     queued = 0
     for symbol in symbols:
@@ -3812,7 +3831,7 @@ def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
     if os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() not in ('1', 'true', 'yes'):
         return {'skipped': True, 'reason': 'CORPORATE_ACTIONS_ENABLED=false', 'symbol': symbol}
 
-    from market_data.corporate_actions.adjustment import apply_adjustments, compute_adj_factors
+    from market_data.corporate_actions.adjustment import apply_adjustment_service
     from market_data.corporate_actions.ingest import fetch_corporate_actions, upsert_corporate_actions
     from market_data.models import CorporateAction
 
@@ -3823,18 +3842,26 @@ def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
     try:
         rows = fetch_corporate_actions(symbol, from_date)
         created, updated = upsert_corporate_actions(symbol, rows)
-        factors = compute_adj_factors(symbol)
-        applied = apply_adjustments(symbol)
+        result = apply_adjustment_service(symbol)
+    except ValueError as exc:
+        # PARTIAL_EVENT / NO_PREV_CLOSE / INVALID_FACTOR → fail-closed, 0 UPDATE.
+        logger.warning('sync_corporate_actions halted symbol=%s: %s', symbol, exc)
+        return {
+            'symbol': symbol, 'fetched': 0, 'created': 0, 'updated': 0,
+            'status': 'halted_partial' if 'PARTIAL' in str(exc) else 'halted_invalid',
+            'reason': str(exc), 'applied': 0,
+        }
     except Exception as exc:  # noqa: BLE001 - task phải trả stats, không nuốt lỗi
         logger.warning('sync_corporate_actions failed symbol=%s: %s', symbol, exc)
         return {
             'symbol': symbol, 'fetched': 0, 'created': 0, 'updated': 0,
-            'factors': 0, 'applied': 0, 'error': str(exc),
+            'status': 'error', 'applied': 0, 'error': str(exc),
         }
 
     return {
         'symbol': symbol, 'fetched': len(rows), 'created': created, 'updated': updated,
-        'factors': len(factors), 'applied': applied, 'from_date': from_date.isoformat(),
+        'status': result['status'], 'applied': result['rows_updated'],
+        'from_date': from_date.isoformat(),
     }
 
 

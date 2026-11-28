@@ -1,12 +1,84 @@
-## Entry 681: S1 P0 REQ-BE-M01 — chặn ghi đè cụt IntradayBar (recompute từ toàn bộ tick DB)
+## Entry 692: S1 P0 REQ-BE-M01 - chặn ghi đè cụt IntradayBar (recompute từ toàn bộ tick DB)
 
-- Ngày 2026-11-28 · Agent `m01-bar-overwrite` · Branch `feat/m01-bar-overwrite` (rebase `origin/dev a570cb432`).
-- Phạm vi: `packages/core/backend/src/data_ingest/tasks.py` (`_hydrate_intraday_symbols:511+`), helper mới `intraday_bar_recompute.py`, test mới `tests/test_intraday_bar_no_partial_overwrite.py`, evidence `docs/evidence/market-data-integrity/{s1-gates.md,S1_REAUDIT.md}`, `docs/CLAIMS.md`.
-- Fix: thay batch partial bằng recompute OHLCV từ toàn bộ `IntradayTick` DB cho bucket bị ảnh hưởng; **G-3a** chuẩn hóa tape timestamp về UTC trước khi floor 2H/4H (tránh lệch `22:00+07 = 15:00 UTC` so với DB `16:00 UTC`).
-- Fail-before thật trên VPS (DB tạm, §12.3): `AssertionError: 1000 != 501000`, `TEST_EXIT=1`; pass-after `Ran 4 tests ... OK`, `TEST_EXIT=0`. Regression `data_ingest` 56 test — 1 fail `'warm' != FRESH` **có sẵn trên base** (`origin/dev` cũng fail), không phải regression.
-- Re-audit độc lập: **AGREE**, 0 blocker/0 major; reservations R1-S1-01/02/03/04 ghi thành nợ trong `s1-gates.md`, R1-S1-05 đóng ở Entry này.
-- Gates: `check-multi-agent` exit 0; `pre-push-gate` 36 PASS/0 FAIL; `makemigrations --check` = No changes detected; `check-lessons` exit 0. Không migration, không đụng staging ghi. **CHƯA CHẠY**: full BE suite các app khác, deploy staging.
+- Ngày 2026-11-28 · Agent m01-bar-overwrite · Branch feat/m01-bar-overwrite.
+- Sửa _hydrate_intraday_symbols: recompute OHLCV từ toàn bộ IntradayTick DB cho bucket bị ảnh hưởng; G-3a chuẩn hóa tape timestamp về UTC trước khi floor 2H/4H.
+- Fail-before VPS DB tạm: 1000 != 501000, TEST_EXIT=1; pass-after 4/4 OK. Regression data_ingest 56 test: 1 fail có sẵn trên origin/dev (coverage warm != FRESH).
+- Re-audit độc lập AGREE; reservations G-3b/path ticks-only ghi trong docs/evidence/market-data-integrity/s1-gates.md.
+- Gates: check-multi-agent exit 0; pre-push-gate 36 PASS/0 FAIL; makemigrations --check 0. Không migration, không ghi staging.
 
+## Entry 691: Kế hoạch + 3 vòng audit độc lập Market Data Integrity / CVD / Whale SSOT (DOC-ONLY)
+
+- Ngày 2026-11-27 · Agent mdi-plan-1127 · Branch docs/mdi-plan-1127.
+- Phạm vi: docs/PLAN_MARKET_DATA_INTEGRITY_1127.md REV.3 + docs/evidence/market-data-integrity/{AUDIT_PLAN_1127.md,R2,R3,CONSENSUS_1127.md}.
+- B3 3 vòng: NEED_REVISION (12 objections, 2 P0) → NEED_REVISION (11/12) → AGREE. Fixture M04 2 bucket buy_strength 62.727→50.0 đỏ thật.
+- Đính chính: F-02 đã hết lỗi code (6e50418a9); migration head 0014; cache key CVD thiếu metric; WhaleAlertCanonical không có session_phase; ngưỡng whale 200M vs 500M.
+- Owner chốt 2026-11-27: mở khóa S1→S2→S3→S5; S4 khóa staging; S6 cuối; Q2=KHÔNG ghi staging; Q9 giữ default metric=whale.
+- Gates: check-multi-agent exit 0; preflight OK; 2 commit (claim + 5 file doc). CHƯA CHẠY: pytest/build/probe (doc-only).
+
+## Entry 690: BLOCKER — xoá close cạn 3 vòng audit, dừng implementation
+
+- Owner bac bo rename close→raw_close (Entry 688); nguyen tac: adj_close SSOT cho hien thi/tran san/he so/NAV; raw_close tu CafeF, thieu NULL.
+- Plan Rev.1 REJECT (5 objection), Rev.2 NEED_REVISION (4), Rev.3 NEED_REVISION (2). Objection cuoi: sot `native_views.py:583`, `adjustment.py:27,172,176,233`, `integrity.py:162`; va `pricing.effective_ohlc:64` van doc close + consumer ep None→0 (`advisory_helpers.py:239`, `screener_helpers.py:391`) + `adj_close_null` chua co trong VIOLATION_CODES.
+- **Dung theo quy tac 3 lan thu**, khong code/migrate. Branch `feat/drop-close-rev2` chi co claim + plan/audit, 0 dong source.
+- Staging khong doi: display=1, paused=0, integrity ok=true, `adj_basis` 3.671.729 dong.
+- Evidence: `docs/evidence/ssot-implementation/BLOCKER_DROP_CLOSE_20261128.md`.
+## Entry 689: REJECT plan xoa DailyPrice.close — can Owner chot lai (2026-11-28)
+
+- Auditor subagent cho **REJECT** (5 objection P0/P1): gan `close=adj_close` pha contract test + FE raw fallback; doi `values('close')` sang adj pha raw semantics cua tran/san (`vnbroker_materializer.py:107,195-201,247`) va he so su kien (`adjustment.py:23-27,176,233`); `raw_close` chi phu ~50% khong co nguon thay; sot writer/admin/serializer/pricing raise; backup 4 cot khong co checksum/row-count; sot `advisory/views.py:969`, `portfolio_analytics_views.py:598`, `backfill_ceiling_floor.py`.
+- **Khong code, khong migrate**. 3 lua chon cho Owner: (1) RenameField close→raw_close (khong mat du lieu) — khuyen nghi; (2) them raw_close + backfill du 4,6M roi moi xoa close; (3) bo raw hoan toan (can dinh nghia lai tran/san + he so, rui ro cao).
+- Evidence: `docs/evidence/ssot-implementation/AUDIT_DROP_CLOSE_20261128.md`. Claim `drop-close-column` tra partial state.
+## Entry 688: Chot contract — them raw_close, bo close, adj_close SSOT (2026-11-28)
+
+- Owner quyet dinh: them `DailyPrice.raw_close` (nullable) lam raw tham chieu duy nhat (nguon doi chieu CafeF `CafefDailyPrice.close_raw`); `adj_close` la gia SSOT tu VCI/KBS; `close` KHONG dung nua, set NULL o Phase B va xoa cot o Phase C.
+- O/H/L tu provider da adjusted ⇒ khi corporate action tu tinh factor moi, khong scale O/H/L bang raw factor (double-adjust); dung `base_as_of` lam moc.
+- Chi tiet: `docs/evidence/ssot-implementation/CLOSE_NULL_CONTRACT_20261128.md` muc 7. Doc-only.
+## Entry 687: Phan tich contract close nullable / adj_close canonical (2026-11-28)
+
+- **Owner nguyen tac**: `close` nen la None; `adj_close` la gia VCI/KBS; raw close chi tu CafeF de tham chieu.
+- **Hien trang**: `DailyPrice.close` NOT NULL (`models.py:74`), 4.608.523 dong co gia tri; `CafefDailyPrice.close_raw` 2.308.756 dong (phu ~50%); `adj_close` 3.678.498 dong.
+- **Phu thuoc**: nhieu consumer doc `close` (pricing.py:41-49, stock_mgmt_native_views.py, vnbroker_materializer.py:97-104, advisory/screener, rebase/integrity/persist/diff, adjustment.py:172/176/233, FE chartAdapter.js:55-58). Khong the set NULL truoc khi chuyen consumer.
+- **Lo trinh A-B-C**: (A) migration nullable + raw SSOT + consumer effective_close; (B) backfill adj + backup + set NULL co rollback; (C) FE bo fallback close. Can Owner chot 3 quyet dinh: raw SSOT, backup, xu ly ~0,93M dong thieu adj.
+- **Evidence**: `docs/evidence/ssot-implementation/CLOSE_NULL_CONTRACT_20261128.md`. Doc-only, khong doi code/data.
+## Entry 686: Bat PRICE_ADJUSTED_DISPLAY=1 + verify payload (2026-11-28)
+
+- **Owner chot**: bat flag vi moi gia hien thi deu la adjusted. Staging `compose.staging.env`: `PRICE_ADJUSTED_DISPLAY=1`, `PRICE_MIGRATION_PAUSED=0`, deploy exit 0, container verify `display=1 paused=0`.
+- **Verify payload `/chart/`** qua APIRequestFactory + testuser: AAH `adjusted_display=True`, `price_basis=adjusted`, 21 points (20 có adj); TPB cùng flag nhưng **0/21 có adj**, `price_source='vnbroker_legacy'` — chart vẫn có nến (FE dùng close), nhưng nhãn `adjusted` chưa phản ánh đúng metadata. De xuat fix nho: suy basis theo du lieu (`provider_adjusted_fallback` khi thieu adj) — slice rieng, chua lam.
+- F3 vintage can hoan tat: `vintage applied rows=3.671.729`, `WITH_BASIS=3.671.729`, integrity `ok=true` 0 violation.
+- Evidence: `docs/evidence/ssot-implementation/FLAG_ON_20261128.md`. Browser E2E van CHUA CHAY (baseline widget).
+## Entry 685: F3 vintage writer — code xong, E2E dang chay (2026-11-28)
+
+- **Date**: 2026-11-28 · **Type**: feat/data-ops · **Branch** `feat/f3-basis-writer` (PR #616) · Claim `f3-basis-writer`.
+- Plan audit 2 vòng: NEED_REVISION (4 objection: guard chặn dòng đã anchor, backup thiếu field, ingest không persist, AC4 mâu thuẫn) → Rev.2 **AGREE**; B8 code re-audit **PASS**.
+- `--backup-vintage`/`--set-vintage`/`--rollback-vintage-sql` với bảng riêng `market_data_vintage_backup_20261128` (3.671.729 dòng backup); ingest T+0 ghi 5 field; recompute `ex_date > (base_as_of or row.date)`.
+- TDD **40 passed**, `pre-push-gate` 36 PASS. `--set-vintage` **ĐANG CHẠY DETACHED** trên staging, pause=1.
+- Evidence: `docs/evidence/ssot-implementation/F3_EVIDENCE_20261128.md`. Flag display không đổi.
+## Entry 684: Anchor A applied trên staging + integrity gate OK (2026-11-28)
+
+- **Data**: `vnbroker_fallback` 222 → **2.652.970** dòng; 963 mã / 2.652.748 dòng chuyển basis. Backup ops `market_data_anchora_backup_20261128` còn nguyên. Ghi nhận bất thường: log detach báo halt nhưng DB có dữ liệu đã commit — lấy DB làm nguồn sự thật.
+- **Gate thật**: `check_price_integrity --since 2026-01-01 --min-coverage 1 --json` → **ok=true, 0 violation**, 284.114 dòng, cafef_rows=0. Trước đó sửa 1 dòng AAH factor mismatch + F7 coverage scope.
+- **PR trong ngày**: #606 (holiday reference), #608 (F2 ingest guard), #612/#613 (F1 consumer + price_basis), #614 (F7), #601/#603/#604 (Phase 3).
+- **Env**: RAM core-api 512m→4g; `PRICE_MIGRATION_PAUSED` đã khôi phục 0; flag display vẫn 0.
+- **Còn blocker**: F3 (`base_as_of`/`adj_basis` writer) trước khi recompute event; F4/F6/F8; sample provider CHƯA CHẠY; BE API test trên staging CHƯA CHẠY.
+- **Evidence**: `docs/evidence/ssot-implementation/FINAL_20261128.md`.
+## Entry 683: Audit luồng giá sau Anchor A — 8 findings, 3 P0
+
+- **Date**: 2026-11-28 · **Type**: docs/audit · **Branch** `docs/pipeline-audit-682` · Claim `pipeline-audit-682`.
+- Auditor subagent read-only trên `origin/dev@394d4e04c`; **KHÔNG chạy test/gate** — mọi gate trong audit ghi `CHƯA CHẠY`.
+- **P0**: F1 consumer vẫn nhận adjusted qua `price_source==='cafef'` (`pricing.py:38-49`, `chartAdapter.js:47-52`); F2 ingest guard không skip `vnbroker_fallback` (`tasks.py:722-728`) ⇒ ghi đè close nhưng giữ adj cũ; F3 `base_as_of`/`adj_basis` có schema nhưng không ai ghi ⇒ recompute double-adjust (`adjustment.py:171-173`).
+- **P1**: F4 correction double-count + upsert không atomic; F5 reference price sai ngày nghỉ/per-symbol (`vnbroker_materializer.py:155-160` — phần hàm thứ nhất đã fix PR #606); F6 2 flag độc lập; F7 coverage scope + nightly không truyền `min_coverage`; **P2**: F8 nightly rebase/drift query cafef-only ⇒ no-op.
+- **Evidence**: `docs/evidence/ssot-implementation/AUDIT_PRICE_PIPELINE_20261128.md`. Thứ tự fix: F1+F2+F3 trước khi bật flag.
+## Entry 682: Phase 3 schema + service wiring (2026-11-28)
+
+- PR #601: `compute_event_factor` (DIV/ISS/Rights, `PARTIAL_EVENT` fail-closed) + `recompute_adjusted` idempotent; TDD **13 passed**.
+- PR #603: migration `0015` (do `makemigrations` sinh) thêm `base_as_of`/`adj_basis` vào `DailyPrice`, `rights_ratio_pct`/`rights_issue_price` vào `CorporateAction`, `events_hash`/`sample_verdict`/`sample_report` vào `PriceRebaseRun`; doc system-design regen 151→152; **32 passed**, SACH.
+- PR #604: `sync_corporate_actions` gọi `apply_adjustment_service`; `PARTIAL/INVALID` → `halted_partial/halted_invalid`, **0 UPDATE**; TDD **10 passed**.
+- **CHƯA LÀM**: sample provider thực tế (hiện ghi `PENDING_PROVIDER_SYNC`), bật flag, deploy migration lên staging, E2E recompute. `pre-push-gate` 36 PASS mỗi PR.
+## Entry 681: Anchor A unblock + Phase 3 service thuần (2026-11-28)
+
+- **Anchor A** (PR #592-595, #597, #598): 963 mã / 2.652.748 dòng chuyển về 1 basis `vnbroker_fallback` theo D-08; backup ops `market_data_anchora_backup_20261128` (id + 6 cột); `relabel_all` all-or-nothing 1 transaction; guard non-cafef adj_close; `integrity.py` coverage tính theo `adj_close`, `vnbroker_fallback` vào `foreign_adjusted`. B3/B4 audit 2 vòng + B8 audit 3 vòng → **AGREE** với reservation (chưa chạy DB thật cho rollback integration). TDD **24 passed**; pre-push 36 PASS mỗi PR.
+- **E2E Anchor A**: dry-run đúng 963/2.652.748; backup 2.652.748; apply bản đầu OOM exit 137 → partial write ~940k dòng → rollback `ROLLBACK_ROWS=2.652.748` (verify fallback=222); bản keyset halt `adj_close_present=885728` (0 UPDATE); tăng `CORE_API_MEM_LIMIT=512m→4g` (`Mem=4294967296`); **apply bản hardening đang chạy nền** (~52 phút, transaction còn active).
+- **Phase 3** (PR #599 plan PASS sau 2 vòng audit; PR #601 service): pure `compute_event_factor` với công thức `(P+I1*P_issue-D)/(P*(1+I1+I2))`, `PARTIAL_EVENT` fail-closed, `recompute_adjusted` idempotent; migration `base_as_of`/`adj_basis`/rights/`PriceRebaseRun` fields **CHƯA LÀM**; TDD **13 passed**.
+- Evidence: `docs/evidence/ssot-implementation/{ANCHOR_A_EVIDENCE_20261128,PLAN_PHASE3_20261128}.md`. Flag FE không đổi.
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).

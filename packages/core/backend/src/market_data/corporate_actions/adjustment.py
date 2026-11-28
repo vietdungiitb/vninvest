@@ -84,6 +84,126 @@ def compute_adj_factors(symbol: str) -> list[AdjFactor]:
     return result
 
 
+def compute_event_factor(event: dict, prev_close: Decimal) -> Decimal:
+    """Hệ số Sở GDCK VN: (P + I1*P_issue - D) / (P*(1+I1+I2)).
+
+    Pure function — không DB. Event thiếu số/ambiguous ⇒ PARTIAL_EVENT,
+    fail-closed để caller giữ nguyên chuỗi cũ.
+    """
+    if event.get('parse_status') != 'structured' or event.get('ambiguous'):
+        raise ValueError('PARTIAL_EVENT')
+    cash = Decimal(str(event.get('cash') or 0))
+    stock_pct = Decimal(str(event.get('stock_ratio_pct') or 0))
+    rights_pct = Decimal(str(event.get('rights_ratio_pct') or 0))
+    issue_price = event.get('rights_issue_price')
+    if rights_pct and issue_price is None:
+        raise ValueError('PARTIAL_EVENT')
+    issue = Decimal(str(issue_price or 0))
+    prev = Decimal(str(prev_close))
+    i1 = rights_pct / Decimal(100)
+    i2 = stock_pct / Decimal(100)
+    denominator = prev * (ONE + i1 + i2)
+    if denominator <= 0 or prev <= 0:
+        raise ValueError('INVALID_FACTOR')
+    factor = ((prev + i1 * issue - cash) / denominator).quantize(Q10)
+    if not (Decimal('0.01') <= factor <= Decimal('1.05')):
+        raise ValueError('INVALID_FACTOR')
+    return factor
+
+
+def recompute_adjusted(rows: list[dict], events: list[dict]) -> list[dict]:
+    """Pure: adj_close(t) = base_close(t) * Π f(e) với e.ex_date > t."""
+    ordered = sorted(events, key=lambda e: e['ex_date'])
+    out = []
+    for row in rows:
+        # D-01: mốc vintage của dòng — event đã phản ánh trong base_close thì
+        # KHÔNG được nhân thêm (fail-closed chống double-adjust).
+        vintage = row.get('base_as_of') or row['date']
+        cumulative = ONE
+        for event in ordered:
+            if event['ex_date'] > vintage:
+                cumulative = (
+                    cumulative * Decimal(str(event['factor']))
+                ).quantize(Q10)
+        copy = dict(row)
+        copy['adj_close'] = (
+            Decimal(str(row['base_close'])) * cumulative
+        ).quantize(Q2)
+        copy['adj_factor'] = cumulative
+        out.append(copy)
+    return out
+
+
+def apply_adjustment_service(symbol: str) -> dict:
+    """Đường ghi DUY NHẤT cho adjusted (Phase 3): event → recompute toàn chuỗi."""
+    from django.db.models import F
+    from django.utils.timezone import now
+
+    from market_data.models import CorporateAction, DailyPrice, PriceRebaseRun
+
+    events = list(
+        CorporateAction.objects.filter(symbol=symbol, is_latest=True).order_by('ex_date')
+    )
+    prices = list(DailyPrice.objects.filter(symbol=symbol).order_by('date'))
+    if not prices:
+        return {'status': 'noop', 'rows_updated': 0}
+
+    grouped: dict[date, list] = defaultdict(list)
+    for event in events:
+        grouped[event.ex_date].append(event)
+    factors = []
+    for ex_date, group in sorted(grouped.items()):
+        prev = next((p for p in reversed(prices) if p.date < ex_date), None)
+        if prev is None:
+            raise ValueError('NO_PREV_CLOSE')
+        issue_prices = [e.rights_issue_price for e in group
+                        if e.rights_issue_price is not None]
+        payload = {
+            'cash': sum((e.cash_amount_per_share or Decimal(0) for e in group), Decimal(0)),
+            'stock_ratio_pct': sum((e.stock_ratio_pct or Decimal(0) for e in group), Decimal(0)),
+            'rights_ratio_pct': sum((e.rights_ratio_pct or Decimal(0) for e in group), Decimal(0)),
+            'rights_issue_price': issue_prices[0] if issue_prices else None,
+            'parse_status': 'structured' if all(
+                e.parse_status == CorporateAction.ParseStatus.STRUCTURED for e in group
+            ) else 'parsed_from_text',
+            'ambiguous': any(e.ambiguous_cash_pct or e.ambiguous_ratio_pct for e in group),
+            'ex_date': ex_date,
+        }
+        factors.append({'ex_date': ex_date, 'factor': compute_event_factor(payload, prev.close)})
+
+    computed = recompute_adjusted(
+        [
+            {'date': p.date, 'base_close': p.close,
+             'base_as_of': getattr(p, 'base_as_of', None)}
+            for p in prices
+        ],
+        factors,
+    )
+    updates = []
+    for price, result in zip(prices, computed):
+        if price.adj_close == result['adj_close']:
+            continue
+        price.adj_close = result['adj_close']
+        price.adj_factor = result['adj_factor']
+        price.is_adjusted = True
+        price.adj_as_of = now()
+        price.adj_version = F('adj_version') + 1
+        updates.append(price)
+    if updates:
+        DailyPrice.objects.bulk_update(
+            updates,
+            ['adj_close', 'adj_factor', 'is_adjusted', 'adj_as_of', 'adj_version'],
+            batch_size=1000,
+        )
+    PriceRebaseRun.objects.create(
+        symbol=symbol, trigger=PriceRebaseRun.Trigger.CORPORATE_ACTION,
+        status=PriceRebaseRun.Status.APPLIED,
+        rows_updated=len(updates),
+        sample_verdict='PENDING_PROVIDER_SYNC',
+    )
+    return {'status': 'applied', 'rows_updated': len(updates)}
+
+
 def apply_adjustments(symbol: str) -> int:
     """Walk ex_date tăng, nhân dồn factor cho mọi ex_date > t; không ghi đè close thô.
 
