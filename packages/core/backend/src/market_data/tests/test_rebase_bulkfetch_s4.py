@@ -40,7 +40,9 @@ class RebaseBulkFetch(SimpleTestCase):
                 price_source='cafef',
             ),
         ]
+        # F8: query giờ là filter(symbol).filter(anchor_basis_q()).order_by()
         mock_filter.return_value.order_by.return_value = old_rows
+        mock_filter.return_value.filter.return_value.order_by.return_value = old_rows
         result = rebase_symbol_from_cafef.run(
             'TPB', exchange='HOSE', trigger='e2e', from_year=2026,
         )

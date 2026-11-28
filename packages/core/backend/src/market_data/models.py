@@ -90,6 +90,11 @@ class DailyPrice(models.Model):
     # S2 — vintage của chuỗi adjusted (truy vết sau mỗi rebase).
     adj_as_of = models.DateTimeField(null=True, blank=True, verbose_name='Thời điểm vintage adjusted')
     adj_version = models.PositiveIntegerField(default=0, verbose_name='Phiên bản điều chỉnh')
+    # SSOT Phase 3 (D-01): vintage của OHLC cơ sở và basis hiển thị.
+    base_as_of = models.DateField(null=True, blank=True, db_index=True,
+                                  verbose_name='OHLC cơ sở đã phản ánh sự kiện tới ngày này')
+    adj_basis = models.CharField(max_length=32, blank=True, default='',
+                                 verbose_name='Basis điều chỉnh (self_computed/anchor_provider/...)')
     # Nguồn đã chuẩn hóa (cafef) để guard ingest không ghi đè (tasks.py:792-798).
     price_source = models.CharField(
         max_length=32, default='vnbroker_legacy',
@@ -169,6 +174,14 @@ class CorporateAction(models.Model):
     stock_ratio_pct = models.DecimalField(
         max_digits=18, decimal_places=4, null=True, blank=True,
         verbose_name='Tỉ lệ cổ phiếu thưởng (%)',
+    )
+    rights_ratio_pct = models.DecimalField(
+        max_digits=18, decimal_places=4, null=True, blank=True,
+        verbose_name='Tỉ lệ quyền mua ưu đãi (%)',
+    )
+    rights_issue_price = models.DecimalField(
+        max_digits=18, decimal_places=2, null=True, blank=True,
+        verbose_name='Giá phát hành quyền mua ưu đãi',
     )
     currency = models.CharField(max_length=3, default='VND', verbose_name='Đơn vị')
     source = models.CharField(max_length=8, verbose_name='Nguồn')
@@ -645,6 +658,12 @@ class PriceRebaseRun(models.Model):
         verbose_name='Đổi hệ số lớn nhất',
     )
     detail = models.TextField(blank=True, default='', verbose_name='Chi tiết')
+    events_hash = models.CharField(max_length=64, blank=True, default='',
+                                   verbose_name='Hash tập sự kiện đã dùng')
+    sample_verdict = models.CharField(max_length=32, blank=True, default='',
+                                      verbose_name='Kết quả sample provider')
+    sample_report = models.JSONField(default=dict, blank=True,
+                                     verbose_name='Báo cáo sample provider')
     started_at = models.DateTimeField(default=timezone.now, verbose_name='Bắt đầu')
     finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc')
 

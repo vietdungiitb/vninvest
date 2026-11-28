@@ -72,10 +72,12 @@ def apply_provider_fallback(symbol: str, from_year: int = 2011,
 
     from market_data.models import DailyPrice
 
+    from market_data.cafef.integrity import anchor_basis_q
+
     symbol = symbol.upper()
-    if DailyPrice.objects.filter(symbol=symbol, price_source='cafef').exists():
+    if DailyPrice.objects.filter(symbol=symbol).filter(anchor_basis_q()).exists():
         return {'status': 'halted_data_error', 'reason': 'cafef_rows_present'}
-    old_qs = DailyPrice.objects.filter(symbol=symbol).exclude(price_source='cafef')
+    old_qs = DailyPrice.objects.filter(symbol=symbol).exclude(anchor_basis_q())
     # Coverage phải so trên CÙNG khoảng ngày với fetch — nếu không, mã có
     # nhiều năm legacy sẽ luôn trả insufficient_coverage dù provider đầy đủ.
     if from_year:
