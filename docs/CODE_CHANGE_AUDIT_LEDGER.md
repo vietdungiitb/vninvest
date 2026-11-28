@@ -1,3 +1,12 @@
+## Entry 682: S2 P0 REQ-BE-M02+M04+Q6 — cách ly đấu giá, mẫu số & ngưỡng whale 500M
+
+- Ngày 2026-11-28 · Agent `m02-auction-isolation` · Branch `feat/m02-auction-isolation` (rebase `origin/dev 4f9c99dd0`).
+- Phạm vi: `market_data/session_phase.py` (mới, SSOT phiên + aggressor), `vnbroker_adapter.py` (live + DNSE backfill), `data_ingest/tasks.py` (hydrate), `market_serving/session_facts_engine.py` (mẫu số + 500M), 2 file test mới, evidence `s2-gates.md` + `S2_REAUDIT.md`, `docs/CLAIMS.md`.
+- Fix: 3 write-path đều ep side=UNKNOWN cho ATO/ATC/PUT_THROUGH (match_type that + fallback gio ICT — G-3b); M04 bo side la khoi `total` LAN `whale`, `delta_strength` giữ nguyên lam control; nguong `_WHALE_THRESHOLD_VND` 200M→500M. Khong sua `signal_intelligence/tasks.py` (guard da dung tu 6e50418a9).
+- Fail-before VPS: `FAILED (failures=6)`, `TEST_EXIT=1`; pass-after `Ran 11 tests OK` → sau hardening F-01/F-02 `Ran 13 tests OK`. Regression 4 app: moi fail deu tai hien tren `origin/dev` (pre-existing).
+- Re-audit doc lap: **AGREE**; F-01 (naive timestamp = gio VN) + F-02 (aggressor chi o CONTINUOUS) da sua that; F-03 (migration 0007 con 200M) de la no.
+- Gates: `check-multi-agent` exit 0; `pre-push-gate` 36 PASS/0 FAIL; `makemigrations --check` = No changes detected. Khong migration, khong ghi staging. **CHUA CHAY**: deploy/probe staging (Q2=KHONG).
+
 ## Entry 680: Bump pin vnbroker 3.10.0 -> 3.11.0 sau publish
 
 - **Date**: 2026-11-27 · **Type**: chore/dependency · **Branch** `feat/pin-vnbroker-311` · Claim `pin-vnbroker-311` (in-progress).
