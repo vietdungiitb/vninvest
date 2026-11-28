@@ -3779,7 +3779,7 @@ def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
     if os.getenv('CORPORATE_ACTIONS_ENABLED', 'false').strip().lower() not in ('1', 'true', 'yes'):
         return {'skipped': True, 'reason': 'CORPORATE_ACTIONS_ENABLED=false', 'symbol': symbol}
 
-    from market_data.corporate_actions.adjustment import apply_adjustments, compute_adj_factors
+    from market_data.corporate_actions.adjustment import apply_adjustment_service
     from market_data.corporate_actions.ingest import fetch_corporate_actions, upsert_corporate_actions
     from market_data.models import CorporateAction
 
@@ -3790,18 +3790,26 @@ def sync_corporate_actions(self, symbol: str, from_date: date | None = None,
     try:
         rows = fetch_corporate_actions(symbol, from_date)
         created, updated = upsert_corporate_actions(symbol, rows)
-        factors = compute_adj_factors(symbol)
-        applied = apply_adjustments(symbol)
+        result = apply_adjustment_service(symbol)
+    except ValueError as exc:
+        # PARTIAL_EVENT / NO_PREV_CLOSE / INVALID_FACTOR → fail-closed, 0 UPDATE.
+        logger.warning('sync_corporate_actions halted symbol=%s: %s', symbol, exc)
+        return {
+            'symbol': symbol, 'fetched': 0, 'created': 0, 'updated': 0,
+            'status': 'halted_partial' if 'PARTIAL' in str(exc) else 'halted_invalid',
+            'reason': str(exc), 'applied': 0,
+        }
     except Exception as exc:  # noqa: BLE001 - task phải trả stats, không nuốt lỗi
         logger.warning('sync_corporate_actions failed symbol=%s: %s', symbol, exc)
         return {
             'symbol': symbol, 'fetched': 0, 'created': 0, 'updated': 0,
-            'factors': 0, 'applied': 0, 'error': str(exc),
+            'status': 'error', 'applied': 0, 'error': str(exc),
         }
 
     return {
         'symbol': symbol, 'fetched': len(rows), 'created': created, 'updated': updated,
-        'factors': len(factors), 'applied': applied, 'from_date': from_date.isoformat(),
+        'status': result['status'], 'applied': result['rows_updated'],
+        'from_date': from_date.isoformat(),
     }
 
 
