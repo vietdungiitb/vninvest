@@ -85,6 +85,26 @@ def test_coverage_below_minimum_is_flagged():
     assert 'coverage_below_min' in report['violations']
 
 
+def test_coverage_counts_adjusted_rows_not_cafef_source():
+    # Sau Anchor A không còn dòng price_source='cafef' — coverage phải tính
+    # theo adj_close, nếu không min-coverage sẽ tự bắn violation.
+    rows = [
+        _row(price_source='vnbroker_fallback'),
+        _row(date=date(2026, 1, 6), price_source='vnbroker_fallback'),
+    ]
+    report = audit_rows(rows, min_coverage=Decimal('0.95'))
+    assert 'coverage_below_min' not in report['violations']
+    assert report['cafef_rows'] == 0
+
+
+def test_mixed_basis_detects_fallback_plus_cafef():
+    rows = [
+        _row(price_source='vnbroker_fallback'),
+        _row(date=date(2026, 1, 6), price_source='cafef'),
+    ]
+    assert 'mixed_basis_symbol' in audit_rows(rows)['violations']
+
+
 def test_coverage_check_is_opt_in():
     rows = [_row(), _row(date=date(2026, 1, 6), price_source='vnbroker_legacy',
                          adj_close=None, adj_factor=None)]

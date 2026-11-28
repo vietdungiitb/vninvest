@@ -66,6 +66,7 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         lambda: {'cafef': False, 'foreign_adjusted': False},
     )
     cafef_rows = 0
+    adjusted_rows = 0
 
     for row in rows:
         source = str(row.get('price_source') or '').lower()
@@ -74,6 +75,8 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
         adj_close = _dec(row.get('adj_close'))
         factor = _dec(row.get('adj_factor'))
         has_adj = adj_close is not None
+        if has_adj:
+            adjusted_rows += 1
 
         if source == 'cafef':
             cafef_rows += 1
@@ -102,7 +105,9 @@ def audit_rows(rows: Iterable[dict], min_coverage: Decimal | None = None) -> dic
             mark('mixed_basis_symbol')
 
     if min_coverage is not None and rows:
-        if Decimal(cafef_rows) / Decimal(len(rows)) < min_coverage:
+        # Sau Anchor A (D-08) CafeF chỉ là bảng đối chiếu — coverage phải đo
+        # theo dòng CÓ adj_close, không phải theo price_source='cafef'.
+        if Decimal(adjusted_rows) / Decimal(len(rows)) < min_coverage:
             mark('coverage_below_min')
 
     violations = sorted(hit)
