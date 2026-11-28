@@ -1,3 +1,11 @@
+## Entry 684: Anchor A applied trên staging + integrity gate OK (2026-11-28)
+
+- **Data**: `vnbroker_fallback` 222 → **2.652.970** dòng; 963 mã / 2.652.748 dòng chuyển basis. Backup ops `market_data_anchora_backup_20261128` còn nguyên. Ghi nhận bất thường: log detach báo halt nhưng DB có dữ liệu đã commit — lấy DB làm nguồn sự thật.
+- **Gate thật**: `check_price_integrity --since 2026-01-01 --min-coverage 1 --json` → **ok=true, 0 violation**, 284.114 dòng, cafef_rows=0. Trước đó sửa 1 dòng AAH factor mismatch + F7 coverage scope.
+- **PR trong ngày**: #606 (holiday reference), #608 (F2 ingest guard), #612/#613 (F1 consumer + price_basis), #614 (F7), #601/#603/#604 (Phase 3).
+- **Env**: RAM core-api 512m→4g; `PRICE_MIGRATION_PAUSED` đã khôi phục 0; flag display vẫn 0.
+- **Còn blocker**: F3 (`base_as_of`/`adj_basis` writer) trước khi recompute event; F4/F6/F8; sample provider CHƯA CHẠY; BE API test trên staging CHƯA CHẠY.
+- **Evidence**: `docs/evidence/ssot-implementation/FINAL_20261128.md`.
 ## Entry 683: Audit luồng giá sau Anchor A — 8 findings, 3 P0
 
 - **Date**: 2026-11-28 · **Type**: docs/audit · **Branch** `docs/pipeline-audit-682` · Claim `pipeline-audit-682`.
