@@ -33,7 +33,7 @@ class SignalServicesDomainConfig:
     # SOC-T06 policy: intraday ticks are hot/short-lived staging data — minimum 7 days.
     intraday_tick_retention_days: int = 7
     canonical_event_retention_days: int = 365
-    bucket_fact_retention_days: int = 90
+    bucket_fact_retention_days: int = 365   # S5 / REQ-BE-M07 — khớp canonical 365
     forensic_window_days: int = 30
 
     # Celery tasks
@@ -57,6 +57,8 @@ class SignalServicesDomainConfig:
             errors.append('intraday_tick_retention_days phải >= 7 ngày (hot retention floor)')
         if self.canonical_event_retention_days < 180:
             errors.append('canonical_event_retention_days phải >= 180 ngày (long-lived canonical events floor)')
+        if self.bucket_fact_retention_days < 365:
+            errors.append('bucket_fact_retention_days phải >= 365 ngày (S5/M07)')
         if self.detection_task_interval_seconds < 10:
             errors.append('detection_task_interval_seconds phải >= 10')
         return errors

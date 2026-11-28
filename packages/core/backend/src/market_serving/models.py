@@ -133,6 +133,16 @@ class SessionFactsBucket(models.Model):
     buy_volume = models.BigIntegerField(default=0)
     sell_volume = models.BigIntegerField(default=0)
 
+    # S5 / REQ-BE-M06 — Market CVD SSOT (100% IntradayTick), additive & nullable.
+    market_buy_value = models.BigIntegerField(default=0)
+    market_sell_value = models.BigIntegerField(default=0)
+    auction_value = models.BigIntegerField(default=0)
+    trade_count = models.PositiveIntegerField(default=0)
+    whale_buy_value = models.BigIntegerField(default=0)
+    whale_sell_value = models.BigIntegerField(default=0)
+    cvd_source = models.CharField(max_length=32, default='whale_fallback_only', db_index=True)
+    coverage_ratio = models.FloatField(default=0.0)
+
     class Meta:
         verbose_name = 'Session Facts Bucket'
         verbose_name_plural = 'Session Facts Buckets'

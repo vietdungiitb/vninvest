@@ -44,7 +44,7 @@ Data source: signal_intelligence.WhaleAlertCanonical
 import logging
 import math
 import statistics
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -244,8 +244,9 @@ def _compute_session_facts_from_rows(
     return result
 
 
-def _build_bucket_rows(rows: list[dict]) -> list[dict]:
+def _build_bucket_rows(rows: list[dict], market: dict | None = None) -> list[dict]:
     payload = []
+    market_buckets = (market or {}).get('buckets') or {}
     for window, bucket_minutes in _SERIES_WINDOWS_BY_LABEL.items():
         result = _compute_session_facts_from_rows(
             rows,
@@ -255,15 +256,27 @@ def _build_bucket_rows(rows: list[dict]) -> list[dict]:
         if result is None:
             continue
         for bucket in result.get('cvd_series', []):
+            bucket_ts = datetime.fromisoformat(bucket['bucket_ts'])
+            # S5: lay market CVD theo bucket tu IntradayTick neu co (full_tick).
+            market_key = _floor_bucket(bucket_ts, bucket_minutes)
+            market_row = market_buckets.get(market_key) or {}
             payload.append({
                 'window': window,
                 'bucket_minutes': bucket_minutes,
-                'bucket_ts': datetime.fromisoformat(bucket['bucket_ts']),
+                'bucket_ts': bucket_ts,
                 'cumulative_cvd': float(bucket.get('cumulative_cvd') or 0.0),
                 'buy_strength': float(bucket.get('buy_strength') or 0.0),
                 'institutional_strength': float(bucket.get('institutional_strength') or 0.0),
                 'buy_volume': int(bucket.get('buy_volume') or 0),
                 'sell_volume': int(bucket.get('sell_volume') or 0),
+                'market_buy_value': int(market_row.get('market_buy_value') or 0),
+                'market_sell_value': int(market_row.get('market_sell_value') or 0),
+                'auction_value': int(market_row.get('auction_value') or 0),
+                'trade_count': int(market_row.get('trade_count') or 0),
+                'whale_buy_value': int(market_row.get('whale_buy_value') or 0),
+                'whale_sell_value': int(market_row.get('whale_sell_value') or 0),
+                'cvd_source': (market or {}).get('cvd_source') or 'whale_fallback_only',
+                'coverage_ratio': float((market or {}).get('coverage_ratio') or 0.0),
             })
     return payload
 
@@ -311,6 +324,76 @@ def compute_session_facts(
     )
 
 
+def compute_market_cvd_from_ticks(
+    symbol: str,
+    session_date: date,
+    bucket_minutes: int = 15,
+) -> dict:
+    """S5 / REQ-BE-M06 — Market CVD thật từ 100% IntradayTick.
+
+    Chi tick `CONTINUOUS` (aggressor BUY/SELL) duoc cong vao buy/sell; tick auction
+    (`side='UNKNOWN'`, match_type ATO/ATC/...) di rieng vao `auction_value`.
+    Khong vao hàm `compute_cvd_buckets_df` cu — hàm đó chia UNKNOWN 50/50 va
+    duoc OrderFlowEvent dung (Q5: giu nguyen).
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+
+    from market_data.models import IntradayTick
+
+    start = datetime.combine(session_date, time.min)
+    end = start + timedelta(days=1)
+    rows = list(
+        IntradayTick.objects.filter(
+            symbol=symbol.upper(), timestamp__gte=start, timestamp__lt=end,
+        ).values('timestamp', 'price', 'volume', 'side', 'match_type').order_by('timestamp')
+    )
+    if not rows:
+        return {
+            'market_buy_value': 0, 'market_sell_value': 0, 'auction_value': 0,
+            'trade_count': 0, 'whale_buy_value': 0, 'whale_sell_value': 0,
+            'cvd_source': 'whale_fallback_only', 'coverage_ratio': 0.0,
+            'buckets': {},
+        }
+
+    buckets: dict[datetime, dict] = defaultdict(lambda: {
+        'market_buy_value': 0, 'market_sell_value': 0, 'auction_value': 0,
+        'trade_count': 0, 'whale_buy_value': 0, 'whale_sell_value': 0,
+    })
+    total_buy = total_sell = total_auction = total_count = 0
+    for row in rows:
+        value = int(Decimal(str(row['price'])) * int(row['volume'] or 0))
+        ts = row['timestamp']
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        key = _floor_bucket(ts, bucket_minutes)
+        side = str(row.get('side') or '').strip().upper()
+        if side in ('BUY', 'SELL'):
+            buckets[key]['market_buy_value' if side == 'BUY' else 'market_sell_value'] += value
+            if value >= 500_000_000:
+                buckets[key]['whale_buy_value' if side == 'BUY' else 'whale_sell_value'] += value
+            total_buy += value if side == 'BUY' else 0
+            total_sell += value if side == 'SELL' else 0
+            total_count += 1
+        else:
+            buckets[key]['auction_value'] += value
+            total_auction += value
+            total_count += 1
+
+    total = total_buy + total_sell + total_auction
+    return {
+        'market_buy_value': total_buy,
+        'market_sell_value': total_sell,
+        'auction_value': total_auction,
+        'trade_count': total_count,
+        'whale_buy_value': sum(b['whale_buy_value'] for b in buckets.values()),
+        'whale_sell_value': sum(b['whale_sell_value'] for b in buckets.values()),
+        'cvd_source': 'full_tick',
+        'coverage_ratio': 1.0 if total else 0.0,
+        'buckets': dict(buckets),
+    }
+
+
 def compute_session_facts_for_all_active(
     session_date: date | None = None,
     symbol: str | None = None,
@@ -336,12 +419,15 @@ def compute_session_facts_for_all_active(
     if normalized_symbol is not None:
         whale_queryset = whale_queryset.filter(symbol=normalized_symbol)
 
-    symbols = list(
-        whale_queryset
-        .order_by()
-        .values_list('symbol', flat=True)
-        .distinct()
-    )
+    # S5: ke ca symbol co IntradayTick (full_tick), khong chi whale alerts.
+    from market_data.models import IntradayTick
+    tick_queryset = IntradayTick.objects.filter(timestamp__date=target_date)
+    if normalized_symbol is not None:
+        tick_queryset = tick_queryset.filter(symbol=normalized_symbol)
+    symbols = sorted(set(
+        list(whale_queryset.order_by().values_list('symbol', flat=True).distinct())
+        + list(tick_queryset.order_by().values_list('symbol', flat=True).distinct())
+    ))
 
     upserted = 0
     skipped = 0
@@ -351,14 +437,27 @@ def compute_session_facts_for_all_active(
     for symbol in symbols:
         try:
             rows = _load_session_rows(symbol, target_date)
-            if not rows:
+            market = compute_market_cvd_from_ticks(symbol, target_date)
+            if not rows and market['trade_count'] == 0:
                 skipped += 1
                 continue
 
             result = _compute_session_facts_from_rows(rows, bucket_minutes=_BUCKET_MINUTES)
             if result is None:
-                skipped += 1
-                continue
+                # S5: ngay co tick nhung khong co whale canonical van phai materialize.
+                total_buy = market['market_buy_value']
+                total_sell = market['market_sell_value']
+                net = total_buy - total_sell
+                total = max(total_buy + total_sell, 1)
+                result = {
+                    'cvd_normalized': 50.0,
+                    'buy_strength': 50.0,
+                    'institutional_strength': 50.0,
+                    'whale_net_flow': net,
+                    'dark_flow_score': min(abs(net) / total * 100, 100.0),
+                    'total_buy_volume': total_buy,
+                    'total_sell_volume': total_sell,
+                }
 
             facts_obj, _ = SessionFacts.objects.update_or_create(
                 symbol=symbol,
@@ -377,7 +476,8 @@ def compute_session_facts_for_all_active(
             )
 
             SessionFactsBucket.objects.filter(session_facts=facts_obj).delete()
-            bucket_rows = _build_bucket_rows(rows)
+            market = compute_market_cvd_from_ticks(symbol, target_date)
+            bucket_rows = _build_bucket_rows(rows, market=market)
             if bucket_rows:
                 SessionFactsBucket.objects.bulk_create([
                     SessionFactsBucket(
@@ -392,6 +492,14 @@ def compute_session_facts_for_all_active(
                         institutional_strength=bucket_row['institutional_strength'],
                         buy_volume=bucket_row['buy_volume'],
                         sell_volume=bucket_row['sell_volume'],
+                        market_buy_value=bucket_row['market_buy_value'],
+                        market_sell_value=bucket_row['market_sell_value'],
+                        auction_value=bucket_row['auction_value'],
+                        trade_count=bucket_row['trade_count'],
+                        whale_buy_value=bucket_row['whale_buy_value'],
+                        whale_sell_value=bucket_row['whale_sell_value'],
+                        cvd_source=bucket_row['cvd_source'],
+                        coverage_ratio=bucket_row['coverage_ratio'],
                     )
                     for bucket_row in bucket_rows
                 ])
